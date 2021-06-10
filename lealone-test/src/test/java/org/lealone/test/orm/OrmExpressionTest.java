@@ -22,6 +22,7 @@ public class OrmExpressionTest extends UnitTestBase {
         testIn();
         testLike();
         testArray();
+        testSet();
     }
 
     void testSelect() {
@@ -136,5 +137,14 @@ public class OrmExpressionTest extends UnitTestBase {
 
         list = User.dao.where().id.eq(1006).phones.notContains(4, 3).findList();
         assertEquals(1, list.size());
+    }
+
+    void testSet() {
+        // 同一字段多次set只取最后一次
+        User user = new User().id.set(9000).name.set("rob6").name.set("rob7");
+        assertEquals("rob7", user.name.get());
+        user.insert();
+        user = User.dao.where().id.eq(9000).findOne();
+        assertEquals("rob7", user.name.get());
     }
 }

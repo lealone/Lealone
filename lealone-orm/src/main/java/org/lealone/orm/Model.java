@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EmptyStackException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -145,7 +144,7 @@ public abstract class Model<T> {
     private T root;
 
     // 以下字段不是必须的，所以延迟初始化，避免浪费不必要的内存
-    private HashSet<NVPair> nvPairs;
+    private HashMap<String, NVPair> nvPairs;
     private ArrayList<Expression> selectExpressions;
     private ArrayList<Expression> groupExpressions;
     private ExpressionBuilder<T> having;
@@ -237,9 +236,9 @@ public abstract class Model<T> {
 
     void addNVPair(String name, Value value) {
         if (nvPairs == null) {
-            nvPairs = new HashSet<>();
+            nvPairs = new HashMap<>();
         }
-        nvPairs.add(new NVPair(name, value));
+        nvPairs.put(name, new NVPair(name, value));
     }
 
     private void reset() {
@@ -688,7 +687,7 @@ public abstract class Model<T> {
         Column[] columns = new Column[size];
         Expression[] expressions = new Expression[size];
         int i = 0;
-        for (NVPair p : nvPairs) {
+        for (NVPair p : nvPairs.values()) {
             columns[i] = dbTable.getColumn(p.name);
             expressions[i] = ValueExpression.get(p.value);
             i++;
@@ -727,7 +726,7 @@ public abstract class Model<T> {
         checkWhereExpression(dbTable, "update");
         if (whereExpressionBuilder != null)
             update.setCondition(whereExpressionBuilder.getExpression());
-        for (NVPair p : nvPairs) {
+        for (NVPair p : nvPairs.values()) {
             update.setAssignment(dbTable.getColumn(p.name), ValueExpression.get(p.value));
         }
         update.prepare();
@@ -799,7 +798,7 @@ public abstract class Model<T> {
                 for (Column c : primaryKey.getColumns()) {
                     // 如果主键由多个字段组成，当前面的字段没有指定时就算后面的指定了也不用它们来生成where条件
                     boolean found = false;
-                    for (NVPair p : nvPairs) {
+                    for (NVPair p : nvPairs.values()) {
                         if (dbTable.getDatabase().equalsIdentifiers(p.name, c.getName())) {
                             peekExprBuilder().eq(p.name, p.value);
                             found = true;
