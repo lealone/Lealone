@@ -80,6 +80,13 @@
 * [更多细节...](https://github.com/lealone/Lealone-MySQL)
 
 
+### Lealone PostgreSQL 查询引擎
+
+* 基于 PostgreSQL 协议，使用 PostgreSQL 的 SQL 语法访问 Lealone 数据库
+
+* [更多细节...](https://github.com/lealone/Lealone-PostgreSQL)
+
+
 ### Lealone Plugins
 
 * 支持可插拨的网络应用框架(Apache MINA、Netty、Vert.x)
