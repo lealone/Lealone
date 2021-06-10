@@ -59,9 +59,9 @@
 * [文档与演示例子](https://github.com/lealone/Lealone-Examples)
 
 
-### Lealone ORM/DSL框架
+### Lealone ORM/DSL 框架
 
-* 超简洁的类型安全的ORM/DSL框架
+* 超简洁的类型安全的 ORM/DSL 框架
 
 * [Lealone ORM 框架快速入门](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/Lealone%20ORM%E6%A1%86%E6%9E%B6%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)
 
@@ -73,14 +73,14 @@
 * [更多细节...](https://github.com/lealone/Bats)
 
 
-### Lealone MySQL 查询引擎
+### Lealone MySQL
 
 * 基于 MySQL 协议，使用 MySQL 的 SQL 语法访问 Lealone 数据库
 
 * [更多细节...](https://github.com/lealone/Lealone-MySQL)
 
 
-### Lealone PostgreSQL 查询引擎
+### Lealone PostgreSQL
 
 * 基于 PostgreSQL 协议，使用 PostgreSQL 的 SQL 语法访问 Lealone 数据库
 
@@ -93,8 +93,6 @@
 
 * 支持可插拨的存储引擎(WiredTiger、MVStore、RocksDB)
 
-* 初步支持PostgreSQL协议
-
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
 
 
@@ -102,13 +100,13 @@
 
 * Lealone 发音 ['li:ləʊn] 这是我新造的英文单词， <br>
   灵感来自于办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 <br>
-  绿萝的拼音是lv luo，与Lealone英文发音有点相同，<br>
-  Lealone是lea + lone的组合，反过来念更有意思哦。:)
+  绿萝的拼音是 lv luo，与 Lealone 英文发音有点相同，<br>
+  Lealone 是 lea + lone 的组合，反过来念更有意思哦。:)
 
 
 ### Lealone 历史
 
-* 2012年从[H2数据库](http://www.h2database.com/html/main.html)的代码开始
+* 2012年从 [H2 数据库](http://www.h2database.com/html/main.html)的代码开始
 
 * 为了支持 lealone-p2p 集群改编了 [Cassandra](https://cassandra.apache.org/) 的一些代码
 
