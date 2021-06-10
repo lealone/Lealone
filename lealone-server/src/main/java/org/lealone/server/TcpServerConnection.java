@@ -72,11 +72,12 @@ public class TcpServerConnection extends TransferConnection {
         SessionInit packet;
         try {
             packet = SessionInit.decoder.decode(in, 0);
-            in.closeInputStream();
         } catch (Throwable e) {
             logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
             sendError(null, packetId, e);
             return;
+        } finally {
+            in.closeInputStream();
         }
 
         try {

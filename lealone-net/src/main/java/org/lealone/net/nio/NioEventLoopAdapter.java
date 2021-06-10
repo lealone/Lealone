@@ -125,9 +125,9 @@ public class NioEventLoopAdapter implements NioEventLoop {
 
     @Override
     public void read(SelectionKey key, NioEventLoop nioEventLoop) {
+        SocketChannel channel = (SocketChannel) key.channel();
         Attachment attachment = (Attachment) key.attachment();
         AsyncConnection conn = attachment.conn;
-        SocketChannel channel = (SocketChannel) key.channel();
         DataBuffer dataBuffer = attachment.dataBuffer;
         ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
         int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
@@ -150,8 +150,8 @@ public class NioEventLoopAdapter implements NioEventLoop {
                     ByteBuffer buffer = dataBuffer.getBuffer();
                     boolean ok = read(attachment, channel, buffer, packetLength);
                     if (ok) {
-                        attachment.state = 0;
                         packetLengthByteBuffer.clear();
+                        attachment.state = 0;
                         attachment.dataBuffer = null;
                         NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
                         dataBuffer = null;

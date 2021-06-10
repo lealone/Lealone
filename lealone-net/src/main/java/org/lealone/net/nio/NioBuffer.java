@@ -34,6 +34,8 @@ public class NioBuffer implements NetBuffer {
 
     @Override
     public int length() {
+        if (onlyOnePacket)
+            return dataBuffer.limit();
         int pos = dataBuffer.position();
         if (pos > 0)
             return pos;
