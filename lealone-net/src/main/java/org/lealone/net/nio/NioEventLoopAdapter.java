@@ -127,14 +127,10 @@ public class NioEventLoopAdapter implements NioEventLoop {
     public void read(SelectionKey key, NioEventLoop nioEventLoop) {
         Attachment attachment = (Attachment) key.attachment();
         AsyncConnection conn = attachment.conn;
-        ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
-        if (packetLengthByteBuffer == null) {
-            readOld(key, nioEventLoop);
-            return;
-        }
-        int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
         SocketChannel channel = (SocketChannel) key.channel();
         DataBuffer dataBuffer = attachment.dataBuffer;
+        ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
+        int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
         try {
             while (true) {
                 if (attachment.state == 0) {
@@ -166,47 +162,6 @@ public class NioEventLoopAdapter implements NioEventLoop {
                         break;
                     }
                 }
-            }
-        } catch (Exception e) {
-            nioEventLoop.handleException(conn, channel, e);
-        }
-    }
-
-    // 那些不支持按包长度解析的协议
-    private void readOld(SelectionKey key, NioEventLoop nioEventLoop) {
-        Attachment attachment = (Attachment) key.attachment();
-        AsyncConnection conn = attachment.conn;
-        SocketChannel channel = (SocketChannel) key.channel();
-        try {
-            while (true) {
-                DataBuffer dataBuffer = DataBuffer.create();
-                ByteBuffer buffer = dataBuffer.getBuffer();
-                int capacity = dataBuffer.capacity();
-                int readBytes = channel.read(buffer);
-                if (readBytes > 0) {
-                    attachment.endOfStreamCount = 0;
-                } else {
-                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
-                    // netty框架在下面这个方法的代码中有自己的不同解决方案
-                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
-                    if (readBytes < 0) {
-                        attachment.endOfStreamCount++;
-                        if (attachment.endOfStreamCount > 3) {
-                            closeChannel(channel);
-                        }
-                    }
-                    break;
-                }
-                buffer.flip();
-                if (isDebugEnabled) {
-                    totalReadBytes += readBytes;
-                    logger.debug(("total read bytes: " + totalReadBytes));
-                }
-                NioBuffer nioBuffer = new NioBuffer(dataBuffer); // 不支持快速回收
-                conn.handle(nioBuffer);
-                // 说明没读满，可以直接退出循环了
-                if (readBytes < capacity)
-                    break;
             }
         } catch (Exception e) {
             nioEventLoop.handleException(conn, channel, e);

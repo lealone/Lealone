@@ -12,7 +12,7 @@ import org.lealone.net.NetBuffer;
 
 public class NioBuffer implements NetBuffer {
 
-    private DataBuffer dataBuffer;
+    private final DataBuffer dataBuffer;
     private boolean onlyOnePacket;
 
     public NioBuffer(DataBuffer dataBuffer) {
@@ -33,44 +33,12 @@ public class NioBuffer implements NetBuffer {
     }
 
     @Override
-    public NioBuffer appendBuffer(NetBuffer buff) {
-        if (buff instanceof NioBuffer) {
-            DataBuffer newDataBuffer = ((NioBuffer) buff).dataBuffer;
-            if (dataBuffer.limit() == 0) {
-                dataBuffer = newDataBuffer;
-            } else {
-                DataBuffer tmp = DataBuffer
-                        .create(dataBuffer.limit() + (newDataBuffer.limit() - newDataBuffer.position()));
-                tmp.put(dataBuffer.getBuffer());
-                tmp.put(newDataBuffer.getBuffer());
-                tmp.getBuffer().flip();
-                dataBuffer = tmp;
-                // dataBuffer.position(dataBuffer.limit()).put(newDataBuffer.getBuffer());
-                // dataBuffer.getBuffer().flip();
-            }
-        }
-        return this;
-    }
-
-    @Override
     public int length() {
         int pos = dataBuffer.position();
         if (pos > 0)
             return pos;
         else
             return dataBuffer.limit();
-    }
-
-    @Override
-    public NioBuffer slice(int start, int end) {
-        DataBuffer newDataBuffer = dataBuffer.slice(start, end);
-        return new NioBuffer(newDataBuffer);
-    }
-
-    @Override
-    public NioBuffer getBuffer(int start, int end) {
-        DataBuffer newDataBuffer = dataBuffer.getBuffer(start, end);
-        return new NioBuffer(newDataBuffer);
     }
 
     @Override

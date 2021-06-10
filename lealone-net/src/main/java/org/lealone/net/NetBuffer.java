@@ -7,13 +7,7 @@ package org.lealone.net;
 
 public interface NetBuffer {
 
-    NetBuffer appendBuffer(NetBuffer buff);
-
     int length();
-
-    NetBuffer slice(int start, int end);
-
-    NetBuffer getBuffer(int start, int end);
 
     short getUnsignedByte(int pos);
 

@@ -28,13 +28,9 @@ public abstract class AsyncConnection {
 
     public abstract void handle(NetBuffer buffer);
 
-    public ByteBuffer getPacketLengthByteBuffer() {
-        return null;
-    }
+    public abstract ByteBuffer getPacketLengthByteBuffer();
 
-    public int getPacketLength() {
-        return -1;
-    }
+    public abstract int getPacketLength();
 
     public WritableChannel getWritableChannel() {
         return writableChannel;
