@@ -307,8 +307,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         for (Map.Entry<String, String> e : newSettings.entrySet()) {
             String key = e.getKey();
             String newValue = e.getValue();
-            String oldvalue = oldSettings.get(key);
-            if (oldvalue == null || !oldvalue.equals(newValue)) {
+            String oldValue = oldSettings.get(key);
+            if (oldValue == null || !oldValue.equals(newValue)) {
                 changed = true;
                 oldSettings.put(key, newValue);
             }
