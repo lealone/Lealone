@@ -75,6 +75,9 @@ import org.lealone.transaction.TransactionMap;
  * A session represents an embedded database connection. When using the server
  * mode, this object resides on the server side and communicates with a
  * Session object on the client side.
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class ServerSession extends SessionBase {
     /**
@@ -848,7 +851,7 @@ public class ServerSession extends SessionBase {
                 currentCommandStart = now;
                 cancelAt = now + queryTimeout;
             }
-            currentCommandSavepointId = getTransaction(statement).getSavepointId();
+            currentCommandSavepointId = getTransaction().getSavepointId();
             currentCommandLockIndex = locks.size();
         }
     }
@@ -1257,21 +1260,15 @@ public class ServerSession extends SessionBase {
     }
 
     public Transaction getTransaction() {
-        return getTransaction(null);
-    }
-
-    public Transaction getTransaction(PreparedSQLStatement p) {
         if (transaction != null)
             return transaction;
 
-        boolean isShardingMode = isShardingMode();
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
         transaction.setSession(this);
         transaction.setGlobalReplicationName(replicationName);
         transaction.setIsolationLevel(transactionIsolationLevel);
 
-        // TODO p != null && !p.isLocal()是否需要？
-        if (isRoot && !autoCommit && isShardingMode && p != null && !p.isLocal())
+        if (isRoot && !autoCommit && isShardingMode())
             transaction.setLocal(false);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;

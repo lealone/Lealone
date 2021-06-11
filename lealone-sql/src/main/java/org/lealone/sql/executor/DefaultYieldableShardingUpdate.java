@@ -132,7 +132,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
     }
 
     private void executeDistributedUpdate(Map<String, List<PageKey>> nodeToPageKeyMap, boolean isBatch) {
-        statement.getSession().getTransaction(statement);
+        statement.getSession().getTransaction();
 
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;

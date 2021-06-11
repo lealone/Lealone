@@ -32,7 +32,7 @@ public class YieldableShardingQuery extends YieldableQueryBase {
 
     @Override
     protected boolean startInternal() {
-        statement.getSession().getTransaction(statement);
+        statement.getSession().getTransaction();
         queryOperator = createShardingQueryOperator();
         queryOperator.setSession(session);
         queryOperator.start();

@@ -624,6 +624,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     protected boolean isShardingMode() {
-        return !isLocal() && getSession().isShardingMode();
+        // 有些在本地执行的语句需要无视session是否是ShardingMode
+        return !isLocal() && session.isShardingMode();
     }
 }
