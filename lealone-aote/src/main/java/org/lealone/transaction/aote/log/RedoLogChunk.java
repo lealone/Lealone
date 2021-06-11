@@ -94,7 +94,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                 if (r.isCheckpoint()) {
                     deleteOldChunkFiles();
                     fileStorage.truncate(0);
-                    buff.reset();
+                    buff.clear();
                     pos = 0;
                 }
                 r.write(buff);
@@ -120,7 +120,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         if (length > 0) {
             fileStorage.writeFully(pos, buff.getAndFlipBuffer());
             pos += length;
-            buff.reset();
+            buff.clear(); // flip后要clear，避免grow时导致OOM问题
         }
         return length;
     }
