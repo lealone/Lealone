@@ -5,22 +5,64 @@
  */
 package org.lealone.db;
 
-import java.util.HashMap;
-
-import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.CaseInsensitiveMap;
 
 /**
- * The compatibility modes. There is a fixed set of modes (for example
- * PostgreSQL, MySQL). Each mode has different settings.
+ * The compatibility modes.
+ * There is a fixed set of modes (for example PostgreSQL, MySQL).
+ * Each mode has different settings.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Mode {
 
     /**
-     * The name of the default mode.
+     * The default mode.
      */
-    private static final String REGULAR = "REGULAR";
+    private static final Mode DEFAULT_MODE = new Mode("REGULAR");
 
-    private static final HashMap<String, Mode> MODES = new HashMap<>();
+    private static final CaseInsensitiveMap<Mode> MODES = new CaseInsensitiveMap<>();
+
+    static {
+        Mode mode = DEFAULT_MODE;
+        mode.nullConcatIsNull = true;
+        mode.indexDefinitionInCreateTable = true;
+        add(mode);
+
+        mode = new Mode("MySQL");
+        mode.convertInsertNullToZero = true;
+        mode.indexDefinitionInCreateTable = true;
+        mode.lowerCaseIdentifiers = true;
+        mode.onDuplicateKeyUpdate = true;
+        add(mode);
+
+        mode = new Mode("PostgreSQL");
+        mode.aliasColumnName = true;
+        mode.nullConcatIsNull = true;
+        mode.systemColumns = true;
+        mode.logIsLogBase10 = true;
+        mode.serialColumnIsNotPK = true;
+        add(mode);
+    }
+
+    private static void add(Mode mode) {
+        MODES.put(mode.name, mode);
+    }
+
+    public static Mode getDefaultMode() {
+        return DEFAULT_MODE;
+    }
+
+    /**
+     * Get the mode with the given name.
+     *
+     * @param name the name of the mode
+     * @return the mode object
+     */
+    public static Mode getInstance(String name) {
+        return MODES.get(name);
+    }
 
     // Modes are also documented in the features section
 
@@ -139,29 +181,6 @@ public class Mode {
 
     private final String name;
 
-    static {
-        Mode mode = new Mode(REGULAR);
-        mode.nullConcatIsNull = true;
-        mode.indexDefinitionInCreateTable = true;
-        add(mode);
-
-        mode = new Mode("MySQL");
-        mode.convertInsertNullToZero = true;
-        mode.indexDefinitionInCreateTable = true;
-        mode.lowerCaseIdentifiers = true;
-        mode.onDuplicateKeyUpdate = true;
-        add(mode);
-
-        mode = new Mode("PostgreSQL");
-        mode.aliasColumnName = true;
-        mode.nullConcatIsNull = true;
-        mode.supportOffsetFetch = true;
-        mode.systemColumns = true;
-        mode.logIsLogBase10 = true;
-        mode.serialColumnIsNotPK = true;
-        add(mode);
-    }
-
     private Mode(String name) {
         this.name = name;
     }
@@ -169,23 +188,4 @@ public class Mode {
     public String getName() {
         return name;
     }
-
-    private static void add(Mode mode) {
-        MODES.put(StringUtils.toUpperEnglish(mode.name), mode);
-    }
-
-    /**
-     * Get the mode with the given name.
-     *
-     * @param name the name of the mode
-     * @return the mode object
-     */
-    public static Mode getInstance(String name) {
-        return MODES.get(StringUtils.toUpperEnglish(name));
-    }
-
-    public static Mode getDefaultMode() {
-        return MODES.get(REGULAR);
-    }
-
 }

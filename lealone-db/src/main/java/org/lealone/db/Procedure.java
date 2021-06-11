@@ -8,8 +8,7 @@ package org.lealone.db;
 import org.lealone.sql.PreparedSQLStatement;
 
 /**
- * Represents a procedure. Procedures are implemented for PostgreSQL
- * compatibility.
+ * Represents a procedure. Procedures are implemented for PostgreSQL compatibility.
  */
 public class Procedure {
 
@@ -28,5 +27,4 @@ public class Procedure {
     public PreparedSQLStatement getPrepared() {
         return prepared;
     }
-
 }
