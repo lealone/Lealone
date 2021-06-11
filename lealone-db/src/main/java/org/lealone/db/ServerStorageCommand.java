@@ -33,10 +33,22 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         return SERVER_STORAGE_COMMAND;
     }
 
+    private boolean isDistributed() {
+        return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
+    }
+
+    private void addLocalTransactionNames() {
+        if (isDistributed()) {
+            String localTransactionNames = session.getTransaction().getLocalTransactionNames();
+            session.getParentTransaction().addLocalTransactionNames(localTransactionNames);
+        }
+    }
+
     @Override
     public Future<Object> get(String mapName, Object key, StorageDataType keyType) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.get(key);
+        addLocalTransactionNames();
         return Future.succeededFuture(result);
     }
 
@@ -54,6 +66,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                 resultByteBuffer.put((byte) 1);
                 resultByteBuffer.flip();
                 ac.setAsyncResult(resultByteBuffer);
+                addLocalTransactionNames();
                 commitIfNeeded();
             }).onFailure(t -> {
                 transaction.rollbackToSavepoint(savepointId);
@@ -78,6 +91,8 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                         }
                     }
                     ac.setAsyncResult(result);
+                    addLocalTransactionNames();
+                    commitIfNeeded();
                 } else {
                     ac.setAsyncResult(ar.getCause());
                 }
@@ -106,10 +121,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     public Future<Object> append(String mapName, Object value, StorageDataType valueType) {
         TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
         Object result = map.append(value);
-        Transaction parentTransaction = session.getParentTransaction();
-        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
-            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
-        }
+        addLocalTransactionNames();
         commitIfNeeded();
         return Future.succeededFuture(result);
     }
@@ -126,10 +138,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
             Object newValue, StorageDataType valueType) {
         TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
         Boolean result = map.replace(key, oldValue, newValue);
-        Transaction parentTransaction = session.getParentTransaction();
-        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
-            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
-        }
+        addLocalTransactionNames();
         commitIfNeeded();
         return Future.succeededFuture(result);
     }
@@ -147,10 +156,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     public Future<Object> remove(String mapName, Object key, StorageDataType keyType) {
         TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
         Object result = map.remove(key);
-        Transaction parentTransaction = session.getParentTransaction();
-        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
-            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
-        }
+        addLocalTransactionNames();
         commitIfNeeded();
         return Future.succeededFuture(result);
     }

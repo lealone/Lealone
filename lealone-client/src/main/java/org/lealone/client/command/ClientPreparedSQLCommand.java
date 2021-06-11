@@ -120,7 +120,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             Packet packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
                     getValues());
             return session.<Result, DTransactionQueryAck> send(packet, ack -> {
-                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                addLocalTransactionNames(ack.localTransactionNames);
                 return getQueryResult(ack, fetch, resultId);
             });
         } else {
@@ -145,7 +145,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         if (isDistributed()) {
             Packet packet = new DTransactionPreparedUpdate(pageKeys, commandId, getValues());
             return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
-                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });
         } else {
@@ -216,7 +216,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
         try {
-
             Future<BatchStatementUpdateAck> f = session
                     .send(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
             BatchStatementUpdateAck ack = f.get();

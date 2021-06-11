@@ -116,7 +116,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
         if (isDistributed()) {
             Packet packet = new DTransactionQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
             return session.<Result, DTransactionQueryAck> send(packet, packetId, ack -> {
-                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                addLocalTransactionNames(ack.localTransactionNames);
                 return getQueryResult(ack, fetch, resultId);
             });
         } else {
@@ -148,6 +148,10 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
         return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
     }
 
+    protected void addLocalTransactionNames(String localTransactionNames) {
+        session.getParentTransaction().addLocalTransactionNames(localTransactionNames);
+    }
+
     @Override
     public Future<Integer> executeUpdate() {
         int packetId = commandId = session.getNextId();
@@ -163,7 +167,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
             int packetId = commandId = session.getNextId();
             Packet packet = new DTransactionUpdate(pageKeys, sql);
             return session.<Integer, DTransactionUpdateAck> send(packet, packetId, ack -> {
-                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });
         } else {
