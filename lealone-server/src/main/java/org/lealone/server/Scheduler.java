@@ -103,6 +103,8 @@ public class Scheduler extends Thread
     private void runSessionTasks() {
         if (sessions.isEmpty())
             return;
+        // 不适合使用普通for循环，sessions会随时新增或删除元素，
+        // 只能每次创建一个迭代器包含元素数组的快照
         for (SessionInfo si : sessions) {
             si.runSessionTasks();
         }

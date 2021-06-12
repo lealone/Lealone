@@ -16,6 +16,10 @@ import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionQuery;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdate;
+import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdate;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionRollback;
 import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.dt.DTransactionUpdate;
@@ -151,6 +155,13 @@ public class PacketDecoders {
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, DTransactionRollbackSavepoint.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, DTransactionValidate.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK, DTransactionValidateAck.decoder);
+
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_UPDATE, DTransactionReplicationUpdate.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_UPDATE_ACK, DTransactionReplicationUpdateAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_PREPARED_UPDATE,
+                DTransactionReplicationPreparedUpdate.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_PREPARED_UPDATE_ACK,
+                DTransactionReplicationPreparedUpdateAck.decoder);
 
         register(PacketType.STORAGE_GET, StorageGet.decoder);
         register(PacketType.STORAGE_GET_ACK, StorageGetAck.decoder);

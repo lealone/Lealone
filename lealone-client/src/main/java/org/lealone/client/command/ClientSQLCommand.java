@@ -23,6 +23,8 @@ import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionQuery;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdate;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionUpdate;
 import org.lealone.server.protocol.dt.DTransactionUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
@@ -178,12 +180,22 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
         int packetId = commandId = session.getNextId();
-        Packet packet = new ReplicationUpdate(sql, replicationName);
-        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
-            ack.setReplicaCommand(ClientSQLCommand.this);
-            ack.setPacketId(packetId);
-            return ack;
-        });
+        if (isDistributed()) {
+            Packet packet = new DTransactionReplicationUpdate(sql, replicationName);
+            return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
+                addLocalTransactionNames(ack.localTransactionNames);
+                ack.setReplicaCommand(ClientSQLCommand.this);
+                ack.setPacketId(packetId);
+                return ack;
+            });
+        } else {
+            Packet packet = new ReplicationUpdate(sql, replicationName);
+            return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
+                ack.setReplicaCommand(ClientSQLCommand.this);
+                ack.setPacketId(packetId);
+                return ack;
+            });
+        }
     }
 
     @Override

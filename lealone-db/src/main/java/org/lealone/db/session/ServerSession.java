@@ -51,6 +51,8 @@ import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
@@ -1599,12 +1601,24 @@ public class ServerSession extends SessionBase {
         }
         Packet ack;
         boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
-        if (prepared)
-            ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-        else
-            ack = new ReplicationUpdateAck(updateCount, first, uncommittedReplicationName, replicationConflictType,
-                    ++ackVersion, isIfDDL, isFinalResult);
+
+        // 在分布式事务中做复制
+        if (!isRoot() && !isAutoCommit()) {
+            String localTransactionNames = getTransaction().getLocalTransactionNames();
+            if (prepared)
+                ack = new DTransactionReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
+                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult, localTransactionNames);
+            else
+                ack = new DTransactionReplicationUpdateAck(updateCount, first, uncommittedReplicationName,
+                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult, localTransactionNames);
+        } else {
+            if (prepared)
+                ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
+                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
+            else
+                ack = new ReplicationUpdateAck(updateCount, first, uncommittedReplicationName, replicationConflictType,
+                        ++ackVersion, isIfDDL, isFinalResult);
+        }
 
         if (isAutoCommit()) {
             // 写入一条redo log，用于恢复

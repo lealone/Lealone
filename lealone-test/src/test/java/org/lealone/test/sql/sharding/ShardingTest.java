@@ -24,9 +24,12 @@ public class ShardingTest extends DSqlTestBase {
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         stmt.executeUpdate(sql);
 
+        new DdlTest(dbName, true).runTest(); // 在自动提交模式中执行DDL语句，不涉及分布式事务
+        new DdlTest(dbName, false).runTest(); // 在手动提交模式中执行DDL语句， 涉及分布式事务
+
         // new DeleteTest(dbName).runTest();
         // new UpdateTest(dbName).runTest();
-        new SelectTest(dbName).runTest();
+        // new SelectTest(dbName).runTest();
 
         // new TwoTablesTest(dbName).runTest();
         // new ShardingCrudTest(dbName).runTest();
@@ -45,6 +48,29 @@ public class ShardingTest extends DSqlTestBase {
             executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
             for (int i = 1; i <= 50; i++) {
                 executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+            }
+        }
+    }
+
+    class DdlTest extends CrudTest {
+
+        boolean autoCommit;
+
+        public DdlTest(String dbName, boolean autoCommit) {
+            super(dbName);
+            this.autoCommit = autoCommit;
+        }
+
+        @Override
+        protected void test() throws Exception {
+            if (!autoCommit) {
+                conn.setAutoCommit(false);
+            }
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            if (!autoCommit) {
+                conn.commit();
+                conn.setAutoCommit(true);
             }
         }
     }

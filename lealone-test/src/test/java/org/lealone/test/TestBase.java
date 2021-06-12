@@ -51,7 +51,7 @@ public class TestBase extends Assert {
     public static final String DEFAULT_DB_NAME = TEST;
     public static final String DEFAULT_USER = "root";
     public static final String DEFAULT_PASSWORD = "";
-    public static final int NETWORK_TIMEOUT_MILLISECONDS = 1000 * 1000; // 方便在eclipse中调试代码
+    public static final int NETWORK_TIMEOUT_MILLISECONDS = Integer.MAX_VALUE; // 方便在eclipse中调试代码
 
     public static TransactionEngine te;
 

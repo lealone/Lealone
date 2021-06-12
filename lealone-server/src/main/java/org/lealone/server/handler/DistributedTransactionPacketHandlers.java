@@ -18,6 +18,8 @@ import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionQuery;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdate;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdate;
 import org.lealone.server.protocol.dt.DTransactionRollback;
 import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.dt.DTransactionUpdate;
@@ -37,6 +39,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
         register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, new RollbackSavepoint());
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, new Validate());
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_UPDATE, new ReplicationUpdate());
+        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_PREPARED_UPDATE, new ReplicationPreparedUpdate());
     }
 
     private static class Query extends QueryPacketHandler<DTransactionQuery> {
@@ -139,6 +143,39 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
         public Packet handle(ServerSession session, DTransactionValidate packet) {
             boolean isValid = session.validateTransaction(packet.localTransactionName);
             return new DTransactionValidateAck(isValid);
+        }
+    }
+
+    private static class ReplicationUpdate extends UpdatePacketHandler<DTransactionReplicationUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DTransactionReplicationUpdate packet) {
+            final ServerSession session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            session.setReplicationName(packet.replicationName);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return task.session.createReplicationUpdateAckPacket(updateCount, false);
+        }
+    }
+
+    private static class ReplicationPreparedUpdate
+            extends PreparedUpdatePacketHandler<DTransactionReplicationPreparedUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DTransactionReplicationPreparedUpdate packet) {
+            final ServerSession session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            session.setReplicationName(packet.replicationName);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return task.session.createReplicationUpdateAckPacket(updateCount, true);
         }
     }
 }

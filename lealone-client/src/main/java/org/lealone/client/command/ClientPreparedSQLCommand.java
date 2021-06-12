@@ -27,6 +27,8 @@ import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdate;
+import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionUpdateAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
@@ -156,12 +158,22 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
         int packetId = session.getNextId();
-        Packet packet = new ReplicationPreparedUpdate(commandId, getValues(), replicationName);
-        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
-            ack.setReplicaCommand(ClientPreparedSQLCommand.this);
-            ack.setPacketId(packetId);
-            return ack;
-        });
+        if (isDistributed()) {
+            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName);
+            return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
+                addLocalTransactionNames(ack.localTransactionNames);
+                ack.setReplicaCommand(ClientPreparedSQLCommand.this);
+                ack.setPacketId(packetId);
+                return ack;
+            });
+        } else {
+            Packet packet = new ReplicationPreparedUpdate(commandId, getValues(), replicationName);
+            return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
+                ack.setReplicaCommand(ClientPreparedSQLCommand.this);
+                ack.setPacketId(packetId);
+                return ack;
+            });
+        }
     }
 
     private Value[] getValues() {

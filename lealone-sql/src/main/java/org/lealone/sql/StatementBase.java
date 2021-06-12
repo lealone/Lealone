@@ -577,6 +577,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        boolean isDistributed = session.getParentTransaction() != null
+                && !session.getParentTransaction().isAutoCommit();
+        if (isDistributed) {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
         session.setReplicationName(replicationName);
         YieldableBase<Integer> yieldable = createYieldableUpdate(null);
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
