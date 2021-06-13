@@ -34,7 +34,9 @@ import org.lealone.common.util.Utils;
  * 除FILE_ENCODING、FILE_SEPARATOR、JAVA_SPECIFICATION_VERSION、LINE_SEPARATOR、USER_HOME这些标准属性外，
  * 其他属性都默认加"lealone."前缀
  * </p>
- *
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class SysProperties {
 
@@ -132,12 +134,6 @@ public class SysProperties {
     public static boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
 
     /**
-     * System property <code>lob.files.per.directory</code> (default: 256).<br />
-     * Maximum number of LOB files per directory.
-     */
-    public static final int LOB_FILES_PER_DIRECTORY = getProperty("lob.files.per.directory", 256);
-
-    /**
      * System property <code>lob.in.database</code> (default: true).<br />
      * Store LOB files in the database.
      */
@@ -223,20 +219,6 @@ public class SysProperties {
     public static final int SERVER_RESULT_SET_FETCH_SIZE = getProperty("server.resultset.fetch.size", 100);
 
     /**
-     * System property <code>socket.connect.retry</code> (default: 16).<br />
-     * The number of times to retry opening a socket. Windows sometimes fails
-     * to open a socket, see bug
-     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6213296
-     */
-    // public static final int SOCKET_CONNECT_RETRY = getProperty("socket.connect.retry", 16);
-
-    /**
-     * System property <code>socket.connect.timeout</code> (default: 2000).<br />
-     * The timeout in milliseconds to connect to a server.
-     */
-    // public static final int SOCKET_CONNECT_TIMEOUT = getProperty("socket.connect.timeout", 2000);
-
-    /**
      * System property <code>sort.nulls.high</code> (default: false).<br />
      * Invert the default sorting behavior for NULL, such that NULL
      * is at the end of a result set in an ascending sort and at
@@ -249,13 +231,6 @@ public class SysProperties {
      * The maximum file size of a split file is 1L &lt;&lt; x.
      */
     public static final long SPLIT_FILE_SIZE_SHIFT = getProperty("split.file.size.shift", 30);
-
-    /**
-     * System property <code>store.local.time</code> (default: false).<br />
-     * Store the local time. If disabled, the daylight saving offset is not
-     * taken into account.
-     */
-    public static final boolean STORE_LOCAL_TIME = getProperty("store.local.time", false);
 
     /**
      * System property <code>sync.method</code> (default: sync).<br />
@@ -283,14 +258,6 @@ public class SysProperties {
      */
     public static final String URL_MAP = getProperty("url.map", null);
 
-    /**
-     * System property <code>implicit.relative.path</code>
-     * (default: true for version 1.3, false for version 1.4).<br />
-     * If disabled, relative paths in database URLs need to be written as
-     * jdbc:h2:./test instead of jdbc:h2:test.
-     */
-    // public static final boolean IMPLICIT_RELATIVE_PATH = getProperty("implicit.relative.path",
-    // Constants.VERSION_MINOR >= 4 ? false : true);
     /**
      * System property <code>use.thread.context.classloader</code>
      * (default: false).<br />
@@ -357,10 +324,8 @@ public class SysProperties {
     }
 
     /**
-     * System property <code>scriptDirectory</code> (default: empty
-     * string).<br />
-     * Relative or absolute directory where the script files are stored to or
-     * read from.
+     * System property <code>script.directory</code> (default: empty string).<br />
+     * Relative or absolute directory where the script files are stored to or read from.
      *
      * @return the current value
      */
@@ -372,11 +337,7 @@ public class SysProperties {
      * INTERNAL
      */
     public static String getBaseDir() {
-        String dir = getProperty(BASE_DIR, Constants.DEFAULT_BASE_DIR);
-        // if (dir == null)
-        // throw new RuntimeException("Fatal error: base dir is null, the system property '"
-        // + Constants.PROJECT_NAME_PREFIX + BASE_DIR + "' must be set");
-        return dir;
+        return getProperty(BASE_DIR, Constants.DEFAULT_BASE_DIR);
     }
 
     public static String getBaseDirSilently() {
