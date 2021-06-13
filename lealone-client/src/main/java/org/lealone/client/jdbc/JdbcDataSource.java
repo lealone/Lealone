@@ -18,6 +18,8 @@ import javax.naming.Reference;
 import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
 import javax.sql.DataSource;
+import javax.sql.XAConnection;
+import javax.sql.XADataSource;
 
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StringUtils;
@@ -55,7 +57,7 @@ import org.lealone.common.util.StringUtils;
  * In this example the user name and password are serialized as
  * well; this may be a security problem in some cases.
  */
-public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializable, Referenceable {
+public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializable, Referenceable, XADataSource {
 
     private static final long serialVersionUID = 1288136338451857771L;
 
@@ -319,4 +321,13 @@ public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializa
         return getTraceObjectName() + ": url=" + url + " user=" + userName;
     }
 
+    @Override
+    public XAConnection getXAConnection() throws SQLException {
+        return null;
+    }
+
+    @Override
+    public XAConnection getXAConnection(String user, String password) throws SQLException {
+        return null;
+    }
 }
