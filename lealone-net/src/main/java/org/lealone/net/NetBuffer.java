@@ -11,6 +11,8 @@ public interface NetBuffer {
 
     short getUnsignedByte(int pos);
 
+    void read(byte[] dst, int off, int len);
+
     NetBuffer appendByte(byte b);
 
     NetBuffer appendBytes(byte[] bytes, int offset, int len);

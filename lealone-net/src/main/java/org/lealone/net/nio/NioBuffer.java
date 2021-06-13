@@ -49,6 +49,11 @@ public class NioBuffer implements NetBuffer {
     }
 
     @Override
+    public void read(byte[] dst, int off, int len) {
+        dataBuffer.read(dst, off, len);
+    }
+
+    @Override
     public NioBuffer appendByte(byte b) {
         dataBuffer.put(b);
         return this;
