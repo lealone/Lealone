@@ -172,7 +172,9 @@ public class ConnectionInfo implements Cloneable {
         if (isKnownSetting(key)) {
             prop.put(key, value);
         } else {
-            throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
+            boolean ignoreUnknownSetting = getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
+            if (!ignoreUnknownSetting)
+                throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
         }
     }
 
