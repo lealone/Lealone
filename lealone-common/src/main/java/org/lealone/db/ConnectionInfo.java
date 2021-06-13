@@ -16,6 +16,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
@@ -31,6 +32,7 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class ConnectionInfo implements Cloneable {
 
+    private static final boolean IGNORE_UNKNOWN_SETTINGS = Utils.getProperty("lealone.ignore.unknown.settings", false);
     private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
 
     static {
@@ -172,6 +174,8 @@ public class ConnectionInfo implements Cloneable {
         if (isKnownSetting(key)) {
             prop.put(key, value);
         } else {
+            if (IGNORE_UNKNOWN_SETTINGS)
+                return;
             boolean ignoreUnknownSetting = getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
             if (!ignoreUnknownSetting)
                 throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
