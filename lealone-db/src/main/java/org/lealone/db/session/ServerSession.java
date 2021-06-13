@@ -599,7 +599,7 @@ public class ServerSession extends SessionBase {
         }
         unlockAll(true);
         clean();
-        releaseSessionCache();
+        releaseNestedSessions();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
@@ -634,38 +634,7 @@ public class ServerSession extends SessionBase {
         }
 
         clean();
-        releaseSessionCache();
-        sessionStatus = SessionStatus.TRANSACTION_NOT_START;
-    }
-
-    public void rollback(ServerSession lockOwner) {
-        checkCommitRollback();
-        if (transaction != null) {
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            transaction.rollback();
-            endTransaction();
-        }
-        cleanTempTables(false);
-        unlockAll(false, lockOwner);
-        if (autoCommitAtTransactionEnd) {
-            autoCommit = true;
-            autoCommitAtTransactionEnd = false;
-        }
-
-        if (containsDatabaseStatement) {
-            LealoneDatabase.getInstance().copy();
-            containsDatabaseStatement = false;
-        }
-
-        if (containsDDL) {
-            Database db = this.database;
-            db.copy();
-            containsDDL = false;
-        }
-
-        clean();
-        releaseSessionCache();
+        releaseNestedSessions();
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -1278,8 +1247,8 @@ public class ServerSession extends SessionBase {
         return transaction;
     }
 
-    // 参与本次事务的其他Session
-    private final Map<String, Session> nestedSessionCache = new HashMap<>();
+    // 参与本次事务的其他Session，只有分布式场景才用得到，所以延迟初始化
+    private Map<String, Session> nestedSessions;
 
     public Session getNestedSession(String hostAndPort) {
         return getNestedSession(hostAndPort, !NetNode.isLocalTcpNode(hostAndPort));
@@ -1289,25 +1258,31 @@ public class ServerSession extends SessionBase {
     public Session getNestedSession(String hostAndPort, boolean remote) {
         // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
         String url = getURL(hostAndPort);
-        Session s = nestedSessionCache.get(url);
+        Session s;
+        if (nestedSessions == null) {
+            nestedSessions = new HashMap<>();
+            s = null;
+        } else {
+            s = nestedSessions.get(url);
+        }
         if (s == null) {
             s = SessionPool.getSessionSync(this, url, remote);
             if (transaction != null)
                 transaction.addParticipant(s);
-            nestedSessionCache.put(url, s);
+            nestedSessions.put(url, s);
         }
         // 集群内部节点之间通信用服务器端配置的超时时间
         s.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
         return s;
     }
 
-    private void releaseSessionCache() {
-        if (!nestedSessionCache.isEmpty()) {
-            for (Session s : nestedSessionCache.values()) {
+    private void releaseNestedSessions() {
+        if (nestedSessions != null) {
+            for (Session s : nestedSessions.values()) {
                 s.setParentTransaction(null);
                 SessionPool.release(s);
             }
-            nestedSessionCache.clear();
+            nestedSessions = null;
         }
     }
 
