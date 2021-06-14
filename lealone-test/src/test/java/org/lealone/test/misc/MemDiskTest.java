@@ -30,7 +30,7 @@ public class MemDiskTest {
             System.out.println();
         }
         System.out.println();
-        long size = org.lealone.p2p.util.FileUtils.folderSize(new File("./target"));
+        long size = org.lealone.storage.fs.FileUtils.folderSize(new File("./target"));
         System.out.println("Target Dir Size: " + toM(size));
     }
 

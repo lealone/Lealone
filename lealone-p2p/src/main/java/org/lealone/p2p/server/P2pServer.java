@@ -497,13 +497,13 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
     }
 
     public String getLoadString() {
-        return FileUtils.stringifyFileSize(getLoad());
+        return FileUtils.stringifySize(getLoad());
     }
 
     public Map<String, String> getLoadMap() {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<NetNode, Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet()) {
-            map.put(entry.getKey().getHostAddress(), FileUtils.stringifyFileSize(entry.getValue()));
+            map.put(entry.getKey().getHostAddress(), FileUtils.stringifySize(entry.getValue()));
         }
         // gossiper doesn't see its own updates, so we need to special-case the local node
         map.put(ConfigDescriptor.getLocalNode().getHostAddress(), getLoadString());

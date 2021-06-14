@@ -392,4 +392,9 @@ public class FileUtils {
         return length;
     }
 
+    public static String getDirWithSeparator(String dir) {
+        if (dir != null && !dir.endsWith(File.separator))
+            dir = dir + File.separator;
+        return dir;
+    }
 }

@@ -1966,8 +1966,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (storagePath != null)
             return storagePath;
         String baseDir = SysProperties.getBaseDir();
-        if (baseDir != null && !baseDir.endsWith(File.separator))
-            baseDir = baseDir + File.separator;
+        baseDir = FileUtils.getDirWithSeparator(baseDir);
 
         String path;
         if (baseDir == null)
