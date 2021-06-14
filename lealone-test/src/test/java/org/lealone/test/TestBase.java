@@ -20,6 +20,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
+import org.lealone.db.DbSetting;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
 import org.lealone.storage.fs.FileUtils;
@@ -122,6 +123,16 @@ public class TestBase extends Assert {
         return s.toString();
     }
 
+    public synchronized TestBase addConnectionParameter(DbSetting key, String value) {
+        connectionParameters.put(key.name(), value);
+        return this;
+    }
+
+    public synchronized TestBase addConnectionParameter(ConnectionSetting key, String value) {
+        connectionParameters.put(key.name(), value);
+        return this;
+    }
+
     public synchronized TestBase addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
         return this;
@@ -212,21 +223,21 @@ public class TestBase extends Assert {
     public synchronized String getURL(String dbName) {
         if (url != null)
             return url;
-        // addConnectionParameter("DATABASE_TO_UPPER", "false");
-        // addConnectionParameter("ALIAS_COLUMN_NAME", "true");
+        // addConnectionParameter(DbSetting.DATABASE_TO_UPPER, "false");
+        // addConnectionParameter(DbSetting.ALIAS_COLUMN_NAME, "true");
         // addConnectionParameter(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, "true");
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", DEFAULT_USER);
             addConnectionParameter("password", DEFAULT_PASSWORD);
         }
-        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
+        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT, String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 
         StringBuilder url = new StringBuilder(100);
 
         url.append(Constants.URL_PREFIX);
         if (inMemory || MemoryStorageEngine.NAME.equalsIgnoreCase(storageEngineName)) {
-            addConnectionParameter("PERSISTENT", "false");
+            addConnectionParameter(DbSetting.PERSISTENT, "false");
         }
 
         if (embedded) {
@@ -248,7 +259,8 @@ public class TestBase extends Assert {
             separatorChar = '&';
         }
 
-        url.append(dbName).append(firstSeparatorChar).append("default_storage_engine=").append(storageEngineName);
+        url.append(dbName).append(firstSeparatorChar).append(DbSetting.DEFAULT_STORAGE_ENGINE).append("=")
+                .append(storageEngineName);
         url.append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=").append(netFactoryName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())

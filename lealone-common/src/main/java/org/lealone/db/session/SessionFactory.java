@@ -10,6 +10,9 @@ import org.lealone.db.async.Future;
 
 /**
  * A class that implements this interface can create new database sessions.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface SessionFactory {
 
@@ -25,7 +28,6 @@ public interface SessionFactory {
 
     default Future<Session> createSession(String url) {
         try {
-
             return createSession(new ConnectionInfo(url), true);
         } catch (Throwable t) {
             return Future.failedFuture(t);

@@ -1875,20 +1875,7 @@ public class ErrorCode {
     /**
      * The error with code <code>90138</code> is thrown when
      *
-     * trying to open a persistent database using an incorrect database name.
-     * The name of a persistent database contains the path and file name prefix
-     * where the data is stored. The file name part of a database name must be
-     * at least two characters.
-     *
-     * Example of wrong usage:
-     * <pre>
-     * DriverManager.getConnection("jdbc:h2:~/t");
-     * DriverManager.getConnection("jdbc:h2:~/test/");
-     * </pre>
-     * Correct:
-     * <pre>
-     * DriverManager.getConnection("jdbc:h2:~/te");
-     * DriverManager.getConnection("jdbc:h2:~/test/te");
+     * trying to open a database using an incorrect database name.
      * </pre>
      */
     public static final int INVALID_DATABASE_NAME_1 = 90138;

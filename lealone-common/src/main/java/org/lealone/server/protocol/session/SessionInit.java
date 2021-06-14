@@ -47,7 +47,7 @@ public class SessionInit implements Packet {
         out.setSSL(ci.isSSL());
         out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
-        out.writeString(ci.getDatabaseShortName());
+        out.writeString(ci.getDatabaseName());
         out.writeString(ci.getURL()); // 不带参数的URL
         out.writeString(ci.getUserName());
         out.writeBytes(ci.getUserPasswordHash());

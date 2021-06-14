@@ -5,6 +5,7 @@
  */
 package org.lealone.db;
 
+import java.io.File;
 import java.nio.charset.Charset;
 import java.sql.ResultSet;
 
@@ -25,7 +26,8 @@ public class Constants {
      */
     public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
-    public static final String DEFAULT_BASE_DIR = "./target/lealone_db_base_dir";
+    public static final String DEFAULT_BASE_DIR = "." + File.separator + "target" + File.separator
+            + "lealone_db_base_dir";
 
     public static final String DEFAULT_STORAGE_ENGINE_NAME = "AOSE";
 

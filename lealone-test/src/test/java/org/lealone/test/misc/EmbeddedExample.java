@@ -6,37 +6,29 @@
 package org.lealone.test.misc;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.DriverManager;
 
+import org.lealone.common.trace.TraceSystem;
+import org.lealone.db.DbSetting;
+import org.lealone.db.SysProperties;
 import org.lealone.test.TestBase;
 
 public class EmbeddedExample {
+
     public static void main(String[] args) throws Exception {
-        TestBase.initTransactionEngine();
-        TestBase test = new TestBase();
-        test.setInMemory(true);
-        test.setEmbedded(true);
-        test.printURL();
+        SysProperties.setBaseDir(TestBase.TEST_DIR);
 
-        Connection conn = test.getConnection();
-        Statement stmt = conn.createStatement();
+        String url = "jdbc:lealone:embed:embedded_db?" + DbSetting.TRACE_LEVEL_FILE + "=" + TraceSystem.DEBUG;
+        Connection conn = DriverManager.getConnection(url, "root", "");
+        CRUDExample.crud(conn);
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        // 数据库名在内部会对应一个ID，目录名也是用ID表示，所以my/embedded_db跟embedded_db是一样的
+        url = "jdbc:lealone:embed:my/embedded_db";
+        conn = DriverManager.getConnection(url, "root", "");
+        CRUDExample.crud(conn);
 
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
-        stmt.executeUpdate("UPDATE test SET f2 = 1");
-        ResultSet rs = stmt.executeQuery("SELECT * FROM test");
-        while (rs.next()) {
-            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
-            System.out.println();
-        }
-        stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
-
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-
-        stmt.close();
-        conn.close();
-        TestBase.closeTransactionEngine();
+        url = "jdbc:lealone:embed:embedded_memory_db?" + DbSetting.PERSISTENT + "=false";
+        conn = DriverManager.getConnection(url, "root", "");
+        CRUDExample.crud(conn);
     }
 }

@@ -340,10 +340,6 @@ public class SysProperties {
         return getProperty(BASE_DIR, Constants.DEFAULT_BASE_DIR);
     }
 
-    public static String getBaseDirSilently() {
-        return getProperty(BASE_DIR, null);
-    }
-
     /**
      * INTERNAL
      */

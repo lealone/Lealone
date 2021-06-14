@@ -44,7 +44,7 @@ public class ServerSessionFactory implements SessionFactory {
     }
 
     private ServerSession createServerSession(ConnectionInfo ci) {
-        String dbName = ci.getDatabaseShortName();
+        String dbName = ci.getDatabaseName();
         // 内嵌数据库，如果不存在，则自动创建
         if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);

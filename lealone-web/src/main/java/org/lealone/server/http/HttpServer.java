@@ -124,7 +124,7 @@ public class HttpServer extends ProtocolServerBase {
         if (url != null) {
             ConnectionInfo ci = new ConnectionInfo(url);
             if (!config.containsKey("default_database"))
-                config.put("default_database", ci.getDatabaseShortName());
+                config.put("default_database", ci.getDatabaseName());
             if (!config.containsKey("default_schema"))
                 config.put("default_schema", "public");
             if (ci.isEmbedded()) {
