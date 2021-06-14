@@ -8,6 +8,7 @@ package org.lealone.db;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * The constants defined in this class are initialized from system properties.
@@ -330,7 +331,7 @@ public class SysProperties {
      * @return the current value
      */
     public static String getScriptDirectory() {
-        return getProperty(SCRIPT_DIRECTORY, "");
+        return getProperty(SCRIPT_DIRECTORY, FileUtils.getDirWithSeparator(getBaseDir()) + "script_directory");
     }
 
     /**

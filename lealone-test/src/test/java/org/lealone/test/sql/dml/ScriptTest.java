@@ -11,7 +11,7 @@ import org.lealone.test.sql.SqlTestBase;
 public class ScriptTest extends SqlTestBase {
     @Test
     public void run() {
-        sql = "SCRIPT NODATA"; // 生成各种Create SQL，此命令返回结果集，所以要用executeQuery
+        sql = "SCRIPT NODATA TO 'my_script_test.sql'"; // 生成各种Create SQL，此命令返回结果集，所以要用executeQuery
         printResultSet();
     }
 }

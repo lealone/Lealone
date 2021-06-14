@@ -88,7 +88,8 @@ abstract class ScriptBase extends ManipulationStatement implements DataHandler {
             if (fileName == null || fileName.trim().length() == 0) {
                 fileName = "script.sql";
             }
-            fileName = SysProperties.getScriptDirectory() + fileName;
+            String dir = SysProperties.getScriptDirectory();
+            fileName = FileUtils.getDirWithSeparator(dir) + fileName;
         }
         return fileName;
     }
