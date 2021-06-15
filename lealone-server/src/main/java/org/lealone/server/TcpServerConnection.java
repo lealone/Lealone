@@ -9,11 +9,13 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.TransferConnection;
@@ -82,9 +84,13 @@ public class TcpServerConnection extends TransferConnection {
 
         try {
             ServerSession session = createSession(packet.ci, sessionId, scheduler);
+            scheduler.validateUserAndPassword(true);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
         } catch (Throwable e) {
+            if (DbException.convert(e).getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
+                scheduler.validateUserAndPassword(false);
+            }
             SessionInfo si = sessions.get(sessionId);
             if (si != null) {
                 closeSession(si);

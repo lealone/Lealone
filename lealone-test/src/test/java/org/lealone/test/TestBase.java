@@ -192,6 +192,14 @@ public class TestBase extends Assert {
         return this;
     }
 
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     public int getPort() {
         return port;
     }
@@ -228,8 +236,8 @@ public class TestBase extends Assert {
         // addConnectionParameter(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, "true");
 
         if (!connectionParameters.containsKey("user")) {
-            addConnectionParameter("user", DEFAULT_USER);
-            addConnectionParameter("password", DEFAULT_PASSWORD);
+            addConnectionParameter("user", user);
+            addConnectionParameter("password", password);
         }
         addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT, String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 

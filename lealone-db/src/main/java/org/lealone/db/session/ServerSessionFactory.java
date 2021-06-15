@@ -6,13 +6,11 @@
 package org.lealone.db.session;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.MathUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Database;
 import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
@@ -33,8 +31,6 @@ public class ServerSessionFactory implements SessionFactory {
         return instance;
     }
 
-    private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
-
     private ServerSessionFactory() {
     }
 
@@ -49,20 +45,12 @@ public class ServerSessionFactory implements SessionFactory {
         if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
-        try {
-            ServerSession session = createServerSession(dbName, ci);
-            if (session.isInvalid()) { // 无效session，不需要进行后续的操作
-                return session;
-            }
-            initSession(session, ci);
-            validateUserAndPassword(true);
+        ServerSession session = createServerSession(dbName, ci);
+        if (session.isInvalid()) { // 无效session，不需要进行后续的操作
             return session;
-        } catch (DbException e) {
-            if (e.getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
-                validateUserAndPassword(false);
-            }
-            throw e;
         }
+        initSession(session, ci);
+        return session;
     }
 
     private ServerSession createServerSession(String dbName, ConnectionInfo ci) {
@@ -153,68 +141,5 @@ public class ServerSessionFactory implements SessionFactory {
         }
         session.setAllowLiterals(false);
         session.commit();
-    }
-
-    /**
-     * This method is called after validating user name and password. If user
-     * name and password were correct, the sleep time is reset, otherwise this
-     * method waits some time (to make brute force / rainbow table attacks
-     * harder) and then throws a 'wrong user or password' exception. The delay
-     * is a bit randomized to protect against timing attacks. Also the delay
-     * doubles after each unsuccessful logins, to make brute force attacks
-     * harder.
-     *
-     * There is only one exception message both for wrong user and for
-     * wrong password, to make it harder to get the list of user names. This
-     * method must only be called from one place, so it is not possible from the
-     * stack trace to see if the user name was wrong or the password.
-     *
-     * @param correct if the user name or the password was correct
-     * @throws DbException the exception 'wrong user or password'
-     */
-    private void validateUserAndPassword(boolean correct) {
-        int min = SysProperties.DELAY_WRONG_PASSWORD_MIN;
-        if (correct) {
-            long delay = wrongPasswordDelay;
-            if (delay > min && delay > 0) {
-                // the first correct password must be blocked,
-                // otherwise parallel attacks are possible
-                synchronized (this) {
-                    // delay up to the last delay
-                    // an attacker can't know how long it will be
-                    delay = MathUtils.secureRandomInt((int) delay);
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        // ignore
-                    }
-                    wrongPasswordDelay = min;
-                }
-            }
-        } else {
-            // this method is not synchronized on the Engine, so that
-            // regular successful attempts are not blocked
-            synchronized (this) {
-                long delay = wrongPasswordDelay;
-                int max = SysProperties.DELAY_WRONG_PASSWORD_MAX;
-                if (max <= 0) {
-                    max = Integer.MAX_VALUE;
-                }
-                wrongPasswordDelay += wrongPasswordDelay;
-                if (wrongPasswordDelay > max || wrongPasswordDelay < 0) {
-                    wrongPasswordDelay = max;
-                }
-                if (min > 0) {
-                    // a bit more to protect against timing attacks
-                    delay += Math.abs(MathUtils.secureRandomLong() % 100);
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        // ignore
-                    }
-                }
-                throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
-            }
-        }
     }
 }

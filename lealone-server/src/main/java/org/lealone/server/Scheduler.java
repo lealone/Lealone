@@ -39,6 +39,9 @@ public class Scheduler extends Thread
     private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<AsyncTask> maxPriorityQueue = new ConcurrentLinkedQueue<>();
 
+    private final ConcurrentLinkedQueue<AsyncTask> sessionInitTaskQueue = new ConcurrentLinkedQueue<>();
+    private final UserAndPasswordValidator userAndPasswordValidator = new UserAndPasswordValidator();
+
     // 这个只增不删所以用CopyOnWriteArrayList
     private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
 
@@ -66,6 +69,7 @@ public class Scheduler extends Thread
     @Override
     public void run() {
         while (!end) {
+            runSessionInitTasks();
             runQueueTasks(maxPriorityQueue);
             runQueueTasks(normPriorityQueue);
             runQueueTasks(minPriorityQueue);
@@ -110,6 +114,27 @@ public class Scheduler extends Thread
         }
     }
 
+    private void runSessionInitTasks() {
+        if (userAndPasswordValidator.canHandNextSessionInitTask()) {
+            AsyncTask task = sessionInitTaskQueue.poll();
+            while (task != null) {
+                try {
+                    task.run();
+                    if (!userAndPasswordValidator.canHandNextSessionInitTask()) {
+                        break;
+                    }
+                } catch (Throwable e) {
+                    logger.warn("Failed to run session init task: " + task, e);
+                }
+                task = sessionInitTaskQueue.poll();
+            }
+        }
+    }
+
+    public void validateUserAndPassword(boolean correct) {
+        userAndPasswordValidator.validateUserAndPassword(correct);
+    }
+
     void end() {
         end = true;
         wakeUp();
@@ -145,6 +170,11 @@ public class Scheduler extends Thread
                 normPriorityQueue.add(task);
             }
         }
+        wakeUp();
+    }
+
+    public void handleSessionInitTask(AsyncTask task) {
+        sessionInitTaskQueue.add(task);
         wakeUp();
     }
 
