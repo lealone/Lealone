@@ -241,6 +241,9 @@ public class Scheduler extends Thread
 
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
+        // 如果有新的session需要创建，那么先接入新的session
+        runSessionInitTasks();
+
         // 如果来了更高优化级的命令，那么当前正在执行的语句就让出当前线程，
         // 当前线程转去执行高优先级的命令
         int priority = current.getPriority();
