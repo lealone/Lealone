@@ -178,6 +178,13 @@ public interface Transaction {
 
         default void wakeUp() {
         }
+
+        default Object addSession(Session session, Object parentSessionInfo) {
+            return null;
+        }
+
+        default void removeSession(Object sessionInfo) {
+        }
     }
 
     class SyncListener implements Listener {

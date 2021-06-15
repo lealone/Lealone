@@ -39,7 +39,10 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         this.sessionId = sessionId;
         this.sessionTimeout = sessionTimeout;
         updateLastActiveTime();
-        scheduler.addSessionInfo(this);
+    }
+
+    SessionInfo copy(ServerSession session) {
+        return new SessionInfo(this.scheduler, this.conn, session, this.sessionId, this.sessionTimeout);
     }
 
     private void updateLastActiveTime() {

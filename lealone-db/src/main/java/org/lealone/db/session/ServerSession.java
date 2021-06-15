@@ -686,6 +686,8 @@ public class ServerSession extends SessionBase {
                 closeAllCache();
                 cleanTempTables(true);
                 database.removeSession(this);
+                if (getTransactionListener() != null)
+                    getTransactionListener().removeSession(sessionInfo);
             } finally {
                 super.close();
             }
@@ -1271,6 +1273,10 @@ public class ServerSession extends SessionBase {
                 transaction.addParticipant(s);
             nestedSessions.put(url, s);
         }
+        if (s instanceof ServerSession) {
+            ((ServerSession) s).setTransactionListener(transactionListener);
+            ((ServerSession) s).setSessionInfo(sessionInfo);
+        }
         // 集群内部节点之间通信用服务器端配置的超时时间
         s.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
         return s;
@@ -1528,6 +1534,7 @@ public class ServerSession extends SessionBase {
     private Transaction.Listener transactionListener;
     private boolean isFinalResult;
     private String lastReplicationName;
+    private Object sessionInfo;
 
     @Override
     public void setReplicationName(String replicationName) {
@@ -1551,6 +1558,14 @@ public class ServerSession extends SessionBase {
     @Override
     public void setFinalResult(boolean isFinalResult) {
         this.isFinalResult = isFinalResult;
+    }
+
+    public Object getSessionInfo() {
+        return sessionInfo;
+    }
+
+    public void setSessionInfo(Object sessionInfo) {
+        this.sessionInfo = sessionInfo;
     }
 
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {

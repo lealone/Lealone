@@ -20,7 +20,9 @@ import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
+import org.lealone.db.session.Session;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -275,6 +277,21 @@ public class Scheduler extends Thread
     public void wakeUp() {
         if (waiting)
             haveWork.release(1);
+    }
+
+    @Override
+    public Object addSession(Session session, Object parentSessionInfo) {
+        SessionInfo parent = (SessionInfo) parentSessionInfo;
+        SessionInfo si = parent.copy((ServerSession) session);
+        ((ServerSession) session).setSessionInfo(si);
+        addSessionInfo(si);
+        return si;
+    }
+
+    @Override
+    public void removeSession(Object sessionInfo) {
+        SessionInfo si = (SessionInfo) sessionInfo;
+        removeSessionInfo(si);
     }
 
     private void checkSessionTimeout() {

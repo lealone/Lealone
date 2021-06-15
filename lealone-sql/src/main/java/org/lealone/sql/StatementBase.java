@@ -17,6 +17,7 @@ import org.lealone.db.Database;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
@@ -583,14 +584,35 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             session.setAutoCommit(false);
             session.setRoot(false);
         }
-        session.setReplicationName(replicationName);
-        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-        session.setYieldableCommand(c);
-        Integer updateCount = syncExecute(yieldable);
-        ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(updateCount, false);
-        ack.setReplicaCommand(this);
-        return Future.succeededFuture(ack);
+        if (session.getTransactionListener() != null) {
+            // 放到调度线程中运行
+            AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
+            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    Integer updateCount = ar.getResult();
+                    ReplicationUpdateAck ack = (ReplicationUpdateAck) session
+                            .createReplicationUpdateAckPacket(updateCount, false);
+                    ack.setReplicaCommand(StatementBase.this);
+                    ac.setAsyncResult(ack);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            return ac;
+        } else {
+            // 在当前线程中同步执行
+            YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            Integer updateCount = syncExecute(yieldable);
+            ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(updateCount,
+                    false);
+            ack.setReplicaCommand(this);
+            return Future.succeededFuture(ack);
+        }
     }
 
     @Override
