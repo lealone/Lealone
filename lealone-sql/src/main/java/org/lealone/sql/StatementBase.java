@@ -539,6 +539,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 }
             }
         }
+        addLocalTransactionNames();
         return yieldable.getResult();
     }
 
@@ -553,12 +554,21 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return executeQuery(maxRows, scrollable, pageKeys);
     }
 
+    private boolean isDistributed() {
+        return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
+    }
+
     private void setDistributedSession() {
-        boolean isDistributed = session.getParentTransaction() != null
-                && !session.getParentTransaction().isAutoCommit();
-        if (isDistributed) {
+        if (isDistributed()) {
             session.setAutoCommit(false);
             session.setRoot(false);
+        }
+    }
+
+    private void addLocalTransactionNames() {
+        if (isDistributed()) {
+            session.getParentTransaction()
+                    .addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
         }
     }
 
@@ -568,6 +578,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncCallback<Result> ac = new AsyncCallback<>();
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
                 if (ar.isSucceeded()) {
+                    addLocalTransactionNames();
                     Result result = ar.getResult();
                     ac.setAsyncResult(result);
                 } else {
@@ -606,6 +617,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncCallback<Integer> ac = new AsyncCallback<>();
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
+                    addLocalTransactionNames();
                     Integer updateCount = ar.getResult();
                     ac.setAsyncResult(updateCount);
                 } else {
@@ -636,6 +648,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
+                    addLocalTransactionNames();
                     Integer updateCount = ar.getResult();
                     ReplicationUpdateAck ack = (ReplicationUpdateAck) session
                             .createReplicationUpdateAckPacket(updateCount, false);
