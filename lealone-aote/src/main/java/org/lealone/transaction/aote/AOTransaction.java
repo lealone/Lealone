@@ -9,21 +9,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 
 public class AOTransaction extends AMTransaction {
-
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     final AOTransactionEngine transactionEngine;
 
@@ -103,14 +96,6 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
-    public void addSavepoint(String name) {
-        super.addSavepoint(name);
-
-        if (participants != null && !isAutoCommit())
-            parallelSavepoint(true, name);
-    }
-
-    @Override
     public void asyncCommit(Runnable asyncTask) {
         super.asyncCommit(asyncTask);
         // commit();
@@ -138,13 +123,12 @@ public class AOTransaction extends AMTransaction {
     public void commit(String allLocalTransactionNames) {
         if (allLocalTransactionNames == null)
             allLocalTransactionNames = getAllLocalTransactionNames();
-        List<Future<Void>> futures = null;
-        if (participants != null && !isAutoCommit())
-            futures = parallelCommitOrRollback(allLocalTransactionNames);
-
+        if (participants != null && !isAutoCommit()) {
+            for (Participant participant : participants) {
+                participant.commitTransaction(allLocalTransactionNames);
+            }
+        }
         commitLocalAndTransactionStatusTable(allLocalTransactionNames);
-        if (futures != null)
-            waitFutures(futures);
     }
 
     private void commitLocalAndTransactionStatusTable(String allLocalTransactionNames) {
@@ -175,67 +159,37 @@ public class AOTransaction extends AMTransaction {
         commitFinal(tid);
     }
 
-    private void waitFutures(List<Future<Void>> futures) {
-        try {
-            for (int i = 0, size = futures.size(); i < size; i++) {
-                futures.get(i).get();
-            }
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
-    }
-
     @Override
     public boolean isLocal() {
         return transactionId % 2 == 0;
     }
 
-    private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
-        int size = participants.size();
-        List<Future<Void>> futures = new ArrayList<>(size);
-        for (final Participant participant : participants) {
-            futures.add(executorService.submit(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    if (allLocalTransactionNames != null)
-                        participant.commitTransaction(allLocalTransactionNames);
-                    else
-                        participant.rollbackTransaction();
-                    return null;
-                }
-            }));
+    @Override
+    public void rollback() {
+        if (participants != null && !isAutoCommit()) {
+            for (Participant participant : participants) {
+                participant.rollbackTransaction();
+            }
         }
-        return futures;
+    }
+
+    @Override
+    public void addSavepoint(String name) {
+        super.addSavepoint(name);
+        if (participants != null && !isAutoCommit()) {
+            for (Participant participant : participants) {
+                participant.addSavepoint(name);
+            }
+        }
     }
 
     @Override
     public void rollbackToSavepoint(String name) {
         super.rollbackToSavepoint(name);
-        if (participants != null && !isAutoCommit())
-            parallelSavepoint(false, name);
-    }
-
-    private void parallelSavepoint(final boolean add, final String name) {
-        int size = participants.size();
-        List<Future<Void>> futures = new ArrayList<>(size);
-        for (final Participant participant : participants) {
-            futures.add(executorService.submit(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    if (add)
-                        participant.addSavepoint(name);
-                    else
-                        participant.rollbackToSavepoint(name);
-                    return null;
-                }
-            }));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                futures.get(i).get();
+        if (participants != null && !isAutoCommit()) {
+            for (Participant participant : participants) {
+                participant.rollbackToSavepoint(name);
             }
-        } catch (Exception e) {
-            throw DbException.convert(e);
         }
     }
 
