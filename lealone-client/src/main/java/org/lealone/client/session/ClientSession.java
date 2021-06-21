@@ -168,7 +168,7 @@ public class ClientSession extends SessionBase implements DataHandler {
         }
     }
 
-    public void handleException(Exception e) {
+    public void handleException(Throwable e) {
         checkClosed();
         if (e instanceof DbException)
             throw (DbException) e;
@@ -346,7 +346,7 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public synchronized void commitTransaction(String allLocalTransactionNames) {
+    public void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
             send(new DTransactionCommit(allLocalTransactionNames));
@@ -356,7 +356,7 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public synchronized void rollbackTransaction() {
+    public void rollbackTransaction() {
         try {
             send(new DTransactionRollback());
         } catch (Exception e) {
@@ -365,7 +365,7 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public synchronized void addSavepoint(String name) {
+    public void addSavepoint(String name) {
         try {
             send(new DTransactionAddSavepoint(name));
         } catch (Exception e) {
@@ -374,7 +374,7 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public synchronized void rollbackToSavepoint(String name) {
+    public void rollbackToSavepoint(String name) {
         try {
             send(new DTransactionRollbackSavepoint(name));
         } catch (Exception e) {
@@ -438,25 +438,28 @@ public class ClientSession extends SessionBase implements DataHandler {
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         traceOperation(packet.getType().name(), packetId);
-        AsyncCallback<R> ac = new AsyncCallback<R>() {
-            @Override
-            public void runInternal(NetInputStream in) throws Exception {
-                PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                Packet packet = decoder.decode(in, getProtocolVersion());
-                if (ackPacketHandler != null) {
-                    try {
-                        setAsyncResult(ackPacketHandler.handle((P) packet));
-                    } catch (Throwable e) {
-                        setAsyncResult(e);
+        AsyncCallback<R> ac;
+        if (packet.getAckType() != PacketType.VOID) {
+            ac = new AsyncCallback<R>() {
+                @Override
+                public void runInternal(NetInputStream in) throws Exception {
+                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                    Packet packet = decoder.decode(in, getProtocolVersion());
+                    if (ackPacketHandler != null) {
+                        try {
+                            setAsyncResult(ackPacketHandler.handle((P) packet));
+                        } catch (Throwable e) {
+                            setAsyncResult(e);
+                        }
                     }
                 }
-            }
-        };
-        if (packet.getAckType() != PacketType.VOID) {
+            };
             ac.setPacket(packet);
             ac.setStartTime(System.currentTimeMillis());
             ac.setNetworkTimeout(getNetworkTimeout());
             tcpConnection.addAsyncCallback(packetId, ac);
+        } else {
+            ac = null;
         }
         try {
             checkClosed();
@@ -465,10 +468,12 @@ public class ClientSession extends SessionBase implements DataHandler {
             packet.encode(out, getProtocolVersion());
             out.flush();
         } catch (Throwable e) {
-            if (packet.getAckType() != PacketType.VOID) {
+            if (ac != null) {
                 removeAsyncCallback(packetId);
+                ac.setAsyncResult(e);
+            } else {
+                handleException(e);
             }
-            ac.setAsyncResult(e);
         }
         return ac;
     }
