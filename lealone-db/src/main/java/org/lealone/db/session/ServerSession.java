@@ -1710,11 +1710,13 @@ public class ServerSession extends SessionBase {
             // nothing to do
             break;
         }
-        setStatus(SessionStatus.STATEMENT_COMPLETED);
         clean();
         if (yieldableCommand != null) {
             yieldableCommand.stop();
             yieldableCommand = null;
+        }
+        if (!isAutoCommit()) {
+            setStatus(SessionStatus.STATEMENT_COMPLETED);
         }
     }
 

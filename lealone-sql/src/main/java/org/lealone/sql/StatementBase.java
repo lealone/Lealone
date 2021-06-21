@@ -544,46 +544,93 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-        return Future.succeededFuture(syncExecute(yieldable));
+        return executeQuery(maxRows, scrollable, null);
     }
 
     @Override
     public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        TableFilter tf = getTableFilter();
-        if (tf != null)
-            tf.setPageKeys(pageKeys);
-
-        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-        yieldable.setPageKeys(pageKeys);
-        return Future.succeededFuture(syncExecute(yieldable));
+        setDistributedSession();
+        return executeQuery(maxRows, scrollable, pageKeys);
     }
 
-    @Override
-    public Future<Integer> executeUpdate() {
-        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-        return Future.succeededFuture(syncExecute(yieldable));
-    }
-
-    @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
-        TableFilter tf = getTableFilter();
-        if (tf != null)
-            tf.setPageKeys(pageKeys);
-
-        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-        yieldable.setPageKeys(pageKeys);
-        return Future.succeededFuture(syncExecute(yieldable));
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+    private void setDistributedSession() {
         boolean isDistributed = session.getParentTransaction() != null
                 && !session.getParentTransaction().isAutoCommit();
         if (isDistributed) {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
+    }
+
+    private Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        if (session.getTransactionListener() != null) {
+            // 放到调度线程中运行
+            AsyncCallback<Result> ac = new AsyncCallback<>();
+            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
+                if (ar.isSucceeded()) {
+                    Result result = ar.getResult();
+                    ac.setAsyncResult(result);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            yieldable.setPageKeys(pageKeys);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            return ac;
+        } else {
+            // 在当前线程中同步执行
+            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
+            yieldable.setPageKeys(pageKeys);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            return Future.succeededFuture(syncExecute(yieldable));
+        }
+    }
+
+    @Override
+    public Future<Integer> executeUpdate() {
+        return executeUpdate(null);
+    }
+
+    @Override
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
+        setDistributedSession();
+        return executeUpdate(pageKeys);
+    }
+
+    private Future<Integer> executeUpdate(List<PageKey> pageKeys) {
+        if (session.getTransactionListener() != null) {
+            // 放到调度线程中运行
+            AsyncCallback<Integer> ac = new AsyncCallback<>();
+            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    Integer updateCount = ar.getResult();
+                    ac.setAsyncResult(updateCount);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            yieldable.setPageKeys(pageKeys);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            return ac;
+        } else {
+            // 在当前线程中同步执行
+            YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+            yieldable.setPageKeys(pageKeys);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            Integer updateCount = syncExecute(yieldable);
+            return Future.succeededFuture(updateCount);
+        }
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        setDistributedSession();
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
             AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
