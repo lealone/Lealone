@@ -32,7 +32,7 @@ public class AOTransactionEngine extends AMTransactionEngine {
         return DTRValidator.validateTransaction(localTransactionName);
     }
 
-    boolean validateTransaction(long tid, AOTransaction currentTransaction) {
+    static boolean validateTransaction(long tid, AOTransaction currentTransaction) {
         return DTRValidator.validateTransaction(NetNode.getLocalTcpHostAndPort(), tid, currentTransaction);
     }
 

@@ -50,8 +50,8 @@ class DTRValidator {
         }
     }
 
-    static void addTransaction(AOTransaction transaction, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
+    static void addTransaction(AOTransaction transaction, String allLocalTransactionNames, long commitTimestamp) {
+        Object[] v = { allLocalTransactionNames, commitTimestamp };
         dTransactions.put(transaction.transactionName, v);
         validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
     }

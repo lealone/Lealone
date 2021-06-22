@@ -31,7 +31,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         // 第二种: 分布式场景
         long tid = data.getTid();
         if (tid % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
+            boolean isValid = AOTransactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
                 transaction.commitAfterValidate(tid);
                 return getValue(key, map.get(key));
@@ -68,7 +68,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
             boolean isLockedBySelf) {
         long tid = oldTransactionalValue.getTid();
         if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
+            boolean isValid = AOTransactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
                 transaction.commitAfterValidate(tid);
             } else {

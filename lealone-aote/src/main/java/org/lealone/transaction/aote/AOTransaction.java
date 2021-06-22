@@ -18,8 +18,6 @@ import org.lealone.transaction.aote.log.RedoLogRecord;
 
 public class AOTransaction extends AMTransaction {
 
-    final AOTransactionEngine transactionEngine;
-
     private boolean local = true; // 默认是true，如果是分布式事务才设为false
 
     // 协调者或参与者自身的本地事务名
@@ -28,20 +26,18 @@ public class AOTransaction extends AMTransaction {
     private ConcurrentSkipListSet<String> participantLocalTransactionNames;
     private List<Participant> participants;
 
-    private long commitTimestamp;
-
-    long getCommitTimestamp() {
-        return commitTimestamp;
-    }
-
     AOTransaction(AOTransactionEngine engine, long tid) {
         super(engine, tid, NetNode.getLocalTcpHostAndPort());
-        transactionEngine = engine;
     }
 
     @Override
     public void setLocal(boolean local) {
         this.local = local;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return transactionId % 2 == 0;
     }
 
     /**
@@ -97,15 +93,9 @@ public class AOTransaction extends AMTransaction {
 
     @Override
     public void asyncCommit(Runnable asyncTask) {
-        super.asyncCommit(asyncTask);
-        // commit();
-        // if (asyncTask != null) {
-        // try {
-        // asyncTask.run();
-        // } catch (Exception e) {
-        // throw DbException.convert(e);
-        // }
-        // }
+        checkNotClosed();
+        this.asyncTask = asyncTask;
+        commit(null, true);
     }
 
     @Override
@@ -115,39 +105,47 @@ public class AOTransaction extends AMTransaction {
             if (globalReplicationName != null)
                 DTRValidator.removeReplication(globalReplicationName);
         } else {
-            commit(null);
+            commit(null, false);
         }
     }
 
     @Override
     public void commit(String allLocalTransactionNames) {
-        if (allLocalTransactionNames == null)
-            allLocalTransactionNames = getAllLocalTransactionNames();
+        commit(allLocalTransactionNames, false);
+    }
+
+    private void commit(String allLocalTransactionNames, boolean asyncCommit) {
+        if (allLocalTransactionNames == null) {
+            getLocalTransactionNames();
+            allLocalTransactionNames = localTransactionNamesBuilder.toString();
+        }
+
         if (participants != null && !isAutoCommit()) {
             for (Participant participant : participants) {
                 participant.commitTransaction(allLocalTransactionNames);
             }
         }
-        commitLocalAndTransactionStatusTable(allLocalTransactionNames);
-    }
 
-    private void commitLocalAndTransactionStatusTable(String allLocalTransactionNames) {
-        checkNotClosed();
-
-        commitTimestamp = transactionEngine.nextOddTransactionId();
-        RedoLogRecord r = createDistributedTransactionRedoLogRecord(allLocalTransactionNames);
+        long commitTimestamp = transactionEngine.nextOddTransactionId();
+        RedoLogRecord r = createDistributedTransactionRedoLogRecord(allLocalTransactionNames, commitTimestamp);
         if (r != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
-            logSyncService.addAndMaybeWaitForSync(r);
+            if (asyncCommit) {
+                logSyncService.addRedoLogRecord(r);
+                logSyncService.asyncCommit(this);
+            } else {
+                logSyncService.addAndMaybeWaitForSync(r);
+            }
         }
         // 分布式事务推迟提交
         if (isLocal()) {
             commitFinal();
         }
-        DTRValidator.addTransaction(this, allLocalTransactionNames);
+        DTRValidator.addTransaction(this, allLocalTransactionNames, commitTimestamp);
     }
 
-    private RedoLogRecord createDistributedTransactionRedoLogRecord(String allLocalTransactionNames) {
+    private RedoLogRecord createDistributedTransactionRedoLogRecord(String allLocalTransactionNames,
+            long commitTimestamp) {
         ByteBuffer operations = getUndoLog().toRedoLogRecordBuffer(transactionEngine);
         if (operations == null)
             return null;
@@ -157,11 +155,6 @@ public class AOTransaction extends AMTransaction {
 
     void commitAfterValidate(long tid) {
         commitFinal(tid);
-    }
-
-    @Override
-    public boolean isLocal() {
-        return transactionId % 2 == 0;
     }
 
     @Override
@@ -191,10 +184,5 @@ public class AOTransaction extends AMTransaction {
                 participant.rollbackToSavepoint(name);
             }
         }
-    }
-
-    private String getAllLocalTransactionNames() {
-        getLocalTransactionNames();
-        return localTransactionNamesBuilder.toString();
     }
 }

@@ -42,13 +42,13 @@ public class AMTransaction implements Transaction {
     UndoLog undoLog = new UndoLog();
     RunMode runMode;
     String globalReplicationName;
+    Runnable asyncTask;
 
     private HashMap<String, Integer> savepoints;
     private Session session;
     private volatile int status;
     private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
-    private Runnable asyncTask;
 
     // 被哪个事务锁住记录了
     private volatile AMTransaction lockedBy;
