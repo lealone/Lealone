@@ -38,6 +38,8 @@ import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DTransactionCommit;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
+import org.lealone.server.protocol.dt.DTransactionCommitFinal;
 import org.lealone.server.protocol.dt.DTransactionRollback;
 import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.lob.LobRead;
@@ -346,10 +348,21 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public void commitTransaction(String allLocalTransactionNames) {
+    public Future<DTransactionCommitAck> commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            send(new DTransactionCommit(allLocalTransactionNames));
+            return send(new DTransactionCommit(allLocalTransactionNames));
+        } catch (Exception e) {
+            handleException(e);
+        }
+        return null;
+    }
+
+    @Override
+    public void commitFinal() {
+        checkClosed();
+        try {
+            send(new DTransactionCommitFinal());
         } catch (Exception e) {
             handleException(e);
         }

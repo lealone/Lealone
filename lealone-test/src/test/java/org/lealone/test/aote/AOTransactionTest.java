@@ -8,7 +8,9 @@ package org.lealone.test.aote;
 import java.util.HashMap;
 
 import org.lealone.db.RunMode;
+import org.lealone.db.async.Future;
 import org.lealone.db.value.ValueString;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
@@ -27,7 +29,12 @@ public class AOTransactionTest extends TestBase {
         }
 
         @Override
-        public void commitTransaction(String localTransactionName) {
+        public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
+            return null;
+        }
+
+        @Override
+        public void commitFinal() {
         }
 
         @Override

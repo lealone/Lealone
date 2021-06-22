@@ -144,6 +144,7 @@ public class AMTransaction implements Transaction {
     public void setLocal(boolean local) {
     }
 
+    @Override
     public boolean isLocal() {
         return true;
     }
@@ -295,7 +296,8 @@ public class AMTransaction implements Transaction {
         }
     }
 
-    protected void commitFinal() {
+    @Override
+    public void commitFinal() {
         commitFinal(transactionId);
     }
 

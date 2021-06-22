@@ -12,6 +12,8 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DTransactionCommit;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
+import org.lealone.server.protocol.dt.DTransactionCommitFinal;
 import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
 import org.lealone.server.protocol.dt.DTransactionPreparedQueryAck;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
@@ -35,6 +37,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
         register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE, new Update());
         register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE, new PreparedUpdate());
         register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
+        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT_FINAL, new CommitFinal());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, new Rollback());
         register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, new RollbackSavepoint());
@@ -110,6 +113,14 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
         @Override
         public Packet handle(ServerSession session, DTransactionCommit packet) {
             session.commit(packet.allLocalTransactionNames);
+            return new DTransactionCommitAck();
+        }
+    }
+
+    private static class CommitFinal implements PacketHandler<DTransactionCommitFinal> {
+        @Override
+        public Packet handle(ServerSession session, DTransactionCommitFinal packet) {
+            session.commitFinal();
             return null;
         }
     }

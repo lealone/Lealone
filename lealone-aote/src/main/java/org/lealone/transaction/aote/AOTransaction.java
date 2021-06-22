@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
@@ -37,7 +39,7 @@ public class AOTransaction extends AMTransaction {
 
     @Override
     public boolean isLocal() {
-        return transactionId % 2 == 0;
+        return local && transactionId % 2 == 0;
     }
 
     /**
@@ -99,8 +101,20 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
+    public void asyncCommitComplete() {
+        if (asyncTask != null) {
+            try {
+                asyncTask.run();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    @Override
     public void commit() {
-        if (local) {
+        checkNotClosed();
+        if (isLocal()) {
             commitLocal();
             if (globalReplicationName != null)
                 DTRValidator.removeReplication(globalReplicationName);
@@ -111,6 +125,7 @@ public class AOTransaction extends AMTransaction {
 
     @Override
     public void commit(String allLocalTransactionNames) {
+        checkNotClosed();
         commit(allLocalTransactionNames, false);
     }
 
@@ -119,13 +134,6 @@ public class AOTransaction extends AMTransaction {
             getLocalTransactionNames();
             allLocalTransactionNames = localTransactionNamesBuilder.toString();
         }
-
-        if (participants != null && !isAutoCommit()) {
-            for (Participant participant : participants) {
-                participant.commitTransaction(allLocalTransactionNames);
-            }
-        }
-
         long commitTimestamp = transactionEngine.nextOddTransactionId();
         RedoLogRecord r = createDistributedTransactionRedoLogRecord(allLocalTransactionNames, commitTimestamp);
         if (r != null) { // 事务没有进行任何操作时不用同步日志
@@ -136,12 +144,28 @@ public class AOTransaction extends AMTransaction {
             } else {
                 logSyncService.addAndMaybeWaitForSync(r);
             }
+        } else if (asyncCommit) {
+            asyncCommitComplete();
         }
+        DTRValidator.addTransaction(this, allLocalTransactionNames, commitTimestamp);
+
         // 分布式事务推迟提交
         if (isLocal()) {
             commitFinal();
         }
-        DTRValidator.addTransaction(this, allLocalTransactionNames, commitTimestamp);
+
+        if (participants != null && !isAutoCommit()) {
+            AtomicInteger size = new AtomicInteger(participants.size());
+            for (Participant participant : participants) {
+                participant.commitTransaction(allLocalTransactionNames).onComplete(ar -> {
+                    if (size.decrementAndGet() == 0) {
+                        for (Participant p : participants) {
+                            p.commitFinal();
+                        }
+                    }
+                });
+            }
+        }
     }
 
     private RedoLogRecord createDistributedTransactionRedoLogRecord(String allLocalTransactionNames,
@@ -155,6 +179,12 @@ public class AOTransaction extends AMTransaction {
 
     void commitAfterValidate(long tid) {
         commitFinal(tid);
+    }
+
+    @Override
+    public void commitFinal() {
+        super.commitFinal();
+        DTRValidator.removeTransaction(this);
     }
 
     @Override

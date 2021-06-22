@@ -15,6 +15,7 @@ import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
@@ -276,8 +277,13 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void commitTransaction(String localTransactionName) {
-        session.commitTransaction(localTransactionName);
+    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
+        return session.commitTransaction(localTransactionName);
+    }
+
+    @Override
+    public void commitFinal() {
+        session.commitFinal();
     }
 
     @Override

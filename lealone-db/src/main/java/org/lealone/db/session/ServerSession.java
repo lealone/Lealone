@@ -51,6 +51,7 @@ import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
@@ -554,13 +555,16 @@ public class ServerSession extends SessionBase {
         transactionStart = 0;
         // 避免重复commit
         Transaction transaction = this.transaction;
-        this.transaction = null;
+        if (transaction.isLocal())
+            this.transaction = null;
         if (allLocalTransactionNames == null)
             transaction.commit();
         else
             transaction.commit(allLocalTransactionNames);
-        endTransaction();
-        commitFinal();
+        if (transaction.isLocal()) {
+            endTransaction();
+            commitFinal();
+        }
     }
 
     private void checkCommitRollback() {
@@ -577,7 +581,13 @@ public class ServerSession extends SessionBase {
         containsDatabaseStatement = false;
     }
 
-    private void commitFinal() {
+    @Override
+    public void commitFinal() {
+        if (transaction != null && !transaction.isLocal()) {
+            Transaction transaction = this.transaction;
+            this.transaction = null;
+            transaction.commitFinal();
+        }
         if (!containsDDL) {
             // do not clean the temp tables if the last command was a
             // create/drop
@@ -1329,8 +1339,9 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public void commitTransaction(String localTransactionName) {
+    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
         commit(localTransactionName);
+        return Future.succeededFuture(new DTransactionCommitAck());
     }
 
     @Override

@@ -10,6 +10,8 @@ import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DTransactionCommit;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
+import org.lealone.server.protocol.dt.DTransactionCommitFinal;
 import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
 import org.lealone.server.protocol.dt.DTransactionPreparedQueryAck;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
@@ -150,6 +152,8 @@ public class PacketDecoders {
         register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK, DTransactionPreparedUpdateAck.decoder);
 
         register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, DTransactionCommit.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT_ACK, DTransactionCommitAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT_FINAL, DTransactionCommitFinal.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, DTransactionRollback.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, DTransactionAddSavepoint.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, DTransactionRollbackSavepoint.decoder);

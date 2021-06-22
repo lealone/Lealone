@@ -24,7 +24,7 @@ public class ShardingTest extends DSqlTestBase {
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         stmt.executeUpdate(sql);
 
-        new DdlTest(dbName, true).runTest(); // 在自动提交模式中执行DDL语句，不涉及分布式事务
+        // new DdlTest(dbName, true).runTest(); // 在自动提交模式中执行DDL语句，不涉及分布式事务
         new DdlTest(dbName, false).runTest(); // 在手动提交模式中执行DDL语句， 涉及分布式事务
 
         // new DeleteTest(dbName).runTest();
@@ -67,7 +67,7 @@ public class ShardingTest extends DSqlTestBase {
                 conn.setAutoCommit(false);
             }
             executeUpdate("drop table IF EXISTS " + name);
-            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            // executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
             if (!autoCommit) {
                 conn.commit();
                 conn.setAutoCommit(true);

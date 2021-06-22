@@ -8,8 +8,10 @@ package org.lealone.storage.replication;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.db.async.Future;
 import org.lealone.db.session.DelegatedSession;
 import org.lealone.db.session.Session;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;
@@ -148,9 +150,10 @@ public class ReplicationSession extends DelegatedSession {
     }
 
     @Override
-    public void commitTransaction(String localTransactionName) {
+    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
         for (int i = 0; i < n; i++)
             sessions[i].commitTransaction(localTransactionName);
+        return null;
     }
 
     @Override

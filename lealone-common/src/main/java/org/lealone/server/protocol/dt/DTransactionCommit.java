@@ -9,11 +9,11 @@ import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class DTransactionCommit implements NoAckPacket {
+public class DTransactionCommit implements Packet {
 
     public final String allLocalTransactionNames;
 
@@ -24,6 +24,11 @@ public class DTransactionCommit implements NoAckPacket {
     @Override
     public PacketType getType() {
         return PacketType.DISTRIBUTED_TRANSACTION_COMMIT;
+    }
+
+    @Override
+    public PacketType getAckType() {
+        return PacketType.DISTRIBUTED_TRANSACTION_COMMIT_ACK;
     }
 
     @Override

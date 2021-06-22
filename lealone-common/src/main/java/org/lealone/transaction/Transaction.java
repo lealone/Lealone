@@ -11,8 +11,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
+import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.storage.type.StorageDataType;
@@ -68,6 +70,8 @@ public interface Transaction {
     void setAutoCommit(boolean autoCommit);
 
     void setLocal(boolean local);
+
+    boolean isLocal();
 
     void addLocalTransactionNames(String localTransactionNames);
 
@@ -125,6 +129,8 @@ public interface Transaction {
 
     void commit(String allLocalTransactionNames);
 
+    void commitFinal();
+
     void rollback();
 
     void rollbackToSavepoint(String name);
@@ -149,7 +155,9 @@ public interface Transaction {
 
         void rollbackToSavepoint(String name);
 
-        void commitTransaction(String localTransactionName);
+        Future<DTransactionCommitAck> commitTransaction(String localTransactionName);
+
+        void commitFinal();
 
         void rollbackTransaction();
     }

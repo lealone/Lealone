@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.Constants;
@@ -53,32 +52,36 @@ class DTRValidator {
     static void addTransaction(AOTransaction transaction, String allLocalTransactionNames, long commitTimestamp) {
         Object[] v = { allLocalTransactionNames, commitTimestamp };
         dTransactions.put(transaction.transactionName, v);
-        validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
+        // validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
     }
 
-    private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
-        AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
-        AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
-        AckPacketHandler<Void, DTransactionValidateAck> handler = ack -> {
-            isFullSuccessful.compareAndSet(true, ack.isValid);
-            int index = size.decrementAndGet();
-            if (index == 0 && isFullSuccessful.get()) {
-                transaction.commitAfterValidate(transaction.transactionId);
-            }
-            return null;
-        };
-        String localHostAndPort = NetNode.getLocalTcpHostAndPort();
-        for (String localTransactionName : allLocalTransactionNames) {
-            if (!localTransactionName.startsWith(localHostAndPort)) {
-                String[] a = localTransactionName.split(":");
-                String hostAndPort = a[0] + ":" + a[1];
-                DTransactionValidate packet = new DTransactionValidate(localTransactionName);
-                transaction.getSession().send(packet, hostAndPort, handler);
-            } else {
-                size.decrementAndGet();
-            }
-        }
+    static void removeTransaction(AOTransaction transaction) {
+        dTransactions.remove(transaction.transactionName);
     }
+
+    // private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
+    // AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
+    // AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
+    // AckPacketHandler<Void, DTransactionValidateAck> handler = ack -> {
+    // isFullSuccessful.compareAndSet(true, ack.isValid);
+    // int index = size.decrementAndGet();
+    // if (index == 0 && isFullSuccessful.get()) {
+    // transaction.commitAfterValidate(transaction.transactionId);
+    // }
+    // return null;
+    // };
+    // String localHostAndPort = NetNode.getLocalTcpHostAndPort();
+    // for (String localTransactionName : allLocalTransactionNames) {
+    // if (!localTransactionName.startsWith(localHostAndPort)) {
+    // String[] a = localTransactionName.split(":");
+    // String hostAndPort = a[0] + ":" + a[1];
+    // DTransactionValidate packet = new DTransactionValidate(localTransactionName);
+    // transaction.getSession().send(packet, hostAndPort, handler);
+    // } else {
+    // size.decrementAndGet();
+    // }
+    // }
+    // }
 
     static boolean validateTransaction(String localTransactionName) {
         if (localTransactionName.startsWith("replication:"))
