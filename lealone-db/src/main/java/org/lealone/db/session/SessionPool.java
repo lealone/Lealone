@@ -13,6 +13,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.async.Future;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.transaction.Transaction;
 
 public class SessionPool {
@@ -52,12 +53,13 @@ public class SessionPool {
         }
 
         ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
-        ci.setProperty(ConnectionSetting.IS_LOCAL, "true");
+        ci.setProperty(ConnectionSetting.IS_ROOT, "false");
         ci.setUserName(oldCi.getUserName());
         ci.setUserPasswordHash(oldCi.getUserPasswordHash());
         ci.setFilePasswordHash(oldCi.getFilePasswordHash());
         ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
         ci.setRemote(remote);
+        ci.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
         // 因为已经精确知道要连哪个节点了，不用考虑运行模式，所以用false
         return ci.getSessionFactory().createSession(ci, false);
     }

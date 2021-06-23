@@ -76,7 +76,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private int currentRowNumber;
     private int rowScanCount;
     private boolean canReuse;
-    private boolean local = true;
+    private boolean local;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
     /**
@@ -713,6 +713,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     protected boolean isShardingMode() {
         // 有些在本地执行的语句需要无视session是否是ShardingMode
-        return !isLocal() && session.isShardingMode();
+        return !isLocal() && session.isRoot() && session.isShardingMode();
     }
 }
