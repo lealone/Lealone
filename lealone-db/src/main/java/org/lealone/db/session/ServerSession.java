@@ -529,8 +529,8 @@ public class ServerSession extends SessionBase {
     @Override
     public void asyncCommitComplete() {
         transactionStart = 0;
-        transaction = null;
         commitFinal();
+        transaction = null;
     }
 
     public void commit() {
@@ -547,7 +547,7 @@ public class ServerSession extends SessionBase {
             return;
         checkCommitRollback();
         transactionStart = 0;
-        if (globalTransactionName == null && isRoot() && !transaction.isLocal()) {
+        if (globalTransactionName == null && isRoot() && !transaction.isLocal() && !isAutoCommit()) {
             StringBuilder buff = new StringBuilder(transaction.getTransactionName());
             if (nestedHostAndPortSet != null) {
                 for (String hostAndPort : nestedHostAndPortSet) {
@@ -564,7 +564,9 @@ public class ServerSession extends SessionBase {
             transaction.commit();
         else
             transaction.commit(globalTransactionName);
-        if (transaction.isLocal() || nestedHostAndPortSet == null) {
+
+        // 客户端连续执行commit时nestedHostAndPortSet为null
+        if (transaction.isLocal() || nestedHostAndPortSet == null || isAutoCommit()) {
             commitFinal();
         }
     }

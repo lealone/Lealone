@@ -63,6 +63,8 @@ public class AOTransaction extends AMTransaction {
                 throw DbException.convert(e);
             }
         }
+        if (isAutoCommit())
+            getSession().asyncCommitComplete();
     }
 
     @Override
@@ -78,6 +80,8 @@ public class AOTransaction extends AMTransaction {
     }
 
     private void commit(String globalTransactionName, boolean asyncCommit) {
+        if (globalTransactionName == null)
+            globalTransactionName = getTransactionName();
         this.globalTransactionName = globalTransactionName;
         long commitTimestamp = transactionEngine.nextOddTransactionId();
         RedoLogRecord r = createDistributedTransactionRedoLogRecord(globalTransactionName, commitTimestamp);
@@ -92,7 +96,9 @@ public class AOTransaction extends AMTransaction {
         } else if (asyncCommit) {
             asyncCommitComplete();
         }
-        DTRValidator.addTransaction(this, globalTransactionName, commitTimestamp);
+
+        if (!isAutoCommit())
+            DTRValidator.addTransaction(this, globalTransactionName, commitTimestamp);
 
         if (participants != null && !isAutoCommit()) {
             List<Participant> participants = this.participants;
