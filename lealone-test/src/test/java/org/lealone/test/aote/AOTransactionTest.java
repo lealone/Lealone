@@ -47,7 +47,6 @@ public class AOTransactionTest extends TestBase {
         TransactionEngine te = AOTransactionEngineTest.getTransactionEngine(true);
         Storage storage = AOTransactionEngineTest.getStorage();
         Transaction t = te.beginTransaction(false, RunMode.SHARDING);
-        t.setLocal(false);
 
         ParticipantTest p1 = new ParticipantTest();
         ParticipantTest p2 = new ParticipantTest();
@@ -74,7 +73,6 @@ public class AOTransactionTest extends TestBase {
         t.commit();
 
         t = te.beginTransaction(false, RunMode.SHARDING);
-        t.setLocal(false);
         map = map.getInstance(t);
         assertEquals("a", map.get("1"));
         assertEquals("b", map.get("2"));
@@ -88,7 +86,6 @@ public class AOTransactionTest extends TestBase {
         t.commit();
 
         t = te.beginTransaction(false, RunMode.SHARDING);
-        t.setLocal(false);
         map = map.getInstance(t);
         assertEquals(null, map.get("3"));
         assertEquals(null, map.get("4"));

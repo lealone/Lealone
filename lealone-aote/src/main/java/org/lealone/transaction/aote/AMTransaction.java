@@ -141,10 +141,6 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public void setLocal(boolean local) {
-    }
-
-    @Override
     public boolean isLocal() {
         return true;
     }
@@ -286,14 +282,10 @@ public class AMTransaction implements Transaction {
         commitLocal();
     }
 
-    protected void commitLocal() {
+    private void commitLocal() {
         checkNotClosed();
         writeRedoLog(false);
-
-        // 分布式事务推迟提交
-        if (isLocal()) {
-            commitFinal();
-        }
+        commitFinal();
     }
 
     @Override

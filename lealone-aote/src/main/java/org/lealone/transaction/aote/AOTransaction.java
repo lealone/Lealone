@@ -20,8 +20,6 @@ import org.lealone.transaction.aote.log.RedoLogRecord;
 
 public class AOTransaction extends AMTransaction {
 
-    private boolean local = true; // 默认是true，如果是分布式事务才设为false
-
     // 协调者或参与者自身的本地事务名
     private StringBuilder localTransactionNamesBuilder;
     // 如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
@@ -33,13 +31,8 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
-    public void setLocal(boolean local) {
-        this.local = local;
-    }
-
-    @Override
     public boolean isLocal() {
-        return local && transactionId % 2 == 0;
+        return false;
     }
 
     /**
@@ -114,13 +107,7 @@ public class AOTransaction extends AMTransaction {
     @Override
     public void commit() {
         checkNotClosed();
-        if (isLocal()) {
-            commitLocal();
-            if (globalReplicationName != null)
-                DTRValidator.removeReplication(globalReplicationName);
-        } else {
-            commit(null, false);
-        }
+        commit(null, false);
     }
 
     @Override
@@ -149,12 +136,9 @@ public class AOTransaction extends AMTransaction {
         }
         DTRValidator.addTransaction(this, allLocalTransactionNames, commitTimestamp);
 
-        // 分布式事务推迟提交
-        if (isLocal()) {
-            commitFinal();
-        }
-
         if (participants != null && !isAutoCommit()) {
+            List<Participant> participants = this.participants;
+            this.participants = null;
             AtomicInteger size = new AtomicInteger(participants.size());
             for (Participant participant : participants) {
                 participant.commitTransaction(allLocalTransactionNames).onComplete(ar -> {
@@ -162,6 +146,7 @@ public class AOTransaction extends AMTransaction {
                         for (Participant p : participants) {
                             p.commitFinal();
                         }
+                        getSession().commitFinal();
                     }
                 });
             }
@@ -185,6 +170,8 @@ public class AOTransaction extends AMTransaction {
     public void commitFinal() {
         super.commitFinal();
         DTRValidator.removeTransaction(this);
+        if (globalReplicationName != null)
+            DTRValidator.removeReplication(globalReplicationName);
     }
 
     @Override

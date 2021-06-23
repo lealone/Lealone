@@ -27,6 +27,7 @@ import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerStorageCommand;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -393,15 +394,8 @@ public class ServerSession extends SessionBase {
         this.lockTimeout = lockTimeout;
     }
 
-    private Boolean local;
-
-    public void setLocal(boolean local) {
-        this.local = local;
-    }
-
     public boolean isLocal() {
-        return (local != null && local.booleanValue()) || !database.isShardingMode() || connectionInfo == null
-                || connectionInfo.isEmbedded();
+        return !database.isShardingMode() || connectionInfo == null || connectionInfo.isEmbedded();
     }
 
     public ParsedSQLStatement parseStatement(String sql) {
@@ -834,7 +828,7 @@ public class ServerSession extends SessionBase {
                 currentCommandStart = now;
                 cancelAt = now + queryTimeout;
             }
-            currentCommandSavepointId = getTransaction().getSavepointId();
+            currentCommandSavepointId = getTransaction(statement.isLocal()).getSavepointId();
             currentCommandLockIndex = locks.size();
         }
     }
@@ -1243,16 +1237,18 @@ public class ServerSession extends SessionBase {
     }
 
     public Transaction getTransaction() {
+        return getTransaction(false);
+    }
+
+    public Transaction getTransaction(boolean isLocal) {
         if (transaction != null)
             return transaction;
 
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
+        RunMode runMode = isLocal ? RunMode.CLIENT_SERVER : getRunMode();
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode);
         transaction.setSession(this);
         transaction.setGlobalReplicationName(replicationName);
         transaction.setIsolationLevel(transactionIsolationLevel);
-
-        if (isRoot && !autoCommit && isShardingMode())
-            transaction.setLocal(false);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;

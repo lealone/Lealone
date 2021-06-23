@@ -69,8 +69,6 @@ public interface Transaction {
 
     void setAutoCommit(boolean autoCommit);
 
-    void setLocal(boolean local);
-
     boolean isLocal();
 
     void addLocalTransactionNames(String localTransactionNames);
