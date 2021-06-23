@@ -77,14 +77,14 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
 
         map.clear();
         ArrayList<PageKey> pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
         assertTrue(pageKeys.get(0).key == ValueNull.INSTANCE);
 
         map.put(1, "value" + 1);
 
         pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
         assertTrue(pageKeys.get(0).key.equals(1));
 
@@ -93,15 +93,15 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         }
 
         pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
 
         pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 15, 40, pageKeys);
+        map.getNodeToPageKeyMap(15, 40, pageKeys);
         assertEquals(1, pageKeys.size());
 
         pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 15, null, pageKeys);
+        map.getNodeToPageKeyMap(15, null, pageKeys);
         assertEquals(1, pageKeys.size());
 
         // map.close();
@@ -115,7 +115,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         Integer from = 3; // 5900;
         Integer to = 5999;
         HashSet<PageKey> pageKeySet = new HashSet<>();
-        Map<String, List<PageKey>> nodeToPageKeyMap = map.getNodeToPageKeyMap(null, from, to);
+        Map<String, List<PageKey>> nodeToPageKeyMap = map.getNodeToPageKeyMap(from, to);
         // System.out.println(nodeToPageKeyMap);
         for (List<PageKey> pageKeys : nodeToPageKeyMap.values()) {
             for (PageKey pk : pageKeys) {
@@ -222,7 +222,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         }
         // 上面put的数据得到一个node page加两个leaf page
         ArrayList<PageKey> pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 1, 50, pageKeys);
+        map.getNodeToPageKeyMap(1, 50, pageKeys);
         assertEquals(2, pageKeys.size());
 
         PageKey pk = pageKeys.get(0);
@@ -240,7 +240,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
             map.put(i, "value" + i);
         }
         pageKeys = new ArrayList<>();
-        map.getNodeToPageKeyMap(null, 1, 500, pageKeys);
+        map.getNodeToPageKeyMap(1, 500, pageKeys);
         for (PageKey pageKey : pageKeys)
             map.removeLeafPage(pageKey);
         assertTrue(map.getRootPage().isEmpty());

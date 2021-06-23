@@ -1251,11 +1251,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系
     // 该方法不需要读取leaf page或remote page
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
-        return getNodeToPageKeyMap(session, from, to, null);
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
+        return getNodeToPageKeyMap(from, to, null);
     }
 
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to, List<PageKey> pageKeys) {
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to, List<PageKey> pageKeys) {
         Map<String, List<PageKey>> map = new HashMap<>();
         Random random = new Random();
         if (root.isLeaf()) {

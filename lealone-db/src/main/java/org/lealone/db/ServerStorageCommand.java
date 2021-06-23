@@ -62,7 +62,6 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                 resultByteBuffer.flip();
                 ac.setAsyncResult(resultByteBuffer);
             });
-            ;
         } else {
             StorageMap<Object, Object> map = tmap;
             if (raw) {

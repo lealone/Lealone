@@ -290,5 +290,5 @@ public interface StorageMap<K, V> {
 
     ByteBuffer readPage(PageKey pageKey);
 
-    Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to);
+    Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to);
 }
