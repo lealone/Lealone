@@ -16,8 +16,7 @@ public class StorageReplaceAck extends StorageOperationAck {
 
     public final boolean result;
 
-    public StorageReplaceAck(boolean result, String localTransactionNames) {
-        super(localTransactionNames);
+    public StorageReplaceAck(boolean result) {
         this.result = result;
     }
 

@@ -221,7 +221,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public boolean validateTransaction(String localTransactionName) {
+    public boolean validateTransaction(String globalTransactionName) {
         return false;
     }
 

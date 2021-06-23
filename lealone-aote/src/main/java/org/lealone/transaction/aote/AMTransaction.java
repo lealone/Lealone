@@ -74,6 +74,11 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
+    public String getTransactionName() {
+        return transactionName;
+    }
+
+    @Override
     public String getGlobalReplicationName() {
         return globalReplicationName;
     }
@@ -143,15 +148,6 @@ public class AMTransaction implements Transaction {
     @Override
     public boolean isLocal() {
         return true;
-    }
-
-    @Override
-    public void addLocalTransactionNames(String localTransactionNames) {
-    }
-
-    @Override
-    public String getLocalTransactionNames() {
-        return null;
     }
 
     @Override
@@ -278,7 +274,7 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public void commit(String allLocalTransactionNames) {
+    public void commit(String globalTransactionName) {
         commitLocal();
     }
 

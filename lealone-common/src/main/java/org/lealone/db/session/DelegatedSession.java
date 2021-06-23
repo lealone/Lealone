@@ -277,8 +277,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
-        return session.commitTransaction(localTransactionName);
+    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
+        return session.commitTransaction(globalTransactionName);
     }
 
     @Override

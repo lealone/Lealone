@@ -16,19 +16,14 @@ import org.lealone.storage.replication.ReplicationConflictType;
 
 public class DTransactionReplicationUpdateAck extends ReplicationUpdateAck {
 
-    public final String localTransactionNames;
-
     public DTransactionReplicationUpdateAck(int updateCount, long first, String uncommittedReplicationName,
-            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL, boolean isFinalResult,
-            String localTransactionNames) {
+            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL, boolean isFinalResult) {
         super(updateCount, first, uncommittedReplicationName, replicationConflictType, ackVersion, isIfDDL,
                 isFinalResult);
-        this.localTransactionNames = localTransactionNames;
     }
 
     public DTransactionReplicationUpdateAck(NetInputStream in, int version) throws IOException {
         super(in, version);
-        localTransactionNames = in.readString();
     }
 
     @Override
@@ -39,7 +34,6 @@ public class DTransactionReplicationUpdateAck extends ReplicationUpdateAck {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
-        out.writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();

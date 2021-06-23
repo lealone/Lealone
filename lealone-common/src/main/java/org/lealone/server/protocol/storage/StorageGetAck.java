@@ -17,8 +17,7 @@ public class StorageGetAck extends StorageOperationAck {
 
     public final ByteBuffer result;
 
-    public StorageGetAck(ByteBuffer result, String localTransactionNames) {
-        super(localTransactionNames);
+    public StorageGetAck(ByteBuffer result) {
         this.result = result;
     }
 

@@ -15,10 +15,10 @@ import org.lealone.server.protocol.PacketType;
 
 public class DTransactionCommit implements Packet {
 
-    public final String allLocalTransactionNames;
+    public final String globalTransactionName;
 
-    public DTransactionCommit(String allLocalTransactionNames) {
-        this.allLocalTransactionNames = allLocalTransactionNames;
+    public DTransactionCommit(String globalTransactionName) {
+        this.globalTransactionName = globalTransactionName;
     }
 
     @Override
@@ -33,7 +33,7 @@ public class DTransactionCommit implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(allLocalTransactionNames);
+        out.writeString(globalTransactionName);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -41,8 +41,8 @@ public class DTransactionCommit implements Packet {
     private static class Decoder implements PacketDecoder<DTransactionCommit> {
         @Override
         public DTransactionCommit decode(NetInputStream in, int version) throws IOException {
-            String allLocalTransactionNames = in.readString();
-            return new DTransactionCommit(allLocalTransactionNames);
+            String globalTransactionName = in.readString();
+            return new DTransactionCommit(globalTransactionName);
         }
     }
 }

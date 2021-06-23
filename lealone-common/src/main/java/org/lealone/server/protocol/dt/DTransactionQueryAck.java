@@ -16,16 +16,12 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 
 public class DTransactionQueryAck extends StatementQueryAck {
 
-    public final String localTransactionNames;
-
-    public DTransactionQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
+    public DTransactionQueryAck(Result result, int rowCount, int fetchSize) {
         super(result, rowCount, fetchSize);
-        this.localTransactionNames = localTransactionNames;
     }
 
     public DTransactionQueryAck(NetInputStream in, int version) throws IOException {
         super(in, version);
-        localTransactionNames = in.readString();
     }
 
     @Override
@@ -35,7 +31,6 @@ public class DTransactionQueryAck extends StatementQueryAck {
 
     @Override
     public void encodeExt(NetOutputStream out, int version) throws IOException {
-        out.writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();

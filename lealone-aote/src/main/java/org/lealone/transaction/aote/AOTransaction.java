@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -20,11 +19,8 @@ import org.lealone.transaction.aote.log.RedoLogRecord;
 
 public class AOTransaction extends AMTransaction {
 
-    // 协调者或参与者自身的本地事务名
-    private StringBuilder localTransactionNamesBuilder;
-    // 如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
-    private ConcurrentSkipListSet<String> participantLocalTransactionNames;
     private List<Participant> participants;
+    private String globalTransactionName;
 
     AOTransaction(AOTransactionEngine engine, long tid) {
         super(engine, tid, NetNode.getLocalTcpHostAndPort());
@@ -33,41 +29,6 @@ public class AOTransaction extends AMTransaction {
     @Override
     public boolean isLocal() {
         return false;
-    }
-
-    /**
-     * 假设有node1、node2、node3三个节点，Client启动的一个事务涉及这三个node, 
-     * 第一个接收到Client读写请求的node即是协调者也是参与者，之后Client的任何读写请求都只会跟协调者打交道，
-     * 假设这里的协调者是node1，当读写由node1转发到node2时，node2在完成读写请求后会把它的本地事务名(可能有多个(嵌套事务)发回来，
-     * 此时协调者必须记下所有其他参与者的本地事务名。<p>
-     * 
-     * 如果本地事务名是null，代表参与者执行完读写请求后发现跟上次的本地事务名一样，为了减少网络传输就不再重发。
-     */
-    @Override
-    public void addLocalTransactionNames(String localTransactionNames) {
-        if (localTransactionNames != null) {
-            if (participantLocalTransactionNames == null)
-                participantLocalTransactionNames = new ConcurrentSkipListSet<>();
-            for (String name : localTransactionNames.split(","))
-                participantLocalTransactionNames.add(name.trim());
-        }
-    }
-
-    @Override
-    public String getLocalTransactionNames() {
-        StringBuilder buff = new StringBuilder(transactionName);
-
-        if (participantLocalTransactionNames != null) {
-            for (String name : participantLocalTransactionNames) {
-                buff.append(',');
-                buff.append(name);
-            }
-        }
-        // 两个StringBuilder对象不能用equals比较
-        if (localTransactionNamesBuilder != null && localTransactionNamesBuilder.toString().equals(buff.toString()))
-            return null;
-        localTransactionNamesBuilder = buff;
-        return buff.toString();
     }
 
     @Override
@@ -111,18 +72,15 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
-    public void commit(String allLocalTransactionNames) {
+    public void commit(String globalTransactionName) {
         checkNotClosed();
-        commit(allLocalTransactionNames, false);
+        commit(globalTransactionName, false);
     }
 
-    private void commit(String allLocalTransactionNames, boolean asyncCommit) {
-        if (allLocalTransactionNames == null) {
-            getLocalTransactionNames();
-            allLocalTransactionNames = localTransactionNamesBuilder.toString();
-        }
+    private void commit(String globalTransactionName, boolean asyncCommit) {
+        this.globalTransactionName = globalTransactionName;
         long commitTimestamp = transactionEngine.nextOddTransactionId();
-        RedoLogRecord r = createDistributedTransactionRedoLogRecord(allLocalTransactionNames, commitTimestamp);
+        RedoLogRecord r = createDistributedTransactionRedoLogRecord(globalTransactionName, commitTimestamp);
         if (r != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
             if (asyncCommit) {
@@ -134,14 +92,14 @@ public class AOTransaction extends AMTransaction {
         } else if (asyncCommit) {
             asyncCommitComplete();
         }
-        DTRValidator.addTransaction(this, allLocalTransactionNames, commitTimestamp);
+        DTRValidator.addTransaction(this, globalTransactionName, commitTimestamp);
 
         if (participants != null && !isAutoCommit()) {
             List<Participant> participants = this.participants;
             this.participants = null;
             AtomicInteger size = new AtomicInteger(participants.size());
             for (Participant participant : participants) {
-                participant.commitTransaction(allLocalTransactionNames).onComplete(ar -> {
+                participant.commitTransaction(globalTransactionName).onComplete(ar -> {
                     if (size.decrementAndGet() == 0) {
                         for (Participant p : participants) {
                             p.commitFinal();
@@ -153,23 +111,19 @@ public class AOTransaction extends AMTransaction {
         }
     }
 
-    private RedoLogRecord createDistributedTransactionRedoLogRecord(String allLocalTransactionNames,
+    private RedoLogRecord createDistributedTransactionRedoLogRecord(String globalTransactionName,
             long commitTimestamp) {
         ByteBuffer operations = getUndoLog().toRedoLogRecordBuffer(transactionEngine);
         if (operations == null)
             return null;
         return RedoLogRecord.createDistributedTransactionRedoLogRecord(transactionId, transactionName,
-                allLocalTransactionNames, commitTimestamp, operations);
-    }
-
-    void commitAfterValidate(long tid) {
-        commitFinal(tid);
+                globalTransactionName, commitTimestamp, operations);
     }
 
     @Override
-    public void commitFinal() {
-        super.commitFinal();
-        DTRValidator.removeTransaction(this);
+    protected void commitFinal(long tid) {
+        super.commitFinal(tid);
+        DTRValidator.removeTransaction(this, globalTransactionName);
         if (globalReplicationName != null)
             DTRValidator.removeReplication(globalReplicationName);
     }

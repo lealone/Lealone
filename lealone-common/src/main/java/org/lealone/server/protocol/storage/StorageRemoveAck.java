@@ -17,8 +17,7 @@ public class StorageRemoveAck extends StorageOperationAck {
 
     public final ByteBuffer result;
 
-    public StorageRemoveAck(ByteBuffer result, String localTransactionNames) {
-        super(localTransactionNames);
+    public StorageRemoveAck(ByteBuffer result) {
         this.result = result;
     }
 

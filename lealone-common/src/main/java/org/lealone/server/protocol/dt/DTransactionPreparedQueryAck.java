@@ -14,8 +14,8 @@ import org.lealone.server.protocol.PacketType;
 
 public class DTransactionPreparedQueryAck extends DTransactionQueryAck {
 
-    public DTransactionPreparedQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
-        super(result, rowCount, fetchSize, localTransactionNames);
+    public DTransactionPreparedQueryAck(Result result, int rowCount, int fetchSize) {
+        super(result, rowCount, fetchSize);
     }
 
     public DTransactionPreparedQueryAck(NetInputStream in, int version) throws IOException {

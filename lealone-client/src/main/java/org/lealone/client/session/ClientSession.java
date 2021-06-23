@@ -348,10 +348,10 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public Future<DTransactionCommitAck> commitTransaction(String allLocalTransactionNames) {
+    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
         checkClosed();
         try {
-            return send(new DTransactionCommit(allLocalTransactionNames));
+            return send(new DTransactionCommit(globalTransactionName));
         } catch (Exception e) {
             handleException(e);
         }

@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -529,7 +530,6 @@ public class ServerSession extends SessionBase {
     public void asyncCommitComplete() {
         transactionStart = 0;
         transaction = null;
-        endTransaction();
         commitFinal();
     }
 
@@ -542,21 +542,29 @@ public class ServerSession extends SessionBase {
      * definition statement, and if there are temporary tables that should be
      * dropped or truncated at commit, this is done as well.
      */
-    public void commit(String allLocalTransactionNames) {
+    public void commit(String globalTransactionName) {
         if (transaction == null)
             return;
         checkCommitRollback();
         transactionStart = 0;
+        if (globalTransactionName == null && isRoot() && !transaction.isLocal()) {
+            StringBuilder buff = new StringBuilder(transaction.getTransactionName());
+            if (nestedHostAndPortSet != null) {
+                for (String hostAndPort : nestedHostAndPortSet) {
+                    buff.append(',').append(hostAndPort);
+                }
+            }
+            globalTransactionName = buff.toString();
+        }
         // 避免重复commit
         Transaction transaction = this.transaction;
         if (transaction.isLocal())
             this.transaction = null;
-        if (allLocalTransactionNames == null)
+        if (globalTransactionName == null)
             transaction.commit();
         else
-            transaction.commit(allLocalTransactionNames);
-        if (transaction.isLocal()) {
-            endTransaction();
+            transaction.commit(globalTransactionName);
+        if (transaction.isLocal() || nestedHostAndPortSet == null) {
             commitFinal();
         }
     }
@@ -577,6 +585,7 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void commitFinal() {
+        endTransaction();
         if (transaction != null && !transaction.isLocal()) {
             Transaction transaction = this.transaction;
             this.transaction = null;
@@ -1257,6 +1266,7 @@ public class ServerSession extends SessionBase {
 
     // 参与本次事务的其他Session，只有分布式场景才用得到，所以延迟初始化
     private Map<String, Session> nestedSessions;
+    private Set<String> nestedHostAndPortSet;
 
     public Session getNestedSession(String hostAndPort) {
         return getNestedSession(hostAndPort, !NetNode.isLocalTcpNode(hostAndPort));
@@ -1269,11 +1279,13 @@ public class ServerSession extends SessionBase {
         Session s;
         if (nestedSessions == null) {
             nestedSessions = new HashMap<>();
+            nestedHostAndPortSet = new HashSet<>();
             s = null;
         } else {
             s = nestedSessions.get(url);
         }
         if (s == null) {
+            nestedHostAndPortSet.add(hostAndPort);
             s = SessionPool.getSessionSync(this, url, remote);
             if (transaction != null)
                 transaction.addParticipant(s);
@@ -1295,11 +1307,12 @@ public class ServerSession extends SessionBase {
                 SessionPool.release(s);
             }
             nestedSessions = null;
+            nestedHostAndPortSet = null;
         }
     }
 
-    public boolean validateTransaction(String localTransactionName) {
-        return database.getTransactionEngine().validateTransaction(localTransactionName);
+    public boolean validateTransaction(String globalTransactionName) {
+        return database.getTransactionEngine().validateTransaction(globalTransactionName);
     }
 
     public String checkReplicationConflict(ReplicationCheckConflict packet) {
@@ -1335,8 +1348,8 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
-        commit(localTransactionName);
+    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
+        commit(globalTransactionName);
         return Future.succeededFuture(new DTransactionCommitAck());
     }
 
@@ -1601,13 +1614,12 @@ public class ServerSession extends SessionBase {
 
         // 在分布式事务中做复制
         if (!isRoot() && !isAutoCommit()) {
-            String localTransactionNames = getTransaction().getLocalTransactionNames();
             if (prepared)
                 ack = new DTransactionReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult, localTransactionNames);
+                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
             else
                 ack = new DTransactionReplicationUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult, localTransactionNames);
+                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
         } else {
             if (prepared)
                 ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,

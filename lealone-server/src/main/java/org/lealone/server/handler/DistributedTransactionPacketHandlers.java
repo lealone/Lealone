@@ -57,8 +57,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new DTransactionQueryAck(result, rowCount, fetch,
-                    task.session.getTransaction().getLocalTransactionNames());
+            return new DTransactionQueryAck(result, rowCount, fetch);
         }
     }
 
@@ -73,8 +72,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new DTransactionPreparedQueryAck(result, rowCount, fetch,
-                    task.session.getTransaction().getLocalTransactionNames());
+            return new DTransactionPreparedQueryAck(result, rowCount, fetch);
         }
     }
 
@@ -89,7 +87,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new DTransactionUpdateAck(updateCount, task.session.getTransaction().getLocalTransactionNames());
+            return new DTransactionUpdateAck(updateCount);
         }
     }
 
@@ -104,15 +102,14 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new DTransactionPreparedUpdateAck(updateCount,
-                    task.session.getTransaction().getLocalTransactionNames());
+            return new DTransactionPreparedUpdateAck(updateCount);
         }
     }
 
     private static class Commit implements PacketHandler<DTransactionCommit> {
         @Override
         public Packet handle(ServerSession session, DTransactionCommit packet) {
-            session.commit(packet.allLocalTransactionNames);
+            session.commit(packet.globalTransactionName);
             return new DTransactionCommitAck();
         }
     }
@@ -152,7 +149,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class Validate implements PacketHandler<DTransactionValidate> {
         @Override
         public Packet handle(ServerSession session, DTransactionValidate packet) {
-            boolean isValid = session.validateTransaction(packet.localTransactionName);
+            boolean isValid = session.validateTransaction(packet.globalTransactionName);
             return new DTransactionValidateAck(isValid);
         }
     }

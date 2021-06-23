@@ -55,7 +55,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Get implements PacketHandler<StorageGet> {
         @Override
         public Packet handle(ServerSession session, StorageGet packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet);
+            prepare(session, packet);
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             Object result = map.get(map.getKeyType().read(packet.key));
             ByteBuffer resultByteBuffer;
@@ -67,19 +67,19 @@ class StoragePacketHandlers extends PacketHandlers {
             } else {
                 resultByteBuffer = null;
             }
-            return new StorageGetAck(resultByteBuffer, localTransactionNames);
+            return new StorageGetAck(resultByteBuffer);
         }
     }
 
     private static class Put implements PacketHandler<StoragePut> {
         @Override
         public Packet handle(PacketDeliveryTask task, StoragePut packet) {
-            String localTransactionNames = getLocalTransactionNames(task.session, packet);
+            prepare(task.session, packet);
             task.session.createReplicaStorageCommand().executeReplicaPut(packet.replicationName, packet.mapName,
                     packet.key, packet.value, packet.raw, packet.addIfAbsent).onComplete(ar -> {
                         if (ar.isSucceeded()) {
                             ByteBuffer result = (ByteBuffer) ar.getResult();
-                            task.conn.sendResponse(task, new StoragePutAck(result, localTransactionNames));
+                            task.conn.sendResponse(task, new StoragePutAck(result));
                         } else {
                             task.conn.sendError(task.session, task.packetId, ar.getCause());
                         }
@@ -91,27 +91,27 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Append implements PacketHandler<StorageAppend> {
         @Override
         public Packet handle(ServerSession session, StorageAppend packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet);
+            prepare(session, packet);
             Object result = session.createReplicaStorageCommand()
                     .executeReplicaAppend(packet.replicationName, packet.mapName, packet.value).get();
-            return new StorageAppendAck(((ValueLong) result).getLong(), localTransactionNames);
+            return new StorageAppendAck(((ValueLong) result).getLong());
         }
     }
 
     private static class Replace implements PacketHandler<StorageReplace> {
         @Override
         public Packet handle(ServerSession session, StorageReplace packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet);
+            prepare(session, packet);
             boolean result = session.createReplicaStorageCommand().executeReplicaReplace(packet.replicationName,
                     packet.mapName, packet.key, packet.oldValue, packet.newValue).get();
-            return new StorageReplaceAck(result, localTransactionNames);
+            return new StorageReplaceAck(result);
         }
     }
 
     private static class Remove implements PacketHandler<StorageRemove> {
         @Override
         public Packet handle(ServerSession session, StorageRemove packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet);
+            prepare(session, packet);
             Object result = session.createReplicaStorageCommand()
                     .executeReplicaRemove(packet.replicationName, packet.mapName, packet.key).get();
             ByteBuffer resultByteBuffer;
@@ -123,7 +123,7 @@ class StoragePacketHandlers extends PacketHandlers {
             } else {
                 resultByteBuffer = null;
             }
-            return new StorageRemoveAck(resultByteBuffer, localTransactionNames);
+            return new StorageRemoveAck(resultByteBuffer);
         }
     }
 
@@ -175,7 +175,7 @@ class StoragePacketHandlers extends PacketHandlers {
         }
     }
 
-    private static String getLocalTransactionNames(ServerSession session, StorageOperation storageOperation) {
+    private static void prepare(ServerSession session, StorageOperation storageOperation) {
         if (storageOperation instanceof StorageWrite) {
             StorageWrite storageWrite = (StorageWrite) storageOperation;
             if (storageWrite.replicationName != null) {
@@ -186,9 +186,6 @@ class StoragePacketHandlers extends PacketHandlers {
         if (storageOperation.isDistributedTransaction) {
             session.setAutoCommit(false);
             session.setRoot(false);
-            return session.getTransaction().getLocalTransactionNames();
-        } else {
-            return null;
         }
     }
 }

@@ -6,7 +6,6 @@
 package org.lealone.transaction.aote;
 
 import org.lealone.db.RunMode;
-import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
@@ -28,17 +27,17 @@ public class AOTransactionEngine extends AMTransactionEngine {
     }
 
     @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return DTRValidator.validateTransaction(localTransactionName);
-    }
-
-    static boolean validateTransaction(long tid, AOTransaction currentTransaction) {
-        return DTRValidator.validateTransaction(NetNode.getLocalTcpHostAndPort(), tid, currentTransaction);
-    }
-
-    @Override
     protected TransactionMap<?, ?> getTransactionMap(Transaction transaction,
             StorageMap<Object, TransactionalValue> map) {
         return new AOTransactionMap<>((AOTransaction) transaction, map);
+    }
+
+    @Override
+    public boolean validateTransaction(String globalTransactionName) {
+        return DTRValidator.validateTransaction(globalTransactionName);
+    }
+
+    static boolean validateTransaction(long tid, AOTransaction currentTransaction) {
+        return DTRValidator.validateTransaction(tid, currentTransaction);
     }
 }

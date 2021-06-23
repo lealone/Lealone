@@ -16,7 +16,7 @@ public interface TransactionEngine extends PluggableEngine {
 
     Transaction beginTransaction(boolean autoCommit, RunMode runMode);
 
-    boolean validateTransaction(String localTransactionName);
+    boolean validateTransaction(String globalTransactionName);
 
     boolean supportsMVCC();
 

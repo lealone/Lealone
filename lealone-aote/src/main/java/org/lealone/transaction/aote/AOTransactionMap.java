@@ -33,7 +33,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         if (tid % 2 == 1) {
             boolean isValid = AOTransactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
-                transaction.commitAfterValidate(tid);
+                transaction.commitFinal(tid);
                 return getValue(key, map.get(key));
             }
         } else if (data.getGlobalReplicationName() != null) {
@@ -70,7 +70,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {
             boolean isValid = AOTransactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
-                transaction.commitAfterValidate(tid);
+                transaction.commitFinal(tid);
             } else {
                 return Transaction.OPERATION_NEED_WAIT;
             }

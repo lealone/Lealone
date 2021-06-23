@@ -17,8 +17,7 @@ public class StoragePutAck extends StorageOperationAck {
 
     public final ByteBuffer result;
 
-    public StoragePutAck(ByteBuffer result, String localTransactionNames) {
-        super(localTransactionNames);
+    public StoragePutAck(ByteBuffer result) {
         this.result = result;
     }
 

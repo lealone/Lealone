@@ -13,18 +13,13 @@ import org.lealone.server.protocol.AckPacket;
 
 public abstract class StorageOperationAck implements AckPacket {
 
-    public final String localTransactionNames;
-
-    public StorageOperationAck(String localTransactionNames) {
-        this.localTransactionNames = localTransactionNames;
+    public StorageOperationAck() {
     }
 
     public StorageOperationAck(NetInputStream in, int version) throws IOException {
-        localTransactionNames = in.readString();
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(localTransactionNames);
     }
 }

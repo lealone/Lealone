@@ -6,8 +6,6 @@
 package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,79 +28,40 @@ import org.lealone.storage.replication.ConsistencyLevel;
 //DT表示Distributed Transaction，R表示Replication
 class DTRValidator {
 
-    private static final Map<String, DTStatusCache> hostAndPortMap = new HashMap<>();
+    private static final DTStatusCache cache = new DTStatusCache();
 
-    // key: transactionName, value: [ allLocalTransactionNames, commitTimestamp ].
-    private static final ConcurrentHashMap<String, Object[]> dTransactions = new ConcurrentHashMap<>();
+    // key: transactionName, value: [ globalTransactionName, commitTimestamp ].
+    private static final ConcurrentHashMap<String, Object[]> transactions = new ConcurrentHashMap<>();
 
     // key: replicationName, value: replicationName.
     private static final ConcurrentHashMap<String, String> replications = new ConcurrentHashMap<>();
 
-    private static DTStatusCache newCache(String hostAndPort) {
-        synchronized (DTRValidator.class) {
-            DTStatusCache cache = hostAndPortMap.get(hostAndPort);
-            if (cache == null) {
-                cache = new DTStatusCache();
-                hostAndPortMap.put(hostAndPort, cache);
-            }
-            return cache;
-        }
+    static void addTransaction(AOTransaction transaction, String globalTransactionName, long commitTimestamp) {
+        Object[] v = { globalTransactionName, commitTimestamp };
+        transactions.put(transaction.transactionName, v);
+        transactions.put(globalTransactionName, v);
     }
 
-    static void addTransaction(AOTransaction transaction, String allLocalTransactionNames, long commitTimestamp) {
-        Object[] v = { allLocalTransactionNames, commitTimestamp };
-        dTransactions.put(transaction.transactionName, v);
-        // validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
+    static void removeTransaction(AOTransaction transaction, String globalTransactionName) {
+        transactions.remove(transaction.transactionName);
+        transactions.remove(globalTransactionName);
     }
 
-    static void removeTransaction(AOTransaction transaction) {
-        dTransactions.remove(transaction.transactionName);
-    }
-
-    // private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
-    // AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
-    // AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
-    // AckPacketHandler<Void, DTransactionValidateAck> handler = ack -> {
-    // isFullSuccessful.compareAndSet(true, ack.isValid);
-    // int index = size.decrementAndGet();
-    // if (index == 0 && isFullSuccessful.get()) {
-    // transaction.commitAfterValidate(transaction.transactionId);
-    // }
-    // return null;
-    // };
-    // String localHostAndPort = NetNode.getLocalTcpHostAndPort();
-    // for (String localTransactionName : allLocalTransactionNames) {
-    // if (!localTransactionName.startsWith(localHostAndPort)) {
-    // String[] a = localTransactionName.split(":");
-    // String hostAndPort = a[0] + ":" + a[1];
-    // DTransactionValidate packet = new DTransactionValidate(localTransactionName);
-    // transaction.getSession().send(packet, hostAndPort, handler);
-    // } else {
-    // size.decrementAndGet();
-    // }
-    // }
-    // }
-
-    static boolean validateTransaction(String localTransactionName) {
-        if (localTransactionName.startsWith("replication:"))
-            return replications.containsKey(localTransactionName.substring("replication:".length()));
+    static boolean validateTransaction(String globalTransactionName) {
+        if (globalTransactionName.startsWith("replication:"))
+            return replications.containsKey(globalTransactionName.substring("replication:".length()));
         else
-            return dTransactions.containsKey(localTransactionName);
+            return transactions.containsKey(globalTransactionName);
     }
 
     /**
      * 检查事务是否有效
      * 
-     * @param hostAndPort 要检查的行所在的主机名和端口号
      * @param oldTid 要检查的行存入数据库的旧事务id
      * @param currentTransaction 当前事务
      * @return true 有效 
      */
-    static boolean validateTransaction(String hostAndPort, long oldTid, AOTransaction currentTransaction) {
-        DTStatusCache cache = hostAndPortMap.get(hostAndPort);
-        if (cache == null) {
-            cache = newCache(hostAndPort);
-        }
+    static boolean validateTransaction(long oldTid, AOTransaction currentTransaction) {
         long commitTimestamp = cache.get(oldTid);
         // 1.上一次已经查过了，已确认过是条无效的记录
         if (commitTimestamp == -2)
@@ -111,19 +70,23 @@ class DTRValidator {
         if (commitTimestamp != -1)
             return commitTimestamp <= currentTransaction.transactionId;
 
-        String oldTransactionName = AOTransaction.getTransactionName(hostAndPort, oldTid);
+        String localHostAndPort = NetNode.getLocalTcpHostAndPort();
+        String localTransactionName = AOTransaction.getTransactionName(localHostAndPort, oldTid);
 
-        Object[] v = dTransactions.get(oldTransactionName);
+        Object[] v = transactions.get(localTransactionName);
         if (v == null) // TODO
             return true;
 
         commitTimestamp = (long) v[1];
-        String[] allLocalTransactionNames = ((String) v[0]).split(",");
+        String globalTransactionName = (String) v[0];
+        String[] a = globalTransactionName.split(",");
         boolean isFullSuccessful = true;
 
-        for (String localTransactionName : allLocalTransactionNames) {
-            if (!oldTransactionName.equals(localTransactionName)) {
-                if (!validateRemoteTransaction(localTransactionName, currentTransaction.getSession())) {
+        // 第一个是协调者的本地事务名，其他是参与者的hostAndPort
+        for (int i = 1; i < a.length; i++) {
+            String hostAndPort = a[i].trim();
+            if (!localHostAndPort.equals(hostAndPort)) {
+                if (!validateRemoteTransaction(hostAndPort, globalTransactionName, currentTransaction.getSession())) {
                     isFullSuccessful = false;
                     break;
                 }
@@ -140,14 +103,9 @@ class DTRValidator {
         }
     }
 
-    private static boolean validateRemoteTransaction(String localTransactionName, Session session) {
-        String[] a = localTransactionName.split(":");
-        String hostAndPort = a[0] + ":" + a[1];
-        return validateRemoteTransaction(hostAndPort, localTransactionName, session);
-    }
-
-    private static boolean validateRemoteTransaction(String hostAndPort, String localTransactionName, Session session) {
-        DTransactionValidate packet = new DTransactionValidate(localTransactionName);
+    private static boolean validateRemoteTransaction(String hostAndPort, String globalTransactionName,
+            Session session) {
+        DTransactionValidate packet = new DTransactionValidate(globalTransactionName);
         Future<DTransactionValidateAck> ack = session.send(packet, hostAndPort);
         return ack.get().isValid;
     }

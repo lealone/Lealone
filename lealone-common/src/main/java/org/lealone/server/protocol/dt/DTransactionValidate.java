@@ -15,10 +15,10 @@ import org.lealone.server.protocol.PacketType;
 
 public class DTransactionValidate implements Packet {
 
-    public final String localTransactionName;
+    public final String globalTransactionName;
 
-    public DTransactionValidate(String localTransactionName) {
-        this.localTransactionName = localTransactionName;
+    public DTransactionValidate(String globalTransactionName) {
+        this.globalTransactionName = globalTransactionName;
     }
 
     @Override
@@ -33,7 +33,7 @@ public class DTransactionValidate implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(localTransactionName);
+        out.writeString(globalTransactionName);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -41,8 +41,7 @@ public class DTransactionValidate implements Packet {
     private static class Decoder implements PacketDecoder<DTransactionValidate> {
         @Override
         public DTransactionValidate decode(NetInputStream in, int version) throws IOException {
-            String localTransactionName = in.readString();
-            return new DTransactionValidate(localTransactionName);
+            return new DTransactionValidate(in.readString());
         }
     }
 }

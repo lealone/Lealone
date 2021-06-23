@@ -16,11 +16,9 @@ import org.lealone.server.protocol.PacketType;
 public class DTransactionUpdateAck implements AckPacket {
 
     public final int updateCount;
-    public final String localTransactionNames;
 
-    public DTransactionUpdateAck(int updateCount, String localTransactionNames) {
+    public DTransactionUpdateAck(int updateCount) {
         this.updateCount = updateCount;
-        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
@@ -30,7 +28,7 @@ public class DTransactionUpdateAck implements AckPacket {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount).writeString(localTransactionNames);
+        out.writeInt(updateCount);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -38,7 +36,7 @@ public class DTransactionUpdateAck implements AckPacket {
     private static class Decoder implements PacketDecoder<DTransactionUpdateAck> {
         @Override
         public DTransactionUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new DTransactionUpdateAck(in.readInt(), in.readString());
+            return new DTransactionUpdateAck(in.readInt());
         }
     }
 }

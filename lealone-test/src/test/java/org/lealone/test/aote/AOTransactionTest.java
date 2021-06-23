@@ -29,7 +29,7 @@ public class AOTransactionTest extends TestBase {
         }
 
         @Override
-        public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
+        public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
             return null;
         }
 
@@ -54,14 +54,11 @@ public class AOTransactionTest extends TestBase {
         t.addParticipant(p1);
         t.addParticipant(p2);
 
-        long tid1 = t.getTransactionId() + 2;
-        long tid2 = t.getTransactionId() + 4;
+        // long tid1 = t.getTransactionId() + 2;
+        // long tid2 = t.getTransactionId() + 4;
 
-        String alocalTransactionName1 = "127.0.0.1:9210:" + tid1;
-        String alocalTransactionName2 = "127.0.0.1:9210:" + tid2;
-
-        t.addLocalTransactionNames(alocalTransactionName1);
-        t.addLocalTransactionNames(alocalTransactionName2);
+        // String alocalTransactionName1 = "127.0.0.1:9210:" + tid1;
+        // String alocalTransactionName2 = "127.0.0.1:9210:" + tid2;
 
         HashMap<String, String> parameters = new HashMap<>(1);
         parameters.put("initReplicationNodes", "127.0.0.1:9210");
@@ -79,8 +76,6 @@ public class AOTransactionTest extends TestBase {
 
         t.addParticipant(p1);
         t.addParticipant(p2);
-        t.addLocalTransactionNames(alocalTransactionName1);
-        t.addLocalTransactionNames(alocalTransactionName2);
         map.put("3", "c");
         map.put("4", "d");
         t.commit();

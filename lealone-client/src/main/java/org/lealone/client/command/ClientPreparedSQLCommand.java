@@ -122,7 +122,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             Packet packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
                     getValues());
             return session.<Result, DTransactionQueryAck> send(packet, ack -> {
-                addLocalTransactionNames(ack.localTransactionNames);
                 return getQueryResult(ack, fetch, resultId);
             });
         } else {
@@ -147,7 +146,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         if (isDistributed()) {
             Packet packet = new DTransactionPreparedUpdate(pageKeys, commandId, getValues());
             return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
-                addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });
         } else {
@@ -161,7 +159,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         if (isDistributed()) {
             Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName);
             return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
-                addLocalTransactionNames(ack.localTransactionNames);
                 ack.setReplicaCommand(ClientPreparedSQLCommand.this);
                 ack.setPacketId(packetId);
                 return ack;

@@ -55,6 +55,8 @@ public interface Transaction {
 
     public static final int OPERATION_NEED_WAIT = 3;
 
+    String getTransactionName();
+
     int getStatus();
 
     void setStatus(int status);
@@ -70,10 +72,6 @@ public interface Transaction {
     void setAutoCommit(boolean autoCommit);
 
     boolean isLocal();
-
-    void addLocalTransactionNames(String localTransactionNames);
-
-    String getLocalTransactionNames();
 
     String getGlobalReplicationName();
 
@@ -125,7 +123,7 @@ public interface Transaction {
 
     void commit();
 
-    void commit(String allLocalTransactionNames);
+    void commit(String globalTransactionName);
 
     void commitFinal();
 
@@ -153,7 +151,7 @@ public interface Transaction {
 
         void rollbackToSavepoint(String name);
 
-        Future<DTransactionCommitAck> commitTransaction(String localTransactionName);
+        Future<DTransactionCommitAck> commitTransaction(String globalTransactionName);
 
         void commitFinal();
 

@@ -539,7 +539,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 }
             }
         }
-        addLocalTransactionNames();
         return yieldable.getResult();
     }
 
@@ -565,20 +564,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         }
     }
 
-    private void addLocalTransactionNames() {
-        if (isDistributed()) {
-            session.getParentTransaction()
-                    .addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
-        }
-    }
-
     private Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
             AsyncCallback<Result> ac = new AsyncCallback<>();
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
                 if (ar.isSucceeded()) {
-                    addLocalTransactionNames();
                     Result result = ar.getResult();
                     ac.setAsyncResult(result);
                 } else {
@@ -617,7 +608,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncCallback<Integer> ac = new AsyncCallback<>();
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
-                    addLocalTransactionNames();
                     Integer updateCount = ar.getResult();
                     ac.setAsyncResult(updateCount);
                 } else {
@@ -648,7 +638,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
-                    addLocalTransactionNames();
                     Integer updateCount = ar.getResult();
                     ReplicationUpdateAck ack = (ReplicationUpdateAck) session
                             .createReplicationUpdateAckPacket(updateCount, false);

@@ -150,9 +150,9 @@ public class ReplicationSession extends DelegatedSession {
     }
 
     @Override
-    public Future<DTransactionCommitAck> commitTransaction(String localTransactionName) {
+    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
         for (int i = 0; i < n; i++)
-            sessions[i].commitTransaction(localTransactionName);
+            sessions[i].commitTransaction(globalTransactionName);
         return null;
     }
 

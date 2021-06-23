@@ -18,7 +18,6 @@ import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
 import org.lealone.server.protocol.storage.StorageGetAck;
 import org.lealone.server.protocol.storage.StorageMoveLeafPage;
-import org.lealone.server.protocol.storage.StorageOperationAck;
 import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPage;
 import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPageAck;
 import org.lealone.server.protocol.storage.StoragePut;
@@ -51,11 +50,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
         return CLIENT_STORAGE_COMMAND;
     }
 
-    private void addLocalTransactionNames(StorageOperationAck ack) {
-        if (isDistributed)
-            session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-    }
-
     @Override
     public Future<Object> get(String mapName, Object key, StorageDataType keyType) {
         try {
@@ -63,7 +57,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             ByteBuffer keyBuffer = k.write(keyType, key);
             StorageGet packet = new StorageGet(mapName, keyBuffer, isDistributed);
             return session.<Object, StorageGetAck> send(packet, ack -> {
-                addLocalTransactionNames(ack);
                 return ack.result;
             });
         } catch (Exception e) {
@@ -88,7 +81,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
         try {
             StoragePut packet = new StoragePut(mapName, key, value, isDistributed, replicationName, raw, addIfAbsent);
             return session.<Object, StoragePutAck> send(packet, ack -> {
-                addLocalTransactionNames(ack);
                 return ack.result;
             });
         } catch (Exception e) {
@@ -109,7 +101,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
         try {
             StorageAppend packet = new StorageAppend(mapName, value, isDistributed, replicationName);
             return session.<Object, StorageAppendAck> send(packet, ack -> {
-                addLocalTransactionNames(ack);
                 return ValueLong.get(ack.result);
             });
         } catch (Exception e) {
@@ -137,7 +128,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             StorageReplace packet = new StorageReplace(mapName, key, oldValue, newValue, isDistributed,
                     replicationName);
             return session.<Boolean, StorageReplaceAck> send(packet, ack -> {
-                addLocalTransactionNames(ack);
                 return ack.result;
             });
         } catch (Exception e) {
@@ -158,7 +148,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
         try {
             StorageRemove packet = new StorageRemove(mapName, key, isDistributed, replicationName);
             return session.<Object, StorageRemoveAck> send(packet, ack -> {
-                addLocalTransactionNames(ack);
                 return ack.result;
             });
         } catch (Exception e) {

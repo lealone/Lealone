@@ -16,8 +16,7 @@ public class StorageAppendAck extends StorageOperationAck {
 
     public final long result;
 
-    public StorageAppendAck(long result, String localTransactionNames) {
-        super(localTransactionNames);
+    public StorageAppendAck(long result) {
         this.result = result;
     }
 
