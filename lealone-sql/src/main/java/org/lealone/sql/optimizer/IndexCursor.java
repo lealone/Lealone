@@ -312,7 +312,7 @@ public class IndexCursor implements Cursor {
         return end;
     }
 
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
         return index.getNodeToPageKeyMap(session, start, end);
     }
 

@@ -415,7 +415,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
+            SearchRow last) {
         return null;
     }
 

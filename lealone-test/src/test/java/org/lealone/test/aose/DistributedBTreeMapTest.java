@@ -115,7 +115,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         Integer from = 3; // 5900;
         Integer to = 5999;
         HashSet<PageKey> pageKeySet = new HashSet<>();
-        Map<String, List<PageKey>> nodeToPageKeyMap = map.getNodeToPageKeyMap(from, to);
+        Map<List<String>, List<PageKey>> nodeToPageKeyMap = map.getNodeToPageKeyMap(from, to);
         // System.out.println(nodeToPageKeyMap);
         for (List<PageKey> pageKeys : nodeToPageKeyMap.values()) {
             for (PageKey pk : pageKeys) {

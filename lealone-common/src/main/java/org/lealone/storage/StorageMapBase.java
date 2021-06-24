@@ -156,7 +156,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
         throw DbException.getUnsupportedException("getNodeToPageKeyMap");
     }
 }

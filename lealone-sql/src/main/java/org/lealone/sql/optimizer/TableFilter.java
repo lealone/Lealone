@@ -1059,7 +1059,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         return cursor.getEndSearchRow();
     }
 
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
         if (!indexConditionsParsed) {
             indexConditionsParsed = true;
             cursor.parseIndexConditions(session, indexConditions);

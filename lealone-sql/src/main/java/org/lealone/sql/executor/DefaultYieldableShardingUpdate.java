@@ -72,7 +72,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             switch (statement.getType()) {
             case SQLStatement.DELETE:
             case SQLStatement.UPDATE: {
-                Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
+                Map<List<String>, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
                 int size = nodeToPageKeyMap.size();
                 if (size > 0) {
                     executeDistributedUpdate(nodeToPageKeyMap, size > 1);
@@ -131,7 +131,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
         });
     }
 
-    private void executeDistributedUpdate(Map<String, List<PageKey>> nodeToPageKeyMap, boolean isBatch) {
+    private void executeDistributedUpdate(Map<List<String>, List<PageKey>> nodeToPageKeyMap, boolean isBatch) {
         statement.getSession().getTransaction();
 
         boolean isTopTransaction = false;
@@ -170,17 +170,17 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             session.rollbackToSavepoint(SQLStatement.INTERNAL_SAVEPOINT);
     }
 
-    private void executeDistributedUpdate(Map<String, List<PageKey>> nodeToPageKeyMap, boolean isTopTransaction,
+    private void executeDistributedUpdate(Map<List<String>, List<PageKey>> nodeToPageKeyMap, boolean isTopTransaction,
             boolean isNestedTransaction) {
         // 确保只调用一次wakeUp
         AtomicBoolean wakeUp = new AtomicBoolean(false);
         String sql = statement.getPlanSQL(true);
         AtomicInteger size = new AtomicInteger(nodeToPageKeyMap.size());
-        for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
+        for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
             if (pendingException != null) {
                 break;
             }
-            String hostId = e.getKey();
+            String hostId = e.getKey().get(0); // TODO 出错时选择其他节点
             List<PageKey> pageKeys = e.getValue();
             Session s = session.getNestedSession(hostId);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);

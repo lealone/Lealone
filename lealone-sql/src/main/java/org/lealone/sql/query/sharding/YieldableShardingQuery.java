@@ -58,7 +58,7 @@ public class YieldableShardingQuery extends YieldableQueryBase {
     private SQOperator createShardingQueryOperator() {
         switch (statement.getType()) {
         case SQLStatement.SELECT: {
-            Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
+            Map<List<String>, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
             // 不支持sharding的表，例如information_schema中预先定义的表
             if (nodeToPageKeyMap == null) {
                 return new SQDirect(statement, maxRows);
@@ -83,12 +83,12 @@ public class YieldableShardingQuery extends YieldableQueryBase {
         }
     }
 
-    private SQCommand[] createCommands(Map<String, List<PageKey>> nodeToPageKeyMap) {
+    private SQCommand[] createCommands(Map<List<String>, List<PageKey>> nodeToPageKeyMap) {
         String sql = statement.getPlanSQL(true);
         SQCommand[] commands = new SQCommand[nodeToPageKeyMap.size()];
         int i = 0;
-        for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
-            String hostId = e.getKey();
+        for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
+            String hostId = e.getKey().get(0); // TODO 出错时选择其他节点
             List<PageKey> pageKeys = e.getValue();
             Session s = session.getNestedSession(hostId);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);

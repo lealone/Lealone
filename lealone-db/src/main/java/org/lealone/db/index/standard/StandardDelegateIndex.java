@@ -125,7 +125,8 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
+            SearchRow last) {
         return mainIndex.getNodeToPageKeyMap(session, first, last);
     }
 }

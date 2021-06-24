@@ -489,7 +489,8 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
+            SearchRow last) {
         ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
         StorageMap<Value, VersionedValue> map = getMap(session);
         return map.getNodeToPageKeyMap(minAndMaxValues[0], minAndMaxValues[1]);

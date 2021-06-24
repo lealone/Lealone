@@ -24,11 +24,16 @@ public class ShardingTest extends DSqlTestBase {
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         stmt.executeUpdate(sql);
 
-        new DdlTest(dbName, true).runTest(); // 在自动提交模式中执行DDL语句，不涉及分布式事务
-        new DdlTest(dbName, false).runTest(); // 在手动提交模式中执行DDL语句， 涉及分布式事务
+        run(dbName, true); // 在自动提交模式中执行语句，不涉及分布式事务
+        // run(dbName, false); // 在手动提交模式中执行语句， 涉及分布式事务
+    }
 
+    void run(String dbName, boolean autoCommit) throws Exception {
+        // new DdlTest(dbName, autoCommit).runTest();
+
+        // new InsertTest(dbName, autoCommit).runTest();
+        new UpdateTest(dbName, autoCommit).runTest();
         // new DeleteTest(dbName).runTest();
-        // new UpdateTest(dbName).runTest();
         // new SelectTest(dbName).runTest();
 
         // new TwoTablesTest(dbName).runTest();
@@ -39,26 +44,28 @@ public class ShardingTest extends DSqlTestBase {
 
         final String name = "Sharding" + getClass().getSimpleName();
 
+        boolean autoCommit;
+
         public CrudTest(String dbName) {
             super(dbName);
         }
 
+        public CrudTest(String dbName, boolean autoCommit) {
+            super(dbName);
+            this.autoCommit = autoCommit;
+        }
+
         void createAndInsertTable() {
-            executeUpdate("drop table IF EXISTS " + name);
-            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            createTable();
+
             for (int i = 1; i <= 50; i++) {
                 executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
             }
         }
-    }
 
-    class DdlTest extends CrudTest {
-
-        boolean autoCommit;
-
-        public DdlTest(String dbName, boolean autoCommit) {
-            super(dbName);
-            this.autoCommit = autoCommit;
+        void createTable() {
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
         }
 
         @Override
@@ -66,23 +73,71 @@ public class ShardingTest extends DSqlTestBase {
             if (!autoCommit) {
                 conn.setAutoCommit(false);
             }
-            executeUpdate("drop table IF EXISTS " + name);
-            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+
+            test0();
+
             if (!autoCommit) {
                 conn.commit();
                 conn.setAutoCommit(true);
             }
         }
+
+        protected void test0() throws Exception {
+        }
+    }
+
+    class DdlTest extends CrudTest {
+
+        public DdlTest(String dbName, boolean autoCommit) {
+            super(dbName, autoCommit);
+        }
+
+        @Override
+        protected void test0() throws Exception {
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+        }
+    }
+
+    class InsertTest extends CrudTest {
+
+        public InsertTest(String dbName, boolean autoCommit) {
+            super(dbName, autoCommit);
+        }
+
+        @Override
+        protected void test0() throws Exception {
+            createTable();
+            executeUpdate("insert into " + name + "(f1, f2, f3) values(10, 20, 30)");
+        }
+    }
+
+    class UpdateTest extends CrudTest {
+
+        public UpdateTest(String dbName, boolean autoCommit) {
+            super(dbName, autoCommit);
+        }
+
+        @Override
+        protected void test0() throws Exception {
+            // createAndInsertTable();
+            testUpdate();
+        }
+
+        void testUpdate() {
+            executeUpdate("update " + name + " set f2=90 where f1=9");
+            executeUpdate("update " + name + " set f2=80 where f1<80");
+        }
     }
 
     class DeleteTest extends CrudTest {
 
-        public DeleteTest(String dbName) {
-            super(dbName);
+        public DeleteTest(String dbName, boolean autoCommit) {
+            super(dbName, autoCommit);
         }
 
         @Override
-        protected void test() throws Exception {
+        protected void test0() throws Exception {
             createAndInsertTable();
             testDelete();
         }
@@ -90,24 +145,6 @@ public class ShardingTest extends DSqlTestBase {
         void testDelete() {
             executeUpdate("delete from " + name + " where f1=10");
             executeUpdate("delete from " + name + " where f1>100");
-        }
-    }
-
-    class UpdateTest extends CrudTest {
-
-        public UpdateTest(String dbName) {
-            super(dbName);
-        }
-
-        @Override
-        protected void test() throws Exception {
-            createAndInsertTable();
-            testUpdate();
-        }
-
-        void testUpdate() {
-            executeUpdate("update " + name + " set f2=90 where f1=9");
-            executeUpdate("update " + name + " set f2=80 where f1<80");
         }
     }
 

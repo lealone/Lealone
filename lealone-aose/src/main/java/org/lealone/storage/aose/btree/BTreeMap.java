@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -1251,26 +1251,25 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系
     // 该方法不需要读取leaf page或remote page
     @Override
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
         return getNodeToPageKeyMap(from, to, null);
     }
 
-    public Map<String, List<PageKey>> getNodeToPageKeyMap(K from, K to, List<PageKey> pageKeys) {
-        Map<String, List<PageKey>> map = new HashMap<>();
-        Random random = new Random();
+    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to, List<PageKey> pageKeys) {
+        Map<List<String>, List<PageKey>> map = new HashMap<>();
         if (root.isLeaf()) {
             Object key = root.getKeyCount() == 0 ? ValueNull.INSTANCE : root.getKey(0);
-            getPageKey(map, random, pageKeys, root, 0, key);
+            getPageKey(map, pageKeys, root, 0, key);
         } else if (root.isRemote()) {
-            getPageKey(map, random, pageKeys, root, 0, ValueNull.INSTANCE);
+            getPageKey(map, pageKeys, root, 0, ValueNull.INSTANCE);
         } else {
-            dfs(map, random, from, to, pageKeys);
+            dfs(map, from, to, pageKeys);
         }
         return map;
     }
 
     // 深度优先搜索(不使用递归)
-    private void dfs(Map<String, List<PageKey>> map, Random random, K from, K to, List<PageKey> pageKeys) {
+    private void dfs(Map<List<String>, List<PageKey>> map, K from, K to, List<PageKey> pageKeys) {
         CursorPos pos = null;
         BTreePage p = root;
         while (p.isNode()) {
@@ -1285,7 +1284,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (p.isNodeChildPage(index)) {
                 p = p.getChildPage(index);
             } else {
-                getPageKeys(map, random, from, to, pageKeys, p, index);
+                getPageKeys(map, from, to, pageKeys, p, index);
 
                 // from此时为null，代表从右边兄弟节点keys数组的0号索引开始
                 from = null;
@@ -1306,8 +1305,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    private void getPageKeys(Map<String, List<PageKey>> map, Random random, K from, K to, List<PageKey> pageKeys,
-            BTreePage p, int index) {
+    private void getPageKeys(Map<List<String>, List<PageKey>> map, K from, K to, List<PageKey> pageKeys, BTreePage p,
+            int index) {
         int keyCount = p.getKeyCount();
         if (keyCount > 1) {
             boolean needsCompare = false;
@@ -1321,7 +1320,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             for (int size = getChildPageCount(p); index < size; index++) {
                 int keyIndex = index - 1;
                 Object k = p.getKey(keyIndex < 0 ? 0 : keyIndex);
-                getPageKey(map, random, pageKeys, p, index, k);
+                getPageKey(map, pageKeys, p, index, k);
                 if (needsCompare && keyType.compare(k, to) > 0) {
                     return;
                 }
@@ -1329,24 +1328,24 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         } else if (keyCount == 1) {
             Object k = p.getKey(0);
             if (from == null || keyType.compare(from, k) < 0) {
-                getPageKey(map, random, pageKeys, p, 0, k);
+                getPageKey(map, pageKeys, p, 0, k);
             }
             if ((from != null && keyType.compare(from, k) >= 0) //
                     || to == null //
                     || keyType.compare(to, k) >= 0) {
-                getPageKey(map, random, pageKeys, p, 1, k);
+                getPageKey(map, pageKeys, p, 1, k);
             }
         } else { // 当keyCount=0时也是合法的，比如node page只删到剩一个leaf page时
             if (getChildPageCount(p) != 1) {
                 throw DbException.getInternalError();
             }
             Object k = p.getChildPageReference(0).pageKey.key;
-            getPageKey(map, random, pageKeys, p, 0, k);
+            getPageKey(map, pageKeys, p, 0, k);
         }
     }
 
-    private void getPageKey(Map<String, List<PageKey>> map, Random random, List<PageKey> pageKeys, BTreePage p,
-            int index, Object key) {
+    private void getPageKey(Map<List<String>, List<PageKey>> map, List<PageKey> pageKeys, BTreePage p, int index,
+            Object key) {
         long pos;
         List<String> hostIds;
         if (p.isNode()) {
@@ -1362,12 +1361,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (pageKeys != null)
             pageKeys.add(pk);
         if (hostIds != null) {
-            int i = random.nextInt(hostIds.size());
-            String hostId = hostIds.get(i);
-            List<PageKey> keys = map.get(hostId);
+            List<PageKey> keys = null;
+            HashSet<String> set = new HashSet<>(hostIds);
+            for (Entry<List<String>, List<PageKey>> e : map.entrySet()) {
+                List<String> list = e.getKey();
+                if (set.equals(new HashSet<>(list))) {
+                    keys = e.getValue();
+                    break;
+                }
+            }
             if (keys == null) {
                 keys = new ArrayList<>();
-                map.put(hostId, keys);
+                map.put(hostIds, keys);
             }
             keys.add(pk);
         }

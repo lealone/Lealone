@@ -300,7 +300,7 @@ public interface Index extends SchemaObject {
      */
     void addBufferedRows(ServerSession session, List<String> bufferNames);
 
-    Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
+    Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
 
     default long getAndAddKey(long delta) {
         return 0;
