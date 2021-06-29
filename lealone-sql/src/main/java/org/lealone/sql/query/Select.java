@@ -81,7 +81,6 @@ public class Select extends Query {
     int distinctColumnCount;
     boolean isGroupQuery;
     boolean isGroupSortedQuery;
-    boolean isForUpdateMvcc;
     boolean isQuickAggregateQuery;
     boolean isDistinctQuery;
     boolean isDistinctQueryForMultiFields;
@@ -882,9 +881,6 @@ public class Select extends Query {
     @Override
     public void setForUpdate(boolean b) {
         this.isForUpdate = b;
-        if (session.getDatabase().getSettings().selectForUpdateMvcc && session.getDatabase().isMultiVersion()) {
-            isForUpdateMvcc = b;
-        }
     }
 
     @Override

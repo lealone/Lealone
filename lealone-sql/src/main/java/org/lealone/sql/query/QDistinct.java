@@ -32,6 +32,8 @@ class QDistinct extends QOperator {
     @Override
     void run() {
         while (cursor.next()) {
+            if (select.isForUpdate && !select.topTableFilter.lockRow())
+                return; // 锁记录失败
             ++loopCount;
             SearchRow found = cursor.getSearchRow();
             Value value = found.getValue(columnIndex);

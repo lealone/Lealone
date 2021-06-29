@@ -38,6 +38,8 @@ class QGroup extends QOperator {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
+                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                    return; // 锁记录失败
                 Value key;
                 rowCount++;
                 if (select.groupIndex == null) {

@@ -5,7 +5,6 @@
  */
 package org.lealone.sql.query;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.LocalResult;
@@ -30,22 +29,9 @@ class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected boolean startInternal() {
-        boolean exclusive = select.isForUpdate && !select.isForUpdateMvcc;
-        select.topTableFilter.lock(session, exclusive);
+        select.topTableFilter.lock(session, select.isForUpdate);
         select.topTableFilter.startQuery(session);
         select.topTableFilter.reset();
-        if (select.isForUpdateMvcc) {
-            if (select.isGroupQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && GROUP");
-            } else if (select.distinct) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && DISTINCT");
-            } else if (select.isQuickAggregateQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && AGGREGATE");
-            } else if (select.topTableFilter.getJoin() != null) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
-            }
-        }
-
         select.fireBeforeSelectTriggers();
         queryOperator = createQueryOperator();
         queryOperator.start();
@@ -54,7 +40,9 @@ class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected void stopInternal() {
-        queryOperator.stop();
+        // 执行startInternal抛异常时queryOperator可能为null
+        if (queryOperator != null)
+            queryOperator.stop();
     }
 
     @Override

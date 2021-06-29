@@ -31,6 +31,8 @@ class QGroupSorted extends QOperator {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
+                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                    return; // 锁记录失败
                 rowCount++;
                 Value[] keyValues = new Value[select.groupIndex.length];
                 // update group

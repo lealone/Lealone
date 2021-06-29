@@ -20,10 +20,8 @@ class QFlat extends QOperator {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
-                if (select.isForUpdate && !select.topTableFilter.lockRow()) {
-                    // 锁记录失败
-                    return;
-                }
+                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                    return; // 锁记录失败
                 Value[] row = new Value[columnCount];
                 for (int i = 0; i < columnCount; i++) {
                     Expression expr = select.expressions.get(i);

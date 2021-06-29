@@ -265,14 +265,6 @@ public class DbSettings extends SettingsBase {
     public final boolean rowId = get(DbSetting.ROWID, true);
 
     /**
-     * Database setting <code>SELECT_FOR_UPDATE_MVCC</code>
-     * (default: true).<br />
-     * If set, SELECT .. FOR UPDATE queries lock only the selected rows when
-     * using MVCC.
-     */
-    public final boolean selectForUpdateMvcc = get(DbSetting.SELECT_FOR_UPDATE_MVCC, true);
-
-    /**
      * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
      * (default: AOSE).<br />
      * The default storage engine to use for new tables.
