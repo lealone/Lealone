@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.client.command;
 
@@ -38,13 +38,6 @@ import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
-/**
- * Represents the client-side part of a SQL statement.
- * This class is not used in embedded mode.
- * 
- * @author H2 Group
- * @author zhh
- */
 public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLCommand {
 
     // 通过设为null来判断是否关闭了当前命令，所以没有加上final
@@ -92,15 +85,16 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows, scrollable, null);
+        return query(maxRows, scrollable, null, null);
     }
 
     @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        return query(maxRows, scrollable, pageKeys);
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+            String indexName) {
+        return query(maxRows, scrollable, pageKeys, indexName);
     }
 
-    private Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    private Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
         isQuery = true;
         int fetch;
         if (scrollable) {
@@ -109,14 +103,15 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
             fetch = fetchSize;
         }
         int resultId = session.getNextId();
-        return query(maxRows, scrollable, pageKeys, fetch, resultId);
+        return query(maxRows, scrollable, fetch, resultId, pageKeys, indexName);
 
     }
 
-    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, int fetch, int resultId) {
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId, List<PageKey> pageKeys,
+            String indexName) {
         int packetId = commandId = session.getNextId();
-        if (isDistributed()) {
-            Packet packet = new DTransactionQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
+        if (isDistributed() || pageKeys != null) {
+            Packet packet = new DTransactionQuery(resultId, maxRows, fetch, scrollable, sql, pageKeys, indexName);
             return session.<Result, DTransactionQueryAck> send(packet, packetId, ack -> {
                 return getQueryResult(ack, fetch, resultId);
             });
@@ -159,10 +154,10 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
-        if (isDistributed()) {
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
+        if (isDistributed() || pageKeys != null) {
             int packetId = commandId = session.getNextId();
-            Packet packet = new DTransactionUpdate(pageKeys, sql);
+            Packet packet = new DTransactionUpdate(sql, pageKeys, indexName);
             return session.<Integer, DTransactionUpdateAck> send(packet, packetId, ack -> {
                 return ack.updateCount;
             });
@@ -173,9 +168,15 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        return executeReplicaUpdate(replicationName, null, null);
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
+            String indexName) {
         int packetId = commandId = session.getNextId();
-        if (isDistributed()) {
-            Packet packet = new DTransactionReplicationUpdate(sql, replicationName);
+        if (isDistributed() || pageKeys != null) {
+            Packet packet = new DTransactionReplicationUpdate(sql, replicationName, pageKeys, indexName);
             return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
                 ack.setReplicaCommand(ClientSQLCommand.this);
                 ack.setPacketId(packetId);
@@ -196,9 +197,6 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
         session = null;
     }
 
-    /**
-     * Cancel this current statement.
-     */
     @Override
     public void cancel() {
         session.cancelStatement(commandId);

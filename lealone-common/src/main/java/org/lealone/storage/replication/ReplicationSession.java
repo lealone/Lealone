@@ -12,6 +12,7 @@ import org.lealone.db.async.Future;
 import org.lealone.db.session.DelegatedSession;
 import org.lealone.db.session.Session;
 import org.lealone.server.protocol.dt.DTransactionCommitAck;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;
@@ -135,6 +136,14 @@ public class ReplicationSession extends DelegatedSession {
         for (int i = 0; i < n; i++)
             commands[i] = sessions[i].createReplicaStorageCommand();
         return new ReplicationStorageCommand(this, commands);
+    }
+
+    @Override
+    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
+        ReplicaSQLCommand[] commands = new ReplicaSQLCommand[n];
+        for (int i = 0; i < n; i++)
+            commands[i] = sessions[i].createReplicaSQLCommand(sql, fetchSize);
+        return new ReplicationSQLCommand(this, commands);
     }
 
     @Override

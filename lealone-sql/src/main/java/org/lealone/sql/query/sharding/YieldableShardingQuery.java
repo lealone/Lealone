@@ -85,6 +85,7 @@ public class YieldableShardingQuery extends YieldableQueryBase {
 
     private SQCommand[] createCommands(Map<List<String>, List<PageKey>> nodeToPageKeyMap) {
         String sql = statement.getPlanSQL(true);
+        String indexName = statement.getIndexName();
         SQCommand[] commands = new SQCommand[nodeToPageKeyMap.size()];
         int i = 0;
         for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
@@ -92,7 +93,7 @@ public class YieldableShardingQuery extends YieldableQueryBase {
             List<PageKey> pageKeys = e.getValue();
             Session s = session.getNestedSession(hostId);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
-            commands[i++] = new SQCommand(c, maxRows, scrollable, pageKeys);
+            commands[i++] = new SQCommand(c, maxRows, scrollable, pageKeys, indexName);
         }
         return commands;
     }

@@ -120,7 +120,7 @@ public class ShardingTest extends DSqlTestBase {
 
         @Override
         protected void test0() throws Exception {
-            // createAndInsertTable();
+            createAndInsertTable();
             testUpdate();
         }
 
@@ -168,11 +168,12 @@ public class ShardingTest extends DSqlTestBase {
             //
             // sql = "select count(*) from " + name;
             // printResultSet();
-            // sql = "select * from " + name + " where f1 = 3";
-            // printResultSet();
+
+            sql = "select * from " + name + " where f1 = 3";
+            printResultSet();
 
             sql = "select * from " + name + " where f1 > 40 order by f1 desc";
-            printResultSet();
+            // printResultSet();
         }
     }
 

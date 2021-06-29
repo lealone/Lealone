@@ -19,15 +19,18 @@ public class SQCommand {
     private final int maxRows;
     private final boolean scrollable;
     private final List<PageKey> pageKeys;
+    public final String indexName;
 
-    public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+            String indexName) {
         this.command = command;
         this.maxRows = maxRows;
         this.scrollable = scrollable;
         this.pageKeys = pageKeys;
+        this.indexName = indexName;
     }
 
     public Future<Result> executeDistributedQuery() {
-        return command.executeDistributedQuery(maxRows, scrollable, pageKeys);
+        return command.executeDistributedQuery(maxRows, scrollable, pageKeys, indexName);
     }
 }

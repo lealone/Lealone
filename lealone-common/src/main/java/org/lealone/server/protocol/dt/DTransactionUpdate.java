@@ -19,15 +19,18 @@ import org.lealone.storage.PageKey;
 public class DTransactionUpdate extends StatementUpdate {
 
     public final List<PageKey> pageKeys;
+    public final String indexName;
 
-    public DTransactionUpdate(List<PageKey> pageKeys, String sql) {
+    public DTransactionUpdate(String sql, List<PageKey> pageKeys, String indexName) {
         super(sql);
         this.pageKeys = pageKeys;
+        this.indexName = indexName;
     }
 
     public DTransactionUpdate(NetInputStream in, int version) throws IOException {
         super(in, version);
         pageKeys = readPageKeys(in);
+        indexName = in.readString();
     }
 
     @Override
@@ -44,6 +47,7 @@ public class DTransactionUpdate extends StatementUpdate {
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
         writePageKeys(out, pageKeys);
+        out.writeString(indexName);
     }
 
     public static final Decoder decoder = new Decoder();

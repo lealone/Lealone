@@ -161,7 +161,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             session.setAutoCommit(false);
             session.setRoot(false);
             session.setReplicationName(packet.replicationName);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override
@@ -178,7 +178,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             session.setAutoCommit(false);
             session.setRoot(false);
             session.setReplicationName(packet.replicationName);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override

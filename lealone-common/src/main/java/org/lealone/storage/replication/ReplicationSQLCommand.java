@@ -19,10 +19,11 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
-import org.lealone.sql.SQLCommand;
+import org.lealone.sql.DistributedSQLCommand;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
 
-class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements SQLCommand {
+class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements DistributedSQLCommand {
 
     ReplicationSQLCommand(ReplicationSession session, ReplicaSQLCommand[] commands) {
         super(session, commands);
@@ -77,6 +78,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         return ac;
     }
 
+    @Override
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
+        return null;
+    }
+
     private void executeQuery(int maxRows, boolean scrollable, int tries, HashSet<ReplicaSQLCommand> seen,
             AsyncCallback<Result> ac) {
         AsyncHandler<AsyncResult<Result>> handler = ar -> {
@@ -121,6 +127,37 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
         for (int i = 0; i < session.n; i++) {
             commands[i].executeReplicaUpdate(rn).onComplete(writeResponseHandler);
+        }
+    }
+
+    @Override
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        executeDistributedUpdate(1, ac, pageKeys, indexName);
+        return ac;
+    }
+
+    private void executeDistributedUpdate(int tries, AsyncCallback<Integer> ac, List<PageKey> pageKeys,
+            String indexName) {
+        final String rn = session.createReplicationName();
+        ReplicationResultHandler<ReplicationUpdateAck> replicationResultHandler = results -> {
+            return handleReplicationConflict(rn, results);
+        };
+        AsyncHandler<AsyncResult<ReplicationUpdateAck>> finalResultHandler = ar -> {
+            if (ar.isFailed() && tries < session.maxTries) {
+                executeUpdate(tries + 1, ac);
+            } else {
+                // 如果为null，说明还没有确定该返回什么结果，那就让客户端继续等待
+                if (ar.getResult() != null)
+                    ac.setAsyncResult(new AsyncResult<>(ar.getResult().updateCount));
+            }
+        };
+        // commands参数设为null，在handleReplicationConflict中处理提交
+        WriteResponseHandler<ReplicationUpdateAck> writeResponseHandler = new WriteResponseHandler<>(session, null,
+                finalResultHandler, replicationResultHandler);
+
+        for (int i = 0; i < session.n; i++) {
+            commands[i].executeReplicaUpdate(rn, pageKeys, indexName).onComplete(writeResponseHandler);
         }
     }
 

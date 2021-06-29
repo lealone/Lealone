@@ -548,7 +548,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
         setDistributedSession();
         return executeQuery(maxRows, scrollable, pageKeys);
     }
@@ -597,7 +597,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
         setDistributedSession();
         return executeUpdate(pageKeys);
     }
@@ -632,6 +632,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        return executeReplicaUpdate(replicationName, null, null);
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
+            String indexName) {
         setDistributedSession();
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
@@ -647,6 +653,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
+            yieldable.setPageKeys(pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -654,6 +661,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+            yieldable.setPageKeys(pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             Integer updateCount = syncExecute(yieldable);
@@ -697,6 +705,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         TableFilter tf = getTableFilter();
         if (tf != null)
             return tf.getNodeToPageKeyMap(session);
+        return null;
+    }
+
+    public String getIndexName() {
+        TableFilter tf = getTableFilter();
+        if (tf != null)
+            return tf.getIndex().getName();
         return null;
     }
 

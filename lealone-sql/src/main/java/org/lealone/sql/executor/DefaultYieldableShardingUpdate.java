@@ -176,15 +176,21 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
         AtomicBoolean wakeUp = new AtomicBoolean(false);
         String sql = statement.getPlanSQL(true);
         AtomicInteger size = new AtomicInteger(nodeToPageKeyMap.size());
+        NetNodeManager m = NetNodeManagerHolder.get();
+        String indexName = statement.getIndexName();
         for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
             if (pendingException != null) {
                 break;
             }
-            String hostId = e.getKey().get(0); // TODO 出错时选择其他节点
+            List<String> hostIds = e.getKey();
             List<PageKey> pageKeys = e.getValue();
-            Session s = session.getNestedSession(hostId);
+            Set<NetNode> nodes = new HashSet<>(hostIds.size());
+            for (String hostId : hostIds) {
+                nodes.add(m.getNode(hostId));
+            }
+            Session s = session.getDatabase().createSession(session, nodes);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
-            c.executeDistributedUpdate(pageKeys).onComplete(ar -> {
+            c.executeDistributedUpdate(pageKeys, indexName).onComplete(ar -> {
                 if (ar.isSucceeded()) {
                     updateCount.addAndGet(ar.getResult());
                     if (size.decrementAndGet() <= 0) {

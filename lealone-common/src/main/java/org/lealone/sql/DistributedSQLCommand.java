@@ -13,8 +13,8 @@ import org.lealone.storage.PageKey;
 
 public interface DistributedSQLCommand extends SQLCommand {
 
-    Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys);
+    Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName);
 
-    Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys);
+    Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName);
 
 }

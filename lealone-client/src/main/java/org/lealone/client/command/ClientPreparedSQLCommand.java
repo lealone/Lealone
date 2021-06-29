@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.client.command;
 
@@ -45,13 +45,6 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.storage.PageKey;
 
-/**
- * Represents the client-side part of a prepared SQL statement.
- * This class is not used in embedded mode.
- * 
- * @author H2 Group
- * @author zhh
- */
 public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     private ArrayList<CommandParameter> parameters;
@@ -117,10 +110,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, int fetch, int resultId) {
-        if (isDistributed()) {
-            Packet packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
-                    getValues());
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId, List<PageKey> pageKeys,
+            String indexName) {
+        if (isDistributed() || pageKeys != null) {
+            Packet packet = new DTransactionPreparedQuery(resultId, maxRows, fetch, scrollable, commandId, getValues(),
+                    pageKeys, indexName);
             return session.<Result, DTransactionQueryAck> send(packet, ack -> {
                 return getQueryResult(ack, fetch, resultId);
             });
@@ -142,9 +136,9 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
-        if (isDistributed()) {
-            Packet packet = new DTransactionPreparedUpdate(pageKeys, commandId, getValues());
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
+        if (isDistributed() || pageKeys != null) {
+            Packet packet = new DTransactionPreparedUpdate(commandId, getValues(), pageKeys, indexName);
             return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
                 return ack.updateCount;
             });
@@ -155,9 +149,16 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        return executeReplicaUpdate(replicationName, null, null);
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
+            String indexName) {
         int packetId = session.getNextId();
-        if (isDistributed()) {
-            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName);
+        if (isDistributed() || pageKeys != null) {
+            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName, pageKeys,
+                    indexName);
             return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
                 ack.setReplicaCommand(ClientPreparedSQLCommand.this);
                 ack.setPacketId(packetId);

@@ -19,15 +19,18 @@ import org.lealone.storage.PageKey;
 public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
 
     public final List<PageKey> pageKeys;
+    public final String indexName;
 
-    public DTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters) {
+    public DTransactionPreparedUpdate(int commandId, Value[] parameters, List<PageKey> pageKeys, String indexName) {
         super(commandId, parameters);
         this.pageKeys = pageKeys;
+        this.indexName = indexName;
     }
 
     public DTransactionPreparedUpdate(NetInputStream in, int version) throws IOException {
         super(in, version);
         pageKeys = DTransactionUpdate.readPageKeys(in);
+        indexName = in.readString();
     }
 
     @Override
@@ -44,6 +47,7 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
         DTransactionUpdate.writePageKeys(out, pageKeys);
+        out.writeString(indexName);
     }
 
     public static final Decoder decoder = new Decoder();
