@@ -26,6 +26,10 @@ public interface NetNodeManager {
         return null;
     }
 
+    default Set<NetNode> getNodes(List<String> hostIds) {
+        return null;
+    }
+
     default String getHostId(NetNode node) {
         return null;
     }

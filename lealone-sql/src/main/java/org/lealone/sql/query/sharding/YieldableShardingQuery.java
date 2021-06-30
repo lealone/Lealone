@@ -5,7 +5,6 @@
  */
 package org.lealone.sql.query.sharding;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -96,12 +95,8 @@ public class YieldableShardingQuery extends YieldableQueryBase {
         int i = 0;
         NetNodeManager m = NetNodeManagerHolder.get();
         for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
-            List<String> hostIds = e.getKey();
+            Set<NetNode> nodes = m.getNodes(e.getKey());
             List<PageKey> pageKeys = e.getValue();
-            Set<NetNode> nodes = new HashSet<>(hostIds.size());
-            for (String hostId : hostIds) {
-                nodes.add(m.getNode(hostId));
-            }
             Session s = session.getDatabase().createSession(session, nodes);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
             DTransactionParameters parameters = new DTransactionParameters(pageKeys, indexName, s.isAutoCommit());

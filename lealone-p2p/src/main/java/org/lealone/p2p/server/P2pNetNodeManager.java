@@ -24,6 +24,7 @@ import org.lealone.p2p.gossip.FailureDetector;
 import org.lealone.p2p.gossip.Gossiper;
 import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
+import org.lealone.p2p.locator.TopologyMetaData;
 
 public class P2pNetNodeManager implements NetNodeManager {
 
@@ -94,6 +95,16 @@ public class P2pNetNodeManager implements NetNodeManager {
     @Override
     public NetNode getNode(String hostId) {
         return P2pServer.instance.getTopologyMetaData().getNode(hostId);
+    }
+
+    @Override
+    public Set<NetNode> getNodes(List<String> hostIds) {
+        TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
+        Set<NetNode> nodes = new HashSet<>(hostIds.size());
+        for (String hostId : hostIds) {
+            nodes.add(md.getNode(hostId));
+        }
+        return nodes;
     }
 
     @Override

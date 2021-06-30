@@ -6,6 +6,7 @@
 package org.lealone.sql.executor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -102,10 +103,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             throw DbException.getInternalError(msg);
         }
         NetNodeManager m = NetNodeManagerHolder.get();
-        Set<NetNode> candidateNodes = new HashSet<>(hostIds.length);
-        for (String hostId : hostIds) {
-            candidateNodes.add(m.getNode(hostId));
-        }
+        Set<NetNode> candidateNodes = m.getNodes(Arrays.asList(hostIds));
         List<String> initReplicationNodes = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
         if (definitionStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
@@ -183,12 +181,8 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             if (pendingException != null) {
                 break;
             }
-            List<String> hostIds = e.getKey();
+            Set<NetNode> nodes = m.getNodes(e.getKey());
             List<PageKey> pageKeys = e.getValue();
-            Set<NetNode> nodes = new HashSet<>(hostIds.size());
-            for (String hostId : hostIds) {
-                nodes.add(m.getNode(hostId));
-            }
             Session s = session.getDatabase().createSession(session, nodes);
             DTransactionParameters parameters = new DTransactionParameters(pageKeys, indexName, s.isAutoCommit());
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
