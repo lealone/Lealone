@@ -24,6 +24,7 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
@@ -43,7 +44,6 @@ import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
-import org.lealone.storage.PageKey;
 
 public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
@@ -110,11 +110,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId, List<PageKey> pageKeys,
-            String indexName) {
-        if (isDistributed() || pageKeys != null) {
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId,
+            DTransactionParameters parameters) {
+        if (parameters != null) {
             Packet packet = new DTransactionPreparedQuery(resultId, maxRows, fetch, scrollable, commandId, getValues(),
-                    pageKeys, indexName);
+                    parameters);
             return session.<Result, DTransactionQueryAck> send(packet, ack -> {
                 return getQueryResult(ack, fetch, resultId);
             });
@@ -136,29 +136,20 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
-        if (isDistributed() || pageKeys != null) {
-            Packet packet = new DTransactionPreparedUpdate(commandId, getValues(), pageKeys, indexName);
-            return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
-                return ack.updateCount;
-            });
-        } else {
-            return executeUpdate();
-        }
+    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
+        Packet packet = new DTransactionPreparedUpdate(commandId, getValues(), parameters);
+        return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
+            return ack.updateCount;
+        });
     }
 
     @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        return executeReplicaUpdate(replicationName, null, null);
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
-            String indexName) {
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName,
+            DTransactionParameters parameters) {
         int packetId = session.getNextId();
-        if (isDistributed() || pageKeys != null) {
-            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName, pageKeys,
-                    indexName);
+        if (parameters != null) {
+            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName,
+                    parameters);
             return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
                 ack.setReplicaCommand(ClientPreparedSQLCommand.this);
                 ack.setPacketId(packetId);

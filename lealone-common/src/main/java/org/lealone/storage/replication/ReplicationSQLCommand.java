@@ -18,9 +18,9 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.DistributedSQLCommand;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
 
 class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements DistributedSQLCommand {
@@ -72,22 +72,22 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        AsyncCallback<Result> ac = new AsyncCallback<>();
-        HashSet<ReplicaSQLCommand> seen = new HashSet<>();
-        executeQuery(maxRows, scrollable, 1, seen, ac);
-        return ac;
+        return executeDistributedQuery(maxRows, scrollable, null);
     }
 
     @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
-        return null;
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
+        AsyncCallback<Result> ac = new AsyncCallback<>();
+        HashSet<ReplicaSQLCommand> seen = new HashSet<>();
+        executeQuery(maxRows, scrollable, 1, seen, ac, parameters);
+        return ac;
     }
 
     private void executeQuery(int maxRows, boolean scrollable, int tries, HashSet<ReplicaSQLCommand> seen,
-            AsyncCallback<Result> ac) {
+            AsyncCallback<Result> ac, DTransactionParameters parameters) {
         AsyncHandler<AsyncResult<Result>> handler = ar -> {
             if (ar.isFailed() && tries < session.maxTries && tries < session.r) {
-                executeQuery(maxRows, scrollable, tries + 1, seen, ac);
+                executeQuery(maxRows, scrollable, tries + 1, seen, ac, parameters);
             } else {
                 ac.setAsyncResult(ar);
             }
@@ -96,56 +96,34 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
         // 随机选择1个节点，如果读不到再试其他节点
         ReplicaSQLCommand c = getRandomNode(seen);
-        if (c != null)
-            c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
-    }
-
-    @Override
-    public Future<Integer> executeUpdate() {
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
-        executeUpdate(1, ac);
-        return ac;
-    }
-
-    private void executeUpdate(int tries, AsyncCallback<Integer> ac) {
-        final String rn = session.createReplicationName();
-        ReplicationResultHandler<ReplicationUpdateAck> replicationResultHandler = results -> {
-            return handleReplicationConflict(rn, results);
-        };
-        AsyncHandler<AsyncResult<ReplicationUpdateAck>> finalResultHandler = ar -> {
-            if (ar.isFailed() && tries < session.maxTries) {
-                executeUpdate(tries + 1, ac);
-            } else {
-                // 如果为null，说明还没有确定该返回什么结果，那就让客户端继续等待
-                if (ar.getResult() != null)
-                    ac.setAsyncResult(new AsyncResult<>(ar.getResult().updateCount));
-            }
-        };
-        // commands参数设为null，在handleReplicationConflict中处理提交
-        WriteResponseHandler<ReplicationUpdateAck> writeResponseHandler = new WriteResponseHandler<>(session, null,
-                finalResultHandler, replicationResultHandler);
-
-        for (int i = 0; i < session.n; i++) {
-            commands[i].executeReplicaUpdate(rn).onComplete(writeResponseHandler);
+        if (c != null) {
+            if (parameters != null)
+                c.executeDistributedQuery(maxRows, scrollable, parameters).onComplete(readResponseHandler);
+            else
+                c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
         }
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
+    public Future<Integer> executeUpdate() {
+        return executeDistributedUpdate(null);
+    }
+
+    @Override
+    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
-        executeDistributedUpdate(1, ac, pageKeys, indexName);
+        executeDistributedUpdate(1, ac, parameters);
         return ac;
     }
 
-    private void executeDistributedUpdate(int tries, AsyncCallback<Integer> ac, List<PageKey> pageKeys,
-            String indexName) {
+    private void executeDistributedUpdate(int tries, AsyncCallback<Integer> ac, DTransactionParameters parameters) {
         final String rn = session.createReplicationName();
         ReplicationResultHandler<ReplicationUpdateAck> replicationResultHandler = results -> {
             return handleReplicationConflict(rn, results);
         };
         AsyncHandler<AsyncResult<ReplicationUpdateAck>> finalResultHandler = ar -> {
             if (ar.isFailed() && tries < session.maxTries) {
-                executeUpdate(tries + 1, ac);
+                executeDistributedUpdate(tries + 1, ac, parameters);
             } else {
                 // 如果为null，说明还没有确定该返回什么结果，那就让客户端继续等待
                 if (ar.getResult() != null)
@@ -157,7 +135,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 finalResultHandler, replicationResultHandler);
 
         for (int i = 0; i < session.n; i++) {
-            commands[i].executeReplicaUpdate(rn, pageKeys, indexName).onComplete(writeResponseHandler);
+            commands[i].executeReplicaUpdate(rn, parameters).onComplete(writeResponseHandler);
         }
     }
 

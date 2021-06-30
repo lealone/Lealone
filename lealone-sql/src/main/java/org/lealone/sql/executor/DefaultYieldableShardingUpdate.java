@@ -24,8 +24,8 @@ import org.lealone.db.session.SessionStatus;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.sql.DistributedSQLCommand;
-import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.storage.PageKey;
@@ -119,8 +119,9 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             }
         }
         Session s = db.createSession(currentSession, candidateNodes, null, initReplicationNodes);
-        SQLCommand c = s.createSQLCommand(definitionStatement.getSQL(), -1);
-        c.executeUpdate().onComplete(ar -> {
+        DTransactionParameters parameters = new DTransactionParameters(null, null, s.isAutoCommit());
+        DistributedSQLCommand c = s.createDistributedSQLCommand(definitionStatement.getSQL(), -1);
+        c.executeDistributedUpdate(parameters).onComplete(ar -> {
             if (ar.isSucceeded()) {
                 updateCount.set(ar.getResult());
             } else {
@@ -189,8 +190,9 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
                 nodes.add(m.getNode(hostId));
             }
             Session s = session.getDatabase().createSession(session, nodes);
+            DTransactionParameters parameters = new DTransactionParameters(pageKeys, indexName, s.isAutoCommit());
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
-            c.executeDistributedUpdate(pageKeys, indexName).onComplete(ar -> {
+            c.executeDistributedUpdate(parameters).onComplete(ar -> {
                 if (ar.isSucceeded()) {
                     updateCount.addAndGet(ar.getResult());
                     if (size.decrementAndGet() <= 0) {

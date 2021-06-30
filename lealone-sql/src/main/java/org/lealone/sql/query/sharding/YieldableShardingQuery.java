@@ -5,15 +5,21 @@
  */
 package org.lealone.sql.query.sharding;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManager;
+import org.lealone.net.NetNodeManagerHolder;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -88,12 +94,18 @@ public class YieldableShardingQuery extends YieldableQueryBase {
         String indexName = statement.getIndexName();
         SQCommand[] commands = new SQCommand[nodeToPageKeyMap.size()];
         int i = 0;
+        NetNodeManager m = NetNodeManagerHolder.get();
         for (Entry<List<String>, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
-            String hostId = e.getKey().get(0); // TODO 出错时选择其他节点
+            List<String> hostIds = e.getKey();
             List<PageKey> pageKeys = e.getValue();
-            Session s = session.getNestedSession(hostId);
+            Set<NetNode> nodes = new HashSet<>(hostIds.size());
+            for (String hostId : hostIds) {
+                nodes.add(m.getNode(hostId));
+            }
+            Session s = session.getDatabase().createSession(session, nodes);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
-            commands[i++] = new SQCommand(c, maxRows, scrollable, pageKeys, indexName);
+            DTransactionParameters parameters = new DTransactionParameters(pageKeys, indexName, s.isAutoCommit());
+            commands[i++] = new SQCommand(c, maxRows, scrollable, parameters);
         }
         return commands;
     }

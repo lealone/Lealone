@@ -26,6 +26,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.executor.DefaultYieldableLocalUpdate;
 import org.lealone.sql.executor.DefaultYieldableReplicationUpdate;
@@ -548,23 +549,19 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
-        setDistributedSession();
-        return executeQuery(maxRows, scrollable, pageKeys);
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
+        setDistributedSession(parameters);
+        return executeQuery(maxRows, scrollable, parameters);
     }
 
-    private boolean isDistributed() {
-        return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
-    }
-
-    private void setDistributedSession() {
-        if (isDistributed()) {
-            session.setAutoCommit(false);
+    private void setDistributedSession(DTransactionParameters parameters) {
+        if (parameters != null) {
+            session.setAutoCommit(parameters.autoCommit);
             session.setRoot(false);
         }
     }
 
-    private Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    private Future<Result> executeQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
             AsyncCallback<Result> ac = new AsyncCallback<>();
@@ -576,7 +573,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -584,7 +582,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             return Future.succeededFuture(syncExecute(yieldable));
@@ -597,12 +596,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
-        setDistributedSession();
-        return executeUpdate(pageKeys);
+    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
+        return executeUpdate(parameters);
     }
 
-    private Future<Integer> executeUpdate(List<PageKey> pageKeys) {
+    private Future<Integer> executeUpdate(DTransactionParameters parameters) {
+        setDistributedSession(parameters);
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
             AsyncCallback<Integer> ac = new AsyncCallback<>();
@@ -614,7 +613,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -622,7 +622,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             Integer updateCount = syncExecute(yieldable);
@@ -631,14 +632,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        return executeReplicaUpdate(replicationName, null, null);
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
-            String indexName) {
-        setDistributedSession();
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName,
+            DTransactionParameters parameters) {
+        setDistributedSession(parameters);
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
             AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
@@ -653,7 +649,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -661,7 +658,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-            yieldable.setPageKeys(pageKeys);
+            if (parameters != null)
+                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             Integer updateCount = syncExecute(yieldable);

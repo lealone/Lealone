@@ -25,16 +25,16 @@ public class ShardingTest extends DSqlTestBase {
         stmt.executeUpdate(sql);
 
         run(dbName, true); // 在自动提交模式中执行语句，不涉及分布式事务
-        // run(dbName, false); // 在手动提交模式中执行语句， 涉及分布式事务
+        run(dbName, false); // 在手动提交模式中执行语句， 涉及分布式事务
     }
 
     void run(String dbName, boolean autoCommit) throws Exception {
-        // new DdlTest(dbName, autoCommit).runTest();
+        new DdlTest(dbName, autoCommit).runTest();
 
-        // new InsertTest(dbName, autoCommit).runTest();
+        new InsertTest(dbName, autoCommit).runTest();
         new UpdateTest(dbName, autoCommit).runTest();
-        // new DeleteTest(dbName).runTest();
-        // new SelectTest(dbName).runTest();
+        new DeleteTest(dbName, autoCommit).runTest();
+        new SelectTest(dbName, autoCommit).runTest();
 
         // new TwoTablesTest(dbName).runTest();
         // new ShardingCrudTest(dbName).runTest();
@@ -150,12 +150,12 @@ public class ShardingTest extends DSqlTestBase {
 
     class SelectTest extends CrudTest {
 
-        public SelectTest(String dbName) {
-            super(dbName);
+        public SelectTest(String dbName, boolean autoCommit) {
+            super(dbName, autoCommit);
         }
 
         @Override
-        protected void test() throws Exception {
+        protected void test0() throws Exception {
             createAndInsertTable();
             testSelect();
         }

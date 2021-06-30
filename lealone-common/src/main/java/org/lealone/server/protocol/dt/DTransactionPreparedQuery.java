@@ -6,7 +6,6 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
@@ -14,24 +13,20 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
-import org.lealone.storage.PageKey;
 
 public class DTransactionPreparedQuery extends PreparedStatementQuery {
 
-    public final List<PageKey> pageKeys;
-    public final String indexName;
+    public final DTransactionParameters dtParameters;
 
     public DTransactionPreparedQuery(int resultId, int maxRows, int fetchSize, boolean scrollable, int commandId,
-            Value[] parameters, List<PageKey> pageKeys, String indexName) {
+            Value[] parameters, DTransactionParameters dtParameters) {
         super(resultId, maxRows, fetchSize, scrollable, commandId, parameters);
-        this.pageKeys = pageKeys;
-        this.indexName = indexName;
+        this.dtParameters = dtParameters;
     }
 
     public DTransactionPreparedQuery(NetInputStream in, int version) throws IOException {
         super(in, version);
-        pageKeys = DTransactionUpdate.readPageKeys(in);
-        indexName = in.readString();
+        dtParameters = new DTransactionParameters(in, version);
     }
 
     @Override
@@ -47,8 +42,7 @@ public class DTransactionPreparedQuery extends PreparedStatementQuery {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
-        DTransactionUpdate.writePageKeys(out, pageKeys);
-        out.writeString(indexName);
+        dtParameters.encode(out, version);
     }
 
     public static final Decoder decoder = new Decoder();

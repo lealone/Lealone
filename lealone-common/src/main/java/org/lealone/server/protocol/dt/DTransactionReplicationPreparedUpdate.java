@@ -6,7 +6,6 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
@@ -14,24 +13,20 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
-import org.lealone.storage.PageKey;
 
 public class DTransactionReplicationPreparedUpdate extends ReplicationPreparedUpdate {
 
-    public final List<PageKey> pageKeys;
-    public final String indexName;
+    public final DTransactionParameters parameters;
 
     public DTransactionReplicationPreparedUpdate(int commandId, Value[] parameters, String replicationName,
-            List<PageKey> pageKeys, String indexName) {
+            DTransactionParameters dtParameters) {
         super(commandId, parameters, replicationName);
-        this.pageKeys = pageKeys;
-        this.indexName = indexName;
+        this.parameters = dtParameters;
     }
 
     public DTransactionReplicationPreparedUpdate(NetInputStream in, int version) throws IOException {
         super(in, version);
-        pageKeys = DTransactionUpdate.readPageKeys(in);
-        indexName = in.readString();
+        parameters = new DTransactionParameters(in, version);
     }
 
     @Override
@@ -47,8 +42,7 @@ public class DTransactionReplicationPreparedUpdate extends ReplicationPreparedUp
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
-        DTransactionUpdate.writePageKeys(out, pageKeys);
-        out.writeString(indexName);
+        parameters.encode(out, version);
     }
 
     public static final Decoder decoder = new Decoder();

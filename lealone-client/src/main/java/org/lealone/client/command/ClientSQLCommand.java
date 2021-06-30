@@ -21,6 +21,7 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.server.protocol.dt.DTransactionQuery;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
 import org.lealone.server.protocol.dt.DTransactionReplicationUpdate;
@@ -35,7 +36,6 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.sql.DistributedSQLCommand;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
 public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLCommand {
@@ -85,16 +85,15 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows, scrollable, null, null);
+        return query(maxRows, scrollable, null);
     }
 
     @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            String indexName) {
-        return query(maxRows, scrollable, pageKeys, indexName);
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
+        return query(maxRows, scrollable, parameters);
     }
 
-    private Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName) {
+    private Future<Result> query(int maxRows, boolean scrollable, DTransactionParameters parameters) {
         isQuery = true;
         int fetch;
         if (scrollable) {
@@ -103,15 +102,15 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
             fetch = fetchSize;
         }
         int resultId = session.getNextId();
-        return query(maxRows, scrollable, fetch, resultId, pageKeys, indexName);
+        return query(maxRows, scrollable, fetch, resultId, parameters);
 
     }
 
-    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId, List<PageKey> pageKeys,
-            String indexName) {
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId,
+            DTransactionParameters parameters) {
         int packetId = commandId = session.getNextId();
-        if (isDistributed() || pageKeys != null) {
-            Packet packet = new DTransactionQuery(resultId, maxRows, fetch, scrollable, sql, pageKeys, indexName);
+        if (parameters != null) {
+            Packet packet = new DTransactionQuery(resultId, maxRows, fetch, scrollable, sql, parameters);
             return session.<Result, DTransactionQueryAck> send(packet, packetId, ack -> {
                 return getQueryResult(ack, fetch, resultId);
             });
@@ -140,10 +139,6 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
         return result;
     }
 
-    protected boolean isDistributed() {
-        return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
-    }
-
     @Override
     public Future<Integer> executeUpdate() {
         int packetId = commandId = session.getNextId();
@@ -154,29 +149,20 @@ public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLComman
     }
 
     @Override
-    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName) {
-        if (isDistributed() || pageKeys != null) {
-            int packetId = commandId = session.getNextId();
-            Packet packet = new DTransactionUpdate(sql, pageKeys, indexName);
-            return session.<Integer, DTransactionUpdateAck> send(packet, packetId, ack -> {
-                return ack.updateCount;
-            });
-        } else {
-            return executeUpdate();
-        }
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        return executeReplicaUpdate(replicationName, null, null);
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName, List<PageKey> pageKeys,
-            String indexName) {
+    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
         int packetId = commandId = session.getNextId();
-        if (isDistributed() || pageKeys != null) {
-            Packet packet = new DTransactionReplicationUpdate(sql, replicationName, pageKeys, indexName);
+        Packet packet = new DTransactionUpdate(sql, parameters);
+        return session.<Integer, DTransactionUpdateAck> send(packet, packetId, ack -> {
+            return ack.updateCount;
+        });
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName,
+            DTransactionParameters parameters) {
+        int packetId = commandId = session.getNextId();
+        if (parameters != null) {
+            Packet packet = new DTransactionReplicationUpdate(sql, replicationName, parameters);
             return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
                 ack.setReplicaCommand(ClientSQLCommand.this);
                 ack.setPacketId(packetId);

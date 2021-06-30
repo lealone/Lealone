@@ -14,6 +14,7 @@ import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DTransactionCommit;
 import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.server.protocol.dt.DTransactionCommitFinal;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
 import org.lealone.server.protocol.dt.DTransactionPreparedQueryAck;
 import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
@@ -49,10 +50,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class Query extends QueryPacketHandler<DTransactionQuery> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionQuery packet) {
-            ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.parameters);
+            return handlePacket(task, packet, packet.parameters.pageKeys);
         }
 
         @Override
@@ -64,10 +63,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class PreparedQuery extends PreparedQueryPacketHandler<DTransactionPreparedQuery> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionPreparedQuery packet) {
-            final ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.dtParameters);
+            return handlePacket(task, packet, packet.dtParameters.pageKeys);
         }
 
         @Override
@@ -79,10 +76,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class Update extends UpdatePacketHandler<DTransactionUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionUpdate packet) {
-            final ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.parameters);
+            return handlePacket(task, packet, packet.parameters.pageKeys);
         }
 
         @Override
@@ -94,10 +89,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class PreparedUpdate extends PreparedUpdatePacketHandler<DTransactionPreparedUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionPreparedUpdate packet) {
-            final ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.dtParameters);
+            return handlePacket(task, packet, packet.dtParameters.pageKeys);
         }
 
         @Override
@@ -157,11 +150,8 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class ReplicationUpdate extends UpdatePacketHandler<DTransactionReplicationUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionReplicationUpdate packet) {
-            final ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            session.setReplicationName(packet.replicationName);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.parameters, packet.replicationName);
+            return handlePacket(task, packet, packet.parameters.pageKeys);
         }
 
         @Override
@@ -174,16 +164,27 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             extends PreparedUpdatePacketHandler<DTransactionReplicationPreparedUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionReplicationPreparedUpdate packet) {
-            final ServerSession session = task.session;
-            session.setAutoCommit(false);
-            session.setRoot(false);
-            session.setReplicationName(packet.replicationName);
-            return handlePacket(task, packet, packet.pageKeys);
+            initSession(task, packet.parameters, packet.replicationName);
+            return handlePacket(task, packet, packet.parameters.pageKeys);
         }
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
             return task.session.createReplicationUpdateAckPacket(updateCount, true);
         }
+    }
+
+    private static void initSession(PacketDeliveryTask task, DTransactionParameters parameters) {
+        initSession(task, parameters, null);
+    }
+
+    private static void initSession(PacketDeliveryTask task, DTransactionParameters parameters,
+            String replicationName) {
+        ServerSession session = task.session;
+        session.setRoot(false);
+        if (parameters != null)
+            session.setAutoCommit(parameters.autoCommit);
+        if (replicationName != null)
+            session.setReplicationName(replicationName);
     }
 }

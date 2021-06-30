@@ -291,7 +291,9 @@ public class Scheduler extends Thread
     @Override
     public void removeSession(Object sessionInfo) {
         SessionInfo si = (SessionInfo) sessionInfo;
-        removeSessionInfo(si);
+        // 不删除root session
+        if (!si.getSession().isRoot())
+            removeSessionInfo(si);
     }
 
     private void checkSessionTimeout() {

@@ -5,16 +5,14 @@
  */
 package org.lealone.sql;
 
-import java.util.List;
-
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 
 public interface DistributedSQLCommand extends SQLCommand {
 
-    Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys, String indexName);
+    Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, DTransactionParameters parameters);
 
-    Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys, String indexName);
+    Future<Integer> executeDistributedUpdate(DTransactionParameters parameters);
 
 }

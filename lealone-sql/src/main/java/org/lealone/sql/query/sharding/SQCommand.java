@@ -5,12 +5,10 @@
  */
 package org.lealone.sql.query.sharding;
 
-import java.util.List;
-
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
+import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.sql.DistributedSQLCommand;
-import org.lealone.storage.PageKey;
 
 //Sharding Query Command
 public class SQCommand {
@@ -18,19 +16,17 @@ public class SQCommand {
     private final DistributedSQLCommand command;
     private final int maxRows;
     private final boolean scrollable;
-    private final List<PageKey> pageKeys;
-    public final String indexName;
+    private final DTransactionParameters parameters;
 
-    public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            String indexName) {
+    public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable,
+            DTransactionParameters parameters) {
         this.command = command;
         this.maxRows = maxRows;
         this.scrollable = scrollable;
-        this.pageKeys = pageKeys;
-        this.indexName = indexName;
+        this.parameters = parameters;
     }
 
     public Future<Result> executeDistributedQuery() {
-        return command.executeDistributedQuery(maxRows, scrollable, pageKeys, indexName);
+        return command.executeDistributedQuery(maxRows, scrollable, parameters);
     }
 }
