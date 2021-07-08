@@ -18,8 +18,6 @@ public abstract class StorageEngineBase implements StorageEngine {
 
     public StorageEngineBase(String name) {
         this.name = name;
-        // 见PluggableEngineManager.PluggableEngineService中的注释
-        StorageEngineManager.getInstance().registerEngine(this);
     }
 
     @Override

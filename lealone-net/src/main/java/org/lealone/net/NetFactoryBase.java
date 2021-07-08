@@ -16,8 +16,6 @@ public abstract class NetFactoryBase implements NetFactory {
     public NetFactoryBase(String name, NetClient netClient) {
         this.name = name;
         this.netClient = netClient;
-        // 见PluggableEngineManager.PluggableEngineService中的注释
-        NetFactoryManager.getInstance().registerEngine(this);
     }
 
     @Override

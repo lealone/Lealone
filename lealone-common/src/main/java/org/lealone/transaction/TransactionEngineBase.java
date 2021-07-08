@@ -11,8 +11,6 @@ public abstract class TransactionEngineBase implements TransactionEngine {
 
     public TransactionEngineBase(String name) {
         this.name = name;
-        // 见PluggableEngineManager.PluggableEngineService中的注释
-        TransactionEngineManager.getInstance().registerEngine(this);
     }
 
     @Override

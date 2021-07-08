@@ -17,8 +17,6 @@ public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
 
     public ProtocolServerEngineBase(String name) {
         this.name = name;
-        // 见PluggableEngineManager.PluggableEngineService中的注释
-        ProtocolServerEngineManager.getInstance().registerEngine(this);
     }
 
     @Override

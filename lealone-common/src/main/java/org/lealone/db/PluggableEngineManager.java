@@ -8,7 +8,6 @@ package org.lealone.db;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
@@ -69,12 +68,11 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
     private class PluggableEngineService implements PrivilegedAction<Void> {
         @Override
         public Void run() {
-            Iterator<T> iterator = ServiceLoader.load(pluggableEngineClass).iterator();
             try {
-                while (iterator.hasNext()) {
-                    // 执行next时ServiceLoader内部会自动为每一个实现PluggableEngine接口的类生成一个新实例
-                    // 所以PluggableEngine接口的实现类必需有一个public的无参数构造函数
-                    iterator.next();
+                // 执行next时ServiceLoader内部会自动为每一个实现PluggableEngine接口的类生成一个新实例
+                // 所以PluggableEngine接口的实现类必需有一个public的无参数构造函数
+                for (T e : ServiceLoader.load(pluggableEngineClass)) {
+                    PluggableEngineManager.this.registerEngine(e);
                 }
             } catch (Throwable t) {
                 // 只是发出警告

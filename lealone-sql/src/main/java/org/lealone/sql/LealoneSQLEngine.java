@@ -22,7 +22,6 @@ import org.lealone.sql.expression.condition.ConditionAndOr;
 public class LealoneSQLEngine implements SQLEngine {
 
     public LealoneSQLEngine() {
-        SQLEngineManager.getInstance().registerEngine(this);
     }
 
     @Override
