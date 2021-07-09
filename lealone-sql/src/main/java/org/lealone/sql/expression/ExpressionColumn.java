@@ -20,6 +20,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.optimizer.AliasColumnResolver;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -39,8 +40,6 @@ public class ExpressionColumn extends Expression {
     private int queryLevel;
     private Column column;
     private boolean evaluatable;
-
-    private Select select;
 
     public ExpressionColumn(Database database, Column column) {
         this.database = database;
@@ -96,9 +95,6 @@ public class ExpressionColumn extends Expression {
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         getDatabase();
-        if (select == null)
-            select = resolver.getSelect();
-
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
             return;
         }
@@ -127,6 +123,19 @@ public class ExpressionColumn extends Expression {
                 return;
             }
         }
+
+        // 处理在where和having中出现别名的情况
+        Select select = resolver.getSelect();
+        if (select != null) {
+            for (Expression e : select.getExpressions()) {
+                if (database.equalsIdentifiers(columnName, e.getAlias())) {
+                    Column col = new Column(columnName, Value.NULL);
+                    resolver = new AliasColumnResolver(select, e.getNonAliasExpression(), col);
+                    mapColumn(resolver, col, level);
+                    return;
+                }
+            }
+        }
     }
 
     private void mapColumn(ColumnResolver resolver, Column col, int level) {
@@ -149,16 +158,6 @@ public class ExpressionColumn extends Expression {
                 Constant constant = schema.findConstant(session, columnName);
                 if (constant != null) {
                     return ValueExpression.get(constant.getValue());
-                }
-            }
-
-            // 处理在where和having中出现别名的情况，如:
-            // SELECT id AS A FROM mytable where A>=0
-            // SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-            if (select != null) {
-                for (Expression e : select.getExpressions()) {
-                    if (database.equalsIdentifiers(columnName, e.getAlias()))
-                        return e.getNonAliasExpression().optimize(session);
                 }
             }
 
@@ -206,7 +205,6 @@ public class ExpressionColumn extends Expression {
         }
         Value value = columnResolver.getValue(column);
         if (value == null) {
-            columnResolver.getValue(column);
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
         return value;

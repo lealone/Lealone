@@ -31,7 +31,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
 import org.lealone.storage.PageKey;
@@ -40,8 +39,11 @@ import org.lealone.storage.PageKey;
  * A table filter represents a table that is used in a query. There is one such
  * object whenever a table (or view) is used in a query. For example the
  * following query has 2 table filters: SELECT * FROM TEST T1, TEST T2.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class TableFilter implements ColumnResolver, IExpression.Evaluator {
+public class TableFilter implements ColumnResolver {
 
     private static final int BEFORE_FIRST = 0, FOUND = 1, AFTER_LAST = 2, NULL_ROW = 3;
 
@@ -934,11 +936,6 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
     }
 
     @Override
-    public Expression optimize(ExpressionColumn expressionColumn, Column column) {
-        return expressionColumn;
-    }
-
-    @Override
     public String toString() {
         return alias != null ? alias : table.toString();
     }
@@ -1073,13 +1070,6 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
 
     public List<PageKey> getPageKeys() {
         return cursor.getPageKeys();
-    }
-
-    @Override
-    public IExpression optimizeExpression(Session session, IExpression e) {
-        Expression expression = (Expression) e;
-        expression.mapColumns(this, 0);
-        return expression.optimize(session);
     }
 
     @Override

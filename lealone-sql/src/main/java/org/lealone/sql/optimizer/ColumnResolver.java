@@ -5,8 +5,10 @@
  */
 package org.lealone.sql.optimizer;
 
+import org.lealone.db.session.Session;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
+import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.query.Select;
@@ -14,15 +16,29 @@ import org.lealone.sql.query.Select;
 /**
  * A column resolver is list of column (for example, a table) that can map a
  * column name to an actual column.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public interface ColumnResolver {
+public interface ColumnResolver extends IExpression.Evaluator {
+
+    /**
+     * Get the schema name.
+     *
+     * @return the schema name
+     */
+    default String getSchemaName() {
+        return null;
+    }
 
     /**
      * Get the table alias.
      *
      * @return the table alias
      */
-    String getTableAlias();
+    default String getTableAlias() {
+        return null;
+    }
 
     /**
      * Get the column list.
@@ -36,21 +52,18 @@ public interface ColumnResolver {
      *
      * @return the system columns or null
      */
-    Column[] getSystemColumns();
+    default Column[] getSystemColumns() {
+        return null;
+    }
 
     /**
      * Get the row id pseudo column, if there is one.
      *
      * @return the row id column or null
      */
-    Column getRowIdColumn();
-
-    /**
-     * Get the schema name.
-     *
-     * @return the schema name
-     */
-    String getSchemaName();
+    default Column getRowIdColumn() {
+        return null;
+    }
 
     /**
      * Get the value for the given column.
@@ -81,6 +94,14 @@ public interface ColumnResolver {
      * @param column the column
      * @return the optimized expression
      */
-    Expression optimize(ExpressionColumn expressionColumn, Column column);
+    default Expression optimize(ExpressionColumn expressionColumn, Column column) {
+        return expressionColumn;
+    }
 
+    @Override
+    default IExpression optimizeExpression(Session session, IExpression e) {
+        Expression expression = (Expression) e;
+        expression.mapColumns(this, 0);
+        return expression.optimize(session);
+    }
 }

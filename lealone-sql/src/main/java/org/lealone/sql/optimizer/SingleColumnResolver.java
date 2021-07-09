@@ -9,30 +9,22 @@ import org.lealone.db.session.Session;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
-import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.query.Select;
 
 /**
  * The single column resolver is like a table with exactly one row.
  * It is used to parse a simple one-column check constraint.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class SingleColumnResolver implements ColumnResolver, IExpression.Evaluator {
+public class SingleColumnResolver implements ColumnResolver {
 
     private final Column column;
     private Value value;
 
     public SingleColumnResolver(Column column) {
         this.column = column;
-    }
-
-    @Override
-    public String getTableAlias() {
-        return null;
-    }
-
-    void setValue(Value value) {
-        this.value = value;
     }
 
     @Override
@@ -46,11 +38,6 @@ public class SingleColumnResolver implements ColumnResolver, IExpression.Evaluat
     }
 
     @Override
-    public String getSchemaName() {
-        return null;
-    }
-
-    @Override
     public TableFilter getTableFilter() {
         return null;
     }
@@ -61,30 +48,8 @@ public class SingleColumnResolver implements ColumnResolver, IExpression.Evaluat
     }
 
     @Override
-    public Column[] getSystemColumns() {
-        return null;
-    }
-
-    @Override
-    public Column getRowIdColumn() {
-        return null;
-    }
-
-    @Override
-    public Expression optimize(ExpressionColumn expressionColumn, Column col) {
-        return expressionColumn;
-    }
-
-    @Override
-    public IExpression optimizeExpression(Session session, IExpression e) {
-        Expression expression = (Expression) e;
-        expression.mapColumns(this, 0);
-        return expression.optimize(session);
-    }
-
-    @Override
     public Value getExpressionValue(Session session, IExpression e, Object data) {
-        setValue((Value) data);
+        value = (Value) data;
         return e.getValue(session);
     }
 }
