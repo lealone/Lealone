@@ -66,25 +66,15 @@
 * [Lealone ORM 框架快速入门](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/Lealone%20ORM%E6%A1%86%E6%9E%B6%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)
 
 
-### Lealone OLAP 查询引擎
+### Lealone Bats
+
+* 面向单机与分布式 OLTP/OLAP 场景的可暂停的渐进式 SQL 引擎
 
 * 采用 MPP 架构、支持 SQL 编译和向量化执行
 
+* 兼容 MySQL 或 PostgreSQL 的协议和 SQL 语法
+
 * [更多细节...](https://github.com/lealone/Bats)
-
-
-### Lealone MySQL
-
-* 基于 MySQL 协议，使用 MySQL 的 SQL 语法访问 Lealone 数据库
-
-* [更多细节...](https://github.com/lealone/Lealone-MySQL)
-
-
-### Lealone PostgreSQL
-
-* 基于 PostgreSQL 协议，使用 PostgreSQL 的 SQL 语法访问 Lealone 数据库
-
-* [更多细节...](https://github.com/lealone/Lealone-PostgreSQL)
 
 
 ### Lealone Plugins
