@@ -20,21 +20,18 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.YieldableLoopUpdateBase;
+import org.lealone.sql.executor.YieldableConditionUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.replication.ReplicationConflictType;
 
 /**
  * This class represents the statement
@@ -172,23 +169,15 @@ public class Update extends ManipulationStatement {
             return new YieldableUpdate(this, asyncHandler); // 处理单机模式、复制模式
     }
 
-    private static class YieldableUpdate extends YieldableLoopUpdateBase {
+    private static class YieldableUpdate extends YieldableConditionUpdateBase {
 
         final Update statement;
-        final TableFilter tableFilter;
-        final Table table;
-        final int limitRows; // 如果是0，表示不更新任何记录；如果小于0，表示没有限制
         final Column[] columns;
         final int columnCount;
-        boolean hasNext;
-        Row oldRow;
 
         public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler);
+            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr, statement.condition);
             this.statement = statement;
-            tableFilter = statement.tableFilter;
-            table = tableFilter.getTable();
-            limitRows = getLimitRows(statement.limitExpr, session);
             columns = table.getColumns();
             columnCount = columns.length;
         }
@@ -216,26 +205,15 @@ public class Update extends ManipulationStatement {
 
         @Override
         protected void executeLoopUpdate() {
-            if (oldRow != null) {
-                // 如果oldRow已经删除了那么移到下一行
-                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
-                    hasNext = tableFilter.next();
-                oldRow = null;
-            }
+            rebuildSearchRowIfNeeded();
             while (hasNext && pendingException == null) {
                 if (yieldIfNeeded(++loopCount)) {
                     return;
                 }
-                if (statement.condition == null || statement.condition.getBooleanValue(session)) {
+                if (conditionEvaluator.getBooleanValue()) {
                     Row oldRow = tableFilter.get();
-                    int savepointId = session.getTransaction().getSavepointId();
-                    if (!table.tryLockRow(session, oldRow, true, statement.columns)) {
-                        this.oldRow = oldRow;
-                        session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
-                        session.setStatus(SessionStatus.WAITING);
+                    if (!tryLockRow(oldRow, statement.columns))
                         return;
-                    }
-                    session.setCurrentLockedRow(oldRow, savepointId);
                     Row newRow = createNewRow(oldRow);
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = false;
@@ -283,13 +261,6 @@ public class Update extends ManipulationStatement {
                 }
                 onComplete(ar);
             });
-        }
-
-        @Override
-        public void back() {
-            oldRow = session.getCurrentLockedRow();
-            loopEnd = false;
-            hasNext = true;
         }
     }
 }
