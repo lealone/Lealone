@@ -8,12 +8,16 @@ package org.lealone.sql.query;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
+import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
+import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
+import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 
 // 由子类实现具体的查询操作
 abstract class QOperator {
 
     protected final Select select;
     protected final ServerSession session;
+    protected final ExpressionEvaluator conditionEvaluator;
 
     int columnCount;
     ResultTarget target;
@@ -31,6 +35,10 @@ abstract class QOperator {
     QOperator(Select select) {
         this.select = select;
         session = select.getSession();
+        if (select.condition == null)
+            conditionEvaluator = new AlwaysTrueEvaluator();
+        else
+            conditionEvaluator = new ExpressionInterpreter(session, select.condition);
     }
 
     boolean yieldIfNeeded(int rowNumber) {

@@ -19,7 +19,7 @@ class QFlat extends QOperator {
     void run() {
         while (select.topTableFilter.next()) {
             ++loopCount;
-            if (select.condition == null || select.condition.getBooleanValue(session)) {
+            if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
                 Value[] row = new Value[columnCount];
