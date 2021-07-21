@@ -10,7 +10,7 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
-import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 
 // 由子类实现具体的查询操作
 abstract class QOperator {
@@ -38,7 +38,7 @@ abstract class QOperator {
         if (select.condition == null)
             conditionEvaluator = new AlwaysTrueEvaluator();
         else
-            conditionEvaluator = new ExpressionInterpreter(session, select.condition);
+            conditionEvaluator = new HotSpotEvaluator(session, select.condition);
     }
 
     boolean yieldIfNeeded(int rowNumber) {

@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
@@ -387,5 +388,8 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     public void getColumns(Set<?> columns) {
         ExpressionVisitor visitor = ExpressionVisitor.getColumnsVisitor((Set<Column>) columns);
         isEverything(visitor);
+    }
+
+    public void genCode(StringBuilder buff, TreeSet<String> importSet) {
     }
 }

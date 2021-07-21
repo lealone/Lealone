@@ -16,6 +16,8 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
@@ -186,7 +188,22 @@ public class SourceCompiler {
     }
 
     private void javacProcess(File javaFile) {
-        exec("javac", "-sourcepath", compileDir, "-d", compileDir, "-encoding", "UTF-8", javaFile.getAbsolutePath());
+        exec("javac", "-cp", cp(), "-sourcepath", compileDir, "-d", compileDir, "-encoding", "UTF-8",
+                javaFile.getAbsolutePath());
+    }
+
+    private String cp() {
+        StringBuilder cp = new StringBuilder();
+        ClassLoader cl = this.getClass().getClassLoader();
+        if (cl instanceof URLClassLoader) {
+            URLClassLoader urlCl = (URLClassLoader) cl;
+            for (URL url : urlCl.getURLs()) {
+                File file = new File(url.getFile());
+                cp.append(file.getAbsolutePath()).append(File.pathSeparatorChar);
+            }
+        }
+        cp.append(".");
+        return cp.toString();
     }
 
     private int exec(String... args) {
@@ -222,8 +239,17 @@ public class SourceCompiler {
             Method compile;
             compile = JAVAC_SUN.getMethod("compile", String[].class);
             Object javac = JAVAC_SUN.newInstance();
-            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-d", compileDir, "-encoding",
-                    "UTF-8", javaFile.getAbsolutePath() });
+            compile.invoke(javac,
+                    (Object) new String[] {
+                            "-sourcepath",
+                            compileDir,
+                            "-cp",
+                            cp(),
+                            "-d",
+                            compileDir,
+                            "-encoding",
+                            "UTF-8",
+                            javaFile.getAbsolutePath() });
             String err = new String(buff.toByteArray(), "UTF-8");
             throwSyntaxError(err);
         } catch (Exception e) {
