@@ -8,10 +8,9 @@ package org.lealone.test.misc;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Method;
 
-import com.sun.management.OperatingSystemMXBean;
-
-@SuppressWarnings("restriction")
 public class MemDiskTest {
     public static void main(String[] args) {
         getMemInfo();
@@ -48,10 +47,15 @@ public class MemDiskTest {
         for (int i = 0; i < bytes.length; i++) {
             bytes[i] = (byte) i;
         }
-        OperatingSystemMXBean mem = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-        System.out.println("Total RAM：" + toM(mem.getTotalPhysicalMemorySize()));
-        System.out.println("Free  RAM：" + toM(mem.getFreePhysicalMemorySize()));
-        System.out.println();
+        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+        try {
+            Method m = os.getClass().getMethod("getTotalPhysicalMemorySize");
+            System.out.println("Total RAM：" + toM((Long) m.invoke(os)));
+            m = os.getClass().getMethod("getFreePhysicalMemorySize");
+            System.out.println("Free  RAM：" + toM((Long) m.invoke(os)));
+            System.out.println();
+        } catch (Exception e) {
+        }
         MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
         System.out.println("HeapMemory");
         printMemoryUsage(mu);

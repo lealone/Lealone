@@ -7,6 +7,7 @@ package org.lealone.p2p.server;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,8 +42,6 @@ import org.lealone.p2p.util.FileUtils;
 import org.lealone.p2p.util.Utils;
 import org.lealone.server.DelegatedProtocolServer;
 
-import com.sun.management.OperatingSystemMXBean;
-
 /**
  * This abstraction contains the token/identifier of this node
  * on the identifier space. This token gets gossiped around.
@@ -52,7 +51,6 @@ import com.sun.management.OperatingSystemMXBean;
  * @author Cassandra Group
  * @author zhh
  */
-@SuppressWarnings("restriction")
 public class P2pServer extends DelegatedProtocolServer implements INodeStateChangeSubscriber, AsyncConnectionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(P2pServer.class);
@@ -485,7 +483,7 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
 
     /** raw load value */
     public double getLoad() {
-        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         double load = os.getSystemLoadAverage();
         if (load < 0) {
             MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
