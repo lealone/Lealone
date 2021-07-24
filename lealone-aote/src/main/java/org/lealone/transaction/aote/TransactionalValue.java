@@ -8,9 +8,9 @@ package org.lealone.transaction.aote;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.UnsafeUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
@@ -152,7 +152,8 @@ public interface TransactionalValue {
     // 因为每条记录都对应此类的一个实例，所以为了节约内存没有直接使用java.util.concurrent.atomic.AtomicReference
     public static class TransactionalValueRef implements TransactionalValue {
 
-        private static final long valueOffset = UnsafeUtils.objectFieldOffset(TransactionalValueRef.class, "tv");
+        private static final AtomicReferenceFieldUpdater<TransactionalValueRef, TransactionalValue> tvUpdater = AtomicReferenceFieldUpdater
+                .newUpdater(TransactionalValueRef.class, TransactionalValue.class, "tv");
 
         private volatile TransactionalValue tv;
         private List<String> retryReplicationNames;
@@ -185,7 +186,7 @@ public interface TransactionalValue {
 
         @Override
         public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
-            return UnsafeUtils.compareAndSwapObject(this, valueOffset, expect, update);
+            return tvUpdater.compareAndSet(this, expect, update);
         }
 
         @Override
