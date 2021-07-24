@@ -11,6 +11,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.lang.ref.SoftReference;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -758,15 +759,8 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case LONG: {
                     long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[] {
-                            (byte) (x >> 56),
-                            (byte) (x >> 48),
-                            (byte) (x >> 40),
-                            (byte) (x >> 32),
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 56), (byte) (x >> 48), (byte) (x >> 40),
+                            (byte) (x >> 32), (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
                 }
                 }
                 break;
@@ -968,7 +962,7 @@ public abstract class Value implements Comparable<Value> {
         if (x.compareTo(MAX_LONG_DECIMAL) > 0 || x.compareTo(Value.MIN_LONG_DECIMAL) < 0) {
             throw DbException.get(ErrorCode.NUMERIC_VALUE_OUT_OF_RANGE_1, x.toString());
         }
-        return x.setScale(0, BigDecimal.ROUND_HALF_UP).longValue();
+        return x.setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
     /**

@@ -7,6 +7,7 @@ package org.lealone.db.value;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -97,7 +98,7 @@ public class ValueDecimal extends Value {
         if (dec.value.signum() == 0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        BigDecimal bd = value.divide(dec.value, value.scale() + DIVIDE_SCALE_ADD, BigDecimal.ROUND_HALF_DOWN);
+        BigDecimal bd = value.divide(dec.value, value.scale() + DIVIDE_SCALE_ADD, RoundingMode.HALF_DOWN);
         if (bd.signum() == 0) {
             bd = BigDecimal.ZERO;
         } else if (bd.scale() > 0) {
@@ -272,7 +273,7 @@ public class ValueDecimal extends Value {
         if (scale > BIG_DECIMAL_SCALE_MAX || scale < -BIG_DECIMAL_SCALE_MAX) {
             throw DbException.getInvalidValueException("scale", scale);
         }
-        return bd.setScale(scale, BigDecimal.ROUND_HALF_UP);
+        return bd.setScale(scale, RoundingMode.HALF_UP);
     }
 
     public static final StorageDataTypeBase type = new StorageDataTypeBase() {
