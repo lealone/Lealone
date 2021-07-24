@@ -48,7 +48,7 @@ public class ExpressionCompiler {
         SourceCompiler compiler = session.getDatabase().getCompiler();
         compiler.setSource(fullClassName, buff.toString());
         try {
-            return (JitEvaluator) compiler.getClass(fullClassName).newInstance();
+            return (JitEvaluator) compiler.getClass(fullClassName).getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw DbException.convert(e);
         }

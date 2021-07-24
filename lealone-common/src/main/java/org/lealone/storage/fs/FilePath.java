@@ -73,7 +73,7 @@ public abstract class FilePath {
             for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",
                     "FilePathNioMemLZF", "FilePathSplit", "FilePathNio", "FilePathNioMapped", "FilePathZip" }) {
                 try {
-                    FilePath p = (FilePath) Class.forName(packageName + c).newInstance();
+                    FilePath p = (FilePath) Class.forName(packageName + c).getDeclaredConstructor().newInstance();
                     map.put(p.getScheme(), p);
                     if (defaultProvider == null) {
                         defaultProvider = p;

@@ -107,7 +107,7 @@ public class JdbcUtils {
         } else if (javax.naming.Context.class.isAssignableFrom(d)) {
             // JNDI context
             try {
-                Context context = (Context) d.newInstance();
+                Context context = (Context) d.getDeclaredConstructor().newInstance();
                 DataSource ds = (DataSource) context.lookup(url);
                 String user = prop.getProperty("user");
                 String password = prop.getProperty("password");

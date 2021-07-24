@@ -114,7 +114,7 @@ public class HttpServer extends ProtocolServerBase {
         String routerFactoryStr = config.get("router_factory");
         if (routerFactoryStr != null) {
             try {
-                routerFactory = (RouterFactory) Class.forName(routerFactoryStr).newInstance();
+                routerFactory = (RouterFactory) Class.forName(routerFactoryStr).getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw new ConfigException("Failed to init router factory: " + routerFactoryStr, e);
             }

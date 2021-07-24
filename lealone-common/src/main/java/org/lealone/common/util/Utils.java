@@ -73,7 +73,7 @@ public class Utils {
         String clazz = SysProperties.JAVA_OBJECT_SERIALIZER;
         if (clazz != null) {
             try {
-                serializer = (JavaObjectSerializer) loadUserClass(clazz).newInstance();
+                serializer = (JavaObjectSerializer) loadUserClass(clazz).getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -945,7 +945,7 @@ public class Utils {
 
     public static <T> T construct(Class<T> cls, String classname, String readable) throws ConfigException {
         try {
-            return cls.newInstance();
+            return cls.getDeclaredConstructor().newInstance();
         } catch (IllegalAccessException e) {
             throw new ConfigException(
                     String.format("Default constructor for %s class '%s' is inaccessible.", readable, classname));

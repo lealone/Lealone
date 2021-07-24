@@ -54,7 +54,7 @@ public class LoggerFactory {
             ClassLoader loader = Thread.currentThread().getContextClassLoader();
             try {
                 Class<?> clz = loader.loadClass(className);
-                delegateFactory = (LogDelegateFactory) clz.newInstance();
+                delegateFactory = (LogDelegateFactory) clz.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw new IllegalArgumentException("Error instantiating transformer class \"" + className + "\"", e);
             }

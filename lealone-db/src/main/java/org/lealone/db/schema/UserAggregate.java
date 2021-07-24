@@ -43,7 +43,7 @@ public class UserAggregate extends SchemaObjectBase {
             javaClass = Utils.loadUserClass(className);
         }
         try {
-            return (Aggregate) javaClass.newInstance();
+            return (Aggregate) javaClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw DbException.convert(e);
         }

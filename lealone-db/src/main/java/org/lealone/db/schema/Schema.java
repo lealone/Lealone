@@ -709,7 +709,8 @@ public class Schema extends DbObjectBase {
             StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngineName);
             if (engine == null) {
                 try {
-                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).newInstance();
+                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).getDeclaredConstructor()
+                            .newInstance();
                     StorageEngineManager.getInstance().registerEngine(engine);
                 } catch (Exception e) {
                     throw DbException.convert(e);

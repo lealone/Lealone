@@ -5,7 +5,6 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 
 public class DelegatedResult implements Result {

@@ -80,7 +80,7 @@ public class TriggerObject extends SchemaObjectBase {
             Connection c2 = sysSession.createConnection(false);
             Object obj;
             if (triggerClassName != null) {
-                obj = Utils.loadUserClass(triggerClassName).newInstance();
+                obj = Utils.loadUserClass(triggerClassName).getDeclaredConstructor().newInstance();
             } else {
                 obj = loadFromSource();
             }

@@ -73,8 +73,9 @@ public class Service extends SchemaObjectBase {
             synchronized (this) {
                 try {
                     if (executor == null)
-                        executor = (ServiceExecutor) Class.forName(serviceExecutorClassName).newInstance();
-                } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                        executor = (ServiceExecutor) Class.forName(serviceExecutorClassName).getDeclaredConstructor()
+                                .newInstance();
+                } catch (Exception e) {
                     throw new RuntimeException("newInstance exception: " + serviceExecutorClassName, e);
                 }
             }

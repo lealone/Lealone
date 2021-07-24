@@ -156,7 +156,7 @@ public class Lealone {
             StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
             if (se == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
-                se = (StorageEngine) clz.newInstance();
+                se = (StorageEngine) clz.getDeclaredConstructor().newInstance();
                 StorageEngineManager.getInstance().registerEngine(se);
             }
             return se;
@@ -170,7 +170,7 @@ public class Lealone {
                 te = TransactionEngineManager.getInstance().getEngine(def.name);
                 if (te == null) {
                     Class<?> clz = Utils.loadUserClass(def.name);
-                    te = (TransactionEngine) clz.newInstance();
+                    te = (TransactionEngine) clz.getDeclaredConstructor().newInstance();
                     TransactionEngineManager.getInstance().registerEngine(te);
                 }
             } catch (Throwable e) {
@@ -189,7 +189,7 @@ public class Lealone {
             SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
             if (se == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
-                se = (SQLEngine) clz.newInstance();
+                se = (SQLEngine) clz.getDeclaredConstructor().newInstance();
                 SQLEngineManager.getInstance().registerEngine(se);
             }
             return se;
@@ -204,7 +204,7 @@ public class Lealone {
             ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
             if (pse == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
-                pse = (ProtocolServerEngine) clz.newInstance();
+                pse = (ProtocolServerEngine) clz.getDeclaredConstructor().newInstance();
                 ProtocolServerEngineManager.getInstance().registerEngine(pse);
             }
             return pse;

@@ -241,7 +241,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         SQLEngine sqlEngine = SQLEngineManager.getInstance().getEngine(engineName);
         if (sqlEngine == null) {
             try {
-                sqlEngine = (SQLEngine) Utils.loadUserClass(engineName).newInstance();
+                sqlEngine = (SQLEngine) Utils.loadUserClass(engineName).getDeclaredConstructor().newInstance();
                 SQLEngineManager.getInstance().registerEngine(sqlEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found", e);
@@ -254,7 +254,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         TransactionEngine transactionEngine = TransactionEngineManager.getInstance().getEngine(engineName);
         if (transactionEngine == null) {
             try {
-                transactionEngine = (TransactionEngine) Utils.loadUserClass(engineName).newInstance();
+                transactionEngine = (TransactionEngine) Utils.loadUserClass(engineName).getDeclaredConstructor()
+                        .newInstance();
                 TransactionEngineManager.getInstance().registerEngine(transactionEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the transaction engine '" + engineName + "' not found", e);
@@ -1577,7 +1578,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
             eventListener = null;
         } else {
             try {
-                eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
+                eventListener = (DatabaseEventListener) Utils.loadUserClass(className).getDeclaredConstructor()
+                        .newInstance();
                 eventListener.init(name);
             } catch (Throwable e) {
                 throw DbException.get(ErrorCode.ERROR_SETTING_DATABASE_EVENT_LISTENER_2, e, className, e.toString());
