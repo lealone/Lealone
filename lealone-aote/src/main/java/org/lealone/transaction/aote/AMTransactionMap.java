@@ -31,6 +31,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.TransactionMapEntry;
 import org.lealone.transaction.aote.log.UndoLogRecord;
 
 //只支持单机场景
@@ -322,7 +323,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
-        final Iterator<Entry<K, V>> i = entryIterator(from);
+        final Iterator<TransactionMapEntry<K, V>> i = entryIterator(from);
         return new StorageMapCursor<K, V>() {
             Entry<K, V> e;
 
@@ -527,14 +528,14 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public Iterator<Entry<K, V>> entryIterator(K from) {
+    public Iterator<TransactionMapEntry<K, V>> entryIterator(K from) {
         return entryIterator(IterationParameters.create(from));
     }
 
     @Override
-    public Iterator<Entry<K, V>> entryIterator(IterationParameters<K> parameters) {
-        return new Iterator<Entry<K, V>>() {
-            private Entry<K, V> current;
+    public Iterator<TransactionMapEntry<K, V>> entryIterator(IterationParameters<K> parameters) {
+        return new Iterator<TransactionMapEntry<K, V>>() {
+            private TransactionMapEntry<K, V> current;
             private K currentKey = parameters.from;
             private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
 
@@ -572,7 +573,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (data != null && data.getValue() != null) {
                         @SuppressWarnings("unchecked")
                         final V value = (V) data.getValue();
-                        current = new DataUtils.MapEntry<K, V>(key, value, ref);
+                        current = new TransactionMapEntry<>(key, value, ref);
                         currentKey = key;
                         return;
                     }
@@ -587,8 +588,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             }
 
             @Override
-            public Entry<K, V> next() {
-                Entry<K, V> result = current;
+            public TransactionMapEntry<K, V> next() {
+                TransactionMapEntry<K, V> result = current;
                 fetchNext();
                 return result;
             }

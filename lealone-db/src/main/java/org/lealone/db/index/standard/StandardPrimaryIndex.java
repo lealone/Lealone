@@ -11,11 +11,9 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
@@ -44,6 +42,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.TransactionMapEntry;
 
 /**
  * @author H2 Group
@@ -278,11 +277,11 @@ public class StandardPrimaryIndex extends StandardIndex {
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
             return new StandardPrimaryIndexCursor(session, table, this,
-                    Collections.<Entry<Value, VersionedValue>> emptyList().iterator(), null);
+                    Collections.<TransactionMapEntry<Value, VersionedValue>> emptyList().iterator(), null);
         }
         VersionedValue value = map.get(v);
-        Entry<Value, VersionedValue> e = new DataUtils.MapEntry<Value, VersionedValue>(v, value);
-        List<Entry<Value, VersionedValue>> list = Arrays.asList(e);
+        TransactionMapEntry<Value, VersionedValue> e = new TransactionMapEntry<>(v, value);
+        List<TransactionMapEntry<Value, VersionedValue>> list = Arrays.asList(e);
         StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this, list.iterator(), v);
         c.next();
         return c;
@@ -560,13 +559,13 @@ public class StandardPrimaryIndex extends StandardIndex {
         private final ServerSession session;
         private final StandardTable table;
         private final StandardPrimaryIndex index;
-        private final Iterator<Entry<Value, VersionedValue>> it;
+        private final Iterator<TransactionMapEntry<Value, VersionedValue>> it;
         private final ValueLong last;
-        private Entry<Value, VersionedValue> current;
+        private TransactionMapEntry<Value, VersionedValue> current;
         private Row row;
 
         public StandardPrimaryIndexCursor(ServerSession session, StandardTable table, StandardPrimaryIndex index,
-                Iterator<Entry<Value, VersionedValue>> it, ValueLong last) {
+                Iterator<TransactionMapEntry<Value, VersionedValue>> it, ValueLong last) {
             this.session = session;
             this.table = table;
             this.index = index;
@@ -578,10 +577,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         public Row get() {
             if (row == null) {
                 if (current != null) {
-                    Object rawValue = null;
-                    if (current instanceof DataUtils.MapEntry) {
-                        rawValue = ((DataUtils.MapEntry<Value, VersionedValue>) current).getRawValue();
-                    }
+                    Object rawValue = current.getRawValue();
                     VersionedValue value = current.getValue();
                     Value[] data = value.value.getList();
                     int version = value.version;
