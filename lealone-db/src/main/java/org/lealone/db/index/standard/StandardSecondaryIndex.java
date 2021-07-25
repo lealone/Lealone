@@ -387,9 +387,6 @@ public class StandardSecondaryIndex extends StandardIndex {
         return searchRow;
     }
 
-    /**
-     * A cursor.
-     */
     private class StandardSecondaryIndexCursor implements Cursor {
 
         private final ServerSession session;
@@ -423,25 +420,20 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         @Override
         public SearchRow getSearchRow() {
-            if (searchRow == null) {
-                if (current != null) {
-                    searchRow = convertToSearchRow((ValueArray) current);
-                }
+            if (searchRow == null && current != null) {
+                searchRow = convertToSearchRow((ValueArray) current);
             }
             return searchRow;
         }
 
         @Override
         public boolean next() {
-            current = it.hasNext() ? it.next() : null;
             searchRow = null;
-            if (current != null) {
-                if (last != null && compareRows(getSearchRow(), last) > 0) {
-                    searchRow = null;
-                    current = null;
-                }
-            }
             row = null;
+            current = it.hasNext() ? it.next() : null;
+            if (current != null && last != null && compareRows(getSearchRow(), last) > 0) {
+                current = null;
+            }
             return current != null;
         }
     }
@@ -454,7 +446,6 @@ public class StandardSecondaryIndex extends StandardIndex {
         private Value current;
         private SearchRow searchRow;
         private Row row;
-
         private ValueArray oldKey;
 
         public StandardSecondaryIndexDistinctCursor(ServerSession session, ValueArray min, SearchRow last) {
@@ -477,25 +468,19 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         @Override
         public SearchRow getSearchRow() {
-            if (searchRow == null) {
-                if (current != null) {
-                    searchRow = convertToSearchRow((ValueArray) current);
-                }
+            if (searchRow == null && current != null) {
+                searchRow = convertToSearchRow((ValueArray) current);
             }
             return searchRow;
         }
 
         @Override
         public boolean next() {
-            Value newKey = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
-            current = newKey;
             searchRow = null;
             row = null;
-            if (newKey != null) {
-                if (last != null && compareRows(getSearchRow(), last) > 0) {
-                    searchRow = null;
-                    current = null;
-                }
+            current = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
+            if (current != null && last != null && compareRows(getSearchRow(), last) > 0) {
+                current = null;
             }
             if (current != null) {
                 Value[] currentValues = ((ValueArray) current).getList();

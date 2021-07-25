@@ -534,69 +534,21 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(IterationParameters<K> parameters) {
-        return new Iterator<TransactionMapEntry<K, V>>() {
-            private TransactionMapEntry<K, V> current;
-            private K currentKey = parameters.from;
-            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
-
-            {
-                fetchNext();
-            }
-
-            private void fetchNext() {
+        return new TIterator<TransactionMapEntry<K, V>>(parameters) {
+            @Override
+            @SuppressWarnings("unchecked")
+            protected void fetchNext() {
                 while (cursor.hasNext()) {
-                    K k;
-                    try {
-                        k = cursor.next();
-                    } catch (IllegalStateException e) {
-                        // TODO this is a bit ugly
-                        if (DataUtils.getErrorCode(e.getMessage()) == DataUtils.ERROR_CHUNK_NOT_FOUND) {
-                            parameters.from = currentKey;
-                            cursor = map.cursor(parameters);
-                            // we (should) get the current key again,
-                            // we need to ignore that one
-                            if (!cursor.hasNext()) {
-                                break;
-                            }
-                            cursor.next();
-                            if (!cursor.hasNext()) {
-                                break;
-                            }
-                            k = cursor.next();
-                        } else {
-                            throw e;
-                        }
-                    }
-                    final K key = k;
+                    K key = cursor.next();
                     TransactionalValue ref = cursor.getValue();
                     TransactionalValue data = getValue(key, ref);
                     if (data != null && data.getValue() != null) {
-                        @SuppressWarnings("unchecked")
-                        final V value = (V) data.getValue();
+                        V value = (V) data.getValue();
                         current = new TransactionMapEntry<>(key, value, ref);
-                        currentKey = key;
                         return;
                     }
                 }
                 current = null;
-                currentKey = null;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return current != null;
-            }
-
-            @Override
-            public TransactionMapEntry<K, V> next() {
-                TransactionMapEntry<K, V> result = current;
-                fetchNext();
-                return result;
-            }
-
-            @Override
-            public void remove() {
-                throw DataUtils.newUnsupportedOperationException("Removing is not supported");
             }
         };
     }
@@ -608,66 +560,48 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
-        return new Iterator<K>() {
-            private K currentKey = from;
-            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(currentKey);
-
-            {
-                fetchNext();
-            }
-
-            private void fetchNext() {
+        return new TIterator<K>(IterationParameters.create(from)) {
+            @Override
+            protected void fetchNext() {
                 while (cursor.hasNext()) {
-                    K k;
-                    try {
-                        k = cursor.next();
-                    } catch (IllegalStateException e) {
-                        // TODO this is a bit ugly
-                        if (DataUtils.getErrorCode(e.getMessage()) == DataUtils.ERROR_CHUNK_NOT_FOUND) {
-                            cursor = map.cursor(currentKey);
-                            // we (should) get the current key again,
-                            // we need to ignore that one
-                            if (!cursor.hasNext()) {
-                                break;
-                            }
-                            cursor.next();
-                            if (!cursor.hasNext()) {
-                                break;
-                            }
-                            k = cursor.next();
-                        } else {
-                            throw e;
-                        }
-                    }
-                    currentKey = k;
-                    if (includeUncommitted) {
-                        return;
-                    }
-                    if (containsKey(k)) {
+                    current = cursor.next();
+                    if (includeUncommitted || containsKey(current)) {
                         return;
                     }
                 }
-                currentKey = null;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return currentKey != null;
-            }
-
-            @Override
-            public K next() {
-                K result = currentKey;
-                fetchNext();
-                return result;
-            }
-
-            @Override
-            public void remove() {
-                throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+                current = null;
             }
         };
     }
+
+    private abstract class TIterator<E> implements Iterator<E> {
+        E current;
+        final StorageMapCursor<K, TransactionalValue> cursor;
+
+        TIterator(IterationParameters<K> parameters) {
+            cursor = map.cursor(parameters);
+            fetchNext();
+        }
+
+        protected abstract void fetchNext();
+
+        @Override
+        public boolean hasNext() {
+            return current != null;
+        }
+
+        @Override
+        public E next() {
+            E result = current;
+            fetchNext();
+            return result;
+        }
+
+        @Override
+        public void remove() {
+            throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+        }
+    };
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
     public Future<Integer> addIfAbsent(K key, V value) {

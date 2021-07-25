@@ -550,9 +550,6 @@ public class StandardPrimaryIndex extends StandardIndex {
             return -1;
     }
 
-    /**
-     * A cursor.
-     */
     private static class StandardPrimaryIndexCursor implements Cursor {
 
         private final ServerSession session;
@@ -574,32 +571,30 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         @Override
         public Row get() {
-            if (row == null) {
-                if (current != null) {
-                    Object rawValue = current.getRawValue();
-                    VersionedValue value = current.getValue();
-                    Value[] data = value.value.getList();
-                    int version = value.version;
-                    row = new Row(data, 0);
-                    row.setKey(current.getKey().getLong());
-                    row.setVersion(version);
-                    row.setRawValue(rawValue);
+            if (row == null && current != null) {
+                Object rawValue = current.getRawValue();
+                VersionedValue value = current.getValue();
+                Value[] data = value.value.getList();
+                int version = value.version;
+                row = new Row(data, 0);
+                row.setKey(current.getKey().getLong());
+                row.setVersion(version);
+                row.setRawValue(rawValue);
 
-                    if (table.getVersion() != version) {
-                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
-                                .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
-                        Value[] newValues = data;
-                        for (TableAlterHistoryRecord record : records) {
-                            newValues = record.redo(session, newValues);
-                        }
-                        if (newValues != data) {
-                            index.remove(session, row);
-                            row = new Row(newValues, 0);
-                            row.setKey(current.getKey().getLong());
-                            row.setVersion(table.getVersion());
-                            row.setRawValue(rawValue);
-                            index.add(session, row);
-                        }
+                if (table.getVersion() != version) {
+                    ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
+                            .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
+                    Value[] newValues = data;
+                    for (TableAlterHistoryRecord record : records) {
+                        newValues = record.redo(session, newValues);
+                    }
+                    if (newValues != data) {
+                        index.remove(session, row);
+                        row = new Row(newValues, 0);
+                        row.setKey(current.getKey().getLong());
+                        row.setVersion(table.getVersion());
+                        row.setRawValue(rawValue);
+                        index.add(session, row);
                     }
                 }
             }
@@ -613,11 +608,11 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         @Override
         public boolean next() {
+            row = null;
             current = it.hasNext() ? it.next() : null;
-            if (current != null && current.getKey().getLong() > last.getLong()) {
+            if (last != null && current != null && current.getKey().getLong() > last.getLong()) {
                 current = null;
             }
-            row = null;
             return current != null;
         }
     }

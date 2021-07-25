@@ -70,7 +70,7 @@ public class DataUtils {
      * The application was trying to read data from a chunk that is no longer
      * available.
      */
-    public static final int ERROR_CHUNK_NOT_FOUND = 9;
+    // public static final int ERROR_CHUNK_NOT_FOUND = 9;
 
     /**
      * The block in the stream store was not found.
