@@ -6,7 +6,6 @@
 package org.lealone.db.index.standard;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
@@ -16,6 +15,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
+import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -178,7 +178,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         Value key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
-                return new StandardSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+                return EmptyCursor.INSTANCE;
             }
             if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
                 break;

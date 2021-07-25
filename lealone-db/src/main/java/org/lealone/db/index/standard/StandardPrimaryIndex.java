@@ -7,7 +7,6 @@ package org.lealone.db.index.standard;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +19,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
+import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
@@ -276,8 +276,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
-            return new StandardPrimaryIndexCursor(session, table, this,
-                    Collections.<TransactionMapEntry<Value, VersionedValue>> emptyList().iterator(), null);
+            return EmptyCursor.INSTANCE;
         }
         VersionedValue value = map.get(v);
         TransactionMapEntry<Value, VersionedValue> e = new TransactionMapEntry<>(v, value);
