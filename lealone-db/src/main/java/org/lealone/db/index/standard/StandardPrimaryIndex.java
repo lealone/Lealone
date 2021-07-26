@@ -265,10 +265,10 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
-        ValueLong[] minAndMaxValues = getMinAndMaxValues(parameters.from, parameters.to);
-        IterationParameters<Value> newParameters = parameters.copy(minAndMaxValues[0], minAndMaxValues[1]);
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(newParameters),
-                minAndMaxValues[1]);
+        ValueLong from = getPK(parameters.from);
+        ValueLong to = getPK(parameters.to);
+        IterationParameters<Value> newParameters = parameters.copy(from, to);
+        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(newParameters), to);
     }
 
     @Override
@@ -439,59 +439,33 @@ public class StandardPrimaryIndex extends StandardIndex {
         return dataMap.isInMemory();
     }
 
-    private ValueLong[] getMinAndMaxValues(SearchRow first, SearchRow last) {
-        ValueLong min, max;
-        if (first == null) {
-            min = MIN;
+    private ValueLong getPK(SearchRow row) {
+        ValueLong pk;
+        if (row == null) {
+            pk = null; // 设为null，避免不必要的比较
         } else if (mainIndexColumn < 0) {
-            min = ValueLong.get(first.getKey());
+            pk = ValueLong.get(row.getKey());
         } else {
-            Value value = first.getValue(mainIndexColumn);
-            ValueLong v;
+            Value value = row.getValue(mainIndexColumn);
             if (value != null) {
                 if (value instanceof ValueLong)
-                    v = (ValueLong) value;
+                    pk = (ValueLong) value;
                 else
-                    v = ValueLong.get(value.getLong());
+                    pk = ValueLong.get(value.getLong());
             } else {
-                v = null;
-            }
-            if (v == null) {
-                min = ValueLong.get(first.getKey());
-            } else {
-                min = v;
+                pk = ValueLong.get(row.getKey());
             }
         }
-        if (last == null) {
-            max = MAX;
-        } else if (mainIndexColumn < 0) {
-            max = ValueLong.get(last.getKey());
-        } else {
-            Value value = last == null ? null : last.getValue(mainIndexColumn);
-            ValueLong v;
-            if (value != null) {
-                if (value instanceof ValueLong)
-                    v = (ValueLong) value;
-                else
-                    v = ValueLong.get(value.getLong());
-            } else {
-                v = null;
-            }
-            if (v == null) {
-                max = ValueLong.get(last.getKey());
-            } else {
-                max = v;
-            }
-        }
-        return new ValueLong[] { min, max };
+        return pk;
     }
 
     @Override
     public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
             SearchRow last) {
-        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
+        ValueLong from = getPK(first);
+        ValueLong to = getPK(last);
         StorageMap<Value, VersionedValue> map = getMap(session);
-        return map.getNodeToPageKeyMap(minAndMaxValues[0], minAndMaxValues[1]);
+        return map.getNodeToPageKeyMap(from, to);
     }
 
     @Override
