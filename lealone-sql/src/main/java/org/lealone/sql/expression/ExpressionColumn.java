@@ -128,7 +128,8 @@ public class ExpressionColumn extends Expression {
         Select select = resolver.getSelect();
         if (select != null) {
             for (Expression e : select.getExpressions()) {
-                if (database.equalsIdentifiers(columnName, e.getAlias())) {
+                // 只有Alias才需要处理
+                if ((e instanceof Alias) && (database.equalsIdentifiers(columnName, e.getAlias()))) {
                     Column col = new Column(columnName, Value.NULL);
                     resolver = new AliasColumnResolver(select, e.getNonAliasExpression(), col);
                     mapColumn(resolver, col, level);
