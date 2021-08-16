@@ -45,10 +45,17 @@ public class ExpressionCompiler {
     }
 
     private static JitEvaluator loadFromSource(ServerSession session, StringBuilder buff, String fullClassName) {
-        SourceCompiler compiler = session.getDatabase().getCompiler();
-        compiler.setSource(fullClassName, buff.toString());
+        // SourceCompiler compiler = session.getDatabase().getCompiler();
+        // compiler.setSource(fullClassName, buff.toString());
+        // try {
+        // return (JitEvaluator) compiler.getClass(fullClassName).getDeclaredConstructor().newInstance();
+        // } catch (Exception e) {
+        // throw DbException.convert(e);
+        // }
+
         try {
-            return (JitEvaluator) compiler.getClass(fullClassName).getDeclaredConstructor().newInstance();
+            return (JitEvaluator) SourceCompiler.compileAsClass(fullClassName, buff.toString()).getDeclaredConstructor()
+                    .newInstance();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
