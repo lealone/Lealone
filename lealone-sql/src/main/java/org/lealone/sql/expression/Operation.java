@@ -5,6 +5,8 @@
  */
 package org.lealone.sql.expression;
 
+import java.util.TreeSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Mode;
@@ -14,6 +16,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -122,21 +125,7 @@ public class Operation extends Expression {
             return l == ValueNull.INSTANCE ? l : l.negate();
         case CONCAT: {
             Mode mode = session.getDatabase().getMode();
-            if (l == ValueNull.INSTANCE) {
-                if (mode.nullConcatIsNull) {
-                    return ValueNull.INSTANCE;
-                }
-                return r;
-            } else if (r == ValueNull.INSTANCE) {
-                if (mode.nullConcatIsNull) {
-                    return ValueNull.INSTANCE;
-                }
-                return l;
-            }
-            String s1 = l.getString(), s2 = r.getString();
-            StringBuilder buff = new StringBuilder(s1.length() + s2.length());
-            buff.append(s1).append(s2);
-            return ValueString.get(buff.toString());
+            return concat(l, r, mode.nullConcatIsNull);
         }
         case PLUS:
             if (l == ValueNull.INSTANCE || r == ValueNull.INSTANCE) {
@@ -394,4 +383,88 @@ public class Operation extends Expression {
         return left.getCost() + 1 + (right == null ? 0 : right.getCost());
     }
 
+    @Override
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+        StringBuilder indent = indent((level + 1) * 4);
+
+        buff.append(indent).append("{\r\n");
+        String retVarLeft = "lret" + (level + 1);
+        String retVarRight = "rret" + (level + 1);
+        buff.append(indent).append("    Value ").append(retVarLeft).append(";\r\n");
+        if (right != null)
+            buff.append(indent).append("    Value ").append(retVarRight).append(";\r\n");
+        left.genCode(evaluator, buff, importSet, level + 1, retVarLeft);
+        if (right != null)
+            right.genCode(evaluator, buff, importSet, level + 1, retVarRight);
+        int ltype = left.getType();
+        if (ltype != dataType)
+            buff.append("    ").append(indent).append(retVarLeft).append(" = ").append(retVarLeft).append(".convertTo(")
+                    .append(dataType).append(");\r\n");
+        if (right != null) {
+            int rtype = right.getType();
+            if (convertRight && rtype != dataType)
+                buff.append("    ").append(indent).append(retVarRight).append(" = ").append(retVarRight)
+                        .append(".convertTo(").append(dataType).append(");\r\n");
+        }
+
+        buff.append("    ").append(indent).append(retVar).append(" = ");
+
+        String opTypeName = "";
+        switch (opType) {
+        case PLUS:
+            opTypeName = "add";
+            break;
+        case MINUS:
+            opTypeName = "subtract";
+            break;
+        case MULTIPLY:
+            opTypeName = "multiply";
+            break;
+        case DIVIDE:
+            opTypeName = "divide";
+            break;
+        case MODULUS:
+            opTypeName = "modulus";
+            break;
+        }
+
+        switch (opType) {
+        case NEGATE:
+            importSet.add(ValueNull.class.getName());
+            buff.append(retVarLeft).append(" == ValueNull.INSTANCE ? ").append(retVarLeft).append(" : ")
+                    .append(retVarLeft).append(".negate()").append(";\r\n");
+            break;
+        case CONCAT:
+            importSet.add(Operation.class.getName());
+            Mode mode = evaluator.getSession().getDatabase().getMode();
+            buff.append("Operation.concat(").append(retVarLeft).append(", ").append(retVarRight).append(", ")
+                    .append(mode.nullConcatIsNull).append(");\r\n");
+            break;
+        default:
+            importSet.add(ValueNull.class.getName());
+            buff.append(retVarLeft).append(" == ValueNull.INSTANCE || ").append(retVarRight)
+                    .append(" == ValueNull.INSTANCE ? ValueNull.INSTANCE : ").append(retVarLeft).append(".")
+                    .append(opTypeName).append("(").append(retVarRight).append(")").append(";\r\n");
+        }
+        buff.append(indent).append("}").append("\r\n");
+    }
+
+    public static Value concat(Value l, Value r, boolean nullConcatIsNull) {
+        if (l == ValueNull.INSTANCE) {
+            if (nullConcatIsNull) {
+                return ValueNull.INSTANCE;
+            }
+            return r;
+        } else if (r == ValueNull.INSTANCE) {
+            if (nullConcatIsNull) {
+                return ValueNull.INSTANCE;
+            }
+            return l;
+        }
+        String s1 = l.getString(), s2 = r.getString();
+        StringBuilder buff = new StringBuilder(s1.length() + s2.length());
+        buff.append(s1).append(s2);
+        return ValueString.get(buff.toString());
+    }
 }

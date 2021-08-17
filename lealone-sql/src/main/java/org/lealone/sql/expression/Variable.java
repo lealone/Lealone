@@ -5,10 +5,13 @@
  */
 package org.lealone.sql.expression;
 
+import java.util.TreeSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -106,4 +109,10 @@ public class Variable extends Expression {
         return name;
     }
 
+    @Override
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+        StringBuilder indent = indent((level + 1) * 4);
+        buff.append(indent).append(retVar).append(" = session.getVariable(\"").append(name).append("\");\r\n");
+    }
 }

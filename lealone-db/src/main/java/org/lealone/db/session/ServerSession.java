@@ -442,7 +442,7 @@ public class ServerSession extends SessionBase {
 
     @Override
     public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        return (DistributedSQLCommand) prepareStatement(sql, fetchSize);
+        return prepareStatement(sql, fetchSize);
     }
 
     @Override

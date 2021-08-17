@@ -5,6 +5,8 @@
  */
 package org.lealone.sql.expression;
 
+import java.util.TreeSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
@@ -14,6 +16,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -189,4 +192,17 @@ public class Parameter extends Expression implements CommandParameter {
         this.column = column;
     }
 
+    @Override
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+        StringBuilder indent = indent((level + 1) * 4);
+        if (value == null) {
+            importSet.add(ValueNull.class.getName());
+            buff.append(indent).append(retVar).append(" = ValueNull.INSTANCE;\r\n");
+        } else {
+            evaluator.addValue(value);
+            buff.append(indent).append(retVar).append(" = evaluator.getValue(").append(evaluator.getValueListSize() - 1)
+                    .append(");\r\n");
+        }
+    }
 }

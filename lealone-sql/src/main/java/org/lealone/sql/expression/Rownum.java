@@ -5,11 +5,14 @@
  */
 package org.lealone.sql.expression;
 
+import java.util.TreeSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.sql.StatementBase;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -99,4 +102,13 @@ public class Rownum extends Expression {
         return 0;
     }
 
+    @Override
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+        StringBuilder indent = indent((level + 1) * 4);
+        importSet.add(ValueInt.class.getName());
+        importSet.add(StatementBase.class.getName());
+        buff.append(indent).append(retVar)
+                .append(" = ValueInt.get(((StatementBase)session.getCurrentCommand()).getCurrentRowNumber());\r\n");
+    }
 }

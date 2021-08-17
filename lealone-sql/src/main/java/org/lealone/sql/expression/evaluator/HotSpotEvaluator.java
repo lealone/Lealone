@@ -37,6 +37,10 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
         evaluator = new ExpressionInterpreter(session, expression);
     }
 
+    public ServerSession getSession() {
+        return session;
+    }
+
     public void addExpressionColumn(ExpressionColumn ec) {
         expressionColumnList.add(ec);
     }
@@ -80,7 +84,7 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
     }
 
     private void setEvaluator(JitEvaluator e) {
-        e.setHotSpotEvaluator(HotSpotEvaluator.this);
+        e.setHotSpotEvaluator(this);
         e.setSession(session);
         evaluator = e;
     }

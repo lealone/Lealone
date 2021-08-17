@@ -5,6 +5,8 @@
  */
 package org.lealone.sql.expression.condition;
 
+import java.util.TreeSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.SysProperties;
 import org.lealone.db.session.ServerSession;
@@ -14,6 +16,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -90,11 +93,11 @@ public class ConditionAndOr extends Condition {
         Value r;
         switch (andOrType) {
         case AND: {
-            if (Boolean.FALSE.equals(l.getBoolean())) {
+            if (!l.getBoolean()) {
                 return l;
             }
             r = right.getValue(session);
-            if (Boolean.FALSE.equals(r.getBoolean())) {
+            if (!r.getBoolean()) {
                 return r;
             }
             if (l == ValueNull.INSTANCE) {
@@ -106,11 +109,11 @@ public class ConditionAndOr extends Condition {
             return ValueBoolean.get(true);
         }
         case OR: {
-            if (Boolean.TRUE.equals(l.getBoolean())) {
+            if (l.getBoolean()) {
                 return l;
             }
             r = right.getValue(session);
-            if (Boolean.TRUE.equals(r.getBoolean())) {
+            if (r.getBoolean()) {
                 return r;
             }
             if (l == ValueNull.INSTANCE) {
@@ -283,5 +286,71 @@ public class ConditionAndOr extends Condition {
      */
     public Expression getExpression(boolean getLeft) {
         return getLeft ? this.left : right;
+    }
+
+    @Override
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+        importSet.add(ValueNull.class.getName());
+        importSet.add(ValueBoolean.class.getName());
+
+        StringBuilder indent = indent((level + 1) * 4);
+
+        buff.append(indent).append("{\r\n");
+        String retVarLeft = "lret" + (level + 1);
+        String retVarRight = "rret" + (level + 1);
+        buff.append(indent).append("    Value ").append(retVarLeft).append(";\r\n");
+        buff.append(indent).append("    Value ").append(retVarRight).append(";\r\n");
+        left.genCode(evaluator, buff, importSet, level + 1, retVarLeft);
+
+        switch (andOrType) {
+        case AND:
+            buff.append("    ").append(indent).append("if (!").append(retVarLeft).append(".getBoolean()) {\r\n");
+            buff.append("    ").append(indent).append("    ").append(retVar).append(" = ").append(retVarLeft)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("} else {\r\n");
+            right.genCode(evaluator, buff, importSet, level + 2, retVarRight);
+            buff.append("    ").append(indent).append("    if (!").append(retVarRight).append(".getBoolean()) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarRight)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else if (").append(retVarLeft)
+                    .append(" == ValueNull.INSTANCE) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarLeft)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else if (").append(retVarRight)
+                    .append(" == ValueNull.INSTANCE) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarRight)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar)
+                    .append(" = ValueBoolean.get(true);\r\n");
+            buff.append("    ").append(indent).append("    }\r\n");
+            buff.append("    ").append(indent).append("}\r\n");
+            break;
+        case OR:
+            buff.append("    ").append(indent).append("if (").append(retVarLeft).append(".getBoolean()) {\r\n");
+            buff.append("    ").append(indent).append("    ").append(retVar).append(" = ").append(retVarLeft)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("} else {\r\n");
+            right.genCode(evaluator, buff, importSet, level + 2, retVarRight);
+            buff.append("    ").append(indent).append("    if (").append(retVarRight).append(".getBoolean()) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarRight)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else if (").append(retVarLeft)
+                    .append(" == ValueNull.INSTANCE) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarLeft)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else if (").append(retVarRight)
+                    .append(" == ValueNull.INSTANCE) {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar).append(" = ").append(retVarRight)
+                    .append(";\r\n");
+            buff.append("    ").append(indent).append("    } else {\r\n");
+            buff.append("    ").append(indent).append("        ").append(retVar)
+                    .append(" = ValueBoolean.get(false);\r\n");
+            buff.append("    ").append(indent).append("    }\r\n");
+            buff.append("    ").append(indent).append("}\r\n");
+            break;
+        }
+        buff.append(indent).append("}").append("\r\n");
     }
 }
