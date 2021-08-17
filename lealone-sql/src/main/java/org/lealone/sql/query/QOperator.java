@@ -8,6 +8,8 @@ package org.lealone.sql.query;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
@@ -35,10 +37,13 @@ abstract class QOperator {
     QOperator(Select select) {
         this.select = select;
         session = select.getSession();
-        if (select.condition == null)
+        Expression c = select.condition;
+        // 没有查询条件或者查询条件是常量时看看是否能演算为true,false在IndexCursor.isAlwaysFalse()中已经处理了
+        if (c == null || (c instanceof ValueExpression && c.getValue(session).getBoolean())) {
             conditionEvaluator = new AlwaysTrueEvaluator();
-        else
-            conditionEvaluator = new HotSpotEvaluator(session, select.condition);
+        } else {
+            conditionEvaluator = new HotSpotEvaluator(session, c);
+        }
     }
 
     boolean yieldIfNeeded(int rowNumber) {
