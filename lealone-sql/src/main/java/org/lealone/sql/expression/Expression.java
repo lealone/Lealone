@@ -21,6 +21,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -390,6 +391,15 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         isEverything(visitor);
     }
 
-    public void genCode(StringBuilder buff, TreeSet<String> importSet) {
+    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
+            String retVar) {
+    }
+
+    public static StringBuilder indent(int size) {
+        StringBuilder indent = new StringBuilder(size);
+        for (int i = 0; i < size; i++) {
+            indent.append(' ');
+        }
+        return indent;
     }
 }

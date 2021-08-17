@@ -13,17 +13,20 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.SourceCompiler;
+import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
 public class ExpressionCompiler {
 
     private static long id;
 
-    public static synchronized JitEvaluator createJitEvaluator(ServerSession session, Expression expression) {
+    public static synchronized JitEvaluator createJitEvaluator(HotSpotEvaluator evaluator, ServerSession session,
+            Expression expression) {
         StringBuilder body = new StringBuilder();
         TreeSet<String> importSet = new TreeSet<>();
         importSet.add(JitEvaluator.class.getName());
-        expression.genCode(body, importSet);
+        importSet.add(Value.class.getName());
+        expression.genCode(evaluator, body, importSet, 1, "ret1");
 
         id++;
         String className = "JitEvaluator" + id;
@@ -36,7 +39,9 @@ public class ExpressionCompiler {
         buff.append("public class ").append(className).append(" extends JitEvaluator").append(" {\r\n");
         buff.append("    @Override").append("\r\n");
         buff.append("    public boolean getBooleanValue() {").append("\r\n");
-        buff.append("        return true;").append("\r\n");
+        buff.append("        Value ret1").append(";\r\n");
+        buff.append(body);
+        buff.append("        return ret1.getBoolean();").append("\r\n");
         buff.append("    }").append("\r\n");
         buff.append("}\r\n");
 
@@ -61,12 +66,12 @@ public class ExpressionCompiler {
         }
     }
 
-    public static synchronized void createJitEvaluatorAsync(ServerSession session, Expression expression,
-            AsyncHandler<AsyncResult<JitEvaluator>> asyncHandler) {
+    public static synchronized void createJitEvaluatorAsync(HotSpotEvaluator evaluator, ServerSession session,
+            Expression expression, AsyncHandler<AsyncResult<JitEvaluator>> asyncHandler) {
         id++;
         Thread t = new Thread(() -> {
             try {
-                JitEvaluator e = createJitEvaluator(session, expression);
+                JitEvaluator e = createJitEvaluator(evaluator, session, expression);
                 asyncHandler.handle(new AsyncResult<>(e));
             } catch (Exception e) {
                 asyncHandler.handle(new AsyncResult<>(e));
