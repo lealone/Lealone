@@ -6,6 +6,7 @@
 package org.lealone.sql.expression.evaluator;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
@@ -26,6 +27,17 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
     private int count;
     private boolean isJit;
     private boolean async;
+
+    // 用于支持动态编译ConditionInConstantSet表达式
+    private HashSet<Value> valueSet;
+
+    public HashSet<Value> getValueSet() {
+        return valueSet;
+    }
+
+    public void setValueSet(HashSet<Value> valueSet) {
+        this.valueSet = valueSet;
+    }
 
     public HotSpotEvaluator(ServerSession session, Expression expression) {
         this(session, expression, true);
