@@ -15,6 +15,7 @@ import org.lealone.sql.expression.ExpressionColumn;
 //默认先解释执行，一旦发现是热点就采用编译执行
 public class HotSpotEvaluator implements ExpressionEvaluator {
 
+    private final ArrayList<Expression> expressionList = new ArrayList<>();
     private final ArrayList<ExpressionColumn> expressionColumnList = new ArrayList<>();
     private final ArrayList<Value> valueList = new ArrayList<>();
 
@@ -39,6 +40,18 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
 
     public ServerSession getSession() {
         return session;
+    }
+
+    public void addExpression(Expression e) {
+        expressionList.add(e);
+    }
+
+    public Expression getExpression(int index) {
+        return expressionList.get(index);
+    }
+
+    public int getExpressionListSize() {
+        return expressionList.size();
     }
 
     public void addExpressionColumn(ExpressionColumn ec) {
