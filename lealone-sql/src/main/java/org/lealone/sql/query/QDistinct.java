@@ -22,7 +22,7 @@ class QDistinct extends QOperator {
     }
 
     @Override
-    void start() {
+    public void start() {
         super.start();
         index = select.topTableFilter.getIndex();
         columnIndex = index.getColumns()[0].getColumnId();
@@ -30,7 +30,7 @@ class QDistinct extends QOperator {
     }
 
     @Override
-    void run() {
+    public void run() {
         while (cursor.next()) {
             if (select.isForUpdate && !select.topTableFilter.lockRow())
                 return; // 锁记录失败

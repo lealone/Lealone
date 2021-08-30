@@ -143,6 +143,10 @@ public class TableFilter implements ColumnResolver {
         return table;
     }
 
+    public IndexCursor getCursor() {
+        return cursor;
+    }
+
     /**
      * Lock the table. This will also lock joined tables.
      *

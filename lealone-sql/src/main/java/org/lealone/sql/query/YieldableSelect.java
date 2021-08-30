@@ -13,12 +13,17 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.operator.Operator;
+import org.lealone.sql.operator.OperatorFactory;
+import org.lealone.sql.operator.OperatorFactoryBase;
+import org.lealone.sql.operator.OperatorFactoryManager;
 
-class YieldableSelect extends YieldableQueryBase {
+public class YieldableSelect extends YieldableQueryBase {
 
     private final Select select;
     private final ResultTarget target;
-    private QOperator queryOperator;
+    private Operator queryOperator;
+    private boolean queryOperatorChanged;
 
     public YieldableSelect(Select select, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
@@ -27,13 +32,50 @@ class YieldableSelect extends YieldableQueryBase {
         this.target = target;
     }
 
+    public void setQueryOperator(Operator queryOperator) {
+        this.queryOperator = queryOperator;
+    }
+
+    @Override
+    public boolean yieldIfNeeded(int rowNumber) {
+        if (!queryOperatorChanged && rowNumber > 1) { // TODO 允许配置
+            queryOperatorChanged = true;
+            super.yieldIfNeeded(rowNumber);
+            // createOlapOperatorAync();
+            createOlapOperatorSync();
+            return true;
+        }
+        return super.yieldIfNeeded(rowNumber);
+    }
+
+    // private void createOlapOperatorAync() {
+    // Thread t = new Thread(() -> {
+    // createOlapOperator();
+    // });
+    // t.setName("AsyncCreateOlapOperatorThread");
+    // t.start();
+    // }
+
+    private void createOlapOperatorSync() {
+        createOlapOperator();
+    }
+
+    private void createOlapOperator() {
+        OperatorFactory operatorFactory = OperatorFactoryManager.getFactory("olap");
+        if (operatorFactory != null) {
+            Operator olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
+            olapOperator.start();
+            setQueryOperator(olapOperator);
+        }
+    }
+
     @Override
     protected boolean startInternal() {
         select.topTableFilter.lock(session, select.isForUpdate);
         select.topTableFilter.startQuery(session);
         select.topTableFilter.reset();
         select.fireBeforeSelectTriggers();
-        queryOperator = createQueryOperator();
+        queryOperator = new OltpOperatorFactory().createOperator(select);
         queryOperator.start();
         return false;
     }
@@ -48,15 +90,27 @@ class YieldableSelect extends YieldableQueryBase {
     @Override
     protected void executeInternal() {
         queryOperator.run();
-        if (queryOperator.loopEnd) {
+        if (queryOperator.isStopped()) {
             // 查询结果已经增加到target了
             if (target != null) {
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            } else if (queryOperator.localResult != null) {
-                setResult(queryOperator.localResult, queryOperator.localResult.getRowCount());
-                select.resultCache.setResult(queryOperator.localResult);
+            } else if (queryOperator.getLocalResult() != null) {
+                setResult(queryOperator.getLocalResult(), queryOperator.getLocalResult().getRowCount());
+                select.resultCache.setResult(queryOperator.getLocalResult());
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             }
+        }
+    }
+
+    private class OltpOperatorFactory extends OperatorFactoryBase {
+
+        public OltpOperatorFactory() {
+            super("oltp");
+        }
+
+        @Override
+        public Operator createOperator(Select select) {
+            return createQueryOperator();
         }
     }
 

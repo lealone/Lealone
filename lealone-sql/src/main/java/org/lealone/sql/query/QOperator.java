@@ -13,9 +13,10 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.operator.Operator;
 
 // 由子类实现具体的查询操作
-abstract class QOperator {
+abstract class QOperator implements Operator {
 
     protected final Select select;
     protected final ServerSession session;
@@ -62,7 +63,8 @@ abstract class QOperator {
         return false;
     }
 
-    void start() {
+    @Override
+    public void start() {
         limitRows = maxRows;
         // 并不会按offset先跳过前面的行数，而是limitRows加上offset，读够limitRows+offset行，然后再从result中跳
         // 因为可能需要排序，offset是相对于最后的结果来说的，而不是排序前的结果
@@ -84,10 +86,12 @@ abstract class QOperator {
         sampleSize = select.getSampleSizeValue(session);
     }
 
-    void run() {
+    @Override
+    public void run() {
     }
 
-    void stop() {
+    @Override
+    public void stop() {
         if (select.offsetExpr != null) {
             localResult.setOffset(select.offsetExpr.getValue(session).getInt());
         }
@@ -103,5 +107,15 @@ abstract class QOperator {
                 localResult.close();
             }
         }
+    }
+
+    @Override
+    public boolean isStopped() {
+        return loopEnd;
+    }
+
+    @Override
+    public LocalResult getLocalResult() {
+        return localResult;
     }
 }

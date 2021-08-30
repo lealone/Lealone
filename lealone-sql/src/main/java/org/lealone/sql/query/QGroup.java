@@ -26,7 +26,7 @@ class QGroup extends QOperator {
     }
 
     @Override
-    void start() {
+    public void start() {
         super.start();
         groups = ValueHashMap.newInstance();
         select.currentGroup = null;
@@ -34,7 +34,7 @@ class QGroup extends QOperator {
     }
 
     @Override
-    void run() {
+    public void run() {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (conditionEvaluator.getBooleanValue()) {

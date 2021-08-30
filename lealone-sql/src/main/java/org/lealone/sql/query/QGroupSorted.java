@@ -12,6 +12,7 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
+//只处理group by，且group by的字段有对应的索引
 class QGroupSorted extends QOperator {
 
     private Value[] previousKeyValues;
@@ -21,13 +22,13 @@ class QGroupSorted extends QOperator {
     }
 
     @Override
-    void start() {
+    public void start() {
         super.start();
         select.currentGroup = null;
     }
 
     @Override
-    void run() {
+    public void run() {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (conditionEvaluator.getBooleanValue()) {

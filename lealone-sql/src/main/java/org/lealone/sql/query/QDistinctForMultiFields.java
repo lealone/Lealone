@@ -23,7 +23,7 @@ class QDistinctForMultiFields extends QOperator {
     }
 
     @Override
-    void start() {
+    public void start() {
         super.start();
         index = select.topTableFilter.getIndex();
         columnIds = index.getColumnIds();
@@ -32,7 +32,7 @@ class QDistinctForMultiFields extends QOperator {
     }
 
     @Override
-    void run() {
+    public void run() {
         while (cursor.next()) {
             if (select.isForUpdate && !select.topTableFilter.lockRow())
                 return; // 锁记录失败

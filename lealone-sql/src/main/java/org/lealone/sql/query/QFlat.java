@@ -16,7 +16,7 @@ class QFlat extends QOperator {
     }
 
     @Override
-    void run() {
+    public void run() {
         while (select.topTableFilter.next()) {
             ++loopCount;
             if (conditionEvaluator.getBooleanValue()) {

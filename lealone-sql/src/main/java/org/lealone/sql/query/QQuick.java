@@ -16,12 +16,12 @@ class QQuick extends QOperator {
     }
 
     @Override
-    void start() {
+    public void start() {
         // 什么都不需要做
     }
 
     @Override
-    void run() {
+    public void run() {
         Value[] row = new Value[columnCount];
         for (int i = 0; i < columnCount; i++) {
             Expression expr = select.expressions.get(i);

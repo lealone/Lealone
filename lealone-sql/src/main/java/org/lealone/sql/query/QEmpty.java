@@ -13,7 +13,7 @@ class QEmpty extends QOperator {
     }
 
     @Override
-    void run() {
+    public void run() {
         loopEnd = true;
     }
 }
