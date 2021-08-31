@@ -19,6 +19,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -52,6 +53,10 @@ public class ConditionInConstantSet extends Condition {
         for (Expression expression : valueList) {
             valueSet.add(expression.getValue(session).convertTo(type));
         }
+    }
+
+    public Expression getLeft() {
+        return left;
     }
 
     @Override
@@ -193,5 +198,10 @@ public class ConditionInConstantSet extends Condition {
         }
         buff.append("    ").append(indent).append("}\r\n");
         buff.append(indent).append("}").append("\r\n");
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitConditionInConstantSet(this);
     }
 }

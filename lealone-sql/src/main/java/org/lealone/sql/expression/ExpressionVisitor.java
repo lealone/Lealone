@@ -121,16 +121,6 @@ public class ExpressionVisitor {
     }
 
     /**
-     * Create a new visitor object to collect dependencies.
-     *
-     * @param dependencies the dependencies set
-     * @return the new visitor
-     */
-    public static ExpressionVisitor getDependenciesVisitor(Set<DbObject> dependencies) {
-        return new ExpressionVisitor(GET_DEPENDENCIES, 0, dependencies, null, null, null, null);
-    }
-
-    /**
      * Create a new visitor to check if all aggregates are for the given table.
      *
      * @param table the table
@@ -149,20 +139,6 @@ public class ExpressionVisitor {
      */
     public static ExpressionVisitor getNotFromResolverVisitor(ColumnResolver resolver) {
         return new ExpressionVisitor(NOT_FROM_RESOLVER, 0, null, null, null, resolver, null);
-    }
-
-    /**
-     * Create a new visitor to get all referenced columns.
-     *
-     * @param columns the columns map
-     * @return the new visitor
-     */
-    public static ExpressionVisitor getColumnsVisitor(Set<Column> columns) {
-        return new ExpressionVisitor(GET_COLUMNS, 0, null, columns, null, null, null);
-    }
-
-    public static ExpressionVisitor getMaxModificationIdVisitor() {
-        return new ExpressionVisitor(SET_MAX_DATA_MODIFICATION_ID, 0, null, null, null, null, new long[1]);
     }
 
     /**

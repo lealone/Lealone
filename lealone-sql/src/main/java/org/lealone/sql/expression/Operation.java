@@ -18,6 +18,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.function.Function;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -70,6 +71,14 @@ public class Operation extends Expression {
         this.opType = opType;
         this.left = left;
         this.right = right;
+    }
+
+    public Expression getLeft() {
+        return left;
+    }
+
+    public Expression getRight() {
+        return right;
     }
 
     @Override
@@ -466,5 +475,10 @@ public class Operation extends Expression {
         StringBuilder buff = new StringBuilder(s1.length() + s2.length());
         buff.append(s1).append(s2);
         return ValueString.get(buff.toString());
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitOperation(this);
     }
 }

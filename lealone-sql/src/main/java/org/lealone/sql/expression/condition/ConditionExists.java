@@ -12,6 +12,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
@@ -25,6 +26,10 @@ public class ConditionExists extends Condition {
 
     public ConditionExists(Query query) {
         this.query = query;
+    }
+
+    public Query getQuery() {
+        return query;
     }
 
     @Override
@@ -75,4 +80,8 @@ public class ConditionExists extends Condition {
         return query.getCostAsExpression();
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitConditionExists(this);
+    }
 }

@@ -35,6 +35,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SelectOrderBy;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
@@ -157,6 +158,18 @@ public class Aggregate extends Expression {
         this.on = on;
         this.select = select;
         this.distinct = distinct;
+    }
+
+    public Expression getOn() {
+        return on;
+    }
+
+    public Expression getGroupConcatSeparator() {
+        return groupConcatSeparator;
+    }
+
+    public ArrayList<SelectOrderBy> getGroupConcatOrderList() {
+        return groupConcatOrderList;
     }
 
     static {
@@ -822,5 +835,10 @@ public class Aggregate extends Expression {
         Value b = ValueLong.get(by).convertTo(type);
         a = a.convertTo(type).divide(b);
         return a;
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitAggregate(this);
     }
 }

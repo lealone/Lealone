@@ -12,6 +12,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -114,5 +115,10 @@ public class Variable extends Expression {
             String retVar) {
         StringBuilder indent = indent((level + 1) * 4);
         buff.append(indent).append(retVar).append(" = session.getVariable(\"").append(name).append("\");\r\n");
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitVariable(this);
     }
 }

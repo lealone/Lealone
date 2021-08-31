@@ -24,6 +24,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 
 /**
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).
@@ -160,4 +161,8 @@ public class TableFunction extends Function {
         return getExpressionColumns(session, getTable(session, getArgs(), true, false).getResultSet());
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitTableFunction(this);
+    }
 }

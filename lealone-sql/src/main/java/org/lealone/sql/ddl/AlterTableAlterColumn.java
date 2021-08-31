@@ -26,7 +26,8 @@ import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.DependenciesVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 
 /**
  * This class represents the statements
@@ -213,8 +214,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
             return;
         }
         HashSet<DbObject> dependencies = new HashSet<>();
-        ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor(dependencies);
-        defaultExpression.isEverything(visitor);
+        DependenciesVisitor visitor = ExpressionVisitorFactory.getDependenciesVisitor(dependencies);
+        defaultExpression.accept(visitor);
         if (dependencies.contains(table)) {
             throw DbException.get(ErrorCode.COLUMN_IS_REFERENCED_1, defaultExpression.getSQL());
         }

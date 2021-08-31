@@ -10,6 +10,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -23,6 +24,10 @@ public class ExpressionList extends Expression {
 
     public ExpressionList(Expression[] list) {
         this.list = list;
+    }
+
+    public Expression[] getList() {
+        return list;
     }
 
     @Override
@@ -134,4 +139,8 @@ public class ExpressionList extends Expression {
         return expr;
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitExpressionList(this);
+    }
 }

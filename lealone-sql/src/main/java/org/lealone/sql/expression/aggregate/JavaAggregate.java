@@ -21,6 +21,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
@@ -44,6 +45,14 @@ public class JavaAggregate extends Expression {
         this.userAggregate = userAggregate;
         this.args = args;
         this.select = select;
+    }
+
+    public UserAggregate getUserAggregate() {
+        return userAggregate;
+    }
+
+    public Expression[] getArgs() {
+        return args;
     }
 
     @Override
@@ -210,4 +219,8 @@ public class JavaAggregate extends Expression {
         }
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitJavaAggregate(this);
+    }
 }

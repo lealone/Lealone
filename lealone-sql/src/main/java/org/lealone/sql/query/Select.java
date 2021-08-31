@@ -44,6 +44,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
@@ -153,6 +154,11 @@ public class Select extends Query {
         if (isTop) {
             topFilters.add(filter);
         }
+    }
+
+    @Override
+    public ArrayList<TableFilter> getFilters() {
+        return filters;
     }
 
     @Override
@@ -1026,6 +1032,21 @@ public class Select extends Query {
             result = false;
         }
         return result;
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        for (int i = 0, size = expressions.size(); i < size; i++) {
+            Expression e = expressions.get(i);
+            e.accept(visitor);
+        }
+        if (condition != null) {
+            condition.accept(visitor);
+        }
+        if (having != null) {
+            having.accept(visitor);
+        }
+        return null;
     }
 
     @Override

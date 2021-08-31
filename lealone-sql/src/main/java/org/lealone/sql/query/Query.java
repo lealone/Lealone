@@ -32,6 +32,9 @@ import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.MaxModificationIdVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -192,6 +195,8 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     public abstract boolean isEverything(ExpressionVisitor visitor);
 
+    public abstract <R> R accept(IExpressionVisitor<R> visitor);
+
     /**
      * Update all aggregate function values.
      *
@@ -313,10 +318,12 @@ public abstract class Query extends ManipulationStatement implements org.lealone
 
     @Override
     public final long getMaxDataModificationId() {
-        ExpressionVisitor visitor = ExpressionVisitor.getMaxModificationIdVisitor();
-        isEverything(visitor);
+        MaxModificationIdVisitor visitor = ExpressionVisitorFactory.getMaxModificationIdVisitor();
+        accept(visitor);
         return visitor.getMaxDataModificationId();
     }
+
+    public abstract List<TableFilter> getFilters();
 
     public abstract List<TableFilter> getTopFilters();
 

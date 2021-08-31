@@ -17,6 +17,7 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -204,5 +205,10 @@ public class Parameter extends Expression implements CommandParameter {
             buff.append(indent).append(retVar).append(" = evaluator.getValue(").append(evaluator.getValueListSize() - 1)
                     .append(");\r\n");
         }
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitParameter(this);
     }
 }

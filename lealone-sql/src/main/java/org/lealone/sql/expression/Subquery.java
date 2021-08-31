@@ -14,6 +14,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
@@ -138,5 +139,10 @@ public class Subquery extends Expression {
     @Override
     public Expression[] getExpressionColumns(ServerSession session) {
         return getExpression().getExpressionColumns(session);
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitSubquery(this);
     }
 }

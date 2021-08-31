@@ -31,6 +31,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.sharding.YieldableShardingQuery;
@@ -256,6 +257,13 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        left.accept(visitor);
+        right.accept(visitor);
+        return null;
+    }
+
+    @Override
     public void updateAggregate(ServerSession s) {
         left.updateAggregate(s);
         right.updateAggregate(s);
@@ -270,6 +278,13 @@ public class SelectUnion extends Query implements ISelectUnion {
     @Override
     public boolean allowGlobalConditions() {
         return left.allowGlobalConditions() && right.allowGlobalConditions();
+    }
+
+    @Override
+    public List<TableFilter> getFilters() {
+        List<TableFilter> filters = left.getFilters();
+        filters.addAll(right.getFilters());
+        return filters;
     }
 
     @Override

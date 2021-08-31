@@ -68,6 +68,7 @@ import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.util.AutoCloseInputStream;
@@ -2281,4 +2282,8 @@ public class Function extends Expression implements FunctionCall {
         return info.bufferResultSetToLocalTemp;
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitFunction(this);
+    }
 }

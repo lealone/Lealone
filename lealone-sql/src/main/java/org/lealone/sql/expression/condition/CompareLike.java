@@ -21,6 +21,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -64,6 +65,18 @@ public class CompareLike extends Condition {
         this.left = left;
         this.right = right;
         this.escape = escape;
+    }
+
+    public Expression getLeft() {
+        return left;
+    }
+
+    public Expression getRight() {
+        return right;
+    }
+
+    public Expression getEscape() {
+        return escape;
     }
 
     private static Character getEscapeChar(String s) {
@@ -421,4 +434,8 @@ public class CompareLike extends Condition {
         return left.getCost() + right.getCost() + 3;
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitCompareLike(this);
+    }
 }

@@ -22,6 +22,7 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.AliasColumnResolver;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
@@ -359,5 +360,10 @@ public class ExpressionColumn extends Expression {
         evaluator.addExpressionColumn(this);
         buff.append(indent).append(retVar).append(" = evaluator.getExpressionColumn(")
                 .append(evaluator.getExpressionColumnListSize() - 1).append(").getValue(session);\r\n");
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitExpressionColumn(this);
     }
 }

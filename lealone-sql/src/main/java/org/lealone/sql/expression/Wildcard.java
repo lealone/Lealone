@@ -10,6 +10,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -105,4 +106,8 @@ public class Wildcard extends Expression {
         throw DbException.getInternalError();
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitWildcard(this);
+    }
 }

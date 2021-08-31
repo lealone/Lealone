@@ -13,6 +13,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -110,5 +111,10 @@ public class Rownum extends Expression {
         importSet.add(StatementBase.class.getName());
         buff.append(indent).append(retVar)
                 .append(" = ValueInt.get(((StatementBase)session.getCurrentCommand()).getCurrentRowNumber());\r\n");
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitRownum(this);
     }
 }

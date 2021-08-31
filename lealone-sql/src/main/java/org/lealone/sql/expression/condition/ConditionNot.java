@@ -14,6 +14,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -26,6 +27,10 @@ public class ConditionNot extends Condition {
 
     public ConditionNot(Expression condition) {
         this.condition = condition;
+    }
+
+    public Expression getCondition() {
+        return condition;
     }
 
     @Override
@@ -121,5 +126,10 @@ public class ConditionNot extends Condition {
                 .append(" == ValueNull.INSTANCE ? ").append(retVarLeft).append(" : ").append(retVarLeft)
                 .append(".convertTo(Value.BOOLEAN).negate();\r\n");
         buff.append(indent).append("}").append("\r\n");
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitConditionNot(this);
     }
 }

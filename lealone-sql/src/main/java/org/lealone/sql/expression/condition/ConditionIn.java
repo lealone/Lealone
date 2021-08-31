@@ -17,6 +17,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -42,6 +43,14 @@ public class ConditionIn extends Condition {
         this.database = database;
         this.left = left;
         this.valueList = values;
+    }
+
+    public Expression getLeft() {
+        return left;
+    }
+
+    public ArrayList<Expression> getValueList() {
+        return valueList;
     }
 
     @Override
@@ -211,4 +220,8 @@ public class ConditionIn extends Condition {
         return null;
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitConditionIn(this);
+    }
 }

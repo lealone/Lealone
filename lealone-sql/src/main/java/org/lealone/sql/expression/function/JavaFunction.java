@@ -18,6 +18,7 @@ import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -27,6 +28,7 @@ import org.lealone.sql.optimizer.TableFilter;
 public class JavaFunction extends Expression implements FunctionCall {
 
     private final FunctionAlias functionAlias;
+
     private final FunctionAlias.JavaMethod javaMethod;
     private final Expression[] args;
 
@@ -34,6 +36,10 @@ public class JavaFunction extends Expression implements FunctionCall {
         this.functionAlias = functionAlias;
         this.javaMethod = functionAlias.findJavaMethod(args);
         this.args = args;
+    }
+
+    public FunctionAlias getFunctionAlias() {
+        return functionAlias;
     }
 
     @Override
@@ -185,4 +191,8 @@ public class JavaFunction extends Expression implements FunctionCall {
         return functionAlias.isBufferResultSetToLocalTemp();
     }
 
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitJavaFunction(this);
+    }
 }
