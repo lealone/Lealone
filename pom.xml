@@ -59,6 +59,7 @@
         <module>lealone-p2p</module>
         <module>lealone-orm</module>
         <module>lealone-web</module>
+        <module>lealone-vector</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
