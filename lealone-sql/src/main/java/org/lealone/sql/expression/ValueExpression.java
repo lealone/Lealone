@@ -19,6 +19,8 @@ import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.vector.SingleValueVector;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * An expression representing a constant value.
@@ -76,6 +78,11 @@ public class ValueExpression extends Expression {
     @Override
     public Value getValue(ServerSession session) {
         return value;
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session) {
+        return new SingleValueVector(value);
     }
 
     @Override

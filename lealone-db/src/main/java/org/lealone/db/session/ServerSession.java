@@ -1892,4 +1892,14 @@ public class ServerSession extends SessionBase {
     public void setStorageReplicationMode(boolean isStorageReplicationMode) {
         this.isStorageReplicationMode = isStorageReplicationMode;
     }
+
+    private String valueVectorFactoryName;
+
+    public String getValueVectorFactoryName() {
+        return valueVectorFactoryName;
+    }
+
+    public void setValueVectorFactoryName(String valueVectorFactoryName) {
+        this.valueVectorFactoryName = valueVectorFactoryName;
+    }
 }

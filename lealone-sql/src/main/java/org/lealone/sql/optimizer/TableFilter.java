@@ -33,6 +33,9 @@ import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.DefaultValueVectorFactory;
+import org.lealone.sql.vector.ValueVector;
+import org.lealone.sql.vector.ValueVectorFactory;
 import org.lealone.storage.PageKey;
 
 /**
@@ -113,6 +116,8 @@ public class TableFilter implements ColumnResolver {
 
     private int[] columnIndexes;
 
+    private ValueVectorFactory valueVectorFactory;
+
     /**
      * Create a new table filter object.
      *
@@ -132,6 +137,17 @@ public class TableFilter implements ColumnResolver {
             session.getUser().checkRight(table, Right.SELECT);
         }
         hashCode = session.nextObjectId();
+        String valueVectorFactoryName = session.getValueVectorFactoryName();
+        if (valueVectorFactoryName == null) {
+            valueVectorFactory = DefaultValueVectorFactory.INSTANCE;
+        } else {
+            try {
+                valueVectorFactory = (ValueVectorFactory) Class.forName(valueVectorFactoryName).getDeclaredConstructor()
+                        .newInstance();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 
     @Override
@@ -907,6 +923,22 @@ public class TableFilter implements ColumnResolver {
     @Override
     public Value getValue(Column column) {
         return getValue(column.getColumnId());
+    }
+
+    @Override
+    public ValueVector getValueVector(Column column) {
+        return valueVectorFactory.createValueVector(batch, column);
+    }
+
+    private ArrayList<Row> batch;
+
+    public boolean nextBatch() {
+        int size = 1024;
+        batch = new ArrayList<>(size);
+        while (size-- > 0 && next()) {
+            batch.add(get());
+        }
+        return !batch.isEmpty();
     }
 
     public Value getValue(int columnId) {

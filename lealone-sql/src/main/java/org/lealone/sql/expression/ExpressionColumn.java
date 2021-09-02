@@ -28,6 +28,7 @@ import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * A expression that represents a column of a table or view.
@@ -69,6 +70,10 @@ public class ExpressionColumn extends Expression {
             database = LealoneDatabase.getInstance().getDatabase(databaseName);
         }
         return database;
+    }
+
+    public ColumnResolver getColumnResolver() {
+        return columnResolver;
     }
 
     @Override
@@ -208,6 +213,15 @@ public class ExpressionColumn extends Expression {
             }
         }
         Value value = columnResolver.getValue(column);
+        if (value == null) {
+            throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
+        }
+        return value;
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session) {
+        ValueVector value = columnResolver.getValueVector(column);
         if (value == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }

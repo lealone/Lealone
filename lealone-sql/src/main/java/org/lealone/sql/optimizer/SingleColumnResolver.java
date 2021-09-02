@@ -10,6 +10,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.SingleValueVector;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * The single column resolver is like a table with exactly one row.
@@ -30,6 +32,11 @@ public class SingleColumnResolver implements ColumnResolver {
     @Override
     public Value getValue(Column col) {
         return value;
+    }
+
+    @Override
+    public ValueVector getValueVector(Column column) {
+        return new SingleValueVector(value);
     }
 
     @Override

@@ -12,6 +12,7 @@ import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.ValueVector;
 
 // 处理在where和having中出现别名的情况，如:
 // SELECT id AS A FROM test where A>=0
@@ -31,6 +32,11 @@ public class AliasColumnResolver implements ColumnResolver {
     @Override
     public Value getValue(Column col) {
         return expression.getValue(select.getSession());
+    }
+
+    @Override
+    public ValueVector getValueVector(Column column) {
+        return expression.getValueVector(select.getSession());
     }
 
     @Override

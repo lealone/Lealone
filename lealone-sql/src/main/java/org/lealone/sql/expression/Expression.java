@@ -26,6 +26,7 @@ import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * An expression is a operation, a value, or a function in a query.
@@ -46,6 +47,10 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     }
 
     public abstract Value getValue(ServerSession session);
+
+    public ValueVector getValueVector(ServerSession session) {
+        return null;
+    }
 
     /**
      * Return the data type. The data type may not be known before the

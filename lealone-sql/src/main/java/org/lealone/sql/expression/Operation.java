@@ -21,6 +21,7 @@ import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * A mathematical expression, or string concatenation.
@@ -160,6 +161,40 @@ public class Operation extends Expression {
             if (l == ValueNull.INSTANCE || r == ValueNull.INSTANCE) {
                 return ValueNull.INSTANCE;
             }
+            return l.modulus(r);
+        default:
+            throw DbException.getInternalError("type=" + opType);
+        }
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session) {
+        ValueVector l = left.getValueVector(session);
+        ValueVector r;
+        if (right == null) {
+            r = null;
+        } else {
+            r = right.getValueVector(session);
+            if (convertRight) {
+                r = r.convertTo(dataType);
+            }
+        }
+        switch (opType) {
+        case NEGATE:
+            return l.negate();
+        case CONCAT: {
+            Mode mode = session.getDatabase().getMode();
+            return l.concat(r, mode.nullConcatIsNull);
+        }
+        case PLUS:
+            return l.add(r);
+        case MINUS:
+            return l.subtract(r);
+        case MULTIPLY:
+            return l.multiply(r);
+        case DIVIDE:
+            return l.divide(r);
+        case MODULUS:
             return l.modulus(r);
         default:
             throw DbException.getInternalError("type=" + opType);
