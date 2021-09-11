@@ -5,10 +5,12 @@
  */
 package org.lealone.server;
 
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.server.protocol.PacketType;
@@ -19,7 +21,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
     // taskQueue中的命令统一由scheduler调度执行
-    private final ConcurrentLinkedQueue<PacketDeliveryTask> taskQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<AsyncTask> taskQueue = new ConcurrentLinkedQueue<>();
     private final Scheduler scheduler;
     private final TcpServerConnection conn;
 
@@ -67,6 +69,12 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         scheduler.wakeUp();
     }
 
+    public void submitTasks(AsyncTask... tasks) {
+        updateLastActiveTime();
+        taskQueue.addAll(Arrays.asList(tasks));
+        scheduler.wakeUp();
+    }
+
     public void submitYieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable) {
         YieldableCommand yieldableCommand = new YieldableCommand(packetId, yieldable, sessionId);
         session.setYieldableCommand(yieldableCommand);
@@ -87,7 +95,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         }
     }
 
-    private void runTask(PacketDeliveryTask task) {
+    private void runTask(AsyncTask task) {
         try {
             task.run();
         } catch (Throwable e) {
@@ -106,7 +114,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
             }
         }
         if (session.canExecuteNextCommand()) {
-            PacketDeliveryTask task = taskQueue.poll();
+            AsyncTask task = taskQueue.poll();
             while (task != null) {
                 runTask(task);
                 // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
