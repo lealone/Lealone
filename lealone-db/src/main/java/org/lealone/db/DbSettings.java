@@ -175,12 +175,6 @@ public class DbSettings extends SettingsBase {
     public final int maxQueryTimeout = get(DbSetting.MAX_QUERY_TIMEOUT, 0);
 
     /**
-     * Database setting <code>NESTED_JOINS</code> (default: true).<br />
-     * Whether nested joins should be supported.
-     */
-    public final boolean nestedJoins = get(DbSetting.NESTED_JOINS, true);
-
-    /**
      * Database setting <code>OPTIMIZE_DISTINCT</code> (default: true).<br />
      * Improve the performance of simple DISTINCT queries if an index is
      * available for the given column. The optimization is used if:

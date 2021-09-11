@@ -218,39 +218,20 @@ public class TableFilter implements ColumnResolver {
             item.cost -= item.cost * indexConditions.size() / 100 / level;
         }
         if (nestedJoin != null) {
-            setEvaluatable(nestedJoin);
+            setEvaluatable(true);
             item.setNestedJoinPlan(nestedJoin.getBestPlanItem(s, level));
             // TODO optimizer: calculate cost of a join: should use separate
             // expected row number and lookup cost
             item.cost += item.cost * item.getNestedJoinPlan().cost;
         }
         if (join != null) {
-            setEvaluatable(join);
+            setEvaluatable(true);
             item.setJoinPlan(join.getBestPlanItem(s, level));
             // TODO optimizer: calculate cost of a join: should use separate
             // expected row number and lookup cost
             item.cost += item.cost * item.getJoinPlan().cost;
         }
         return item;
-    }
-
-    private void setEvaluatable(TableFilter join) {
-        if (session.getDatabase().getSettings().nestedJoins) {
-            setEvaluatable(true);
-            return;
-        }
-        // this table filter is now evaluatable - in all sub-joins
-        do {
-            Expression e = join.getJoinCondition();
-            if (e != null) {
-                e.setEvaluatable(this, true);
-            }
-            TableFilter n = join.getNestedJoin();
-            if (n != null) {
-                setEvaluatable(n);
-            }
-            join = join.getJoin();
-        } while (join != null);
     }
 
     /**
@@ -544,75 +525,47 @@ public class TableFilter implements ColumnResolver {
      *
      * @param filter the joined table filter
      * @param outer if this is an outer join
-     * @param nested if this is a nested join
      * @param on the join condition
      */
-    public void addJoin(TableFilter filter, boolean outer, boolean nested, final Expression on) {
+    public void addJoin(TableFilter filter, boolean outer, final Expression on) {
         if (on != null) {
             on.mapColumns(this, 0);
-            if (session.getDatabase().getSettings().nestedJoins) {
-                visit(new TableFilterVisitor() {
-                    @Override
-                    public void accept(TableFilter f) {
-                        on.mapColumns(f, 0);
-                    }
-                });
-                filter.visit(new TableFilterVisitor() {
-                    @Override
-                    public void accept(TableFilter f) {
-                        on.mapColumns(f, 0);
-                    }
-                });
-            }
+            TableFilterVisitor visitor = new MapColumnsVisitor(on);
+            visit(visitor);
+            filter.visit(visitor);
         }
-        if (nested && session.getDatabase().getSettings().nestedJoins) {
-            if (nestedJoin != null) {
-                throw DbException.getInternalError();
-            }
-            nestedJoin = filter;
+        if (join == null) {
+            join = filter;
             filter.joinOuter = outer;
             if (outer) {
-                visit(new TableFilterVisitor() {
-
-                    @Override
-                    public void accept(TableFilter f) {
-                        f.joinOuterIndirect = true;
-                    }
-                });
+                filter.visit(JOI_VISITOR);
             }
             if (on != null) {
                 filter.mapAndAddFilter(on);
             }
         } else {
-            if (join == null) {
-                join = filter;
-                filter.joinOuter = outer;
-                if (session.getDatabase().getSettings().nestedJoins) {
-                    if (outer) {
-                        filter.visit(new TableFilterVisitor() {
-                            @Override
-                            public void accept(TableFilter f) {
-                                f.joinOuterIndirect = true;
-                            }
-                        });
-                    }
-                } else {
-                    if (outer) {
+            join.addJoin(filter, outer, on);
+        }
+    }
 
-                        // convert all inner joins on the right hand side to outer joins
-                        TableFilter f = filter.join;
-                        while (f != null) {
-                            f.joinOuter = true;
-                            f = f.join;
-                        }
-                    }
-                }
-                if (on != null) {
-                    filter.mapAndAddFilter(on);
-                }
-            } else {
-                join.addJoin(filter, outer, nested, on);
-            }
+    /**
+     * A visitor that sets joinOuterIndirect to true.
+     */
+    private static final TableFilterVisitor JOI_VISITOR = f -> f.joinOuterIndirect = true;
+
+    /**
+     * A visitor that maps columns.
+     */
+    private static final class MapColumnsVisitor implements TableFilterVisitor {
+        private final Expression on;
+
+        MapColumnsVisitor(Expression on) {
+            this.on = on;
+        }
+
+        @Override
+        public void accept(TableFilter f) {
+            on.mapColumns(f, 0);
         }
     }
 
@@ -1030,6 +983,15 @@ public class TableFilter implements ColumnResolver {
 
     public TableFilter getNestedJoin() {
         return nestedJoin;
+    }
+
+    /**
+     * Set a nested joined table.
+     *
+     * @param filter the joined table filter
+     */
+    public void setNestedJoin(TableFilter filter) {
+        nestedJoin = filter;
     }
 
     /**

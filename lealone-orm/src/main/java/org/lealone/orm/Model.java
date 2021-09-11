@@ -424,7 +424,7 @@ public abstract class Model<T> {
             while (tableFilterStack.size() > 1) {
                 ExpressionBuilder<T> on = getStack().pop();
                 TableFilter joined = getTableFilterStack().pop();
-                first.addJoin(joined, false, false, on.getExpression());
+                first.addJoin(joined, false, on.getExpression());
             }
         }
     }

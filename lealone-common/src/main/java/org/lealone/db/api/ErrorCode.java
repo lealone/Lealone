@@ -1861,7 +1861,7 @@ public class ErrorCode {
      * SELECT * FROM DUAL A LEFT JOIN DUAL B ON B.X=(SELECT MAX(X) FROM DUAL);
      * </pre>
      */
-    public static final int UNSUPPORTED_OUTER_JOIN_CONDITION_1 = 90136;
+    // public static final int UNSUPPORTED_OUTER_JOIN_CONDITION_1 = 90136;
 
     /**
      * The error with code <code>90137</code> is thrown when
