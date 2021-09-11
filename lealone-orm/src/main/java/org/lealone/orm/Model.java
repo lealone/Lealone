@@ -674,6 +674,10 @@ public abstract class Model<T> {
     }
 
     public long insert(Long tid) {
+        // 必须设置字段值
+        if (nvPairs == null) {
+            throw new UnsupportedOperationException("No values insert");
+        }
         // 不允许通过 X.dao来insert记录
         if (isDao()) {
             String name = this.getClass().getSimpleName();
@@ -718,6 +722,10 @@ public abstract class Model<T> {
     }
 
     public int update(Long tid) {
+        // 没有变化，直接返回0
+        if (nvPairs == null) {
+            return 0;
+        }
         ServerSession session = getSession(tid);
         Table dbTable = modelTable.getTable();
         Update update = new Update(session);

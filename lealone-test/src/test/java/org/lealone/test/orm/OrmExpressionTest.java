@@ -140,11 +140,19 @@ public class OrmExpressionTest extends UnitTestBase {
     }
 
     void testSet() {
+        try {
+            // 必须设置字段值
+            new User().insert();
+            fail();
+        } catch (UnsupportedOperationException e) {
+        }
         // 同一字段多次set只取最后一次
         User user = new User().id.set(9000).name.set("rob6").name.set("rob7");
         assertEquals("rob7", user.name.get());
         user.insert();
         user = User.dao.where().id.eq(9000).findOne();
         assertEquals("rob7", user.name.get());
+        // 没有变化，直接返回0
+        assertEquals(0, user.name.set("rob7").update());
     }
 }
