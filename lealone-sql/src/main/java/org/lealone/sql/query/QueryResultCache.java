@@ -45,7 +45,8 @@ class QueryResultCache {
         } else {
             Value[] params = getParameterValues();
             long now = session.getDatabase().getModificationDataId();
-            if (lastResult != null && !lastResult.isClosed() && limit == lastLimit
+            // 当lastEvaluated != now时，说明数据已经有变化，缓存的结果不能用了
+            if (lastEvaluated == now && lastResult != null && !lastResult.isClosed() && limit == lastLimit
                     && select.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
                 if (sameResultAsLast(params)) {
                     lastResult = lastResult.createShallowCopy(session);

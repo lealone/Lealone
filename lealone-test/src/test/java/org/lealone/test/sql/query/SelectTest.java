@@ -154,6 +154,11 @@ public class SelectTest extends SqlTestBase {
 
         executeUpdate("INSERT INTO SelectTest(pk, f1) VALUES('100', 'a100')");
 
+        // 前面新增了记录，不会复用缓存的结果
+        sql = "SELECT count(*) FROM SelectTest";
+        assertEquals(13, getIntValue(1, true));
+
+        // 这里会复用缓存的结果
         sql = "SELECT count(*) FROM SelectTest";
         assertEquals(13, getIntValue(1, true));
 
