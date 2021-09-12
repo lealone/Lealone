@@ -16,7 +16,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.SubqueryResult;
+import org.lealone.sql.expression.subquery.SubQueryResult;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
@@ -53,7 +53,7 @@ public class ConditionInSelect extends Condition {
     @Override
     public Value getValue(ServerSession session) {
         query.setSession(session);
-        SubqueryResult rows = new SubqueryResult(query, 0); // query.query(0);
+        SubQueryResult rows = new SubQueryResult(query, 0);
         session.addTemporaryResult(rows);
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
@@ -81,7 +81,7 @@ public class ConditionInSelect extends Condition {
         return ValueBoolean.get(false);
     }
 
-    private Value getValueSlow(SubqueryResult rows, Value l) {
+    private Value getValueSlow(SubQueryResult rows, Value l) {
         // this only returns the correct result if the result has at least one
         // row, and if l is not null
         boolean hasNull = false;

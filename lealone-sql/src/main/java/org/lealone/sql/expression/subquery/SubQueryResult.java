@@ -3,26 +3,23 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.subquery;
 
 import java.util.ArrayList;
 
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.Result;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.query.Query;
 
-public class SubqueryResult extends DelegatedResult {
+public class SubQueryResult extends DelegatedResult {
+
     protected ValueHashMap<Value[]> distinctRows;
     protected int rowCount = -1;
 
-    public SubqueryResult() {
-    }
-
-    public SubqueryResult(Query query, int maxRows) {
+    public SubQueryResult(Query query, int maxRows) {
         query.setLocal(false);
         result = query.query(maxRows);
     }
@@ -59,7 +56,7 @@ public class SubqueryResult extends DelegatedResult {
                 rowList.add(row);
             }
 
-            result = new SubqueryRowList(rowList, result);
+            result = new SubQueryRowList(rowList, result);
         }
 
         return rowCount;
@@ -74,38 +71,5 @@ public class SubqueryResult extends DelegatedResult {
         }
 
         return rowCount;
-    }
-
-    private static class SubqueryRowList extends DelegatedResult {
-        final ArrayList<Value[]> rowList;
-        final int size;
-        int index;
-
-        SubqueryRowList(ArrayList<Value[]> rowList, Result result) {
-            this.result = result;
-            this.rowList = rowList;
-            index = -1;
-            size = rowList.size();
-        }
-
-        @Override
-        public void reset() {
-            index = -1;
-        }
-
-        @Override
-        public Value[] currentRow() {
-            return rowList.get(index);
-        }
-
-        @Override
-        public boolean next() {
-            return ++index < size;
-        }
-
-        @Override
-        public int getRowCount() {
-            return size;
-        }
     }
 }

@@ -12,7 +12,6 @@ import org.lealone.sql.expression.Operation;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.Rownum;
 import org.lealone.sql.expression.SequenceValue;
-import org.lealone.sql.expression.Subquery;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.Wildcard;
@@ -29,6 +28,7 @@ import org.lealone.sql.expression.condition.ConditionNot;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
+import org.lealone.sql.expression.subquery.SubQuery;
 
 public interface IExpressionVisitor<R> {
 
@@ -46,7 +46,7 @@ public interface IExpressionVisitor<R> {
 
     R visitSequenceValue(SequenceValue e);
 
-    R visitSubquery(Subquery e);
+    R visitSubQuery(SubQuery e);
 
     R visitValueExpression(ValueExpression e);
 

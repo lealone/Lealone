@@ -35,7 +35,7 @@ public class ConditionExists extends Condition {
     @Override
     public Value getValue(ServerSession session) {
         query.setSession(session);
-        Result result = query.query(1);// session.createSubqueryResult(query, 1);
+        Result result = query.query(1);
         session.addTemporaryResult(result);
         boolean r = result.getRowCount() > 0;
         return ValueBoolean.get(r);

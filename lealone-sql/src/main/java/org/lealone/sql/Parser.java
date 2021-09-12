@@ -137,7 +137,6 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.Rownum;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.SequenceValue;
-import org.lealone.sql.expression.Subquery;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.Wildcard;
@@ -155,6 +154,7 @@ import org.lealone.sql.expression.function.FunctionCall;
 import org.lealone.sql.expression.function.FunctionTable;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
+import org.lealone.sql.expression.subquery.SubQuery;
 import org.lealone.sql.optimizer.SingleColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
@@ -1991,8 +1991,8 @@ public class Parser implements SQLParser {
                             last = readExpression();
                             v.add(last);
                         } while (readIf(","));
-                        if (v.size() == 1 && (last instanceof Subquery)) {
-                            Subquery s = (Subquery) last;
+                        if (v.size() == 1 && (last instanceof SubQuery)) {
+                            SubQuery s = (SubQuery) last;
                             Query q = s.getQuery();
                             r = new ConditionInSelect(database, r, q, false, Comparison.EQUAL);
                         } else {
@@ -2543,7 +2543,7 @@ public class Parser implements SQLParser {
         case KEYWORD:
             if (isToken("SELECT") || isToken("FROM")) {
                 Query query = parseSelect();
-                r = new Subquery(query);
+                r = new SubQuery(query);
             } else {
                 throw getSyntaxError();
             }

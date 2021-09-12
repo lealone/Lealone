@@ -30,6 +30,9 @@ import org.lealone.sql.vector.ValueVector;
 
 /**
  * An expression is a operation, a value, or a function in a query.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public abstract class Expression implements org.lealone.sql.IExpression {
 
