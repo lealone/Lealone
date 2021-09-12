@@ -10,11 +10,12 @@ import org.lealone.db.index.Index;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.Value;
 
-// 单字段distinct
+// 单字段/多字段distinct
 class QDistinct extends QOperator {
 
     private Index index;
-    private int columnIndex;
+    private int[] columnIds;
+    private int size;
     private Cursor cursor;
 
     QDistinct(Select select) {
@@ -25,7 +26,8 @@ class QDistinct extends QOperator {
     public void start() {
         super.start();
         index = select.topTableFilter.getIndex();
-        columnIndex = index.getColumns()[0].getColumnId();
+        columnIds = index.getColumnIds();
+        size = columnIds.length;
         cursor = index.findDistinct(session, null, null);
     }
 
@@ -36,8 +38,10 @@ class QDistinct extends QOperator {
                 return; // 锁记录失败
             ++loopCount;
             SearchRow found = cursor.getSearchRow();
-            Value value = found.getValue(columnIndex);
-            Value[] row = { value };
+            Value[] row = new Value[size];
+            for (int i = 0; i < size; i++) {
+                row[i] = found.getValue(columnIds[i]);
+            }
             result.addRow(row);
             rowCount++;
             if (canBreakLoop()) {

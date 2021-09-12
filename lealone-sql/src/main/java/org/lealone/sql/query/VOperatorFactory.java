@@ -25,8 +25,6 @@ public class VOperatorFactory extends OperatorFactoryBase {
             }
         } else if (select.isDistinctQuery) {
             return null;
-        } else if (select.isDistinctQueryForMultiFields) {
-            return null;
         } else {
             return new VFlat(select);
         }

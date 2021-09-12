@@ -84,7 +84,6 @@ public class Select extends Query {
     boolean isGroupSortedQuery;
     boolean isQuickAggregateQuery;
     boolean isDistinctQuery;
-    boolean isDistinctQueryForMultiFields;
     boolean sortUsingIndex;
     private double cost;
 
@@ -477,7 +476,7 @@ public class Select extends Query {
                                 }
                                 if (found) {
                                     topTableFilter.setIndex(index);
-                                    isDistinctQueryForMultiFields = true;
+                                    isDistinctQuery = true;
                                     break;
                                 }
                             }

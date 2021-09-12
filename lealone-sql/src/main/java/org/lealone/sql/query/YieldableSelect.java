@@ -142,8 +142,6 @@ public class YieldableSelect extends YieldableQueryBase {
                     }
                 } else if (select.isDistinctQuery) {
                     queryOperator = new QDistinct(select);
-                } else if (select.isDistinctQueryForMultiFields) {
-                    queryOperator = new QDistinctForMultiFields(select);
                 } else {
                     queryOperator = new QFlat(select);
                 }
@@ -188,7 +186,7 @@ public class YieldableSelect extends YieldableQueryBase {
             result = createLocalResult(result);
             result.setSortOrder(select.sort);
         }
-        if (select.distinct && (!select.isDistinctQuery && !select.isDistinctQueryForMultiFields)) {
+        if (select.distinct && !select.isDistinctQuery) {
             result = createLocalResult(result);
             result.setDistinct();
         }
