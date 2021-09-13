@@ -454,14 +454,6 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        if (right != null) {
-            right.setEvaluatable(tableFilter, b);
-        }
-    }
-
-    @Override
     public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         if (right != null) {

@@ -70,7 +70,6 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.util.AutoCloseInputStream;
 import org.lealone.storage.fs.FileUtils;
 
@@ -2016,15 +2015,6 @@ public class Function extends Expression implements FunctionCall {
             return ValueExpression.get(v);
         }
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.setEvaluatable(tableFilter, b);
-            }
-        }
     }
 
     @Override

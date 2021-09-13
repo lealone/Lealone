@@ -800,12 +800,6 @@ public class TableFilter implements ColumnResolver {
      */
     public void setEvaluatable(TableFilter filter, boolean b) {
         filter.setEvaluatable(b);
-        if (filterCondition != null) {
-            filterCondition.setEvaluatable(filter, b);
-        }
-        if (joinCondition != null) {
-            joinCondition.setEvaluatable(filter, b);
-        }
         if (nestedJoin != null) {
             // don't enable / disable the nested join filters
             // if enabling a filter in a joined filter
@@ -820,6 +814,10 @@ public class TableFilter implements ColumnResolver {
 
     public void setEvaluatable(boolean evaluatable) {
         this.evaluatable = evaluatable;
+    }
+
+    public boolean isEvaluatable() {
+        return evaluatable;
     }
 
     @Override
@@ -1009,10 +1007,6 @@ public class TableFilter implements ColumnResolver {
             }
             f = f.join;
         } while (f != null);
-    }
-
-    public boolean isEvaluatable() {
-        return evaluatable;
     }
 
     public ServerSession getSession() {

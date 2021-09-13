@@ -10,7 +10,6 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A column alias as in SELECT 'Hello' AS NAME ...
@@ -51,11 +50,6 @@ public class Alias extends Expression {
     public Expression optimize(ServerSession session) {
         expr = expr.optimize(session);
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        expr.setEvaluatable(tableFilter, b);
     }
 
     @Override

@@ -128,12 +128,6 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        query.setEvaluatable(tableFilter, b);
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         StringBuilder buff = new StringBuilder();
         buff.append('(').append(left.getSQL(isDistributed)).append(' ');

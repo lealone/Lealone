@@ -71,11 +71,6 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        condition.setEvaluatable(tableFilter, b);
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         return "(NOT " + condition.getSQL(isDistributed) + ")";
     }

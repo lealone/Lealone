@@ -19,7 +19,6 @@ import org.lealone.sql.expression.ExpressionList;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
 
 /**
@@ -79,11 +78,6 @@ public class SubQuery extends Expression {
     public Expression optimize(ServerSession session) {
         query.prepare();
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        query.setEvaluatable(tableFilter, b);
     }
 
     @Override

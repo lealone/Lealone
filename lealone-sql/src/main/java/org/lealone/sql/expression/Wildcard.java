@@ -12,7 +12,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A wildcard expression as in SELECT * FROM TEST.
@@ -51,11 +50,6 @@ public class Wildcard extends Expression {
     @Override
     public Expression optimize(ServerSession session) {
         throw DbException.get(ErrorCode.SYNTAX_ERROR_1, table);
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        DbException.throwInternalError();
     }
 
     @Override

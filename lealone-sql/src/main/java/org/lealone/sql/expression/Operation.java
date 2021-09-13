@@ -20,7 +20,6 @@ import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -360,14 +359,6 @@ public class Operation extends Expression {
         Expression temp = left;
         left = right;
         right = temp;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        if (right != null) {
-            right.setEvaluatable(tableFilter, b);
-        }
     }
 
     @Override

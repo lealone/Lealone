@@ -232,10 +232,6 @@ public class ExpressionColumn extends Expression {
         return column.getType();
     }
 
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-    }
-
     public Column getColumn() {
         return column;
     }

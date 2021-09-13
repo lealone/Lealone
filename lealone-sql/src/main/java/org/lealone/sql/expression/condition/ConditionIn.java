@@ -152,14 +152,6 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        for (Expression e : valueList) {
-            e.setEvaluatable(tableFilter, b);
-        }
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("(");
         buff.append(left.getSQL(isDistributed)).append(" IN(");

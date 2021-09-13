@@ -123,11 +123,6 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        // nothing to do
-    }
-
-    @Override
     public int getScale() {
         return value.getScale();
     }

@@ -13,7 +13,6 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Wraps a sequence when used in a statement.
@@ -50,11 +49,6 @@ public class SequenceValue extends Expression {
     @Override
     public Expression optimize(ServerSession session) {
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        // nothing to do
     }
 
     @Override

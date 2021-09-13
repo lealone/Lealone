@@ -507,9 +507,6 @@ public class Select extends Query {
     private void setEvaluatableRecursive(TableFilter f) {
         for (; f != null; f = f.getJoin()) {
             f.setEvaluatable(f, true);
-            if (condition != null) {
-                condition.setEvaluatable(f, true);
-            }
             TableFilter n = f.getNestedJoin();
             if (n != null) {
                 setEvaluatableRecursive(n);
@@ -531,11 +528,6 @@ public class Select extends Query {
                     f.removeFilterCondition();
                     addCondition(on);
                 }
-            }
-            // this is only important for subqueries, so they know
-            // the result columns are evaluatable
-            for (Expression e : expressions) {
-                e.setEvaluatable(f, true);
             }
         }
     }
@@ -881,16 +873,6 @@ public class Select extends Query {
         }
         if (condition != null) {
             condition.mapColumns(resolver, level);
-        }
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        for (Expression e : expressions) {
-            e.setEvaluatable(tableFilter, b);
-        }
-        if (condition != null) {
-            condition.setEvaluatable(tableFilter, b);
         }
     }
 

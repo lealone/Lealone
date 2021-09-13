@@ -19,7 +19,6 @@ import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A parameter of a prepared statement.
@@ -105,11 +104,6 @@ public class Parameter extends Expression implements CommandParameter {
     @Override
     public boolean isConstant() {
         return false;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        // not bound
     }
 
     @Override

@@ -633,21 +633,6 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        if (on != null) {
-            on.setEvaluatable(tableFilter, b);
-        }
-        if (groupConcatOrderList != null) {
-            for (SelectOrderBy o : groupConcatOrderList) {
-                o.expression.setEvaluatable(tableFilter, b);
-            }
-        }
-        if (groupConcatSeparator != null) {
-            groupConcatSeparator.setEvaluatable(tableFilter, b);
-        }
-    }
-
-    @Override
     public int getScale() {
         return scale;
     }

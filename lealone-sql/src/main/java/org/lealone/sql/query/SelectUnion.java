@@ -186,12 +186,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        right.setEvaluatable(tableFilter, b);
-    }
-
-    @Override
     public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
         addParameter(param);
         switch (unionType) {

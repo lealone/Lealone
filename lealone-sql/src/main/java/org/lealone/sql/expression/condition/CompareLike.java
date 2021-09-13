@@ -406,15 +406,6 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-        right.setEvaluatable(tableFilter, b);
-        if (escape != null) {
-            escape.setEvaluatable(tableFilter, b);
-        }
-    }
-
-    @Override
     public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         right.updateAggregate(session);

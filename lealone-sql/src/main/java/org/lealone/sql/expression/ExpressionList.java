@@ -12,7 +12,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A list of expressions, as in (ID, NAME).
@@ -65,13 +64,6 @@ public class ExpressionList extends Expression {
             return ValueExpression.get(getValue(session));
         }
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        for (Expression e : list) {
-            e.setEvaluatable(tableFilter, b);
-        }
     }
 
     @Override

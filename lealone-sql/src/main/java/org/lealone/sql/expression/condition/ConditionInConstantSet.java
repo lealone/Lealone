@@ -103,11 +103,6 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        left.setEvaluatable(tableFilter, b);
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("(");
         buff.append(left.getSQL()).append(" IN(");

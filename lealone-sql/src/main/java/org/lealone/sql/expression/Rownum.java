@@ -15,7 +15,6 @@ import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Represents the ROWNUM function.
@@ -46,11 +45,6 @@ public class Rownum extends Expression {
     @Override
     public Expression optimize(ServerSession session) {
         return this;
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        // nothing to do
     }
 
     @Override

@@ -14,7 +14,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
 
 /**
@@ -63,11 +62,6 @@ public class ConditionExists extends Condition {
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         query.mapColumns(resolver, level + 1);
-    }
-
-    @Override
-    public void setEvaluatable(TableFilter tableFilter, boolean b) {
-        query.setEvaluatable(tableFilter, b);
     }
 
     @Override
