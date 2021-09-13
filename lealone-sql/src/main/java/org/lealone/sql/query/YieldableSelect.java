@@ -132,12 +132,16 @@ public class YieldableSelect extends YieldableQueryBase {
             to = result != null ? result : target;
             if (limitRows != 0) {
                 if (select.isQuickAggregateQuery) {
-                    queryOperator = new QQuick(select);
+                    queryOperator = new QAggregateQuick(select);
                 } else if (select.isGroupQuery) {
                     if (select.isGroupSortedQuery) {
                         queryOperator = new QGroupSorted(select);
                     } else {
-                        queryOperator = new QGroup(select);
+                        if (select.groupIndex == null) { // 忽视select.havingIndex
+                            queryOperator = new QAggregate(select);
+                        } else {
+                            queryOperator = new QGroup(select);
+                        }
                         to = result;
                     }
                 } else if (select.isDistinctQuery) {

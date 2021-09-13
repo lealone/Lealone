@@ -14,12 +14,10 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 
-// 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
-// groupIndex和groupByExpression为null的时候，表示没有group by
+// 只处理group by，且group by的字段没有索引
 class QGroup extends QOperator {
 
     private ValueHashMap<HashMap<Expression, Object>> groups;
-    private ValueArray defaultGroup;
 
     QGroup(Select select) {
         super(select);
@@ -30,7 +28,6 @@ class QGroup extends QOperator {
         super.start();
         groups = ValueHashMap.newInstance();
         select.currentGroup = null;
-        defaultGroup = ValueArray.get(new Value[0]);
     }
 
     @Override
@@ -40,23 +37,18 @@ class QGroup extends QOperator {
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
-                Value key;
                 rowCount++;
-                if (select.groupIndex == null) {
-                    key = defaultGroup;
-                } else {
-                    // 避免在ExpressionColumn.getValue中取到旧值
-                    // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                    select.currentGroup = null;
-                    Value[] keyValues = new Value[select.groupIndex.length];
-                    // update group
-                    for (int i = 0; i < select.groupIndex.length; i++) {
-                        int idx = select.groupIndex[i];
-                        Expression expr = select.expressions.get(idx);
-                        keyValues[i] = expr.getValue(session);
-                    }
-                    key = ValueArray.get(keyValues);
+                // 避免在ExpressionColumn.getValue中取到旧值
+                // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
+                select.currentGroup = null;
+                Value[] keyValues = new Value[select.groupIndex.length];
+                // update group
+                for (int i = 0; i < select.groupIndex.length; i++) {
+                    int idx = select.groupIndex[i];
+                    Expression expr = select.expressions.get(idx);
+                    keyValues[i] = expr.getValue(session);
                 }
+                Value key = ValueArray.get(keyValues);
                 HashMap<Expression, Object> values = groups.get(key);
                 if (values == null) {
                     values = new HashMap<Expression, Object>();
@@ -76,9 +68,6 @@ class QGroup extends QOperator {
             }
             if (yieldIfNeeded(loopCount))
                 return;
-        }
-        if (select.groupIndex == null && groups.size() == 0) {
-            groups.put(defaultGroup, new HashMap<Expression, Object>());
         }
         ArrayList<Value> keys = groups.keys();
         for (Value v : keys) {

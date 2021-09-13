@@ -183,7 +183,6 @@ public class ExpressionColumn extends Expression {
 
     @Override
     public void updateAggregate(ServerSession session) {
-        Value now = columnResolver.getValue(column);
         Select select = columnResolver.getSelect();
         if (select == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
@@ -194,7 +193,8 @@ public class ExpressionColumn extends Expression {
             return;
         }
         Value v = (Value) values.get(this);
-        if (v == null) {
+        if (v == null) { // 只取第一条
+            Value now = columnResolver.getValue(column);
             values.put(this, now);
         }
     }

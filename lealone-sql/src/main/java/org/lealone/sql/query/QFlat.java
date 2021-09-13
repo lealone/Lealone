@@ -6,7 +6,6 @@
 package org.lealone.sql.query;
 
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.Expression;
 
 // 最普通的查询
 class QFlat extends QOperator {
@@ -22,11 +21,7 @@ class QFlat extends QOperator {
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
-                Value[] row = new Value[columnCount];
-                for (int i = 0; i < columnCount; i++) {
-                    Expression expr = select.expressions.get(i);
-                    row[i] = expr.getValue(session);
-                }
+                Value[] row = createRow();
                 result.addRow(row);
                 rowCount++;
                 if (canBreakLoop()) {

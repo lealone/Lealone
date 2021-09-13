@@ -8,6 +8,7 @@ package org.lealone.sql.query;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
@@ -117,5 +118,14 @@ abstract class QOperator implements Operator {
     @Override
     public LocalResult getLocalResult() {
         return localResult;
+    }
+
+    Value[] createRow() {
+        Value[] row = new Value[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+            Expression expr = select.expressions.get(i);
+            row[i] = expr.getValue(session);
+        }
+        return row;
     }
 }

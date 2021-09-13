@@ -356,7 +356,7 @@ public class Select extends Query {
 
         // 对min、max、count三个聚合函数的特殊优化
         if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1
-                && filters.get(0).getPageKeys() != null) {
+                && filters.get(0).getPageKeys() == null) {
             Table t = filters.get(0).getTable();
             ExpressionVisitor optimizable = ExpressionVisitor.getOptimizableVisitor(t);
             isQuickAggregateQuery = isEverything(optimizable);

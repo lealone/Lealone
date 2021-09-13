@@ -12,7 +12,7 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
-//只处理group by，且group by的字段有对应的索引
+// 只处理group by，且group by的字段有对应的索引
 class QGroupSorted extends QOperator {
 
     private Value[] previousKeyValues;
