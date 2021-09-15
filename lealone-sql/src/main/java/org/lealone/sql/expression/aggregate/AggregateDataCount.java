@@ -10,6 +10,7 @@ import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Data stored while calculating an aggregate.
@@ -31,6 +32,11 @@ class AggregateDataCount extends AggregateData {
             distinctValues.put(v, this);
             return;
         }
+    }
+
+    @Override
+    void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+        count += vv.size();
     }
 
     @Override

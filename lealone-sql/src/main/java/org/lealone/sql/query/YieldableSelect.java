@@ -38,7 +38,7 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     public boolean yieldIfNeeded(int rowNumber) {
-        if (!queryOperatorChanged && rowNumber > 1000) { // TODO 允许配置
+        if (!queryOperatorChanged && rowNumber > 100000) { // TODO 允许配置
             queryOperatorChanged = true;
             super.yieldIfNeeded(rowNumber);
             // createOlapOperatorAync();
@@ -138,7 +138,7 @@ public class YieldableSelect extends YieldableQueryBase {
                         queryOperator = new QGroupSorted(select);
                     } else {
                         if (select.groupIndex == null) { // 忽视select.havingIndex
-                            queryOperator = new QAggregate(select);
+                            queryOperator = new VAggregate(select);
                         } else {
                             queryOperator = new QGroup(select);
                         }

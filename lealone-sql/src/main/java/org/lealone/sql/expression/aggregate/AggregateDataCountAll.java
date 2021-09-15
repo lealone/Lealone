@@ -10,6 +10,7 @@ import org.lealone.db.Database;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Data stored while calculating a COUNT(*) aggregate.
@@ -24,6 +25,15 @@ class AggregateDataCountAll extends AggregateData {
             throw DbException.getInternalError();
         }
         count++;
+    }
+
+    void add(int size) {
+        count += size;
+    }
+
+    @Override
+    void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+        count += vv.size();
     }
 
     @Override

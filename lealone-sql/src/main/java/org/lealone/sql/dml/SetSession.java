@@ -61,6 +61,9 @@ public class SetSession extends SetStatement {
         case TRANSACTION_ISOLATION_LEVEL:
             session.setTransactionIsolationLevel(getIntValue());
             break;
+        case VALUE_VECTOR_FACTORY_NAME:
+            session.setValueVectorFactoryName(getStringValue());
+            break;
         default:
             DbException.throwInternalError("unknown setting type: " + setting);
         }

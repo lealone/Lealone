@@ -92,7 +92,7 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
 
     @Override
     public boolean getBooleanValue() {
-        if (!isJit && ++count > 1000) { // TODO 允许配置
+        if (!isJit && ++count > 100000) { // TODO 允许配置
             isJit = true;
             if (async) {
                 ExpressionCompiler.createJitEvaluatorAsync(this, session, expression, ar -> {

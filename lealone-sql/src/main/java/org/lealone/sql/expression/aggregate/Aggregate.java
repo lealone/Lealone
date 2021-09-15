@@ -39,6 +39,7 @@ import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.
@@ -290,6 +291,53 @@ public class Aggregate extends Expression {
             }
         }
         data.add(session.getDatabase(), dataType, distinct, v);
+    }
+
+    @Override
+    public void updateAggregate(ServerSession session, ValueVector bvv) {
+        // TODO aggregates: check nested MIN(MAX(ID)) and so on
+        // if (on != null) {
+        // on.updateAggregate();
+        // }
+        HashMap<Expression, Object> group = select.getCurrentGroup();
+        if (group == null) {
+            // this is a different level (the enclosing query)
+            return;
+        }
+
+        int groupRowId = select.getCurrentGroupRowId();
+        if (lastGroupRowId == groupRowId) {
+            // already visited
+            return;
+        }
+        lastGroupRowId = groupRowId;
+
+        AggregateData data = (AggregateData) group.get(this);
+        if (data == null) {
+            data = AggregateData.create(type);
+            group.put(this, data);
+        }
+        ValueVector vv = on == null ? null : on.getValueVector(session);
+        if (type == COUNT_ALL) {
+            ((AggregateDataCountAll) data).add(select.getTopTableFilter().getBatchSize());
+            return;
+        }
+        // if (type == GROUP_CONCAT) {
+        // if (v != ValueNull.INSTANCE) {
+        // v = v.convertTo(Value.STRING);
+        // if (groupConcatOrderList != null) {
+        // int size = groupConcatOrderList.size();
+        // Value[] array = new Value[1 + size];
+        // array[0] = v;
+        // for (int i = 0; i < size; i++) {
+        // SelectOrderBy o = groupConcatOrderList.get(i);
+        // array[i + 1] = o.expression.getValue(session);
+        // }
+        // v = ValueArray.get(array);
+        // }
+        // }
+        // }
+        data.add(session.getDatabase(), dataType, distinct, bvv, vv);
     }
 
     @Override

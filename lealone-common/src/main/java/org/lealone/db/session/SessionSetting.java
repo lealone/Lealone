@@ -18,7 +18,8 @@ public enum SessionSetting {
     SCHEMA_SEARCH_PATH,
     VARIABLE,
     THROTTLE,
-    TRANSACTION_ISOLATION_LEVEL;
+    TRANSACTION_ISOLATION_LEVEL,
+    VALUE_VECTOR_FACTORY_NAME;
 
     public String getName() {
         if (this == VARIABLE)

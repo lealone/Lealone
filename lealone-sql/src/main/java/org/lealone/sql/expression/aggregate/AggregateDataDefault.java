@@ -14,6 +14,7 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Data stored while calculating an aggregate.
@@ -24,6 +25,9 @@ class AggregateDataDefault extends AggregateData {
     private ValueHashMap<AggregateDataDefault> distinctValues;
     private Value value;
     private double m2, mean;
+
+    private ValueVector vv;
+    // private ValueVector bvv;
 
     /**
      * @param aggregateType the type of the aggregate operation
@@ -126,6 +130,102 @@ class AggregateDataDefault extends AggregateData {
     }
 
     @Override
+    void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+        Value v = vv.getValue(0);
+        if (v == ValueNull.INSTANCE) {
+            return;
+        }
+        count++;
+        if (distinct) {
+            if (distinctValues == null) {
+                distinctValues = ValueHashMap.newInstance();
+            }
+            distinctValues.put(v, this);
+            return;
+        }
+        switch (aggregateType) {
+        case Aggregate.SUM:
+            if (this.vv == null) {
+                // value = v.convertTo(dataType);
+                this.vv = vv;
+                // this.bvv = bvv;
+            } else {
+                // v = v.convertTo(value.getType());
+                this.vv = this.vv.add(vv);
+            }
+            break;
+        case Aggregate.AVG:
+            if (value == null) {
+                value = v.convertTo(DataType.getAddProofType(dataType));
+            } else {
+                v = v.convertTo(value.getType());
+                value = value.add(v);
+            }
+            break;
+        case Aggregate.MIN:
+            if (value == null || database.compare(v, value) < 0) {
+                value = v;
+            }
+            break;
+        case Aggregate.MAX:
+            if (value == null || database.compare(v, value) > 0) {
+                value = v;
+            }
+            break;
+        case Aggregate.STDDEV_POP:
+        case Aggregate.STDDEV_SAMP:
+        case Aggregate.VAR_POP:
+        case Aggregate.VAR_SAMP: {
+            // Using Welford's method, see also
+            // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+            // http://www.johndcook.com/standard_deviation.html
+            double x = v.getDouble();
+            if (count == 1) {
+                mean = x;
+                m2 = 0;
+            } else {
+                double delta = x - mean;
+                mean += delta / count;
+                m2 += delta * (x - mean);
+            }
+            break;
+        }
+        case Aggregate.BOOL_AND:
+            v = v.convertTo(Value.BOOLEAN);
+            if (value == null) {
+                value = v;
+            } else {
+                value = ValueBoolean.get(value.getBoolean() && v.getBoolean());
+            }
+            break;
+        case Aggregate.BOOL_OR:
+            v = v.convertTo(Value.BOOLEAN);
+            if (value == null) {
+                value = v;
+            } else {
+                value = ValueBoolean.get(value.getBoolean() || v.getBoolean());
+            }
+            break;
+        case Aggregate.BIT_AND:
+            if (value == null) {
+                value = v.convertTo(dataType);
+            } else {
+                value = ValueLong.get(value.getLong() & v.getLong()).convertTo(dataType);
+            }
+            break;
+        case Aggregate.BIT_OR:
+            if (value == null) {
+                value = v.convertTo(dataType);
+            } else {
+                value = ValueLong.get(value.getLong() | v.getLong()).convertTo(dataType);
+            }
+            break;
+        default:
+            DbException.throwInternalError("type=" + aggregateType);
+        }
+    }
+
+    @Override
     Value getValue(Database database, int dataType, boolean distinct) {
         if (distinct) {
             count = 0;
@@ -140,7 +240,11 @@ class AggregateDataDefault extends AggregateData {
         case Aggregate.BIT_AND:
         case Aggregate.BOOL_OR:
         case Aggregate.BOOL_AND:
-            v = value;
+            if (this.vv != null) {
+                v = vv.sum();
+            } else {
+                v = value;
+            }
             break;
         case Aggregate.AVG:
             if (value != null) {

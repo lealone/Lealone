@@ -7,6 +7,7 @@ package org.lealone.sql.expression.aggregate;
 
 import org.lealone.db.Database;
 import org.lealone.db.value.Value;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Abstract class for the computation of an aggregate.
@@ -44,6 +45,9 @@ abstract class AggregateData {
      * @param v the value
      */
     abstract void add(Database database, int dataType, boolean distinct, Value v);
+
+    void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+    }
 
     /**
      * Get the aggregate result.

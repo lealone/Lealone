@@ -38,6 +38,10 @@ public class ValueVector {
         return null;
     }
 
+    public ValueVector add(ValueVector vv, ValueVector bvv) {
+        return null;
+    }
+
     public ValueVector subtract(ValueVector vv) {
         return null;
     }
@@ -63,6 +67,10 @@ public class ValueVector {
     }
 
     public Value getValue(int index) {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value sum() {
         return ValueNull.INSTANCE;
     }
 }

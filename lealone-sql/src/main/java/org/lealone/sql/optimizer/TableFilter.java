@@ -892,6 +892,10 @@ public class TableFilter implements ColumnResolver {
         return !batch.isEmpty();
     }
 
+    public int getBatchSize() {
+        return batch == null ? 0 : batch.size();
+    }
+
     public Value getValue(int columnId) {
         if (currentSearchRow == null) {
             return null;

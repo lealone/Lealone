@@ -136,6 +136,9 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      */
     public abstract void updateAggregate(ServerSession session);
 
+    public void updateAggregate(ServerSession session, ValueVector bvv) {
+    }
+
     /**
      * Check if this expression and all sub-expressions can fulfill a criteria.
      * If any part returns false, the result is false.
