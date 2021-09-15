@@ -67,14 +67,15 @@ class BatchStatementPacketHandlers extends PacketHandlers {
             AsyncTask[] subTasks = new AsyncTask[size];
             for (int i = 0; i < size; i++) {
                 final int index = i;
-                Value[] values = packet.batchParameters.get(i);
-                for (int j = 0; j < values.length; j++) {
-                    CommandParameter p = params.get(j);
-                    p.setValue(values[j]);
-                }
+                final Value[] values = packet.batchParameters.get(i);
                 AsyncTask subTask = new AsyncTask() {
                     @Override
                     public void run() {
+                        // 不能放到外面设置，否则只取到最后一项
+                        for (int j = 0; j < values.length; j++) {
+                            CommandParameter p = params.get(j);
+                            p.setValue(values[j]);
+                        }
                         submitYieldableCommand(task, command, results, count, index);
                     }
                 };
