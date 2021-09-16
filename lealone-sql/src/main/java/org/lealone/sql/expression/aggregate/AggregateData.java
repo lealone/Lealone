@@ -11,6 +11,9 @@ import org.lealone.sql.vector.ValueVector;
 
 /**
  * Abstract class for the computation of an aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 abstract class AggregateData {
 

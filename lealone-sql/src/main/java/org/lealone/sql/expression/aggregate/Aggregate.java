@@ -43,6 +43,9 @@ import org.lealone.sql.vector.ValueVector;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Aggregate extends Expression {
 
@@ -192,10 +195,10 @@ public class Aggregate extends Expression {
         addAggregate("VAR", VAR_SAMP);
         addAggregate("VARIANCE", VAR_SAMP);
         addAggregate("BOOL_OR", BOOL_OR);
-        // HSQLDB compatibility, but conflicts with x > EVERY(...)
-        addAggregate("SOME", BOOL_OR);
         addAggregate("BOOL_AND", BOOL_AND);
         // HSQLDB compatibility, but conflicts with x > SOME(...)
+        addAggregate("SOME", BOOL_OR);
+        // HSQLDB compatibility, but conflicts with x > EVERY(...)
         addAggregate("EVERY", BOOL_AND);
         addAggregate("SELECTIVITY", SELECTIVITY);
         addAggregate("HISTOGRAM", HISTOGRAM);

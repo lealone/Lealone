@@ -18,8 +18,12 @@ import org.lealone.sql.vector.ValueVector;
 
 /**
  * Data stored while calculating an aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class AggregateDataDefault extends AggregateData {
+
     private final int aggregateType;
     private long count;
     private ValueHashMap<AggregateDataDefault> distinctValues;

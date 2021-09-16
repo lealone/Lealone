@@ -27,6 +27,9 @@ import org.lealone.sql.query.Select;
 
 /**
  * This class wraps a user-defined aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JavaAggregate extends Expression {
 

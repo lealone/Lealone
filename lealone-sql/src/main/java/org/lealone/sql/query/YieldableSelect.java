@@ -138,7 +138,7 @@ public class YieldableSelect extends YieldableQueryBase {
                         queryOperator = new QGroupSorted(select);
                     } else {
                         if (select.groupIndex == null) { // 忽视select.havingIndex
-                            queryOperator = new VAggregate(select);
+                            queryOperator = new QAggregate(select);
                         } else {
                             queryOperator = new QGroup(select);
                         }

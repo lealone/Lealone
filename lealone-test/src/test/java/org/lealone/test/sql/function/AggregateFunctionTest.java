@@ -6,16 +6,22 @@
 package org.lealone.test.sql.function;
 
 import org.junit.Test;
+import org.lealone.test.db.schema.UserAggregateTest.MedianString;
 import org.lealone.test.sql.SqlTestBase;
 
-//TODO H2总共支持14个聚合函数，还有group_concat、selectivity、histogram这三个没有实现
+//TODO 总共支持14个聚合函数，分布式场景下还有group_concat、selectivity、histogram这三个没有实现
 public class AggregateFunctionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();
         testAggregateFunctions();
         testAggregateFunctionsWithGroupBy();
+
+        initAggregateData();
         testHistogram();
+        testSelectivity();
+        testGroupConcat();
+        testJavaAggregate();
     }
 
     void init() throws Exception {
@@ -152,21 +158,50 @@ public class AggregateFunctionTest extends SqlTestBase {
         assertEquals(var_samp1, var_samp2, 0.00000001);
     }
 
+    void initAggregateData() throws Exception {
+        stmt.executeUpdate("drop table IF EXISTS AggregateData");
+        stmt.executeUpdate("create table IF NOT EXISTS AggregateData(name varchar, f1 int,f2 int)");
+
+        stmt.executeUpdate("insert into AggregateData values('abc1',1,2)");
+        stmt.executeUpdate("insert into AggregateData values('abc2',2,2)");
+        stmt.executeUpdate("insert into AggregateData values('abc3',3,2)");
+        stmt.executeUpdate("insert into AggregateData values('abc1',1,2)");
+        stmt.executeUpdate("insert into AggregateData values('abc2',2,2)");
+        stmt.executeUpdate("insert into AggregateData values('abc3',3,2)");
+    }
+
     void testHistogram() throws Exception {
-        stmt.executeUpdate("drop table IF EXISTS HistogramTest");
-        stmt.executeUpdate("create table IF NOT EXISTS HistogramTest(name varchar, f1 int,f2 int)");
-
-        stmt.executeUpdate("insert into HistogramTest values('abc',1,2)");
-        stmt.executeUpdate("insert into HistogramTest values('abc',2,2)");
-        stmt.executeUpdate("insert into HistogramTest values('abc',3,2)");
-        stmt.executeUpdate("insert into HistogramTest values('abc',1,2)");
-        stmt.executeUpdate("insert into HistogramTest values('abc',2,2)");
-        stmt.executeUpdate("insert into HistogramTest values('abc',3,2)");
-
         // 加不加distinct都一样
-        sql = "select HISTOGRAM(f1) from HistogramTest";
+        sql = "select HISTOGRAM(f1) from AggregateData";
         assertEquals("((1, 2), (2, 2), (3, 2))", getStringValue(1, true));
-        sql = "select HISTOGRAM(distinct f1) from HistogramTest";
+        sql = "select HISTOGRAM(distinct f1) from AggregateData";
         assertEquals("((1, 2), (2, 2), (3, 2))", getStringValue(1, true));
+    }
+
+    void testSelectivity() throws Exception {
+        // 加不加distinct都一样
+        sql = "select SELECTIVITY(f1) from AggregateData";
+        assertEquals(50, getIntValue(1, true));
+        sql = "select SELECTIVITY(distinct f1) from AggregateData";
+        assertEquals(50, getIntValue(1, true));
+    }
+
+    void testGroupConcat() throws Exception {
+        sql = "select GROUP_CONCAT(DISTINCT name ORDER BY f1 desc SEPARATOR ',') from AggregateData";
+        assertEquals("abc3,abc2,abc1", getStringValue(1, true));
+
+        sql = "select GROUP_CONCAT(name ORDER BY f1 desc SEPARATOR ',') from AggregateData where f1=1";
+        assertEquals("abc1,abc1", getStringValue(1, true));
+    }
+
+    void testJavaAggregate() throws Exception {
+        String className = MedianString.class.getName();
+        String name = "MEDIAN";
+        sql = "CREATE FORCE AGGREGATE IF NOT EXISTS " + name + " FOR \"" + className + "\"";
+        executeUpdate(sql);
+        sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
+        assertEquals(3, getIntValue(1, true));
+        sql = "DROP AGGREGATE " + name;
+        executeUpdate(sql);
     }
 }

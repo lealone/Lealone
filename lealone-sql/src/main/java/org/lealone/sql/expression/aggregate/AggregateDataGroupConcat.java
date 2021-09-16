@@ -14,8 +14,12 @@ import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating a GROUP_CONCAT aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class AggregateDataGroupConcat extends AggregateData {
+
     private ArrayList<Value> list;
     private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 

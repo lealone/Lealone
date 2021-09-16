@@ -14,8 +14,12 @@ import org.lealone.sql.vector.ValueVector;
 
 /**
  * Data stored while calculating a COUNT(*) aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class AggregateDataCountAll extends AggregateData {
+
     private long count;
 
     @Override

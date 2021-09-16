@@ -19,8 +19,14 @@ import org.lealone.db.value.ValueLong;
 
 /**
  * Data stored while calculating a HISTOGRAM aggregate.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
+// 会忽略distinct
+// 计算每个值出现的次数
 class AggregateDataHistogram extends AggregateData {
+
     private long count;
     private ValueHashMap<AggregateDataHistogram> distinctValues;
 
