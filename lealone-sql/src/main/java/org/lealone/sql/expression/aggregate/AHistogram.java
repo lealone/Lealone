@@ -47,13 +47,13 @@ public class AHistogram extends Aggregate {
 
     // 会忽略distinct
     // 计算每个值出现的次数
-    private static class AggregateDataHistogram extends AggregateData {
+    private class AggregateDataHistogram extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataHistogram> distinctValues;
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
+        void add(Database database, Value v) {
             if (distinctValues == null) {
                 distinctValues = ValueHashMap.newInstance();
             }
@@ -70,7 +70,7 @@ public class AHistogram extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
+        Value getValue(Database database) {
             ValueArray[] values = new ValueArray[distinctValues.size()];
             int i = 0;
             for (Value dv : distinctValues.keys()) {
@@ -92,12 +92,12 @@ public class AHistogram extends Aggregate {
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             throw DbException.getUnsupportedException("merge");
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             throw DbException.getUnsupportedException("getMergedValue");
         }
     }

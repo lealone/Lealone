@@ -19,6 +19,10 @@ public class ACountAll extends Aggregate {
 
     public ACountAll(int type, Expression on, Select select, boolean distinct) {
         super(type, on, select, distinct);
+        // 在Parser.readAggregate那里确保使用COUNT_ALL时distinct是false
+        if (distinct) {
+            throw DbException.getInternalError();
+        }
     }
 
     @Override
@@ -37,53 +41,37 @@ public class ACountAll extends Aggregate {
     }
 
     @Override
-    protected void add(ServerSession session, AggregateData data, ValueVector bvv, ValueVector vv) {
-        ((AggregateDataCountAll) data).add(select.getTopTableFilter().getBatchSize());
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         return "COUNT(*)";
     }
 
-    private static class AggregateDataCountAll extends AggregateData {
+    private class AggregateDataCountAll extends AggregateData {
 
         private long count;
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
-            // 在Parser.readAggregate那里确保使用COUNT_ALL时distinct是false
-            if (distinct) {
-                throw DbException.getInternalError();
-            }
+        void add(Database database, Value v) {
             count++;
         }
 
-        void add(int size) {
-            count += size;
+        @Override
+        void add(Database database, ValueVector bvv, ValueVector vv) {
+            count += select.getTopTableFilter().getBatchSize();
         }
 
         @Override
-        void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
-            count += vv.size();
-        }
-
-        @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
-            if (distinct) {
-                throw DbException.getInternalError();
-            }
+        Value getValue(Database database) {
             Value v = ValueLong.get(count);
             return v.convertTo(dataType);
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             count += v.getLong();
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             return ValueLong.get(count);
         }
     }

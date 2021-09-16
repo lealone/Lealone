@@ -43,7 +43,7 @@ public class ASelectivity extends Aggregate {
 
     // 会忽略distinct
     // 返回(100 * distinctCount/rowCount)
-    private static class AggregateDataSelectivity extends AggregateData {
+    private class AggregateDataSelectivity extends AggregateData {
 
         private long count;
         private IntIntHashMap distinctHashes;
@@ -51,7 +51,7 @@ public class ASelectivity extends Aggregate {
         private Value value;
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
+        void add(Database database, Value v) {
             // 是基于某个表达式(多数是单个字段)算不重复的记录数所占总记录数的百分比
             // Constants.SELECTIVITY_DISTINCT_COUNT默认是1万，这个值不能改，
             // 对统计值影响很大。通常这个值越大，统计越精确，但是会使用更多内存。
@@ -71,7 +71,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
+        Value getValue(Database database) {
             m2 += distinctHashes.size();
             m2 = 100 * m2 / count;
             int s = (int) m2;
@@ -81,7 +81,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             count++;
             if (value == null) {
                 value = v.convertTo(dataType);
@@ -92,7 +92,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             Value v = null;
             if (value != null) {
                 v = Aggregate.divide(value, count);

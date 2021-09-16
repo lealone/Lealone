@@ -42,13 +42,13 @@ public class ACount extends Aggregate {
         return getSQL("COUNT", isDistributed);
     }
 
-    private static class AggregateDataCount extends AggregateData {
+    private class AggregateDataCount extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataCount> distinctValues;
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
+        void add(Database database, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -63,12 +63,12 @@ public class ACount extends Aggregate {
         }
 
         @Override
-        void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+        void add(Database database, ValueVector bvv, ValueVector vv) {
             count += vv.size();
         }
 
         @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
+        Value getValue(Database database) {
             if (distinct) {
                 if (distinctValues != null) {
                     count = distinctValues.size();
@@ -81,12 +81,12 @@ public class ACount extends Aggregate {
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             count += v.getLong();
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             return ValueLong.get(count);
         }
     }

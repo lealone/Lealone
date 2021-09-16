@@ -153,7 +153,7 @@ public class ADefault extends Aggregate {
         }
     }
 
-    private static class AggregateDataDefault extends AggregateData {
+    private class AggregateDataDefault extends AggregateData {
 
         private final int aggregateType;
         private long count;
@@ -172,7 +172,11 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
+        void add(Database database, Value v) {
+            add(database, v, distinct);
+        }
+
+        private void add(Database database, Value v, boolean distinct) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -265,7 +269,7 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+        void add(Database database, ValueVector bvv, ValueVector vv) {
             Value v = vv.getValue(0);
             if (v == ValueNull.INSTANCE) {
                 return;
@@ -361,7 +365,7 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
+        Value getValue(Database database) {
             if (distinct) {
                 count = 0;
                 groupDistinct(database, dataType);
@@ -426,12 +430,12 @@ public class ADefault extends Aggregate {
             }
             count = 0;
             for (Value v : distinctValues.keys()) {
-                add(database, dataType, false, v);
+                add(database, v, false);
             }
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -504,7 +508,7 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             if (distinct) {
                 count = 0;
                 groupDistinct(database, dataType);

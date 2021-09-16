@@ -21,26 +21,22 @@ abstract class AggregateData {
      * Add a value to this aggregate.
      *
      * @param database the database
-     * @param dataType the data type of the computed result
-     * @param distinct if the calculation should be distinct
      * @param v the value
      */
-    abstract void add(Database database, int dataType, boolean distinct, Value v);
+    abstract void add(Database database, Value v);
 
-    void add(Database database, int dataType, boolean distinct, ValueVector bvv, ValueVector vv) {
+    void add(Database database, ValueVector bvv, ValueVector vv) {
     }
 
     /**
      * Get the aggregate result.
      *
      * @param database the database
-     * @param dataType the data type of the computed result
-     * @param distinct if distinct is used
      * @return the value
      */
-    abstract Value getValue(Database database, int dataType, boolean distinct);
+    abstract Value getValue(Database database);
 
-    abstract void merge(Database database, int dataType, boolean distinct, Value v);
+    abstract void merge(Database database, Value v);
 
-    abstract Value getMergedValue(Database database, int dataType, boolean distinct);
+    abstract Value getMergedValue(Database database);
 }

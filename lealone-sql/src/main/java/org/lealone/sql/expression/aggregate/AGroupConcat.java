@@ -124,7 +124,7 @@ public class AGroupConcat extends Aggregate {
                 v = ValueArray.get(array);
             }
         }
-        data.add(session.getDatabase(), dataType, distinct, v);
+        data.add(session.getDatabase(), v);
     }
 
     @Override
@@ -207,13 +207,17 @@ public class AGroupConcat extends Aggregate {
         return true;
     }
 
-    private static class AggregateDataGroupConcat extends AggregateData {
+    private class AggregateDataGroupConcat extends AggregateData {
 
         private ArrayList<Value> list;
         private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 
         @Override
-        void add(Database database, int dataType, boolean distinct, Value v) {
+        void add(Database database, Value v) {
+            add(database, v, distinct);
+        }
+
+        private void add(Database database, Value v, boolean distinct) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -231,7 +235,7 @@ public class AGroupConcat extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database, int dataType, boolean distinct) {
+        Value getValue(Database database) {
             if (distinct) {
                 groupDistinct(database, dataType);
             }
@@ -247,12 +251,12 @@ public class AGroupConcat extends Aggregate {
                 return;
             }
             for (Value v : distinctValues.keys()) {
-                add(database, dataType, false, v);
+                add(database, v, false);
             }
         }
 
         @Override
-        void merge(Database database, int dataType, boolean distinct, Value v) {
+        void merge(Database database, Value v) {
             if (list == null) {
                 list = new ArrayList<>();
             }
@@ -260,7 +264,7 @@ public class AGroupConcat extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database, int dataType, boolean distinct) {
+        Value getMergedValue(Database database) {
             return null;
         }
     }

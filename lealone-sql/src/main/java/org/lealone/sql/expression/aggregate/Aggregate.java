@@ -287,7 +287,7 @@ public abstract class Aggregate extends Expression {
     protected abstract AggregateData createAggregateData();
 
     protected void add(ServerSession session, AggregateData data, Value v) {
-        data.add(session.getDatabase(), dataType, distinct, v);
+        data.add(session.getDatabase(), v);
     }
 
     @Override
@@ -311,11 +311,7 @@ public abstract class Aggregate extends Expression {
             group.put(this, data);
         }
         ValueVector vv = on == null ? null : on.getValueVector(session);
-        add(session, data, bvv, vv);
-    }
-
-    protected void add(ServerSession session, AggregateData data, ValueVector bvv, ValueVector vv) {
-        data.add(session.getDatabase(), dataType, distinct, bvv, vv);
+        data.add(session.getDatabase(), bvv, vv);
     }
 
     @Override
@@ -338,7 +334,7 @@ public abstract class Aggregate extends Expression {
             data = createAggregateData();
             group.put(this, data);
         }
-        data.merge(session.getDatabase(), dataType, distinct, v);
+        data.merge(session.getDatabase(), v);
     }
 
     @Override
@@ -378,7 +374,7 @@ public abstract class Aggregate extends Expression {
         if (data == null) {
             data = createAggregateData();
         }
-        Value v = data.getValue(session.getDatabase(), dataType, distinct);
+        Value v = data.getValue(session.getDatabase());
         return getValue(session, data, v);
     }
 
@@ -396,7 +392,7 @@ public abstract class Aggregate extends Expression {
         if (data == null) {
             data = createAggregateData();
         }
-        return data.getMergedValue(session.getDatabase(), dataType, distinct);
+        return data.getMergedValue(session.getDatabase());
     }
 
     @Override
