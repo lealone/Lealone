@@ -126,7 +126,7 @@ public class ServerSession extends SessionBase {
     private boolean commitOrRollbackDisabled;
     private int modificationId;
     private int objectId;
-    private final int queryCacheSize;
+    private int queryCacheSize;
     private SmallLRUCache<String, PreparedSQLStatement> queryCache;
     private long modificationMetaID = -1;
 
@@ -156,6 +156,10 @@ public class ServerSession extends SessionBase {
 
     public void setDatabase(Database database) {
         this.database = database;
+    }
+
+    public void setQueryCacheSize(int queryCacheSize) {
+        this.queryCacheSize = queryCacheSize;
     }
 
     public boolean setCommitOrRollbackDisabled(boolean x) {
