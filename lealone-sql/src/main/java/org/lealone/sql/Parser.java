@@ -140,6 +140,7 @@ import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.Wildcard;
+import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 import org.lealone.sql.expression.condition.CompareLike;
@@ -2129,22 +2130,22 @@ public class Parser implements SQLParser {
         Expression r;
         if (aggregateType == Aggregate.COUNT) {
             if (readIf("*")) {
-                r = new Aggregate(Aggregate.COUNT_ALL, null, currentSelect, false);
+                r = Aggregate.create(Aggregate.COUNT_ALL, null, currentSelect, false);
             } else {
                 boolean distinct = readIf("DISTINCT");
                 Expression on = readExpression();
                 if (on instanceof Wildcard && !distinct) {
                     // PostgreSQL compatibility: count(t.*)
-                    r = new Aggregate(Aggregate.COUNT_ALL, null, currentSelect, false);
+                    r = Aggregate.create(Aggregate.COUNT_ALL, null, currentSelect, false);
                 } else {
-                    r = new Aggregate(Aggregate.COUNT, on, currentSelect, distinct);
+                    r = Aggregate.create(Aggregate.COUNT, on, currentSelect, distinct);
                 }
             }
         } else if (aggregateType == Aggregate.GROUP_CONCAT) {
-            Aggregate agg = null;
+            AGroupConcat agg = null;
             if (equalsToken("GROUP_CONCAT", aggregateName)) {
                 boolean distinct = readIf("DISTINCT");
-                agg = new Aggregate(Aggregate.GROUP_CONCAT, readExpression(), currentSelect, distinct);
+                agg = new AGroupConcat(Aggregate.GROUP_CONCAT, readExpression(), currentSelect, distinct);
                 if (readIf("ORDER")) {
                     read("BY");
                     agg.setGroupConcatOrder(parseSimpleOrderList());
@@ -2155,14 +2156,14 @@ public class Parser implements SQLParser {
                 }
             } else if (equalsToken("STRING_AGG", aggregateName)) {
                 // PostgreSQL compatibility: string_agg(expression, delimiter)
-                agg = new Aggregate(Aggregate.GROUP_CONCAT, readExpression(), currentSelect, false);
+                agg = new AGroupConcat(Aggregate.GROUP_CONCAT, readExpression(), currentSelect, false);
                 read(",");
                 agg.setGroupConcatSeparator(readExpression());
             }
             r = agg;
         } else {
             boolean distinct = readIf("DISTINCT");
-            r = new Aggregate(aggregateType, readExpression(), currentSelect, distinct);
+            r = Aggregate.create(aggregateType, readExpression(), currentSelect, distinct);
         }
         read(")");
         return r;

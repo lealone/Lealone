@@ -638,7 +638,7 @@ public abstract class Model<T> {
         Select select = createSelect(tid);
         select.setGroupQuery();
         getSelectExpressions().clear();
-        Aggregate a = new Aggregate(Aggregate.COUNT_ALL, null, select, false);
+        Aggregate a = Aggregate.create(Aggregate.COUNT_ALL, null, select, false);
         getSelectExpressions().add(a);
         select.setExpressions(getSelectExpressions());
         select.init();
