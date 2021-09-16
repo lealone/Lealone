@@ -8,6 +8,7 @@ package org.lealone.sql.expression.aggregate;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
@@ -15,7 +16,6 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
-import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating a HISTOGRAM aggregate.
@@ -43,10 +43,6 @@ class AggregateDataHistogram extends AggregateData {
 
     @Override
     Value getValue(Database database, int dataType, boolean distinct) {
-        if (distinct) {
-            count = 0;
-            groupDistinct(database, dataType);
-        }
         ValueArray[] values = new ValueArray[distinctValues.size()];
         int i = 0;
         for (Value dv : distinctValues.keys()) {
@@ -67,42 +63,13 @@ class AggregateDataHistogram extends AggregateData {
         return v.convertTo(dataType);
     }
 
-    private void groupDistinct(Database database, int dataType) {
-        if (distinctValues == null) {
-            return;
-        }
-        count = 0;
-        for (Value v : distinctValues.keys()) {
-            add(database, dataType, false, v);
-        }
-    }
-
     @Override
     void merge(Database database, int dataType, boolean distinct, Value v) {
+        throw DbException.getUnsupportedException("merge");
     }
 
     @Override
     Value getMergedValue(Database database, int dataType, boolean distinct) {
-        Value v = null;
-        ValueArray[] values = new ValueArray[distinctValues.size()];
-        int i = 0;
-        for (Value dv : distinctValues.keys()) {
-            AggregateDataHistogram d = distinctValues.get(dv);
-            values[i] = ValueArray.get(new Value[] { dv, ValueLong.get(d.count) });
-            i++;
-        }
-        final CompareMode compareMode = database.getCompareMode();
-        Arrays.sort(values, new Comparator<ValueArray>() {
-            @Override
-            public int compare(ValueArray v1, ValueArray v2) {
-                Value a1 = v1.getList()[0];
-                Value a2 = v2.getList()[0];
-                return a1.compareTo(a2, compareMode);
-            }
-        });
-        v = ValueArray.get(values);
-
-        return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
+        throw DbException.getUnsupportedException("getMergedValue");
     }
-
 }

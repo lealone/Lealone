@@ -15,6 +15,7 @@ public class AggregateFunctionTest extends SqlTestBase {
         init();
         testAggregateFunctions();
         testAggregateFunctionsWithGroupBy();
+        testHistogram();
     }
 
     void init() throws Exception {
@@ -149,5 +150,23 @@ public class AggregateFunctionTest extends SqlTestBase {
         // assertEquals(var_pop1, var_pop2, 0.0000000000000000000001); //比如这个就会出错
         assertEquals(var_pop1, var_pop2, 0.00000001);
         assertEquals(var_samp1, var_samp2, 0.00000001);
+    }
+
+    void testHistogram() throws Exception {
+        stmt.executeUpdate("drop table IF EXISTS HistogramTest");
+        stmt.executeUpdate("create table IF NOT EXISTS HistogramTest(name varchar, f1 int,f2 int)");
+
+        stmt.executeUpdate("insert into HistogramTest values('abc',1,2)");
+        stmt.executeUpdate("insert into HistogramTest values('abc',2,2)");
+        stmt.executeUpdate("insert into HistogramTest values('abc',3,2)");
+        stmt.executeUpdate("insert into HistogramTest values('abc',1,2)");
+        stmt.executeUpdate("insert into HistogramTest values('abc',2,2)");
+        stmt.executeUpdate("insert into HistogramTest values('abc',3,2)");
+
+        // 加不加distinct都一样
+        sql = "select HISTOGRAM(f1) from HistogramTest";
+        assertEquals("((1, 2), (2, 2), (3, 2))", getStringValue(1, true));
+        sql = "select HISTOGRAM(distinct f1) from HistogramTest";
+        assertEquals("((1, 2), (2, 2), (3, 2))", getStringValue(1, true));
     }
 }
