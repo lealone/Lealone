@@ -50,14 +50,14 @@ public class Shell {
     private int maxColumnSize = 100;
     private final ArrayList<String> history = new ArrayList<>();
 
+    private String[] args;
+    private String url, user, password;
+
     public static void main(String[] args) throws SQLException {
         new Shell().run(args);
     }
 
     private void run(String[] args) throws SQLException {
-        String url = null;
-        String user = null;
-        String password = null;
         String sql = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i];
@@ -103,6 +103,14 @@ public class Shell {
         }
     }
 
+    private void reconnect() throws SQLException {
+        JdbcUtils.closeSilently(stat);
+        JdbcUtils.closeSilently(conn);
+        conn = getConnection(args, url, user, password);
+        stat = conn.createStatement();
+        println("Reconnected");
+    }
+
     private void showUsage() {
         println("Options are case sensitive. Supported options are:");
         println("[-help] or [-?]         Print the list of options");
@@ -123,6 +131,7 @@ public class Shell {
         println("maxwidth       Set maximum column width (default is 100)");
         println("autocommit     Enable or disable autocommit");
         println("history        Show the last 20 statements");
+        println("reconnect      Reconnect the database");
         println("quit or exit   Close the connection and exit");
         println("");
     }
@@ -199,6 +208,8 @@ public class Shell {
                         println("Usage: maxwidth <integer value>");
                     }
                     println("Maximum column width is now " + maxColumnSize);
+                } else if (lower.startsWith("reconnect")) {
+                    reconnect();
                 } else {
                     boolean addToHistory = true;
                     if (statement == null) {
