@@ -20,12 +20,22 @@ public class DefaultValueVectorFactory implements ValueVectorFactory {
         int size = batch.size();
         int columnId = column.getColumnId();
         switch (column.getType()) {
-        case Value.INT:
+        case Value.INT: {
             int[] values = new int[size];
             for (int i = 0; i < size; i++) {
                 values[i] = batch.get(i).getValue(columnId).getInt();
             }
             return new IntVector(values);
+        }
+        case Value.STRING:
+        case Value.STRING_FIXED:
+        case Value.STRING_IGNORECASE: {
+            String[] values = new String[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = batch.get(i).getValue(columnId).getString();
+            }
+            return new StringVector(values);
+        }
         }
         return new ValueVector();
     }
