@@ -159,7 +159,7 @@ public class ADefault extends Aggregate {
         private Value value;
         private double m2, mean;
 
-        private ValueVector vv;
+        // private ValueVector vv;
         // private ValueVector bvv;
 
         @Override
@@ -261,97 +261,116 @@ public class ADefault extends Aggregate {
 
         @Override
         void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            Value v = vv.getValue(0);
-            if (v == ValueNull.INSTANCE) {
-                return;
-            }
-            count++;
+            if (bvv == null)
+                count += vv.size();
+            else
+                count += bvv.trueCount();
             if (distinct) {
                 if (distinctValues == null) {
                     distinctValues = ValueHashMap.newInstance();
                 }
-                distinctValues.put(v, this);
+                for (Value v0 : vv.getValues(bvv))
+                    distinctValues.put(v0, this);
                 return;
             }
             switch (type) {
             case Aggregate.SUM:
-                if (this.vv == null) {
-                    // value = v.convertTo(dataType);
-                    this.vv = vv;
-                    // this.bvv = bvv;
+                if (value == null) {
+                    value = vv.sum(bvv);
                 } else {
-                    // v = v.convertTo(value.getType());
-                    this.vv = this.vv.add(vv);
+                    value = value.add(vv.sum(bvv));
                 }
-                break;
+                // if (this.vv == null) {
+                // // value = v.convertTo(dataType);
+                // this.vv = vv;
+                // this.bvv = bvv;
+                // } else {
+                // // v = v.convertTo(value.getType());
+                // this.vv = this.vv.add(this.bvv, vv, bvv);
+                // }
+                return;
             case Aggregate.AVG:
                 if (value == null) {
-                    value = v.convertTo(DataType.getAddProofType(dataType));
+                    value = vv.sum(bvv);
                 } else {
-                    v = v.convertTo(value.getType());
-                    value = value.add(v);
+                    value = value.add(vv.sum(bvv));
                 }
-                break;
+                return;
             case Aggregate.MIN:
-                if (value == null || session.getDatabase().compare(v, value) < 0) {
-                    value = v;
+                if (value == null) {
+                    value = vv.min(bvv);
+                } else {
+                    Value min = vv.min(bvv);
+                    if (session.getDatabase().compare(min, value) < 0)
+                        value = min;
                 }
-                break;
+                return;
             case Aggregate.MAX:
-                if (value == null || session.getDatabase().compare(v, value) > 0) {
-                    value = v;
-                }
-                break;
-            case Aggregate.STDDEV_POP:
-            case Aggregate.STDDEV_SAMP:
-            case Aggregate.VAR_POP:
-            case Aggregate.VAR_SAMP: {
-                // Using Welford's method, see also
-                // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-                // http://www.johndcook.com/standard_deviation.html
-                double x = v.getDouble();
-                if (count == 1) {
-                    mean = x;
-                    m2 = 0;
+                if (value == null) {
+                    value = vv.max(bvv);
                 } else {
-                    double delta = x - mean;
-                    mean += delta / count;
-                    m2 += delta * (x - mean);
+                    Value max = vv.max(bvv);
+                    if (session.getDatabase().compare(max, value) > 0)
+                        value = max;
                 }
-                break;
+                return;
             }
-            case Aggregate.BOOL_AND:
-                v = v.convertTo(Value.BOOLEAN);
-                if (value == null) {
-                    value = v;
-                } else {
-                    value = ValueBoolean.get(value.getBoolean() && v.getBoolean());
+            for (Value v : vv.getValues(bvv)) {
+                if (v == ValueNull.INSTANCE) {
+                    continue;
                 }
-                break;
-            case Aggregate.BOOL_OR:
-                v = v.convertTo(Value.BOOLEAN);
-                if (value == null) {
-                    value = v;
-                } else {
-                    value = ValueBoolean.get(value.getBoolean() || v.getBoolean());
+                switch (type) {
+                case Aggregate.STDDEV_POP:
+                case Aggregate.STDDEV_SAMP:
+                case Aggregate.VAR_POP:
+                case Aggregate.VAR_SAMP: {
+                    // Using Welford's method, see also
+                    // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+                    // http://www.johndcook.com/standard_deviation.html
+                    double x = v.getDouble();
+                    if (count == 1) {
+                        mean = x;
+                        m2 = 0;
+                    } else {
+                        double delta = x - mean;
+                        mean += delta / count;
+                        m2 += delta * (x - mean);
+                    }
+                    break;
                 }
-                break;
-            case Aggregate.BIT_AND:
-                if (value == null) {
-                    value = v.convertTo(dataType);
-                } else {
-                    value = ValueLong.get(value.getLong() & v.getLong()).convertTo(dataType);
+                case Aggregate.BOOL_AND:
+                    v = v.convertTo(Value.BOOLEAN);
+                    if (value == null) {
+                        value = v;
+                    } else {
+                        value = ValueBoolean.get(value.getBoolean() && v.getBoolean());
+                    }
+                    break;
+                case Aggregate.BOOL_OR:
+                    v = v.convertTo(Value.BOOLEAN);
+                    if (value == null) {
+                        value = v;
+                    } else {
+                        value = ValueBoolean.get(value.getBoolean() || v.getBoolean());
+                    }
+                    break;
+                case Aggregate.BIT_AND:
+                    if (value == null) {
+                        value = v.convertTo(dataType);
+                    } else {
+                        value = ValueLong.get(value.getLong() & v.getLong()).convertTo(dataType);
+                    }
+                    break;
+                case Aggregate.BIT_OR:
+                    if (value == null) {
+                        value = v.convertTo(dataType);
+                    } else {
+                        value = ValueLong.get(value.getLong() | v.getLong()).convertTo(dataType);
+                    }
+                    break;
+                default:
+                    DbException.throwInternalError("type=" + type);
                 }
-                break;
-            case Aggregate.BIT_OR:
-                if (value == null) {
-                    value = v.convertTo(dataType);
-                } else {
-                    value = ValueLong.get(value.getLong() | v.getLong()).convertTo(dataType);
-                }
-                break;
-            default:
-                DbException.throwInternalError("type=" + type);
             }
         }
 
@@ -370,11 +389,12 @@ public class ADefault extends Aggregate {
             case Aggregate.BIT_AND:
             case Aggregate.BOOL_OR:
             case Aggregate.BOOL_AND:
-                if (this.vv != null) {
-                    v = vv.sum();
-                } else {
-                    v = value;
-                }
+                // if (this.vv != null) {
+                // v = vv.sum();
+                // } else {
+                // v = value;
+                // }
+                v = value;
                 break;
             case Aggregate.AVG:
                 if (value != null) {

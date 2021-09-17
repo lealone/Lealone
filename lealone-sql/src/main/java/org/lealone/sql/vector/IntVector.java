@@ -94,6 +94,11 @@ public class IntVector extends ValueVector {
     }
 
     @Override
+    public ValueVector add(ValueVector bvv0, ValueVector vv, ValueVector bvv) {
+        return null;
+    }
+
+    @Override
     public ValueVector subtract(ValueVector vv) {
         return null;
     }
@@ -146,5 +151,61 @@ public class IntVector extends ValueVector {
             sum += values[i];
         }
         return ValueInt.get(sum);
+    }
+
+    @Override
+    public Value sum(ValueVector bvv) {
+        if (bvv == null)
+            return sum();
+        int sum = 0;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv.isTrue(i))
+                sum += values[i];
+        }
+        return ValueInt.get(sum);
+    }
+
+    @Override
+    public Value min() {
+        int min = Integer.MAX_VALUE;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (min > values[i])
+                min = values[i];
+        }
+        return ValueInt.get(min);
+    }
+
+    @Override
+    public Value min(ValueVector bvv) {
+        if (bvv == null)
+            return min();
+        int min = Integer.MAX_VALUE;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv.isTrue(i) && min > values[i])
+                min = values[i];
+        }
+        return ValueInt.get(min);
+    }
+
+    @Override
+    public Value max() {
+        int max = Integer.MIN_VALUE;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (max < values[i])
+                max = values[i];
+        }
+        return ValueInt.get(max);
+    }
+
+    @Override
+    public Value max(ValueVector bvv) {
+        if (bvv == null)
+            return min(bvv);
+        int max = Integer.MIN_VALUE;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv.isTrue(i) && max < values[i])
+                max = values[i];
+        }
+        return ValueInt.get(max);
     }
 }

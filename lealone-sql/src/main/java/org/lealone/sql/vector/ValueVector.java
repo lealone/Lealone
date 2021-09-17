@@ -38,7 +38,8 @@ public class ValueVector {
         return null;
     }
 
-    public ValueVector add(ValueVector vv, ValueVector bvv) {
+    // 目前未使用，原本想用在sum这个聚合函数中
+    public ValueVector add(ValueVector bvv0, ValueVector vv, ValueVector bvv) {
         return null;
     }
 
@@ -75,6 +76,26 @@ public class ValueVector {
     }
 
     public Value sum() {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value sum(ValueVector bvv) {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value min() {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value min(ValueVector bvv) {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value max() {
+        return ValueNull.INSTANCE;
+    }
+
+    public Value max(ValueVector bvv) {
         return ValueNull.INSTANCE;
     }
 

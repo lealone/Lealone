@@ -26,8 +26,9 @@ abstract class AggregateData {
     abstract void add(ServerSession session, Value v);
 
     void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-        for (Value v : vv.getValues(bvv))
+        for (Value v : vv.getValues(bvv)) {
             add(session, v);
+        }
     }
 
     /**
