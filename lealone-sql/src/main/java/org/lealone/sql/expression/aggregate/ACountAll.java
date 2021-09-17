@@ -6,7 +6,6 @@
 package org.lealone.sql.expression.aggregate;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
@@ -50,28 +49,28 @@ public class ACountAll extends Aggregate {
         private long count;
 
         @Override
-        void add(Database database, Value v) {
+        void add(ServerSession session, Value v) {
             count++;
         }
 
         @Override
-        void add(Database database, ValueVector bvv, ValueVector vv) {
+        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
             count += select.getTopTableFilter().getBatchSize();
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             Value v = ValueLong.get(count);
             return v.convertTo(dataType);
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             count += v.getLong();
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             return ValueLong.get(count);
         }
     }

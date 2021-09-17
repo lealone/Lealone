@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Database;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
@@ -110,62 +109,6 @@ public class AGroupConcat extends Aggregate {
     }
 
     @Override
-    protected void add(ServerSession session, AggregateData data, Value v) {
-        if (v != ValueNull.INSTANCE) {
-            v = v.convertTo(Value.STRING);
-            if (groupConcatOrderList != null) {
-                int size = groupConcatOrderList.size();
-                Value[] array = new Value[1 + size];
-                array[0] = v;
-                for (int i = 0; i < size; i++) {
-                    SelectOrderBy o = groupConcatOrderList.get(i);
-                    array[i + 1] = o.expression.getValue(session);
-                }
-                v = ValueArray.get(array);
-            }
-        }
-        data.add(session.getDatabase(), v);
-    }
-
-    @Override
-    protected Value getValue(ServerSession session, AggregateData data, Value v) {
-        ArrayList<Value> list = ((AggregateDataGroupConcat) data).getList();
-        if (list == null || list.isEmpty()) {
-            return ValueNull.INSTANCE;
-        }
-        if (groupConcatOrderList != null) {
-            final SortOrder sortOrder = groupConcatSort;
-            Collections.sort(list, new Comparator<Value>() {
-                @Override
-                public int compare(Value v1, Value v2) {
-                    Value[] a1 = ((ValueArray) v1).getList();
-                    Value[] a2 = ((ValueArray) v2).getList();
-                    return sortOrder.compare(a1, a2);
-                }
-            });
-        }
-        StatementBuilder buff = new StatementBuilder();
-        String sep = groupConcatSeparator == null ? "," : groupConcatSeparator.getValue(session).getString();
-        for (Value val : list) {
-            String s;
-            if (val.getType() == Value.ARRAY) {
-                s = ((ValueArray) val).getList()[0].getString();
-            } else {
-                s = val.getString();
-            }
-            if (s == null) {
-                continue;
-            }
-            if (sep != null) {
-                buff.appendExceptFirst(sep);
-            }
-            buff.append(s);
-        }
-        v = ValueString.get(buff.toString());
-        return v;
-    }
-
-    @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("GROUP_CONCAT(");
         if (distinct) {
@@ -213,11 +156,24 @@ public class AGroupConcat extends Aggregate {
         private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 
         @Override
-        void add(Database database, Value v) {
-            add(database, v, distinct);
+        void add(ServerSession session, Value v) {
+            if (v != ValueNull.INSTANCE) {
+                v = v.convertTo(Value.STRING);
+                if (groupConcatOrderList != null) {
+                    int size = groupConcatOrderList.size();
+                    Value[] array = new Value[1 + size];
+                    array[0] = v;
+                    for (int i = 0; i < size; i++) {
+                        SelectOrderBy o = groupConcatOrderList.get(i);
+                        array[i + 1] = o.expression.getValue(session);
+                    }
+                    v = ValueArray.get(array);
+                }
+            }
+            add(session, v, distinct);
         }
 
-        private void add(Database database, Value v, boolean distinct) {
+        private void add(ServerSession session, Value v, boolean distinct) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -235,28 +191,55 @@ public class AGroupConcat extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             if (distinct) {
-                groupDistinct(database, dataType);
+                groupDistinct(session, dataType);
             }
-            return null;
+            if (list == null || list.isEmpty()) {
+                return ValueNull.INSTANCE;
+            }
+            if (groupConcatOrderList != null) {
+                final SortOrder sortOrder = groupConcatSort;
+                Collections.sort(list, new Comparator<Value>() {
+                    @Override
+                    public int compare(Value v1, Value v2) {
+                        Value[] a1 = ((ValueArray) v1).getList();
+                        Value[] a2 = ((ValueArray) v2).getList();
+                        return sortOrder.compare(a1, a2);
+                    }
+                });
+            }
+            StatementBuilder buff = new StatementBuilder();
+            String sep = groupConcatSeparator == null ? "," : groupConcatSeparator.getValue(session).getString();
+            for (Value val : list) {
+                String s;
+                if (val.getType() == Value.ARRAY) {
+                    s = ((ValueArray) val).getList()[0].getString();
+                } else {
+                    s = val.getString();
+                }
+                if (s == null) {
+                    continue;
+                }
+                if (sep != null) {
+                    buff.appendExceptFirst(sep);
+                }
+                buff.append(s);
+            }
+            return ValueString.get(buff.toString());
         }
 
-        ArrayList<Value> getList() {
-            return list;
-        }
-
-        private void groupDistinct(Database database, int dataType) {
+        private void groupDistinct(ServerSession session, int dataType) {
             if (distinctValues == null) {
                 return;
             }
             for (Value v : distinctValues.keys()) {
-                add(database, v, false);
+                add(session, v, false);
             }
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             if (list == null) {
                 list = new ArrayList<>();
             }
@@ -264,7 +247,7 @@ public class AGroupConcat extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             return null;
         }
     }

@@ -29,6 +29,7 @@ import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -105,12 +106,12 @@ public abstract class Aggregate extends Expression {
     static final int BOOL_AND = 12;
 
     /**
-     * The aggregate type for BOOL_OR(expression).
+     * The aggregate type for BIT_OR(expression).
      */
     static final int BIT_OR = 13;
 
     /**
-     * The aggregate type for BOOL_AND(expression).
+     * The aggregate type for BIT_AND(expression).
      */
     static final int BIT_AND = 14;
 
@@ -161,8 +162,7 @@ public abstract class Aggregate extends Expression {
     }
 
     /**
-     * Get the aggregate type for this name, or -1 if no aggregate has been
-     * found.
+     * Get the aggregate type for this name, or -1 if no aggregate has been found.
      *
      * @param name the aggregate function name
      * @return -1 if no aggregate function has been found, or the aggregate type
@@ -173,17 +173,18 @@ public abstract class Aggregate extends Expression {
     }
 
     public static Aggregate create(int type, Expression on, Select select, boolean distinct) {
-        if (type == Aggregate.SELECTIVITY) {
-            return new ASelectivity(type, on, select, distinct);
-        } else if (type == Aggregate.GROUP_CONCAT) {
-            return new AGroupConcat(type, on, select, distinct);
-        } else if (type == Aggregate.COUNT_ALL) {
-            return new ACountAll(type, on, select, distinct);
-        } else if (type == Aggregate.COUNT) {
+        switch (type) {
+        case Aggregate.COUNT:
             return new ACount(type, on, select, distinct);
-        } else if (type == Aggregate.HISTOGRAM) {
+        case Aggregate.COUNT_ALL:
+            return new ACountAll(type, on, select, distinct);
+        case Aggregate.GROUP_CONCAT:
+            return new AGroupConcat(type, on, select, distinct);
+        case Aggregate.HISTOGRAM:
             return new AHistogram(type, on, select, distinct);
-        } else {
+        case Aggregate.SELECTIVITY:
+            return new ASelectivity(type, on, select, distinct);
+        default:
             return new ADefault(type, on, select, distinct);
         }
     }
@@ -266,18 +267,19 @@ public abstract class Aggregate extends Expression {
         return this;
     }
 
-    @Override
-    public void updateAggregate(ServerSession session) {
+    protected abstract AggregateData createAggregateData();
+
+    private AggregateData getAggregateData() {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)
-            return;
+            return null;
         }
 
         int groupRowId = select.getCurrentGroupRowId();
         if (lastGroupRowId == groupRowId) {
             // already visited
-            return;
+            return null;
         }
         lastGroupRowId = groupRowId;
 
@@ -286,61 +288,36 @@ public abstract class Aggregate extends Expression {
             data = createAggregateData();
             group.put(this, data);
         }
-        Value v = on == null ? null : on.getValue(session);
-        add(session, data, v);
+        return data;
     }
 
-    protected abstract AggregateData createAggregateData();
-
-    protected void add(ServerSession session, AggregateData data, Value v) {
-        data.add(session.getDatabase(), v);
+    @Override
+    public void updateAggregate(ServerSession session) {
+        AggregateData data = getAggregateData();
+        if (data == null) {
+            return;
+        }
+        Value v = on == null ? null : on.getValue(session);
+        data.add(session, v);
     }
 
     @Override
     public void updateAggregate(ServerSession session, ValueVector bvv) {
-        HashMap<Expression, Object> group = select.getCurrentGroup();
-        if (group == null) {
-            // this is a different level (the enclosing query)
-            return;
-        }
-
-        int groupRowId = select.getCurrentGroupRowId();
-        if (lastGroupRowId == groupRowId) {
-            // already visited
-            return;
-        }
-        lastGroupRowId = groupRowId;
-
-        AggregateData data = (AggregateData) group.get(this);
+        AggregateData data = getAggregateData();
         if (data == null) {
-            data = createAggregateData();
-            group.put(this, data);
+            return;
         }
         ValueVector vv = on == null ? null : on.getValueVector(session);
-        data.add(session.getDatabase(), bvv, vv);
+        data.add(session, bvv, vv);
     }
 
     @Override
     public void mergeAggregate(ServerSession session, Value v) {
-        HashMap<Expression, Object> group = select.getCurrentGroup();
-        if (group == null) {
-            // this is a different level (the enclosing query)
-            return;
-        }
-
-        int groupRowId = select.getCurrentGroupRowId();
-        if (lastGroupRowId == groupRowId) {
-            // already visited
-            return;
-        }
-        lastGroupRowId = groupRowId;
-
-        AggregateData data = (AggregateData) group.get(this);
+        AggregateData data = getAggregateData();
         if (data == null) {
-            data = createAggregateData();
-            group.put(this, data);
+            return;
         }
-        data.merge(session.getDatabase(), v);
+        data.merge(session, v);
     }
 
     @Override
@@ -372,6 +349,10 @@ public abstract class Aggregate extends Expression {
                 DbException.throwInternalError("type=" + type);
             }
         }
+        return getFinalAggregateData().getValue(session);
+    }
+
+    private AggregateData getFinalAggregateData() {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
@@ -380,25 +361,17 @@ public abstract class Aggregate extends Expression {
         if (data == null) {
             data = createAggregateData();
         }
-        Value v = data.getValue(session.getDatabase());
-        return getValue(session, data, v);
+        return data;
     }
 
-    protected Value getValue(ServerSession session, AggregateData data, Value v) {
-        return v;
+    @Override
+    public ValueVector getValueVector(ServerSession session) {
+        return new SingleValueVector(getValue(session));
     }
 
     @Override
     public Value getMergedValue(ServerSession session) {
-        HashMap<Expression, Object> group = select.getCurrentGroup();
-        if (group == null) {
-            throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
-        }
-        AggregateData data = (AggregateData) group.get(this);
-        if (data == null) {
-            data = createAggregateData();
-        }
-        return data.getMergedValue(session.getDatabase());
+        return getFinalAggregateData().getMergedValue(session);
     }
 
     @Override

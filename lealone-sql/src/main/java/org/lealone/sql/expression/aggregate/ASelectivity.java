@@ -6,7 +6,6 @@
 package org.lealone.sql.expression.aggregate;
 
 import org.lealone.db.Constants;
-import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.IntIntHashMap;
 import org.lealone.db.value.Value;
@@ -51,7 +50,7 @@ public class ASelectivity extends Aggregate {
         private Value value;
 
         @Override
-        void add(Database database, Value v) {
+        void add(ServerSession session, Value v) {
             // 是基于某个表达式(多数是单个字段)算不重复的记录数所占总记录数的百分比
             // Constants.SELECTIVITY_DISTINCT_COUNT默认是1万，这个值不能改，
             // 对统计值影响很大。通常这个值越大，统计越精确，但是会使用更多内存。
@@ -71,7 +70,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             m2 += distinctHashes.size();
             m2 = 100 * m2 / count;
             int s = (int) m2;
@@ -81,7 +80,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             count++;
             if (value == null) {
                 value = v.convertTo(dataType);
@@ -92,7 +91,7 @@ public class ASelectivity extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             Value v = null;
             if (value != null) {
                 v = Aggregate.divide(value, count);

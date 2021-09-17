@@ -6,7 +6,6 @@
 package org.lealone.sql.expression.aggregate;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
@@ -164,11 +163,11 @@ public class ADefault extends Aggregate {
         // private ValueVector bvv;
 
         @Override
-        void add(Database database, Value v) {
-            add(database, v, distinct);
+        void add(ServerSession session, Value v) {
+            add(session, v, distinct);
         }
 
-        private void add(Database database, Value v, boolean distinct) {
+        private void add(ServerSession session, Value v, boolean distinct) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -198,12 +197,12 @@ public class ADefault extends Aggregate {
                 }
                 break;
             case Aggregate.MIN:
-                if (value == null || database.compare(v, value) < 0) {
+                if (value == null || session.getDatabase().compare(v, value) < 0) {
                     value = v;
                 }
                 break;
             case Aggregate.MAX:
-                if (value == null || database.compare(v, value) > 0) {
+                if (value == null || session.getDatabase().compare(v, value) > 0) {
                     value = v;
                 }
                 break;
@@ -261,7 +260,7 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        void add(Database database, ValueVector bvv, ValueVector vv) {
+        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
             Value v = vv.getValue(0);
             if (v == ValueNull.INSTANCE) {
                 return;
@@ -294,12 +293,12 @@ public class ADefault extends Aggregate {
                 }
                 break;
             case Aggregate.MIN:
-                if (value == null || database.compare(v, value) < 0) {
+                if (value == null || session.getDatabase().compare(v, value) < 0) {
                     value = v;
                 }
                 break;
             case Aggregate.MAX:
-                if (value == null || database.compare(v, value) > 0) {
+                if (value == null || session.getDatabase().compare(v, value) > 0) {
                     value = v;
                 }
                 break;
@@ -357,10 +356,10 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             if (distinct) {
                 count = 0;
-                groupDistinct(database, dataType);
+                groupDistinct(session, dataType);
             }
             Value v = null;
             switch (type) {
@@ -416,18 +415,18 @@ public class ADefault extends Aggregate {
             return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
 
-        private void groupDistinct(Database database, int dataType) {
+        private void groupDistinct(ServerSession session, int dataType) {
             if (distinctValues == null) {
                 return;
             }
             count = 0;
             for (Value v : distinctValues.keys()) {
-                add(database, v, false);
+                add(session, v, false);
             }
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -449,12 +448,12 @@ public class ADefault extends Aggregate {
                 }
                 break;
             case Aggregate.MIN:
-                if (value == null || database.compare(v, value) < 0) {
+                if (value == null || session.getDatabase().compare(v, value) < 0) {
                     value = v;
                 }
                 break;
             case Aggregate.MAX:
-                if (value == null || database.compare(v, value) > 0) {
+                if (value == null || session.getDatabase().compare(v, value) > 0) {
                     value = v;
                 }
                 break;
@@ -500,10 +499,10 @@ public class ADefault extends Aggregate {
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             if (distinct) {
                 count = 0;
-                groupDistinct(database, dataType);
+                groupDistinct(session, dataType);
             }
             Value v = null;
             switch (type) {

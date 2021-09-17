@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.expression.aggregate;
 
-import org.lealone.db.Database;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.vector.ValueVector;
 
@@ -20,23 +20,23 @@ abstract class AggregateData {
     /**
      * Add a value to this aggregate.
      *
-     * @param database the database
+     * @param session the session
      * @param v the value
      */
-    abstract void add(Database database, Value v);
+    abstract void add(ServerSession session, Value v);
 
-    void add(Database database, ValueVector bvv, ValueVector vv) {
+    void add(ServerSession session, ValueVector bvv, ValueVector vv) {
     }
 
     /**
      * Get the aggregate result.
      *
-     * @param database the database
+     * @param session the session
      * @return the value
      */
-    abstract Value getValue(Database database);
+    abstract Value getValue(ServerSession session);
 
-    abstract void merge(Database database, Value v);
+    abstract void merge(ServerSession session, Value v);
 
-    abstract Value getMergedValue(Database database);
+    abstract Value getMergedValue(ServerSession session);
 }

@@ -10,7 +10,6 @@ import java.util.Comparator;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
-import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.CompareMode;
@@ -53,7 +52,7 @@ public class AHistogram extends Aggregate {
         private ValueHashMap<AggregateDataHistogram> distinctValues;
 
         @Override
-        void add(Database database, Value v) {
+        void add(ServerSession session, Value v) {
             if (distinctValues == null) {
                 distinctValues = ValueHashMap.newInstance();
             }
@@ -70,7 +69,7 @@ public class AHistogram extends Aggregate {
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             ValueArray[] values = new ValueArray[distinctValues.size()];
             int i = 0;
             for (Value dv : distinctValues.keys()) {
@@ -78,7 +77,7 @@ public class AHistogram extends Aggregate {
                 values[i] = ValueArray.get(new Value[] { dv, ValueLong.get(d.count) });
                 i++;
             }
-            final CompareMode compareMode = database.getCompareMode();
+            final CompareMode compareMode = session.getDatabase().getCompareMode();
             Arrays.sort(values, new Comparator<ValueArray>() {
                 @Override
                 public int compare(ValueArray v1, ValueArray v2) {
@@ -92,12 +91,12 @@ public class AHistogram extends Aggregate {
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             throw DbException.getUnsupportedException("merge");
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             throw DbException.getUnsupportedException("getMergedValue");
         }
     }

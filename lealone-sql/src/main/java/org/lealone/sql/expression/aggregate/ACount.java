@@ -5,7 +5,6 @@
  */
 package org.lealone.sql.expression.aggregate;
 
-import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
@@ -48,7 +47,7 @@ public class ACount extends Aggregate {
         private ValueHashMap<AggregateDataCount> distinctValues;
 
         @Override
-        void add(Database database, Value v) {
+        void add(ServerSession session, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -63,12 +62,12 @@ public class ACount extends Aggregate {
         }
 
         @Override
-        void add(Database database, ValueVector bvv, ValueVector vv) {
+        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
             count += vv.size();
         }
 
         @Override
-        Value getValue(Database database) {
+        Value getValue(ServerSession session) {
             if (distinct) {
                 if (distinctValues != null) {
                     count = distinctValues.size();
@@ -81,12 +80,12 @@ public class ACount extends Aggregate {
         }
 
         @Override
-        void merge(Database database, Value v) {
+        void merge(ServerSession session, Value v) {
             count += v.getLong();
         }
 
         @Override
-        Value getMergedValue(Database database) {
+        Value getMergedValue(ServerSession session) {
             return ValueLong.get(count);
         }
     }
