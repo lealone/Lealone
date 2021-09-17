@@ -17,7 +17,7 @@ import org.lealone.sql.vector.ValueVector;
 // 处理在where和having中出现别名的情况，如:
 // SELECT id AS A FROM test where A>=0
 // SELECT id/3 AS A, COUNT(*) FROM test GROUP BY A HAVING A>=0
-public class AliasColumnResolver implements ColumnResolver {
+public class AliasColumnResolver extends ColumnResolverBase {
 
     private final Select select;
     private final Expression expression;

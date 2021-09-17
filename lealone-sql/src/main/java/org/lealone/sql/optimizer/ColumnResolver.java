@@ -107,4 +107,12 @@ public interface ColumnResolver extends IExpression.Evaluator {
         expression.mapColumns(this, 0);
         return expression.optimize(session);
     }
+
+    int getState();
+
+    void setState(int state);
+
+    public static final int STATE_INITIAL = 0;
+
+    public static final int STATE_IN_AGGREGATE = 1;
 }

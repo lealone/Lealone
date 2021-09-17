@@ -20,7 +20,7 @@ import org.lealone.sql.vector.ValueVector;
  * @author H2 Group
  * @author zhh
  */
-public class SingleColumnResolver implements ColumnResolver {
+public class SingleColumnResolver extends ColumnResolverBase {
 
     private final Column column;
     private Value value;

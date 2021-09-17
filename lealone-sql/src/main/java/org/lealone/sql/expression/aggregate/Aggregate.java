@@ -239,8 +239,18 @@ public abstract class Aggregate extends Expression {
 
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
+        // 聚合函数不能嵌套
+        if (resolver.getState() == ColumnResolver.STATE_IN_AGGREGATE) {
+            throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
+        }
         if (on != null) {
-            on.mapColumns(resolver, level);
+            int state = resolver.getState();
+            resolver.setState(ColumnResolver.STATE_IN_AGGREGATE);
+            try {
+                on.mapColumns(resolver, level);
+            } finally {
+                resolver.setState(state);
+            }
         }
     }
 
@@ -258,10 +268,6 @@ public abstract class Aggregate extends Expression {
 
     @Override
     public void updateAggregate(ServerSession session) {
-        // TODO aggregates: check nested MIN(MAX(ID)) and so on
-        // if (on != null) {
-        // on.updateAggregate();
-        // }
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)

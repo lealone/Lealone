@@ -78,7 +78,7 @@ public class ADefault extends Aggregate {
 
     @Override
     protected AggregateData createAggregateData() {
-        return new AggregateDataDefault(type);
+        return new AggregateDataDefault();
     }
 
     @Override
@@ -155,7 +155,6 @@ public class ADefault extends Aggregate {
 
     private class AggregateDataDefault extends AggregateData {
 
-        private final int aggregateType;
         private long count;
         private ValueHashMap<AggregateDataDefault> distinctValues;
         private Value value;
@@ -163,13 +162,6 @@ public class ADefault extends Aggregate {
 
         private ValueVector vv;
         // private ValueVector bvv;
-
-        /**
-         * @param aggregateType the type of the aggregate operation
-         */
-        AggregateDataDefault(int aggregateType) {
-            this.aggregateType = aggregateType;
-        }
 
         @Override
         void add(Database database, Value v) {
@@ -188,7 +180,7 @@ public class ADefault extends Aggregate {
                 distinctValues.put(v, this);
                 return;
             }
-            switch (aggregateType) {
+            switch (type) {
             case Aggregate.SUM:
                 if (value == null) {
                     value = v.convertTo(dataType);
@@ -264,7 +256,7 @@ public class ADefault extends Aggregate {
                 }
                 break;
             default:
-                DbException.throwInternalError("type=" + aggregateType);
+                DbException.throwInternalError("type=" + type);
             }
         }
 
@@ -282,7 +274,7 @@ public class ADefault extends Aggregate {
                 distinctValues.put(v, this);
                 return;
             }
-            switch (aggregateType) {
+            switch (type) {
             case Aggregate.SUM:
                 if (this.vv == null) {
                     // value = v.convertTo(dataType);
@@ -360,7 +352,7 @@ public class ADefault extends Aggregate {
                 }
                 break;
             default:
-                DbException.throwInternalError("type=" + aggregateType);
+                DbException.throwInternalError("type=" + type);
             }
         }
 
@@ -371,7 +363,7 @@ public class ADefault extends Aggregate {
                 groupDistinct(database, dataType);
             }
             Value v = null;
-            switch (aggregateType) {
+            switch (type) {
             case Aggregate.SUM:
             case Aggregate.MIN:
             case Aggregate.MAX:
@@ -419,7 +411,7 @@ public class ADefault extends Aggregate {
                 break;
             }
             default:
-                DbException.throwInternalError("type=" + aggregateType);
+                DbException.throwInternalError("type=" + type);
             }
             return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
@@ -447,7 +439,7 @@ public class ADefault extends Aggregate {
                 distinctValues.put(v, this);
                 return;
             }
-            switch (aggregateType) {
+            switch (type) {
             case Aggregate.SUM:
                 if (value == null) {
                     value = v.convertTo(dataType);
@@ -503,7 +495,7 @@ public class ADefault extends Aggregate {
             case Aggregate.VAR_POP:
             case Aggregate.VAR_SAMP:
             default:
-                DbException.throwInternalError("type=" + aggregateType);
+                DbException.throwInternalError("type=" + type);
             }
         }
 
@@ -514,7 +506,7 @@ public class ADefault extends Aggregate {
                 groupDistinct(database, dataType);
             }
             Value v = null;
-            switch (aggregateType) {
+            switch (type) {
             case Aggregate.SUM:
             case Aggregate.MIN:
             case Aggregate.MAX:
@@ -530,7 +522,7 @@ public class ADefault extends Aggregate {
             case Aggregate.VAR_POP:
             case Aggregate.VAR_SAMP:
             default:
-                DbException.throwInternalError("type=" + aggregateType);
+                DbException.throwInternalError("type=" + type);
             }
             return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
