@@ -41,4 +41,14 @@ public class BooleanVector extends ValueVector {
     public Value getValue(int index) {
         return ValueBoolean.get(values[index]);
     }
+
+    @Override
+    public int trueCount() {
+        int c = 0;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (values[i])
+                c++;
+        }
+        return c;
+    }
 }

@@ -55,13 +55,15 @@ public class ACountAll extends Aggregate {
 
         @Override
         void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            count += select.getTopTableFilter().getBatchSize();
+            if (bvv == null)
+                count += select.getTopTableFilter().getBatchSize();
+            else
+                count += bvv.trueCount();
         }
 
         @Override
         Value getValue(ServerSession session) {
-            Value v = ValueLong.get(count);
-            return v.convertTo(dataType);
+            return ValueLong.get(count);
         }
 
         @Override

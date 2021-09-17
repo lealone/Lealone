@@ -70,7 +70,15 @@ public class ValueVector {
         return ValueNull.INSTANCE;
     }
 
+    public Value[] getValues(ValueVector bvv) {
+        return null;
+    }
+
     public Value sum() {
         return ValueNull.INSTANCE;
+    }
+
+    public int trueCount() {
+        return 0;
     }
 }

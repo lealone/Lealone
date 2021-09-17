@@ -57,13 +57,22 @@ public class ACount extends Aggregate {
                     distinctValues = ValueHashMap.newInstance();
                 }
                 distinctValues.put(v, this);
-                return;
             }
         }
 
         @Override
         void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            count += vv.size();
+            if (bvv == null)
+                count += vv.size();
+            else
+                count += bvv.trueCount();
+            if (distinct) {
+                if (distinctValues == null) {
+                    distinctValues = ValueHashMap.newInstance();
+                }
+                for (Value v : vv.getValues(bvv))
+                    distinctValues.put(v, this);
+            }
         }
 
         @Override
@@ -75,8 +84,7 @@ public class ACount extends Aggregate {
                     count = 0;
                 }
             }
-            Value v = ValueLong.get(count);
-            return v.convertTo(dataType);
+            return ValueLong.get(count);
         }
 
         @Override

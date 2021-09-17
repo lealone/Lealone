@@ -124,6 +124,22 @@ public class IntVector extends ValueVector {
     }
 
     @Override
+    public Value[] getValues(ValueVector bvv) {
+        int size;
+        if (bvv == null)
+            size = values.length;
+        else
+            size = bvv.trueCount();
+        Value[] a = new Value[size];
+        int j = 0;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv == null || bvv.isTrue(i))
+                a[j++] = getValue(i);
+        }
+        return a;
+    }
+
+    @Override
     public Value sum() {
         int sum = 0;
         for (int i = 0, len = values.length; i < len; i++) {
