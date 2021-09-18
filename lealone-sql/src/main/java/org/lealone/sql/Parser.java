@@ -1724,7 +1724,7 @@ public class Parser implements SQLParser {
                     if (!call.isDeterministic()) {
                         recompileAlways = true;
                     }
-                    table = new FunctionTable(mainSchema, session, expr, call);
+                    table = new FunctionTable(mainSchema, session, call);
                 }
             } else if (equalsToken("DUAL", tableName)) {
                 table = getDualTable(false);
@@ -4206,7 +4206,7 @@ public class Parser implements SQLParser {
         }
         tf.setColumns(columns);
         tf.doneWithParameters();
-        Table table = new FunctionTable(mainSchema, session, tf, tf);
+        Table table = new FunctionTable(mainSchema, session, tf);
         TableFilter filter = new TableFilter(session, table, null, rightsChecked, currentSelect);
         return filter;
     }
