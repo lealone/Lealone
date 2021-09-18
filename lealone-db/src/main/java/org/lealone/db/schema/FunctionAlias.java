@@ -193,8 +193,7 @@ public class FunctionAlias extends SchemaObjectBase {
 
     @Override
     public String getSQL() {
-        // TODO can remove this method once FUNCTIONS_IN_SCHEMA is enabled
-        if (database.getSettings().functionsInSchema || !getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
+        if (!getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
             return super.getSQL();
         }
         return database.quoteIdentifier(getName());

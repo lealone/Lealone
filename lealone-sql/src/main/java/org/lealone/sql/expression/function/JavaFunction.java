@@ -27,7 +27,6 @@ import org.lealone.sql.optimizer.ColumnResolver;
 public class JavaFunction extends Expression implements FunctionCall {
 
     private final FunctionAlias functionAlias;
-
     private final FunctionAlias.JavaMethod javaMethod;
     private final Expression[] args;
 
@@ -90,9 +89,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
-        // TODO always append the schema once FUNCTIONS_IN_SCHEMA is enabled
-        if (functionAlias.getDatabase().getSettings().functionsInSchema
-                || !functionAlias.getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
+        if (!functionAlias.getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
             buff.append(Parser.quoteIdentifier(functionAlias.getSchema().getName())).append('.');
         }
         buff.append(Parser.quoteIdentifier(functionAlias.getName())).append('(');
