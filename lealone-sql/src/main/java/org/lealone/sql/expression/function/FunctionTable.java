@@ -34,18 +34,12 @@ public class FunctionTable extends Table {
 
     private final FunctionCall function;
     private final Expression functionExpr;
-    private final long rowCount;
     private LocalResult cachedResult;
     private Value cachedValue;
 
     public FunctionTable(Schema schema, ServerSession session, FunctionCall function) {
         super(schema, 0, function.getName(), false, true);
         this.function = function;
-        if (function instanceof TableFunction) {
-            rowCount = ((TableFunction) function).getRowCount();
-        } else {
-            rowCount = Long.MAX_VALUE;
-        }
         functionExpr = function.optimize(session);
         int type = function.getType();
         if (type != Value.RESULT_SET) {
@@ -107,17 +101,17 @@ public class FunctionTable extends Table {
 
     @Override
     public boolean canGetRowCount() {
-        return rowCount != Long.MAX_VALUE;
+        return false;
     }
 
     @Override
     public long getRowCount(ServerSession session) {
-        return rowCount;
+        return Long.MAX_VALUE;
     }
 
     @Override
     public long getRowCountApproximation() {
-        return rowCount;
+        return Long.MAX_VALUE;
     }
 
     @Override

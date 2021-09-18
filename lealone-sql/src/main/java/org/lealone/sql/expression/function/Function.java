@@ -438,7 +438,7 @@ public class Function extends Expression implements FunctionCall {
         switch (info.type) {
         case TABLE:
         case TABLE_DISTINCT:
-            return new TableFunction(database, info, Long.MAX_VALUE);
+            return new TableFunction(database, info);
         default:
             return new Function(database, info);
         }

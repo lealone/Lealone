@@ -30,14 +30,13 @@ import org.lealone.sql.expression.visitor.IExpressionVisitor;
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).
  */
 public class TableFunction extends Function {
+
     private final boolean distinct;
-    private final long rowCount;
     private Column[] columnList;
 
-    TableFunction(Database database, FunctionInfo info, long rowCount) {
+    TableFunction(Database database, FunctionInfo info) {
         super(database, info);
         distinct = info.type == Function.TABLE_DISTINCT;
-        this.rowCount = rowCount;
     }
 
     @Override
@@ -150,10 +149,6 @@ public class TableFunction extends Function {
             simple.addRow(list);
         }
         return simple;
-    }
-
-    public long getRowCount() {
-        return rowCount;
     }
 
     @Override
