@@ -68,6 +68,8 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     protected boolean randomAccessResult;
 
+    // 存放原始表达式的Alias和ColumnName，用于给客户端返回最原始的信息
+    protected ArrayList<String[]> rawExpressionInfoList;
     protected ArrayList<Expression> expressions;
     protected Expression[] expressionArray;
     protected ArrayList<SelectOrderBy> orderList;

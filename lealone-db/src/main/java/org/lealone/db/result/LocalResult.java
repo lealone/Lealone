@@ -8,6 +8,7 @@ package org.lealone.db.result;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
@@ -29,6 +30,7 @@ public class LocalResult implements Result, ResultTarget {
     private int maxMemoryRows;
     private ServerSession session;
     private int visibleColumnCount;
+    private List<String[]> rawExpressionInfoList;
     private IExpression[] expressions;
     private int rowId, rowCount;
     private ArrayList<Value[]> rows;
@@ -70,6 +72,12 @@ public class LocalResult implements Result, ResultTarget {
         this.expressions = expressions;
     }
 
+    public LocalResult(ServerSession session, IExpression[] expressions, int visibleColumnCount,
+            List<String[]> rawExpressionInfoList) {
+        this(session, expressions, visibleColumnCount);
+        this.rawExpressionInfoList = rawExpressionInfoList;
+    }
+
     /**
      * Create a shallow copy of the result set. The data and a temporary table
      * (if there is any) is not copied.
@@ -92,6 +100,7 @@ public class LocalResult implements Result, ResultTarget {
         copy.maxMemoryRows = this.maxMemoryRows;
         copy.session = targetSession;
         copy.visibleColumnCount = this.visibleColumnCount;
+        copy.rawExpressionInfoList = this.rawExpressionInfoList;
         copy.expressions = this.expressions;
         copy.rowId = -1;
         copy.rowCount = this.rowCount;
@@ -357,7 +366,7 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getAlias(int i) {
-        return expressions[i].getAlias();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[0] : expressions[i].getAlias();
     }
 
     @Override
@@ -377,7 +386,7 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getColumnName(int i) {
-        return expressions[i].getColumnName();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1] : expressions[i].getColumnName();
     }
 
     @Override

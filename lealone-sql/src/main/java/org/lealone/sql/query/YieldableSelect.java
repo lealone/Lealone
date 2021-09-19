@@ -208,6 +208,8 @@ public class YieldableSelect extends YieldableQueryBase {
     }
 
     private LocalResult createLocalResult(LocalResult old) {
-        return old != null ? old : new LocalResult(session, select.expressionArray, select.visibleColumnCount);
+        return old != null ? old
+                : new LocalResult(session, select.expressionArray, select.visibleColumnCount,
+                        select.rawExpressionInfoList);
     }
 }

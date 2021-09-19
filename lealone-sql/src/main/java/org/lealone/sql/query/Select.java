@@ -334,8 +334,11 @@ public class Select extends Query {
             sort = prepareOrder(session, orderList, expressions.size());
             orderList = null;
         }
+        rawExpressionInfoList = new ArrayList<>(expressions.size());
         for (int i = 0; i < expressions.size(); i++) {
             Expression e = expressions.get(i);
+            String[] eInfo = { e.getAlias(), e.getColumnName() };
+            rawExpressionInfoList.add(eInfo);
             expressions.set(i, e.optimize(session));
         }
         if (condition != null) {
