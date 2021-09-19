@@ -25,6 +25,9 @@ import org.lealone.db.value.Value;
 /**
  * An index for a function that returns a result set. This index can only scan
  * through all rows, search is not supported.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class FunctionIndex extends IndexBase {
 

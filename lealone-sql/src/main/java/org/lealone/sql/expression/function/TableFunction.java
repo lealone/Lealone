@@ -28,15 +28,28 @@ import org.lealone.sql.expression.visitor.IExpressionVisitor;
 
 /**
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class TableFunction extends Function {
+public class TableFunction extends BuiltInFunction {
+
+    public static void init() {
+    }
+
+    public static final int TABLE = 300, TABLE_DISTINCT = 301;
+
+    static {
+        addFunctionWithNull("TABLE", TABLE, VAR_ARGS, Value.RESULT_SET);
+        addFunctionWithNull("TABLE_DISTINCT", TABLE_DISTINCT, VAR_ARGS, Value.RESULT_SET);
+    }
 
     private final boolean distinct;
     private Column[] columnList;
 
     TableFunction(Database database, FunctionInfo info) {
         super(database, info);
-        distinct = info.type == Function.TABLE_DISTINCT;
+        distinct = info.type == TABLE_DISTINCT;
     }
 
     @Override

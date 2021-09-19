@@ -29,15 +29,18 @@ import org.lealone.sql.expression.Expression;
 
 /**
  * A table backed by a system or user-defined function that returns a result set.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class FunctionTable extends Table {
 
-    private final FunctionCall function;
+    private final Function function;
     private final Expression functionExpr;
     private LocalResult cachedResult;
     private Value cachedValue;
 
-    public FunctionTable(Schema schema, ServerSession session, FunctionCall function) {
+    public FunctionTable(Schema schema, ServerSession session, Function function) {
         super(schema, 0, function.getName(), false, true);
         this.function = function;
         functionExpr = function.optimize(session);

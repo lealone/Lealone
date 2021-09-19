@@ -23,8 +23,11 @@ import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * This class wraps a user-defined function.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class JavaFunction extends Expression implements FunctionCall {
+public class JavaFunction extends Function {
 
     private final FunctionAlias functionAlias;
     private final FunctionAlias.JavaMethod javaMethod;
@@ -181,5 +184,10 @@ public class JavaFunction extends Expression implements FunctionCall {
     @Override
     public <R> R accept(IExpressionVisitor<R> visitor) {
         return visitor.visitJavaFunction(this);
+    }
+
+    @Override
+    public int getFunctionType() {
+        return -1;
     }
 }

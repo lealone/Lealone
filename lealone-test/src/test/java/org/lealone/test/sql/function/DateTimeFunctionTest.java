@@ -9,7 +9,7 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 //总共26个日期与时间函数
-public class DateAndTimeFunctionTest extends SqlTestBase {
+public class DateTimeFunctionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();

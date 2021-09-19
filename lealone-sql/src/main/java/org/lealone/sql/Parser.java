@@ -150,10 +150,12 @@ import org.lealone.sql.expression.condition.ConditionExists;
 import org.lealone.sql.expression.condition.ConditionIn;
 import org.lealone.sql.expression.condition.ConditionInSelect;
 import org.lealone.sql.expression.condition.ConditionNot;
+import org.lealone.sql.expression.function.DateTimeFunction;
 import org.lealone.sql.expression.function.Function;
-import org.lealone.sql.expression.function.FunctionCall;
 import org.lealone.sql.expression.function.FunctionTable;
 import org.lealone.sql.expression.function.JavaFunction;
+import org.lealone.sql.expression.function.StringFunction;
+import org.lealone.sql.expression.function.SystemFunction;
 import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.expression.subquery.SubQuery;
 import org.lealone.sql.optimizer.SingleColumnResolver;
@@ -1717,14 +1719,14 @@ public class Parser implements SQLParser {
                     }
                 } else {
                     Expression expr = readFunction(schema, tableName);
-                    if (!(expr instanceof FunctionCall)) {
+                    if (!(expr instanceof Function)) {
                         throw getSyntaxError();
                     }
-                    FunctionCall call = (FunctionCall) expr;
-                    if (!call.isDeterministic()) {
+                    Function function = (Function) expr;
+                    if (!function.isDeterministic()) {
                         recompileAlways = true;
                     }
-                    table = new FunctionTable(mainSchema, session, call);
+                    table = new FunctionTable(mainSchema, session, function);
                 }
             } else if (equalsToken("DUAL", tableName)) {
                 table = getDualTable(false);
@@ -2252,7 +2254,7 @@ public class Parser implements SQLParser {
             return readJavaFunction(null, name);
         }
         switch (function.getFunctionType()) {
-        case Function.CAST: {
+        case SystemFunction.CAST: {
             function.setParameter(0, readExpression());
             read("AS");
             Column type = parseColumnWithType(null);
@@ -2260,7 +2262,7 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.CONVERT: {
+        case SystemFunction.CONVERT: {
             if (database.getMode().swapConvertFunctionParameters) {
                 Column type = parseColumnWithType(null);
                 function.setDataType(type);
@@ -2276,7 +2278,7 @@ public class Parser implements SQLParser {
             }
             break;
         }
-        case Function.EXTRACT: {
+        case DateTimeFunction.EXTRACT: {
             function.setParameter(0, ValueExpression.get(ValueString.get(currentToken)));
             read();
             read("FROM");
@@ -2284,9 +2286,9 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.DATE_ADD:
-        case Function.DATE_DIFF: {
-            if (Function.isDatePart(currentToken)) {
+        case DateTimeFunction.DATE_ADD:
+        case DateTimeFunction.DATE_DIFF: {
+            if (DateTimeFunction.isDatePart(currentToken)) {
                 function.setParameter(0, ValueExpression.get(ValueString.get(currentToken)));
                 read();
             } else {
@@ -2299,7 +2301,7 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.SUBSTRING: {
+        case StringFunction.SUBSTRING: {
             // Different variants include:
             // SUBSTRING(X,1)
             // SUBSTRING(X,1,1)
@@ -2325,7 +2327,7 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.POSITION: {
+        case StringFunction.POSITION: {
             // can't read expression because IN would be read too early
             function.setParameter(0, readConcat());
             if (!readIf(",")) {
@@ -2335,7 +2337,7 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.TRIM: {
+        case StringFunction.TRIM: {
             Expression space = null;
             if (readIf("LEADING")) {
                 function = Function.getFunction(database, "LTRIM");
@@ -2369,8 +2371,8 @@ public class Parser implements SQLParser {
             read(")");
             break;
         }
-        case Function.TABLE:
-        case Function.TABLE_DISTINCT: {
+        case TableFunction.TABLE:
+        case TableFunction.TABLE_DISTINCT: {
             int i = 0;
             ArrayList<Column> columns = Utils.newSmallArrayList();
             do {
@@ -2386,7 +2388,7 @@ public class Parser implements SQLParser {
             tf.setColumns(columns);
             break;
         }
-        case Function.ROW_NUMBER:
+        case SystemFunction.ROW_NUMBER:
             read(")");
             read("OVER");
             read("(");
