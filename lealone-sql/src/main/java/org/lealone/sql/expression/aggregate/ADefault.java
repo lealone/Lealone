@@ -19,7 +19,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.ValueVector;
 
-public class ADefault extends Aggregate {
+public class ADefault extends BuiltInAggregate {
 
     public ADefault(int type, Expression on, Select select, boolean distinct) {
         super(type, on, select, distinct);
@@ -398,7 +398,7 @@ public class ADefault extends Aggregate {
                 break;
             case Aggregate.AVG:
                 if (value != null) {
-                    v = Aggregate.divide(value, count);
+                    v = BuiltInAggregate.divide(value, count);
                 }
                 break;
             case Aggregate.STDDEV_POP: {

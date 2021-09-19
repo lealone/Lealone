@@ -23,7 +23,7 @@ import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.query.Select;
 
-public class AGroupConcat extends Aggregate {
+public class AGroupConcat extends BuiltInAggregate {
 
     private Expression groupConcatSeparator;
     private ArrayList<SelectOrderBy> groupConcatOrderList;

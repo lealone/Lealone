@@ -14,7 +14,7 @@ import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.ValueVector;
 
 // COUNT(*)
-public class ACountAll extends Aggregate {
+public class ACountAll extends BuiltInAggregate {
 
     public ACountAll(int type, Expression on, Select select, boolean distinct) {
         super(type, on, select, distinct);

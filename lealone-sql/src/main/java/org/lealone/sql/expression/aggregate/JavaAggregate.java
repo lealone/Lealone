@@ -31,22 +31,19 @@ import org.lealone.sql.query.Select;
  * @author H2 Group
  * @author zhh
  */
-public class JavaAggregate extends Expression {
+public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregate {
 
     private final UserAggregate userAggregate;
-    private final Select select;
     private final Expression[] args;
     private int[] argTypes;
-    private int dataType;
     private Connection userConnection;
-    private int lastGroupRowId;
 
     private Aggregate aggregate;
 
     public JavaAggregate(UserAggregate userAggregate, Expression[] args, Select select) {
+        super(select);
         this.userAggregate = userAggregate;
         this.args = args;
-        this.select = select;
     }
 
     public UserAggregate getUserAggregate() {
@@ -58,12 +55,8 @@ public class JavaAggregate extends Expression {
     }
 
     @Override
-    public int getCost() {
-        int cost = 5;
-        for (Expression e : args) {
-            cost += e.getCost();
-        }
-        return cost;
+    public int getScale() {
+        return DataType.getDataType(dataType).defaultScale;
     }
 
     @Override
@@ -77,46 +70,12 @@ public class JavaAggregate extends Expression {
     }
 
     @Override
-    public int getScale() {
-        return DataType.getDataType(dataType).defaultScale;
-    }
-
-    @Override
-    public String getSQL(boolean isDistributed) {
-        StatementBuilder buff = new StatementBuilder();
-        buff.append(Parser.quoteIdentifier(userAggregate.getName())).append('(');
+    public int getCost() {
+        int cost = 5;
         for (Expression e : args) {
-            buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
+            cost += e.getCost();
         }
-        return buff.append(')').toString();
-    }
-
-    @Override
-    public int getType() {
-        return dataType;
-    }
-
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.DETERMINISTIC:
-            // TODO optimization: some functions are deterministic, but we don't
-            // know (no setting for that)
-        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-            // user defined aggregate functions can not be optimized
-            return false;
-        case ExpressionVisitor.GET_DEPENDENCIES:
-            visitor.addDependency(userAggregate);
-            break;
-        default:
-        }
-        for (Expression e : args) {
-            if (e != null && !e.isEverything(visitor)) {
-                return false;
-            }
-        }
-        return true;
+        return cost;
     }
 
     @Override
@@ -144,6 +103,39 @@ public class JavaAggregate extends Expression {
             throw DbException.convert(e);
         }
         return this;
+    }
+
+    @Override
+    public String getSQL(boolean isDistributed) {
+        StatementBuilder buff = new StatementBuilder();
+        buff.append(Parser.quoteIdentifier(userAggregate.getName())).append('(');
+        for (Expression e : args) {
+            buff.appendExceptFirst(", ");
+            buff.append(e.getSQL(isDistributed));
+        }
+        return buff.append(')').toString();
+    }
+
+    @Override
+    public boolean isEverything(ExpressionVisitor visitor) {
+        switch (visitor.getType()) {
+        case ExpressionVisitor.DETERMINISTIC:
+            // TODO optimization: some functions are deterministic, but we don't
+            // know (no setting for that)
+        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
+            // user defined aggregate functions can not be optimized
+            return false;
+        case ExpressionVisitor.GET_DEPENDENCIES:
+            visitor.addDependency(userAggregate);
+            break;
+        default:
+        }
+        for (Expression e : args) {
+            if (e != null && !e.isEverything(visitor)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Aggregate getInstance() throws SQLException {

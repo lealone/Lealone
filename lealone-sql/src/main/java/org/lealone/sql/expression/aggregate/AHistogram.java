@@ -19,7 +19,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
 
-public class AHistogram extends Aggregate {
+public class AHistogram extends BuiltInAggregate {
 
     public AHistogram(int type, Expression on, Select select, boolean distinct) {
         super(type, on, select, distinct);

@@ -14,7 +14,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
 
-public class ASelectivity extends Aggregate {
+public class ASelectivity extends BuiltInAggregate {
 
     public ASelectivity(int type, Expression on, Select select, boolean distinct) {
         super(type, on, select, distinct);
@@ -94,7 +94,7 @@ public class ASelectivity extends Aggregate {
         Value getMergedValue(ServerSession session) {
             Value v = null;
             if (value != null) {
-                v = Aggregate.divide(value, count);
+                v = BuiltInAggregate.divide(value, count);
             }
             return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
