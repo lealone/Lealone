@@ -7,12 +7,14 @@ package org.lealone.sql.expression.function;
 
 import java.util.HashMap;
 
+import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * This class is used by the built-in functions,
@@ -99,6 +101,58 @@ public abstract class Function extends Expression {
         return new TableFunction(database, info);
     }
 
+    protected Expression[] args;
+
+    /**
+     * Get the function arguments.
+     *
+     * @return argument list
+     */
+    public Expression[] getArgs() {
+        return args;
+    }
+
+    @Override
+    public void mapColumns(ColumnResolver resolver, int level) {
+        for (Expression e : args) {
+            if (e != null) {
+                e.mapColumns(resolver, level);
+            }
+        }
+    }
+
+    @Override
+    public void updateAggregate(ServerSession session) {
+        for (Expression e : args) {
+            if (e != null) {
+                e.updateAggregate(session);
+            }
+        }
+    }
+
+    protected boolean optimizeArgs(ServerSession session) {
+        boolean allConst = isDeterministic();
+        for (int i = 0; i < args.length; i++) {
+            Expression e = args[i];
+            if (e == null) {
+                continue;
+            }
+            e = e.optimize(session);
+            args[i] = e;
+            if (!e.isConstant()) {
+                allConst = false;
+            }
+        }
+        return allConst;
+    }
+
+    protected void appendArgs(StatementBuilder buff, boolean isDistributed) {
+        for (Expression e : args) {
+            buff.appendExceptFirst(", ");
+            buff.append(e.getSQL(isDistributed));
+        }
+    }
+
     /**
      * Get the name of the function.
      *
@@ -131,13 +185,6 @@ public abstract class Function extends Expression {
      */
     @Override
     public abstract Expression optimize(ServerSession session);
-
-    /**
-     * Get the function arguments.
-     *
-     * @return argument list
-     */
-    public abstract Expression[] getArgs();
 
     /**
      * Get the SQL snippet of the function (including arguments).

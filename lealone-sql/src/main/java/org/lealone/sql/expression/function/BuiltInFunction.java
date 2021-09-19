@@ -21,7 +21,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * This class implements most built-in functions of this database.
@@ -33,7 +32,6 @@ public abstract class BuiltInFunction extends Function {
 
     protected final Database database;
     protected final FunctionInfo info;
-    protected Expression[] args;
     private ArrayList<Expression> varArgs;
     protected int dataType, scale;
     protected long precision = PRECISION_UNKNOWN;
@@ -116,15 +114,6 @@ public abstract class BuiltInFunction extends Function {
         return dataType;
     }
 
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.mapColumns(resolver, level);
-            }
-        }
-    }
-
     /**
      * Check if the parameter count is correct.
      *
@@ -168,22 +157,6 @@ public abstract class BuiltInFunction extends Function {
         precision = col.getPrecision();
         displaySize = col.getDisplaySize();
         scale = col.getScale();
-    }
-
-    protected boolean optimizeArgs(ServerSession session) {
-        boolean allConst = info.deterministic;
-        for (int i = 0; i < args.length; i++) {
-            Expression e = args[i];
-            if (e == null) {
-                continue;
-            }
-            e = e.optimize(session);
-            args[i] = e;
-            if (!e.isConstant()) {
-                allConst = false;
-            }
-        }
-        return allConst;
     }
 
     @Override
@@ -236,22 +209,6 @@ public abstract class BuiltInFunction extends Function {
         return buff.append(')').toString();
     }
 
-    protected void appendArgs(StatementBuilder buff, boolean isDistributed) {
-        for (Expression e : args) {
-            buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
-        }
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.updateAggregate(session);
-            }
-        }
-    }
-
     @Override
     public int getFunctionType() {
         return info.type;
@@ -265,11 +222,6 @@ public abstract class BuiltInFunction extends Function {
     @Override
     public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
         return (ValueResultSet) getValueWithArgs(session, argList);
-    }
-
-    @Override
-    public Expression[] getArgs() {
-        return args;
     }
 
     @Override

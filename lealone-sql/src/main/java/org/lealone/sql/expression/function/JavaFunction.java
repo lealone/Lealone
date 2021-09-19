@@ -19,7 +19,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * This class wraps a user-defined function.
@@ -31,7 +30,6 @@ public class JavaFunction extends Function {
 
     private final FunctionAlias functionAlias;
     private final FunctionAlias.JavaMethod javaMethod;
-    private final Expression[] args;
 
     public JavaFunction(FunctionAlias functionAlias, Expression[] args) {
         this.functionAlias = functionAlias;
@@ -54,20 +52,8 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        for (Expression e : args) {
-            e.mapColumns(resolver, level);
-        }
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
-        boolean allConst = isDeterministic();
-        for (int i = 0, len = args.length; i < len; i++) {
-            Expression e = args[i].optimize(session);
-            args[i] = e;
-            allConst &= e.isConstant();
-        }
+        boolean allConst = optimizeArgs(session);
         if (allConst) {
             return ValueExpression.get(getValue(session));
         }
@@ -96,20 +82,8 @@ public class JavaFunction extends Function {
             buff.append(Parser.quoteIdentifier(functionAlias.getSchema().getName())).append('.');
         }
         buff.append(Parser.quoteIdentifier(functionAlias.getName())).append('(');
-        for (Expression e : args) {
-            buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
-        }
+        appendArgs(buff, isDistributed);
         return buff.append(')').toString();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.updateAggregate(session);
-            }
-        }
     }
 
     @Override
@@ -121,11 +95,6 @@ public class JavaFunction extends Function {
     public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
         Value v = javaMethod.getValue(session, argList, true);
         return v == ValueNull.INSTANCE ? null : (ValueResultSet) v;
-    }
-
-    @Override
-    public Expression[] getArgs() {
-        return args;
     }
 
     @Override
