@@ -70,9 +70,15 @@ public abstract class BuiltInFunction extends Function {
         return getValueWithArgs(session, args);
     }
 
+    @Override
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] args) {
+        return (ValueResultSet) getValueWithArgs(session, args);
+    }
+
     private Value getValueWithArgs(ServerSession session, Expression[] args) {
         Value[] values = new Value[args.length];
-        if (info.nullIfParameterIsNull) { // 如果函数要求所有的参数非null，那么只要有一个参数是null，函数就直接返回null
+        // 如果函数要求所有的参数非null，那么只要有一个参数是null，函数就直接返回null
+        if (info.nullIfParameterIsNull) {
             for (int i = 0; i < args.length; i++) {
                 Expression e = args[i];
                 Value v = e.getValue(session);
@@ -82,19 +88,27 @@ public abstract class BuiltInFunction extends Function {
                 values[i] = v;
             }
         }
-        Value v0 = getNullOrValue(session, args, values, 0);
-        Value resultSimple = getSimpleValue(session, v0, args, values);
-        if (resultSimple != null) {
-            return resultSimple;
+        // 大多数函数只有一个参数，所以if放在最前面
+        if (info.parameterCount == 1) {
+            Value v = getNullOrValue(session, args, values, 0);
+            return getValue1(session, v);
         }
-        return getValue(session, args, values);
+        if (info.parameterCount == 0) {
+            return getValue0(session);
+        }
+        // info.parameterCount > 1 || info.parameterCount == VAR_ARGS
+        return getValueN(session, args, values);
     }
 
-    protected Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
+    protected Value getValue0(ServerSession session) {
         return null;
     }
 
-    protected Value getValue(ServerSession session, Expression[] args, Value[] values) {
+    protected Value getValue1(ServerSession session, Value v) {
+        return null;
+    }
+
+    protected Value getValueN(ServerSession session, Expression[] args, Value[] values) {
         return null;
     }
 
@@ -107,6 +121,10 @@ public abstract class BuiltInFunction extends Function {
             v = values[i] = args[i].getValue(session);
         }
         return v;
+    }
+
+    protected DbException getUnsupportedException() {
+        return DbException.getUnsupportedException("function name: " + info.name + ", type=" + info.type);
     }
 
     @Override
@@ -217,11 +235,6 @@ public abstract class BuiltInFunction extends Function {
     @Override
     public String getName() {
         return info.name;
-    }
-
-    @Override
-    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
-        return (ValueResultSet) getValueWithArgs(session, argList);
     }
 
     @Override

@@ -101,99 +101,11 @@ public class NumericFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
+    protected Value getValue0(ServerSession session) {
         Value result;
         switch (info.type) {
-        case ABS:
-            result = v0.getSignum() > 0 ? v0 : v0.negate();
-            break;
-        case ACOS:
-            result = ValueDouble.get(Math.acos(v0.getDouble()));
-            break;
-        case ASIN:
-            result = ValueDouble.get(Math.asin(v0.getDouble()));
-            break;
-        case ATAN:
-            result = ValueDouble.get(Math.atan(v0.getDouble()));
-            break;
-        case CEILING:
-            result = ValueDouble.get(Math.ceil(v0.getDouble()));
-            break;
-        case COS:
-            result = ValueDouble.get(Math.cos(v0.getDouble()));
-            break;
-        case COSH:
-            result = ValueDouble.get(Math.cosh(v0.getDouble()));
-            break;
-        case COT: {
-            double d = Math.tan(v0.getDouble());
-            if (d == 0.0) {
-                throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
-            }
-            result = ValueDouble.get(1. / d);
-            break;
-        }
-        case DEGREES:
-            result = ValueDouble.get(Math.toDegrees(v0.getDouble()));
-            break;
-        case EXP:
-            result = ValueDouble.get(Math.exp(v0.getDouble()));
-            break;
-        case FLOOR:
-            result = ValueDouble.get(Math.floor(v0.getDouble()));
-            break;
-        case LN: // 底数e的多少次幂是v0
-            result = ValueDouble.get(Math.log(v0.getDouble()));
-            break;
-        case LOG: // 底数10的多少次幂是v0
-            if (database.getMode().logIsLogBase10) {
-                result = ValueDouble.get(Math.log10(v0.getDouble()));
-            } else {
-                result = ValueDouble.get(Math.log(v0.getDouble()));
-            }
-            break;
-        case LOG10:
-            result = ValueDouble.get(log10(v0.getDouble()));
-            break;
         case PI:
             result = ValueDouble.get(Math.PI);
-            break;
-        case RADIANS:
-            result = ValueDouble.get(Math.toRadians(v0.getDouble()));
-            break;
-        case RAND: {
-            if (v0 != null) {
-                session.getRandom().setSeed(v0.getInt());
-            }
-            result = ValueDouble.get(session.getRandom().nextDouble());
-            break;
-        }
-        case ROUNDMAGIC:
-            result = ValueDouble.get(roundmagic(v0.getDouble()));
-            break;
-        case SIGN:
-            result = ValueInt.get(v0.getSignum());
-            break;
-        case SIN:
-            result = ValueDouble.get(Math.sin(v0.getDouble()));
-            break;
-        case SINH:
-            result = ValueDouble.get(Math.sinh(v0.getDouble()));
-            break;
-        case SQRT:
-            result = ValueDouble.get(Math.sqrt(v0.getDouble()));
-            break;
-        case TAN:
-            result = ValueDouble.get(Math.tan(v0.getDouble()));
-            break;
-        case TANH:
-            result = ValueDouble.get(Math.tanh(v0.getDouble()));
-            break;
-        case SECURE_RAND:
-            result = ValueBytes.getNoCopy(MathUtils.secureRandomBytes(v0.getInt()));
-            break;
-        case EXPAND: // 解压，对应COMPRESS函数
-            result = ValueBytes.getNoCopy(CompressTool.getInstance().expand(v0.getBytesNoCopy()));
             break;
         case ZERO:
             result = ValueInt.get(0);
@@ -202,7 +114,98 @@ public class NumericFunction extends BuiltInFunction {
             result = ValueUuid.getNewRandom();
             break;
         default:
-            result = null;
+            throw getUnsupportedException();
+        }
+        return result;
+    }
+
+    @Override
+    protected Value getValue1(ServerSession session, Value v) {
+        Value result;
+        switch (info.type) {
+        case ABS:
+            result = v.getSignum() > 0 ? v : v.negate();
+            break;
+        case ACOS:
+            result = ValueDouble.get(Math.acos(v.getDouble()));
+            break;
+        case ASIN:
+            result = ValueDouble.get(Math.asin(v.getDouble()));
+            break;
+        case ATAN:
+            result = ValueDouble.get(Math.atan(v.getDouble()));
+            break;
+        case CEILING:
+            result = ValueDouble.get(Math.ceil(v.getDouble()));
+            break;
+        case COS:
+            result = ValueDouble.get(Math.cos(v.getDouble()));
+            break;
+        case COSH:
+            result = ValueDouble.get(Math.cosh(v.getDouble()));
+            break;
+        case COT: {
+            double d = Math.tan(v.getDouble());
+            if (d == 0.0) {
+                throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
+            }
+            result = ValueDouble.get(1. / d);
+            break;
+        }
+        case DEGREES:
+            result = ValueDouble.get(Math.toDegrees(v.getDouble()));
+            break;
+        case EXP:
+            result = ValueDouble.get(Math.exp(v.getDouble()));
+            break;
+        case FLOOR:
+            result = ValueDouble.get(Math.floor(v.getDouble()));
+            break;
+        case LN: // 底数e的多少次幂是v0
+            result = ValueDouble.get(Math.log(v.getDouble()));
+            break;
+        case LOG: // 底数10的多少次幂是v0
+            if (database.getMode().logIsLogBase10) {
+                result = ValueDouble.get(Math.log10(v.getDouble()));
+            } else {
+                result = ValueDouble.get(Math.log(v.getDouble()));
+            }
+            break;
+        case LOG10:
+            result = ValueDouble.get(log10(v.getDouble()));
+            break;
+        case RADIANS:
+            result = ValueDouble.get(Math.toRadians(v.getDouble()));
+            break;
+        case ROUNDMAGIC:
+            result = ValueDouble.get(roundmagic(v.getDouble()));
+            break;
+        case SIGN:
+            result = ValueInt.get(v.getSignum());
+            break;
+        case SIN:
+            result = ValueDouble.get(Math.sin(v.getDouble()));
+            break;
+        case SINH:
+            result = ValueDouble.get(Math.sinh(v.getDouble()));
+            break;
+        case SQRT:
+            result = ValueDouble.get(Math.sqrt(v.getDouble()));
+            break;
+        case TAN:
+            result = ValueDouble.get(Math.tan(v.getDouble()));
+            break;
+        case TANH:
+            result = ValueDouble.get(Math.tanh(v.getDouble()));
+            break;
+        case SECURE_RAND:
+            result = ValueBytes.getNoCopy(MathUtils.secureRandomBytes(v.getInt()));
+            break;
+        case EXPAND: // 解压，对应COMPRESS函数
+            result = ValueBytes.getNoCopy(CompressTool.getInstance().expand(v.getBytesNoCopy()));
+            break;
+        default:
+            throw getUnsupportedException();
         }
         return result;
     }
@@ -247,7 +250,7 @@ public class NumericFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getValue(ServerSession session, Expression[] args, Value[] values) {
+    protected Value getValueN(ServerSession session, Expression[] args, Value[] values) {
         Value v0 = getNullOrValue(session, args, values, 0);
         Value v1 = getNullOrValue(session, args, values, 1);
         Value v2 = getNullOrValue(session, args, values, 2);
@@ -276,6 +279,13 @@ public class NumericFunction extends BuiltInFunction {
         case POWER:
             result = ValueDouble.get(Math.pow(v0.getDouble(), v1.getDouble()));
             break;
+        case RAND: {
+            if (v0 != null) {
+                session.getRandom().setSeed(v0.getInt());
+            }
+            result = ValueDouble.get(session.getRandom().nextDouble());
+            break;
+        }
         case ROUND: {
             // sql = "SELECT ROUND(12.234, 2)"; //12.23, 4舍5入，小数保留两位
             // sql = "SELECT ROUND(12.235, 2)"; //12.24
@@ -321,7 +331,7 @@ public class NumericFunction extends BuiltInFunction {
             break;
         }
         default:
-            throw DbException.getInternalError("type=" + info.type);
+            throw getUnsupportedException();
         }
         return result;
     }

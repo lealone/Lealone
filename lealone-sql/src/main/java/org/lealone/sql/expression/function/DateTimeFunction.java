@@ -100,7 +100,6 @@ public class DateTimeFunction extends BuiltInFunction {
         addFunction("DATEDIFF", DATE_DIFF, 3, Value.LONG);
         addFunction("TIMESTAMPDIFF", DATE_DIFF, 3, Value.LONG);
         addFunction("DAYNAME", DAY_NAME, 1, Value.STRING);
-        addFunction("DAYNAME", DAY_NAME, 1, Value.STRING);
         addFunction("DAY", DAY_OF_MONTH, 1, Value.INT);
         addFunction("DAY_OF_MONTH", DAY_OF_MONTH, 1, Value.INT);
         addFunction("DAY_OF_WEEK", DAY_OF_WEEK, 1, Value.INT);
@@ -140,58 +139,9 @@ public class DateTimeFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
+    protected Value getValue0(ServerSession session) {
         Value result;
         switch (info.type) {
-        case DAY_NAME: {
-            SimpleDateFormat dayName = new SimpleDateFormat("EEEE", Locale.ENGLISH);
-            result = ValueString.get(dayName.format(v0.getDate()));
-            break;
-        }
-        case DAY_OF_MONTH:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.DAY_OF_MONTH));
-            break;
-        case DAY_OF_WEEK:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.DAY_OF_WEEK));
-            break;
-        case DAY_OF_YEAR:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.DAY_OF_YEAR));
-            break;
-        case HOUR:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getTimestamp(), Calendar.HOUR_OF_DAY));
-            break;
-        case MINUTE:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getTimestamp(), Calendar.MINUTE));
-            break;
-        case MONTH:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.MONTH));
-            break;
-        case MONTH_NAME: {
-            SimpleDateFormat monthName = new SimpleDateFormat("MMMM", Locale.ENGLISH);
-            result = ValueString.get(monthName.format(v0.getDate()));
-            break;
-        }
-        case QUARTER:
-            result = ValueInt.get((DateTimeUtils.getDatePart(v0.getDate(), Calendar.MONTH) - 1) / 3 + 1);
-            break;
-        case SECOND:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getTimestamp(), Calendar.SECOND));
-            break;
-        case WEEK:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.WEEK_OF_YEAR));
-            break;
-        case YEAR:
-            result = ValueInt.get(DateTimeUtils.getDatePart(v0.getDate(), Calendar.YEAR));
-            break;
-        case ISO_YEAR:
-            result = ValueInt.get(DateTimeUtils.getIsoYear(v0.getDate()));
-            break;
-        case ISO_WEEK:
-            result = ValueInt.get(DateTimeUtils.getIsoWeek(v0.getDate()));
-            break;
-        case ISO_DAY_OF_WEEK:
-            result = ValueInt.get(DateTimeUtils.getIsoDayOfWeek(v0.getDate()));
-            break;
         case CURDATE:
         case CURRENT_DATE: {
             long now = session.getTransactionStart();
@@ -206,29 +156,73 @@ public class DateTimeFunction extends BuiltInFunction {
             result = ValueTime.get(new Time(now));
             break;
         }
-        case NOW:
-        case CURRENT_TIMESTAMP: {
-            long now = session.getTransactionStart();
-            ValueTimestamp vt = ValueTimestamp.get(new Timestamp(now));
-            // NOW(1)表示毫秒数只保留一位，如NOW()="2012-12-03 22:03:44.647" 则NOW(1)="2012-12-03 22:03:44.6"
-            // 毫秒数一般是3位，如果NOW(100)，100>3了，所以NOW(100)跟NOW()一样
-            if (v0 != null) {
-                Mode mode = database.getMode();
-                // ValueTimestamp.convertScale(boolean, int)忽视convertOnlyToSmallerScale参数
-                // 所以convertOnlyToSmallerScale没用到
-                vt = (ValueTimestamp) vt.convertScale(mode.convertOnlyToSmallerScale, v0.getInt());
-            }
-            result = vt;
-            break;
-        }
         default:
-            result = null;
+            throw getUnsupportedException();
         }
         return result;
     }
 
     @Override
-    protected Value getValue(ServerSession session, Expression[] args, Value[] values) {
+    protected Value getValue1(ServerSession session, Value v) {
+        Value result;
+        switch (info.type) {
+        case DAY_NAME: {
+            SimpleDateFormat dayName = new SimpleDateFormat("EEEE", Locale.ENGLISH);
+            result = ValueString.get(dayName.format(v.getDate()));
+            break;
+        }
+        case DAY_OF_MONTH:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.DAY_OF_MONTH));
+            break;
+        case DAY_OF_WEEK:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.DAY_OF_WEEK));
+            break;
+        case DAY_OF_YEAR:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.DAY_OF_YEAR));
+            break;
+        case HOUR:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getTimestamp(), Calendar.HOUR_OF_DAY));
+            break;
+        case MINUTE:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getTimestamp(), Calendar.MINUTE));
+            break;
+        case MONTH:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.MONTH));
+            break;
+        case MONTH_NAME: {
+            SimpleDateFormat monthName = new SimpleDateFormat("MMMM", Locale.ENGLISH);
+            result = ValueString.get(monthName.format(v.getDate()));
+            break;
+        }
+        case QUARTER:
+            result = ValueInt.get((DateTimeUtils.getDatePart(v.getDate(), Calendar.MONTH) - 1) / 3 + 1);
+            break;
+        case SECOND:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getTimestamp(), Calendar.SECOND));
+            break;
+        case WEEK:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.WEEK_OF_YEAR));
+            break;
+        case YEAR:
+            result = ValueInt.get(DateTimeUtils.getDatePart(v.getDate(), Calendar.YEAR));
+            break;
+        case ISO_YEAR:
+            result = ValueInt.get(DateTimeUtils.getIsoYear(v.getDate()));
+            break;
+        case ISO_WEEK:
+            result = ValueInt.get(DateTimeUtils.getIsoWeek(v.getDate()));
+            break;
+        case ISO_DAY_OF_WEEK:
+            result = ValueInt.get(DateTimeUtils.getIsoDayOfWeek(v.getDate()));
+            break;
+        default:
+            throw getUnsupportedException();
+        }
+        return result;
+    }
+
+    @Override
+    protected Value getValueN(ServerSession session, Expression[] args, Value[] values) {
         Value v0 = getNullOrValue(session, args, values, 0);
         Value v1 = getNullOrValue(session, args, values, 1);
         Value v2 = getNullOrValue(session, args, values, 2);
@@ -292,8 +286,23 @@ public class DateTimeFunction extends BuiltInFunction {
             }
             break;
         }
+        case NOW:
+        case CURRENT_TIMESTAMP: { // 参数可变
+            long now = session.getTransactionStart();
+            ValueTimestamp vt = ValueTimestamp.get(new Timestamp(now));
+            // NOW(1)表示毫秒数只保留一位，如NOW()="2012-12-03 22:03:44.647" 则NOW(1)="2012-12-03 22:03:44.6"
+            // 毫秒数一般是3位，如果NOW(100)，100>3了，所以NOW(100)跟NOW()一样
+            if (v0 != null) {
+                Mode mode = database.getMode();
+                // ValueTimestamp.convertScale(boolean, int)忽视convertOnlyToSmallerScale参数
+                // 所以convertOnlyToSmallerScale没用到
+                vt = (ValueTimestamp) vt.convertScale(mode.convertOnlyToSmallerScale, v0.getInt());
+            }
+            result = vt;
+            break;
+        }
         default:
-            throw DbException.getInternalError("type=" + info.type);
+            throw getUnsupportedException();
         }
         return result;
     }

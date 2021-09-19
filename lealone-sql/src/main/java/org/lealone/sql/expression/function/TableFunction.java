@@ -82,7 +82,7 @@ public class TableFunction extends BuiltInFunction {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] nullArgs) {
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] args) {
         return getTable(session, args, true, false);
     }
 

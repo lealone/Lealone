@@ -164,10 +164,10 @@ public abstract class Function extends Expression {
      * Get an empty result set with the column names set.
      *
      * @param session the session
-     * @param nullArgs the argument list (some arguments may be null)
+     * @param args the argument list (some arguments may be null)
      * @return the empty result set
      */
-    abstract ValueResultSet getValueForColumnList(ServerSession session, Expression[] nullArgs);
+    abstract ValueResultSet getValueForColumnList(ServerSession session, Expression[] args);
 
     /**
      * Get the data type.

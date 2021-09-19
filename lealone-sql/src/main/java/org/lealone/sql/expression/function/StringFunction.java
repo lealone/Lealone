@@ -110,7 +110,6 @@ public class StringFunction extends BuiltInFunction {
         addFunction("REGEXP_REPLACE", REGEXP_REPLACE, 3, Value.STRING);
         addFunction("RPAD", RPAD, VAR_ARGS, Value.STRING);
         addFunction("LPAD", LPAD, VAR_ARGS, Value.STRING);
-
     }
 
     protected StringFunction(Database database, FunctionInfo info) {
@@ -118,11 +117,24 @@ public class StringFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
+    protected Value getValue0(ServerSession session) {
+        Value result;
+        switch (info.type) {
+        case XMLSTARTDOC:
+            result = ValueString.get(StringUtils.xmlStartDoc());
+            break;
+        default:
+            throw getUnsupportedException();
+        }
+        return result;
+    }
+
+    @Override
+    protected Value getValue1(ServerSession session, Value v) {
         Value result;
         switch (info.type) {
         case ASCII: {
-            String s = v0.getString();
+            String s = v.getString();
             if (s.length() == 0) {
                 result = ValueNull.INSTANCE;
             } else {
@@ -131,66 +143,35 @@ public class StringFunction extends BuiltInFunction {
             break;
         }
         case BIT_LENGTH:
-            result = ValueLong.get(16 * length(v0));
+            result = ValueLong.get(16 * length(v));
             break;
         case CHAR:
-            result = ValueString.get(String.valueOf((char) v0.getInt()));
+            result = ValueString.get(String.valueOf((char) v.getInt()));
             break;
         case CHAR_LENGTH:
         case LENGTH:
-            result = ValueLong.get(length(v0));
+            result = ValueLong.get(length(v));
             break;
         case OCTET_LENGTH:
-            result = ValueLong.get(2 * length(v0));
+            result = ValueLong.get(2 * length(v));
             break;
-        case CONCAT_WS: // 表示: concat with separator
-        case CONCAT: {
-            result = ValueNull.INSTANCE;
-            int start = 0;
-            String separator = "";
-            if (info.type == CONCAT_WS) {
-                start = 1;
-                separator = getNullOrValue(session, args, values, 0).getString();
-            }
-            for (int i = start; i < args.length; i++) {
-                Value v = getNullOrValue(session, args, values, i);
-                if (v == ValueNull.INSTANCE) {
-                    continue;
-                }
-                if (result == ValueNull.INSTANCE) {
-                    result = v;
-                } else {
-                    String tmp = v.getString();
-                    if (!StringUtils.isNullOrEmpty(separator) && !StringUtils.isNullOrEmpty(tmp)) {
-                        tmp = separator.concat(tmp);
-                    }
-                    result = ValueString.get(result.getString().concat(tmp));
-                }
-            }
-            if (info.type == CONCAT_WS) {
-                if (separator != null && result == ValueNull.INSTANCE) {
-                    result = ValueString.get("");
-                }
-            }
-            break;
-        }
         case HEXTORAW:
-            result = ValueString.get(hexToRaw(v0.getString()));
+            result = ValueString.get(hexToRaw(v.getString()));
             break;
         case LOWER:
         case LCASE:
             // TODO this is locale specific, need to document or provide a way
             // to set the locale
-            result = ValueString.get(v0.getString().toLowerCase());
+            result = ValueString.get(v.getString().toLowerCase());
             break;
         case RAWTOHEX:
-            result = ValueString.get(rawToHex(v0.getString()));
+            result = ValueString.get(rawToHex(v.getString()));
             break;
         case SOUNDEX:
-            result = ValueString.get(getSoundex(v0.getString()));
+            result = ValueString.get(getSoundex(v.getString()));
             break;
         case SPACE: {
-            int len = Math.max(0, v0.getInt());
+            int len = Math.max(0, v.getInt());
             char[] chars = new char[len];
             for (int i = len - 1; i >= 0; i--) {
                 chars[i] = ' ';
@@ -202,31 +183,28 @@ public class StringFunction extends BuiltInFunction {
         case UCASE:
             // TODO this is locale specific, need to document or provide a way
             // to set the locale
-            result = ValueString.get(v0.getString().toUpperCase());
+            result = ValueString.get(v.getString().toUpperCase());
             break;
         case STRINGENCODE:
-            result = ValueString.get(StringUtils.javaEncode(v0.getString()));
+            result = ValueString.get(StringUtils.javaEncode(v.getString()));
             break;
         case STRINGDECODE:
-            result = ValueString.get(StringUtils.javaDecode(v0.getString()));
+            result = ValueString.get(StringUtils.javaDecode(v.getString()));
             break;
         case STRINGTOUTF8:
-            result = ValueBytes.getNoCopy(v0.getString().getBytes(Constants.UTF8));
+            result = ValueBytes.getNoCopy(v.getString().getBytes(Constants.UTF8));
             break;
         case UTF8TOSTRING:
-            result = ValueString.get(new String(v0.getBytesNoCopy(), Constants.UTF8));
+            result = ValueString.get(new String(v.getBytesNoCopy(), Constants.UTF8));
             break;
         case XMLCOMMENT:
-            result = ValueString.get(StringUtils.xmlComment(v0.getString()));
+            result = ValueString.get(StringUtils.xmlComment(v.getString()));
             break;
         case XMLCDATA:
-            result = ValueString.get(StringUtils.xmlCData(v0.getString()));
-            break;
-        case XMLSTARTDOC:
-            result = ValueString.get(StringUtils.xmlStartDoc());
+            result = ValueString.get(StringUtils.xmlCData(v.getString()));
             break;
         default:
-            result = null;
+            throw getUnsupportedException();
         }
         return result;
     }
@@ -315,7 +293,7 @@ public class StringFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getValue(ServerSession session, Expression[] args, Value[] values) {
+    protected Value getValueN(ServerSession session, Expression[] args, Value[] values) {
         Value v0 = getNullOrValue(session, args, values, 0);
         Value v1 = getNullOrValue(session, args, values, 1);
         Value v2 = getNullOrValue(session, args, values, 2);
@@ -418,8 +396,39 @@ public class StringFunction extends BuiltInFunction {
                 result = ValueString.get(StringUtils.xmlText(v0.getString(), v1.getBoolean()));
             }
             break;
+        case CONCAT_WS: // 表示: concat with separator
+        case CONCAT: {
+            result = ValueNull.INSTANCE;
+            int start = 0;
+            String separator = "";
+            if (info.type == CONCAT_WS) {
+                start = 1;
+                separator = getNullOrValue(session, args, values, 0).getString();
+            }
+            for (int i = start; i < args.length; i++) {
+                Value v = getNullOrValue(session, args, values, i);
+                if (v == ValueNull.INSTANCE) {
+                    continue;
+                }
+                if (result == ValueNull.INSTANCE) {
+                    result = v;
+                } else {
+                    String tmp = v.getString();
+                    if (!StringUtils.isNullOrEmpty(separator) && !StringUtils.isNullOrEmpty(tmp)) {
+                        tmp = separator.concat(tmp);
+                    }
+                    result = ValueString.get(result.getString().concat(tmp));
+                }
+            }
+            if (info.type == CONCAT_WS) {
+                if (separator != null && result == ValueNull.INSTANCE) {
+                    result = ValueString.get("");
+                }
+            }
+            break;
+        }
         default:
-            throw DbException.getInternalError("type=" + info.type);
+            throw getUnsupportedException();
         }
         return result;
     }

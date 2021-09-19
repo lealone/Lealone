@@ -92,8 +92,8 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
-        Value v = javaMethod.getValue(session, argList, true);
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] args) {
+        Value v = javaMethod.getValue(session, args, true);
         return v == ValueNull.INSTANCE ? null : (ValueResultSet) v;
     }
 

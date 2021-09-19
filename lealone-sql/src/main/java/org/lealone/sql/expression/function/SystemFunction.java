@@ -130,7 +130,7 @@ public class SystemFunction extends BuiltInFunction {
     }
 
     @Override
-    protected Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
+    protected Value getValue0(ServerSession session) {
         Value result;
         switch (info.type) {
         case DATABASE:
@@ -160,18 +160,6 @@ public class SystemFunction extends BuiltInFunction {
         case LOCK_TIMEOUT:
             result = ValueInt.get(session.getLockTimeout());
             break;
-        case DISK_SPACE_USED:
-            result = ValueLong.get(getDiskSpaceUsed(session, v0));
-            break;
-        case CAST:
-        case CONVERT: {
-            v0 = v0.convertTo(dataType);
-            Mode mode = database.getMode();
-            v0 = v0.convertScale(mode.convertOnlyToSmallerScale, scale);
-            v0 = v0.convertPrecision(getPrecision(), false);
-            result = v0;
-            break;
-        }
         case MEMORY_FREE:
             session.getUser().checkAdmin();
             result = ValueInt.get(Utils.getMemoryFree());
@@ -189,6 +177,202 @@ public class SystemFunction extends BuiltInFunction {
         case SESSION_ID:
             result = ValueInt.get(session.getId());
             break;
+        case TRANSACTION_ID: {
+            result = session.getTransactionId();
+            break;
+        }
+        case LEALONE_VERSION:
+            result = ValueString.get(Constants.getVersion());
+            break;
+        default:
+            throw getUnsupportedException();
+        }
+        return result;
+    }
+
+    @Override
+    protected Value getValue1(ServerSession session, Value v) {
+        Value result;
+        switch (info.type) {
+        case DISK_SPACE_USED:
+            result = ValueLong.get(getDiskSpaceUsed(session, v));
+            break;
+        case CAST:
+        case CONVERT: {
+            v = v.convertTo(dataType);
+            Mode mode = database.getMode();
+            v = v.convertScale(mode.convertOnlyToSmallerScale, scale);
+            v = v.convertPrecision(getPrecision(), false);
+            result = v;
+            break;
+        }
+        case ARRAY_LENGTH: {
+            if (v.getType() == Value.ARRAY) {
+                Value[] list = ((ValueArray) v).getList();
+                result = ValueInt.get(list.length);
+            } else {
+                result = ValueNull.INSTANCE;
+            }
+            break;
+        }
+        case CANCEL_SESSION: {
+            result = ValueBoolean.get(cancelStatement(session, v.getInt()));
+            break;
+        }
+        default:
+            throw getUnsupportedException();
+        }
+        return result;
+    }
+
+    private static long getDiskSpaceUsed(ServerSession session, Value v0) {
+        Parser p = new Parser(session);
+        String sql = v0.getString();
+        Table table = p.parseTableName(sql);
+        return table.getDiskSpaceUsed();
+    }
+
+    private static boolean cancelStatement(ServerSession session, int targetSessionId) {
+        session.getUser().checkAdmin();
+        ServerSession[] sessions = session.getDatabase().getSessions(false);
+        for (ServerSession s : sessions) {
+            if (s.getId() == targetSessionId) {
+                Command c = s.getCurrentCommand();
+                if (c == null) {
+                    return false;
+                }
+                c.cancel();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected Value getValueN(ServerSession session, Expression[] args, Value[] values) {
+        Value v0 = getNullOrValue(session, args, values, 0);
+        Value v1 = getNullOrValue(session, args, values, 1);
+        Value v2 = getNullOrValue(session, args, values, 2);
+        Value v3 = getNullOrValue(session, args, values, 3);
+        Value v4 = getNullOrValue(session, args, values, 4);
+        Value v5 = getNullOrValue(session, args, values, 5);
+        Value result;
+        switch (info.type) {
+        case NULLIF:
+            // 相等返回null，不相等返回v0
+            result = database.areEqual(v0, v1) ? ValueNull.INSTANCE : v0;
+            break;
+        case NEXTVAL: {
+            Sequence sequence = getSequence(session, v0, v1);
+            SequenceValue value = new SequenceValue(sequence);
+            result = value.getValue(session);
+            break;
+        }
+        case CURRVAL: {
+            Sequence sequence = getSequence(session, v0, v1);
+            result = ValueLong.get(sequence.getCurrentValue());
+            break;
+        }
+        case CSVREAD: {
+            String fileName = v0.getString();
+            String columnList = v1 == null ? null : v1.getString();
+            Csv csv = new Csv();
+            String options = v2 == null ? null : v2.getString();
+            String charset = null;
+            if (options != null && options.indexOf('=') >= 0) {
+                charset = csv.setOptions(options);
+            } else {
+                charset = options;
+                String fieldSeparatorRead = v3 == null ? null : v3.getString();
+                String fieldDelimiter = v4 == null ? null : v4.getString();
+                String escapeCharacter = v5 == null ? null : v5.getString();
+                Value v6 = getNullOrValue(session, args, values, 6);
+                String nullString = v6 == null ? null : v6.getString();
+                setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);
+                csv.setNullString(nullString);
+            }
+            char fieldSeparator = csv.getFieldSeparatorRead();
+            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
+            try {
+                ValueResultSet vr = ValueResultSet.get(csv.read(fileName, columns, charset));
+                result = vr;
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
+            break;
+        }
+        case LINK_SCHEMA: {
+            // session.getUser().checkAdmin();
+            // Connection conn = session.createConnection(false);
+            // ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(),
+            // v3.getString(),
+            // v4.getString(), v5.getString());
+            // result = ValueResultSet.get(rs);
+            throw DbException.getUnsupportedException("LINK_SCHEMA");
+        }
+        case CSVWRITE: {
+            session.getUser().checkAdmin();
+            Connection conn = session.createConnection(false);
+            Csv csv = new Csv();
+            String options = v2 == null ? null : v2.getString();
+            String charset = null;
+            if (options != null && options.indexOf('=') >= 0) {
+                charset = csv.setOptions(options);
+            } else {
+                charset = options;
+                String fieldSeparatorWrite = v3 == null ? null : v3.getString();
+                String fieldDelimiter = v4 == null ? null : v4.getString();
+                String escapeCharacter = v5 == null ? null : v5.getString();
+                Value v6 = getNullOrValue(session, args, values, 6);
+                String nullString = v6 == null ? null : v6.getString();
+                Value v7 = getNullOrValue(session, args, values, 7);
+                String lineSeparator = v7 == null ? null : v7.getString();
+                setCsvDelimiterEscape(csv, fieldSeparatorWrite, fieldDelimiter, escapeCharacter);
+                csv.setNullString(nullString);
+                if (lineSeparator != null) {
+                    csv.setLineSeparator(lineSeparator);
+                }
+            }
+            try {
+                int rows = csv.write(conn, v0.getString(), v1.getString(), charset);
+                result = ValueInt.get(rows);
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
+            break;
+        }
+        case SET: {
+            Variable var = (Variable) args[0];
+            session.setVariable(var.getName(), v1);
+            result = v1;
+            break;
+        }
+        case FILE_READ: {
+            session.getUser().checkAdmin();
+            String fileName = v0.getString();
+            boolean blob = args.length == 1;
+            try {
+                InputStream in = new AutoCloseInputStream(FileUtils.newInputStream(fileName));
+                if (blob) {
+                    result = database.getLobStorage().createBlob(in, -1);
+                } else {
+                    Reader reader;
+                    if (v1 == ValueNull.INSTANCE) {
+                        reader = new InputStreamReader(in);
+                    } else {
+                        reader = new InputStreamReader(in, v1.getString());
+                    }
+                    result = database.getLobStorage().createClob(reader, -1);
+                }
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, fileName);
+            }
+            break;
+        }
+        case TRUNCATE_VALUE: {
+            result = v0.convertPrecision(v1.getLong(), v2.getBoolean());
+            break;
+        }
         case IFNULL: {
             result = v0;
             if (v0 == ValueNull.INSTANCE) {
@@ -280,7 +464,6 @@ public class SystemFunction extends BuiltInFunction {
         }
         case ARRAY_GET: {
             if (v0.getType() == Value.ARRAY) {
-                Value v1 = getNullOrValue(session, args, values, 1);
                 int element = v1.getInt(); // 下标从1开始
                 Value[] list = ((ValueArray) v0).getList();
                 if (element < 1 || element > list.length) {
@@ -293,19 +476,9 @@ public class SystemFunction extends BuiltInFunction {
             }
             break;
         }
-        case ARRAY_LENGTH: {
-            if (v0.getType() == Value.ARRAY) {
-                Value[] list = ((ValueArray) v0).getList();
-                result = ValueInt.get(list.length);
-            } else {
-                result = ValueNull.INSTANCE;
-            }
-            break;
-        }
         case ARRAY_CONTAINS: {
             result = ValueBoolean.get(false);
             if (v0.getType() == Value.ARRAY) {
-                Value v1 = getNullOrValue(session, args, values, 1);
                 Value[] list = ((ValueArray) v0).getList();
                 if (v1 instanceof ValueArray) {
                     result = ValueBoolean.get(true);
@@ -335,174 +508,8 @@ public class SystemFunction extends BuiltInFunction {
             }
             break;
         }
-        case CANCEL_SESSION: {
-            result = ValueBoolean.get(cancelStatement(session, v0.getInt()));
-            break;
-        }
-        case TRANSACTION_ID: {
-            result = session.getTransactionId();
-            break;
-        }
-        case LEALONE_VERSION:
-            result = ValueString.get(Constants.getVersion());
-            break;
         default:
-            result = null;
-        }
-        return result;
-    }
-
-    private static long getDiskSpaceUsed(ServerSession session, Value v0) {
-        Parser p = new Parser(session);
-        String sql = v0.getString();
-        Table table = p.parseTableName(sql);
-        return table.getDiskSpaceUsed();
-    }
-
-    private static boolean cancelStatement(ServerSession session, int targetSessionId) {
-        session.getUser().checkAdmin();
-        ServerSession[] sessions = session.getDatabase().getSessions(false);
-        for (ServerSession s : sessions) {
-            if (s.getId() == targetSessionId) {
-                Command c = s.getCurrentCommand();
-                if (c == null) {
-                    return false;
-                }
-                c.cancel();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    protected Value getValue(ServerSession session, Expression[] args, Value[] values) {
-        Value v0 = getNullOrValue(session, args, values, 0);
-        Value v1 = getNullOrValue(session, args, values, 1);
-        Value v2 = getNullOrValue(session, args, values, 2);
-        Value v3 = getNullOrValue(session, args, values, 3);
-        Value v4 = getNullOrValue(session, args, values, 4);
-        Value v5 = getNullOrValue(session, args, values, 5);
-        Value result;
-        switch (info.type) {
-        case NULLIF:
-            // 相等返回null，不相等返回v0
-            result = database.areEqual(v0, v1) ? ValueNull.INSTANCE : v0;
-            break;
-        case NEXTVAL: {
-            Sequence sequence = getSequence(session, v0, v1);
-            SequenceValue value = new SequenceValue(sequence);
-            result = value.getValue(session);
-            break;
-        }
-        case CURRVAL: {
-            Sequence sequence = getSequence(session, v0, v1);
-            result = ValueLong.get(sequence.getCurrentValue());
-            break;
-        }
-        case CSVREAD: {
-            String fileName = v0.getString();
-            String columnList = v1 == null ? null : v1.getString();
-            Csv csv = new Csv();
-            String options = v2 == null ? null : v2.getString();
-            String charset = null;
-            if (options != null && options.indexOf('=') >= 0) {
-                charset = csv.setOptions(options);
-            } else {
-                charset = options;
-                String fieldSeparatorRead = v3 == null ? null : v3.getString();
-                String fieldDelimiter = v4 == null ? null : v4.getString();
-                String escapeCharacter = v5 == null ? null : v5.getString();
-                Value v6 = getNullOrValue(session, args, values, 6);
-                String nullString = v6 == null ? null : v6.getString();
-                setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);
-                csv.setNullString(nullString);
-            }
-            char fieldSeparator = csv.getFieldSeparatorRead();
-            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
-            try {
-                ValueResultSet vr = ValueResultSet.get(csv.read(fileName, columns, charset));
-                result = vr;
-            } catch (SQLException e) {
-                throw DbException.convert(e);
-            }
-            break;
-        }
-        case LINK_SCHEMA: {
-            // session.getUser().checkAdmin();
-            // Connection conn = session.createConnection(false);
-            // ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(),
-            // v3.getString(),
-            // v4.getString(), v5.getString());
-            // result = ValueResultSet.get(rs);
-
-            throw DbException.getUnsupportedException("LINK_SCHEMA");
-        }
-        case CSVWRITE: {
-            session.getUser().checkAdmin();
-            Connection conn = session.createConnection(false);
-            Csv csv = new Csv();
-            String options = v2 == null ? null : v2.getString();
-            String charset = null;
-            if (options != null && options.indexOf('=') >= 0) {
-                charset = csv.setOptions(options);
-            } else {
-                charset = options;
-                String fieldSeparatorWrite = v3 == null ? null : v3.getString();
-                String fieldDelimiter = v4 == null ? null : v4.getString();
-                String escapeCharacter = v5 == null ? null : v5.getString();
-                Value v6 = getNullOrValue(session, args, values, 6);
-                String nullString = v6 == null ? null : v6.getString();
-                Value v7 = getNullOrValue(session, args, values, 7);
-                String lineSeparator = v7 == null ? null : v7.getString();
-                setCsvDelimiterEscape(csv, fieldSeparatorWrite, fieldDelimiter, escapeCharacter);
-                csv.setNullString(nullString);
-                if (lineSeparator != null) {
-                    csv.setLineSeparator(lineSeparator);
-                }
-            }
-            try {
-                int rows = csv.write(conn, v0.getString(), v1.getString(), charset);
-                result = ValueInt.get(rows);
-            } catch (SQLException e) {
-                throw DbException.convert(e);
-            }
-            break;
-        }
-        case SET: {
-            Variable var = (Variable) args[0];
-            session.setVariable(var.getName(), v1);
-            result = v1;
-            break;
-        }
-        case FILE_READ: {
-            session.getUser().checkAdmin();
-            String fileName = v0.getString();
-            boolean blob = args.length == 1;
-            try {
-                InputStream in = new AutoCloseInputStream(FileUtils.newInputStream(fileName));
-                if (blob) {
-                    result = database.getLobStorage().createBlob(in, -1);
-                } else {
-                    Reader reader;
-                    if (v1 == ValueNull.INSTANCE) {
-                        reader = new InputStreamReader(in);
-                    } else {
-                        reader = new InputStreamReader(in, v1.getString());
-                    }
-                    result = database.getLobStorage().createClob(reader, -1);
-                }
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, fileName);
-            }
-            break;
-        }
-        case TRUNCATE_VALUE: {
-            result = v0.convertPrecision(v1.getLong(), v2.getBoolean());
-            break;
-        }
-        default:
-            throw DbException.getInternalError("type=" + info.type);
+            throw getUnsupportedException();
         }
         return result;
     }
@@ -718,23 +725,23 @@ public class SystemFunction extends BuiltInFunction {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] args) {
         if (info.type == CSVREAD) {
-            String fileName = argList[0].getValue(session).getString();
+            String fileName = args[0].getValue(session).getString();
             if (fileName == null) {
                 throw DbException.get(ErrorCode.PARAMETER_NOT_SET_1, "fileName");
             }
-            String columnList = argList.length < 2 ? null : argList[1].getValue(session).getString();
+            String columnList = args.length < 2 ? null : args[1].getValue(session).getString();
             Csv csv = new Csv();
-            String options = argList.length < 3 ? null : argList[2].getValue(session).getString();
+            String options = args.length < 3 ? null : args[2].getValue(session).getString();
             String charset = null;
             if (options != null && options.indexOf('=') >= 0) {
                 charset = csv.setOptions(options);
             } else {
                 charset = options;
-                String fieldSeparatorRead = argList.length < 4 ? null : argList[3].getValue(session).getString();
-                String fieldDelimiter = argList.length < 5 ? null : argList[4].getValue(session).getString();
-                String escapeCharacter = argList.length < 6 ? null : argList[5].getValue(session).getString();
+                String fieldSeparatorRead = args.length < 4 ? null : args[3].getValue(session).getString();
+                String fieldDelimiter = args.length < 5 ? null : args[4].getValue(session).getString();
+                String escapeCharacter = args.length < 6 ? null : args[5].getValue(session).getString();
                 setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);
             }
             char fieldSeparator = csv.getFieldSeparatorRead();
@@ -751,7 +758,7 @@ public class SystemFunction extends BuiltInFunction {
             }
             return x;
         }
-        return super.getValueForColumnList(session, argList);
+        return super.getValueForColumnList(session, args);
     }
 
     @Override
