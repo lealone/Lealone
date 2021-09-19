@@ -276,8 +276,8 @@ public abstract class BuiltInFunction extends Function {
     }
 
     @Override
-    public boolean isBufferResultSetToLocalTemp() {
-        return info.bufferResultSetToLocalTemp;
+    boolean isBufferResultSetToLocalTemp() {
+        return false;
     }
 
     @Override

@@ -176,7 +176,7 @@ public class FunctionTable extends Table {
         return (ValueResultSet) v;
     }
 
-    public boolean isBufferResultSetToLocalTemp() {
+    boolean isBufferResultSetToLocalTemp() {
         return function.isBufferResultSetToLocalTemp();
     }
 }

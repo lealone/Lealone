@@ -101,9 +101,9 @@ public class SystemFunction extends BuiltInFunction {
         addFunctionNotDeterministic("NEXTVAL", NEXTVAL, VAR_ARGS, Value.LONG);
         addFunctionNotDeterministic("CURRVAL", CURRVAL, VAR_ARGS, Value.LONG);
         addFunction("ARRAY_GET", ARRAY_GET, 2, Value.STRING);
-        addFunction("ARRAY_CONTAINS", ARRAY_CONTAINS, 2, Value.BOOLEAN, false, true, false);
-        addFunction("CSVREAD", CSVREAD, VAR_ARGS, Value.RESULT_SET, false, false, true);
-        addFunction("CSVWRITE", CSVWRITE, VAR_ARGS, Value.INT, false, false, false);
+        addFunction("ARRAY_CONTAINS", ARRAY_CONTAINS, 2, Value.BOOLEAN, false, true);
+        addFunction("CSVREAD", CSVREAD, VAR_ARGS, Value.RESULT_SET, false, false);
+        addFunction("CSVWRITE", CSVWRITE, VAR_ARGS, Value.INT, false, false);
         addFunctionNotDeterministic("MEMORY_FREE", MEMORY_FREE, 0, Value.INT);
         addFunctionNotDeterministic("MEMORY_USED", MEMORY_USED, 0, Value.INT);
         addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0, Value.INT);
@@ -114,8 +114,8 @@ public class SystemFunction extends BuiltInFunction {
         addFunctionWithNull("LEAST", LEAST, VAR_ARGS, Value.NULL);
         addFunctionWithNull("GREATEST", GREATEST, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("CANCEL_SESSION", CANCEL_SESSION, 1, Value.BOOLEAN);
-        addFunction("SET", SET, 2, Value.NULL, false, false, false);
-        addFunction("FILE_READ", FILE_READ, VAR_ARGS, Value.NULL, false, false, false);
+        addFunction("SET", SET, 2, Value.NULL, false, false);
+        addFunction("FILE_READ", FILE_READ, VAR_ARGS, Value.NULL, false, false);
         addFunctionNotDeterministic("TRANSACTION_ID", TRANSACTION_ID, 0, Value.STRING);
         addFunctionWithNull("DECODE", DECODE, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("DISK_SPACE_USED", DISK_SPACE_USED, 1, Value.LONG);
@@ -793,5 +793,10 @@ public class SystemFunction extends BuiltInFunction {
             appendArgs(buff, isDistributed);
         }
         return buff.append(')').toString();
+    }
+
+    @Override
+    boolean isBufferResultSetToLocalTemp() {
+        return info.type == CSVREAD;
     }
 }

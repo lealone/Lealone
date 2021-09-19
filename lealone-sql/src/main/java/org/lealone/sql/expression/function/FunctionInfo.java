@@ -7,6 +7,9 @@ package org.lealone.sql.expression.function;
 
 /**
  * This class contains information about a built-in function.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class FunctionInfo {
 
@@ -39,10 +42,5 @@ class FunctionInfo {
      * If this function always returns the same value for the same parameters.
      */
     boolean deterministic;
-
-    /**
-     * Should the return value ResultSet be buffered in a local temporary file?
-     */
-    boolean bufferResultSetToLocalTemp = true;
 
 }

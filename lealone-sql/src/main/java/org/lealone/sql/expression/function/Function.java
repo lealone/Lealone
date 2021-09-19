@@ -38,7 +38,7 @@ public abstract class Function extends Expression {
     }
 
     protected static void addFunction(String name, int type, int parameterCount, int dataType,
-            boolean nullIfParameterIsNull, boolean deterministic, boolean bufferResultSetToLocalTemp) {
+            boolean nullIfParameterIsNull, boolean deterministic) {
         FunctionInfo info = new FunctionInfo();
         info.name = name;
         info.type = type;
@@ -46,20 +46,19 @@ public abstract class Function extends Expression {
         info.dataType = dataType;
         info.nullIfParameterIsNull = nullIfParameterIsNull;
         info.deterministic = deterministic;
-        info.bufferResultSetToLocalTemp = bufferResultSetToLocalTemp;
         FUNCTIONS.put(name, info);
     }
 
     protected static void addFunctionNotDeterministic(String name, int type, int parameterCount, int dataType) {
-        addFunction(name, type, parameterCount, dataType, true, false, false);
+        addFunction(name, type, parameterCount, dataType, true, false);
     }
 
     protected static void addFunction(String name, int type, int parameterCount, int dataType) {
-        addFunction(name, type, parameterCount, dataType, true, true, false);
+        addFunction(name, type, parameterCount, dataType, true, true);
     }
 
     protected static void addFunctionWithNull(String name, int type, int parameterCount, int dataType) {
-        addFunction(name, type, parameterCount, dataType, false, true, false);
+        addFunction(name, type, parameterCount, dataType, false, true);
     }
 
     /**
@@ -196,6 +195,17 @@ public abstract class Function extends Expression {
         return super.getSQL();
     }
 
+    public void setParameter(int index, Expression param) {
+    }
+
+    public void doneWithParameters() {
+    }
+
+    public void setDataType(Column col) {
+    }
+
+    public abstract int getFunctionType();
+
     /**
      * Whether the function always returns the same result for the same
      * parameters.
@@ -210,15 +220,4 @@ public abstract class Function extends Expression {
      * @return true if it should be.
      */
     abstract boolean isBufferResultSetToLocalTemp();
-
-    public void setParameter(int index, Expression param) {
-    }
-
-    public void doneWithParameters() {
-    }
-
-    public void setDataType(Column col) {
-    }
-
-    public abstract int getFunctionType();
 }

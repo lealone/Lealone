@@ -129,11 +129,6 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public boolean isDeterministic() {
-        return functionAlias.isDeterministic();
-    }
-
-    @Override
     public Expression[] getExpressionColumns(ServerSession session) {
         switch (getType()) {
         case Value.RESULT_SET:
@@ -146,17 +141,22 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public boolean isBufferResultSetToLocalTemp() {
+    public int getFunctionType() {
+        return -1;
+    }
+
+    @Override
+    public boolean isDeterministic() {
+        return functionAlias.isDeterministic();
+    }
+
+    @Override
+    boolean isBufferResultSetToLocalTemp() {
         return functionAlias.isBufferResultSetToLocalTemp();
     }
 
     @Override
     public <R> R accept(IExpressionVisitor<R> visitor) {
         return visitor.visitJavaFunction(this);
-    }
-
-    @Override
-    public int getFunctionType() {
-        return -1;
     }
 }
