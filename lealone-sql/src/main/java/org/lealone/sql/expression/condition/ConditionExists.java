@@ -13,7 +13,6 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.query.Query;
 
 /**
@@ -57,11 +56,6 @@ public class ConditionExists extends Condition {
         // probably not
         // select id from test group by id having exists (select * from test2
         // where id=count(test.id))
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        query.mapColumns(resolver, level + 1);
     }
 
     @Override

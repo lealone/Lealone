@@ -15,7 +15,6 @@ import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
 /**
@@ -48,11 +47,6 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        condition.mapColumns(resolver, level);
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         Expression e2 = condition.getNotIfPossible(session);
         if (e2 != null) {
@@ -73,11 +67,6 @@ public class ConditionNot extends Condition {
     @Override
     public String getSQL(boolean isDistributed) {
         return "(NOT " + condition.getSQL(isDistributed) + ")";
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        condition.updateAggregate(session);
     }
 
     @Override

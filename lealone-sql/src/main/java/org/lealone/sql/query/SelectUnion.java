@@ -258,12 +258,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public void updateAggregate(ServerSession s) {
-        left.updateAggregate(s);
-        right.updateAggregate(s);
-    }
-
-    @Override
     public void fireBeforeSelectTriggers() {
         left.fireBeforeSelectTriggers();
         right.fireBeforeSelectTriggers();

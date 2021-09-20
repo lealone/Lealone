@@ -26,7 +26,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.SingleValueVector;
@@ -89,23 +88,6 @@ public abstract class BuiltInAggregate extends Aggregate {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // 聚合函数不能嵌套
-        if (resolver.getState() == ColumnResolver.STATE_IN_AGGREGATE) {
-            throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
-        }
-        if (on != null) {
-            int state = resolver.getState();
-            resolver.setState(ColumnResolver.STATE_IN_AGGREGATE);
-            try {
-                on.mapColumns(resolver, level);
-            } finally {
-                resolver.setState(state);
-            }
-        }
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         if (on != null) {
             on = on.optimize(session);
@@ -152,7 +134,7 @@ public abstract class BuiltInAggregate extends Aggregate {
     }
 
     @Override
-    public void updateAggregate(ServerSession session, ValueVector bvv) {
+    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
         AggregateData data = getAggregateData();
         if (data == null) {
             return;

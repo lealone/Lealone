@@ -934,19 +934,6 @@ public class Select extends Query {
     }
 
     @Override
-    public void updateAggregate(ServerSession s) {
-        for (Expression e : expressions) {
-            e.updateAggregate(s);
-        }
-        if (condition != null) {
-            condition.updateAggregate(s);
-        }
-        if (having != null) {
-            having.updateAggregate(s);
-        }
-    }
-
-    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         switch (visitor.getType()) {
         case ExpressionVisitor.DETERMINISTIC: {

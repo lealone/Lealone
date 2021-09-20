@@ -18,7 +18,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -53,6 +52,10 @@ public class ConditionIn extends Condition {
         return valueList;
     }
 
+    public void setQueryLevel(int level) {
+        this.queryLevel = Math.max(level, this.queryLevel);
+    }
+
     @Override
     public Value getValue(ServerSession session) {
         Value l = left.getValue(session);
@@ -77,15 +80,6 @@ public class ConditionIn extends Condition {
             return ValueNull.INSTANCE;
         }
         return ValueBoolean.get(result);
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        for (Expression e : valueList) {
-            e.mapColumns(resolver, level);
-        }
-        this.queryLevel = Math.max(level, this.queryLevel);
     }
 
     @Override
@@ -160,14 +154,6 @@ public class ConditionIn extends Condition {
             buff.append(e.getSQL(isDistributed));
         }
         return buff.append("))").toString();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        for (Expression e : valueList) {
-            e.updateAggregate(session);
-        }
     }
 
     @Override

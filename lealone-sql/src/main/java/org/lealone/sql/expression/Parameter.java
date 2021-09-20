@@ -18,7 +18,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * A parameter of a prepared statement.
@@ -77,11 +76,6 @@ public class Parameter extends Expression implements CommandParameter {
             return column.getType();
         }
         return Value.UNKNOWN;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // can't map
     }
 
     @Override
@@ -145,11 +139,6 @@ public class Parameter extends Expression implements CommandParameter {
             return column.isNullable() ? Column.NULLABLE : Column.NOT_NULLABLE;
         }
         return super.getNullable();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        // nothing to do
     }
 
     @Override

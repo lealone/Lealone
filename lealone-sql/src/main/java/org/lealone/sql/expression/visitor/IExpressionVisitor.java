@@ -15,6 +15,7 @@ import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.Wildcard;
+import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 import org.lealone.sql.expression.condition.CompareLike;
@@ -71,6 +72,8 @@ public interface IExpressionVisitor<R> {
     R visitConditionNot(ConditionNot e);
 
     R visitAggregate(Aggregate e);
+
+    R visitAGroupConcat(AGroupConcat e);
 
     R visitJavaAggregate(JavaAggregate e);
 

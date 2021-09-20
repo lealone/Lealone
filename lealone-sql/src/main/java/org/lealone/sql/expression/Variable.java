@@ -13,7 +13,6 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * A user-defined variable, for example: @ID.
@@ -86,18 +85,8 @@ public class Variable extends Expression {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // nothing to do
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         return this;
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        // nothing to do
     }
 
     public String getName() {

@@ -14,7 +14,6 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * Represents the ROWNUM function.
@@ -35,11 +34,6 @@ public class Rownum extends Expression {
     @Override
     public int getType() {
         return Value.INT;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // nothing to do
     }
 
     @Override
@@ -65,11 +59,6 @@ public class Rownum extends Expression {
     @Override
     public String getSQL(boolean isDistributed) {
         return "ROWNUM()";
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        // nothing to do
     }
 
     @Override

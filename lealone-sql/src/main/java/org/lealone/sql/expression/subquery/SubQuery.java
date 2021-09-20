@@ -18,7 +18,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionList;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.query.Query;
 
 /**
@@ -70,11 +69,6 @@ public class SubQuery extends Expression {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        query.mapColumns(resolver, level + 1);
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         query.prepare();
         return this;
@@ -98,11 +92,6 @@ public class SubQuery extends Expression {
     @Override
     public String getSQL(boolean isDistributed) {
         return "(" + query.getPlanSQL() + ")";
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        query.updateAggregate(session);
     }
 
     private Expression getExpression() {

@@ -20,7 +20,7 @@ import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SelectOrderBy;
-import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.query.Select;
 
 public class AGroupConcat extends BuiltInAggregate {
@@ -70,19 +70,6 @@ public class AGroupConcat extends BuiltInAggregate {
             sortType[i] = order;
         }
         return new SortOrder(session.getDatabase(), index, sortType, null);
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        super.mapColumns(resolver, level);
-        if (groupConcatOrderList != null) {
-            for (SelectOrderBy o : groupConcatOrderList) {
-                o.expression.mapColumns(resolver, level);
-            }
-        }
-        if (groupConcatSeparator != null) {
-            groupConcatSeparator.mapColumns(resolver, level);
-        }
     }
 
     @Override
@@ -148,6 +135,11 @@ public class AGroupConcat extends BuiltInAggregate {
             }
         }
         return true;
+    }
+
+    @Override
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitAGroupConcat(this);
     }
 
     private class AggregateDataGroupConcat extends AggregateData {

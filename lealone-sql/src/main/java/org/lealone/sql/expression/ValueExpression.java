@@ -16,7 +16,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.SingleValueVector;
@@ -103,11 +102,6 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // nothing to do
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         return this;
     }
@@ -143,11 +137,6 @@ public class ValueExpression extends Expression {
             return "DEFAULT";
         }
         return value.getSQL();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        // nothing to do
     }
 
     @Override

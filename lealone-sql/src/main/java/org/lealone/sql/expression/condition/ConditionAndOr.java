@@ -18,7 +18,6 @@ import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 
 /**
@@ -256,18 +255,6 @@ public class ConditionAndOr extends Condition {
         } else {
             super.addFilterConditions(filter, outerJoin);
         }
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        right.mapColumns(resolver, level);
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        right.updateAggregate(session);
     }
 
     @Override

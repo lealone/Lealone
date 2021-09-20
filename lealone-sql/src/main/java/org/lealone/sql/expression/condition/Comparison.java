@@ -23,7 +23,6 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.BooleanVector;
@@ -454,14 +453,6 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        if (right != null) {
-            right.updateAggregate(session);
-        }
-    }
-
-    @Override
     public void addFilterConditions(TableFilter filter, boolean outerJoin) {
         if (compareType == IS_NULL && outerJoin) {
             // can not optimize:
@@ -471,14 +462,6 @@ public class Comparison extends Condition {
             return;
         }
         super.addFilterConditions(filter, outerJoin);
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        if (right != null) {
-            right.mapColumns(resolver, level);
-        }
     }
 
     @Override

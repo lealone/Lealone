@@ -19,7 +19,6 @@ import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -197,14 +196,6 @@ public class Operation extends Expression {
             return l.modulus(r);
         default:
             throw DbException.getInternalError("type=" + opType);
-        }
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        if (right != null) {
-            right.mapColumns(resolver, level);
         }
     }
 
@@ -398,14 +389,6 @@ public class Operation extends Expression {
             return Math.max(left.getScale(), right.getScale());
         }
         return left.getScale();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        if (right != null) {
-            right.updateAggregate(session);
-        }
     }
 
     @Override

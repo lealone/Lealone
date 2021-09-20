@@ -11,7 +11,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * A list of expressions, as in (ID, NAME).
@@ -41,13 +40,6 @@ public class ExpressionList extends Expression {
     @Override
     public int getType() {
         return Value.ARRAY;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        for (Expression e : list) {
-            e.mapColumns(resolver, level);
-        }
     }
 
     @Override
@@ -92,13 +84,6 @@ public class ExpressionList extends Expression {
             buff.append(',');
         }
         return buff.append(')').toString();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        for (Expression e : list) {
-            e.updateAggregate(session);
-        }
     }
 
     @Override

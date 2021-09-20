@@ -22,8 +22,13 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
+import org.lealone.sql.expression.visitor.CalculateVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.MapColumnsVisitor;
+import org.lealone.sql.expression.visitor.MergeAggregateVisitor;
+import org.lealone.sql.expression.visitor.UpdateAggregateVisitor;
+import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.ValueVector;
@@ -70,7 +75,9 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      * @param resolver the column resolver
      * @param level the subquery nesting level
      */
-    public abstract void mapColumns(ColumnResolver resolver, int level);
+    public void mapColumns(ColumnResolver resolver, int level) {
+        accept(new MapColumnsVisitor(resolver, level));
+    }
 
     /**
      * Try to optimize the expression.
@@ -134,9 +141,12 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      *
      * @param session the session
      */
-    public abstract void updateAggregate(ServerSession session);
+    public void updateAggregate(ServerSession session) {
+        accept(new UpdateAggregateVisitor(session));
+    }
 
-    public void updateAggregate(ServerSession session, ValueVector bvv) {
+    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
+        accept(new UpdateVectorizedAggregateVisitor(session, bvv));
     }
 
     /**
@@ -372,9 +382,11 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     }
 
     public void mergeAggregate(ServerSession session, Value v) {
+        accept(new MergeAggregateVisitor(session, v));
     }
 
     public void calculate(Calculator calculator) {
+        accept(new CalculateVisitor(calculator));
     }
 
     public Value getMergedValue(ServerSession session) {

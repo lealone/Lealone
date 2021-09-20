@@ -14,7 +14,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * This class is used by the built-in functions,
@@ -109,24 +108,6 @@ public abstract class Function extends Expression {
      */
     public Expression[] getArgs() {
         return args;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.mapColumns(resolver, level);
-            }
-        }
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        for (Expression e : args) {
-            if (e != null) {
-                e.updateAggregate(session);
-            }
-        }
     }
 
     protected boolean optimizeArgs(ServerSession session) {

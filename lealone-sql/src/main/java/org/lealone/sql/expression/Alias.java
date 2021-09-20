@@ -9,7 +9,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * A column alias as in SELECT 'Hello' AS NAME ...
@@ -42,11 +41,6 @@ public class Alias extends Expression {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        expr.mapColumns(resolver, level);
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         expr = expr.optimize(session);
         return this;
@@ -75,11 +69,6 @@ public class Alias extends Expression {
     @Override
     public String getSQL(boolean isDistributed) {
         return expr.getSQL(isDistributed) + " AS " + Parser.quoteIdentifier(alias);
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        expr.updateAggregate(session);
     }
 
     @Override

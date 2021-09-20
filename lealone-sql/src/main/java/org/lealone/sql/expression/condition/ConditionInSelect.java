@@ -18,7 +18,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.subquery.SubQueryResult;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
@@ -110,12 +109,6 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        query.mapColumns(resolver, level + 1);
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         query.setRandomAccessResult(true);
@@ -141,12 +134,6 @@ public class ConditionInSelect extends Condition {
         }
         buff.append("(\n").append(StringUtils.indent(query.getPlanSQL(), 4, false)).append("))");
         return buff.toString();
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        query.updateAggregate(session);
     }
 
     @Override

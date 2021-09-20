@@ -37,7 +37,7 @@ class VAggregate extends VOperator {
             select.currentGroupRowId++;
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);
-                expr.updateAggregate(session, conditionValueVector);
+                expr.updateVectorizedAggregate(session, conditionValueVector);
             }
             if (sampleSize > 0 && rowCount >= sampleSize) {
                 break;

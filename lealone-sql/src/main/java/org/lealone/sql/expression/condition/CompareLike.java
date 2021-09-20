@@ -22,7 +22,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -394,24 +393,6 @@ public class CompareLike extends Condition {
             }
         }
         return true;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        left.mapColumns(resolver, level);
-        right.mapColumns(resolver, level);
-        if (escape != null) {
-            escape.mapColumns(resolver, level);
-        }
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        left.updateAggregate(session);
-        right.updateAggregate(session);
-        if (escape != null) {
-            escape.updateAggregate(session);
-        }
     }
 
     @Override

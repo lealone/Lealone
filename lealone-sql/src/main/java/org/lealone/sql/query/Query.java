@@ -192,13 +192,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     public abstract <R> R accept(IExpressionVisitor<R> visitor);
 
     /**
-     * Update all aggregate function values.
-     *
-     * @param s the session
-     */
-    public abstract void updateAggregate(ServerSession s);
-
-    /**
      * Call the before triggers on all tables.
      */
     public abstract void fireBeforeSelectTriggers();

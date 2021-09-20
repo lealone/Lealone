@@ -22,7 +22,6 @@ import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.query.Select;
 
 /**
@@ -76,13 +75,6 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
             cost += e.getCost();
         }
         return cost;
-    }
-
-    @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        for (Expression arg : args) {
-            arg.mapColumns(resolver, level);
-        }
     }
 
     @Override

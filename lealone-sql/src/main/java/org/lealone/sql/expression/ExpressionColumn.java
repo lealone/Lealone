@@ -200,6 +200,24 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
+    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
+        Select select = columnResolver.getSelect();
+        if (select == null) {
+            throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
+        }
+        HashMap<Expression, Object> values = select.getCurrentGroup();
+        if (values == null) {
+            // this is a different level (the enclosing query)
+            return;
+        }
+        ValueVector v = (ValueVector) values.get(this);
+        if (v == null) { // 只取第一条
+            ValueVector now = columnResolver.getValueVector(column);
+            values.put(this, now);
+        }
+    }
+
+    @Override
     public Value getValue(ServerSession session) {
         Select select = columnResolver.getSelect();
         if (select != null) {

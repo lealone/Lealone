@@ -12,7 +12,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
-import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * Wraps a sequence when used in a statement.
@@ -42,11 +41,6 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public void mapColumns(ColumnResolver resolver, int level) {
-        // nothing to do
-    }
-
-    @Override
     public Expression optimize(ServerSession session) {
         return this;
     }
@@ -69,11 +63,6 @@ public class SequenceValue extends Expression {
     @Override
     public String getSQL(boolean isDistributed) {
         return "(NEXT VALUE FOR " + sequence.getSQL() + ")";
-    }
-
-    @Override
-    public void updateAggregate(ServerSession session) {
-        // nothing to do
     }
 
     @Override
