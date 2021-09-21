@@ -64,6 +64,9 @@ public class SetSession extends SetStatement {
         case VALUE_VECTOR_FACTORY_NAME:
             session.setValueVectorFactoryName(getStringValue());
             break;
+        case EXPRESSION_COMPILE_THRESHOLD:
+            session.setExpressionCompileThreshold(getIntValue());
+            break;
         default:
             DbException.throwInternalError("unknown setting type: " + setting);
         }

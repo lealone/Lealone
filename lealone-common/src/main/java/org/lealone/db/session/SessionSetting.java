@@ -19,7 +19,8 @@ public enum SessionSetting {
     VARIABLE,
     THROTTLE,
     TRANSACTION_ISOLATION_LEVEL,
-    VALUE_VECTOR_FACTORY_NAME;
+    VALUE_VECTOR_FACTORY_NAME,
+    EXPRESSION_COMPILE_THRESHOLD;
 
     public String getName() {
         if (this == VARIABLE)

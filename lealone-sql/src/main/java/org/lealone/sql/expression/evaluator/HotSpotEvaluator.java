@@ -27,6 +27,7 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
     private int count;
     private boolean isJit;
     private boolean async;
+    private int expressionCompileThreshold;
 
     // 用于支持动态编译ConditionInConstantSet表达式
     private HashSet<Value> valueSet;
@@ -47,6 +48,7 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
         this.session = session;
         this.expression = expression;
         this.async = async;
+        this.expressionCompileThreshold = session.getExpressionCompileThreshold();
         evaluator = new ExpressionInterpreter(session, expression);
     }
 
@@ -92,7 +94,7 @@ public class HotSpotEvaluator implements ExpressionEvaluator {
 
     @Override
     public boolean getBooleanValue() {
-        if (!isJit && ++count > 100000) { // TODO 允许配置
+        if (!isJit && expressionCompileThreshold > 0 && count++ > expressionCompileThreshold) {
             isJit = true;
             if (async) {
                 ExpressionCompiler.createJitEvaluatorAsync(this, session, expression, ar -> {

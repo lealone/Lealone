@@ -1906,4 +1906,14 @@ public class ServerSession extends SessionBase {
     public void setValueVectorFactoryName(String valueVectorFactoryName) {
         this.valueVectorFactoryName = valueVectorFactoryName;
     }
+
+    private int expressionCompileThreshold;
+
+    public int getExpressionCompileThreshold() {
+        return expressionCompileThreshold;
+    }
+
+    public void setExpressionCompileThreshold(int expressionCompileThreshold) {
+        this.expressionCompileThreshold = expressionCompileThreshold;
+    }
 }
