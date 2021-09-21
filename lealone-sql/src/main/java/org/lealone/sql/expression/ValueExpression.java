@@ -5,8 +5,6 @@
  */
 package org.lealone.sql.expression;
 
-import java.util.TreeSet;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
@@ -14,7 +12,6 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
-import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -168,15 +165,6 @@ public class ValueExpression extends Expression {
             return getExpressionColumns(session, (ValueArray) getValue(session));
         }
         return super.getExpressionColumns(session);
-    }
-
-    @Override
-    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
-            String retVar) {
-        StringBuilder indent = indent((level + 1) * 4);
-        evaluator.addValue(value);
-        buff.append(indent).append(retVar).append(" = evaluator.getValue(").append(evaluator.getValueListSize() - 1)
-                .append(");\r\n");
     }
 
     @Override

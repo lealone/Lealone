@@ -6,7 +6,6 @@
 package org.lealone.sql.expression;
 
 import java.util.HashMap;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
@@ -21,7 +20,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.condition.Comparison;
-import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.AliasColumnResolver;
 import org.lealone.sql.optimizer.ColumnResolver;
@@ -371,15 +369,6 @@ public class ExpressionColumn extends Expression {
     @Override
     public Expression getNotIfPossible(ServerSession session) {
         return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
-    }
-
-    @Override
-    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
-            String retVar) {
-        StringBuilder indent = indent((level + 1) * 4);
-        evaluator.addExpressionColumn(this);
-        buff.append(indent).append(retVar).append(" = evaluator.getExpressionColumn(")
-                .append(evaluator.getExpressionColumnListSize() - 1).append(").getValue(session);\r\n");
     }
 
     @Override

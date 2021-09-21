@@ -7,7 +7,6 @@ package org.lealone.sql.expression.condition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
@@ -21,7 +20,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -549,34 +547,6 @@ public class Comparison extends Condition {
      */
     public Expression getExpression(boolean getLeft) {
         return getLeft ? this.left : right;
-    }
-
-    @Override
-    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
-            String retVar) {
-        StringBuilder indent = indent((level + 1) * 4);
-        importSet.add(Comparison.class.getName());
-        importSet.add(ValueBoolean.class.getName());
-        buff.append(indent).append("{\r\n");
-        String retVarLeft = "lret" + (level + 1);
-        String retVarRight = "rret" + (level + 1);
-        buff.append(indent).append("    Value ").append(retVarLeft).append(";\r\n");
-        buff.append(indent).append("    Value ").append(retVarRight).append(";\r\n");
-        left.genCode(evaluator, buff, importSet, level + 1, retVarLeft);
-        right.genCode(evaluator, buff, importSet, level + 1, retVarRight);
-        int dataType = Value.getHigherOrder(left.getType(), right.getType());
-        int ltype = left.getType();
-        if (ltype != dataType)
-            buff.append("    ").append(indent).append(retVarLeft).append(" = ").append(retVarLeft).append(".convertTo(")
-                    .append(dataType).append(");\r\n");
-        int rtype = right.getType();
-        if (rtype != dataType)
-            buff.append("    ").append(indent).append(retVarRight).append(" = ").append(retVarRight)
-                    .append(".convertTo(").append(dataType).append(");\r\n");
-        buff.append("    ").append(indent).append("boolean result = Comparison.compareNotNull(session.getDatabase(), ")
-                .append(retVarLeft).append(", ").append(retVarRight).append(", ").append(compareType).append(");\r\n");
-        buff.append("    ").append(indent).append(retVar).append(" = ValueBoolean.get(result);\r\n");
-        buff.append(indent).append("}").append("\r\n");
     }
 
     @Override

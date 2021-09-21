@@ -9,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
@@ -21,7 +20,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.CalculateVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
@@ -405,22 +403,7 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         accept(ExpressionVisitorFactory.getColumnsVisitor((Set<Column>) columns));
     }
 
-    // 默认回退到解释执行的方式
-    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
-            String retVar) {
-        StringBuilder indent = indent((level + 1) * 4);
-        evaluator.addExpression(this);
-        buff.append(indent).append(retVar).append(" = evaluator.getExpression(")
-                .append(evaluator.getExpressionListSize() - 1).append(").getValue(session);\r\n");
+    public <R> R accept(IExpressionVisitor<R> visitor) {
+        return visitor.visitExpression(this);
     }
-
-    public static StringBuilder indent(int size) {
-        StringBuilder indent = new StringBuilder(size);
-        for (int i = 0; i < size; i++) {
-            indent.append(' ');
-        }
-        return indent;
-    }
-
-    public abstract <R> R accept(IExpressionVisitor<R> visitor);
 }

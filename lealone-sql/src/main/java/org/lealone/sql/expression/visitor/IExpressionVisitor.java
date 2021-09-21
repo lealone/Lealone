@@ -6,6 +6,7 @@
 package org.lealone.sql.expression.visitor;
 
 import org.lealone.sql.expression.Alias;
+import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionList;
 import org.lealone.sql.expression.Operation;
@@ -32,6 +33,8 @@ import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.expression.subquery.SubQuery;
 
 public interface IExpressionVisitor<R> {
+
+    R visitExpression(Expression e);
 
     R visitAlias(Alias e);
 

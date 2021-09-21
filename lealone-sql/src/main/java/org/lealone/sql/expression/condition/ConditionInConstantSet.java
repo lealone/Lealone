@@ -7,7 +7,6 @@ package org.lealone.sql.expression.condition;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -18,7 +17,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -56,6 +54,10 @@ public class ConditionInConstantSet extends Condition {
 
     public Expression getLeft() {
         return left;
+    }
+
+    public HashSet<Value> getValueSet() {
+        return valueSet;
     }
 
     public void setQueryLevel(int level) {
@@ -154,37 +156,6 @@ public class ConditionInConstantSet extends Condition {
             }
         }
         return null;
-    }
-
-    @Override
-    public void genCode(HotSpotEvaluator evaluator, StringBuilder buff, TreeSet<String> importSet, int level,
-            String retVar) {
-        importSet.add(ValueNull.class.getName());
-        importSet.add(ValueBoolean.class.getName());
-        evaluator.setValueSet(valueSet);
-
-        StringBuilder indent = indent((level + 1) * 4);
-
-        buff.append(indent).append("{\r\n");
-        String retVarLeft = "lret" + (level + 1);
-        buff.append(indent).append("    Value ").append(retVarLeft).append(";\r\n");
-        left.genCode(evaluator, buff, importSet, level + 1, retVarLeft);
-
-        buff.append("    ").append(indent).append("if (").append(retVarLeft).append(" == ValueNull.INSTANCE) {\r\n");
-        buff.append("    ").append(indent).append("    ").append(retVar).append(" = ").append(retVarLeft)
-                .append(";\r\n");
-        buff.append("    ").append(indent).append("} else if (evaluator.getValueSet().contains(").append(retVarLeft)
-                .append(")) {\r\n");
-        buff.append("    ").append(indent).append("    ").append(retVar).append(" = ValueBoolean.TRUE;\r\n");
-        buff.append("    ").append(indent).append("} else {\r\n");
-        buff.append("    ").append(indent).append("    ").append(retVar);
-        if (valueSet.contains(ValueNull.INSTANCE)) {
-            buff.append(" = ValueNull.INSTANCE;\r\n");
-        } else {
-            buff.append(" = ValueBoolean.FALSE;\r\n");
-        }
-        buff.append("    ").append(indent).append("}\r\n");
-        buff.append(indent).append("}").append("\r\n");
     }
 
     @Override

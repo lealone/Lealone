@@ -37,6 +37,11 @@ import org.lealone.sql.query.Query;
 public class ExpressionVisitorBase<R> implements IExpressionVisitor<R> {
 
     @Override
+    public R visitExpression(Expression e) {
+        return null;
+    }
+
+    @Override
     public R visitAlias(Alias e) {
         return e.getNonAliasExpression().accept(this);
     }
