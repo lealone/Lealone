@@ -15,7 +15,7 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.function.Function;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -402,11 +402,6 @@ public class Operation extends Expression {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return left.isEverything(visitor) && (right == null || right.isEverything(visitor));
-    }
-
-    @Override
     public int getCost() {
         return left.getCost() + 1 + (right == null ? 0 : right.getCost());
     }
@@ -430,7 +425,7 @@ public class Operation extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitOperation(this);
     }
 }

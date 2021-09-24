@@ -28,12 +28,11 @@ import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.MaxModificationIdVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -180,16 +179,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     @Override
     public abstract boolean allowGlobalConditions();
 
-    /**
-     * Check if this expression and all sub-expressions can fulfill a criteria.
-     * If any part returns false, the result is false.
-     *
-     * @param visitor the visitor
-     * @return if the criteria can be fulfilled
-     */
-    public abstract boolean isEverything(ExpressionVisitor visitor);
-
-    public abstract <R> R accept(IExpressionVisitor<R> visitor);
+    public abstract <R> R accept(ExpressionVisitor<R> visitor);
 
     /**
      * Call the before triggers on all tables.
@@ -316,7 +306,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
 
     @Override
     public boolean isDeterministic() {
-        return isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
+        return accept(ExpressionVisitorFactory.getDeterministicVisitor());
     }
 
     /**

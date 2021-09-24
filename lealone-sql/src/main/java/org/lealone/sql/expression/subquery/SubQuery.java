@@ -16,8 +16,7 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionList;
-import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Query;
 import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
@@ -118,11 +117,6 @@ public class SubQuery extends Expression {
         return expression;
     }
 
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return query.isEverything(visitor);
-    }
-
     public Query getQuery() {
         return query;
     }
@@ -138,7 +132,7 @@ public class SubQuery extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitSubQuery(this);
     }
 }

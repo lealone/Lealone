@@ -8,7 +8,6 @@ package org.lealone.sql.expression.condition;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
@@ -16,8 +15,7 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -113,27 +111,6 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        if (!left.isEverything(visitor)) {
-            return false;
-        }
-        switch (visitor.getType()) {
-        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-        case ExpressionVisitor.DETERMINISTIC:
-        case ExpressionVisitor.INDEPENDENT:
-        case ExpressionVisitor.EVALUATABLE:
-        case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:
-        case ExpressionVisitor.NOT_FROM_RESOLVER:
-        case ExpressionVisitor.GET_DEPENDENCIES:
-        case ExpressionVisitor.QUERY_COMPARABLE:
-        case ExpressionVisitor.GET_COLUMNS:
-            return true;
-        default:
-            throw DbException.getInternalError("type=" + visitor.getType());
-        }
-    }
-
-    @Override
     public int getCost() {
         int cost = left.getCost();
         return cost;
@@ -159,7 +136,7 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitConditionInConstantSet(this);
     }
 }

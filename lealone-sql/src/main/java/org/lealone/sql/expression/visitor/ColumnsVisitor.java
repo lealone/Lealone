@@ -10,7 +10,7 @@ import java.util.Set;
 import org.lealone.db.table.Column;
 import org.lealone.sql.expression.ExpressionColumn;
 
-public class ColumnsVisitor extends ExpressionVisitorBase<Void> {
+public class ColumnsVisitor extends VoidExpressionVisitor {
 
     private Set<Column> columns;
 

@@ -22,7 +22,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.visitor.CalculateVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.MapColumnsVisitor;
 import org.lealone.sql.expression.visitor.MergeAggregateVisitor;
 import org.lealone.sql.expression.visitor.UpdateAggregateVisitor;
@@ -152,15 +152,6 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
         accept(new UpdateVectorizedAggregateVisitor(session, bvv));
     }
-
-    /**
-     * Check if this expression and all sub-expressions can fulfill a criteria.
-     * If any part returns false, the result is false.
-     *
-     * @param visitor the visitor
-     * @return if the criteria can be fulfilled
-     */
-    public abstract boolean isEverything(ExpressionVisitor visitor);
 
     /**
      * Estimate the cost to process the expression.
@@ -312,10 +303,14 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      * @param outerJoin if the expression is part of an outer join
      */
     public void addFilterConditions(TableFilter filter, boolean outerJoin) {
-        if (!addedToFilter && !outerJoin && isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
+        if (!addedToFilter && !outerJoin && isEvaluatable()) {
             filter.addFilterCondition(this, false);
             addedToFilter = true;
         }
+    }
+
+    public boolean isEvaluatable() {
+        return accept(ExpressionVisitorFactory.getEvaluatableVisitor());
     }
 
     /**
@@ -409,7 +404,7 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         accept(ExpressionVisitorFactory.getColumnsVisitor((Set<Column>) columns));
     }
 
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitExpression(this);
     }
 }

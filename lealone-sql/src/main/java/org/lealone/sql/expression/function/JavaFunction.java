@@ -16,9 +16,8 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 
 /**
  * This class wraps a user-defined function.
@@ -98,28 +97,6 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.DETERMINISTIC:
-            if (!isDeterministic()) {
-                return false;
-            }
-            // only if all parameters are deterministic as well
-            break;
-        case ExpressionVisitor.GET_DEPENDENCIES:
-            visitor.addDependency(functionAlias);
-            break;
-        default:
-        }
-        for (Expression e : args) {
-            if (e != null && !e.isEverything(visitor)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
     public int getCost() {
         int cost = javaMethod.hasConnectionParam() ? 25 : 5;
         for (Expression e : args) {
@@ -156,7 +133,7 @@ public class JavaFunction extends Function {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitJavaFunction(this);
     }
 }

@@ -20,7 +20,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.condition.Comparison;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.AliasColumnResolver;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
@@ -71,6 +71,10 @@ public class ExpressionColumn extends Expression {
 
     public ColumnResolver getColumnResolver() {
         return columnResolver;
+    }
+
+    public int getQueryLevel() {
+        return queryLevel;
     }
 
     @Override
@@ -313,42 +317,16 @@ public class ExpressionColumn extends Expression {
         return column.isNullable() ? Column.NULLABLE : Column.NOT_NULLABLE;
     }
 
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-            return false;
-        case ExpressionVisitor.DETERMINISTIC:
-        case ExpressionVisitor.QUERY_COMPARABLE:
+    public boolean isEvaluatable(int queryLevel) {
+        // if this column belongs to a 'higher level' query and is
+        // therefore just a parameter
+        if (queryLevel < this.queryLevel) {
             return true;
-        case ExpressionVisitor.INDEPENDENT:
-            return this.queryLevel < visitor.getQueryLevel();
-        case ExpressionVisitor.EVALUATABLE:
-            // if this column belongs to a 'higher level' query and is
-            // therefore just a parameter
-            if (visitor.getQueryLevel() < this.queryLevel) {
-                return true;
-            }
-            if (getTableFilter() == null) {
-                return false;
-            }
-            return getTableFilter().isEvaluatable();
-        case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:
-            visitor.addDataModificationId(column.getTable().getMaxDataModificationId());
-            return true;
-        case ExpressionVisitor.NOT_FROM_RESOLVER:
-            return columnResolver != visitor.getResolver();
-        case ExpressionVisitor.GET_DEPENDENCIES:
-            if (column != null) {
-                visitor.addDependency(column.getTable());
-            }
-            return true;
-        case ExpressionVisitor.GET_COLUMNS:
-            visitor.addColumn(column);
-            return true;
-        default:
-            throw DbException.getInternalError("type=" + visitor.getType());
         }
+        if (getTableFilter() == null) {
+            return false;
+        }
+        return getTableFilter().isEvaluatable();
     }
 
     @Override
@@ -372,7 +350,7 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitExpressionColumn(this);
     }
 }

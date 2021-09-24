@@ -15,9 +15,10 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.subquery.SubQueryResult;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.NotFromResolverVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
@@ -137,11 +138,6 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return left.isEverything(visitor) && query.isEverything(visitor);
-    }
-
-    @Override
     public int getCost() {
         return left.getCost() + query.getCostAsExpression();
     }
@@ -158,15 +154,15 @@ public class ConditionInSelect extends Condition {
         if (filter != l.getTableFilter()) {
             return;
         }
-        ExpressionVisitor visitor = ExpressionVisitor.getNotFromResolverVisitor(filter);
-        if (!query.isEverything(visitor)) {
+        NotFromResolverVisitor visitor = ExpressionVisitorFactory.getNotFromResolverVisitor(filter);
+        if (!query.accept(visitor)) {
             return;
         }
         filter.addIndexCondition(IndexCondition.getInQuery(l, query));
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitConditionInSelect(this);
     }
 }

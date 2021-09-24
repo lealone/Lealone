@@ -44,9 +44,9 @@ import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.expression.subquery.SubQuery;
-import org.lealone.sql.expression.visitor.ExpressionVisitorBase;
+import org.lealone.sql.expression.visitor.VoidExpressionVisitor;
 
-public class ExpressionCompiler extends ExpressionVisitorBase<Void> {
+public class ExpressionCompiler extends VoidExpressionVisitor {
 
     private static long id;
 

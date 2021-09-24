@@ -8,7 +8,7 @@ package org.lealone.sql.expression.aggregate;
 import java.util.HashMap;
 
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Select;
 
 /**
@@ -183,7 +183,7 @@ public abstract class Aggregate extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitAggregate(this);
     }
 

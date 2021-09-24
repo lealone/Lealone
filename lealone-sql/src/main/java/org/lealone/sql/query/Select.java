@@ -39,12 +39,12 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
@@ -124,6 +124,10 @@ public class Select extends Query {
 
     public void setHaving(Expression having) {
         this.having = having;
+    }
+
+    public Expression getHaving() {
+        return having;
     }
 
     public HashMap<Expression, Object> getCurrentGroup() {
@@ -361,8 +365,7 @@ public class Select extends Query {
         if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1
                 && filters.get(0).getPageKeys() == null) {
             Table t = filters.get(0).getTable();
-            ExpressionVisitor optimizable = ExpressionVisitor.getOptimizableVisitor(t);
-            isQuickAggregateQuery = isEverything(optimizable);
+            isQuickAggregateQuery = accept(ExpressionVisitorFactory.getOptimizableVisitor(t));
         }
 
         cost = preparePlan(); // 选择合适的索引
@@ -516,7 +519,7 @@ public class Select extends Query {
             }
             Expression on = f.getJoinCondition();
             if (on != null) {
-                if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
+                if (!on.isEvaluatable()) {
                     // need to check that all added are bound to a table
                     on = on.optimize(session);
                     if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
@@ -527,7 +530,7 @@ public class Select extends Query {
             }
             on = f.getFilterCondition();
             if (on != null) {
-                if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
+                if (!on.isEvaluatable()) {
                     f.removeFilterCondition();
                     addCondition(on);
                 }
@@ -896,7 +899,7 @@ public class Select extends Query {
         Expression comp;
         Expression col = expressions.get(columnId);
         col = col.getNonAliasExpression();
-        if (col.isEverything(ExpressionVisitor.QUERY_COMPARABLE_VISITOR)) {
+        if (col.accept(ExpressionVisitorFactory.getQueryComparableVisitor())) {
             comp = new Comparison(session, comparisonType, col, param);
         } else {
             // this condition will always evaluate to true, but need to
@@ -934,76 +937,29 @@ public class Select extends Query {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.DETERMINISTIC: {
-            if (isForUpdate) {
+    public boolean isDeterministic() {
+        if (isForUpdate) {
+            return false;
+        }
+        for (int i = 0, size = filters.size(); i < size; i++) {
+            TableFilter f = filters.get(i);
+            if (!f.getTable().isDeterministic()) {
                 return false;
             }
-            for (int i = 0, size = filters.size(); i < size; i++) {
-                TableFilter f = filters.get(i);
-                if (!f.getTable().isDeterministic()) {
-                    return false;
-                }
-            }
-            break;
         }
-        case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID: {
-            for (int i = 0, size = filters.size(); i < size; i++) {
-                TableFilter f = filters.get(i);
-                long m = f.getTable().getMaxDataModificationId();
-                visitor.addDataModificationId(m);
-            }
-            break;
+        return true;
+    }
+
+    public boolean isEvaluatable() {
+        if (!session.getDatabase().getSettings().optimizeEvaluatableSubqueries) {
+            return false;
         }
-        case ExpressionVisitor.EVALUATABLE: {
-            if (!session.getDatabase().getSettings().optimizeEvaluatableSubqueries) {
-                return false;
-            }
-            break;
-        }
-        case ExpressionVisitor.GET_DEPENDENCIES: {
-            for (int i = 0, size = filters.size(); i < size; i++) {
-                TableFilter f = filters.get(i);
-                Table table = f.getTable();
-                visitor.addDependency(table);
-                table.addDependencies(visitor.getDependencies());
-            }
-            break;
-        }
-        default:
-        }
-        ExpressionVisitor v2 = visitor.incrementQueryLevel(1);
-        boolean result = true;
-        for (int i = 0, size = expressions.size(); i < size; i++) {
-            Expression e = expressions.get(i);
-            if (!e.isEverything(v2)) {
-                result = false;
-                break;
-            }
-        }
-        if (result && condition != null && !condition.isEverything(v2)) {
-            result = false;
-        }
-        if (result && having != null && !having.isEverything(v2)) {
-            result = false;
-        }
-        return result;
+        return true;
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
-        for (int i = 0, size = expressions.size(); i < size; i++) {
-            Expression e = expressions.get(i);
-            e.accept(visitor);
-        }
-        if (condition != null) {
-            condition.accept(visitor);
-        }
-        if (having != null) {
-            having.accept(visitor);
-        }
-        return null;
+    public <R> R accept(ExpressionVisitor<R> visitor) {
+        return visitor.visitSelect(this);
     }
 
     @Override

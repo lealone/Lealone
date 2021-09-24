@@ -10,7 +10,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.vector.ValueVector;
 
@@ -97,17 +97,12 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        throw DbException.getInternalError();
-    }
-
-    @Override
     public int getCost() {
         throw DbException.getInternalError();
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitWildcard(this);
     }
 }

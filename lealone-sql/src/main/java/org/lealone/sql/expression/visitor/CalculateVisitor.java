@@ -10,7 +10,7 @@ import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 
-public class CalculateVisitor extends ExpressionVisitorBase<Void> {
+public class CalculateVisitor extends VoidExpressionVisitor {
 
     private Calculator calculator;
 

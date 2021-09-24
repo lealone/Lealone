@@ -16,7 +16,7 @@ import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
 
-public class DependenciesVisitor extends ExpressionVisitorBase<Void> {
+public class DependenciesVisitor extends VoidExpressionVisitor {
 
     private Set<DbObject> dependencies;
 

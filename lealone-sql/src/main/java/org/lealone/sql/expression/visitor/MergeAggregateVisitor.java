@@ -11,7 +11,7 @@ import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 
-public class MergeAggregateVisitor extends ExpressionVisitorBase<Void> {
+public class MergeAggregateVisitor extends VoidExpressionVisitor {
 
     private ServerSession session;
     private Value value;

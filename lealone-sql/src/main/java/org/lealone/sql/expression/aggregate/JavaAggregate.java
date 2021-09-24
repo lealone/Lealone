@@ -20,8 +20,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
@@ -110,28 +109,6 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
         return buff.append(')').toString();
     }
 
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.DETERMINISTIC:
-            // TODO optimization: some functions are deterministic, but we don't
-            // know (no setting for that)
-        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-            // user defined aggregate functions can not be optimized
-            return false;
-        case ExpressionVisitor.GET_DEPENDENCIES:
-            visitor.addDependency(userAggregate);
-            break;
-        default:
-        }
-        for (Expression e : args) {
-            if (e != null && !e.isEverything(visitor)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private Aggregate getInstance() throws SQLException {
         if (aggregate == null) {
             aggregate = userAggregate.getInstance();
@@ -206,7 +183,7 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitJavaAggregate(this);
     }
 }

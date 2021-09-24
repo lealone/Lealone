@@ -12,7 +12,7 @@ import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 import org.lealone.sql.vector.ValueVector;
 
-public class UpdateVectorizedAggregateVisitor extends ExpressionVisitorBase<Void> {
+public class UpdateVectorizedAggregateVisitor extends VoidExpressionVisitor {
 
     private ServerSession session;
     private ValueVector bvv;

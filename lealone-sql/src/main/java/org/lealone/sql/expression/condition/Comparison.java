@@ -17,10 +17,11 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.NotFromResolverVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.BooleanVector;
@@ -409,13 +410,13 @@ public class Comparison extends Condition {
             return;
         }
         if (l == null) {
-            ExpressionVisitor visitor = ExpressionVisitor.getNotFromResolverVisitor(filter);
-            if (!left.isEverything(visitor)) {
+            NotFromResolverVisitor visitor = ExpressionVisitorFactory.getNotFromResolverVisitor(filter);
+            if (!left.accept(visitor)) {
                 return;
             }
         } else if (r == null) {
-            ExpressionVisitor visitor = ExpressionVisitor.getNotFromResolverVisitor(filter);
-            if (!right.isEverything(visitor)) {
+            NotFromResolverVisitor visitor = ExpressionVisitorFactory.getNotFromResolverVisitor(filter);
+            if (!right.accept(visitor)) {
                 return;
             }
         } else {
@@ -460,11 +461,6 @@ public class Comparison extends Condition {
             return;
         }
         super.addFilterConditions(filter, outerJoin);
-    }
-
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return left.isEverything(visitor) && (right == null || right.isEverything(visitor));
     }
 
     @Override
@@ -550,7 +546,7 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitComparison(this);
     }
 }

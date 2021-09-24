@@ -22,8 +22,8 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.query.Query;
 
 /**
@@ -296,17 +296,17 @@ public class IndexCondition {
      */
     public boolean isEvaluatable() {
         if (expression != null) {
-            return expression.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR);
+            return expression.isEvaluatable();
         }
         if (expressionList != null) {
             for (Expression e : expressionList) {
-                if (!e.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
+                if (!e.isEvaluatable()) {
                     return false;
                 }
             }
             return true;
         }
-        return expressionQuery.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR);
+        return expressionQuery.accept(ExpressionVisitorFactory.getEvaluatableVisitor());
     }
 
 }

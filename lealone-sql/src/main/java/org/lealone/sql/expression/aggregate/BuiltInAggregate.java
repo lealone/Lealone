@@ -24,8 +24,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.SingleValueVector;
@@ -289,29 +288,22 @@ public abstract class BuiltInAggregate extends Aggregate {
         return null;
     }
 
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        if (visitor.getType() == ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL) {
-            switch (type) {
-            case COUNT:
-                if (!distinct && on.getNullable() == Column.NOT_NULLABLE) {
-                    return visitor.getTable().canGetRowCount();
-                }
-                return false;
-            case COUNT_ALL:
-                return visitor.getTable().canGetRowCount();
-            case MIN:
-            case MAX:
-                Index index = getColumnIndex();
-                return index != null;
-            default:
-                return false;
+    public boolean isOptimizable(Table table) {
+        switch (type) {
+        case COUNT:
+            if (!distinct && on.getNullable() == Column.NOT_NULLABLE) {
+                return table.canGetRowCount();
             }
-        }
-        if (on != null && !on.isEverything(visitor)) {
+            return false;
+        case COUNT_ALL:
+            return table.canGetRowCount();
+        case MIN:
+        case MAX:
+            Index index = getColumnIndex();
+            return index != null;
+        default:
             return false;
         }
-        return true;
     }
 
     static Value divide(Value a, long by) {
@@ -332,7 +324,7 @@ public abstract class BuiltInAggregate extends Aggregate {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitAggregate(this);
     }
 }

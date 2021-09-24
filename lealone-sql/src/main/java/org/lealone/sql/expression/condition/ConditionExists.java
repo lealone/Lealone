@@ -11,8 +11,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Query;
 
 /**
@@ -59,17 +58,12 @@ public class ConditionExists extends Condition {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return query.isEverything(visitor);
-    }
-
-    @Override
     public int getCost() {
         return query.getCostAsExpression();
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitConditionExists(this);
     }
 }

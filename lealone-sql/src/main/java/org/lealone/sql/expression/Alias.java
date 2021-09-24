@@ -8,7 +8,7 @@ package org.lealone.sql.expression;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -88,11 +88,6 @@ public class Alias extends Expression {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return expr.isEverything(visitor);
-    }
-
-    @Override
     public int getCost() {
         return expr.getCost();
     }
@@ -114,7 +109,7 @@ public class Alias extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitAlias(this);
     }
 }

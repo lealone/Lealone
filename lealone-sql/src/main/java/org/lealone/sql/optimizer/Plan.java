@@ -10,7 +10,6 @@ import java.util.HashMap;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
 
 /**
@@ -113,7 +112,7 @@ public class Plan {
             setEvaluatable(tableFilter, true);
             Expression on = tableFilter.getJoinCondition();
             if (on != null) {
-                if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
+                if (!on.isEvaluatable()) {
                     invalidPlan = true;
                     break;
                 }

@@ -31,8 +31,18 @@ import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.expression.subquery.SubQuery;
+import org.lealone.sql.query.Select;
+import org.lealone.sql.query.SelectUnion;
 
-public interface IExpressionVisitor<R> {
+public interface ExpressionVisitor<R> {
+
+    public default ExpressionVisitor<R> incrementQueryLevel(int offset) {
+        return this;
+    }
+
+    public default int getQueryLevel() {
+        return 0;
+    }
 
     R visitExpression(Expression e);
 
@@ -85,4 +95,8 @@ public interface IExpressionVisitor<R> {
     R visitJavaFunction(JavaFunction e);
 
     R visitTableFunction(TableFunction e);
+
+    R visitSelect(Select s);
+
+    R visitSelectUnion(SelectUnion su);
 }

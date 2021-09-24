@@ -10,7 +10,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.vector.ValueVector;
 import org.lealone.sql.vector.ValueVectorArray;
 
@@ -98,16 +98,6 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        for (Expression e : list) {
-            if (!e.isEverything(visitor)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
     public int getCost() {
         int cost = 1;
         for (Expression e : list) {
@@ -128,7 +118,7 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitExpressionList(this);
     }
 }

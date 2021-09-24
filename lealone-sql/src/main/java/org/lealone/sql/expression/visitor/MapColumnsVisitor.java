@@ -18,7 +18,7 @@ import org.lealone.sql.expression.condition.ConditionInSelect;
 import org.lealone.sql.expression.subquery.SubQuery;
 import org.lealone.sql.optimizer.ColumnResolver;
 
-public class MapColumnsVisitor extends ExpressionVisitorBase<Void> {
+public class MapColumnsVisitor extends VoidExpressionVisitor {
 
     private ColumnResolver resolver;
     private int level;

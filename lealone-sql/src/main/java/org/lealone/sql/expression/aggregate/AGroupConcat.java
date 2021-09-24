@@ -18,9 +18,8 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SelectOrderBy;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Select;
 
 public class AGroupConcat extends BuiltInAggregate {
@@ -119,26 +118,7 @@ public class AGroupConcat extends BuiltInAggregate {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        if (!super.isEverything(visitor)) {
-            return false;
-        }
-        if (groupConcatSeparator != null && !groupConcatSeparator.isEverything(visitor)) {
-            return false;
-        }
-        if (groupConcatOrderList != null) {
-            for (int i = 0, size = groupConcatOrderList.size(); i < size; i++) {
-                SelectOrderBy o = groupConcatOrderList.get(i);
-                if (!o.expression.isEverything(visitor)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitAGroupConcat(this);
     }
 

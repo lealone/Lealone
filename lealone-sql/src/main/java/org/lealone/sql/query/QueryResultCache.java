@@ -11,8 +11,8 @@ import org.lealone.db.Database;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 
 class QueryResultCache {
 
@@ -47,7 +47,7 @@ class QueryResultCache {
             long now = session.getDatabase().getModificationDataId();
             // 当lastEvaluated != now时，说明数据已经有变化，缓存的结果不能用了
             if (lastEvaluated == now && lastResult != null && !lastResult.isClosed() && limit == lastLimit
-                    && select.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
+                    && select.accept(ExpressionVisitorFactory.getDeterministicVisitor())) {
                 if (sameResultAsLast(params)) {
                     lastResult = lastResult.createShallowCopy(session);
                     if (lastResult != null) {
@@ -96,8 +96,8 @@ class QueryResultCache {
                 return false;
             }
         }
-        if (!select.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)
-                || !select.isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
+        if (!select.accept(ExpressionVisitorFactory.getDeterministicVisitor())
+                || !select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
             return false;
         }
         if (db.getModificationDataId() > lastEvaluated && select.getMaxDataModificationId() > lastEvaluated) {

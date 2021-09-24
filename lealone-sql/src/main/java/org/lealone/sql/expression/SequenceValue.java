@@ -5,13 +5,12 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
 
@@ -73,35 +72,12 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        switch (visitor.getType()) {
-        case ExpressionVisitor.EVALUATABLE:
-        case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-        case ExpressionVisitor.NOT_FROM_RESOLVER:
-        case ExpressionVisitor.GET_COLUMNS:
-            return true;
-        case ExpressionVisitor.DETERMINISTIC:
-        case ExpressionVisitor.INDEPENDENT:
-        case ExpressionVisitor.QUERY_COMPARABLE:
-            return false;
-        case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:
-            visitor.addDataModificationId(sequence.getModificationId());
-            return true;
-        case ExpressionVisitor.GET_DEPENDENCIES:
-            visitor.addDependency(sequence);
-            return true;
-        default:
-            throw DbException.getInternalError("type=" + visitor.getType());
-        }
-    }
-
-    @Override
     public int getCost() {
         return 1;
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitSequenceValue(this);
     }
 }

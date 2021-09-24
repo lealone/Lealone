@@ -10,7 +10,7 @@ import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
 
-public class MaxModificationIdVisitor extends ExpressionVisitorBase<Void> {
+public class MaxModificationIdVisitor extends VoidExpressionVisitor {
 
     private long maxDataModificationId;
 

@@ -24,7 +24,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
 
 /**
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).
@@ -170,7 +170,7 @@ public class TableFunction extends BuiltInFunction {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitTableFunction(this);
     }
 }

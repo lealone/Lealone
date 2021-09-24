@@ -15,9 +15,10 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.NotFromResolverVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 
@@ -134,9 +135,9 @@ public class ConditionIn extends Condition {
             return;
         }
         if (session.getDatabase().getSettings().optimizeInList) {
-            ExpressionVisitor visitor = ExpressionVisitor.getNotFromResolverVisitor(filter);
+            NotFromResolverVisitor visitor = ExpressionVisitorFactory.getNotFromResolverVisitor(filter);
             for (Expression e : valueList) {
-                if (!e.isEverything(visitor)) {
+                if (!e.accept(visitor)) {
                     return;
                 }
             }
@@ -154,23 +155,6 @@ public class ConditionIn extends Condition {
             buff.append(e.getSQL(isDistributed));
         }
         return buff.append("))").toString();
-    }
-
-    @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        if (!left.isEverything(visitor)) {
-            return false;
-        }
-        return areAllValues(visitor);
-    }
-
-    private boolean areAllValues(ExpressionVisitor visitor) {
-        for (Expression e : valueList) {
-            if (!e.isEverything(visitor)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
@@ -199,7 +183,7 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public <R> R accept(IExpressionVisitor<R> visitor) {
+    public <R> R accept(ExpressionVisitor<R> visitor) {
         return visitor.visitConditionIn(this);
     }
 }
