@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.test.sql.query;
+package org.lealone.test.sql.expression;
 
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
@@ -12,7 +12,7 @@ public class SubQueryTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();
-        testSelect();
+        testSubQuery();
     }
 
     void init() throws Exception {
@@ -27,7 +27,7 @@ public class SubQueryTest extends SqlTestBase {
         executeUpdate("INSERT INTO SubQueryTest(pk, f1, f2) VALUES('06', 'a6', 60)");
     }
 
-    void testSelect() throws Exception {
+    void testSubQuery() throws Exception {
         // scalar subquery
         sql = "SELECT count(*) FROM SubQueryTest WHERE pk>='01'" //
                 + " AND f2 >= (SELECT f2 FROM SubQueryTest WHERE pk='01')";
@@ -37,10 +37,15 @@ public class SubQueryTest extends SqlTestBase {
                 + " AND (f1,f2) >= (SELECT f1, f2 FROM SubQueryTest WHERE pk='01')";
         assertEquals(6, getIntValue(1, true));
 
+        // 对应ConditionExists
         sql = "SELECT count(*) FROM SubQueryTest WHERE pk>='01'" //
                 + " AND EXISTS(SELECT f2 FROM SubQueryTest WHERE pk='01' AND f1='a1')";
         assertEquals(6, getIntValue(1, true));
 
+    }
+
+    void testConditionInSelect() throws Exception {
+        // 以下对应的其实是ConditionInSelect
         sql = "SELECT count(*) FROM SubQueryTest WHERE pk>='01'" //
                 + " AND f2 IN(SELECT f2 FROM SubQueryTest WHERE pk>='04')";
         assertEquals(3, getIntValue(1, true));
