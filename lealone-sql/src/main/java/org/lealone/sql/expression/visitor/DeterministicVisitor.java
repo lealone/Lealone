@@ -47,7 +47,7 @@ public class DeterministicVisitor extends BooleanExpressionVisitor {
     }
 
     @Override
-    protected ExpressionVisitorBase<Boolean> copy(int newQueryLevel) {
+    protected ExpressionVisitorBase<Boolean> copy() {
         return new DeterministicVisitor();
     }
 }

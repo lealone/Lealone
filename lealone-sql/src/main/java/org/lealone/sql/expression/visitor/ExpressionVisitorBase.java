@@ -10,9 +10,10 @@ public abstract class ExpressionVisitorBase<R> implements ExpressionVisitor<R> {
     private int queryLevel;
 
     @Override
-    public ExpressionVisitor<R> incrementQueryLevel(int offset) {
-        setQueryLevel(queryLevel + offset);
-        return copy(queryLevel);
+    public ExpressionVisitorBase<R> incrementQueryLevel(int offset) {
+        ExpressionVisitorBase<R> c = copy();
+        c.setQueryLevel(getQueryLevel() + offset);
+        return c;
     }
 
     public void setQueryLevel(int queryLevel) {
@@ -24,7 +25,7 @@ public abstract class ExpressionVisitorBase<R> implements ExpressionVisitor<R> {
         return queryLevel;
     }
 
-    protected ExpressionVisitorBase<R> copy(int newQueryLevel) {
+    protected ExpressionVisitorBase<R> copy() {
         return this;
     }
 }
