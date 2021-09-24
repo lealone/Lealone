@@ -261,8 +261,8 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public ValueVector getValueVector(ServerSession session) {
-        ValueVector l = left.getValueVector(session);
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        ValueVector l = left.getValueVector(session, bvv);
         if (right == null) {
             BooleanVector result;
             switch (compareType) {
@@ -277,7 +277,7 @@ public class Comparison extends Condition {
             }
             return result;
         }
-        ValueVector r = right.getValueVector(session);
+        ValueVector r = right.getValueVector(session, bvv);
         return l.compare(r, compareType);
     }
 

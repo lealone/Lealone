@@ -24,6 +24,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * Pattern matching comparison expression: WHERE NAME LIKE ?
@@ -267,6 +268,12 @@ public class CompareLike extends Condition {
             result = compareAt(value, 0, 0, value.length(), patternChars, patternTypes);
         }
         return ValueBoolean.get(result);
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        ValueVector l = left.getValueVector(session);
+        return l;
     }
 
     private boolean compare(char[] pattern, String s, int pi, int si) {

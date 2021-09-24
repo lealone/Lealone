@@ -10,6 +10,8 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.vector.SingleValueVector;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * A user-defined variable, for example: @ID.
@@ -58,6 +60,11 @@ public class Variable extends Expression {
     public Value getValue(ServerSession session) {
         lastValue = session.getVariable(name);
         return lastValue;
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        return new SingleValueVector(getValue(session));
     }
 
     @Override

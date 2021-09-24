@@ -208,4 +208,20 @@ public class IntVector extends ValueVector {
         }
         return ValueInt.get(max);
     }
+
+    @Override
+    public ValueVector filter(ValueVector bvv) {
+        int size;
+        if (bvv == null)
+            size = values.length;
+        else
+            size = bvv.trueCount();
+        int[] a = new int[size];
+        int j = 0;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv == null || bvv.isTrue(i))
+                a[j++] = values[i];
+        }
+        return new IntVector(a);
+    }
 }

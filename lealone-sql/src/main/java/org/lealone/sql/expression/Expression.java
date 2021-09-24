@@ -55,6 +55,12 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     public abstract Value getValue(ServerSession session);
 
     public ValueVector getValueVector(ServerSession session) {
+        return getValueVector(session, null);
+    }
+
+    // public abstract ValueVector getValueVector(ServerSession session, ValueVector bvv);
+
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
         return null;
     }
 

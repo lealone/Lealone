@@ -176,13 +176,13 @@ public class Operation extends Expression {
     }
 
     @Override
-    public ValueVector getValueVector(ServerSession session) {
-        ValueVector l = left.getValueVector(session);
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        ValueVector l = left.getValueVector(session, bvv);
         ValueVector r;
         if (right == null) {
             r = null;
         } else {
-            r = right.getValueVector(session);
+            r = right.getValueVector(session, bvv);
             if (convertRight) {
                 r = r.convertTo(dataType);
             }

@@ -19,6 +19,8 @@ import org.lealone.sql.expression.ExpressionList;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.query.Query;
+import org.lealone.sql.vector.SingleValueVector;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * A query returning a single value.
@@ -61,6 +63,11 @@ public class SubQuery extends Expression {
         } finally {
             result.close();
         }
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        return new SingleValueVector(getValue(session));
     }
 
     @Override

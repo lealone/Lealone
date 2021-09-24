@@ -9,6 +9,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * A column alias as in SELECT 'Hello' AS NAME ...
@@ -33,6 +34,11 @@ public class Alias extends Expression {
     @Override
     public Value getValue(ServerSession session) {
         return expr.getValue(session);
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        return expr.getValueVector(session, bvv);
     }
 
     @Override

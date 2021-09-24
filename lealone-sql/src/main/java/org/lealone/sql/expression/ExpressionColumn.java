@@ -235,12 +235,12 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
-    public ValueVector getValueVector(ServerSession session) {
-        ValueVector value = columnResolver.getValueVector(column);
-        if (value == null) {
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        ValueVector vv = columnResolver.getValueVector(column);
+        if (vv == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
-        return value;
+        return vv.filter(bvv);
     }
 
     @Override

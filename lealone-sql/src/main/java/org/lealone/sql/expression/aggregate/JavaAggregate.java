@@ -23,6 +23,8 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.IExpressionVisitor;
 import org.lealone.sql.query.Select;
+import org.lealone.sql.vector.SingleValueVector;
+import org.lealone.sql.vector.ValueVector;
 
 /**
  * This class wraps a user-defined aggregate.
@@ -157,6 +159,11 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
+    }
+
+    @Override
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
+        return new SingleValueVector(getValue(session));
     }
 
     @Override

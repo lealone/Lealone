@@ -34,6 +34,10 @@ public class SubQueryTest extends SqlTestBase {
         assertEquals(6, getIntValue(1, true));
 
         sql = "SELECT count(*) FROM SubQueryTest WHERE pk>='01'" //
+                + " AND (f1,f2) >= (SELECT f1, f2 FROM SubQueryTest WHERE pk='01')";
+        assertEquals(6, getIntValue(1, true));
+
+        sql = "SELECT count(*) FROM SubQueryTest WHERE pk>='01'" //
                 + " AND EXISTS(SELECT f2 FROM SubQueryTest WHERE pk='01' AND f1='a1')";
         assertEquals(6, getIntValue(1, true));
 

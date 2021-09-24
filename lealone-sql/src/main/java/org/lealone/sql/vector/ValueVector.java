@@ -102,4 +102,8 @@ public class ValueVector {
     public int trueCount() {
         return 0;
     }
+
+    public ValueVector filter(ValueVector bvv) {
+        return this;
+    }
 }

@@ -77,7 +77,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public ValueVector getValueVector(ServerSession session) {
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
         return new SingleValueVector(value);
     }
 

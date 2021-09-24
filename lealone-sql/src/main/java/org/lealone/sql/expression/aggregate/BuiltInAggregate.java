@@ -139,7 +139,7 @@ public abstract class BuiltInAggregate extends Aggregate {
         if (data == null) {
             return;
         }
-        ValueVector vv = on == null ? null : on.getValueVector(session);
+        ValueVector vv = on == null ? null : on.getValueVector(session, bvv);
         data.add(session, bvv, vv);
     }
 
@@ -197,7 +197,7 @@ public abstract class BuiltInAggregate extends Aggregate {
     }
 
     @Override
-    public ValueVector getValueVector(ServerSession session) {
+    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
         return new SingleValueVector(getValue(session));
     }
 
