@@ -33,7 +33,7 @@ class QGroup extends QOperator {
     @Override
     public void run() {
         while (select.topTableFilter.next()) {
-            ++loopCount;
+            boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
@@ -66,7 +66,7 @@ class QGroup extends QOperator {
                     break;
                 }
             }
-            if (yieldIfNeeded(loopCount))
+            if (yield)
                 return;
         }
         ArrayList<Value> keys = groups.keys();

@@ -30,7 +30,7 @@ class QGroupSorted extends QOperator {
     @Override
     public void run() {
         while (select.topTableFilter.next()) {
-            ++loopCount;
+            boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
@@ -59,7 +59,7 @@ class QGroupSorted extends QOperator {
                         expr.updateAggregate(session);
                     }
                 }
-                if (yieldIfNeeded(loopCount))
+                if (yield)
                     return;
             }
         }

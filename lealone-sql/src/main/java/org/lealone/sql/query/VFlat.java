@@ -19,7 +19,7 @@ class VFlat extends VOperator {
     @Override
     public void run() {
         while (select.topTableFilter.nextBatch()) {
-            ++loopCount;
+            boolean yield = yieldIfNeeded(++loopCount);
 
             ValueVector conditionValueVector = null;
             if (select.condition != null) {
@@ -46,7 +46,7 @@ class VFlat extends VOperator {
             if (canBreakLoop()) {
                 break;
             }
-            if (yieldIfNeeded(loopCount))
+            if (yield)
                 return;
         }
         loopEnd = true;

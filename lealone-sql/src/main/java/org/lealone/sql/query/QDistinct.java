@@ -36,7 +36,7 @@ class QDistinct extends QOperator {
         while (cursor.next()) {
             if (select.isForUpdate && !select.topTableFilter.lockRow())
                 return; // 锁记录失败
-            ++loopCount;
+            boolean yield = yieldIfNeeded(++loopCount);
             SearchRow found = cursor.getSearchRow();
             Value[] row = new Value[size];
             for (int i = 0; i < size; i++) {
@@ -47,7 +47,7 @@ class QDistinct extends QOperator {
             if (canBreakLoop()) {
                 break;
             }
-            if (yieldIfNeeded(loopCount))
+            if (yield)
                 return;
         }
         loopEnd = true;
