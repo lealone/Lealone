@@ -5,8 +5,6 @@
  */
 package org.lealone.db.table;
 
-import java.util.ArrayList;
-
 import org.lealone.db.index.Index;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
@@ -30,11 +28,6 @@ public class DummyTable extends Table {
 
     @Override
     public Index getScanIndex(ServerSession session) {
-        return null;
-    }
-
-    @Override
-    public ArrayList<Index> getIndexes() {
         return null;
     }
 

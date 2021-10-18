@@ -8,7 +8,6 @@ package org.lealone.sql.expression.function;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
@@ -75,11 +74,6 @@ public class FunctionTable extends Table {
     @Override
     public Index getScanIndex(ServerSession session) {
         return new FunctionIndex(this, IndexColumn.wrap(columns));
-    }
-
-    @Override
-    public ArrayList<Index> getIndexes() {
-        return null;
     }
 
     @Override

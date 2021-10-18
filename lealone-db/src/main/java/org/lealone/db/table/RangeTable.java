@@ -5,8 +5,6 @@
  */
 package org.lealone.db.table;
 
-import java.util.ArrayList;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.index.Index;
@@ -82,11 +80,6 @@ public class RangeTable extends Table {
             throw DbException.get(ErrorCode.STEP_SIZE_MUST_NOT_BE_ZERO);
         }
         return new RangeIndex(this, IndexColumn.wrap(columns));
-    }
-
-    @Override
-    public ArrayList<Index> getIndexes() {
-        return null;
     }
 
     @Override

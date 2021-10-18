@@ -177,8 +177,7 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     /**
-     * Get the best plan item (index, cost) to use use for the current join
-     * order.
+     * Get the best plan item (index, cost) to use for the current join order.
      *
      * @param s the session
      * @param level 1 for the first table in a join, 2 for the second, and so on

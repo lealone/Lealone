@@ -1517,7 +1517,7 @@ public class MetaTable extends Table {
         if (metaIndex == null) {
             return list;
         }
-        list.add(new MetaIndex(this, IndexColumn.wrap(columns), true));
+        list.add(getScanIndex(null));
         // TODO re-use the index
         list.add(metaIndex);
         return list;

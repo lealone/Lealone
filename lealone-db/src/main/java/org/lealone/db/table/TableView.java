@@ -299,11 +299,6 @@ public class TableView extends Table {
     }
 
     @Override
-    public ArrayList<Index> getIndexes() {
-        return null;
-    }
-
-    @Override
     public long getMaxDataModificationId() {
         if (createException != null) {
             return Long.MAX_VALUE;

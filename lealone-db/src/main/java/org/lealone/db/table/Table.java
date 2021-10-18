@@ -340,7 +340,9 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      *
      * @return the list of indexes
      */
-    public abstract ArrayList<Index> getIndexes();
+    public ArrayList<Index> getIndexes() {
+        return null;
+    }
 
     /**
      * Get the last data modification id.
