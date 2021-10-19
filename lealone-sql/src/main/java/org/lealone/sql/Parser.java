@@ -1784,6 +1784,10 @@ public class Parser implements SQLParser {
                     command.addCondition(on);
                 }
                 join.removeJoinCondition();
+                // 在JoinTest1中删除join字段，这样JoinTest1和JoinTest2就断开了，
+                // 如sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 ON id>30";
+                // 但是在Optimizer.optimize()
+                // 的 f2[i].addJoin(f2[i + 1], false, null)中又加上
                 top.removeJoin();
                 command.addTableFilter(join, true);
             }

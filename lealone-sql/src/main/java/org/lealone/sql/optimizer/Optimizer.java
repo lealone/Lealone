@@ -28,6 +28,8 @@ public class Optimizer {
     private long start;
     private BitField switched;
 
+    // 后面的plan个数等于前面的plan个数乘以后面的filter数
+    // 比如第三行是6，等于第三行的filter 3 * 2 = 6
     // possible plans for filters, if using brute force:
     // 1 filter 1 plan
     // 2 filters 2 plans
@@ -50,7 +52,7 @@ public class Optimizer {
     private Random random;
 
     public Optimizer(TableFilter[] filters, Expression condition, ServerSession session) {
-        this.filters = filters;
+        this.filters = filters; // join时才有多个TableFilter，正常只有一个TableFilter
         this.condition = condition;
         this.session = session;
     }
@@ -184,7 +186,7 @@ public class Optimizer {
         return false;
     }
 
-    private void shuffleAll(TableFilter[] f) {
+    private void shuffleAll(TableFilter[] f) { // 随机把数组中的两个元素兑换f.length-1次
         for (int i = 0; i < f.length - 1; i++) {
             int j = i + random.nextInt(f.length - i);
             if (j != i) {
@@ -195,7 +197,7 @@ public class Optimizer {
         }
     }
 
-    private boolean shuffleTwo(TableFilter[] f) {
+    private boolean shuffleTwo(TableFilter[] f) { // 随机把数组中的两个元素兑换1次
         int a = 0, b = 0, i = 0;
         for (; i < 20; i++) {
             a = random.nextInt(f.length);
@@ -233,6 +235,7 @@ public class Optimizer {
         TableFilter[] f2 = bestPlan.getFilters();
         topFilter = f2[0];
         for (int i = 0; i < f2.length - 1; i++) {
+            // 见Parser.parseJoinTableFilter(TableFilter, Select)中的注释
             f2[i].addJoin(f2[i + 1], false, null);
         }
         for (TableFilter f : f2) {

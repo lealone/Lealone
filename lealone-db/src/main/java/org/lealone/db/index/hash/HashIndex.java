@@ -53,6 +53,9 @@ public abstract class HashIndex extends IndexBase {
 
     @Override
     public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
+        if (masks == null) {
+            return Long.MAX_VALUE;
+        }
         for (Column column : columns) {
             int index = column.getColumnId();
             int mask = masks[index];

@@ -99,7 +99,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public int getColumnIndex(Column col) {
+    public int getColumnIndex(Column col) { // 并不是返回列id，而是索引字段列表中的位置
         for (int i = 0, len = columns.length; i < len; i++) {
             if (columns[i].equals(col)) {
                 return i;
@@ -177,18 +177,21 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public int compareRows(SearchRow rowData, SearchRow compare) {
+    public int compareRows(SearchRow rowData, SearchRow compare) { // 只比较索引字段，并不一定是所有字段
         if (rowData == compare) {
             return 0;
         }
         for (int i = 0, len = indexColumns.length; i < len; i++) {
             int index = columnIds[i];
-            Value v = compare.getValue(index);
-            if (v == null) {
+
+            Value v1 = rowData.getValue(index);
+            Value v2 = compare.getValue(index);
+            // 只要compare中有null值就认为无法比较，直接认为rowData和compare相等(通常在查询时在where中再比较)
+            if (v1 == null || v2 == null) {
                 // can't compare further
                 return 0;
             }
-            int c = compareValues(rowData.getValue(index), v, indexColumns[i].sortType);
+            int c = compareValues(v1, v2, indexColumns[i].sortType);
             if (c != 0) {
                 return c;
             }
@@ -205,7 +208,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
             return SortOrder.compareNull(aNull, sortType);
         }
         int comp = table.compareTypeSafe(a, b);
-        if ((sortType & SortOrder.DESCENDING) != 0) {
+        if ((sortType & SortOrder.DESCENDING) != 0) { // 降序时，把比较结果反过来
             comp = -comp;
         }
         return comp;
@@ -238,6 +241,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      * @param sortOrder the sort order
      * @return the estimated cost
      */
+    // 代价的计算总体上是围绕行数进行的
     protected long getCostRangeIndex(int[] masks, long rowCount, SortOrder sortOrder) {
         rowCount += Constants.COST_ROW_OFFSET;
         long cost = rowCount;
@@ -254,6 +258,9 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
             // EQUALITY < RANGE < END < START
             // 如果索引字段列表的第一个字段在Where中是RANGE、START、END，那么索引字段列表中的其他字段就不需要再计算cost了，
             // 如果是EQUALITY，则还可以继续计算cost，rows变量的值会变小，cost也会变小
+            // 这里为什么不直接用(mask == IndexCondition.EQUALITY)？
+            // 因为id=40 AND id>30会生成两个索引条件，
+            // 在TableFilter.getBestPlanItem中合成一个mask为3(IndexCondition.EQUALITY|IndexCondition.START)
             if ((mask & IndexConditionType.EQUALITY) == IndexConditionType.EQUALITY) {
                 // 索引字段列表中的最后一个在where当中是EQUALITY，且此索引是唯一索引时，cost直接是3
                 // 因为如果最后一个索引字段是EQUALITY，说明前面的字段全是EQUALITY，
@@ -271,7 +278,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                 rows = Math.max(rowCount / distinctRows, 1); // distinctRows变大，则rowCount / distinctRows变小，rows也变小
                 cost = 2 + rows; // rows也变小，所以cost也变小
             } else if ((mask & IndexConditionType.RANGE) == IndexConditionType.RANGE) { // 见TableFilter.getBestPlanItem中的注释
-                cost = 2 + rows / 4;
+                cost = 2 + rows / 4; // rows开始时加了1000，所以rows / 4总是大于1的
                 break;
             } else if ((mask & IndexConditionType.START) == IndexConditionType.START) {
                 cost = 2 + rows / 3;
@@ -285,6 +292,9 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         }
         // if the ORDER BY clause matches the ordering of this index,
         // it will be cheaper than another index, so adjust the cost accordingly
+
+        // order by中的字段和排序方式与索引字段相同时，cost再减去排序字段个数
+        // 注意：排序字段个数不管比索引字段个数多还是少都是没问题的，这里只是尽量匹配
         if (sortOrder != null) {
             boolean sortOrderMatches = true;
             int coveringCount = 0;
@@ -336,8 +346,23 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     protected boolean containsNullAndAllowMultipleNull(SearchRow newRow) {
         Mode mode = database.getMode();
         if (mode.uniqueIndexSingleNull) {
+            // 1. 对于唯一索引，必须完全唯一，适用于Derby/HSQLDB/MSSQLServer
+            // 不允许出现:
+            // (x, null)
+            // (x, null)
+            // 也不允许出现:
+            // (null, null)
+            // (null, null)
             return false;
         } else if (mode.uniqueIndexSingleNullExceptAllColumnsAreNull) {
+            // 2. 对于唯一索引，索引记录可以全为null，适用于Oracle
+
+            // 不允许出现:
+            // (x, null)
+            // (x, null)
+            // 但是允许出现:
+            // (null, null)
+            // (null, null)
             for (int index : columnIds) {
                 Value v = newRow.getValue(index);
                 if (v != ValueNull.INSTANCE) {
@@ -346,12 +371,23 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
             }
             return true;
         }
+        // 3. 对于唯一索引，只要一个为null，就是合法的，适用于REGULAR(即H2)/DB2/MySQL/PostgreSQL
+
+        // 允许出现:
+        // (x, null)
+        // (x, null)
+        // 也允许出现:
+        // (null, null)
+        // (null, null)
+
+        // 也就是说，只要相同的两条索引记录包含null即可
         for (int index : columnIds) {
             Value v = newRow.getValue(index);
             if (v == ValueNull.INSTANCE) {
                 return true;
             }
         }
+        // 4. 对于唯一索引，没有null时是不允许出现两条相同的索引记录的
         return false;
     }
 
