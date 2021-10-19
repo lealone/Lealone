@@ -30,7 +30,6 @@ import org.lealone.sql.executor.YieldableConditionUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 
 /**
@@ -148,10 +147,8 @@ public class Update extends ManipulationStatement {
             columnSet.add(c);
             e.getColumns(columnSet); // 例如f1=f2*2;
         }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
         tableFilter.createColumnIndexes(columnSet);
+        tableFilter.preparePlan(session, 1);
         return this;
     }
 

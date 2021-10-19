@@ -43,10 +43,11 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
-import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
+import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.sharding.YieldableShardingQuery;
 
@@ -378,35 +379,7 @@ public class Select extends Query {
         }
         // 2. sort
         if (sort != null && !isQuickAggregateQuery && !isGroupQuery) {
-            Index index = getSortIndex();
-            if (index != null) {
-                Index current = topTableFilter.getIndex();
-                if (current.getIndexType().isScan() || current == index) {
-                    topTableFilter.setIndex(index);
-                    if (!topTableFilter.hasInComparisons()) {
-                        // in(select ...) and in(1,2,3) may return the key in
-                        // another order
-                        sortUsingIndex = true;
-                    }
-                } else if (index.getIndexColumns().length >= current.getIndexColumns().length) {
-                    IndexColumn[] sortColumns = index.getIndexColumns();
-                    IndexColumn[] currentColumns = current.getIndexColumns();
-                    boolean swapIndex = false;
-                    for (int i = 0; i < currentColumns.length; i++) {
-                        if (sortColumns[i].column != currentColumns[i].column) {
-                            swapIndex = false;
-                            break;
-                        }
-                        if (sortColumns[i].sortType != currentColumns[i].sortType) {
-                            swapIndex = true;
-                        }
-                    }
-                    if (swapIndex) {
-                        topTableFilter.setIndex(index);
-                        sortUsingIndex = true;
-                    }
-                }
-            }
+            optimizeSort();
         }
         // 3. group by
         if (groupIndex != null) {
@@ -493,7 +466,46 @@ public class Select extends Query {
         }
     }
 
+    private void optimizeSort() {
+        Index index = getSortIndex();
+        if (index != null) {
+            Index current = topTableFilter.getIndex();
+            if (current.getIndexType().isScan() || current == index) {
+                topTableFilter.setIndex(index);
+                if (!topTableFilter.hasInComparisons()) {
+                    // in(select ...) and in(1,2,3) may return the key in
+                    // another order
+                    sortUsingIndex = true;
+                }
+            } else if (index.getIndexColumns().length >= current.getIndexColumns().length) {
+                IndexColumn[] sortColumns = index.getIndexColumns();
+                IndexColumn[] currentColumns = current.getIndexColumns();
+                boolean swapIndex = false;
+                for (int i = 0; i < currentColumns.length; i++) {
+                    if (sortColumns[i].column != currentColumns[i].column) {
+                        swapIndex = false;
+                        break;
+                    }
+                    if (sortColumns[i].sortType != currentColumns[i].sortType) {
+                        swapIndex = true;
+                    }
+                }
+                if (swapIndex) {
+                    topTableFilter.setIndex(index);
+                    sortUsingIndex = true;
+                }
+            }
+        }
+    }
+
     private double preparePlan() {
+        // 优化单表查询
+        if (filters.size() == 1) {
+            topTableFilter = filters.get(0);
+            PlanItem item = topTableFilter.preparePlan(session, 1);
+            return item.getCost();
+        }
+
         TableFilter[] topArray = topFilters.toArray(new TableFilter[topFilters.size()]);
         for (TableFilter t : topArray) {
             t.setFullCondition(condition);

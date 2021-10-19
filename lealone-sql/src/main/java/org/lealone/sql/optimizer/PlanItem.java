@@ -22,6 +22,10 @@ public class PlanItem {
     private PlanItem joinPlan;
     private PlanItem nestedJoinPlan;
 
+    public double getCost() {
+        return cost;
+    }
+
     void setIndex(Index index) {
         this.index = index;
     }

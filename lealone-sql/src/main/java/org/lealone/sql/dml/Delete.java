@@ -18,7 +18,6 @@ import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.executor.YieldableConditionUpdateBase;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 
 /**
@@ -100,9 +99,7 @@ public class Delete extends ManipulationStatement {
             condition.createIndexConditions(session, tableFilter);
             tableFilter.createColumnIndexes(condition);
         }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
+        tableFilter.preparePlan(session, 1);
         return this;
     }
 

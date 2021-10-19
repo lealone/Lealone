@@ -296,6 +296,14 @@ public class TableFilter extends ColumnResolverBase {
         }
     }
 
+    // 为单表update/delete/select寻找一个执行计划
+    public PlanItem preparePlan(ServerSession s, int level) {
+        PlanItem item = getBestPlanItem(s, level);
+        setPlanItem(item);
+        prepare();
+        return item;
+    }
+
     /**
      * Start the query. This will reset the scan counts.
      *
