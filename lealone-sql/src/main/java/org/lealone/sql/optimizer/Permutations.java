@@ -18,7 +18,7 @@
  * diligence.
  * -Alan
  */
-package org.lealone.sql.util;
+package org.lealone.sql.optimizer;
 
 import org.lealone.common.exceptions.DbException;
 

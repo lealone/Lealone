@@ -14,7 +14,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.util.Permutations;
 
 /**
  * The optimizer is responsible to find the best execution plan
