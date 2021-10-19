@@ -44,7 +44,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
-import org.lealone.sql.util.AutoCloseInputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**
@@ -352,17 +351,18 @@ public class SystemFunction extends BuiltInFunction {
             String fileName = v0.getString();
             boolean blob = args.length == 1;
             try {
-                InputStream in = new AutoCloseInputStream(FileUtils.newInputStream(fileName));
-                if (blob) {
-                    result = database.getLobStorage().createBlob(in, -1);
-                } else {
-                    Reader reader;
-                    if (v1 == ValueNull.INSTANCE) {
-                        reader = new InputStreamReader(in);
+                try (InputStream in = FileUtils.newInputStream(fileName)) {
+                    if (blob) {
+                        result = database.getLobStorage().createBlob(in, -1);
                     } else {
-                        reader = new InputStreamReader(in, v1.getString());
+                        Reader reader;
+                        if (v1 == ValueNull.INSTANCE) {
+                            reader = new InputStreamReader(in);
+                        } else {
+                            reader = new InputStreamReader(in, v1.getString());
+                        }
+                        result = database.getLobStorage().createClob(reader, -1);
                     }
-                    result = database.getLobStorage().createClob(reader, -1);
                 }
             } catch (IOException e) {
                 throw DbException.convertIOException(e, fileName);
