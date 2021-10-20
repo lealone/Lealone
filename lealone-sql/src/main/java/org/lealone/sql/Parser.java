@@ -553,7 +553,6 @@ public class Parser implements SQLParser {
         } else {
             throw getSyntaxError();
         }
-
     }
 
     private StatementBase parseShutdownServer() {
@@ -1403,7 +1402,27 @@ public class Parser implements SQLParser {
     private Query parseSelectUnion() {
         int start = lastParseIndex;
         Query command = parseSelectSub();
-        return parseSelectUnionExtension(command, start);
+        while (true) {
+            int type;
+            if (readIf("UNION")) {
+                if (readIf("ALL")) {
+                    type = SelectUnion.UNION_ALL;
+                } else {
+                    readIf("DISTINCT");
+                    type = SelectUnion.UNION;
+                }
+            } else if (readIf("MINUS") || readIf("EXCEPT")) {
+                type = SelectUnion.EXCEPT;
+            } else if (readIf("INTERSECT")) {
+                type = SelectUnion.INTERSECT;
+            } else {
+                break;
+            }
+            command = new SelectUnion(session, type, command, parseSelectSub());
+        }
+        parseEndOfQuery(command);
+        setSQL(command, null, start);
+        return command;
     }
 
     private Query parseSelectSub() {
@@ -1472,37 +1491,6 @@ public class Parser implements SQLParser {
         command.setParameterList(parameters);
         currentSelect = oldSelect;
         setSQL(command, "SELECT", start);
-        return command;
-    }
-
-    private Query parseSelectUnionExtension(Query command, int start) {
-        while (true) {
-            if (readIf("UNION")) {
-                SelectUnion union = new SelectUnion(session, command);
-                if (readIf("ALL")) {
-                    union.setUnionType(SelectUnion.UNION_ALL);
-                } else {
-                    readIf("DISTINCT");
-                    union.setUnionType(SelectUnion.UNION);
-                }
-                union.setRight(parseSelectSub());
-                command = union;
-            } else if (readIf("MINUS") || readIf("EXCEPT")) {
-                SelectUnion union = new SelectUnion(session, command);
-                union.setUnionType(SelectUnion.EXCEPT);
-                union.setRight(parseSelectSub());
-                command = union;
-            } else if (readIf("INTERSECT")) {
-                SelectUnion union = new SelectUnion(session, command);
-                union.setUnionType(SelectUnion.INTERSECT);
-                union.setRight(parseSelectSub());
-                command = union;
-            } else {
-                break;
-            }
-        }
-        parseEndOfQuery(command);
-        setSQL(command, null, start);
         return command;
     }
 

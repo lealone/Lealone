@@ -43,13 +43,15 @@ import org.lealone.sql.query.sharding.YieldableShardingQuery;
  */
 public class SelectUnion extends Query implements ISelectUnion {
 
-    int unionType;
+    final int unionType;
     final Query left;
-    Query right;
+    final Query right;
 
-    public SelectUnion(ServerSession session, Query query) {
+    public SelectUnion(ServerSession session, int unionType, Query left, Query right) {
         super(session);
-        this.left = query;
+        this.unionType = unionType;
+        this.left = left;
+        this.right = right;
     }
 
     @Override
@@ -57,27 +59,19 @@ public class SelectUnion extends Query implements ISelectUnion {
         return SQLStatement.SELECT;
     }
 
-    public void setUnionType(int type) {
-        this.unionType = type;
-    }
-
     @Override
     public int getUnionType() {
         return unionType;
     }
 
-    public void setRight(Query select) {
-        right = select;
+    @Override
+    public Query getLeft() {
+        return left;
     }
 
     @Override
     public Query getRight() {
         return right;
-    }
-
-    @Override
-    public Query getLeft() {
-        return left;
     }
 
     @Override
