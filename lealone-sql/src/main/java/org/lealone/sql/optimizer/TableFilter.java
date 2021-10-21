@@ -511,20 +511,15 @@ public class TableFilter extends ColumnResolverBase {
      */
     public void addFilterCondition(Expression condition, boolean isJoin) {
         if (isJoin) {
-            if (joinCondition == null) {
-                joinCondition = condition;
-            } else {
-                joinCondition = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
-                        joinCondition, condition);
-            }
+            joinCondition = createCondition(joinCondition, condition);
         } else {
-            if (filterCondition == null) {
-                filterCondition = condition;
-            } else {
-                filterCondition = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
-                        filterCondition, condition);
-            }
+            filterCondition = createCondition(filterCondition, condition);
         }
+    }
+
+    private Expression createCondition(Expression oldC, Expression newC) {
+        return oldC == null ? newC
+                : (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true, oldC, newC);
     }
 
     /**
@@ -782,17 +777,15 @@ public class TableFilter extends ColumnResolverBase {
     /**
      * Optimize the full condition. This will add the full condition to the
      * filter condition.
-     *
-     * @param fromOuterJoin if this method was called from an outer joined table
      */
-    void optimizeFullCondition(boolean fromOuterJoin) {
+    void optimizeFullCondition() {
         if (fullCondition != null) {
-            fullCondition.addFilterConditions(this, fromOuterJoin || joinOuter);
+            fullCondition.addFilterConditions(this, joinOuter);
             if (nestedJoin != null) {
-                nestedJoin.optimizeFullCondition(fromOuterJoin || joinOuter);
+                nestedJoin.optimizeFullCondition();
             }
             if (join != null) {
-                join.optimizeFullCondition(fromOuterJoin || joinOuter);
+                join.optimizeFullCondition();
             }
         }
     }

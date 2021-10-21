@@ -1671,7 +1671,7 @@ public class Parser implements SQLParser {
             } else {
                 TableFilter top;
                 top = readTableFilter();
-                top = readJoin(top, currentSelect);
+                top = readJoin(top);
                 read(")");
                 alias = readFromAlias(null);
                 if (alias != null) {
@@ -1745,7 +1745,7 @@ public class Parser implements SQLParser {
     }
 
     private void parseJoinTableFilter(TableFilter top, final Select command) {
-        top = readJoin(top, command);
+        top = readJoin(top);
         command.addTableFilter(top, true);
         boolean isOuter = false;
         while (true) {
@@ -1783,7 +1783,7 @@ public class Parser implements SQLParser {
         }
     }
 
-    private TableFilter readJoin(TableFilter top, Select command) {
+    private TableFilter readJoin(TableFilter top) {
         TableFilter last = top;
         while (true) {
             if (readIf("RIGHT")) {
@@ -1791,7 +1791,7 @@ public class Parser implements SQLParser {
                 read("JOIN");
                 // the right hand side is the 'inner' table usually
                 TableFilter newTop = readTableFilter();
-                newTop = readJoin(newTop, command);
+                newTop = readJoin(newTop);
                 Expression on = null;
                 if (readIf("ON")) {
                     on = readExpression();
@@ -1803,7 +1803,7 @@ public class Parser implements SQLParser {
                 readIf("OUTER");
                 read("JOIN");
                 TableFilter join = readTableFilter();
-                top = readJoin(top, command);
+                top = readJoin(top);
                 Expression on = null;
                 if (readIf("ON")) {
                     on = readExpression();
@@ -1815,7 +1815,7 @@ public class Parser implements SQLParser {
             } else if (readIf("INNER")) {
                 read("JOIN");
                 TableFilter join = readTableFilter();
-                top = readJoin(top, command);
+                top = readJoin(top);
                 Expression on = null;
                 if (readIf("ON")) {
                     on = readExpression();
@@ -1824,7 +1824,7 @@ public class Parser implements SQLParser {
                 last = join;
             } else if (readIf("JOIN")) {
                 TableFilter join = readTableFilter();
-                top = readJoin(top, command);
+                top = readJoin(top);
                 Expression on = null;
                 if (readIf("ON")) {
                     on = readExpression();
