@@ -506,20 +506,15 @@ public class Select extends Query {
             return item.getCost();
         }
 
-        TableFilter[] topArray = topFilters.toArray(new TableFilter[topFilters.size()]);
+        TableFilter[] topArray = topFilters.toArray(new TableFilter[0]);
         for (TableFilter t : topArray) {
             t.setFullCondition(condition);
         }
-
-        Optimizer optimizer = new Optimizer(topArray, condition, session);
-        optimizer.optimize();
-        topTableFilter = optimizer.getTopFilter();
-        double planCost = optimizer.getCost();
-
+        Optimizer optimizer = new Optimizer(topArray, session);
+        topTableFilter = optimizer.optimize();
         setEvaluatableRecursive(topTableFilter);
-
         topTableFilter.prepare();
-        return planCost;
+        return optimizer.getCost();
     }
 
     private void setEvaluatableRecursive(TableFilter f) {

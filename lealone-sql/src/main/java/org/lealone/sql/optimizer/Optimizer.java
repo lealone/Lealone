@@ -13,19 +13,19 @@ import org.lealone.db.index.Index;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
-import org.lealone.sql.expression.Expression;
 
 /**
  * The optimizer is responsible to find the best execution plan
  * for a given query.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Optimizer {
 
     private static final int MAX_BRUTE_FORCE_FILTERS = 7;
     private static final int MAX_BRUTE_FORCE = 2000;
     private static final int MAX_GENETIC = 500;
-    private long start;
-    private BitField switched;
 
     // 后面的plan个数等于前面的plan个数乘以后面的filter数
     // 比如第三行是6，等于第三行的filter 3 * 2 = 6
@@ -40,54 +40,70 @@ public class Optimizer {
     // 8 filters 40320 plan
     // 9 filters 362880 plans
     // 10 filters 3628800 filters
-
     private final TableFilter[] filters;
-    private final Expression condition;
     private final ServerSession session;
 
     private Plan bestPlan;
-    private TableFilter topFilter;
     private double cost;
     private Random random;
 
-    public Optimizer(TableFilter[] filters, Expression condition, ServerSession session) {
+    private long start;
+    private BitField switched;
+
+    public Optimizer(TableFilter[] filters, ServerSession session) {
         this.filters = filters; // join时才有多个TableFilter，正常只有一个TableFilter
-        this.condition = condition;
         this.session = session;
     }
 
+    public double getCost() {
+        return cost;
+    }
+
     /**
-     * How many filter to calculate using brute force. The remaining filters are
-     * selected using a greedy algorithm which has a runtime of (1 + 2 + ... +
-     * n) = (n * (n-1) / 2) for n filters. The brute force algorithm has a
-     * runtime of n * (n-1) * ... * (n-m) when calculating m brute force of n
-     * total. The combined runtime is (brute force) * (greedy).
-     *
-     * @param filterCount the number of filters total
-     * @return the number of filters to calculate using brute force
+     * Calculate the best query plan to use.
+     * 
+     * @return the top TableFilter
      */
-    private static int getMaxBruteForceFilters(int filterCount) {
-        int i = 0, j = filterCount, total = filterCount;
-        while (j > 0 && total * (j * (j - 1) / 2) < MAX_BRUTE_FORCE) {
-            j--;
-            total *= j;
-            i++;
+    public TableFilter optimize() {
+        calculateBestPlan();
+        bestPlan.optimizeConditions();
+        TableFilter[] filters = bestPlan.getFilters();
+        for (int i = 0; i < filters.length - 1; i++) {
+            // 见Parser.parseJoinTableFilter(TableFilter, Select)中的注释
+            filters[i].addJoin(filters[i + 1], false, null);
         }
-        return i;
+        for (TableFilter f : filters) {
+            PlanItem item = bestPlan.getItem(f);
+            f.setPlanItem(item);
+        }
+        return filters[0];
     }
 
     private void calculateBestPlan() {
-        start = System.currentTimeMillis();
         cost = -1;
         if (filters.length == 1) {
             testPlan(filters);
-        } else if (filters.length <= MAX_BRUTE_FORCE_FILTERS) {
-            calculateBruteForceAll();
         } else {
-            calculateBruteForceSome();
-            random = new Random(0);
-            calculateGenetic();
+            start = System.currentTimeMillis();
+            if (filters.length <= MAX_BRUTE_FORCE_FILTERS) {
+                calculateBruteForceAll();
+            } else {
+                calculateBruteForceSome();
+                random = new Random(0);
+                calculateGenetic();
+            }
         }
+    }
+
+    private boolean testPlan(TableFilter[] list) {
+        Plan p = new Plan(list, list.length);
+        double costNow = p.calculateCost(session);
+        if (cost < 0 || costNow < cost) {
+            cost = costNow;
+            bestPlan = p;
+            return true;
+        }
+        return false;
     }
 
     private boolean canStop(int x) {
@@ -132,7 +148,7 @@ public class Optimizer {
                             break;
                         }
                         list[i] = filters[j];
-                        Plan part = new Plan(list, i + 1, condition);
+                        Plan part = new Plan(list, i + 1);
                         double costNow = part.calculateCost(session);
                         if (costPart < 0 || costNow < costPart) {
                             costPart = costNow;
@@ -172,17 +188,6 @@ public class Optimizer {
                 System.arraycopy(list, 0, best, 0, filters.length);
             }
         }
-    }
-
-    private boolean testPlan(TableFilter[] list) {
-        Plan p = new Plan(list, list.length, condition);
-        double costNow = p.calculateCost(session);
-        if (cost < 0 || costNow < cost) {
-            cost = costNow;
-            bestPlan = p;
-            return true;
-        }
-        return false;
     }
 
     private void shuffleAll(TableFilter[] f) { // 随机把数组中的两个元素兑换f.length-1次
@@ -226,40 +231,34 @@ public class Optimizer {
     }
 
     /**
-     * Calculate the best query plan to use.
+     * How many filter to calculate using brute force. The remaining filters are
+     * selected using a greedy algorithm which has a runtime of (1 + 2 + ... +
+     * n) = (n * (n-1) / 2) for n filters. The brute force algorithm has a
+     * runtime of n * (n-1) * ... * (n-m) when calculating m brute force of n
+     * total. The combined runtime is (brute force) * (greedy).
+     *
+     * @param filterCount the number of filters total
+     * @return the number of filters to calculate using brute force
      */
-    public void optimize() {
-        calculateBestPlan();
-        bestPlan.removeUnusableIndexConditions();
-        TableFilter[] f2 = bestPlan.getFilters();
-        topFilter = f2[0];
-        for (int i = 0; i < f2.length - 1; i++) {
-            // 见Parser.parseJoinTableFilter(TableFilter, Select)中的注释
-            f2[i].addJoin(f2[i + 1], false, null);
+    private static int getMaxBruteForceFilters(int filterCount) {
+        int i = 0, j = filterCount, total = filterCount;
+        while (j > 0 && total * (j * (j - 1) / 2) < MAX_BRUTE_FORCE) {
+            j--;
+            total *= j;
+            i++;
         }
-        for (TableFilter f : f2) {
-            PlanItem item = bestPlan.getItem(f);
-            f.setPlanItem(item);
-        }
-    }
-
-    public TableFilter getTopFilter() {
-        return topFilter;
-    }
-
-    public double getCost() {
-        return cost;
+        return i;
     }
 
     /**
-     * Get the best plan for the given search mask.
-     *
-     * @param session the session
-     * @param masks per-column comparison bit masks, null means 'always false',
-     *              see constants in IndexCondition
-     * @param sortOrder the sort order
-     * @return the plan item
-     */
+    * Get the best plan for the given search mask.
+    *
+    * @param session the session
+    * @param masks per-column comparison bit masks, null means 'always false',
+    *              see constants in IndexCondition
+    * @param sortOrder the sort order
+    * @return the plan item
+    */
     public static PlanItem getBestPlanItem(ServerSession session, int[] masks, Table table, SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.setIndex(table.getScanIndex(session));

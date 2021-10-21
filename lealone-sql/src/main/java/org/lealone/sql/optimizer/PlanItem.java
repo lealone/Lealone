@@ -8,8 +8,10 @@ package org.lealone.sql.optimizer;
 import org.lealone.db.index.Index;
 
 /**
- * The plan item describes the index to be used, and the estimated cost when
- * using it.
+ * The plan item describes the index to be used, and the estimated cost when using it.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class PlanItem {
 

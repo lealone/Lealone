@@ -10,17 +10,18 @@ import java.util.HashMap;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
 
 /**
  * A possible query execution plan. The time required to execute a query depends
  * on the order the tables are accessed.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Plan {
 
     private final TableFilter[] filters;
     private final HashMap<TableFilter, PlanItem> planItems = new HashMap<>();
-    private final Expression[] allConditions;
     private final TableFilter[] allFilters;
 
     /**
@@ -28,32 +29,15 @@ public class Plan {
      *
      * @param filters the tables of the query
      * @param count the number of table items
-     * @param condition the condition in the WHERE clause
      */
-    public Plan(TableFilter[] filters, int count, Expression condition) {
+    public Plan(TableFilter[] filters, int count) {
         this.filters = new TableFilter[count];
         System.arraycopy(filters, 0, this.filters, 0, count);
-        final ArrayList<Expression> allCond = new ArrayList<>();
         final ArrayList<TableFilter> all = new ArrayList<>();
-        if (condition != null) {
-            allCond.add(condition);
-        }
         for (int i = 0; i < count; i++) {
-            TableFilter f = filters[i];
-            f.visit(new TableFilterVisitor() {
-                @Override
-                public void accept(TableFilter f) {
-                    all.add(f);
-                    if (f.getJoinCondition() != null) {
-                        allCond.add(f.getJoinCondition());
-                    }
-                }
-            });
+            filters[i].visit(f -> all.add(f));
         }
-        allConditions = new Expression[allCond.size()];
-        allCond.toArray(allConditions);
-        allFilters = new TableFilter[all.size()];
-        all.toArray(allFilters);
+        allFilters = all.toArray(new TableFilter[0]);
     }
 
     /**
@@ -76,9 +60,9 @@ public class Plan {
     }
 
     /**
-     * Remove all index conditions that can not be used.
+     * Optimize full conditions and remove all index conditions that can not be used.
      */
-    public void removeUnusableIndexConditions() {
+    public void optimizeConditions() {
         for (int i = 0; i < allFilters.length; i++) {
             TableFilter f = allFilters[i];
             setEvaluatable(f, true);
@@ -111,11 +95,9 @@ public class Plan {
             cost += cost * item.cost;
             setEvaluatable(tableFilter, true);
             Expression on = tableFilter.getJoinCondition();
-            if (on != null) {
-                if (!on.isEvaluatable()) {
-                    invalidPlan = true;
-                    break;
-                }
+            if (on != null && !on.isEvaluatable()) {
+                invalidPlan = true;
+                break;
             }
         }
         if (invalidPlan) {

@@ -445,15 +445,10 @@ public class TableFilter extends ColumnResolverBase {
 
     private void checkTimeout() {
         session.checkCanceled();
-        // System.out.println(this.alias+ " " + table.getName() + ": " +
-        // scanCount);
     }
 
     private boolean isOk(Expression condition) {
-        if (condition == null) {
-            return true;
-        }
-        return condition.getBooleanValue(session);
+        return condition == null || condition.getBooleanValue(session);
     }
 
     /**
@@ -474,8 +469,6 @@ public class TableFilter extends ColumnResolverBase {
      * @param current the current row
      */
     public void set(Row current) {
-        // this is currently only used so that check constraints work - to set
-        // the current (new) row
         this.current = current;
         this.currentSearchRow = current;
     }
