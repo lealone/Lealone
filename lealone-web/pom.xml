@@ -18,8 +18,8 @@
     <version>5.0.0-SNAPSHOT</version>
 
     <properties>
-        <netty.version>4.1.60.Final</netty.version>
-        <vertx.version>4.0.3</vertx.version>
+        <!--<netty.version>4.1.68.Final</netty.version>-->
+        <vertx.version>4.1.5</vertx.version>
     </properties>
 
     <dependencies>
@@ -28,7 +28,7 @@
             <artifactId>lealone-server</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <!--
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-common</artifactId>
@@ -68,7 +68,7 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-socks</artifactId>
             <version>${netty.version}</version>
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>io.vertx</groupId>
