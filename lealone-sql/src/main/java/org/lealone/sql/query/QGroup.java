@@ -6,6 +6,7 @@
 package org.lealone.sql.query;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import org.lealone.db.util.ValueHashMap;
@@ -88,7 +89,7 @@ class QGroup extends QOperator {
             if (isHavingNullOrFalse(row, select.havingIndex)) {
                 continue;
             }
-            row = keepOnlyDistinct(row, columnCount, select.distinctColumnCount);
+            row = toResultRow(row, columnCount, select.resultColumnCount);
             result.addRow(row);
         }
         loopEnd = true;
@@ -104,13 +105,11 @@ class QGroup extends QOperator {
         return false;
     }
 
-    static Value[] keepOnlyDistinct(Value[] row, int columnCount, int distinctColumnCount) {
-        if (columnCount == distinctColumnCount) {
+    // 不包含having和group by中加入的列
+    static Value[] toResultRow(Value[] row, int columnCount, int resultColumnCount) {
+        if (columnCount == resultColumnCount) {
             return row;
         }
-        // remove columns so that 'distinct' can filter duplicate rows
-        Value[] r2 = new Value[distinctColumnCount];
-        System.arraycopy(row, 0, r2, 0, distinctColumnCount);
-        return r2;
+        return Arrays.copyOf(row, resultColumnCount);
     }
 }

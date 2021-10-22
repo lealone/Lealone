@@ -84,7 +84,7 @@ class QGroupSorted extends QOperator {
         if (QGroup.isHavingNullOrFalse(row, select.havingIndex)) {
             return;
         }
-        row = QGroup.keepOnlyDistinct(row, columnCount, select.distinctColumnCount);
+        row = QGroup.toResultRow(row, columnCount, select.resultColumnCount);
         result.addRow(row);
     }
 }

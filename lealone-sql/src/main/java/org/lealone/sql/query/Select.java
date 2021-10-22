@@ -80,7 +80,7 @@ public class Select extends Query {
     int currentGroupRowId;
     Expression condition;
     int visibleColumnCount;
-    int distinctColumnCount;
+    int resultColumnCount; // 不包含having和group by中加入的列
     boolean isGroupQuery;
     boolean isGroupSortedQuery;
     boolean isQuickAggregateQuery;
@@ -204,8 +204,10 @@ public class Select extends Query {
         }
         if (orderList != null) {
             initOrder(session, expressions, expressionSQL, orderList, visibleColumnCount, distinct, filters);
+            // prepare阶段还用到orderList，所以先不置null
         }
-        distinctColumnCount = expressions.size();
+        resultColumnCount = expressions.size();
+
         if (having != null) {
             expressions.add(having);
             havingIndex = expressions.size() - 1;
@@ -213,56 +215,11 @@ public class Select extends Query {
         } else {
             havingIndex = -1;
         }
-
-        // first the select list (visible columns),
-        // then 'ORDER BY' expressions,
-        // then 'HAVING' expressions,
-        // and 'GROUP BY' expressions at the end
         if (group != null) {
-            Database db = session.getDatabase();
-            int size = group.size();
-            int expSize = expressionSQL.size();
-            groupIndex = new int[size];
-            for (int i = 0; i < size; i++) {
-                Expression expr = group.get(i);
-                String sql = expr.getSQL();
-                int found = -1;
-                for (int j = 0; j < expSize; j++) {
-                    String s2 = expressionSQL.get(j);
-                    if (db.equalsIdentifiers(s2, sql)) {
-                        found = j;
-                        break;
-                    }
-                }
-                if (found < 0) {
-                    // special case: GROUP BY a column alias
-                    for (int j = 0; j < expSize; j++) {
-                        Expression e = expressions.get(j);
-                        if (db.equalsIdentifiers(sql, e.getAlias())) {
-                            found = j;
-                            break;
-                        }
-                        sql = expr.getAlias();
-                        if (db.equalsIdentifiers(sql, e.getAlias())) {
-                            found = j;
-                            break;
-                        }
-                    }
-                }
-                if (found < 0) {
-                    int index = expressions.size();
-                    groupIndex[i] = index;
-                    expressions.add(expr);
-                } else {
-                    groupIndex[i] = found;
-                }
-            }
-            groupByExpression = new boolean[expressions.size()];
-            for (int gi : groupIndex) {
-                groupByExpression[gi] = true;
-            }
+            initGroup(expressionSQL);
             group = null;
         }
+
         // map columns in select list and condition
         for (TableFilter f : filters) {
             mapColumns(f, 0);
@@ -324,6 +281,59 @@ public class Select extends Query {
             expressions.add(index++, ec);
         }
         return index;
+    }
+
+    // 为groupIndex和groupByExpression两个字段赋值，
+    // groupIndex记录了GROUP BY子句中的字段在select字段列表中的位置索引(从0开始计数)
+    // groupByExpression数组的大小跟select字段列表一样，类似于一个bitmap，用来记录select字段列表中的哪些字段是GROUP BY字段
+    // 如果GROUP BY子句中的字段不在select字段列表中，那么会把它加到select字段列表
+    private void initGroup(ArrayList<String> expressionSQL) {
+        // first the select list (visible columns),
+        // then 'ORDER BY' expressions,
+        // then 'HAVING' expressions,
+        // and 'GROUP BY' expressions at the end
+        Database db = session.getDatabase();
+        int size = group.size();
+        int expSize = expressionSQL.size();
+        groupIndex = new int[size];
+        for (int i = 0; i < size; i++) {
+            Expression expr = group.get(i);
+            String sql = expr.getSQL();
+            int found = -1;
+            for (int j = 0; j < expSize; j++) {
+                String s2 = expressionSQL.get(j);
+                if (db.equalsIdentifiers(s2, sql)) {
+                    found = j;
+                    break;
+                }
+            }
+            if (found < 0) {
+                // special case: GROUP BY a column alias
+                for (int j = 0; j < expSize; j++) {
+                    Expression e = expressions.get(j);
+                    if (db.equalsIdentifiers(sql, e.getAlias())) {
+                        found = j;
+                        break;
+                    }
+                    sql = expr.getAlias();
+                    if (db.equalsIdentifiers(sql, e.getAlias())) {
+                        found = j;
+                        break;
+                    }
+                }
+            }
+            if (found < 0) {
+                int index = expressions.size();
+                groupIndex[i] = index;
+                expressions.add(expr);
+            } else {
+                groupIndex[i] = found;
+            }
+        }
+        groupByExpression = new boolean[expressions.size()];
+        for (int gi : groupIndex) {
+            groupByExpression[gi] = true;
+        }
     }
 
     @Override

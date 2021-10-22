@@ -44,7 +44,7 @@ class QAggregate extends QOperator {
                 return;
         }
         Value[] row = createRow();
-        row = QGroup.keepOnlyDistinct(row, columnCount, select.distinctColumnCount);
+        row = QGroup.toResultRow(row, columnCount, select.resultColumnCount);
         result.addRow(row);
         loopEnd = true;
     }
