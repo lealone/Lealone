@@ -112,5 +112,9 @@ public class JoinTest extends SqlTestBase {
 
         sql = "SELECT count(*) FROM JoinTest1 t1 join JoinTest4 t4 ON t1.id = t4.id";
         assertEquals(4, getIntValue(1, true));
+
+        // 测试NestedJoin，JoinTest1跟(JoinTest2 JOIN JoinTest3)之间有个嵌套TableFilter衔接
+        sql = "SELECT * FROM JoinTest1 JOIN (JoinTest2 JOIN JoinTest3) WHERE JoinTest1.pk = 1";
+        printResultSet();
     }
 }

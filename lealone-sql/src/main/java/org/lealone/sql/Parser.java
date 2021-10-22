@@ -1884,7 +1884,8 @@ public class Parser implements SQLParser {
     private void addJoin(TableFilter top, TableFilter join, boolean outer, Expression on) {
         if (join.getJoin() != null) {
             String joinTable = Constants.PREFIX_JOIN + parseIndex; // 如：SYSTEM_JOIN_25
-            TableFilter n = new TableFilter(session, getDualTable(false), joinTable, rightsChecked, currentSelect);
+            // 嵌套TableFilter对应的DualTable没有字段
+            TableFilter n = new TableFilter(session, getDualTable(true), joinTable, rightsChecked, currentSelect);
             n.setNestedJoin(join);
             join = n;
         }
