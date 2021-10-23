@@ -32,6 +32,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.vector.DefaultValueVectorFactory;
 import org.lealone.sql.vector.ValueVector;
@@ -53,7 +54,7 @@ public class TableFilter extends ColumnResolverBase {
     /**
      * Whether this is a direct or indirect (nested) outer join
      */
-    protected boolean joinOuterIndirect;
+    private boolean joinOuterIndirect;
 
     private ServerSession session;
 
@@ -116,7 +117,7 @@ public class TableFilter extends ColumnResolverBase {
 
     private int[] columnIndexes;
 
-    private ValueVectorFactory valueVectorFactory;
+    private final ValueVectorFactory valueVectorFactory;
 
     /**
      * Create a new table filter object.
@@ -137,12 +138,16 @@ public class TableFilter extends ColumnResolverBase {
             session.getUser().checkRight(table, Right.SELECT);
         }
         hashCode = session.nextObjectId();
+        valueVectorFactory = createValueVectorFactory(session);
+    }
+
+    private static ValueVectorFactory createValueVectorFactory(ServerSession session) {
         String valueVectorFactoryName = session.getValueVectorFactoryName();
         if (valueVectorFactoryName == null) {
-            valueVectorFactory = DefaultValueVectorFactory.INSTANCE;
+            return DefaultValueVectorFactory.INSTANCE;
         } else {
             try {
-                valueVectorFactory = (ValueVectorFactory) Class.forName(valueVectorFactoryName).getDeclaredConstructor()
+                return (ValueVectorFactory) Class.forName(valueVectorFactoryName).getDeclaredConstructor()
                         .newInstance();
             } catch (Exception e) {
                 throw DbException.convert(e);
@@ -245,15 +250,11 @@ public class TableFilter extends ColumnResolverBase {
             return;
         }
         setIndex(item.getIndex());
-        if (nestedJoin != null) {
-            if (item.getNestedJoinPlan() != null) {
-                nestedJoin.setPlanItem(item.getNestedJoinPlan());
-            }
+        if (nestedJoin != null && item.getNestedJoinPlan() != null) {
+            nestedJoin.setPlanItem(item.getNestedJoinPlan());
         }
-        if (join != null) {
-            if (item.getJoinPlan() != null) {
-                join.setPlanItem(item.getJoinPlan());
-            }
+        if (join != null && item.getJoinPlan() != null) {
+            join.setPlanItem(item.getJoinPlan());
         }
     }
 
@@ -429,17 +430,12 @@ public class TableFilter extends ColumnResolverBase {
     /**
      * Set the state of this and all nested tables to the NULL row.
      */
-    protected void setNullRow() {
+    private void setNullRow() {
         state = NULL_ROW;
         current = table.getNullRow();
         currentSearchRow = current;
         if (nestedJoin != null) {
-            nestedJoin.visit(new TableFilterVisitor() {
-                @Override
-                public void accept(TableFilter f) {
-                    f.setNullRow();
-                }
-            });
+            nestedJoin.visit(f -> f.setNullRow());
         }
     }
 
@@ -511,8 +507,7 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     private Expression createCondition(Expression oldC, Expression newC) {
-        return oldC == null ? newC
-                : (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true, oldC, newC);
+        return oldC == null ? newC : new ConditionAndOr(ConditionAndOr.AND, oldC, newC);
     }
 
     /**

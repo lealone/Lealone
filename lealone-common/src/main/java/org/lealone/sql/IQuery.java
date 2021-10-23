@@ -19,6 +19,8 @@ public interface IQuery {
 
     List<? extends CommandParameter> getParameters();
 
+    boolean allowGlobalConditions();
+
     void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType);
 
     void disableCache();
@@ -26,8 +28,6 @@ public interface IQuery {
     double getCost();
 
     Set<?> getTables();
-
-    boolean allowGlobalConditions();
 
     int getColumnCount();
 

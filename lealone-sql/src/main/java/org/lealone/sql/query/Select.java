@@ -13,7 +13,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.SysProperties;
@@ -23,7 +22,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
-import org.lealone.db.index.IndexConditionType;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
@@ -535,22 +533,18 @@ public class Select extends Query {
                 setEvaluatableRecursive(n);
             }
             Expression on = f.getJoinCondition();
-            if (on != null) {
-                if (!on.isEvaluatable()) {
-                    // need to check that all added are bound to a table
-                    on = on.optimize(session);
-                    if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
-                        f.removeJoinCondition();
-                        addCondition(on);
-                    }
+            if (on != null && !on.isEvaluatable()) {
+                // need to check that all added are bound to a table
+                on = on.optimize(session);
+                if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
+                    f.removeJoinCondition();
+                    addCondition(on);
                 }
             }
             on = f.getFilterCondition();
-            if (on != null) {
-                if (!on.isEvaluatable()) {
-                    f.removeFilterCondition();
-                    addCondition(on);
-                }
+            if (on != null && !on.isEvaluatable()) {
+                f.removeFilterCondition();
+                addCondition(on);
             }
         }
     }
@@ -911,6 +905,14 @@ public class Select extends Query {
     }
 
     @Override
+    public boolean allowGlobalConditions() {
+        if (offsetExpr == null && (limitExpr == null || sort == null)) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
         addParameter(param);
         Expression comp;
@@ -979,35 +981,8 @@ public class Select extends Query {
         return visitor.visitSelect(this);
     }
 
-    @Override
-    public boolean allowGlobalConditions() {
-        if (offsetExpr == null && (limitExpr == null || sort == null)) {
-            return true;
-        }
-        return false;
-    }
-
     public SortOrder getSortOrder() {
         return sort;
-    }
-
-    @Override
-    public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
-        int comparisonType = 0;
-        switch (indexConditionType) {
-        case IndexConditionType.EQUALITY:
-            comparisonType = Comparison.EQUAL_NULL_SAFE;
-            break;
-        case IndexConditionType.START:
-            comparisonType = Comparison.BIGGER_EQUAL;
-            break;
-        case IndexConditionType.END:
-            comparisonType = Comparison.SMALLER_EQUAL;
-            break;
-        default:
-            throw DbException.getInternalError("indexConditionType: " + indexConditionType);
-        }
-        this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 
     @Override

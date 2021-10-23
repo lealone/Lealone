@@ -11,7 +11,6 @@ import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandParameter;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
@@ -179,26 +178,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
-        addParameter(param);
-        switch (unionType) {
-        case UNION_ALL:
-        case UNION:
-        case INTERSECT: {
-            left.addGlobalCondition(param, columnId, comparisonType);
-            right.addGlobalCondition(param, columnId, comparisonType);
-            break;
-        }
-        case EXCEPT: {
-            left.addGlobalCondition(param, columnId, comparisonType);
-            break;
-        }
-        default:
-            DbException.throwInternalError("type=" + unionType);
-        }
-    }
-
-    @Override
     public String getPlanSQL() {
         StringBuilder buff = new StringBuilder();
         buff.append('(').append(left.getPlanSQL()).append(')');
@@ -250,11 +229,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public boolean allowGlobalConditions() {
-        return left.allowGlobalConditions() && right.allowGlobalConditions();
-    }
-
-    @Override
     public List<TableFilter> getFilters() {
         List<TableFilter> filters = left.getFilters();
         filters.addAll(right.getFilters());
@@ -269,8 +243,28 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
-        this.addGlobalCondition((Parameter) param, columnId, indexConditionType);
+    public boolean allowGlobalConditions() {
+        return left.allowGlobalConditions() && right.allowGlobalConditions();
+    }
+
+    @Override
+    public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
+        addParameter(param);
+        switch (unionType) {
+        case UNION_ALL:
+        case UNION:
+        case INTERSECT: {
+            left.addGlobalCondition(param, columnId, comparisonType);
+            right.addGlobalCondition(param, columnId, comparisonType);
+            break;
+        }
+        case EXCEPT: {
+            left.addGlobalCondition(param, columnId, comparisonType);
+            break;
+        }
+        default:
+            DbException.throwInternalError("type=" + unionType);
+        }
     }
 
     @Override

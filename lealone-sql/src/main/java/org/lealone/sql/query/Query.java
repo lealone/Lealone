@@ -10,10 +10,12 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.index.IndexConditionType;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SortOrder;
@@ -31,8 +33,9 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
-import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
+import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.MaxModificationIdVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -161,15 +164,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     public abstract void mapColumns(ColumnResolver resolver, int level);
 
     /**
-     * Add a condition to the query. This is used for views.
-     *
-     * @param param the parameter
-     * @param columnId the column index (0 meaning the first column)
-     * @param comparisonType the comparison type
-     */
-    public abstract void addGlobalCondition(Parameter param, int columnId, int comparisonType);
-
-    /**
      * Check whether adding condition to the query is allowed. This is not
      * allowed for views that have an order by and a limit, as it would affect
      * the returned results.
@@ -178,6 +172,34 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     @Override
     public abstract boolean allowGlobalConditions();
+
+    @Override
+    public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
+        int comparisonType = 0;
+        switch (indexConditionType) {
+        case IndexConditionType.EQUALITY:
+            comparisonType = Comparison.EQUAL_NULL_SAFE;
+            break;
+        case IndexConditionType.START:
+            comparisonType = Comparison.BIGGER_EQUAL;
+            break;
+        case IndexConditionType.END:
+            comparisonType = Comparison.SMALLER_EQUAL;
+            break;
+        default:
+            throw DbException.getInternalError("indexConditionType: " + indexConditionType);
+        }
+        this.addGlobalCondition((Parameter) param, columnId, comparisonType);
+    }
+
+    /**
+     * Add a condition to the query. This is used for views.
+     *
+     * @param param the parameter
+     * @param columnId the column index (0 meaning the first column)
+     * @param comparisonType the comparison type
+     */
+    public abstract void addGlobalCondition(Parameter param, int columnId, int comparisonType);
 
     public abstract <R> R accept(ExpressionVisitor<R> visitor);
 
