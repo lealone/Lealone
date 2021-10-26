@@ -1,7 +1,7 @@
 
 ### Lealone 是什么
 
-* 是一个兼具RDBMS、NoSQL优点的面向[OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing)场景的异步化NewSQL单机与分布式关系数据库
+* 是一个兼具 RDBMS、NoSQL 优点的面向 [OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing) 场景的异步化 NewSQL 单机与分布式关系数据库
 
 
 ### Lealone 有哪些特性
@@ -10,33 +10,33 @@
 
 * 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
 
-* 全链路异步化，使用少量线程就能处理大量并发，内置新颖的异步化B-Tree
+* 全链路异步化，使用少量线程就能处理大量并发，内置新颖的异步化 B-Tree
 
-* 可暂停的、渐进式的SQL引擎
+* 可暂停的、渐进式的 SQL 引擎
 
-* 基于SQL优先级的抢占式调度，慢查询不会长期霸占CPU
+* 基于 SQL 优先级的抢占式调度，慢查询不会长期霸占 CPU
 
-* 创建JDBC连接非常快速，占用资源少，不再需要JDBC连接池
+* 创建 JDBC 连接非常快速，占用资源少，不再需要 JDBC 连接池
  
-* 插件化存储引擎架构，内置AOSE引擎，支持单机与分布式存储
+* 插件化存储引擎架构，内置 AOSE 引擎，支持单机与分布式存储
 
-* 插件化事务引擎架构，事务处理逻辑与存储分离，内置AOTE引擎，支持单机与分布式事务
+* 插件化事务引擎架构，事务处理逻辑与存储分离，内置 AOTE 引擎，支持单机与分布式事务
 
 * 支持列锁，不同事务对同一行记录的不同列进行更新时，不会发生冲突
 
-* 支持Page级别的行列混合存储，对于有很多字段的表，只读少量字段时能大量节约内存
+* 支持 Page 级别的行列混合存储，对于有很多字段的表，只读少量字段时能大量节约内存
 
-* 支持自动化分片(Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
+* 支持自动化分片 (Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
 
-* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server模式、复制模式、Sharding模式
+* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server 模式、复制模式、Sharding 模式
 
-* 支持不停机快速手动或自动转换运行模式(Client/Server模式 -> 复制模式 -> Sharding模式)
+* 支持不停机快速手动或自动转换运行模式 (Client/Server模式 -> 复制模式 -> Sharding 模式)
 
-* 支持通过CREATE SERVICE创建可托管的后端服务
+* 支持通过 CREATE SERVICE 创建可托管的后端服务
 
-* 内置类型安全的ORM/DSL框架，不需要配置文件和注解
+* 内置类型安全的 ORM/DSL 框架，不需要配置文件和注解
 
-* 非常小的绿色环保安装包，只有2M左右的大小
+* 非常小的绿色环保安装包，只有 2M 左右的大小
 
 
 ##### 普通特性
@@ -82,9 +82,9 @@
 
 ### Lealone Plugins
 
-* 支持可插拨的网络应用框架(Apache MINA、Netty、Vert.x)
+* 支持可插拨的网络应用框架 (Apache MINA、Netty、Vert.x)
 
-* 支持可插拨的存储引擎(WiredTiger、MVStore、RocksDB)
+* 支持可插拨的存储引擎 (WiredTiger、MVStore、RocksDB)
 
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
 
@@ -99,7 +99,7 @@
 
 ### Lealone 历史
 
-* 2012年从 [H2 数据库](http://www.h2database.com/html/main.html)的代码开始
+* 2012年从 [H2 数据库 ](http://www.h2database.com/html/main.html)的代码开始
 
 * 为了支持 lealone-p2p 集群改编了 [Cassandra](https://cassandra.apache.org/) 的一些代码
 
