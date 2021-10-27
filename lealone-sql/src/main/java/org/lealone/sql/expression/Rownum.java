@@ -10,8 +10,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
-import org.lealone.sql.vector.SingleValueVector;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * Represents the ROWNUM function.
@@ -27,11 +25,6 @@ public class Rownum extends Expression {
     @Override
     public Value getValue(ServerSession session) {
         return ValueInt.get(prepared.getCurrentRowNumber());
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return new SingleValueVector(getValue(session));
     }
 
     @Override

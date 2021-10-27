@@ -13,7 +13,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>lealone-vector</artifactId>
+    <artifactId>lealone-olap</artifactId>
     <packaging>jar</packaging>
     <version>5.0.0-SNAPSHOT</version>
 

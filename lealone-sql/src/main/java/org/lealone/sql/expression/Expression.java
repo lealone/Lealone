@@ -21,15 +21,13 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.visitor.CalculateVisitor;
-import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.MapColumnsVisitor;
 import org.lealone.sql.expression.visitor.MergeAggregateVisitor;
 import org.lealone.sql.expression.visitor.UpdateAggregateVisitor;
-import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * An expression is a operation, a value, or a function in a query.
@@ -53,16 +51,6 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     }
 
     public abstract Value getValue(ServerSession session);
-
-    public ValueVector getValueVector(ServerSession session) {
-        return getValueVector(session, null);
-    }
-
-    // public abstract ValueVector getValueVector(ServerSession session, ValueVector bvv);
-
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return null;
-    }
 
     /**
      * Return the data type. The data type may not be known before the
@@ -147,10 +135,6 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      */
     public void updateAggregate(ServerSession session) {
         accept(new UpdateAggregateVisitor(session));
-    }
-
-    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
-        accept(new UpdateVectorizedAggregateVisitor(session, bvv));
     }
 
     /**

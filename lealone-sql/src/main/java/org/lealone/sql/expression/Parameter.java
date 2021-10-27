@@ -15,8 +15,6 @@ import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
-import org.lealone.sql.vector.SingleValueVector;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * A parameter of a prepared statement.
@@ -64,11 +62,6 @@ public class Parameter extends Expression implements CommandParameter {
     @Override
     public Value getValue(ServerSession session) {
         return getValue();
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return new SingleValueVector(getValue(session));
     }
 
     @Override

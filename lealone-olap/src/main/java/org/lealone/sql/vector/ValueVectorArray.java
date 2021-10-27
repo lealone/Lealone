@@ -12,4 +12,10 @@ public class ValueVectorArray extends ValueVector {
     public ValueVectorArray(ValueVector[] a) {
         // this.a = a;
     }
+
+    @Override
+    public BooleanVector compare(ValueVector vv, int compareType) {
+        // ValueVectorArray v = (ValueVectorArray) vv;
+        return null;
+    }
 }

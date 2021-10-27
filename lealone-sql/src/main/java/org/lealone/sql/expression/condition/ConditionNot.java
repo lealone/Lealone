@@ -12,7 +12,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * A NOT condition.
@@ -41,11 +40,6 @@ public class ConditionNot extends Condition {
             return v;
         }
         return v.convertTo(Value.BOOLEAN).negate();
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return condition.getValueVector(session).negate();
     }
 
     @Override

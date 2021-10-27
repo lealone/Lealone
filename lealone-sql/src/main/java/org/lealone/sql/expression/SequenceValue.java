@@ -11,8 +11,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
-import org.lealone.sql.vector.SingleValueVector;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * Wraps a sequence when used in a statement.
@@ -34,11 +32,6 @@ public class SequenceValue extends Expression {
         long value = sequence.getNext(session);
         session.setLastIdentity(ValueLong.get(value));
         return ValueLong.get(value);
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return new SingleValueVector(getValue(session));
     }
 
     @Override

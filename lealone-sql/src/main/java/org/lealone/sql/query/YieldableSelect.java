@@ -62,9 +62,6 @@ public class YieldableSelect extends YieldableQueryBase {
 
     private void createOlapOperator() {
         OperatorFactory operatorFactory = OperatorFactoryManager.getFactory("olap");
-        if (operatorFactory == null) {
-            operatorFactory = new VOperatorFactory();
-        }
         if (operatorFactory != null) {
             Operator olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();

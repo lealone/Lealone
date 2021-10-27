@@ -34,9 +34,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.DefaultValueVectorFactory;
-import org.lealone.sql.vector.ValueVector;
-import org.lealone.sql.vector.ValueVectorFactory;
 import org.lealone.storage.PageKey;
 
 /**
@@ -117,8 +114,6 @@ public class TableFilter extends ColumnResolverBase {
 
     private int[] columnIndexes;
 
-    private final ValueVectorFactory valueVectorFactory;
-
     /**
      * Create a new table filter object.
      *
@@ -138,21 +133,6 @@ public class TableFilter extends ColumnResolverBase {
             session.getUser().checkRight(table, Right.SELECT);
         }
         hashCode = session.nextObjectId();
-        valueVectorFactory = createValueVectorFactory(session);
-    }
-
-    private static ValueVectorFactory createValueVectorFactory(ServerSession session) {
-        String valueVectorFactoryName = session.getValueVectorFactoryName();
-        if (valueVectorFactoryName == null) {
-            return DefaultValueVectorFactory.INSTANCE;
-        } else {
-            try {
-                return (ValueVectorFactory) Class.forName(valueVectorFactoryName).getDeclaredConstructor()
-                        .newInstance();
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-        }
     }
 
     @Override
@@ -864,24 +844,14 @@ public class TableFilter extends ColumnResolverBase {
         return getValue(column.getColumnId());
     }
 
-    @Override
-    public ValueVector getValueVector(Column column) {
-        return valueVectorFactory.createValueVector(batch, column);
-    }
+    private int batchSize;
 
-    private ArrayList<Row> batch;
-
-    public boolean nextBatch() {
-        int size = 1024;
-        batch = new ArrayList<>(size);
-        while (size-- > 0 && next()) {
-            batch.add(get());
-        }
-        return !batch.isEmpty();
+    public void setBatchSize(int batchSize) {
+        this.batchSize = batchSize;
     }
 
     public int getBatchSize() {
-        return batch == null ? 0 : batch.size();
+        return batchSize;
     }
 
     public Value getValue(int columnId) {

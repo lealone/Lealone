@@ -10,7 +10,7 @@ import org.lealone.sql.operator.OperatorFactoryBase;
 public class VOperatorFactory extends OperatorFactoryBase {
 
     public VOperatorFactory() {
-        super("Vector");
+        super("olap");
     }
 
     @Override
@@ -19,15 +19,18 @@ public class VOperatorFactory extends OperatorFactoryBase {
             return null;
         } else if (select.isGroupQuery) {
             if (select.isGroupSortedQuery) {
-                return null;
+                return new VGroupSorted(select);
             } else {
-                return null;
+                if (select.groupIndex == null) { // 忽视select.havingIndex
+                    return new VAggregate(select);
+                } else {
+                    return new VGroup(select);
+                }
             }
         } else if (select.isDistinctQuery) {
-            return null;
+            return new VDistinct(select);
         } else {
             return new VFlat(select);
         }
     }
-
 }

@@ -11,8 +11,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
-import org.lealone.sql.vector.ValueVector;
-import org.lealone.sql.vector.ValueVectorArray;
 
 /**
  * A list of expressions, as in (ID, NAME).
@@ -37,15 +35,6 @@ public class ExpressionList extends Expression {
             v[i] = list[i].getValue(session);
         }
         return ValueArray.get(v);
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        ValueVector[] a = new ValueVector[list.length];
-        for (int i = 0; i < list.length; i++) {
-            a[i] = list[i].getValueVector(session, bvv);
-        }
-        return new ValueVectorArray(a);
     }
 
     @Override

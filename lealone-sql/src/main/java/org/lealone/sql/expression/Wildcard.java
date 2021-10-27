@@ -12,7 +12,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * A wildcard expression as in SELECT * FROM TEST.
@@ -35,11 +34,6 @@ public class Wildcard extends Expression {
 
     @Override
     public Value getValue(ServerSession session) {
-        throw DbException.getInternalError();
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
         throw DbException.getInternalError();
     }
 

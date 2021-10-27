@@ -27,7 +27,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
 
 /**
@@ -132,13 +131,13 @@ public abstract class BuiltInAggregate extends Aggregate {
         data.add(session, v);
     }
 
-    @Override
-    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
+    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv,
+            ExpressionVisitor<ValueVector> visitor) {
         AggregateData data = getAggregateData();
         if (data == null) {
             return;
         }
-        ValueVector vv = on == null ? null : on.getValueVector(session, bvv);
+        ValueVector vv = on == null ? null : on.accept(visitor);
         data.add(session, bvv, vv);
     }
 
@@ -193,11 +192,6 @@ public abstract class BuiltInAggregate extends Aggregate {
             data = createAggregateData();
         }
         return data;
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        return new SingleValueVector(getValue(session));
     }
 
     @Override

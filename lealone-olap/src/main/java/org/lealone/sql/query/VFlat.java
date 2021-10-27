@@ -7,6 +7,7 @@ package org.lealone.sql.query;
 
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.visitor.GetValueVectorVisitor;
 import org.lealone.sql.vector.ValueVector;
 
 // 最普通的查询
@@ -18,17 +19,19 @@ class VFlat extends VOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.nextBatch()) {
+        while (nextBatch()) {
             boolean yield = yieldIfNeeded(++loopCount);
 
             ValueVector conditionValueVector = null;
             if (select.condition != null) {
-                conditionValueVector = select.condition.getValueVector(session);
+                GetValueVectorVisitor v = new GetValueVectorVisitor(session, null, batch);
+                conditionValueVector = select.condition.accept(v);
             }
+            GetValueVectorVisitor v = new GetValueVectorVisitor(session, conditionValueVector, batch);
             ValueVector[] rows = new ValueVector[columnCount];
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);
-                rows[i] = expr.getValueVector(session);
+                rows[i] = expr.accept(v);
             }
             if (conditionValueVector != null) {
                 for (int i = 0, szie = conditionValueVector.size(); i < szie; i++) {

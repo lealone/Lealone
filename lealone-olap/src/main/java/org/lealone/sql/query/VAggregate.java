@@ -9,6 +9,8 @@ import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.visitor.GetValueVectorVisitor;
+import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 import org.lealone.sql.vector.ValueVector;
 
 // 除了QuickAggregateQuery之外的聚合函数，没有group by
@@ -26,18 +28,20 @@ class VAggregate extends VOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.nextBatch()) {
+        while (nextBatch()) {
+            select.topTableFilter.setBatchSize(batch.size());
             boolean yield = yieldIfNeeded(++loopCount);
 
             ValueVector conditionValueVector = null;
             if (select.condition != null) {
-                conditionValueVector = select.condition.getValueVector(session);
+                GetValueVectorVisitor v = new GetValueVectorVisitor(session, null, batch);
+                conditionValueVector = select.condition.accept(v);
             }
             rowCount++;
             select.currentGroupRowId++;
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);
-                expr.updateVectorizedAggregate(session, conditionValueVector);
+                expr.accept(new UpdateVectorizedAggregateVisitor(session, conditionValueVector, batch));
             }
             if (sampleSize > 0 && rowCount >= sampleSize) {
                 break;

@@ -12,7 +12,6 @@ import org.lealone.sql.IExpression;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * A column resolver is list of column (for example, a table) that can map a
@@ -73,8 +72,6 @@ public interface ColumnResolver extends IExpression.Evaluator {
      * @return the value
      */
     Value getValue(Column column);
-
-    ValueVector getValueVector(Column column);
 
     /**
      * Get the table filter.

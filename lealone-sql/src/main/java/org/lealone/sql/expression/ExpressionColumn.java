@@ -26,7 +26,6 @@ import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * A expression that represents a column of a table or view.
@@ -202,24 +201,6 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
-    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv) {
-        Select select = columnResolver.getSelect();
-        if (select == null) {
-            throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
-        }
-        HashMap<Expression, Object> values = select.getCurrentGroup();
-        if (values == null) {
-            // this is a different level (the enclosing query)
-            return;
-        }
-        ValueVector v = (ValueVector) values.get(this);
-        if (v == null) { // 只取第一条
-            ValueVector now = columnResolver.getValueVector(column);
-            values.put(this, now);
-        }
-    }
-
-    @Override
     public Value getValue(ServerSession session) {
         Select select = columnResolver.getSelect();
         if (select != null) {
@@ -236,15 +217,6 @@ public class ExpressionColumn extends Expression {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
         return value;
-    }
-
-    @Override
-    public ValueVector getValueVector(ServerSession session, ValueVector bvv) {
-        ValueVector vv = columnResolver.getValueVector(column);
-        if (vv == null) {
-            throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
-        }
-        return vv.filter(bvv);
     }
 
     @Override
