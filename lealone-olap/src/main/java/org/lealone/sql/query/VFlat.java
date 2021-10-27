@@ -33,19 +33,15 @@ class VFlat extends VOperator {
                 Expression expr = select.expressions.get(i);
                 rows[i] = expr.accept(v);
             }
-            if (conditionValueVector != null) {
-                for (int i = 0, szie = conditionValueVector.size(); i < szie; i++) {
-                    if (conditionValueVector.isTrue(i)) {
-                        Value[] row = new Value[columnCount];
-                        for (int j = 0; j < columnCount; j++) {
-                            ValueVector vv = rows[j];
-                            row[j] = vv.getValue(i);
-                        }
-                        result.addRow(row);
-                    }
+            for (int i = 0, szie = rows[0].size(); i < szie; i++) {
+                Value[] row = new Value[columnCount];
+                for (int j = 0; j < columnCount; j++) {
+                    ValueVector vv = rows[j];
+                    row[j] = vv.getValue(i);
                 }
+                result.addRow(row);
             }
-            rowCount++;
+            rowCount += batch.size();
             if (canBreakLoop()) {
                 break;
             }

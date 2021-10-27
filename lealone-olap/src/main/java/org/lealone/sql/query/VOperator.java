@@ -8,6 +8,7 @@ package org.lealone.sql.query;
 import java.util.ArrayList;
 
 import org.lealone.db.result.Row;
+import org.lealone.sql.operator.Operator;
 
 public class VOperator extends QOperator {
 
@@ -15,6 +16,23 @@ public class VOperator extends QOperator {
 
     VOperator(Select select) {
         super(select);
+    }
+
+    @Override
+    public void copyStatus(Operator old) {
+        if (old instanceof QOperator) {
+            QOperator q = (QOperator) old;
+            columnCount = q.columnCount;
+            target = q.target;
+            result = q.result;
+            localResult = q.localResult;
+            maxRows = q.maxRows;
+            limitRows = q.limitRows;
+            sampleSize = q.sampleSize;
+            rowCount = q.rowCount;
+            loopCount = q.loopCount;
+            yieldableSelect = q.yieldableSelect;
+        }
     }
 
     public boolean nextBatch() {

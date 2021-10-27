@@ -19,4 +19,7 @@ public interface Operator {
 
     LocalResult getLocalResult();
 
+    default void copyStatus(Operator old) {
+    }
+
 }
