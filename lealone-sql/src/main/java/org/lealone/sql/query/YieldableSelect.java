@@ -15,13 +15,13 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.operator.Operator;
 import org.lealone.sql.operator.OperatorFactory;
-import org.lealone.sql.operator.OperatorFactoryBase;
 import org.lealone.sql.operator.OperatorFactoryManager;
 
 public class YieldableSelect extends YieldableQueryBase {
 
     private final Select select;
     private final ResultTarget target;
+    private final int olapThreshold;
     private Operator queryOperator;
     private boolean queryOperatorChanged;
 
@@ -30,42 +30,30 @@ public class YieldableSelect extends YieldableQueryBase {
         super(select, maxRows, scrollable, asyncHandler);
         this.select = select;
         this.target = target;
-    }
-
-    public void setQueryOperator(Operator queryOperator) {
-        this.queryOperator = queryOperator;
+        this.olapThreshold = session.getOlapThreshold();
     }
 
     @Override
     public boolean yieldIfNeeded(int rowNumber) {
-        if (!queryOperatorChanged && rowNumber > 100000) { // TODO 允许配置
+        if (!queryOperatorChanged && olapThreshold > 0 && rowNumber > olapThreshold) {
             queryOperatorChanged = true;
             super.yieldIfNeeded(rowNumber);
-            // createOlapOperatorAync();
-            createOlapOperatorSync();
+            createOlapOperator();
             return true;
         }
         return super.yieldIfNeeded(rowNumber);
     }
 
-    // private void createOlapOperatorAync() {
-    // Thread t = new Thread(() -> {
-    // createOlapOperator();
-    // });
-    // t.setName("AsyncCreateOlapOperatorThread");
-    // t.start();
-    // }
-
-    private void createOlapOperatorSync() {
-        createOlapOperator();
-    }
-
     private void createOlapOperator() {
-        OperatorFactory operatorFactory = OperatorFactoryManager.getFactory("olap");
+        String olapOperatorFactoryName = session.getOlapOperatorFactoryName();
+        if (olapOperatorFactoryName == null) {
+            olapOperatorFactoryName = "olap";
+        }
+        OperatorFactory operatorFactory = OperatorFactoryManager.getFactory(olapOperatorFactoryName);
         if (operatorFactory != null) {
             Operator olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();
-            setQueryOperator(olapOperator);
+            this.queryOperator = olapOperator;
         }
     }
 
@@ -75,7 +63,7 @@ public class YieldableSelect extends YieldableQueryBase {
         select.topTableFilter.startQuery(session);
         select.topTableFilter.reset();
         select.fireBeforeSelectTriggers();
-        queryOperator = new OltpOperatorFactory().createOperator(select);
+        queryOperator = createQueryOperator();
         queryOperator.start();
         return false;
     }
@@ -99,18 +87,6 @@ public class YieldableSelect extends YieldableQueryBase {
                 select.resultCache.setResult(queryOperator.getLocalResult());
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             }
-        }
-    }
-
-    private class OltpOperatorFactory extends OperatorFactoryBase {
-
-        public OltpOperatorFactory() {
-            super("oltp");
-        }
-
-        @Override
-        public Operator createOperator(Select select) {
-            return createQueryOperator();
         }
     }
 

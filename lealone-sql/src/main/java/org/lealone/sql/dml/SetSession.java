@@ -67,6 +67,12 @@ public class SetSession extends SetStatement {
         case EXPRESSION_COMPILE_THRESHOLD:
             session.setExpressionCompileThreshold(getIntValue());
             break;
+        case OLAP_OPERATOR_FACTORY_NAME:
+            session.setOlapOperatorFactoryName(getStringValue());
+            break;
+        case OLAP_THRESHOLD:
+            session.setOlapThreshold(getIntValue());
+            break;
         default:
             DbException.throwInternalError("unknown setting type: " + setting);
         }

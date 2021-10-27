@@ -1916,4 +1916,24 @@ public class ServerSession extends SessionBase {
     public void setExpressionCompileThreshold(int expressionCompileThreshold) {
         this.expressionCompileThreshold = expressionCompileThreshold;
     }
+
+    private String olapOperatorFactoryName;
+
+    public String getOlapOperatorFactoryName() {
+        return olapOperatorFactoryName;
+    }
+
+    public void setOlapOperatorFactoryName(String olapOperatorFactoryName) {
+        this.olapOperatorFactoryName = olapOperatorFactoryName;
+    }
+
+    private int olapThreshold;
+
+    public int getOlapThreshold() {
+        return olapThreshold;
+    }
+
+    public void setOlapThreshold(int olapThreshold) {
+        this.olapThreshold = olapThreshold;
+    }
 }
