@@ -1,7 +1,7 @@
 
 ### Lealone 是什么
 
-* 是一个兼具 RDBMS、NoSQL 优点的面向 [OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing) 场景的异步化 NewSQL 单机与分布式关系数据库
+* 是一个兼具 RDBMS、NoSQL 优点的面向 OLTP/OLAP 场景的异步化 NewSQL 单机与分布式关系数据库
 
 
 ### Lealone 有哪些特性
@@ -30,7 +30,7 @@
 
 * 支持混合运行模式，包括4种模式: 嵌入式、Client/Server 模式、复制模式、Sharding 模式
 
-* 支持不停机快速手动或自动转换运行模式 (Client/Server模式 -> 复制模式 -> Sharding 模式)
+* 支持不停机快速手动或自动转换运行模式: Client/Server 模式 -> 复制模式 -> Sharding 模式
 
 * 支持通过 CREATE SERVICE 创建可托管的后端服务
 
@@ -69,15 +69,11 @@
 * [Lealone ORM 框架快速入门](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/Lealone%20ORM%E6%A1%86%E6%9E%B6%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)
 
 
-### Lealone Bats
+### Lealone xSQL
 
-* 面向单机与分布式 OLTP/OLAP 场景的可暂停的渐进式 SQL 引擎
+* 使用 MySQL 或 PostgreSQL 的协议和 SQL 语法访问 Lealone 数据库
 
-* 采用 MPP 架构、支持 SQL 编译和向量化执行
-
-* 兼容 MySQL 或 PostgreSQL 的协议和 SQL 语法
-
-* [更多细节...](https://github.com/lealone/Bats)
+* [更多细节...](https://github.com/lealone/Lealone-xSQL)
 
 
 ### Lealone Plugins
