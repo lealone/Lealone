@@ -5,7 +5,6 @@
  */
 package org.lealone.sql.query;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -47,13 +46,7 @@ class QGroup extends QOperator {
                 // 避免在ExpressionColumn.getValue中取到旧值
                 // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
                 select.currentGroup = null;
-                Value[] keyValues = new Value[select.groupIndex.length];
-                // update group
-                for (int i = 0; i < select.groupIndex.length; i++) {
-                    int idx = select.groupIndex[i];
-                    Expression expr = select.expressions.get(idx);
-                    keyValues[i] = expr.getValue(session);
-                }
+                Value[] keyValues = getKeyValues(select);
                 Value key = ValueArray.get(keyValues);
                 HashMap<Expression, Object> values = groups.get(key);
                 if (values == null) {
@@ -75,8 +68,7 @@ class QGroup extends QOperator {
             if (yield)
                 return;
         }
-        ArrayList<Value> keys = groups.keys();
-        for (Value v : keys) {
+        for (Value v : groups.keys()) {
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);
             Value[] keyValues = key.getList();
@@ -85,10 +77,20 @@ class QGroup extends QOperator {
         loopEnd = true;
     }
 
+    static Value[] getKeyValues(Select select) {
+        Value[] keyValues = new Value[select.groupIndex.length];
+        for (int i = 0; i < select.groupIndex.length; i++) {
+            int idx = select.groupIndex[i];
+            Expression expr = select.expressions.get(idx);
+            keyValues[i] = expr.getValue(select.getSession());
+        }
+        return keyValues;
+    }
+
     static void addGroupRow(Select select, Value[] keyValues, int columnCount, ResultTarget result) {
         Value[] row = new Value[columnCount];
-        for (int j = 0; select.groupIndex != null && j < select.groupIndex.length; j++) {
-            row[select.groupIndex[j]] = keyValues[j];
+        for (int i = 0; select.groupIndex != null && i < select.groupIndex.length; i++) {
+            row[select.groupIndex[i]] = keyValues[i];
         }
         for (int i = 0; i < columnCount; i++) {
             if (select.groupByExpression != null && select.groupByExpression[i]) {

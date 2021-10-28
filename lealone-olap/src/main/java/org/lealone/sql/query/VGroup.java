@@ -54,13 +54,7 @@ class VGroup extends VOperator {
                 // 避免在ExpressionColumn.getValue中取到旧值
                 // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
                 select.currentGroup = null;
-                Value[] keyValues = new Value[select.groupIndex.length];
-                // update group
-                for (int i = 0; i < select.groupIndex.length; i++) {
-                    int idx = select.groupIndex[i];
-                    Expression expr = select.expressions.get(idx);
-                    keyValues[i] = expr.getValue(session);
-                }
+                Value[] keyValues = QGroup.getKeyValues(select);
                 Value key = ValueArray.get(keyValues);
                 HashMap<Expression, Object> values = groups.get(key);
                 batch = batchMap.get(key);
@@ -83,7 +77,6 @@ class VGroup extends VOperator {
             if (yield)
                 return;
         }
-
         for (Value v : groups.keys()) {
             batch = batchMap.get(v);
             if (!batch.isEmpty()) {

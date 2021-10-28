@@ -38,14 +38,7 @@ class VGroupSorted extends VOperator {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
                 rowCount++;
-                Value[] keyValues = new Value[select.groupIndex.length];
-                // update group
-                for (int i = 0; i < select.groupIndex.length; i++) {
-                    int idx = select.groupIndex[i];
-                    Expression expr = select.expressions.get(idx);
-                    keyValues[i] = expr.getValue(session);
-                }
-
+                Value[] keyValues = QGroup.getKeyValues(select);
                 if (previousKeyValues == null) {
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
