@@ -24,6 +24,10 @@ class QGroup extends QOperator {
         super(select);
     }
 
+    public ValueHashMap<HashMap<Expression, Object>> getGroups() {
+        return groups;
+    }
+
     @Override
     public void start() {
         super.start();

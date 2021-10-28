@@ -6,28 +6,40 @@
 package org.lealone.sql.query;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
+import org.lealone.db.result.Row;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
+import org.lealone.sql.operator.Operator;
 
 // 只处理group by，且group by的字段没有索引
 class VGroup extends VOperator {
 
     private ValueHashMap<HashMap<Expression, Object>> groups;
+    private ValueHashMap<ArrayList<Row>> batchMap;
 
     VGroup(Select select) {
         super(select);
     }
 
     @Override
+    public void copyStatus(Operator old) {
+        super.copyStatus(old);
+        if (old instanceof QGroup) {
+            QGroup q = (QGroup) old;
+            groups = q.getGroups();
+        }
+    }
+
+    @Override
     public void start() {
         super.start();
         groups = ValueHashMap.newInstance();
+        batchMap = ValueHashMap.newInstance();
         select.currentGroup = null;
     }
 
@@ -51,17 +63,18 @@ class VGroup extends VOperator {
                 }
                 Value key = ValueArray.get(keyValues);
                 HashMap<Expression, Object> values = groups.get(key);
+                batch = batchMap.get(key);
                 if (values == null) {
                     values = new HashMap<Expression, Object>();
                     groups.put(key, values);
                 }
-                select.currentGroup = values;
-                select.currentGroupRowId++;
-                for (int i = 0; i < columnCount; i++) {
-                    if (select.groupByExpression == null || !select.groupByExpression[i]) {
-                        Expression expr = select.expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
+                if (batch == null) {
+                    batch = new ArrayList<>();
+                    batchMap.put(key, batch);
+                }
+                batch.add(select.topTableFilter.get());
+                if (batch.size() > 512) {
+                    updateVectorizedAggregate(values);
                 }
                 if (sampleSize > 0 && rowCount >= sampleSize) {
                     break;
@@ -70,8 +83,14 @@ class VGroup extends VOperator {
             if (yield)
                 return;
         }
-        ArrayList<Value> keys = groups.keys();
-        for (Value v : keys) {
+
+        for (Value v : groups.keys()) {
+            batch = batchMap.get(v);
+            if (!batch.isEmpty()) {
+                HashMap<Expression, Object> values = groups.get(v);
+                updateVectorizedAggregate(values);
+            }
+
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);
             Value[] keyValues = key.getList();
@@ -86,30 +105,25 @@ class VGroup extends VOperator {
                 Expression expr = select.expressions.get(j);
                 row[j] = expr.getValue(session);
             }
-            if (isHavingNullOrFalse(row, select.havingIndex)) {
+            if (QGroup.isHavingNullOrFalse(row, select.havingIndex)) {
                 continue;
             }
-            row = toResultRow(row, columnCount, select.resultColumnCount);
+            row = QGroup.toResultRow(row, columnCount, select.resultColumnCount);
             result.addRow(row);
         }
         loopEnd = true;
     }
 
-    static boolean isHavingNullOrFalse(Value[] row, int havingIndex) {
-        if (havingIndex >= 0) {
-            Value v = row[havingIndex];
-            if (v == ValueNull.INSTANCE)
-                return true;
-            return !v.getBoolean();
+    private void updateVectorizedAggregate(HashMap<Expression, Object> values) {
+        select.currentGroup = values;
+        select.currentGroupRowId++;
+        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(session, null, batch);
+        for (int i = 0; i < columnCount; i++) {
+            if (select.groupByExpression == null || !select.groupByExpression[i]) {
+                Expression expr = select.expressions.get(i);
+                expr.accept(visitor);
+            }
         }
-        return false;
-    }
-
-    // 不包含having和group by中加入的列
-    static Value[] toResultRow(Value[] row, int columnCount, int resultColumnCount) {
-        if (columnCount == resultColumnCount) {
-            return row;
-        }
-        return Arrays.copyOf(row, resultColumnCount);
+        batch.clear();
     }
 }

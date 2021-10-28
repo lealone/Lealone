@@ -12,6 +12,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
+import org.lealone.sql.expression.aggregate.BuiltInAggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
 import org.lealone.sql.vector.ValueVector;
 
@@ -48,6 +49,7 @@ public class UpdateVectorizedAggregateVisitor extends VoidExpressionVisitor {
 
     @Override
     public Void visitAggregate(Aggregate e) {
+        ((BuiltInAggregate) e).updateVectorizedAggregate(session, bvv, getValueVectorVisitor);
         return null;
     }
 

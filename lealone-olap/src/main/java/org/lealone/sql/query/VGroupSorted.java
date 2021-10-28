@@ -5,12 +5,14 @@
  */
 package org.lealone.sql.query;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 
 // 只处理group by，且group by的字段有对应的索引
 class VGroupSorted extends VOperator {
@@ -29,6 +31,7 @@ class VGroupSorted extends VOperator {
 
     @Override
     public void run() {
+        batch = new ArrayList<>();
         while (select.topTableFilter.next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
@@ -47,26 +50,33 @@ class VGroupSorted extends VOperator {
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 } else if (!Arrays.equals(previousKeyValues, keyValues)) {
+                    updateVectorizedAggregate();
                     addGroupSortedRow(previousKeyValues, columnCount, result);
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 }
-                select.currentGroupRowId++;
-
-                for (int i = 0; i < columnCount; i++) {
-                    if (!select.groupByExpression[i]) {
-                        Expression expr = select.expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
-                }
+                batch.add(select.topTableFilter.get());
                 if (yield)
                     return;
             }
         }
-        if (previousKeyValues != null) {
+        if (previousKeyValues != null && !batch.isEmpty()) {
+            updateVectorizedAggregate();
             addGroupSortedRow(previousKeyValues, columnCount, result);
         }
         loopEnd = true;
+    }
+
+    private void updateVectorizedAggregate() {
+        select.currentGroupRowId++;
+        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(session, null, batch);
+        for (int i = 0; i < columnCount; i++) {
+            if (!select.groupByExpression[i]) {
+                Expression expr = select.expressions.get(i);
+                expr.accept(visitor);
+            }
+        }
+        batch.clear();
     }
 
     private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {

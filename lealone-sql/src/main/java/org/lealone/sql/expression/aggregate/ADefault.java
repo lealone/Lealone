@@ -278,7 +278,7 @@ public class ADefault extends BuiltInAggregate {
                 if (value == null) {
                     value = vv.sum(bvv);
                 } else {
-                    value = value.add(vv.sum(bvv));
+                    value = value.add(vv.sum(bvv).convertTo(dataType));
                 }
                 // if (this.vv == null) {
                 // // value = v.convertTo(dataType);
