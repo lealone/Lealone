@@ -44,6 +44,11 @@ public class YieldableSelect extends YieldableQueryBase {
         return super.yieldIfNeeded(rowNumber);
     }
 
+    // 一些像QDistinct这样的Operator无需从oltp转到olap，可以禁用olap
+    public void disableOlap() {
+        queryOperatorChanged = true;
+    }
+
     private void createOlapOperator() {
         String olapOperatorFactoryName = session.getOlapOperatorFactoryName();
         if (olapOperatorFactoryName == null) {
