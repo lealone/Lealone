@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import org.lealone.db.result.ResultTarget;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -79,24 +80,28 @@ class QGroup extends QOperator {
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);
             Value[] keyValues = key.getList();
-            Value[] row = new Value[columnCount];
-            for (int j = 0; select.groupIndex != null && j < select.groupIndex.length; j++) {
-                row[select.groupIndex[j]] = keyValues[j];
-            }
-            for (int j = 0; j < columnCount; j++) {
-                if (select.groupByExpression != null && select.groupByExpression[j]) {
-                    continue;
-                }
-                Expression expr = select.expressions.get(j);
-                row[j] = expr.getValue(session);
-            }
-            if (isHavingNullOrFalse(row, select.havingIndex)) {
-                continue;
-            }
-            row = toResultRow(row, columnCount, select.resultColumnCount);
-            result.addRow(row);
+            addGroupRow(select, keyValues, columnCount, result);
         }
         loopEnd = true;
+    }
+
+    static void addGroupRow(Select select, Value[] keyValues, int columnCount, ResultTarget result) {
+        Value[] row = new Value[columnCount];
+        for (int j = 0; select.groupIndex != null && j < select.groupIndex.length; j++) {
+            row[select.groupIndex[j]] = keyValues[j];
+        }
+        for (int i = 0; i < columnCount; i++) {
+            if (select.groupByExpression != null && select.groupByExpression[i]) {
+                continue;
+            }
+            Expression expr = select.expressions.get(i);
+            row[i] = expr.getValue(select.getSession());
+        }
+        if (isHavingNullOrFalse(row, select.havingIndex)) {
+            return;
+        }
+        row = toResultRow(row, columnCount, select.resultColumnCount);
+        result.addRow(row);
     }
 
     static boolean isHavingNullOrFalse(Value[] row, int havingIndex) {

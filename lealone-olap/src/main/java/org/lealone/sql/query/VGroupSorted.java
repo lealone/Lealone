@@ -80,21 +80,6 @@ class VGroupSorted extends VOperator {
     }
 
     private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
-        Value[] row = new Value[columnCount];
-        for (int i = 0; i < select.groupIndex.length; i++) {
-            row[select.groupIndex[i]] = keyValues[i];
-        }
-        for (int i = 0; i < columnCount; i++) {
-            if (select.groupByExpression[i]) {
-                continue;
-            }
-            Expression expr = select.expressions.get(i);
-            row[i] = expr.getValue(session);
-        }
-        if (QGroup.isHavingNullOrFalse(row, select.havingIndex)) {
-            return;
-        }
-        row = QGroup.toResultRow(row, columnCount, select.resultColumnCount);
-        result.addRow(row);
+        QGroup.addGroupRow(select, keyValues, columnCount, result);
     }
 }

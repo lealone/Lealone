@@ -94,22 +94,7 @@ class VGroup extends VOperator {
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);
             Value[] keyValues = key.getList();
-            Value[] row = new Value[columnCount];
-            for (int j = 0; select.groupIndex != null && j < select.groupIndex.length; j++) {
-                row[select.groupIndex[j]] = keyValues[j];
-            }
-            for (int j = 0; j < columnCount; j++) {
-                if (select.groupByExpression != null && select.groupByExpression[j]) {
-                    continue;
-                }
-                Expression expr = select.expressions.get(j);
-                row[j] = expr.getValue(session);
-            }
-            if (QGroup.isHavingNullOrFalse(row, select.havingIndex)) {
-                continue;
-            }
-            row = QGroup.toResultRow(row, columnCount, select.resultColumnCount);
-            result.addRow(row);
+            QGroup.addGroupRow(select, keyValues, columnCount, result);
         }
         loopEnd = true;
     }
