@@ -30,20 +30,7 @@ public class UpdateVectorizedAggregateVisitor extends VoidExpressionVisitor {
 
     @Override
     public Void visitExpressionColumn(ExpressionColumn e) {
-        // Select select = columnResolver.getSelect();
-        // if (select == null) {
-        // throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, e.getSQL());
-        // }
-        // HashMap<Expression, Object> values = select.getCurrentGroup();
-        // if (values == null) {
-        // // this is a different level (the enclosing query)
-        // return;
-        // }
-        // ValueVector v = (ValueVector) values.get(this);
-        // if (v == null) { // 只取第一条
-        // ValueVector now = columnResolver.getValueVector(e);
-        // values.put(this, now);
-        // }
+        e.updateAggregate(session); // 直接更新单行即可
         return null;
     }
 

@@ -21,17 +21,12 @@ class VFlat extends VOperator {
     public void run() {
         while (nextBatch()) {
             boolean yield = yieldIfNeeded(++loopCount);
-
-            ValueVector conditionValueVector = null;
-            if (select.condition != null) {
-                GetValueVectorVisitor v = new GetValueVectorVisitor(session, null, batch);
-                conditionValueVector = select.condition.accept(v);
-            }
-            GetValueVectorVisitor v = new GetValueVectorVisitor(session, conditionValueVector, batch);
+            ValueVector conditionValueVector = getConditionValueVector();
+            GetValueVectorVisitor visitor = new GetValueVectorVisitor(session, conditionValueVector, batch);
             ValueVector[] rows = new ValueVector[columnCount];
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);
-                rows[i] = expr.accept(v);
+                rows[i] = expr.accept(visitor);
             }
             for (int i = 0, szie = rows[0].size(); i < szie; i++) {
                 Value[] row = new Value[columnCount];
@@ -41,7 +36,7 @@ class VFlat extends VOperator {
                 }
                 result.addRow(row);
             }
-            rowCount += batch.size();
+            rowCount += getBatchSize(conditionValueVector);
             if (canBreakLoop()) {
                 break;
             }

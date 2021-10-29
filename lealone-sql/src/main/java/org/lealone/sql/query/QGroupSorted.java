@@ -20,6 +20,10 @@ class QGroupSorted extends QOperator {
         select.currentGroup = null;
     }
 
+    public Value[] getPreviousKeyValues() {
+        return previousKeyValues;
+    }
+
     @Override
     public void run() {
         while (select.topTableFilter.next()) {

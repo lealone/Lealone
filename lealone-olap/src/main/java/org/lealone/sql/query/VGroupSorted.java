@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import org.lealone.db.value.Value;
+import org.lealone.sql.operator.Operator;
 
 // 只处理group by，且group by的字段有对应的索引
 class VGroupSorted extends VOperator {
@@ -18,7 +19,15 @@ class VGroupSorted extends VOperator {
 
     VGroupSorted(Select select) {
         super(select);
-        select.currentGroup = null;
+    }
+
+    @Override
+    public void copyStatus(Operator old) {
+        super.copyStatus(old);
+        if (old instanceof QGroupSorted) {
+            QGroupSorted q = (QGroupSorted) old;
+            previousKeyValues = q.getPreviousKeyValues();
+        }
     }
 
     @Override

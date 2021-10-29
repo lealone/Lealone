@@ -23,7 +23,7 @@ public class YieldableSelect extends YieldableQueryBase {
     private final ResultTarget target;
     private final int olapThreshold;
     private Operator queryOperator;
-    private boolean queryOperatorChanged;
+    private boolean olapDisabled;
 
     public YieldableSelect(Select select, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
@@ -35,32 +35,37 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     public boolean yieldIfNeeded(int rowNumber) {
-        if (!queryOperatorChanged && olapThreshold > 0 && rowNumber > olapThreshold) {
-            queryOperatorChanged = true;
-            super.yieldIfNeeded(rowNumber);
-            createOlapOperator();
-            return true;
+        if (!olapDisabled && olapThreshold > 0 && rowNumber > olapThreshold) {
+            olapDisabled = true;
+            boolean yield = super.yieldIfNeeded(rowNumber);
+            Operator olapOperator = createOlapOperator();
+            if (olapOperator != null) {
+                queryOperator = olapOperator;
+                yield = true; // olapOperator创建成功后让出执行权
+            }
+            return yield;
         }
         return super.yieldIfNeeded(rowNumber);
     }
 
     // 一些像QDistinct这样的Operator无需从oltp转到olap，可以禁用olap
     public void disableOlap() {
-        queryOperatorChanged = true;
+        olapDisabled = true;
     }
 
-    private void createOlapOperator() {
+    private Operator createOlapOperator() {
+        Operator olapOperator = null;
         String olapOperatorFactoryName = session.getOlapOperatorFactoryName();
         if (olapOperatorFactoryName == null) {
             olapOperatorFactoryName = "olap";
         }
         OperatorFactory operatorFactory = OperatorFactoryManager.getFactory(olapOperatorFactoryName);
         if (operatorFactory != null) {
-            Operator olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
+            olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();
-            olapOperator.copyStatus(this.queryOperator);
-            this.queryOperator = olapOperator;
+            olapOperator.copyStatus(queryOperator);
         }
+        return olapOperator;
     }
 
     @Override

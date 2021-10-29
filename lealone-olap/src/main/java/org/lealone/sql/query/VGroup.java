@@ -23,7 +23,6 @@ class VGroup extends VOperator {
 
     VGroup(Select select) {
         super(select);
-        select.currentGroup = null;
         groups = ValueHashMap.newInstance();
         batchMap = ValueHashMap.newInstance();
     }
@@ -52,7 +51,7 @@ class VGroup extends VOperator {
                     batchMap.put(key, batch);
                 }
                 batch.add(select.topTableFilter.get());
-                if (batch.size() >= 1024) {
+                if (batch.size() >= MAX_BATCH_SIZE) {
                     updateVectorizedAggregate(key);
                 }
                 if (sampleSize > 0 && rowCount >= sampleSize) {

@@ -41,8 +41,24 @@ public class StringVector extends ValueVector {
         }
         case Comparison.EQUAL_NULL_SAFE:
             return null;
-        case Comparison.BIGGER_EQUAL:
-            return null;
+        case Comparison.BIGGER_EQUAL: {
+            if (vv instanceof SingleValueVector) {
+                String[] values1 = this.values;
+                String v = ((SingleValueVector) vv).getValue().getString();
+                boolean[] values = new boolean[values1.length];
+                for (int i = 0; i < values1.length; i++) {
+                    values[i] = values1[i].compareTo(v) >= 0;
+                }
+                return new BooleanVector(values);
+            }
+            String[] values1 = this.values;
+            String[] values2 = ((StringVector) vv).values;
+            boolean[] values = new boolean[values1.length];
+            for (int i = 0; i < values1.length; i++) {
+                values[i] = values1[i].compareTo(values2[i]) >= 0;
+            }
+            return new BooleanVector(values);
+        }
         case Comparison.BIGGER: {
             if (vv instanceof SingleValueVector) {
                 String[] values1 = this.values;
@@ -122,5 +138,21 @@ public class StringVector extends ValueVector {
     @Override
     public Value sum() {
         return null;
+    }
+
+    @Override
+    public ValueVector filter(ValueVector bvv) {
+        int size;
+        if (bvv == null)
+            size = values.length;
+        else
+            size = bvv.trueCount();
+        String[] a = new String[size];
+        int j = 0;
+        for (int i = 0, len = values.length; i < len; i++) {
+            if (bvv == null || bvv.isTrue(i))
+                a[j++] = values[i];
+        }
+        return new StringVector(a);
     }
 }
