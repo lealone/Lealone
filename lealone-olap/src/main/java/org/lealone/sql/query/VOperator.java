@@ -8,6 +8,9 @@ package org.lealone.sql.query;
 import java.util.ArrayList;
 
 import org.lealone.db.result.Row;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
+import org.lealone.sql.expression.evaluator.HotSpotEvaluator;
 import org.lealone.sql.operator.Operator;
 
 public class VOperator extends QOperator {
@@ -16,6 +19,11 @@ public class VOperator extends QOperator {
 
     VOperator(Select select) {
         super(select);
+    }
+
+    @Override
+    ExpressionEvaluator createConditionEvaluator(Expression c) {
+        return new HotSpotEvaluator(session, c);
     }
 
     @Override

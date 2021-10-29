@@ -8,9 +8,7 @@ package org.lealone.sql.query;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import org.lealone.db.result.ResultTarget;
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.Expression;
 
 // 只处理group by，且group by的字段有对应的索引
 class QGroupSorted extends QOperator {
@@ -19,11 +17,6 @@ class QGroupSorted extends QOperator {
 
     QGroupSorted(Select select) {
         super(select);
-    }
-
-    @Override
-    public void start() {
-        super.start();
         select.currentGroup = null;
     }
 
@@ -40,29 +33,19 @@ class QGroupSorted extends QOperator {
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 } else if (!Arrays.equals(previousKeyValues, keyValues)) {
-                    addGroupSortedRow(previousKeyValues, columnCount, result);
+                    QGroup.addGroupRow(select, previousKeyValues, columnCount, result);
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 }
                 select.currentGroupRowId++;
-
-                for (int i = 0; i < columnCount; i++) {
-                    if (!select.groupByExpression[i]) {
-                        Expression expr = select.expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
-                }
+                QGroup.updateAggregate(select, columnCount);
                 if (yield)
                     return;
             }
         }
         if (previousKeyValues != null) {
-            addGroupSortedRow(previousKeyValues, columnCount, result);
+            QGroup.addGroupRow(select, previousKeyValues, columnCount, result);
         }
         loopEnd = true;
-    }
-
-    private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
-        QGroup.addGroupRow(select, keyValues, columnCount, result);
     }
 }

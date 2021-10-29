@@ -18,21 +18,16 @@ import org.lealone.sql.expression.Expression;
 // 只处理group by，且group by的字段没有索引
 class QGroup extends QOperator {
 
-    private ValueHashMap<HashMap<Expression, Object>> groups;
+    private final ValueHashMap<HashMap<Expression, Object>> groups;
 
     QGroup(Select select) {
         super(select);
+        select.currentGroup = null;
+        groups = ValueHashMap.newInstance();
     }
 
     public ValueHashMap<HashMap<Expression, Object>> getGroups() {
         return groups;
-    }
-
-    @Override
-    public void start() {
-        super.start();
-        groups = ValueHashMap.newInstance();
-        select.currentGroup = null;
     }
 
     @Override
@@ -43,24 +38,10 @@ class QGroup extends QOperator {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
                 rowCount++;
-                // 避免在ExpressionColumn.getValue中取到旧值
-                // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                select.currentGroup = null;
-                Value[] keyValues = getKeyValues(select);
-                Value key = ValueArray.get(keyValues);
-                HashMap<Expression, Object> values = groups.get(key);
-                if (values == null) {
-                    values = new HashMap<Expression, Object>();
-                    groups.put(key, values);
-                }
-                select.currentGroup = values;
+                Value key = getKey(select);
+                select.currentGroup = getOrCreateGroup(groups, key);
                 select.currentGroupRowId++;
-                for (int i = 0; i < columnCount; i++) {
-                    if (select.groupByExpression == null || !select.groupByExpression[i]) {
-                        Expression expr = select.expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
-                }
+                updateAggregate(select, columnCount);
                 if (sampleSize > 0 && rowCount >= sampleSize) {
                     break;
                 }
@@ -68,15 +49,19 @@ class QGroup extends QOperator {
             if (yield)
                 return;
         }
-        for (Value v : groups.keys()) {
-            ValueArray key = (ValueArray) v;
-            select.currentGroup = groups.get(key);
-            Value[] keyValues = key.getList();
-            addGroupRow(select, keyValues, columnCount, result);
-        }
+        // 把分组后的记录放到result中
+        addGroupRows(groups, select, columnCount, result);
         loopEnd = true;
     }
 
+    static Value getKey(Select select) {
+        // 避免在ExpressionColumn.getValue中取到旧值
+        // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
+        select.currentGroup = null;
+        return ValueArray.get(getKeyValues(select));
+    }
+
+    // 分组key，包括一到多个字段
     static Value[] getKeyValues(Select select) {
         Value[] keyValues = new Value[select.groupIndex.length];
         for (int i = 0; i < select.groupIndex.length; i++) {
@@ -85,6 +70,25 @@ class QGroup extends QOperator {
             keyValues[i] = expr.getValue(select.getSession());
         }
         return keyValues;
+    }
+
+    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups, Value key) {
+        HashMap<Expression, Object> values = groups.get(key);
+        if (values == null) {
+            values = new HashMap<>();
+            groups.put(key, values);
+        }
+        return values;
+    }
+
+    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select, int columnCount,
+            ResultTarget result) {
+        for (Value v : groups.keys()) {
+            ValueArray key = (ValueArray) v;
+            select.currentGroup = groups.get(key);
+            Value[] keyValues = key.getList();
+            addGroupRow(select, keyValues, columnCount, result);
+        }
     }
 
     static void addGroupRow(Select select, Value[] keyValues, int columnCount, ResultTarget result) {
@@ -106,7 +110,7 @@ class QGroup extends QOperator {
         result.addRow(row);
     }
 
-    static boolean isHavingNullOrFalse(Value[] row, int havingIndex) {
+    private static boolean isHavingNullOrFalse(Value[] row, int havingIndex) {
         if (havingIndex >= 0) {
             Value v = row[havingIndex];
             if (v == ValueNull.INSTANCE)
@@ -122,5 +126,14 @@ class QGroup extends QOperator {
             return row;
         }
         return Arrays.copyOf(row, resultColumnCount);
+    }
+
+    static void updateAggregate(Select select, int columnCount) {
+        for (int i = 0; i < columnCount; i++) {
+            if (select.groupByExpression == null || !select.groupByExpression[i]) {
+                Expression expr = select.expressions.get(i);
+                expr.updateAggregate(select.getSession());
+            }
+        }
     }
 }

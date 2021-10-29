@@ -9,10 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import org.lealone.db.result.ResultTarget;
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 
 // 只处理group by，且group by的字段有对应的索引
 class VGroupSorted extends VOperator {
@@ -21,11 +18,6 @@ class VGroupSorted extends VOperator {
 
     VGroupSorted(Select select) {
         super(select);
-    }
-
-    @Override
-    public void start() {
-        super.start();
         select.currentGroup = null;
     }
 
@@ -43,8 +35,8 @@ class VGroupSorted extends VOperator {
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 } else if (!Arrays.equals(previousKeyValues, keyValues)) {
-                    updateVectorizedAggregate();
-                    addGroupSortedRow(previousKeyValues, columnCount, result);
+                    VGroup.updateVectorizedAggregate(select, columnCount, batch);
+                    QGroup.addGroupRow(select, previousKeyValues, columnCount, result);
                     previousKeyValues = keyValues;
                     select.currentGroup = new HashMap<>();
                 }
@@ -54,25 +46,9 @@ class VGroupSorted extends VOperator {
             }
         }
         if (previousKeyValues != null && !batch.isEmpty()) {
-            updateVectorizedAggregate();
-            addGroupSortedRow(previousKeyValues, columnCount, result);
+            VGroup.updateVectorizedAggregate(select, columnCount, batch);
+            QGroup.addGroupRow(select, previousKeyValues, columnCount, result);
         }
         loopEnd = true;
-    }
-
-    private void updateVectorizedAggregate() {
-        select.currentGroupRowId++;
-        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(session, null, batch);
-        for (int i = 0; i < columnCount; i++) {
-            if (!select.groupByExpression[i]) {
-                Expression expr = select.expressions.get(i);
-                expr.accept(visitor);
-            }
-        }
-        batch.clear();
-    }
-
-    private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
-        QGroup.addGroupRow(select, keyValues, columnCount, result);
     }
 }

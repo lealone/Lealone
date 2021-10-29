@@ -11,7 +11,6 @@ import java.util.HashMap;
 import org.lealone.db.result.Row;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.visitor.UpdateVectorizedAggregateVisitor;
 import org.lealone.sql.operator.Operator;
@@ -24,6 +23,9 @@ class VGroup extends VOperator {
 
     VGroup(Select select) {
         super(select);
+        select.currentGroup = null;
+        groups = ValueHashMap.newInstance();
+        batchMap = ValueHashMap.newInstance();
     }
 
     @Override
@@ -36,14 +38,6 @@ class VGroup extends VOperator {
     }
 
     @Override
-    public void start() {
-        super.start();
-        groups = ValueHashMap.newInstance();
-        batchMap = ValueHashMap.newInstance();
-        select.currentGroup = null;
-    }
-
-    @Override
     public void run() {
         while (select.topTableFilter.next()) {
             boolean yield = yieldIfNeeded(++loopCount);
@@ -51,24 +45,15 @@ class VGroup extends VOperator {
                 if (select.isForUpdate && !select.topTableFilter.lockRow())
                     return; // 锁记录失败
                 rowCount++;
-                // 避免在ExpressionColumn.getValue中取到旧值
-                // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                select.currentGroup = null;
-                Value[] keyValues = QGroup.getKeyValues(select);
-                Value key = ValueArray.get(keyValues);
-                HashMap<Expression, Object> values = groups.get(key);
+                Value key = QGroup.getKey(select);
                 batch = batchMap.get(key);
-                if (values == null) {
-                    values = new HashMap<Expression, Object>();
-                    groups.put(key, values);
-                }
                 if (batch == null) {
                     batch = new ArrayList<>();
                     batchMap.put(key, batch);
                 }
                 batch.add(select.topTableFilter.get());
-                if (batch.size() > 512) {
-                    updateVectorizedAggregate(values);
+                if (batch.size() >= 1024) {
+                    updateVectorizedAggregate(key);
                 }
                 if (sampleSize > 0 && rowCount >= sampleSize) {
                     break;
@@ -77,25 +62,25 @@ class VGroup extends VOperator {
             if (yield)
                 return;
         }
-        for (Value v : groups.keys()) {
-            batch = batchMap.get(v);
+        for (Value key : batchMap.keys()) {
+            batch = batchMap.get(key);
             if (!batch.isEmpty()) {
-                HashMap<Expression, Object> values = groups.get(v);
-                updateVectorizedAggregate(values);
+                updateVectorizedAggregate(key);
             }
-
-            ValueArray key = (ValueArray) v;
-            select.currentGroup = groups.get(key);
-            Value[] keyValues = key.getList();
-            QGroup.addGroupRow(select, keyValues, columnCount, result);
         }
+        QGroup.addGroupRows(groups, select, columnCount, result);
         loopEnd = true;
     }
 
-    private void updateVectorizedAggregate(HashMap<Expression, Object> values) {
-        select.currentGroup = values;
+    private void updateVectorizedAggregate(Value key) {
+        select.currentGroup = QGroup.getOrCreateGroup(groups, key);
+        updateVectorizedAggregate(select, columnCount, batch);
+    }
+
+    static void updateVectorizedAggregate(Select select, int columnCount, ArrayList<Row> batch) {
         select.currentGroupRowId++;
-        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(session, null, batch);
+        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(select.getSession(), null,
+                batch);
         for (int i = 0; i < columnCount; i++) {
             if (select.groupByExpression == null || !select.groupByExpression[i]) {
                 Expression expr = select.expressions.get(i);

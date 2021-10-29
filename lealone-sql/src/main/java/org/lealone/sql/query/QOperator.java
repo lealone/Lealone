@@ -44,8 +44,13 @@ abstract class QOperator implements Operator {
         if (c == null || (c instanceof ValueExpression && c.getValue(session).getBoolean())) {
             conditionEvaluator = new AlwaysTrueEvaluator();
         } else {
-            conditionEvaluator = new ExpressionInterpreter(session, c);
+            conditionEvaluator = createConditionEvaluator(c);
         }
+    }
+
+    // 允许子类覆盖
+    ExpressionEvaluator createConditionEvaluator(Expression c) {
+        return new ExpressionInterpreter(session, c);
     }
 
     boolean yieldIfNeeded(int rowNumber) {
