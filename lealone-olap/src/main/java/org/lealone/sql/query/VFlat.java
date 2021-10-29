@@ -22,7 +22,8 @@ class VFlat extends VOperator {
         while (nextBatch()) {
             boolean yield = yieldIfNeeded(++loopCount);
             ValueVector conditionValueVector = getConditionValueVector();
-            GetValueVectorVisitor visitor = new GetValueVectorVisitor(session, conditionValueVector, batch);
+            GetValueVectorVisitor visitor = new GetValueVectorVisitor(select.topTableFilter, session,
+                    conditionValueVector, batch);
             ValueVector[] rows = new ValueVector[columnCount];
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);

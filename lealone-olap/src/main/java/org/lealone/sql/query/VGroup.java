@@ -78,8 +78,8 @@ class VGroup extends VOperator {
 
     static void updateVectorizedAggregate(Select select, int columnCount, ArrayList<Row> batch) {
         select.currentGroupRowId++;
-        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(select.getSession(), null,
-                batch);
+        UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(select.topTableFilter,
+                select.getSession(), null, batch);
         for (int i = 0; i < columnCount; i++) {
             if (select.groupByExpression == null || !select.groupByExpression[i]) {
                 Expression expr = select.expressions.get(i);

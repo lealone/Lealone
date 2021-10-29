@@ -27,8 +27,8 @@ class VAggregate extends VOperator {
             boolean yield = yieldIfNeeded(++loopCount);
             select.topTableFilter.setBatchSize(batch.size());
             ValueVector conditionValueVector = getConditionValueVector();
-            UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(session,
-                    conditionValueVector, batch);
+            UpdateVectorizedAggregateVisitor visitor = new UpdateVectorizedAggregateVisitor(select.topTableFilter,
+                    session, conditionValueVector, batch);
             select.currentGroupRowId++;
             for (int i = 0; i < columnCount; i++) {
                 Expression expr = select.expressions.get(i);

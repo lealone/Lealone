@@ -14,18 +14,20 @@ import org.lealone.sql.expression.aggregate.AGroupConcat;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.expression.aggregate.BuiltInAggregate;
 import org.lealone.sql.expression.aggregate.JavaAggregate;
+import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.vector.ValueVector;
 
 public class UpdateVectorizedAggregateVisitor extends VoidExpressionVisitor {
 
-    private ServerSession session;
-    private ValueVector bvv;
-    private GetValueVectorVisitor getValueVectorVisitor;
+    private final ServerSession session;
+    private final ValueVector bvv;
+    private final GetValueVectorVisitor getValueVectorVisitor;
 
-    public UpdateVectorizedAggregateVisitor(ServerSession session, ValueVector bvv, ArrayList<Row> batch) {
+    public UpdateVectorizedAggregateVisitor(TableFilter tableFilter, ServerSession session, ValueVector bvv,
+            ArrayList<Row> batch) {
         this.session = session;
         this.bvv = bvv;
-        this.getValueVectorVisitor = new GetValueVectorVisitor(session, bvv, batch);
+        this.getValueVectorVisitor = new GetValueVectorVisitor(tableFilter, session, bvv, batch);
     }
 
     @Override

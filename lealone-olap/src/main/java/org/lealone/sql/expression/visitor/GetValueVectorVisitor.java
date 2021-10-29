@@ -12,6 +12,7 @@ import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -38,9 +39,11 @@ import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.expression.subquery.SubQuery;
+import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.query.SelectUnion;
 import org.lealone.sql.vector.BooleanVector;
+import org.lealone.sql.vector.DefaultValueVector;
 import org.lealone.sql.vector.DefaultValueVectorFactory;
 import org.lealone.sql.vector.SingleValueVector;
 import org.lealone.sql.vector.ValueVector;
@@ -49,16 +52,19 @@ import org.lealone.sql.vector.ValueVectorFactory;
 
 public class GetValueVectorVisitor extends ExpressionVisitorBase<ValueVector> {
 
-    private ServerSession session;
-    private ValueVector bvv;
-    private ArrayList<Row> batch;
+    private final TableFilter tableFilter;
+    private final ServerSession session;
+    private final ValueVector bvv;
+    private final ArrayList<Row> batch;
     private final ValueVectorFactory valueVectorFactory;
 
-    public GetValueVectorVisitor(ServerSession session, ValueVector bvv, ArrayList<Row> batch) {
+    public GetValueVectorVisitor(TableFilter tableFilter, ServerSession session, ValueVector bvv,
+            ArrayList<Row> batch) {
+        this.tableFilter = tableFilter;
         this.session = session;
         this.bvv = bvv;
         this.batch = batch;
-        valueVectorFactory = createValueVectorFactory(session);
+        this.valueVectorFactory = createValueVectorFactory(session);
     }
 
     private static ValueVectorFactory createValueVectorFactory(ServerSession session) {
@@ -100,11 +106,6 @@ public class GetValueVectorVisitor extends ExpressionVisitorBase<ValueVector> {
 
     @Override
     public ValueVector visitJavaAggregate(JavaAggregate e) {
-        return getSingleValueVector(e);
-    }
-
-    @Override
-    public ValueVector visitExpression(Expression e) {
         return getSingleValueVector(e);
     }
 
@@ -195,8 +196,7 @@ public class GetValueVectorVisitor extends ExpressionVisitorBase<ValueVector> {
 
     @Override
     public ValueVector visitCompareLike(CompareLike e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
@@ -223,32 +223,27 @@ public class GetValueVectorVisitor extends ExpressionVisitorBase<ValueVector> {
 
     @Override
     public ValueVector visitConditionAndOr(ConditionAndOr e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitConditionExists(ConditionExists e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitConditionIn(ConditionIn e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitConditionInConstantSet(ConditionInConstantSet e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitConditionInSelect(ConditionInSelect e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
@@ -258,31 +253,46 @@ public class GetValueVectorVisitor extends ExpressionVisitorBase<ValueVector> {
 
     @Override
     public ValueVector visitFunction(Function e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitJavaFunction(JavaFunction e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitTableFunction(TableFunction e) {
-        // TODO Auto-generated method stub
-        return null;
+        return visitExpression(e);
     }
 
     @Override
     public ValueVector visitSelect(Select s) {
-        // TODO Auto-generated method stub
-        return null;
+        throw DbException.getInternalError(); // TODO
     }
 
     @Override
     public ValueVector visitSelectUnion(SelectUnion su) {
-        // TODO Auto-generated method stub
-        return null;
+        throw DbException.getInternalError(); // TODO
+    }
+
+    @Override
+    public ValueVector visitExpression(Expression e) { // 回退到逐行遍历模式
+        Row old = tableFilter.get();
+        try {
+            int size = batch.size();
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                tableFilter.set(batch.get(i));
+                values[i] = e.getValue(session);
+            }
+            ValueVector vv = new DefaultValueVector(values);
+            if (bvv != null) {
+                vv = vv.filter(bvv);
+            }
+            return vv;
+        } finally {
+            tableFilter.set(old);
+        }
     }
 }

@@ -60,7 +60,7 @@ public class VOperator extends QOperator {
     protected ValueVector getConditionValueVector() {
         ValueVector conditionValueVector = null;
         if (select.condition != null) {
-            GetValueVectorVisitor visitor = new GetValueVectorVisitor(session, null, batch);
+            GetValueVectorVisitor visitor = new GetValueVectorVisitor(select.topTableFilter, session, null, batch);
             conditionValueVector = select.condition.accept(visitor);
         }
         return conditionValueVector;
