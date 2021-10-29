@@ -17,6 +17,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Properties;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.exceptions.DbException;
@@ -113,11 +114,11 @@ public class Shell {
 
     private void showUsage() {
         println("Options are case sensitive. Supported options are:");
-        println("[-help] or [-?]         Print the list of options");
-        println("[-url \"<url>\"]          The database URL (jdbc:lealone:...)");
-        println("[-user <user>]          The user name");
-        println("[-password <pwd>]       The password");
-        println("[-sql \"<statements>\"]   Execute the SQL statements and exit");
+        println("[-help] or [-?]           Print the list of options");
+        println("[-url \"<url>\"]            The database URL (jdbc:lealone:...)");
+        println("[-user <user>]            The user name");
+        println("[-password <pwd>]         The password");
+        println("[-sql \"<statements>\"]     Execute the SQL statements and exit");
         println("");
         println("If special characters don't work as expected, ");
         println("you may need to use -Dfile.encoding=UTF-8 (Mac OS X) or CP850 (Windows).");
@@ -126,13 +127,13 @@ public class Shell {
 
     private void showHelp() {
         println("Commands are case insensitive; SQL statements end with ';'");
-        println("help or ?      Display this help");
-        println("list           Toggle result list / stack trace mode");
-        println("maxwidth       Set maximum column width (default is 100)");
-        println("autocommit     Enable or disable autocommit");
-        println("history        Show the last 20 statements");
-        println("reconnect      Reconnect the database");
-        println("quit or exit   Close the connection and exit");
+        println("help or ?          Display this help");
+        println("list               Toggle result list / stack trace mode");
+        println("maxwidth or md     Set maximum column width (default is 100)");
+        println("autocommit or ac   Enable or disable autocommit");
+        println("history or h       Show the last 20 statements");
+        println("reconnect or rc    Reconnect the database");
+        println("quit or exit       Close the connection and exit");
         println("");
     }
 
@@ -179,7 +180,7 @@ public class Shell {
                 } else if ("list".equals(lower)) {
                     listMode = !listMode;
                     println("Result list mode is now " + (listMode ? "on" : "off"));
-                } else if ("history".equals(lower)) {
+                } else if ("history".equals(lower) || "h".equals(lower)) {
                     for (int i = 0, size = history.size(); i < size; i++) {
                         String s = history.get(i);
                         s = s.replace('\n', ' ').replace('\r', ' ');
@@ -190,8 +191,11 @@ public class Shell {
                     } else {
                         println("No history");
                     }
-                } else if (lower.startsWith("autocommit")) {
-                    lower = lower.substring("autocommit".length()).trim();
+                } else if (lower.startsWith("autocommit") || lower.startsWith("ac")) {
+                    if (lower.startsWith("ac"))
+                        lower = lower.substring("ac".length()).trim();
+                    else
+                        lower = lower.substring("autocommit".length()).trim();
                     if ("true".equals(lower)) {
                         conn.setAutoCommit(true);
                     } else if ("false".equals(lower)) {
@@ -200,15 +204,18 @@ public class Shell {
                         println("Usage: autocommit [true|false]");
                     }
                     println("Autocommit is now " + conn.getAutoCommit());
-                } else if (lower.startsWith("maxwidth")) {
-                    lower = lower.substring("maxwidth".length()).trim();
+                } else if (lower.startsWith("maxwidth") || lower.startsWith("md")) {
+                    if (lower.startsWith("md"))
+                        lower = lower.substring("md".length()).trim();
+                    else
+                        lower = lower.substring("maxwidth".length()).trim();
                     try {
                         maxColumnSize = Integer.parseInt(lower);
                     } catch (NumberFormatException e) {
                         println("Usage: maxwidth <integer value>");
                     }
                     println("Maximum column width is now " + maxColumnSize);
-                } else if (lower.startsWith("reconnect")) {
+                } else if ("reconnect".equals(lower) || "rc".equals(lower)) {
                     reconnect();
                 } else {
                     boolean addToHistory = true;
@@ -513,8 +520,7 @@ public class Shell {
 
     private static Connection getConnection(String[] args, String url, String user, String password)
             throws SQLException {
-        java.util.Properties info = new java.util.Properties();
-
+        Properties info = new Properties();
         if (user != null) {
             info.put("user", user);
         }
