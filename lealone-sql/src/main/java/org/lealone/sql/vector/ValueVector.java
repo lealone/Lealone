@@ -8,7 +8,7 @@ package org.lealone.sql.vector;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 
-public class ValueVector {
+public abstract class ValueVector {
 
     public BooleanVector isNull() {
         return new BooleanVector();

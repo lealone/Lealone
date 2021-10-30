@@ -39,8 +39,23 @@ public class DefaultValueVector extends ValueVector {
         }
         case Comparison.EQUAL_NULL_SAFE:
             return null;
-        case Comparison.BIGGER_EQUAL:
-            return null;
+        case Comparison.BIGGER_EQUAL: {
+            if (vv instanceof SingleValueVector) {
+                Value[] values1 = this.values;
+                Value v = ((SingleValueVector) vv).getValue();
+                boolean[] values = new boolean[values1.length];
+                for (int i = 0; i < values1.length; i++) {
+                    values[i] = values1[i].compareTo(v) >= 0;
+                }
+                return new BooleanVector(values);
+            }
+            Value[] values1 = this.values;
+            boolean[] values = new boolean[values1.length];
+            for (int i = 0; i < values1.length; i++) {
+                values[i] = values1[i].compareTo(vv.getValue(i)) >= 0;
+            }
+            return new BooleanVector(values);
+        }
         case Comparison.BIGGER: {
             if (vv instanceof SingleValueVector) {
                 Value[] values1 = this.values;
@@ -64,6 +79,11 @@ public class DefaultValueVector extends ValueVector {
         default:
             throw DbException.getInternalError("compareType=" + compareType);
         }
+    }
+
+    @Override
+    public Value getValue(int index) {
+        return values[index];
     }
 
     @Override

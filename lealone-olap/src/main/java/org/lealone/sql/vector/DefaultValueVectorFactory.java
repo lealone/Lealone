@@ -36,7 +36,18 @@ public class DefaultValueVectorFactory implements ValueVectorFactory {
             }
             return new StringVector(values);
         }
+        default:
+            return createDefaultValueVector(batch, column);
         }
-        return new ValueVector();
+    }
+
+    public static DefaultValueVector createDefaultValueVector(List<Row> batch, Column column) {
+        int size = batch.size();
+        int columnId = column.getColumnId();
+        Value[] values = new Value[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = batch.get(i).getValue(columnId);
+        }
+        return new DefaultValueVector(values);
     }
 }
