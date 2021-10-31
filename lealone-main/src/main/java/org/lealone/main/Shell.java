@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.exceptions.DbException;
@@ -329,18 +330,20 @@ public class Shell {
         if (sql.trim().isEmpty()) {
             return;
         }
-        long time = System.currentTimeMillis();
+        long time = System.nanoTime();
         try {
             ResultSet rs = null;
             try {
                 if (stat.execute(sql)) {
                     rs = stat.getResultSet();
+                    time = System.nanoTime() - time;
                     int rowCount = printResult(rs, listMode);
-                    time = System.currentTimeMillis() - time;
+                    time = TimeUnit.NANOSECONDS.toMillis(time);
                     println("(" + rowCount + (rowCount == 1 ? " row, " : " rows, ") + time + " ms)");
                 } else {
                     int updateCount = stat.getUpdateCount();
-                    time = System.currentTimeMillis() - time;
+                    time = System.nanoTime() - time;
+                    time = TimeUnit.NANOSECONDS.toMillis(time);
                     println("(Update count: " + updateCount + ", " + time + " ms)");
                 }
             } finally {
