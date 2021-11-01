@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
@@ -45,25 +46,34 @@ public class Shell {
     private final PrintStream err = System.err;
     private final InputStream in = System.in;
     private final PrintStream out = System.out;
-    private BufferedReader reader;
+    private final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+    private final ArrayList<String> history = new ArrayList<>();
+    private final String[] args;
     private Connection conn;
     private Statement stat;
     private boolean listMode;
     private int maxColumnSize = 100;
-    private final ArrayList<String> history = new ArrayList<>();
-
-    private String[] args;
     private String url, user, password;
 
-    public static void main(String[] args) throws SQLException {
-        new Shell().run(args);
+    public static void main(String[] args) {
+        Shell shell = new Shell(args);
+        try {
+            shell.run();
+        } catch (Exception e) {
+            shell.printException(e);
+        } finally {
+            shell.close();
+        }
     }
 
-    private void run(String[] args) throws SQLException {
+    private Shell(String[] args) {
+        this.args = args;
+    }
+
+    private void run() throws Exception {
         String sql = null;
         for (int i = 0; args != null && i < args.length; i++) {
-            String arg = args[i];
-            arg = arg.trim();
+            String arg = args[i].trim();
             if (arg.isEmpty())
                 continue;
             if (arg.equals("-url")) {
@@ -84,33 +94,89 @@ public class Shell {
                 return;
             }
         }
-        if (url != null) {
-            conn = getConnection(args, url, user, password);
-            stat = conn.createStatement();
+        showWelcome();
+        if (url == null) {
+            readConnectionArgs();
         }
-        if (sql == null) {
-            promptLoop(args);
+        connect();
+        if (sql != null) {
+            executeSqlScript(sql);
         } else {
-            ScriptReader r = new ScriptReader(new StringReader(sql));
-            while (true) {
-                String s = r.readStatement();
-                if (s == null) {
-                    break;
-                }
-                execute(s);
-            }
-            if (conn != null) {
-                conn.close();
-            }
+            promptLoop();
         }
     }
 
-    private void reconnect() throws SQLException {
+    private void readConnectionArgs() throws Exception {
+        StringBuilder buff = new StringBuilder(100);
+        buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//127.0.0.1:")
+                .append(Constants.DEFAULT_TCP_PORT).append('/').append(Constants.PROJECT_NAME);
+        url = buff.toString();
+        println("[Enter]   " + url);
+        print("URL       ");
+        url = readLine(url).trim();
+
+        user = "root";
+        println("[Enter]   " + user);
+        print("User      ");
+        user = readLine(user);
+
+        println("[Enter]   Hide");
+        password = readPassword();
+    }
+
+    private void connect() throws Exception {
+        conn = getConnection();
+        stat = conn.createStatement();
+    }
+
+    private Connection getConnection() throws SQLException {
+        Properties info = new Properties();
+        if (user != null) {
+            info.put("user", user);
+        }
+        if (password != null) {
+            info.put("password", password);
+        }
+        info.put(ConnectionSetting.NETWORK_TIMEOUT.name(), "-1");
+        ConnectionInfo ci = new ConnectionInfo(url, info);
+        if (ci.isEmbedded()) {
+            Lealone.embed(args);
+        }
+        return new JdbcConnection(ci);
+    }
+
+    private void reconnect() throws Exception {
+        closeJdbc();
+        connect();
+        println("Reconnected");
+    }
+
+    private void close() {
+        closeJdbc();
+        IOUtils.closeSilently(reader);
+        println("Connection closed");
+    }
+
+    private void closeJdbc() {
         JdbcUtils.closeSilently(stat);
         JdbcUtils.closeSilently(conn);
-        conn = getConnection(args, url, user, password);
-        stat = conn.createStatement();
-        println("Reconnected");
+    }
+
+    private void executeSqlScript(String sql) throws SQLException {
+        ScriptReader r = new ScriptReader(new StringReader(sql));
+        while (true) {
+            String s = r.readStatement();
+            if (s == null) {
+                break;
+            }
+            execute(s);
+        }
+    }
+
+    private void showWelcome() {
+        println();
+        println("Welcome to Lealone Shell " + Constants.getVersion());
+        println("Exit with Ctrl+C");
     }
 
     private void showUsage() {
@@ -120,10 +186,10 @@ public class Shell {
         println("[-user <user>]            The user name");
         println("[-password <pwd>]         The password");
         println("[-sql \"<statements>\"]     Execute the SQL statements and exit");
-        println("");
+        println();
         println("If special characters don't work as expected, ");
         println("you may need to use -Dfile.encoding=UTF-8 (Mac OS X) or CP850 (Windows).");
-        println("");
+        println();
     }
 
     private void showHelp() {
@@ -135,26 +201,14 @@ public class Shell {
         println("history or h       Show the last 20 statements");
         println("reconnect or rc    Reconnect the database");
         println("quit or exit       Close the connection and exit");
-        println("");
+        println();
     }
 
-    private void promptLoop(String[] args) {
-        println("");
-        println("Welcome to Lealone Shell " + Constants.getVersion());
-        println("Exit with Ctrl+C");
-        if (conn != null) {
-            showHelp();
-        }
+    private void promptLoop() {
+        showHelp();
         String statement = null;
-        if (reader == null) {
-            reader = new BufferedReader(new InputStreamReader(in));
-        }
         while (true) {
             try {
-                if (conn == null) {
-                    connect(args);
-                    showHelp();
-                }
                 if (statement == null) {
                     print("sql> ");
                 } else {
@@ -255,46 +309,24 @@ public class Shell {
                 println(e.getMessage());
                 break;
             } catch (Exception e) {
-                println("Exception: " + e.toString());
-                e.printStackTrace(err);
+                printException(e);
                 break;
-            }
-        }
-        if (conn != null) {
-            try {
-                conn.close();
-                println("Connection closed");
-            } catch (SQLException e) {
-                println("SQL Exception: " + e.getMessage());
-                e.printStackTrace(err);
             }
         }
     }
 
-    private void connect(String[] args) throws IOException, SQLException {
-        StringBuilder buff = new StringBuilder(100);
-        buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//").append("127.0.0.1").append(':')
-                .append(Constants.DEFAULT_TCP_PORT).append('/').append(Constants.PROJECT_NAME);
-        String url = buff.toString();
-        println("[Enter]   " + url);
-        print("URL       ");
-        url = readLine(url).trim();
-
-        String user = "root";
-        println("[Enter]   " + user);
-        print("User      ");
-        user = readLine(user);
-
-        println("[Enter]   Hide");
-        String password = readPassword();
-        conn = getConnection(args, url, user, password);
-        stat = conn.createStatement();
-        println("Connected");
+    private void printException(Exception e) {
+        println("Exception: " + e.toString());
+        e.printStackTrace(err);
     }
 
     private void print(String s) {
         out.print(s);
         out.flush();
+    }
+
+    private void println() {
+        println("");
     }
 
     private void println(String s) {
@@ -327,24 +359,30 @@ public class Shell {
     }
 
     private void execute(String sql) {
-        if (sql.trim().isEmpty()) {
+        sql = sql.trim();
+        if (sql.isEmpty()) {
             return;
         }
         long time = System.nanoTime();
         try {
             ResultSet rs = null;
             try {
-                if (stat.execute(sql)) {
-                    rs = stat.getResultSet();
-                    time = System.nanoTime() - time;
-                    int rowCount = printResult(rs, listMode);
-                    time = TimeUnit.NANOSECONDS.toMillis(time);
-                    println("(" + rowCount + (rowCount == 1 ? " row, " : " rows, ") + time + " ms)");
+                if (sql.startsWith("select")) {
+                    rs = stat.executeQuery(sql);
+                    printQueryResult(rs, listMode, time);
+                } else if (sql.startsWith("insert") //
+                        || sql.startsWith("update") //
+                        || sql.startsWith("delete")) {
+                    int updateCount = stat.executeUpdate(sql);
+                    printUpdateResult(updateCount, time);
                 } else {
-                    int updateCount = stat.getUpdateCount();
-                    time = System.nanoTime() - time;
-                    time = TimeUnit.NANOSECONDS.toMillis(time);
-                    println("(Update count: " + updateCount + ", " + time + " ms)");
+                    if (stat.execute(sql)) {
+                        rs = stat.getResultSet();
+                        printQueryResult(rs, listMode, time);
+                    } else {
+                        int updateCount = stat.getUpdateCount();
+                        printUpdateResult(updateCount, time);
+                    }
                 }
             } finally {
                 JdbcUtils.closeSilently(rs);
@@ -354,10 +392,21 @@ public class Shell {
             if (listMode) {
                 e.printStackTrace(err);
             }
-            println("");
-            return;
         }
-        out.println();
+        println();
+    }
+
+    private void printQueryResult(ResultSet rs, boolean asList, long time) throws SQLException {
+        time = System.nanoTime() - time;
+        int rowCount = printResult(rs, listMode);
+        time = TimeUnit.NANOSECONDS.toMillis(time);
+        println("(" + rowCount + (rowCount == 1 ? " row, " : " rows, ") + time + " ms)");
+    }
+
+    private void printUpdateResult(int updateCount, long time) throws SQLException {
+        time = System.nanoTime() - time;
+        time = TimeUnit.NANOSECONDS.toMillis(time);
+        println("(Update count: " + updateCount + ", " + time + " ms)");
     }
 
     private int printResult(ResultSet rs, boolean asList) throws SQLException {
@@ -416,6 +465,7 @@ public class Shell {
     }
 
     private int[] printRows(ArrayList<String[]> rows, int len) {
+        StringBuilder buffAll = new StringBuilder();
         int[] columnSizes = new int[len];
         for (int i = 0; i < len; i++) {
             int max = 0;
@@ -447,7 +497,7 @@ public class Shell {
         boolean first = true;
         for (String[] row : rows) {
             if (first) {
-                println(buffHorizontal.toString());
+                println(buffAll, buffHorizontal);
             }
             StringBuilder buff = new StringBuilder();
             for (int i = 0; i < len; i++) {
@@ -467,14 +517,23 @@ public class Shell {
                     buff.append(' ').append(BOX_VERTICAL);
                 }
             }
-            println(buff.toString());
+            println(buffAll, buff);
             if (first) {
-                println(buffHorizontal.toString());
+                println(buffAll, buffHorizontal);
                 first = false;
             }
         }
-        println(buffHorizontal.toString());
+        println(buffAll, buffHorizontal);
+        print(buffAll.toString());
         return columnSizes;
+    }
+
+    private void println(StringBuilder buffAll, StringBuilder str) {
+        buffAll.append(str).append("\r\n");
+        if (buffAll.length() > 8096) {
+            print(buffAll.toString());
+            buffAll.setLength(0);
+        }
     }
 
     private int printResultAsList(ResultSet rs) throws SQLException {
@@ -519,22 +578,5 @@ public class Shell {
             println(buff.toString());
         }
         return rowCount;
-    }
-
-    private static Connection getConnection(String[] args, String url, String user, String password)
-            throws SQLException {
-        Properties info = new Properties();
-        if (user != null) {
-            info.put("user", user);
-        }
-        if (password != null) {
-            info.put("password", password);
-        }
-        info.put(ConnectionSetting.NETWORK_TIMEOUT.name(), "-1");
-        ConnectionInfo ci = new ConnectionInfo(url, info);
-        if (ci.isEmbedded()) {
-            Lealone.embed(args);
-        }
-        return new JdbcConnection(ci);
     }
 }
