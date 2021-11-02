@@ -11,7 +11,16 @@ import org.lealone.test.sql.SqlTestBase;
 public class ScriptTest extends SqlTestBase {
     @Test
     public void run() {
-        sql = "SCRIPT NODATA TO 'my_script_test.sql'"; // 生成各种Create SQL，此命令返回结果集，所以要用executeQuery
+        executeUpdate("create table IF NOT EXISTS ScriptTest(id int)");
+        // 生成各种Create SQL，此命令返回结果集，所以要用executeQuery
+        sql = "SCRIPT SIMPLE NODATA NOPASSWORDS NOSETTINGS TO 'my_script_test.sql' TABLE ScriptTest";
         printResultSet();
+
+        executeUpdate("drop table ScriptTest");
+        executeUpdate("RUNSCRIPT FROM 'my_script_test.sql'");
+
+        executeUpdate("drop table ScriptTest");
+        String fileName = "./target/test-data/client-server/script_directory/my_script_test.sql";
+        executeUpdate("RUNSCRIPT FROM '" + fileName + "'");
     }
 }
