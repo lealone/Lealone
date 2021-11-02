@@ -16,13 +16,12 @@ import org.lealone.net.WritableChannel;
 public class NioWritableChannel implements WritableChannel {
 
     private final SocketChannel channel;
-    private final NioEventLoop nioEventLoop;
     private final String host;
     private final int port;
+    private NioEventLoop nioEventLoop;
 
     public NioWritableChannel(SocketChannel channel, NioEventLoop nioEventLoop) throws IOException {
         this.channel = channel;
-        this.nioEventLoop = nioEventLoop;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
             InetSocketAddress address = (InetSocketAddress) sa;
@@ -32,6 +31,7 @@ public class NioWritableChannel implements WritableChannel {
             host = "";
             port = -1;
         }
+        this.nioEventLoop = nioEventLoop;
     }
 
     @Override
@@ -66,4 +66,8 @@ public class NioWritableChannel implements WritableChannel {
         return NioBufferFactory.getInstance();
     }
 
+    @Override
+    public void setEventLoop(NioEventLoop eventLoop) {
+        nioEventLoop = eventLoop;
+    }
 }

@@ -6,24 +6,26 @@
 package org.lealone.net.nio;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
+import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Set;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
 //TODO 1.支持SSL 2.支持配置参数
-public class NioNetServer extends NetServerBase implements NioEventLoop {
+public class NioNetServer extends NetServerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
     private ServerSocketChannel serverChannel;
-    private NioEventLoopAdapter nioEventLoopAdapter;
+
+    @Override
+    public boolean runInMainThread() {
+        return runInMainThread;
+    }
 
     @Override
     public synchronized void start() {
@@ -31,13 +33,11 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
             return;
         logger.info("Starting nio net server");
         try {
-            nioEventLoopAdapter = new NioEventLoopAdapter(config, "server_nio_event_loop_interval", 1000); // 默认1秒
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
-            serverChannel.configureBlocking(false);
-            serverChannel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_ACCEPT);
+            serverChannel.configureBlocking(true);
             super.start();
-            String name = "ServerNioEventLoopService-" + getPort();
+            String name = getName() + "Accepter-" + getPort();
             if (runInMainThread()) {
                 Thread t = Thread.currentThread();
                 if (t.getName().equals("main"))
@@ -53,83 +53,11 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     }
 
     @Override
-    public Runnable getRunnable() {
-        return () -> {
-            NioNetServer.this.run();
-        };
-    }
-
-    private void run() {
-        for (;;) {
-            try {
-                nioEventLoopAdapter.select();
-                if (isStopped())
-                    break;
-                Set<SelectionKey> keys = nioEventLoopAdapter.getSelector().selectedKeys();
-                try {
-                    for (SelectionKey key : keys) {
-                        if (key.isValid()) {
-                            int readyOps = key.readyOps();
-                            if ((readyOps & SelectionKey.OP_READ) != 0) {
-                                read(key, this);
-                            } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                                write(key);
-                            } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
-                                accept();
-                            } else {
-                                key.cancel();
-                            }
-                        } else {
-                            key.cancel();
-                        }
-                    }
-                } finally {
-                    keys.clear();
-                }
-                if (isStopped())
-                    break;
-            } catch (Throwable e) {
-                logger.warn(Thread.currentThread().getName() + " run exception", e);
-            }
-        }
-    }
-
-    static class Attachment {
-        AsyncConnection conn;
-        DataBuffer dataBuffer;
-        int endOfStreamCount;
-        int state = 0;
-    }
-
-    private void accept() {
-        SocketChannel channel = null;
-        AsyncConnection conn = null;
-        try {
-            channel = serverChannel.accept();
-            channel.configureBlocking(false);
-            nioEventLoopAdapter.addSocketChannel(channel);
-            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
-            conn = createConnection(writableChannel, true);
-
-            Attachment attachment = new Attachment();
-            attachment.conn = conn;
-            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
-        } catch (Throwable e) {
-            if (conn != null) {
-                removeConnection(conn);
-            }
-            closeChannel(channel);
-            logger.warn(getName() + " failed to accept", e);
-        }
-    }
-
-    @Override
     public synchronized void stop() {
         if (isStopped())
             return;
         logger.info("Stopping nio net server");
         super.stop();
-        nioEventLoopAdapter.close();
         if (serverChannel != null) {
             try {
                 serverChannel.close();
@@ -140,20 +68,48 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     }
 
     @Override
-    public NioEventLoop getDefaultNioEventLoopImpl() {
-        return nioEventLoopAdapter;
+    public Runnable getRunnable() {
+        return () -> {
+            NioNetServer.this.run();
+        };
     }
 
-    @Override
-    public boolean runInMainThread() {
-        return runInMainThread;
-    }
-
-    @Override
-    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
-        if (conn != null) {
-            removeConnection(conn);
+    private void run() {
+        while (!isStopped()) {
+            accept();
         }
-        closeChannel(channel);
+    }
+
+    private void accept() {
+        SocketChannel channel = null;
+        AsyncConnection conn = null;
+        try {
+            channel = serverChannel.accept();
+            channel.configureBlocking(false);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, null);
+            conn = createConnection(writableChannel, true);
+        } catch (Throwable e) {
+            if (conn != null) {
+                removeConnection(conn);
+            }
+            closeChannel(channel);
+            logger.warn(getName() + " failed to accept connection", e);
+        }
+    }
+
+    static void closeChannel(SocketChannel channel) {
+        if (channel != null) {
+            Socket socket = channel.socket();
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (Throwable e) {
+                }
+            }
+            try {
+                channel.close();
+            } catch (Throwable e) {
+            }
+        }
     }
 }

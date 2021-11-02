@@ -123,7 +123,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         }
     }
 
-    private static class ClientAttachment extends NioNetServer.Attachment {
+    private static class ClientAttachment extends NioAttachment {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
         AsyncCallback<AsyncConnection> ac;

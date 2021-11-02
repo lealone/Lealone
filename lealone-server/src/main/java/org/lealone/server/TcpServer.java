@@ -13,9 +13,9 @@ import org.lealone.db.Constants;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
-import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetServer;
 import org.lealone.net.WritableChannel;
 
@@ -73,7 +73,9 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     @Override
     public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            TcpServerConnection conn = new TcpServerConnection(this, writableChannel, isServer);
+            Scheduler scheduler = ScheduleService.getSchedulerForSession();
+            TcpServerConnection conn = new TcpServerConnection(this, writableChannel, isServer, scheduler);
+            scheduler.register(conn);
             connections.add(conn);
             return conn;
         } else {

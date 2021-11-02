@@ -43,10 +43,13 @@ public class TcpServerConnection extends TransferConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
     private final TcpServer tcpServer;
+    private final Scheduler scheduler;
 
-    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
+    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer,
+            Scheduler scheduler) {
         super(writableChannel, isServer);
         this.tcpServer = tcpServer;
+        this.scheduler = scheduler;
     }
 
     // 这个方法是由网络事件循环线程执行的
@@ -58,7 +61,8 @@ public class TcpServerConnection extends TransferConnection {
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
                 // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                Scheduler scheduler = ScheduleService.getSchedulerForSession();
+                // Scheduler scheduler = ScheduleService.getSchedulerForSession();
+                // scheduler.register(this);
                 scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
             } else {
                 sessionNotFound(packetId, sessionId);
