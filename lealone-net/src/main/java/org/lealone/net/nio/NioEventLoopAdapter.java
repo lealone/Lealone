@@ -100,6 +100,12 @@ public class NioEventLoopAdapter implements NioEventLoop {
         ConcurrentLinkedQueue<NioBuffer> queue = channels.get(channel);
         if (queue != null) {
             SelectionKey key = channel.keyFor(getSelector());
+            // 还没有注册
+            if (key == null) {
+                queue.add(nioBuffer);
+                wakeup();
+                return;
+            }
             // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
             if (queue.isEmpty() && key.isValid()) { // && key.isWritable()) {
                 if (write(key, channel, nioBuffer)) {

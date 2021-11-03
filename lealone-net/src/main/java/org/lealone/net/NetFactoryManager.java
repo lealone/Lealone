@@ -35,6 +35,7 @@ public class NetFactoryManager extends PluggableEngineManager<NetFactory> {
         if (factory == null) {
             throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");
         }
+        factory.init(config);
         return factory;
     }
 

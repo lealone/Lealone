@@ -19,7 +19,9 @@ public class ScheduleService {
     private static final AtomicInteger index = new AtomicInteger(0);
     private static final AtomicInteger indexForSession = new AtomicInteger(0);
 
-    static void init(Map<String, String> config) {
+    public static synchronized void init(Map<String, String> config) {
+        if (schedulers != null)
+            return;
         int schedulerCount;
         if (config.containsKey("scheduler_count"))
             schedulerCount = Integer.parseInt(config.get("scheduler_count"));
@@ -38,13 +40,17 @@ public class ScheduleService {
         }
     }
 
-    static void start() {
+    public static synchronized void start() {
+        if (schedulers == null)
+            return;
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
     }
 
-    static void stop() {
+    public static synchronized void stop() {
+        if (schedulers == null)
+            return;
         for (Scheduler scheduler : schedulers) {
             scheduler.end();
         }

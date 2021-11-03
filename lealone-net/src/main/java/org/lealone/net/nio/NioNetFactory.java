@@ -19,6 +19,10 @@ public class NioNetFactory extends NetFactoryBase {
 
     @Override
     public NetServer createNetServer() {
-        return new NioNetServer();
+        boolean useEventLoop = Boolean.parseBoolean(config.get("use_event_loop"));
+        if (useEventLoop)
+            return new NioEventLoopNetServer();
+        else
+            return new NioNetServer();
     }
 }

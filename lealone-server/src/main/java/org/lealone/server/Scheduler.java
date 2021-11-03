@@ -21,6 +21,7 @@ import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
@@ -55,7 +56,7 @@ public class Scheduler extends Thread
     private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
 
     private final Semaphore haveWork = new Semaphore(1);
-    // private final long loopInterval;
+    private final long loopInterval;
     private volatile boolean end;
     private volatile boolean waiting;
     private YieldableCommand nextBestCommand;
@@ -63,9 +64,15 @@ public class Scheduler extends Thread
     public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
         setDaemon(true);
-        // 默认100毫秒
-        // loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
-        initNioEventLoopAdapter(config);
+        // 如果NetServer已经用了EventLoop那就不再用NioEventLoopAdapter
+        boolean useEventLoop = Boolean.parseBoolean(config.get("use_event_loop"));
+        if (!useEventLoop) {
+            initNioEventLoopAdapter(config);
+            loopInterval = 0;
+        } else {
+            // 默认100毫秒
+            loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
+        }
     }
 
     void addSessionInfo(SessionInfo si) {
@@ -286,7 +293,8 @@ public class Scheduler extends Thread
         if (waiting)
             haveWork.release(1);
         // if (waiting)
-        nioEventLoopAdapter.getSelector().wakeup();
+        if (nioEventLoopAdapter != null)
+            nioEventLoopAdapter.getSelector().wakeup();
     }
 
     @Override
@@ -378,6 +386,18 @@ public class Scheduler extends Thread
     }
 
     private void doAwait() {
+        if (nioEventLoopAdapter == null) {
+            waiting = true;
+            try {
+                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+                haveWork.drainPermits();
+            } catch (InterruptedException e) {
+                handleInterruptedException(e);
+            } finally {
+                waiting = false;
+            }
+            return;
+        }
         waiting = true;
         try {
             nioEventLoopAdapter.select();
@@ -405,22 +425,12 @@ public class Scheduler extends Thread
         } finally {
             keys.clear();
         }
-
-        // waiting = true;
-        // try {
-        // haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-        // haveWork.drainPermits();
-        // } catch (InterruptedException e) {
-        // handleInterruptedException(e);
-        // } finally {
-        // waiting = false;
-        // }
     }
 
-    // private void handleInterruptedException(InterruptedException e) {
-    // logger.warn(getName() + " is interrupted");
-    // end();
-    // }
+    private void handleInterruptedException(InterruptedException e) {
+        logger.warn(getName() + " is interrupted");
+        end();
+    }
 
     private NioEventLoopAdapter nioEventLoopAdapter;
 
