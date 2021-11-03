@@ -35,6 +35,7 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintCheck;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.constraint.ConstraintUnique;
+import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.MetaIndex;
@@ -101,7 +102,8 @@ public class MetaTable extends Table {
     private static final int SESSION_STATE = 27;
     private static final int QUERY_STATISTICS = 28;
     private static final int DATABASES = 29;
-    private static final int META_TABLE_TYPE_COUNT = DATABASES + 1;
+    private static final int SYS_TABLE = 30;
+    private static final int META_TABLE_TYPE_COUNT = SYS_TABLE + 1;
 
     private final int type;
     private final int indexColumn;
@@ -289,6 +291,10 @@ public class MetaTable extends Table {
         case DATABASES:
             setObjectName("DATABASES");
             cols = createColumns("ID", "DATABASE_NAME", "RUN_MODE", "NODES");
+            break;
+        case SYS_TABLE:
+            setObjectName("SYS_TABLE");
+            cols = createColumns("ID", "TYPE", "SQL");
             break;
         default:
             throw DbException.getInternalError("type=" + type);
@@ -1390,6 +1396,20 @@ public class MetaTable extends Table {
                         database.getRunMode().toString(),
                         // NODES
                         database.getTargetNodes());
+            }
+            break;
+        }
+        case SYS_TABLE: {
+            Cursor cursor = session.getDatabase().getMetaCursor(session);
+            while (cursor.next()) {
+                Row row = cursor.get();
+                add(rows,
+                        // ID
+                        row.getValue(0).getString(),
+                        // TYPE
+                        DbObjectType.TYPES[row.getValue(1).getInt()].name(),
+                        // SQL
+                        row.getValue(2).getString());
             }
             break;
         }

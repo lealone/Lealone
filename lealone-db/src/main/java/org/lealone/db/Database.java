@@ -752,6 +752,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return metaIdIndex.find(session, r, r);
     }
 
+    public Cursor getMetaCursor(ServerSession session) {
+        return metaIdIndex.find(session, null, null);
+    }
+
     public Row findMeta(ServerSession session, int id) {
         Cursor cursor = getMetaCursor(session, id);
         if (cursor.next())
