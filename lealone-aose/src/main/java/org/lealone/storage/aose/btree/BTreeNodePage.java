@@ -71,6 +71,8 @@ public class BTreeNodePage extends BTreeLocalPage {
         } else {
             BTreePage p = map.btreeStorage.readPage(ref, ref.pos);
             ref.replacePage(p);
+            p.setRef(ref);
+            p.setParentRef(getRef());
             return p;
         }
     }

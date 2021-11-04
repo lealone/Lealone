@@ -225,6 +225,7 @@ public abstract class PageOperations {
                 parentRef.page.markDirty();
                 parentRef = parentRef.page.getParentRef();
             }
+            p.map.getRootPage().markDirty();
         }
 
         // 允许子类覆盖，比如Append操作可以做自己的特殊优化
