@@ -151,10 +151,12 @@ public class NioEventLoopAdapter implements NioEventLoop {
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
         DataBuffer dataBuffer = attachment.dataBuffer;
-        ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
-        int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
         try {
             while (true) {
+                // 每次循环重新取一次，一些实现会返回不同的Buffer
+                ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
+                int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
+
                 if (attachment.state == 0) {
                     boolean ok = read(attachment, channel, packetLengthByteBuffer, packetLengthByteBufferCapacity);
                     if (ok) {
