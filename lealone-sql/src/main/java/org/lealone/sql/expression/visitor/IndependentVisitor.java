@@ -19,7 +19,7 @@ public class IndependentVisitor extends BooleanExpressionVisitor {
 
     @Override
     public Boolean visitParameter(Parameter e) {
-        return e.getValue() != null;
+        return e.isValueSet();
     }
 
     @Override
