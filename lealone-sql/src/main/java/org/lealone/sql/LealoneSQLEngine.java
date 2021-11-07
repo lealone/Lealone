@@ -26,7 +26,7 @@ public class LealoneSQLEngine implements SQLEngine {
 
     @Override
     public SQLParser createParser(Session session) {
-        return new Parser((ServerSession) session);
+        return new LealoneSQLParser((ServerSession) session);
     }
 
     @Override
@@ -40,7 +40,7 @@ public class LealoneSQLEngine implements SQLEngine {
 
     @Override
     public String quoteIdentifier(String identifier) {
-        return Parser.quoteIdentifier(identifier);
+        return LealoneSQLParser.quoteIdentifier(identifier);
     }
 
     @Override

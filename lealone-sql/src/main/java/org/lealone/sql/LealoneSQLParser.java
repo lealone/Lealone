@@ -171,7 +171,7 @@ import org.lealone.sql.query.SelectUnion;
  * @author H2 Group
  * @author zhh
  */
-public class Parser implements SQLParser {
+public class LealoneSQLParser implements SQLParser {
 
     // used during the tokenizer phase
     private static final int CHAR_END = 1, CHAR_VALUE = 2, CHAR_QUOTED = 3;
@@ -219,7 +219,7 @@ public class Parser implements SQLParser {
     private ArrayList<Parameter> parameters;
     private ArrayList<Parameter> indexedParameterList;
 
-    public Parser(ServerSession session) {
+    public LealoneSQLParser(ServerSession session) {
         this.database = session.getDatabase();
         this.session = session;
         this.identifiersToUpper = database.getSettings().databaseToUpper;

@@ -18,7 +18,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.AliasColumnResolver;
@@ -83,14 +83,14 @@ public class ExpressionColumn extends Expression {
         if (column != null) {
             sql = column.getSQL();
         } else {
-            sql = quote ? Parser.quoteIdentifier(columnName) : columnName;
+            sql = quote ? LealoneSQLParser.quoteIdentifier(columnName) : columnName;
         }
         if (tableAlias != null) {
-            String a = quote ? Parser.quoteIdentifier(tableAlias) : tableAlias;
+            String a = quote ? LealoneSQLParser.quoteIdentifier(tableAlias) : tableAlias;
             sql = a + "." + sql;
         }
         if (schemaName != null) {
-            String s = quote ? Parser.quoteIdentifier(schemaName) : schemaName;
+            String s = quote ? LealoneSQLParser.quoteIdentifier(schemaName) : schemaName;
             sql = s + "." + sql;
         }
         return sql;

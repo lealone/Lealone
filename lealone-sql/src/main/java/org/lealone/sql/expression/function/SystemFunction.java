@@ -38,7 +38,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.SequenceValue;
@@ -225,7 +225,7 @@ public class SystemFunction extends BuiltInFunction {
     }
 
     private static long getDiskSpaceUsed(ServerSession session, Value v0) {
-        Parser p = new Parser(session);
+        LealoneSQLParser p = new LealoneSQLParser(session);
         String sql = v0.getString();
         Table table = p.parseTableName(sql);
         return table.getDiskSpaceUsed();
@@ -517,7 +517,7 @@ public class SystemFunction extends BuiltInFunction {
     private Sequence getSequence(ServerSession session, Value v0, Value v1) {
         String schemaName, sequenceName;
         if (v1 == null) {
-            Parser p = (Parser) session.getParser();
+            LealoneSQLParser p = (LealoneSQLParser) session.getParser();
             String sql = v0.getString();
             Expression expr = p.parseExpression(sql);
             if (expr instanceof ExpressionColumn) {

@@ -7,7 +7,7 @@ package org.lealone.sql.expression;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 
 /**
@@ -68,7 +68,7 @@ public class Alias extends Expression {
 
     @Override
     public String getSQL(boolean isDistributed) {
-        return expr.getSQL(isDistributed) + " AS " + Parser.quoteIdentifier(alias);
+        return expr.getSQL(isDistributed) + " AS " + LealoneSQLParser.quoteIdentifier(alias);
     }
 
     @Override

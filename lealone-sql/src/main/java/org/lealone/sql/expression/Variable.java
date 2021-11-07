@@ -7,7 +7,7 @@ package org.lealone.sql.expression;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 
 /**
@@ -40,7 +40,7 @@ public class Variable extends Expression {
 
     @Override
     public String getSQL(boolean isDistributed) {
-        return "@" + Parser.quoteIdentifier(name);
+        return "@" + LealoneSQLParser.quoteIdentifier(name);
     }
 
     @Override

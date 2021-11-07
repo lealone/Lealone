@@ -57,7 +57,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -402,7 +402,7 @@ public class GenScript extends ScriptBase {
         buff.append(table.getSQL()).append('(');
         for (Column col : columns) {
             buff.appendExceptFirst(", ");
-            buff.append(Parser.quoteIdentifier(col.getName()));
+            buff.append(LealoneSQLParser.quoteIdentifier(col.getName()));
         }
         buff.append(") VALUES");
         if (!simple) {

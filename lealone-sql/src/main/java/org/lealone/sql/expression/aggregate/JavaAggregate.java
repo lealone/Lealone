@@ -18,7 +18,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.query.Select;
@@ -99,7 +99,7 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
     @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
-        buff.append(Parser.quoteIdentifier(userAggregate.getName())).append('(');
+        buff.append(LealoneSQLParser.quoteIdentifier(userAggregate.getName())).append('(');
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
             buff.append(e.getSQL(isDistributed));

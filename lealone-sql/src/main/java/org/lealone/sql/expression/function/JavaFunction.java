@@ -14,7 +14,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
-import org.lealone.sql.Parser;
+import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
@@ -78,9 +78,9 @@ public class JavaFunction extends Function {
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
         if (!functionAlias.getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
-            buff.append(Parser.quoteIdentifier(functionAlias.getSchema().getName())).append('.');
+            buff.append(LealoneSQLParser.quoteIdentifier(functionAlias.getSchema().getName())).append('.');
         }
-        buff.append(Parser.quoteIdentifier(functionAlias.getName())).append('(');
+        buff.append(LealoneSQLParser.quoteIdentifier(functionAlias.getName())).append('(');
         appendArgs(buff, isDistributed);
         return buff.append(')').toString();
     }
