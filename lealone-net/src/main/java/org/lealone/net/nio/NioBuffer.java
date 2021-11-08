@@ -14,9 +14,11 @@ public class NioBuffer implements NetBuffer {
 
     private final DataBuffer dataBuffer;
     private boolean onlyOnePacket;
+    private boolean forWrite;
 
     public NioBuffer(DataBuffer dataBuffer) {
         this.dataBuffer = dataBuffer;
+        this.forWrite = true;
     }
 
     public NioBuffer(DataBuffer dataBuffer, boolean onlyOnePacket) {
@@ -34,6 +36,8 @@ public class NioBuffer implements NetBuffer {
 
     @Override
     public int length() {
+        if (forWrite)
+            return dataBuffer.position();
         if (onlyOnePacket)
             return dataBuffer.limit();
         int pos = dataBuffer.position();
@@ -84,7 +88,7 @@ public class NioBuffer implements NetBuffer {
 
     @Override
     public void recycle() {
-        if (onlyOnePacket)
+        if (onlyOnePacket || forWrite)
             dataBuffer.close();
     }
 
