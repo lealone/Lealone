@@ -42,7 +42,15 @@ public interface PageOperation extends AsyncTask {
     }
 
     interface Listener<V> extends AsyncHandler<AsyncResult<V>> {
+
+        default void startListen() {
+        }
+
         V await();
+    }
+
+    interface ListenerFactory<V> {
+        Listener<V> createListener();
     }
 
     class SyncListener<V> implements Listener<V> {

@@ -23,6 +23,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.session.ServerSession;
@@ -37,8 +38,8 @@ import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 
-public class Scheduler extends Thread
-        implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler, Transaction.Listener, NioEventLoop {
+public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler,
+        Transaction.Listener, NioEventLoop, PageOperation.ListenerFactory<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -468,5 +469,35 @@ public class Scheduler extends Thread
         } catch (IOException e) {
             throw DbException.convert(e);
         }
+    }
+
+    @Override
+    public PageOperation.Listener<Object> createListener() {
+        return new PageOperation.Listener<Object>() {
+
+            private volatile Object result;
+
+            @Override
+            public void startListen() {
+                beforeOperation();
+            }
+
+            @Override
+            public void handle(AsyncResult<Object> ar) {
+                if (ar.isSucceeded()) {
+                    result = ar.getResult();
+                } else {
+                    RuntimeException e = new RuntimeException(ar.getCause());
+                    setException(e);
+                }
+                operationComplete();
+            }
+
+            @Override
+            public Object await() {
+                Scheduler.this.await();
+                return result;
+            }
+        };
     }
 }

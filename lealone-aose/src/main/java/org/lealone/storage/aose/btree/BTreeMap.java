@@ -243,8 +243,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         PageOperation.Listener<R> listener;
         if (object instanceof PageOperation.Listener)
             listener = (PageOperation.Listener<R>) object;
+        else if (object instanceof PageOperation.ListenerFactory)
+            listener = ((PageOperation.ListenerFactory<R>) object).createListener();
         else
             listener = new PageOperation.SyncListener<R>();
+        listener.startListen();
         return listener;
     }
 
