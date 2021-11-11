@@ -997,6 +997,11 @@ public interface TransactionalValue {
                 // 同一个事务对同一个key更新了多次时只保留最近的一次
                 committed = new CommittedWithTid(transaction, value, oldValue.getOldValue(), transaction.transactionId);
             } else {
+                // 去掉旧版本
+                if (oldValue != null && oldValue.isCommitted()
+                        && !transaction.transactionEngine.containsRepeatableReadTransactions(tid)) {
+                    oldValue.setOldValue(null);
+                }
                 committed = new CommittedWithTid(transaction, value, oldValue, transaction.transactionId);
             }
             TransactionalValue first = ref.getRefValue();
