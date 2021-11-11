@@ -64,11 +64,11 @@ public class ScheduleService {
         }
     }
 
-    static Scheduler getScheduler() {
+    public static Scheduler getScheduler() {
         return schedulers[index.getAndIncrement() % schedulers.length];
     }
 
-    static Scheduler getSchedulerForSession() {
+    public static Scheduler getSchedulerForSession() {
         return schedulers[indexForSession.getAndIncrement() % schedulers.length];
     }
 }

@@ -439,9 +439,13 @@ public class Scheduler extends Thread
     }
 
     public void register(AsyncConnection conn) {
-        conn.getWritableChannel().setEventLoop(this); // 替换掉原来的
-        nioEventLoopAdapter.register(conn);
-        wakeUp();
+        // 如果Scheduler线程在执行select，
+        // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
+        // jdk16不存在这个问题
+        handle(() -> {
+            conn.getWritableChannel().setEventLoop(this); // 替换掉原来的
+            nioEventLoopAdapter.register(conn);
+        });
     }
 
     @Override
