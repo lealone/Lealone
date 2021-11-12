@@ -64,7 +64,7 @@ public abstract class YieldableConditionUpdateBase extends YieldableLoopUpdateBa
 
     protected boolean tryLockRow(Row row, List<Column> lockColumns) {
         int savepointId = session.getTransaction().getSavepointId();
-        if (!table.tryLockRow(session, row, true, null)) {
+        if (!table.tryLockRow(session, row, true, lockColumns)) {
             oldRow = row;
             session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
             session.setStatus(SessionStatus.WAITING);
