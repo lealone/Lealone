@@ -58,7 +58,7 @@ public class DelegatedProtocolServer implements ProtocolServer {
 
     @Override
     public String getName() {
-        return protocolServer.getName();
+        return getClass().getSimpleName(); // 不用protocolServer的名称
     }
 
     @Override
@@ -116,6 +116,11 @@ public class DelegatedProtocolServer implements ProtocolServer {
     @Override
     public boolean allow(String testHost) {
         return protocolServer.allow(testHost);
+    }
+
+    @Override
+    public boolean runInMainThread() {
+        return protocolServer.runInMainThread();
     }
 
     @Override

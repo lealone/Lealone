@@ -71,11 +71,6 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
     }
 
     @Override
-    public String getName() {
-        return getClass().getSimpleName();
-    }
-
-    @Override
     public String getType() {
         return P2pServerEngine.NAME;
     }

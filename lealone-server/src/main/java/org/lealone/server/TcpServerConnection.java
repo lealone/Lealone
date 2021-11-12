@@ -45,9 +45,8 @@ public class TcpServerConnection extends TransferConnection {
     private final TcpServer tcpServer;
     private final Scheduler scheduler;
 
-    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer,
-            Scheduler scheduler) {
-        super(writableChannel, isServer);
+    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, Scheduler scheduler) {
+        super(writableChannel, true);
         this.tcpServer = tcpServer;
         this.scheduler = scheduler;
     }
