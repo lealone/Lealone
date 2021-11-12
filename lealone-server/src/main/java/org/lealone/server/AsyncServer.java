@@ -70,7 +70,11 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     protected abstract T createConnection(WritableChannel writableChannel, Scheduler scheduler);
 
-    protected void onConnectionCreated(T conn, Scheduler scheduler) {
+    protected void beforeRegister(T conn, Scheduler scheduler) {
+        // do nothing
+    }
+
+    protected void afterRegister(T conn, Scheduler scheduler) {
         // do nothing
     }
 
@@ -80,8 +84,9 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
             Scheduler scheduler = ScheduleService.getSchedulerForSession();
             T conn = createConnection(writableChannel, scheduler);
             connections.add(conn);
+            beforeRegister(conn, scheduler);
             scheduler.register(conn);
-            onConnectionCreated(conn, scheduler);
+            afterRegister(conn, scheduler);
             return conn;
         } else {
             writableChannel.close();
