@@ -22,6 +22,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     protected int port;
 
     protected String baseDir;
+    protected String name;
 
     protected boolean ssl;
     protected boolean allowOthers;
@@ -51,6 +52,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
             port = Integer.parseInt(config.get("port"));
 
         baseDir = config.get("base_dir");
+        name = config.get("name");
 
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
@@ -102,7 +104,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
 
     @Override
     public String getName() {
-        return getClass().getSimpleName();
+        return name != null ? name : getClass().getSimpleName();
     }
 
     @Override

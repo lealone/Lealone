@@ -38,6 +38,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(Constants.DEFAULT_TCP_PORT));
         config.put("__runInMainThread__", "true");
+        config.put("name", getName());
 
         NetFactory factory = NetFactoryManager.getFactory(config);
         NetServer netServer = factory.createNetServer();
