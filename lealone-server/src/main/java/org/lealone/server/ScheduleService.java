@@ -16,6 +16,7 @@ import org.lealone.storage.StorageEngineManager;
 public class ScheduleService {
 
     private static Scheduler[] schedulers;
+    private static boolean started;
     private static final AtomicInteger index = new AtomicInteger(0);
     private static final AtomicInteger indexForSession = new AtomicInteger(0);
 
@@ -41,15 +42,16 @@ public class ScheduleService {
     }
 
     public static synchronized void start() {
-        if (schedulers == null)
+        if (schedulers == null || started)
             return;
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
+        started = true;
     }
 
     public static synchronized void stop() {
-        if (schedulers == null)
+        if (schedulers == null || !started)
             return;
         for (Scheduler scheduler : schedulers) {
             scheduler.end();
@@ -62,6 +64,7 @@ public class ScheduleService {
                 }
             }
         }
+        started = false;
     }
 
     public static Scheduler getScheduler() {

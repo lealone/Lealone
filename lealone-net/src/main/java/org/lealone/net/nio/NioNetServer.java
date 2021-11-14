@@ -43,7 +43,7 @@ public class NioNetServer extends NetServerBase {
                 if (t.getName().equals("main"))
                     t.setName(name);
             } else {
-                ConcurrentUtils.submitTask(name, () -> {
+                ConcurrentUtils.submitTask(name, isDaemon(), () -> {
                     NioNetServer.this.run();
                 });
             }
