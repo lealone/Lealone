@@ -284,8 +284,13 @@ public class Lealone {
                 if (def.enabled) {
                     ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
-                    if (protocolServer.runInMainThread())
-                        mainProtocolServer = protocolServer;
+                    if (protocolServer.isRunInMainThread()) {
+                        // 默认是第一个
+                        if (mainProtocolServer == null)
+                            mainProtocolServer = protocolServer;
+                        else
+                            protocolServer.setRunInMainThread(false);
+                    }
                     startProtocolServer(protocolServer);
                 }
             }

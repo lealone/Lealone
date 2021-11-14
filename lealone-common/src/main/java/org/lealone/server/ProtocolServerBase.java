@@ -57,7 +57,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
-        runInMainThread = Boolean.parseBoolean(config.get("__runInMainThread__")); // 这个参数不对外
+        runInMainThread = Boolean.parseBoolean(config.get("run_in_main_thread"));
 
         if (config.containsKey("white_list")) {
             String[] hosts = config.get("white_list").split(",");
@@ -163,8 +163,13 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     }
 
     @Override
-    public boolean runInMainThread() {
+    public boolean isRunInMainThread() {
         return runInMainThread;
+    }
+
+    @Override
+    public void setRunInMainThread(boolean runInMainThread) {
+        this.runInMainThread = runInMainThread;
     }
 
     @Override

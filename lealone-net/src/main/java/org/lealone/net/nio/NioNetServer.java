@@ -23,11 +23,6 @@ public class NioNetServer extends NetServerBase {
     private ServerSocketChannel serverChannel;
 
     @Override
-    public boolean runInMainThread() {
-        return runInMainThread;
-    }
-
-    @Override
     public synchronized void start() {
         if (isStarted())
             return;
@@ -38,7 +33,7 @@ public class NioNetServer extends NetServerBase {
             serverChannel.configureBlocking(true);
             super.start();
             String name = getName() + "Accepter-" + getPort();
-            if (runInMainThread()) {
+            if (isRunInMainThread()) {
                 Thread t = Thread.currentThread();
                 if (t.getName().equals("main"))
                     t.setName(name);

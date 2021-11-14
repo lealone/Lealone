@@ -38,7 +38,7 @@ public class NioEventLoopNetServer extends NetServerBase implements NioEventLoop
             serverChannel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_ACCEPT);
             super.start();
             String name = "ServerNioEventLoopService-" + getPort();
-            if (runInMainThread()) {
+            if (isRunInMainThread()) {
                 Thread t = Thread.currentThread();
                 if (t.getName().equals("main"))
                     t.setName(name);
@@ -141,11 +141,6 @@ public class NioEventLoopNetServer extends NetServerBase implements NioEventLoop
     @Override
     public NioEventLoop getDefaultNioEventLoopImpl() {
         return nioEventLoopAdapter;
-    }
-
-    @Override
-    public boolean runInMainThread() {
-        return runInMainThread;
     }
 
     @Override

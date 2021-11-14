@@ -117,8 +117,11 @@ public interface ProtocolServer {
      */
     boolean allow(String testHost);
 
-    default boolean runInMainThread() {
+    default boolean isRunInMainThread() {
         return false;
+    }
+
+    default void setRunInMainThread(boolean runInMainThread) {
     }
 
     default Runnable getRunnable() {

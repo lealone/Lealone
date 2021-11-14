@@ -119,8 +119,13 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean runInMainThread() {
-        return protocolServer.runInMainThread();
+    public boolean isRunInMainThread() {
+        return protocolServer.isRunInMainThread();
+    }
+
+    @Override
+    public void setRunInMainThread(boolean runInMainThread) {
+        protocolServer.setRunInMainThread(runInMainThread);
     }
 
     @Override

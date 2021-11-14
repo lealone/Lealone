@@ -27,8 +27,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     public void init(Map<String, String> config) {
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(getDefaultPort()));
-        if (!config.containsKey("__runInMainThread__"))
-            config.put("__runInMainThread__", "true");
+        if (!config.containsKey("run_in_main_thread"))
+            config.put("run_in_main_thread", "true");
         if (!config.containsKey("name"))
             config.put("name", getName());
 
