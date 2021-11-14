@@ -794,19 +794,25 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             }
             return false;
         }
-        TransactionalValue refValue = ref.getRefValue();
-        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(), refValue,
-                map.getValueType(), columnIndexes, ref);
-        transaction.undoLog.add(getName(), key, refValue, newValue, true);
-        if (ref.compareAndSet(refValue, newValue)) {
-            return true;
-        } else {
-            transaction.undoLog.undo();
-            if (addToWaitingQueue
-                    && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
-                return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
+        while (true) {
+            TransactionalValue refValue = ref.getRefValue();
+            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(),
+                    refValue, map.getValueType(), columnIndexes, ref);
+            transaction.undoLog.add(getName(), key, refValue, newValue, true);
+            if (ref.compareAndSet(refValue, newValue)) {
+                return true;
+            } else {
+                transaction.undoLog.undo();
+                // CAS失败但更新的列没有被锁住时继续重试
+                if (!ref.isLocked(transaction.transactionId, columnIndexes)) {
+                    continue;
+                }
+                if (addToWaitingQueue
+                        && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
+                    return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
+                }
+                return false;
             }
-            return false;
         }
     }
 

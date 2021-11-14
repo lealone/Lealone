@@ -853,6 +853,18 @@ public interface TransactionalValue {
                     if (noUncommitted
                             && !transaction.transactionEngine.containsRepeatableReadTransactions(minVersion)) {
                         committed.setOldValue(null);
+                    } else {
+                        boolean allCommitted = true;
+                        next = committed;
+                        while ((next = next.getOldValue()) != null) {
+                            if (!next.isCommitted()) {
+                                allCommitted = false;
+                                break;
+                            }
+                        }
+                        if (allCommitted) {
+                            committed.setOldValue(null);
+                        }
                     }
                     break;
                 }
@@ -874,7 +886,8 @@ public interface TransactionalValue {
                 TransactionalValue last = first;
                 TransactionalValue next = first.getOldValue();
                 while (next != null) {
-                    if (next.getTid() == tid && next.getLogId() == logId) {
+                    if (next == this) {
+                        // if (next.getTid() == tid && next.getLogId() == logId) {
                         next = next.getOldValue();
                         break;
                     }
