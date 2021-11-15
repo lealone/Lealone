@@ -88,7 +88,10 @@ public class NioNetServer extends NetServerBase {
                 removeConnection(conn);
             }
             closeChannel(channel);
-            logger.warn(getName() + " failed to accept connection", e);
+            // 按Ctrl+C退出时accept可能抛出异常，此时就不需要记录日志了
+            if (!isStopped()) {
+                logger.warn(getName() + " failed to accept connection", e);
+            }
         }
     }
 
