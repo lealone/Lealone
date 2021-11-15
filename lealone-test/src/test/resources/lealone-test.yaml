@@ -37,6 +37,7 @@ protocol_server_engines:
         port: 9210,
         trace: false,
         allow_others: true,
+        use_event_loop: true,
         # white_list: "127.0.0.4,127.0.0.2",
         daemon: false,
         # scheduler_count: 1,

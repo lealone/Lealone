@@ -244,6 +244,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     @Override
     public boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
+        // 目前只有select for update的场景addToWaitingQueue为false，此时只支持行锁，所以不传递columnIndexes了
         if (!addToWaitingQueue && map.isLocked(row.getRawValue(), null))
             return false;
 

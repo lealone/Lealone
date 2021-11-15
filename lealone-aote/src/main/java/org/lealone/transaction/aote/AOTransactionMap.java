@@ -64,9 +64,10 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     }
 
     @Override
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue,
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTransactionalValue,
             boolean isLockedBySelf) {
-        long tid = oldTransactionalValue.getTid();
+        TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
+        long tid = ref.getTid();
         if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {
             boolean isValid = AOTransactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
@@ -77,7 +78,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         }
         int ret = super.tryUpdateOrRemove(key, value, columnIndexes, oldTransactionalValue, isLockedBySelf);
         if (ret == Transaction.OPERATION_COMPLETE) {
-            oldTransactionalValue.incrementVersion();
+            ref.incrementVersion();
             if (transaction.globalReplicationName != null)
                 DTRValidator.addReplication(transaction.globalReplicationName);
         }

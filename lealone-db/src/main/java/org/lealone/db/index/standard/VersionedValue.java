@@ -19,9 +19,9 @@ public class VersionedValue {
 
     @Override
     public String toString() {
-        StringBuilder buff = new StringBuilder("VersionedValue[ ");
-        buff.append("version = ").append(version);
-        buff.append(", value = ").append(value).append(" ]");
-        return buff.toString();
+        // StringBuilder buff = new StringBuilder("VersionedValue[ ");
+        // buff.append("version = ").append(version);
+        // buff.append(", value = ").append(value).append(" ]");
+        return value.toString();
     }
 }

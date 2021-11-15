@@ -369,8 +369,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public K append(V value) { // 追加新记录时不会产生事务冲突
         TransactionalValue ref = TransactionalValue.createRef(null);
-        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
-                null, ref);
+        TransactionalValue newValue = createUncommitted(value, null, null, ref);
         ref.setRefValue(newValue);
         K key = map.append(ref);
         // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
@@ -608,8 +607,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
         TransactionalValue ref = TransactionalValue.createRef();
-        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
-                null, ref);
+        TransactionalValue newValue = createUncommitted(value, null, null, ref);
         ref.setRefValue(newValue);
         String mapName = getName();
         final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newValue);
@@ -655,8 +653,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
         TransactionalValue ref = TransactionalValue.createRef(null);
-        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
-                null, ref);
+        TransactionalValue newValue = createUncommitted(value, null, null, ref);
         ref.setRefValue(newValue);
         K key = map.append(ref, handler);
         transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
@@ -667,53 +664,49 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue, boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
-        return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue,
-                isLockedBySelf);
+        return tryUpdateOrRemove(key, newValue, columnIndexes, oldTransactionalValue, isLockedBySelf);
     }
 
     @Override
     public int tryRemove(K key, Object oldTransactionalValue, boolean isLockedBySelf) {
-        return tryUpdateOrRemove(key, null, null, (TransactionalValue) oldTransactionalValue, isLockedBySelf);
+        return tryUpdateOrRemove(key, null, null, oldTransactionalValue, isLockedBySelf);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue,
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTransactionalValue,
             boolean isLockedBySelf) {
         DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
-        String mapName = getName();
+        TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
         // 进入循环前先取出原来的值
-        TransactionalValue refValue = oldTransactionalValue.getRefValue();
-        if (isLockedBySelf) {
-            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
-                    map.getValueType(), columnIndexes, oldTransactionalValue);
-            transaction.undoLog.add(mapName, key, refValue, newValue);
-            if (!oldTransactionalValue.compareAndSet(refValue, newValue))
-                throw DbException.getInternalError();
-            return Transaction.OPERATION_COMPLETE;
+        TransactionalValue oldValue = ref.getRefValue();
+        if (isLockedBySelf) { // 提前调用tryLock的场景
+            while (true) {
+                // 就算被自己锁住了，也可能只是锁住部分字段而已，其他事务还是可以改变ref的值的，所以需要重试
+                if (tryCAS(key, value, columnIndexes, oldValue, ref, false)) {
+                    return Transaction.OPERATION_COMPLETE;
+                }
+                oldValue = ref.getRefValue();
+            }
         }
         // 不同事务更新不同字段时，在循环里重试是可以的
-        while (!oldTransactionalValue.isLocked(transaction.transactionId, columnIndexes)) {
-            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
-                    map.getValueType(), columnIndexes, oldTransactionalValue);
-            transaction.undoLog.add(mapName, key, refValue, newValue);
-            if (oldTransactionalValue.compareAndSet(refValue, newValue)) {
+        while (!ref.isLocked(transaction.transactionId, columnIndexes)) {
+            if (tryCAS(key, value, columnIndexes, oldValue, ref, false)) {
                 return Transaction.OPERATION_COMPLETE;
             } else {
-                transaction.undoLog.undo();
                 if (value == null) {
                     // 两个事务同时删除某一行时，因为删除操作是排它的，
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
-                    return addWaitingTransaction(key, oldTransactionalValue);
+                    return addWaitingTransaction(key, ref);
                 }
-                refValue = oldTransactionalValue.getRefValue();
+                oldValue = ref.getRefValue();
             }
         }
         // 当前行已经被其他事务锁住了
-        return addWaitingTransaction(key, oldTransactionalValue);
+        return addWaitingTransaction(key, ref);
     }
 
     @Override
@@ -727,7 +720,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             return addWaitingTransaction(key, oldTransactionalValue, (Transaction.Listener) object);
         else
             return Transaction.OPERATION_NEED_WAIT;
-        // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
     }
 
     protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
@@ -752,7 +744,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 return t.addWaitingTransaction(key, transaction, (Transaction.Listener) object);
         } else {
             return Transaction.OPERATION_NEED_WAIT;
-            // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
         }
     }
 
@@ -765,55 +756,53 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
             String name = retryReplicationNames.get(0);
             if (name.equals(transaction.getSession().getReplicationName())) {
-                TransactionalValue refValue = ref.getRefValue();
-                TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(),
-                        refValue, map.getValueType(), columnIndexes, ref);
-                transaction.undoLog.add(getName(), key, refValue, newValue, true);
-                if (ref.compareAndSet(refValue, newValue)) {
+                if (tryCAS(key, columnIndexes, ref.getRefValue(), ref)) {
                     transaction.getSession().setFinalResult(true);
                     retryReplicationNames.remove(0);
                     return true;
                 } else {
-                    if (addToWaitingQueue
-                            && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
-                        return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
-                    }
+                    return false;
                 }
             } else {
-                if (addToWaitingQueue
-                        && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
-                    return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
-                }
                 return false;
             }
-        }
-        if (ref.isLocked(transaction.transactionId, columnIndexes)) {
-            if (addToWaitingQueue
-                    && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
-                return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
-            }
-            return false;
         }
         while (true) {
-            TransactionalValue refValue = ref.getRefValue();
-            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(),
-                    refValue, map.getValueType(), columnIndexes, ref);
-            transaction.undoLog.add(getName(), key, refValue, newValue, true);
-            if (ref.compareAndSet(refValue, newValue)) {
-                return true;
-            } else {
-                transaction.undoLog.undo();
-                // CAS失败但更新的列没有被锁住时继续重试
-                if (!ref.isLocked(transaction.transactionId, columnIndexes)) {
-                    continue;
-                }
-                if (addToWaitingQueue
-                        && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
-                    return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
+            // 准确的步骤是: 先取出旧值、然后判断是否锁住、最后尝试通过CAS用新值替换旧值
+            TransactionalValue oldValue = ref.getRefValue();
+            if (ref.isLocked(transaction.transactionId, columnIndexes)) {
+                if (addToWaitingQueue) {
+                    // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
+                    // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
+                    addWaitingTransaction(key, ref, columnIndexes);
                 }
                 return false;
             }
+            if (tryCAS(key, columnIndexes, oldValue, ref)) {
+                return true;
+            }
+            // CAS失败但更新的列没有被锁住时继续重试
         }
+    }
+
+    private boolean tryCAS(K key, int[] columnIndexes, TransactionalValue oldValue, TransactionalValue ref) {
+        return tryCAS(key, oldValue.getValue(), columnIndexes, oldValue, ref, true);
+    }
+
+    private boolean tryCAS(K key, Object value, int[] columnIndexes, TransactionalValue oldValue,
+            TransactionalValue ref, boolean isForUpdate) {
+        TransactionalValue newValue = createUncommitted(value, oldValue, columnIndexes, ref);
+        if (ref.compareAndSet(oldValue, newValue)) {
+            transaction.undoLog.add(getName(), key, oldValue, newValue, isForUpdate);
+            return true;
+        }
+        return false;
+    }
+
+    private TransactionalValue createUncommitted(Object value, TransactionalValue oldValue, int[] columnIndexes,
+            TransactionalValue ref) {
+        return TransactionalValue.createUncommitted(transaction, value, oldValue, map.getValueType(), columnIndexes,
+                ref);
     }
 
     @Override

@@ -886,8 +886,8 @@ public interface TransactionalValue {
                 TransactionalValue last = first;
                 TransactionalValue next = first.getOldValue();
                 while (next != null) {
-                    if (next == this) {
-                        // if (next.getTid() == tid && next.getLogId() == logId) {
+                    // 不能用(next == this)，因为有可能已经被copy一次了
+                    if (next.getTid() == tid && next.getLogId() == logId) {
                         next = next.getOldValue();
                         break;
                     }
