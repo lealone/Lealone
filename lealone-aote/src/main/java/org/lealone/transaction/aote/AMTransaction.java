@@ -27,6 +27,8 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 import org.lealone.transaction.aote.log.UndoLog;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 public class AMTransaction implements Transaction {
 
@@ -67,6 +69,10 @@ public class AMTransaction implements Transaction {
         transactionName = getTransactionName(hostAndPort, tid);
         logSyncService = engine.getLogSyncService();
         status = Transaction.STATUS_OPEN;
+    }
+
+    public AMTransactionEngine getTransactionEngine() {
+        return transactionEngine;
     }
 
     public UndoLog getUndoLog() {

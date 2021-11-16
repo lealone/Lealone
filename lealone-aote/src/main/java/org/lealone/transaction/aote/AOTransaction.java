@@ -16,6 +16,7 @@ import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.log.RedoLogRecord;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class AOTransaction extends AMTransaction {
 

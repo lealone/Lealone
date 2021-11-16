@@ -11,8 +11,8 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.AMTransactionEngine;
-import org.lealone.transaction.aote.TransactionalValue;
-import org.lealone.transaction.aote.TransactionalValueType;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 public class UndoLogRecord {
 

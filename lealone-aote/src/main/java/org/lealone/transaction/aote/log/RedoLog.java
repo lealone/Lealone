@@ -19,10 +19,10 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.aote.TransactionalValue;
-import org.lealone.transaction.aote.TransactionalValueType;
 import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaCommitRedoLogRecord;
 import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaPrepareCommitRedoLogRecord;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 /**
  * A redo log

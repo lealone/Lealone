@@ -13,7 +13,7 @@ import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class AMTransactionTest extends TestBase {
     @Test

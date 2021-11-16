@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.transaction.aote;
+package org.lealone.transaction.aote.tvalue;
 
 import java.nio.ByteBuffer;
 

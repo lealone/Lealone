@@ -29,6 +29,7 @@ import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 //async multi-version transaction engine
 public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {

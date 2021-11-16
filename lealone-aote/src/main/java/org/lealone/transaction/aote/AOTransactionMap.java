@@ -8,6 +8,7 @@ package org.lealone.transaction.aote;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 //支持分布式场景(包括replication和sharding)
 public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {

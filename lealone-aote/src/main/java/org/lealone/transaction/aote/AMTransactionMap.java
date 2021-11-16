@@ -33,6 +33,8 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapEntry;
 import org.lealone.transaction.aote.log.UndoLogRecord;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 //只支持单机场景
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {

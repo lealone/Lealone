@@ -11,7 +11,7 @@ import java.util.List;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.transaction.aote.AMTransactionEngine;
-import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class UndoLog {
 
