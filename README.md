@@ -1,7 +1,7 @@
 
 ### Lealone 是什么
 
-* 是一个兼具 RDBMS、NoSQL 优点的面向 OLTP/OLAP 场景的异步化 NewSQL 单机与分布式关系数据库
+* 是一个兼具 RDBMS、NoSQL 优点的面向微服务和 OLTP/OLAP 场景的单机与分布式关系数据库
 
 
 ### Lealone 有哪些特性
