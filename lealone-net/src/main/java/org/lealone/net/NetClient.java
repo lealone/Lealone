@@ -5,7 +5,6 @@
  */
 package org.lealone.net;
 
-import java.net.InetSocketAddress;
 import java.util.Map;
 
 import org.lealone.db.async.Future;
@@ -17,7 +16,7 @@ public interface NetClient {
     Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager);
 
-    void removeConnection(InetSocketAddress inetSocketAddress);
+    void removeConnection(AsyncConnection conn);
 
     void close();
 

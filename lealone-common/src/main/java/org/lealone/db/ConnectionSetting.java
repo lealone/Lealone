@@ -15,5 +15,8 @@ public enum ConnectionSetting {
     IS_SERVICE_CONNECTION,
     NET_FACTORY_NAME,
     NETWORK_TIMEOUT,
-    TRACE_ENABLED;
+    TRACE_ENABLED,
+
+    IS_SHARED,
+    MAX_SHARED_SIZE,
 }

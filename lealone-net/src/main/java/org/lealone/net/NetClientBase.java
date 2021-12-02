@@ -18,7 +18,7 @@ public abstract class NetClientBase implements NetClient {
 
     // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
     // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。
-    private final ConcurrentHashMap<InetSocketAddress, AsyncConnection> asyncConnections = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<InetSocketAddress, AsyncConnectionPool> asyncConnections = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean opened = new AtomicBoolean(false);
 
@@ -30,7 +30,7 @@ public abstract class NetClientBase implements NetClient {
     protected abstract void closeInternal();
 
     protected abstract void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            AsyncCallback<AsyncConnection> ac);
+            int maxSharedSize, AsyncCallback<AsyncConnection> ac);
 
     @Override
     public Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node) {
@@ -55,10 +55,10 @@ public abstract class NetClientBase implements NetClient {
             open(config);
         }
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        AsyncConnection asyncConnection = getConnection(inetSocketAddress);
+        AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
             AsyncCallback<AsyncConnection> ac = new AsyncCallback<>();
-            createConnectionInternal(node, connectionManager, ac);
+            createConnectionInternal(node, connectionManager, AsyncConnectionPool.getMaxSharedSize(config), ac);
             return ac;
         } else {
             return Future.succeededFuture(asyncConnection);
@@ -66,26 +66,34 @@ public abstract class NetClientBase implements NetClient {
     }
 
     @Override
-    public void removeConnection(InetSocketAddress inetSocketAddress) {
+    public void removeConnection(AsyncConnection conn) {
         // checkClosed(); //不做检查
-        AsyncConnection conn = asyncConnections.remove(inetSocketAddress);
-        if (conn != null && !conn.isClosed())
+        if (conn == null)
+            return;
+        AsyncConnectionPool pool = asyncConnections.get(conn.getInetSocketAddress());
+        if (pool != null) {
+            pool.removeConnection(conn);
+        }
+        if (!conn.isClosed())
             conn.close();
     }
 
-    protected AsyncConnection getConnection(InetSocketAddress inetSocketAddress) {
+    protected AsyncConnection getConnection(Map<String, String> config, InetSocketAddress inetSocketAddress) {
         checkClosed();
-        return asyncConnections.get(inetSocketAddress);
+        AsyncConnectionPool pool = asyncConnections.get(inetSocketAddress);
+        return pool == null ? null : pool.getConnection(config);
     }
 
     protected AsyncConnection addConnection(InetSocketAddress inetSocketAddress, AsyncConnection conn) {
         checkClosed();
-        // 每个InetSocketAddress只保留一个连接，如果已经存在就复用老的，然后关闭新打开的
-        AsyncConnection old = asyncConnections.putIfAbsent(inetSocketAddress, conn);
-        if (old != null) {
-            conn.close();
-            conn = old;
+        AsyncConnectionPool pool = asyncConnections.get(inetSocketAddress);
+        if (pool == null) {
+            pool = new AsyncConnectionPool();
+            AsyncConnectionPool old = asyncConnections.putIfAbsent(inetSocketAddress, pool);
+            if (old != null)
+                pool = old;
         }
+        pool.addConnection(conn);
         return conn;
     }
 
@@ -98,11 +106,8 @@ public abstract class NetClientBase implements NetClient {
     public void close() {
         if (!closed.compareAndSet(false, true))
             return;
-        for (AsyncConnection conn : asyncConnections.values()) {
-            try {
-                conn.close();
-            } catch (Throwable e) {
-            }
+        for (AsyncConnectionPool pool : asyncConnections.values()) {
+            pool.close();
         }
         asyncConnections.clear();
         closeInternal();
@@ -116,8 +121,8 @@ public abstract class NetClientBase implements NetClient {
     }
 
     public void checkTimeout(long currentTime) {
-        for (AsyncConnection conn : asyncConnections.values()) {
-            conn.checkTimeout(currentTime);
+        for (AsyncConnectionPool pool : asyncConnections.values()) {
+            pool.checkTimeout(currentTime);
         }
     }
 }

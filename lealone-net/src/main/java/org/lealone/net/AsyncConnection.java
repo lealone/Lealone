@@ -67,4 +67,16 @@ public abstract class AsyncConnection {
 
     public void checkTimeout(long currentTime) {
     }
+
+    public boolean isShared() {
+        return false;
+    }
+
+    public int getSharedSize() {
+        return 0;
+    }
+
+    public int getMaxSharedSize() {
+        return 0;
+    }
 }

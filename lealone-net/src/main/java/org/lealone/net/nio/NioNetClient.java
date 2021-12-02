@@ -106,7 +106,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false);
             } else {
-                conn = new TcpClientConnection(writableChannel, this);
+                conn = new TcpClientConnection(writableChannel, this, attachment.maxSharedSize);
             }
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             AsyncConnection conn2 = addConnection(attachment.inetSocketAddress, conn);
@@ -127,6 +127,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
         AsyncCallback<AsyncConnection> ac;
+        int maxSharedSize;
     }
 
     @Override
@@ -145,7 +146,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     @Override
-    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
+    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager, int maxSharedSize,
             AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int socketRecvBuffer = 16 * 1024;
@@ -165,6 +166,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             attachment.connectionManager = connectionManager;
             attachment.inetSocketAddress = inetSocketAddress;
             attachment.ac = ac;
+            attachment.maxSharedSize = maxSharedSize;
 
             register(channel, SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
@@ -191,8 +193,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
         conn.handleException(e);
         try {
-            InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
-            removeConnection(inetSocketAddress);
+            removeConnection(conn);
         } catch (Exception e1) {
         }
         closeChannel(channel);

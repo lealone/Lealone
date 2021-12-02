@@ -58,7 +58,7 @@ public class NioEventLoopAdapter implements NioEventLoop {
 
     @Override
     public void select(long timeout) throws IOException {
-        // tryRegisterWriteOperation(selector);
+        tryRegisterWriteOperation(selector);
         if (selecting.compareAndSet(false, true)) {
             selector.select(timeout);
             selecting.set(false);
@@ -107,12 +107,12 @@ public class NioEventLoopAdapter implements NioEventLoop {
                 return;
             }
             // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
-            if (queue.isEmpty() && key.isValid()) { // && key.isWritable()) {
-                if (write(key, channel, nioBuffer)) {
-                    deregisterWrite(key);
-                    return;
-                }
-            }
+            // if (queue.isEmpty() && key.isValid()) { // && key.isWritable()) {
+            // if (write(key, channel, nioBuffer)) {
+            // deregisterWrite(key);
+            // return;
+            // }
+            // }
             queue.add(nioBuffer);
             registerWrite(key);
             wakeup();

@@ -118,6 +118,7 @@ public class ClientSessionFactory implements SessionFactory {
                 // 这样就能在同一条TCP连接中区分不同的客户端session了
                 int sessionId = tcpConnection.getNextId();
                 ClientSession clientSession = new ClientSession(tcpConnection, ci, server, parent, sessionId);
+                tcpConnection.addSession(sessionId, clientSession);
 
                 SessionInit packet = new SessionInit(ci);
                 AckPacketHandler<ClientSession, SessionInitAck> ackPacketHandler = ack -> {

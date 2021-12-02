@@ -26,13 +26,15 @@ public class TcpClientConnection extends TransferConnection {
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
+    private final int maxSharedSize;
     // private final NetClient netClient;
 
     private Throwable pendingException;
 
-    public TcpClientConnection(WritableChannel writableChannel, NetClient netClient) {
+    public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize) {
         super(writableChannel, false);
         // this.netClient = netClient;
+        this.maxSharedSize = maxSharedSize;
     }
 
     public int getNextId() {
@@ -146,5 +148,20 @@ public class TcpClientConnection extends TransferConnection {
         for (AsyncCallback<?> ac : callbackMap.values()) {
             ac.checkTimeout(currentTime);
         }
+    }
+
+    @Override
+    public boolean isShared() {
+        return true;
+    }
+
+    @Override
+    public int getSharedSize() {
+        return sessions.size();
+    }
+
+    @Override
+    public int getMaxSharedSize() {
+        return maxSharedSize;
     }
 }
