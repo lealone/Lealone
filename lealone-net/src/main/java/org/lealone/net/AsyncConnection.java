@@ -79,4 +79,9 @@ public abstract class AsyncConnection {
     public int getMaxSharedSize() {
         return 0;
     }
+
+    // 是否每次循环只处理一个包
+    public boolean onePacketPerLoop() {
+        return false;
+    }
 }

@@ -46,11 +46,6 @@ class NioEventLoop implements NetEventLoop {
     }
 
     @Override
-    public NetEventLoop getDefaultNetEventLoopImpl() {
-        return this;
-    }
-
-    @Override
     public Selector getSelector() {
         return selector;
     }
@@ -164,7 +159,7 @@ class NioEventLoop implements NetEventLoop {
     private final boolean isDebugEnabled = logger.isDebugEnabled();
 
     @Override
-    public void read(SelectionKey key, NetEventLoop netEventLoop) {
+    public void read(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
@@ -198,7 +193,7 @@ class NioEventLoop implements NetEventLoop {
                         NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
                         dataBuffer = null;
                         conn.handle(nioBuffer);
-                        if (netEventLoop.onePacketPerLoop())
+                        if (conn.onePacketPerLoop())
                             break;
                     } else {
                         packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
@@ -208,7 +203,8 @@ class NioEventLoop implements NetEventLoop {
                 }
             }
         } catch (Exception e) {
-            netEventLoop.handleException(conn, channel, e);
+            conn.handleException(e);
+            closeChannel(channel);
         }
     }
 

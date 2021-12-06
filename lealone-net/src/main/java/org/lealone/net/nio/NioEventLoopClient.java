@@ -20,11 +20,10 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 
-class NioEventLoopClient extends NetClientBase implements NetEventLoop {
+class NioEventLoopClient extends NetClientBase {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoopClient.class);
     private static final NioEventLoopClient instance = new NioEventLoopClient();
@@ -71,9 +70,9 @@ class NioEventLoopClient extends NetClientBase implements NetEventLoop {
                             if (key.isValid()) {
                                 int readyOps = key.readyOps();
                                 if ((readyOps & SelectionKey.OP_READ) != 0) {
-                                    read(key, this);
+                                    nioEventLoop.read(key);
                                 } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                                    write(key);
+                                    nioEventLoop.write(key);
                                 } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
                                     Object att = key.attachment();
                                     connectionEstablished(key, att);
@@ -106,7 +105,7 @@ class NioEventLoopClient extends NetClientBase implements NetEventLoop {
             AsyncConnection conn;
             channel.finishConnect();
             nioEventLoop.addSocketChannel(channel);
-            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, nioEventLoop);
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false);
             } else {
@@ -172,34 +171,11 @@ class NioEventLoopClient extends NetClientBase implements NetEventLoop {
             attachment.ac = ac;
             attachment.maxSharedSize = maxSharedSize;
 
-            register(channel, SelectionKey.OP_CONNECT, attachment);
+            nioEventLoop.register(channel, SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
         } catch (Exception e) {
-            closeChannel(channel);
+            nioEventLoop.closeChannel(channel);
             ac.setAsyncResult(e);
         }
-    }
-
-    @Override
-    public NetEventLoop getDefaultNetEventLoopImpl() {
-        return nioEventLoop;
-    }
-
-    @Override
-    public void closeChannel(SocketChannel channel) {
-        if (channel == null) {
-            return;
-        }
-        nioEventLoop.closeChannel(channel);
-    }
-
-    @Override
-    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
-        conn.handleException(e);
-        try {
-            removeConnection(conn);
-        } catch (Exception e1) {
-        }
-        closeChannel(channel);
     }
 }

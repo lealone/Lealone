@@ -14,68 +14,31 @@ import java.util.Map;
 
 public interface NetEventLoop {
 
-    NetEventLoop getDefaultNetEventLoopImpl();
+    Selector getSelector();
 
-    default Selector getSelector() {
-        return getDefaultNetEventLoopImpl().getSelector();
-    }
+    void select() throws IOException;
 
-    default void select() throws IOException {
-        getDefaultNetEventLoopImpl().select();
-    }
+    void select(long timeout) throws IOException;
 
-    default void select(long timeout) throws IOException {
-        getDefaultNetEventLoopImpl().select(timeout);
-    }
+    void register(AsyncConnection conn);
 
-    default void register(AsyncConnection conn) {
-        getDefaultNetEventLoopImpl().register(conn);
-    }
+    void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException;
 
-    default void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException {
-        getDefaultNetEventLoopImpl().register(channel, ops, att);
-    }
+    void wakeup();
 
-    default void wakeup() {
-        getDefaultNetEventLoopImpl().wakeup();
-    }
+    void addSocketChannel(SocketChannel channel);
 
-    default void addSocketChannel(SocketChannel channel) {
-        getDefaultNetEventLoopImpl().addSocketChannel(channel);
-    }
+    void addNetBuffer(SocketChannel channel, NetBuffer netBuffer);
 
-    default void addNetBuffer(SocketChannel channel, NetBuffer netBuffer) {
-        getDefaultNetEventLoopImpl().addNetBuffer(channel, netBuffer);
-    }
+    void read(SelectionKey key);
 
-    default void read(SelectionKey key, NetEventLoop netEventLoop) {
-        getDefaultNetEventLoopImpl().read(key, netEventLoop);
-    }
+    void write();
 
-    default void write() {
-        getDefaultNetEventLoopImpl().write();
-    }
+    void write(SelectionKey key);
 
-    default void write(SelectionKey key) {
-        getDefaultNetEventLoopImpl().write(key);
-    }
+    void closeChannel(SocketChannel channel);
 
-    default void closeChannel(SocketChannel channel) {
-        getDefaultNetEventLoopImpl().closeChannel(channel);
-    }
-
-    default void close() {
-        getDefaultNetEventLoopImpl().close();
-    }
-
-    default void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
-        getDefaultNetEventLoopImpl().handleException(conn, channel, e);
-    }
-
-    // 是否每次循环只处理一个包
-    default boolean onePacketPerLoop() {
-        return false;
-    }
+    void close();
 
     public static boolean isRunInScheduler(Map<String, String> config) {
         String inScheduler = config.get("net_event_loop_run_in_scheduler");

@@ -51,6 +51,16 @@ public class TcpServerConnection extends TransferConnection {
         this.scheduler = scheduler;
     }
 
+    @Override
+    public boolean onePacketPerLoop() {
+        return scheduler.onePacketPerLoop();
+    }
+
+    @Override
+    public void handleException(Exception e) {
+        tcpServer.removeConnection(this);
+    }
+
     // 这个方法是由网络事件循环线程执行的
     @Override
     protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {

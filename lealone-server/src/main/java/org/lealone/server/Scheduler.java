@@ -7,7 +7,6 @@ package org.lealone.server;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -38,7 +37,7 @@ import org.lealone.storage.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 
 public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler,
-        Transaction.Listener, NetEventLoop, PageOperation.ListenerFactory<Object> {
+        Transaction.Listener, PageOperation.ListenerFactory<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -423,7 +422,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
                     if (key.isValid()) {
                         int readyOps = key.readyOps();
                         if ((readyOps & SelectionKey.OP_READ) != 0) {
-                            netEventLoop.read(key, this);
+                            netEventLoop.read(key);
                         } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                             netEventLoop.write(key);
                         } else {
@@ -448,33 +447,18 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         return netEventLoop != null;
     }
 
-    @Override
     public void register(AsyncConnection conn) {
         // 如果Scheduler线程在执行select，
         // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
         // jdk16不存在这个问题
         if (netEventLoop != null) {
             handle(() -> {
-                conn.getWritableChannel().setEventLoop(this); // 替换掉原来的
+                conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
                 netEventLoop.register(conn);
             });
         }
     }
 
-    @Override
-    public NetEventLoop getDefaultNetEventLoopImpl() {
-        return netEventLoop;
-    }
-
-    @Override
-    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
-        if (conn != null) {
-            conn.close();
-        }
-        closeChannel(channel);
-    }
-
-    @Override
     public boolean onePacketPerLoop() {
         // 每次循环只处理一个包，避免在队列中放入过多元素
         return netEventLoop != null;

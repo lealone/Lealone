@@ -15,11 +15,10 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetServerBase;
 
 //TODO 1.支持SSL 2.支持配置参数
-class NioEventLoopServer extends NetServerBase implements NetEventLoop {
+class NioEventLoopServer extends NetServerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
     private ServerSocketChannel serverChannel;
@@ -73,9 +72,9 @@ class NioEventLoopServer extends NetServerBase implements NetEventLoop {
                             if (key.isValid()) {
                                 int readyOps = key.readyOps();
                                 if ((readyOps & SelectionKey.OP_READ) != 0) {
-                                    read(key, this);
+                                    nioEventLoop.read(key);
                                 } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                                    write(key);
+                                    nioEventLoop.write(key);
                                 } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
                                     accept();
                                 } else {
@@ -104,7 +103,7 @@ class NioEventLoopServer extends NetServerBase implements NetEventLoop {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
             nioEventLoop.addSocketChannel(channel);
-            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, nioEventLoop);
             conn = createConnection(writableChannel);
 
             NioAttachment attachment = new NioAttachment();
@@ -114,7 +113,7 @@ class NioEventLoopServer extends NetServerBase implements NetEventLoop {
             if (conn != null) {
                 removeConnection(conn);
             }
-            closeChannel(channel);
+            nioEventLoop.closeChannel(channel);
             if (!isStopped()) {
                 logger.warn(getName() + " failed to accept", e);
             }
@@ -135,18 +134,5 @@ class NioEventLoopServer extends NetServerBase implements NetEventLoop {
             } catch (Throwable e) {
             }
         }
-    }
-
-    @Override
-    public NetEventLoop getDefaultNetEventLoopImpl() {
-        return nioEventLoop;
-    }
-
-    @Override
-    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
-        if (conn != null) {
-            removeConnection(conn);
-        }
-        closeChannel(channel);
     }
 }
