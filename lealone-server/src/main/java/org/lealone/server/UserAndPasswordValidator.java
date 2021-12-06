@@ -73,7 +73,7 @@ public class UserAndPasswordValidator {
         }
     }
 
-    public boolean canHandNextSessionInitTask() {
+    public boolean canHandleNextSessionInitTask() {
         if (delay > 0) {
             if (lastTime + delay > System.currentTimeMillis())
                 return false;

@@ -135,12 +135,12 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     }
 
     private void runSessionInitTasks() {
-        if (userAndPasswordValidator.canHandNextSessionInitTask()) {
+        if (userAndPasswordValidator.canHandleNextSessionInitTask()) {
             AsyncTask task = sessionInitTaskQueue.poll();
             while (task != null) {
                 try {
                     task.run();
-                    if (!userAndPasswordValidator.canHandNextSessionInitTask()) {
+                    if (!userAndPasswordValidator.canHandleNextSessionInitTask()) {
                         break;
                     }
                 } catch (Throwable e) {

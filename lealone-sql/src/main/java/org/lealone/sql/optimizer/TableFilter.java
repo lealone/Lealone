@@ -177,7 +177,8 @@ public class TableFilter extends ColumnResolverBase {
         } else {
             int len = table.getColumns().length;
             int[] masks = new int[len];
-            for (IndexCondition condition : indexConditions) {
+            for (int i = 0, size = indexConditions.size(); i < size; i++) {
+                IndexCondition condition = indexConditions.get(i);
                 if (condition.isEvaluatable()) {
                     if (condition.isAlwaysFalse()) {
                         masks = null;
