@@ -11,6 +11,7 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
 import org.lealone.net.NetBufferFactory;
+import org.lealone.net.NetEventLoop;
 import org.lealone.net.WritableChannel;
 
 public class NioWritableChannel implements WritableChannel {
@@ -18,9 +19,9 @@ public class NioWritableChannel implements WritableChannel {
     private final SocketChannel channel;
     private final String host;
     private final int port;
-    private NioEventLoop nioEventLoop;
+    private NetEventLoop eventLoop;
 
-    public NioWritableChannel(SocketChannel channel, NioEventLoop nioEventLoop) throws IOException {
+    public NioWritableChannel(SocketChannel channel, NetEventLoop eventLoop) throws IOException {
         this.channel = channel;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
@@ -31,19 +32,19 @@ public class NioWritableChannel implements WritableChannel {
             host = "";
             port = -1;
         }
-        this.nioEventLoop = nioEventLoop;
+        this.eventLoop = eventLoop;
     }
 
     @Override
     public void write(Object data) {
         if (data instanceof NioBuffer) {
-            nioEventLoop.addNioBuffer(channel, (NioBuffer) data);
+            eventLoop.addNetBuffer(channel, (NioBuffer) data);
         }
     }
 
     @Override
     public void close() {
-        nioEventLoop.closeChannel(channel);
+        eventLoop.closeChannel(channel);
     }
 
     @Override
@@ -67,7 +68,7 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void setEventLoop(NioEventLoop eventLoop) {
-        nioEventLoop = eventLoop;
+    public void setEventLoop(NetEventLoop eventLoop) {
+        this.eventLoop = eventLoop;
     }
 }

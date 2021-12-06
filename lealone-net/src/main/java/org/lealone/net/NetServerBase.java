@@ -25,9 +25,9 @@ public abstract class NetServerBase extends ProtocolServerBase implements NetSer
             throw DbException.getInternalError("connectionManager is null");
     }
 
-    public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
+    public AsyncConnection createConnection(WritableChannel writableChannel) {
         check();
-        return connectionManager.createConnection(writableChannel, isServer);
+        return connectionManager.createConnection(writableChannel, true);
 
     }
 

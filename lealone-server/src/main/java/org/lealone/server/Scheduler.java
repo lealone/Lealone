@@ -18,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.concurrent.ScheduledExecutors;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
@@ -30,8 +29,8 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.nio.NioEventLoop;
-import org.lealone.net.nio.NioEventLoopAdapter;
+import org.lealone.net.NetEventLoop;
+import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -39,7 +38,7 @@ import org.lealone.storage.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 
 public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler,
-        Transaction.Listener, NioEventLoop, PageOperation.ListenerFactory<Object> {
+        Transaction.Listener, NetEventLoop, PageOperation.ListenerFactory<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -65,14 +64,17 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
         setDaemon(true);
-        // 如果NetServer已经用了EventLoop那就不再用NioEventLoopAdapter
-        boolean useEventLoop = Boolean.parseBoolean(config.get("use_event_loop"));
-        if (!useEventLoop) {
-            initNioEventLoopAdapter(config);
-            loopInterval = 0;
-        } else {
+        String key = "scheduler_loop_interval";
+        /// 是否在调度器里负责网络IO
+        if (NetEventLoop.isRunInScheduler(config)) {
+            // 如果返回null，就不在调度器里处理网络IO
+            netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, 0);
+        }
+        if (netEventLoop == null) {
             // 默认100毫秒
-            loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
+            loopInterval = DateTimeUtils.getLoopInterval(config, key, 100);
+        } else {
+            loopInterval = 0;
         }
     }
 
@@ -291,11 +293,10 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
 
     @Override
     public void wakeUp() {
-        if (waiting)
+        if (netEventLoop != null)
+            netEventLoop.wakeup();
+        else if (waiting)
             haveWork.release(1);
-        // if (waiting)
-        if (nioEventLoopAdapter != null)
-            nioEventLoopAdapter.getSelector().wakeup();
     }
 
     @Override
@@ -387,7 +388,16 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     }
 
     private void doAwait() {
-        if (nioEventLoopAdapter == null) {
+        if (netEventLoop != null) {
+            try {
+                netEventLoop.select();
+            } catch (IOException e1) {
+                logger.warn("Failed to select", e);
+                return;
+            }
+            netEventLoop.write();
+            handleSelectedKeys();
+        } else {
             waiting = true;
             try {
                 haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
@@ -397,34 +407,30 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             } finally {
                 waiting = false;
             }
-            return;
         }
-        waiting = true;
-        try {
-            nioEventLoopAdapter.select();
-        } catch (IOException e1) {
-            logger.warn("Failed to select", e);
-            return;
-        }
-        waiting = false;
-        Set<SelectionKey> keys = nioEventLoopAdapter.getSelector().selectedKeys();
-        try {
-            for (SelectionKey key : keys) {
-                if (key.isValid()) {
-                    int readyOps = key.readyOps();
-                    if ((readyOps & SelectionKey.OP_READ) != 0) {
-                        nioEventLoopAdapter.read(key, this);
-                    } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                        nioEventLoopAdapter.write(key);
+    }
+
+    private void handleSelectedKeys() {
+        Set<SelectionKey> keys = netEventLoop.getSelector().selectedKeys();
+        if (!keys.isEmpty()) {
+            try {
+                for (SelectionKey key : keys) {
+                    if (key.isValid()) {
+                        int readyOps = key.readyOps();
+                        if ((readyOps & SelectionKey.OP_READ) != 0) {
+                            netEventLoop.read(key, this);
+                        } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                            netEventLoop.write(key);
+                        } else {
+                            key.cancel();
+                        }
                     } else {
                         key.cancel();
                     }
-                } else {
-                    key.cancel();
                 }
+            } finally {
+                keys.clear();
             }
-        } finally {
-            keys.clear();
         }
     }
 
@@ -433,27 +439,28 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         end();
     }
 
-    private NioEventLoopAdapter nioEventLoopAdapter;
+    private NetEventLoop netEventLoop;
 
-    public NioEventLoopAdapter getNioEventLoopAdapter() {
-        return nioEventLoopAdapter;
+    public boolean useNetEventLoop() {
+        return netEventLoop != null;
     }
 
+    @Override
     public void register(AsyncConnection conn) {
         // 如果Scheduler线程在执行select，
         // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
         // jdk16不存在这个问题
-        if (nioEventLoopAdapter != null) {
+        if (netEventLoop != null) {
             handle(() -> {
                 conn.getWritableChannel().setEventLoop(this); // 替换掉原来的
-                nioEventLoopAdapter.register(conn);
+                netEventLoop.register(conn);
             });
         }
     }
 
     @Override
-    public NioEventLoop getDefaultNioEventLoopImpl() {
-        return nioEventLoopAdapter;
+    public NetEventLoop getDefaultNetEventLoopImpl() {
+        return netEventLoop;
     }
 
     @Override
@@ -464,13 +471,10 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         closeChannel(channel);
     }
 
-    private void initNioEventLoopAdapter(Map<String, String> config) {
-        try {
-            // 默认一直阻塞
-            nioEventLoopAdapter = new NioEventLoopAdapter(config, "scheduler_loop_interval", 0);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
+    @Override
+    public boolean onePacketPerLoop() {
+        // 每次循环只处理一个包，避免在队列中放入过多元素
+        return netEventLoop != null;
     }
 
     @Override

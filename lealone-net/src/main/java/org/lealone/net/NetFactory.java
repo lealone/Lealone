@@ -13,4 +13,7 @@ public interface NetFactory extends PluggableEngine {
 
     NetClient getNetClient();
 
+    default NetEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval) {
+        return null;
+    }
 }

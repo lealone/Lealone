@@ -59,15 +59,15 @@ public class TcpServerConnection extends TransferConnection {
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
-                Scheduler scheduler;
                 // 当前共享的TCP连接对应的Scheduler不负责网络IO时，需要为每个新session重新分配Scheduler
-                if (this.scheduler.getNioEventLoopAdapter() == null) {
-                    // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                    scheduler = ScheduleService.getSchedulerForSession();
+                if (this.scheduler.useNetEventLoop()) {
+                    // 直接处理，不需要加入Scheduler的队列
+                    readInitPacket(in, packetId, sessionId, this.scheduler);
                 } else {
-                    scheduler = this.scheduler;
+                    // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
+                    Scheduler scheduler = ScheduleService.getSchedulerForSession();
+                    scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
                 }
-                scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
             } else {
                 sessionNotFound(packetId, sessionId);
             }

@@ -7,8 +7,6 @@ package org.lealone.net;
 
 import java.nio.channels.SocketChannel;
 
-import org.lealone.net.nio.NioEventLoop;
-
 public interface WritableChannel {
 
     void write(Object data);
@@ -25,6 +23,6 @@ public interface WritableChannel {
 
     NetBufferFactory getBufferFactory();
 
-    default void setEventLoop(NioEventLoop eventLoop) {
+    default void setEventLoop(NetEventLoop eventLoop) {
     }
 }

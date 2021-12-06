@@ -19,7 +19,7 @@ transaction_engines:
     enabled: true
     parameters: {
         redo_log_dir: redo_log, # 会组合成这样的目录: ${base_dir} + "/"+ ${redo_log_dir},
-        log_sync_type: periodic
+        log_sync_type: no_sync
     }
 
 sql_engines:
@@ -37,7 +37,7 @@ protocol_server_engines:
         port: 9210,
         trace: false,
         allow_others: true,
-        use_event_loop: true,
+        # net_event_loop_run_in_scheduler: true, # 默认在调度器中处理网络IO
         # white_list: "127.0.0.4,127.0.0.2",
         daemon: false,
         # scheduler_count: 1,
