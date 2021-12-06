@@ -13,7 +13,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,6 +33,7 @@ public class NioEventLoop implements NetEventLoop {
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoop.class);
 
     private final ConcurrentHashMap<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> channels = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SocketChannel, SelectionKey> keys = new ConcurrentHashMap<>();
 
     private final AtomicInteger writeQueueSize = new AtomicInteger();
     private final AtomicBoolean selecting = new AtomicBoolean(false);
@@ -111,11 +111,11 @@ public class NioEventLoop implements NetEventLoop {
         NioBuffer nioBuffer = (NioBuffer) netBuffer;
         ConcurrentLinkedQueue<NioBuffer> queue = channels.get(channel);
         if (queue != null) {
-            SelectionKey key = channel.keyFor(getSelector());
+            SelectionKey key = keyFor(channel);
             // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
             if (key != null && key.isValid() && queue.isEmpty()) {
                 Object obj = Thread.currentThread();
-                if (obj instanceof NioEventLoop) {
+                if (obj instanceof NetEventLoop) {
                     if (write(key, channel, nioBuffer)) {
                         if ((key.interestOps() & SelectionKey.OP_WRITE) != 0) {
                             deregisterWrite(key);
@@ -128,6 +128,15 @@ public class NioEventLoop implements NetEventLoop {
             queue.add(nioBuffer);
             wakeup();
         }
+    }
+
+    private SelectionKey keyFor(SocketChannel channel) {
+        SelectionKey key = keys.get(channel);
+        if (key == null) {
+            key = channel.keyFor(getSelector());
+            keys.put(channel, key);
+        }
+        return key;
     }
 
     private void registerWrite(SelectionKey key) {
@@ -219,13 +228,37 @@ public class NioEventLoop implements NetEventLoop {
     }
 
     @Override
+    public void write() {
+        if (writeQueueSize.get() > 0) {
+            for (Entry<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> entry : channels.entrySet()) {
+                ConcurrentLinkedQueue<NioBuffer> queue = entry.getValue();
+                if (!queue.isEmpty()) {
+                    SocketChannel channel = entry.getKey();
+                    SelectionKey key = keyFor(channel);
+                    if (key != null && key.isValid()) {
+                        write(key, channel, queue);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
     public void write(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
-        Queue<NioBuffer> queue = channels.get(channel);
+        ConcurrentLinkedQueue<NioBuffer> queue = channels.get(channel);
+        if (!queue.isEmpty()) {
+            write(key, channel, queue);
+        }
+    }
+
+    private void write(SelectionKey key, SocketChannel channel, ConcurrentLinkedQueue<NioBuffer> queue) {
         for (NioBuffer nioBuffer : queue) {
             if (write(key, channel, nioBuffer)) {
                 queue.remove(nioBuffer);
                 writeQueueSize.decrementAndGet();
+            } else {
+                break; // 只要有一个没有写完，后面的就先不用写了
             }
         }
         // 还是要检测key是否是有效的，否则会抛CancelledKeyException
@@ -261,21 +294,6 @@ public class NioEventLoop implements NetEventLoop {
     }
 
     @Override
-    public void write() {
-        if (writeQueueSize.get() > 0) {
-            for (Entry<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> entry : channels.entrySet()) {
-                if (!entry.getValue().isEmpty()) {
-                    for (SelectionKey key : selector.keys()) {
-                        if (key.channel() == entry.getKey() && key.isValid()) {
-                            write(key);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @Override
     public void closeChannel(SocketChannel channel) {
         if (channel == null || !channels.containsKey(channel)) {
             return;
@@ -287,6 +305,7 @@ public class NioEventLoop implements NetEventLoop {
             }
         }
         channels.remove(channel);
+        keys.remove(channel);
         AsyncConnectionAccepter.closeChannel(channel);
     }
 
