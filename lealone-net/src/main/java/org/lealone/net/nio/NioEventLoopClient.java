@@ -24,18 +24,18 @@ import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 
-public class NioNetClient extends NetClientBase implements NetEventLoop {
+class NioEventLoopClient extends NetClientBase implements NetEventLoop {
 
-    private static final Logger logger = LoggerFactory.getLogger(NioNetClient.class);
-    private static final NioNetClient instance = new NioNetClient();
+    private static final Logger logger = LoggerFactory.getLogger(NioEventLoopClient.class);
+    private static final NioEventLoopClient instance = new NioEventLoopClient();
 
-    public static NioNetClient getInstance() {
+    public static NioEventLoopClient getInstance() {
         return instance;
     }
 
     private NioEventLoop nioEventLoop;
 
-    private NioNetClient() {
+    private NioEventLoopClient() {
     }
 
     private synchronized void createNioEventLoop(Map<String, String> config) {
@@ -43,7 +43,7 @@ public class NioNetClient extends NetClientBase implements NetEventLoop {
             try {
                 nioEventLoop = new NioEventLoop(config, "client_nio_event_loop_interval", 1000); // 默认1秒
                 ConcurrentUtils.submitTask("ClientNioEventLoopService", () -> {
-                    NioNetClient.this.run();
+                    NioEventLoopClient.this.run();
                 });
             } catch (IOException e) {
                 throw new RuntimeException("Failed to open NioEventLoopAdapter", e);

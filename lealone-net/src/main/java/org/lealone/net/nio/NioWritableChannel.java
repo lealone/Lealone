@@ -14,7 +14,7 @@ import org.lealone.net.NetBufferFactory;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.WritableChannel;
 
-public class NioWritableChannel implements WritableChannel {
+class NioWritableChannel implements WritableChannel {
 
     private final SocketChannel channel;
     private final String host;

@@ -64,6 +64,10 @@ public interface NetEventLoop {
         getDefaultNetEventLoopImpl().closeChannel(channel);
     }
 
+    default void close() {
+        getDefaultNetEventLoopImpl().close();
+    }
+
     default void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
         getDefaultNetEventLoopImpl().handleException(conn, channel, e);
     }

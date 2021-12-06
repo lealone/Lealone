@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.NetBuffer;
 
-public class NioBuffer implements NetBuffer {
+class NioBuffer implements NetBuffer {
 
     private final DataBuffer dataBuffer;
     private boolean onlyOnePacket;

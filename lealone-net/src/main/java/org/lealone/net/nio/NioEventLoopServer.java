@@ -19,9 +19,9 @@ import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetServerBase;
 
 //TODO 1.支持SSL 2.支持配置参数
-public class NioNetServer extends NetServerBase implements NetEventLoop {
+class NioEventLoopServer extends NetServerBase implements NetEventLoop {
 
-    private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
     private ServerSocketChannel serverChannel;
     private NioEventLoop nioEventLoop;
 
@@ -29,7 +29,7 @@ public class NioNetServer extends NetServerBase implements NetEventLoop {
     public synchronized void start() {
         if (isStarted())
             return;
-        logger.info("Starting nio net server");
+        logger.info("Starting nio event loop server");
         try {
             nioEventLoop = new NioEventLoop(config, "server_nio_event_loop_interval", 1000); // 默认1秒
             serverChannel = ServerSocketChannel.open();
@@ -44,18 +44,18 @@ public class NioNetServer extends NetServerBase implements NetEventLoop {
                     t.setName(name);
             } else {
                 ConcurrentUtils.submitTask(name, () -> {
-                    NioNetServer.this.run();
+                    NioEventLoopServer.this.run();
                 });
             }
         } catch (Exception e) {
-            checkBindException(e, "Failed to start nio net server");
+            checkBindException(e, "Failed to start nio event loop server");
         }
     }
 
     @Override
     public Runnable getRunnable() {
         return () -> {
-            NioNetServer.this.run();
+            NioEventLoopServer.this.run();
         };
     }
 
@@ -115,7 +115,9 @@ public class NioNetServer extends NetServerBase implements NetEventLoop {
                 removeConnection(conn);
             }
             closeChannel(channel);
-            logger.warn(getName() + " failed to accept", e);
+            if (!isStopped()) {
+                logger.warn(getName() + " failed to accept", e);
+            }
         }
     }
 
@@ -123,7 +125,7 @@ public class NioNetServer extends NetServerBase implements NetEventLoop {
     public synchronized void stop() {
         if (isStopped())
             return;
-        logger.info("Stopping nio net server");
+        logger.info("Stopping nio event loop server");
         super.stop();
         nioEventLoop.close();
         if (serverChannel != null) {

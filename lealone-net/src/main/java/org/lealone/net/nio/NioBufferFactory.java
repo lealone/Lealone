@@ -23,5 +23,4 @@ public class NioBufferFactory implements NetBufferFactory {
     public NioBuffer createBuffer(int initialSizeHint) {
         return new NioBuffer(DataBuffer.create());
     }
-
 }

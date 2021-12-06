@@ -24,11 +24,10 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.AsyncConnectionAccepter;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetEventLoop;
 
-public class NioEventLoop implements NetEventLoop {
+class NioEventLoop implements NetEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoop.class);
 
@@ -80,6 +79,19 @@ public class NioEventLoop implements NetEventLoop {
         haveWork = true;
         if (selecting.compareAndSet(true, false)) {
             selector.wakeup();
+        }
+    }
+
+    @Override
+    public void register(AsyncConnection conn) {
+        NioAttachment attachment = new NioAttachment();
+        attachment.conn = conn;
+        SocketChannel channel = conn.getWritableChannel().getSocketChannel();
+        addSocketChannel(channel);
+        try {
+            channel.register(getSelector(), SelectionKey.OP_READ, attachment);
+        } catch (ClosedChannelException e) {
+            throw DbException.convert(e);
         }
     }
 
@@ -306,9 +318,10 @@ public class NioEventLoop implements NetEventLoop {
         }
         channels.remove(channel);
         keys.remove(channel);
-        AsyncConnectionAccepter.closeChannel(channel);
+        TcpServerAccepter.closeChannel(channel);
     }
 
+    @Override
     public void close() {
         try {
             Selector selector = this.selector;
@@ -316,19 +329,6 @@ public class NioEventLoop implements NetEventLoop {
             selector.wakeup();
             selector.close();
         } catch (Exception e) {
-        }
-    }
-
-    @Override
-    public void register(AsyncConnection conn) {
-        NioAttachment attachment = new NioAttachment();
-        attachment.conn = conn;
-        SocketChannel channel = conn.getWritableChannel().getSocketChannel();
-        addSocketChannel(channel);
-        try {
-            channel.register(getSelector(), SelectionKey.OP_READ, attachment);
-        } catch (ClosedChannelException e) {
-            throw DbException.convert(e);
         }
     }
 }

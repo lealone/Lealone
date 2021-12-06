@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.net;
+package org.lealone.net.nio;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -13,20 +13,21 @@ import java.nio.channels.SocketChannel;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.nio.NioWritableChannel;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.NetServerBase;
 
 //只负责接收新的TCP连接
 //TODO 1.支持SSL 2.支持配置参数
-public class AsyncConnectionAccepter extends NetServerBase {
+class TcpServerAccepter extends NetServerBase {
 
-    private static final Logger logger = LoggerFactory.getLogger(AsyncConnectionAccepter.class);
+    private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
     private ServerSocketChannel serverChannel;
 
     @Override
     public synchronized void start() {
         if (isStarted())
             return;
-        logger.info("Starting connection accepter");
+        logger.info("Starting tcp server accepter");
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
@@ -39,11 +40,11 @@ public class AsyncConnectionAccepter extends NetServerBase {
                     t.setName(name);
             } else {
                 ConcurrentUtils.submitTask(name, isDaemon(), () -> {
-                    AsyncConnectionAccepter.this.run();
+                    TcpServerAccepter.this.run();
                 });
             }
         } catch (Exception e) {
-            checkBindException(e, "Failed to start connection accepter");
+            checkBindException(e, "Failed to start tcp server accepter");
         }
     }
 
@@ -51,7 +52,7 @@ public class AsyncConnectionAccepter extends NetServerBase {
     public synchronized void stop() {
         if (isStopped())
             return;
-        logger.info("Stopping connection accepter");
+        logger.info("Stopping tcp server accepter");
         super.stop();
         if (serverChannel != null) {
             try {
@@ -65,7 +66,7 @@ public class AsyncConnectionAccepter extends NetServerBase {
     @Override
     public Runnable getRunnable() {
         return () -> {
-            AsyncConnectionAccepter.this.run();
+            TcpServerAccepter.this.run();
         };
     }
 
@@ -95,7 +96,7 @@ public class AsyncConnectionAccepter extends NetServerBase {
         }
     }
 
-    public static void closeChannel(SocketChannel channel) {
+    static void closeChannel(SocketChannel channel) {
         if (channel != null) {
             Socket socket = channel.socket();
             if (socket != null) {

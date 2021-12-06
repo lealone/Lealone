@@ -60,6 +60,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     private volatile boolean end;
     private volatile boolean waiting;
     private YieldableCommand nextBestCommand;
+    private NetEventLoop netEventLoop;
 
     public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
@@ -97,6 +98,10 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             runPageOperationTasks();
             runSessionTasks();
             executeNextStatement();
+        }
+        if (netEventLoop != null) {
+            netEventLoop.close();
+            netEventLoop = null;
         }
     }
 
@@ -438,8 +443,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         logger.warn(getName() + " is interrupted");
         end();
     }
-
-    private NetEventLoop netEventLoop;
 
     public boolean useNetEventLoop() {
         return netEventLoop != null;
