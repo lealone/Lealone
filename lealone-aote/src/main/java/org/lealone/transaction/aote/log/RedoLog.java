@@ -19,10 +19,10 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaCommitRedoLogRecord;
 import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaPrepareCommitRedoLogRecord;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
-import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 /**
  * A redo log
@@ -129,9 +129,8 @@ public class RedoLog {
                     map.remove(key);
                 else {
                     Object value = vt.read(kv);
-                    // 需要返回引用，否则无法在修改和删除时使用CAS
-                    TransactionalValue ref = TransactionalValue.createRef(TransactionalValue.createCommitted(value));
-                    map.put(key, ref);
+                    TransactionalValue tv = TransactionalValue.createCommitted(value);
+                    map.put(key, tv);
                 }
             }
         }

@@ -8,7 +8,6 @@ package org.lealone.transaction.aote;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 //支持分布式场景(包括replication和sharding)
 public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
@@ -21,13 +20,13 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     }
 
     @Override
-    protected TransactionalValue getDistributedValue(K key, TransactionalValue data) {
+    protected Object getDistributedValue(K key, TransactionalValue data) {
         // 第一种: 复制的场景
         // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
         // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
         // TODO 如何更高效的判断，不用比较字符串
         if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetNode.getLocalTcpHostAndPort())) {
-            return getRemoteTransactionalValue(data.getHostAndPort(), key);
+            return getRemoteTransactionalValue(data.getHostAndPort(), key).getValue();
         }
         // 第二种: 分布式场景
         long tid = data.getTid();
@@ -39,14 +38,14 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
             }
         } else if (data.getGlobalReplicationName() != null) {
             if (data.isReplicated())
-                return data;
+                return data.getValue();
             else if (DTRValidator.containsReplication(data.getGlobalReplicationName())) {
                 boolean isValid = DTRValidator.validateReplication(data.getGlobalReplicationName(),
                         transaction.getSession());
                 if (isValid) {
                     DTRValidator.removeReplication(data.getGlobalReplicationName());
                     data.setReplicated(true);
-                    return data;
+                    return data.getValue();
                 }
             }
         }
@@ -88,12 +87,6 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
 
     @Override
     protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
-        return addWaitingTransaction(key, oldTransactionalValue, null);
-    }
-
-    @Override
-    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
-            Transaction.Listener listener) {
         // 老的实现方案
         // if (transaction.globalReplicationName != null) {
         // ByteBuffer keyBuff;
@@ -116,10 +109,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         // }
         // });
         // }
-        if (listener != null)
-            return super.addWaitingTransaction(key, oldTransactionalValue, listener);
-        else
-            return super.addWaitingTransaction(key, oldTransactionalValue);
+        return super.addWaitingTransaction(key, oldTransactionalValue);
     }
 
     @Override

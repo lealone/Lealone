@@ -5,14 +5,10 @@
  */
 package org.lealone.sql.executor;
 
-import java.util.List;
-
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
-import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -62,12 +58,13 @@ public abstract class YieldableConditionUpdateBase extends YieldableLoopUpdateBa
         }
     }
 
-    protected boolean tryLockRow(Row row, List<Column> lockColumns) {
+    protected boolean tryLockRow(Row row, int[] lockColumns) {
         int savepointId = session.getTransaction().getSavepointId();
-        if (!table.tryLockRow(session, row, true, lockColumns)) {
+        if (!table.tryLockRow(session, row, lockColumns, false)) {
             oldRow = row;
             session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
-            session.setStatus(SessionStatus.WAITING);
+            // 在try lock过程中已经修改了状态，并且只有在try lock过程中由锁的拥有者确定状态才是准确的
+            // session.setStatus(SessionStatus.WAITING);
             return false;
         }
         session.setCurrentLockedRow(row, savepointId);

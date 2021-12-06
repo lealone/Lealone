@@ -833,7 +833,7 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     public Row rebuildSearchRow(ServerSession session, Row oldRow) {
-        Row newRow = table.getRow(session, oldRow.getKey(), oldRow.getRawValue());
+        Row newRow = table.getRow(session, oldRow.getKey(), oldRow.getTValue());
         current = newRow;
         currentSearchRow = newRow;
         return newRow;
@@ -936,7 +936,7 @@ public class TableFilter extends ColumnResolverBase {
      */
     public boolean lockRow() {
         if (state == FOUND) {
-            return table.tryLockRow(session, get());
+            return table.tryLockRow(session, get(), null, true);
         }
         return false;
     }

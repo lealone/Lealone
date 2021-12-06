@@ -15,7 +15,6 @@ import org.lealone.db.session.Session;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
 

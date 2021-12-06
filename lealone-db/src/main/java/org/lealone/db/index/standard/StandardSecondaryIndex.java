@@ -114,11 +114,11 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
             boolean isLockedBySelf) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
-            if (updateColumns.contains(c)) {
+            if (StandardPrimaryIndex.containsColumn(updateColumns, c)) {
                 return super.update(session, oldRow, newRow, updateColumns, isLockedBySelf);
             }
         }
@@ -129,12 +129,11 @@ public class StandardSecondaryIndex extends StandardIndex {
     public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         TransactionMap<Value, Value> map = getMap(session);
         ValueArray array = convertToKey(row);
-        Object oldTransactionalValue = map.getTransactionalValue(array);
-        if (!isLockedBySelf && map.isLocked(oldTransactionalValue, null))
-            return Future.succeededFuture(
-                    map.addWaitingTransaction(ValueLong.get(row.getKey()), oldTransactionalValue, null));
+        Object tv = map.getTransactionalValue(array);
+        if (!isLockedBySelf && map.isLocked(tv, null))
+            return Future.succeededFuture(map.addWaitingTransaction(ValueLong.get(row.getKey()), tv));
         else
-            return Future.succeededFuture(map.tryRemove(array, oldTransactionalValue, isLockedBySelf));
+            return Future.succeededFuture(map.tryRemove(array, tv, isLockedBySelf));
     }
 
     @Override

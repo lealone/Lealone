@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
 
 /**
  * A data type.
@@ -153,6 +154,10 @@ public interface StorageDataType {
 
     default void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
         // do nothing
+    }
+
+    default ValueArray getColumns(Object obj) {
+        return null;
     }
 
     default int getColumnCount() {

@@ -29,7 +29,6 @@ import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 //async multi-version transaction engine
 public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {
@@ -114,6 +113,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
     public boolean containsRepeatableReadTransactions(long lessThanVersion) {
         for (AMTransaction t : currentTransactions.headMap(lessThanVersion).values()) {
+            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
+                return true;
+        }
+        return false;
+    }
+
+    public boolean containsRepeatableReadTransactions() {
+        for (AMTransaction t : currentTransactions.values()) {
             if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
                 return true;
         }

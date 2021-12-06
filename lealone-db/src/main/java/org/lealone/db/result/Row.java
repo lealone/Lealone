@@ -27,7 +27,7 @@ public class Row implements SearchRow {
     private int version;
     private boolean deleted;
     private Table table;
-    private Object rawValue;
+    private Object tv;
 
     public Row(Value[] data, int memory) {
         this.data = data;
@@ -171,11 +171,11 @@ public class Row implements SearchRow {
         return this;
     }
 
-    public Object getRawValue() {
-        return rawValue;
+    public Object getTValue() {
+        return tv;
     }
 
-    public void setRawValue(Object rawValue) {
-        this.rawValue = rawValue;
+    public void setTValue(Object tv) {
+        this.tv = tv;
     }
 }

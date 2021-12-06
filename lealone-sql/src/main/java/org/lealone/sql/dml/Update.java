@@ -170,6 +170,7 @@ public class Update extends ManipulationStatement {
 
         final Update statement;
         final Column[] columns;
+        final int[] updateColumnIndexes;
         final int columnCount;
 
         public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
@@ -177,6 +178,12 @@ public class Update extends ManipulationStatement {
             this.statement = statement;
             columns = table.getColumns();
             columnCount = columns.length;
+
+            int size = statement.columns.size();
+            updateColumnIndexes = new int[size];
+            for (int i = 0; i < size; i++) {
+                updateColumnIndexes[i] = statement.columns.get(i).getColumnId();
+            }
         }
 
         @Override
@@ -209,7 +216,7 @@ public class Update extends ManipulationStatement {
                 }
                 if (conditionEvaluator.getBooleanValue()) {
                     Row oldRow = tableFilter.get();
-                    if (!tryLockRow(oldRow, statement.columns))
+                    if (!tryLockRow(oldRow, updateColumnIndexes))
                         return;
                     Row newRow = createNewRow(oldRow);
                     table.validateConvertUpdateSequence(session, newRow);
@@ -252,7 +259,7 @@ public class Update extends ManipulationStatement {
         }
 
         private void updateRow(Row oldRow, Row newRow) {
-            table.updateRow(session, oldRow, newRow, statement.columns, true).onComplete(ar -> {
+            table.updateRow(session, oldRow, newRow, updateColumnIndexes, true).onComplete(ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, oldRow, newRow, false);
                 }

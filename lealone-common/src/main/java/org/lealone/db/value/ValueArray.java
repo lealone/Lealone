@@ -242,4 +242,7 @@ public class ValueArray extends Value {
         return modified ? get(componentType, newValues) : this;
     }
 
+    public Value getValue(int i) {
+        return values[i];
+    }
 }

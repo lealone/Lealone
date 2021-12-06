@@ -5,18 +5,17 @@
  */
 package org.lealone.transaction.aote;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.log.RedoLogRecord;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class AOTransaction extends AMTransaction {
 
@@ -120,7 +119,7 @@ public class AOTransaction extends AMTransaction {
 
     private RedoLogRecord createDistributedTransactionRedoLogRecord(String globalTransactionName,
             long commitTimestamp) {
-        ByteBuffer operations = getUndoLog().toRedoLogRecordBuffer(transactionEngine);
+        DataBuffer operations = getUndoLog().toRedoLogRecordBuffer(transactionEngine);
         if (operations == null)
             return null;
         return RedoLogRecord.createDistributedTransactionRedoLogRecord(transactionId, transactionName,

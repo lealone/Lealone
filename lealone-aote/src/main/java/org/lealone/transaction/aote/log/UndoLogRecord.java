@@ -11,29 +11,35 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.AMTransactionEngine;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
-import org.lealone.transaction.aote.tvalue.TransactionalValueType;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 
 public class UndoLogRecord {
 
     private final String mapName;
     private Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
-    private final TransactionalValue oldValue;
-    private final TransactionalValue newValue;
+    private final Object oldValue;
+    private final TransactionalValue newTV;
     private final boolean isForUpdate;
     private volatile boolean undone;
 
-    public UndoLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
-            boolean isForUpdate) {
+    UndoLogRecord next;
+    UndoLogRecord prev;
+
+    public UndoLogRecord(String mapName, Object key, Object oldValue, TransactionalValue newTV, boolean isForUpdate) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
-        this.newValue = newValue;
+        this.newTV = newTV;
         this.isForUpdate = isForUpdate;
     }
 
     public String getMapName() {
         return mapName;
+    }
+
+    public UndoLogRecord getNext() {
+        return next;
     }
 
     public Object getKey() {
@@ -44,43 +50,50 @@ public class UndoLogRecord {
         this.key = key;
     }
 
+    public Object getOldValue() {
+        return oldValue;
+    }
+
     public void setUndone(boolean undone) {
         this.undone = undone;
     }
 
     public void setRetryReplicationNames(List<String> retryReplicationNames) {
-        if (oldValue != null && oldValue.getRef() != null)
-            oldValue.getRef().setRetryReplicationNames(retryReplicationNames);
+        if (newTV != null)
+            newTV.setRetryReplicationNames(retryReplicationNames);
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
     public void commit(AMTransactionEngine transactionEngine, long tid) {
-        if (undone)
+        if (undone || isForUpdate)
             return;
-        if (isForUpdate) {
-            newValue.rollback(); // 解锁而已，不用提交的
-            return;
-        }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
         if (map == null) {
             return; // map was later removed
         }
         if (oldValue == null) { // insert
-            newValue.commit(tid);
-        } else if (newValue != null && newValue.getValue() == null) { // delete
+            newTV.commit(tid);
+        } else if (newTV != null && newTV.getValue() == null) { // delete
             if (!transactionEngine.containsRepeatableReadTransactions(tid)) {
                 map.remove(key);
             } else {
-                newValue.commit(tid);
+                newTV.commit(tid);
             }
             // newValue.commit(tid);
         } else { // update
-            TransactionalValue ref = newValue.commit(tid);
+            newTV.commit(tid);
+            // TODO
+            // TransactionalValue ref = newValue.commit(tid, gcList);
             // 先删除后增加的场景，需要重新put回去
-            if (newValue.getOldValue() != null && newValue.getOldValue().getValue() == null) {
-                map.put(key, ref);
-            }
+            // if (newValue.getOldValue() != null && newValue.getOldValue().getValue() == null) {
+            // map.put(key, ref);
+            // }
         }
+    }
+
+    public void unlock() {
+        if (newTV != null)
+            newTV.unlock();
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
@@ -88,7 +101,7 @@ public class UndoLogRecord {
         if (undone)
             return;
         if (isForUpdate) {
-            newValue.rollback();
+            newTV.rollback();
             return;
         }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
@@ -97,7 +110,7 @@ public class UndoLogRecord {
             if (oldValue == null) {
                 map.remove(key);
             } else {
-                newValue.rollback();
+                newTV.rollback();
             }
         }
     }
@@ -119,12 +132,12 @@ public class UndoLogRecord {
         writeBuffer.putInt(0);
 
         map.getKeyType().write(writeBuffer, key);
-        if (newValue.getValue() == null)
+        if (newTV.getValue() == null)
             writeBuffer.put((byte) 0);
         else {
             writeBuffer.put((byte) 1);
             // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newValue.getValue());
+            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newTV.getValue());
         }
         writeBuffer.putInt(keyValueLengthStartPos, writeBuffer.position() - keyValueLengthStartPos - 4);
 

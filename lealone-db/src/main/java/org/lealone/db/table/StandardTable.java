@@ -6,7 +6,6 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -345,7 +344,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
             boolean isLockedBySelf) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
@@ -398,9 +397,9 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
+    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
         // 只锁主索引即可
-        return primaryIndex.tryLock(session, row, addToWaitingQueue, lockColumns);
+        return primaryIndex.tryLock(session, row, lockColumns, isForUpdate);
     }
 
     @Override

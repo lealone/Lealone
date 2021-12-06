@@ -76,56 +76,56 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public Future<Integer> addIfAbsent(K key, V value);
 
     public default int tryUpdate(K key, V newValue) {
-        Object oldTransactionalValue = getTransactionalValue(key);
-        return tryUpdate(key, newValue, null, oldTransactionalValue);
+        Object oldTValue = getTransactionalValue(key);
+        return tryUpdate(key, newValue, null, oldTValue);
     }
 
-    public default int tryUpdate(K key, V newValue, Object oldTransactionalValue) {
-        return tryUpdate(key, newValue, null, oldTransactionalValue);
+    public default int tryUpdate(K key, V newValue, Object oldTValue) {
+        return tryUpdate(key, newValue, null, oldTValue);
     }
 
     public default int tryUpdate(K key, V newValue, int[] columnIndexes) {
-        Object oldTransactionalValue = getTransactionalValue(key);
-        return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue);
+        Object oldTValue = getTransactionalValue(key);
+        return tryUpdate(key, newValue, columnIndexes, oldTValue);
     }
 
-    public default int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
-        return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue, false);
+    public default int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue) {
+        return tryUpdate(key, newValue, columnIndexes, oldTValue, false);
     }
 
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue, boolean isLockedBySelf);
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf);
 
     public default int tryRemove(K key) {
-        Object oldTransactionalValue = getTransactionalValue(key);
-        return tryRemove(key, oldTransactionalValue);
+        Object oldTValue = getTransactionalValue(key);
+        return tryRemove(key, oldTValue);
     }
 
-    public default int tryRemove(K key, Object oldTransactionalValue) {
-        return tryRemove(key, oldTransactionalValue, false);
+    public default int tryRemove(K key, Object oldTValue) {
+        return tryRemove(key, oldTValue, false);
     }
 
-    public int tryRemove(K key, Object oldTransactionalValue, boolean isLockedBySelf);
+    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf);
 
     public default boolean tryLock(K key) {
-        Object oldTransactionalValue = getTransactionalValue(key);
-        return tryLock(key, oldTransactionalValue);
+        Object oldTValue = getTransactionalValue(key);
+        return tryLock(key, oldTValue);
     }
 
-    public default boolean tryLock(K key, Object oldTransactionalValue) {
-        return tryLock(key, oldTransactionalValue, false, null);
+    public default boolean tryLock(K key, Object oldTValue) {
+        return tryLock(key, oldTValue, null, false);
     }
 
-    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue, int[] columnIndexes);
+    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes, boolean isForUpdate);
 
-    public boolean isLocked(Object oldTransactionalValue, int[] columnIndexes);
+    public boolean isLocked(Object oldTValue, int[] columnIndexes);
 
     public Object[] getValueAndRef(K key, int[] columnIndexes);
 
-    public Object getValue(Object oldTransactionalValue);
+    public Object getValue(Object oldTValue);
 
     public Object getTransactionalValue(K key);
 
-    public int addWaitingTransaction(Object key, Object oldTransactionalValue, Transaction.Listener listener);
+    public int addWaitingTransaction(Object key, Object oldTValue);
 
     public default String checkReplicationConflict(ByteBuffer key, String replicationName) {
         return null;

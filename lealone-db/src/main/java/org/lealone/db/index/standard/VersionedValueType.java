@@ -127,6 +127,11 @@ public class VersionedValueType implements StorageDataType {
     }
 
     @Override
+    public ValueArray getColumns(Object obj) {
+        return ((VersionedValue) obj).value;
+    }
+
+    @Override
     public int getColumnCount() {
         return columnCount;
     }

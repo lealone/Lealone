@@ -19,16 +19,16 @@ public class TransactionMapEntry<K, V> implements Map.Entry<K, V> {
 
     private final K key;
     private final V value;
-    private final Object rawValue;
+    private final Object tv;
 
     public TransactionMapEntry(K key, V value) {
         this(key, value, null);
     }
 
-    public TransactionMapEntry(K key, V value, Object rawValue) {
+    public TransactionMapEntry(K key, V value, Object tv) {
         this.key = key;
         this.value = value;
-        this.rawValue = rawValue;
+        this.tv = tv;
     }
 
     @Override
@@ -41,8 +41,8 @@ public class TransactionMapEntry<K, V> implements Map.Entry<K, V> {
         return value;
     }
 
-    public Object getRawValue() {
-        return rawValue;
+    public Object getTValue() {
+        return tv;
     }
 
     @Override

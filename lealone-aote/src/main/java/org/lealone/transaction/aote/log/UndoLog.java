@@ -5,96 +5,118 @@
  */
 package org.lealone.transaction.aote.log;
 
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.transaction.aote.AMTransactionEngine;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValue;
 
+// 只有一个线程访问
 public class UndoLog {
 
     private int logId;
-    private final LinkedList<UndoLogRecord> undoLogRecords = new LinkedList<>();
+    private UndoLogRecord first;// 指向最早加进来的，执行commit时从first开始遍历
+    private UndoLogRecord last; // 总是指向新增加的，执行rollback时从first开始遍历
 
     public int getLogId() {
         return logId;
     }
 
-    public LinkedList<UndoLogRecord> getUndoLogRecords() {
-        return undoLogRecords;
-    }
-
-    public boolean isEmpty() {
-        return undoLogRecords.isEmpty();
-    }
-
-    public boolean isNotEmpty() {
-        return !undoLogRecords.isEmpty();
-    }
-
-    public UndoLogRecord getLast() {
-        return undoLogRecords.getLast();
+    public UndoLogRecord getFirst() {
+        return first;
     }
 
     public int size() {
-        return undoLogRecords.size();
+        return logId;
     }
 
-    public UndoLogRecord add(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
+    public boolean isEmpty() {
+        return logId == 0;
+    }
+
+    public boolean isNotEmpty() {
+        return logId != 0;
+    }
+
+    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV,
             boolean isForUpdate) {
-        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newValue, isForUpdate);
-        undoLogRecords.add(r);
+        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV, isForUpdate);
+        if (first == null) {
+            first = last = r;
+        } else {
+            last.next = r;
+            r.prev = last;
+            last = r;
+        }
         logId++;
         return r;
     }
 
-    public UndoLogRecord add(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-        return add(mapName, key, oldValue, newValue, false);
+    private UndoLogRecord removeLast() {
+        UndoLogRecord r = last;
+        if (last != null) {
+            last.prev.next = null;
+            last = last.prev;
+            if (last == null) {
+                first = null;
+            }
+            --logId;
+        }
+        return r;
     }
 
     public void undo() {
-        undoLogRecords.removeLast();
-        --logId;
+        removeLast();
     }
 
     public void commit(AMTransactionEngine transactionEngine, long tid) {
-        for (UndoLogRecord r : undoLogRecords) {
+        UndoLogRecord r = first;
+        while (r != null) {
             r.commit(transactionEngine, tid);
+            r = r.next;
         }
+    }
+
+    public void unlock() {
+        UndoLogRecord r = first;
+        while (r != null) {
+            r.unlock();
+            r = r.next;
+        }
+    }
+
+    public void gc() { // TODO
     }
 
     public void rollbackTo(AMTransactionEngine transactionEngine, int toLogId) {
         while (logId > toLogId) {
-            UndoLogRecord r = undoLogRecords.removeLast();
+            UndoLogRecord r = removeLast();
             r.rollback(transactionEngine);
-            --logId;
         }
     }
 
     public void setRetryReplicationNames(List<String> retryReplicationNames, int toLogId) {
         int index = logId - 1;
-        for (UndoLogRecord r : undoLogRecords) {
+        UndoLogRecord r = first;
+        while (r != null) {
             if (index-- < toLogId)
                 break;
             r.setRetryReplicationNames(retryReplicationNames);
+            r = r.next;
         }
     }
 
-    private static int lastCapacity = 1024;
-
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public ByteBuffer toRedoLogRecordBuffer(AMTransactionEngine transactionEngine) {
-        if (undoLogRecords.isEmpty())
+    public DataBuffer toRedoLogRecordBuffer(AMTransactionEngine transactionEngine) {
+        if (isEmpty())
             return null;
-        DataBuffer writeBuffer = DataBuffer.create(lastCapacity);
-        for (UndoLogRecord r : undoLogRecords) {
-            r.writeForRedo(writeBuffer, transactionEngine);
+        DataBuffer buffer = DataBuffer.create();
+        UndoLogRecord r = first;
+        while (r != null) {
+            r.writeForRedo(buffer, transactionEngine);
+            r = r.next;
         }
-        lastCapacity = writeBuffer.position();
-        if (lastCapacity > 1024)
-            lastCapacity = 1024;
-        return writeBuffer.getAndFlipBuffer();
+        buffer.getAndFlipBuffer();
+        return buffer;
     }
 }

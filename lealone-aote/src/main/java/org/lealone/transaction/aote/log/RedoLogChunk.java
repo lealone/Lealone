@@ -88,6 +88,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
 
     synchronized void save() {
         if (logQueueSize.get() > 0) {
+            // System.out.println("logQueueSize: " + logQueueSize.get());
+
             LinkedTransferQueue<RedoLogRecord> redoLogRecordQueue = getAndResetRedoLogRecords();
             long chunkLength = 0;
             for (RedoLogRecord r : redoLogRecordQueue) {

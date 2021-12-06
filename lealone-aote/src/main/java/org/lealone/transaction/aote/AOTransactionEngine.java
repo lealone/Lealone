@@ -9,7 +9,6 @@ import org.lealone.db.RunMode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
 
 public class AOTransactionEngine extends AMTransactionEngine {
 

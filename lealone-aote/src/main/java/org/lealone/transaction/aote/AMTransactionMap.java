@@ -7,7 +7,6 @@ package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,8 +32,6 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapEntry;
 import org.lealone.transaction.aote.log.UndoLogRecord;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
-import org.lealone.transaction.aote.tvalue.TransactionalValueType;
 
 //只支持单机场景
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
@@ -68,45 +65,45 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     // 外部传进来的值被包装成TransactionalValue了，所以需要拆出来
     @SuppressWarnings("unchecked")
-    private V getUnwrapValue(K key, TransactionalValue data) {
-        TransactionalValue tv = getValue(key, data);
-        return tv == null ? null : (V) tv.getValue();
+    private V getUnwrapValue(K key, TransactionalValue tv) {
+        Object v = getValue(key, tv);
+        return (V) v;
     }
 
     // 获得当前事务能看到的值，依据不同的隔离级别看到的值是不一样的
-    protected TransactionalValue getValue(K key, TransactionalValue data) {
-        // data为null说明记录不存在，data.getRefValue()为null说明是一个删除标记
-        if (data == null || data.getRefValue() == null) {
+    protected Object getValue(K key, TransactionalValue tv) {
+        // tv为null说明记录不存在，tv.getValue()为null说明是一个删除标记
+        if (tv == null || tv.getValue() == null) {
             return null;
         }
 
-        // 如果data是未提交的，并且就是当前事务，那么这里也会返回未提交的值
-        TransactionalValue tv = data.getCommitted(transaction);
-        if (tv != null) {
+        // 如果tv是未提交的，并且就是当前事务，那么这里也会返回未提交的值
+        Object v = tv.getValue(transaction);
+        if (v != null) {
             // 前面的事务已经提交了，但是因为当前事务隔离级别的原因它看不到
-            if (tv == TransactionalValue.SIGHTLESS)
+            if (v == TransactionalValue.SIGHTLESS)
                 return null;
             else
-                return tv;
+                return v;
         }
 
         // 复制和分布式事务的场景
-        tv = getDistributedValue(key, data);
-        if (tv != null)
-            return tv;
+        v = getDistributedValue(key, tv);
+        if (v != null)
+            return v;
 
         // 有些底层存储引擎可能会在事务提交前就把脏数据存盘了，
         // 然后还没等事务提交，数据库又崩溃了，那么在这里需要撤销才能得到正确的值，
         // 这一过程被称为: 读时撤销
-        if (!transaction.transactionEngine.containsTransaction(data.getTid())) {
-            return data.undo(map, key);
+        if (!transaction.transactionEngine.containsTransaction(tv.getTid())) {
+            return tv.undo(map, key);
         }
         // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了
         return null;
     }
 
     // AMTE是单机版的事务引擎，不支持这个功能
-    protected TransactionalValue getDistributedValue(K key, TransactionalValue data) {
+    protected Object getDistributedValue(K key, TransactionalValue tv) {
         return null;
     }
 
@@ -156,15 +153,15 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             }
         };
 
-        TransactionalValue oldTransactionalValue = map.get(key);
+        TransactionalValue oldTValue = map.get(key);
         // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
-        V retValue = getUnwrapValue(key, oldTransactionalValue);
+        V retValue = getUnwrapValue(key, oldTValue);
         // insert
-        if (oldTransactionalValue == null) {
+        if (oldTValue == null) {
             addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
                     .onFailure(t -> listener.operationUndo());
         } else {
-            if (tryUpdateOrRemove(key, value, null, oldTransactionalValue, false) == Transaction.OPERATION_COMPLETE)
+            if (tryUpdateOrRemove(key, value, null, oldTValue, false) == Transaction.OPERATION_COMPLETE)
                 listener.operationComplete();
             else
                 listener.operationUndo();
@@ -232,7 +229,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         // }
         // key = k;
         // }
-
         return map.higherKey(key);
     }
 
@@ -269,9 +265,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             StorageMapCursor<K, TransactionalValue> cursor = map.cursor();
             while (cursor.hasNext()) {
                 K key = cursor.next();
-                TransactionalValue data = cursor.getValue();
-                data = getValue(key, data);
-                if (data != null && data.getValue() != null) {
+                TransactionalValue tv = cursor.getValue();
+                Object value = getValue(key, tv);
+                if (value != null) {
                     size++;
                 }
             }
@@ -288,10 +284,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 null);
         try {
             for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-                LinkedList<UndoLogRecord> records = t.undoLog.getUndoLogRecords();
-                for (UndoLogRecord r : records) {
+                UndoLogRecord r = t.undoLog.getFirst();
+                while (r != null) {
                     String m = r.getMapName();
                     if (!mapName.equals(m)) {
+                        r = r.getNext();
                         // a different map - ignore
                         continue;
                     }
@@ -305,6 +302,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                             size--;
                         }
                     }
+                    r = r.getNext();
                 }
             }
         } finally {
@@ -367,17 +365,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public K append(V value) { // 追加新记录时不会产生事务冲突
-        TransactionalValue ref = TransactionalValue.createRef(null);
-        TransactionalValue newValue = createUncommitted(value, null, null, ref);
-        ref.setRefValue(newValue);
-        K key = map.append(ref);
-        // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
-        // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-        transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
-        return key;
+    public K append(V value) {
+        return append(value, null);
     }
 
     ///////////////////////// 以下是直接委派的StorageMap接口API /////////////////////////
@@ -541,11 +531,10 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             protected void fetchNext() {
                 while (cursor.hasNext()) {
                     K key = cursor.next();
-                    TransactionalValue ref = cursor.getValue();
-                    TransactionalValue data = getValue(key, ref);
-                    if (data != null && data.getValue() != null) {
-                        V value = (V) data.getValue();
-                        current = new TransactionMapEntry<>(key, value, ref);
+                    TransactionalValue tv = cursor.getValue();
+                    Object v = getValue(key, tv);
+                    if (v != null) {
+                        current = new TransactionMapEntry<>(key, (V) v, tv);
                         return;
                     }
                 }
@@ -602,17 +591,15 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         public void remove() {
             throw DataUtils.newUnsupportedOperationException("Removing is not supported");
         }
-    };
+    }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
     public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
-        TransactionalValue ref = TransactionalValue.createRef();
-        TransactionalValue newValue = createUncommitted(value, null, null, ref);
-        ref.setRefValue(newValue);
+        TransactionalValue newTV = new TValue(value, transaction);
         String mapName = getName();
-        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newValue);
+        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newTV, false);
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
@@ -644,7 +631,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 ac.setAsyncResult(ar.getCause());
             }
         };
-        map.putIfAbsent(key, ref, handler);
+        map.putIfAbsent(key, newTV, handler);
         return ac;
     }
 
@@ -652,164 +639,109 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
-        TransactionalValue ref = TransactionalValue.createRef(null);
-        TransactionalValue newValue = createUncommitted(value, null, null, ref);
-        ref.setRefValue(newValue);
-        K key = map.append(ref, handler);
-        transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
-        handler.handle(new AsyncResult<>(key));
+    public K append(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
+        TransactionalValue newTV = new TValue(value, transaction);
+        K key;
+        if (handler != null)
+            key = map.append(newTV, handler);
+        else
+            key = map.append(newTV);
+        // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
+        // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
+        transaction.undoLog.add(map.getName(), key, null, newTV, false);
+        if (handler != null)
+            handler.handle(new AsyncResult<>(key));
         return key;
     }
 
     @Override
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue, boolean isLockedBySelf) {
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
-        return tryUpdateOrRemove(key, newValue, columnIndexes, oldTransactionalValue, isLockedBySelf);
+        return tryUpdateOrRemove(key, newValue, columnIndexes, oldTValue, isLockedBySelf);
     }
 
     @Override
-    public int tryRemove(K key, Object oldTransactionalValue, boolean isLockedBySelf) {
-        return tryUpdateOrRemove(key, null, null, oldTransactionalValue, isLockedBySelf);
+    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf) {
+        return tryUpdateOrRemove(key, null, null, oldTValue, isLockedBySelf);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTransactionalValue,
-            boolean isLockedBySelf) {
-        DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf) {
+        DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
-        TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
-        // 进入循环前先取出原来的值
-        TransactionalValue oldValue = ref.getRefValue();
-        if (isLockedBySelf) { // 提前调用tryLock的场景
-            while (true) {
-                // 就算被自己锁住了，也可能只是锁住部分字段而已，其他事务还是可以改变ref的值的，所以需要重试
-                if (tryCAS(key, value, columnIndexes, oldValue, ref, false)) {
-                    return Transaction.OPERATION_COMPLETE;
-                }
-                oldValue = ref.getRefValue();
-            }
+        TransactionalValue tv = (TransactionalValue) oldTValue;
+        // 提前调用tryLock的场景直接跳过
+        if (!isLockedBySelf && !tv.tryLock(transaction, columnIndexes)) {
+            // 当前行已经被其他事务锁住了
+            return addWaitingTransaction(key, tv);
         }
-        // 不同事务更新不同字段时，在循环里重试是可以的
-        while (!ref.isLocked(transaction.transactionId, columnIndexes)) {
-            if (tryCAS(key, value, columnIndexes, oldValue, ref, false)) {
-                return Transaction.OPERATION_COMPLETE;
-            } else {
-                if (value == null) {
-                    // 两个事务同时删除某一行时，因为删除操作是排它的，
-                    // 所以只要一个compareAndSet成功了，另一个就没必要重试了
-                    return addWaitingTransaction(key, ref);
-                }
-                oldValue = ref.getRefValue();
-            }
-        }
-        // 当前行已经被其他事务锁住了
-        return addWaitingTransaction(key, ref);
+        Object oldValue = tv.getValue();
+        tv.setValue(value);
+        transaction.undoLog.add(getName(), key, oldValue, tv, false);
+        return Transaction.OPERATION_COMPLETE;
     }
 
     @Override
-    public int addWaitingTransaction(Object key, Object oldTransactionalValue, Transaction.Listener listener) {
-        return addWaitingTransaction(key, (TransactionalValue) oldTransactionalValue, listener);
+    public int addWaitingTransaction(Object key, Object oldTValue) {
+        return addWaitingTransaction(key, (TransactionalValue) oldTValue, null);
     }
 
-    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
+    protected int addWaitingTransaction(Object key, TransactionalValue oldTValue) {
+        return addWaitingTransaction(key, oldTValue, null);
+    }
+
+    private int addWaitingTransaction(Object key, TransactionalValue oldTValue, int[] columnIndexes) {
         Object object = Thread.currentThread();
-        if (object instanceof Transaction.Listener)
-            return addWaitingTransaction(key, oldTransactionalValue, (Transaction.Listener) object);
-        else
+        if (!(object instanceof Transaction.Listener)) {
             return Transaction.OPERATION_NEED_WAIT;
-    }
-
-    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
-            Transaction.Listener listener) {
-        AMTransaction t = transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid());
+        }
+        AMTransaction t = oldTValue.getLockOwner(columnIndexes);
         // 有可能在这一步事务提交了
         if (t == null)
             return Transaction.OPERATION_NEED_RETRY;
         else
-            return t.addWaitingTransaction(key, transaction, listener);
-    }
-
-    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue, int[] columnIndexes) {
-        Object object = Thread.currentThread();
-        if (object instanceof Transaction.Listener) {
-            long tid = oldTransactionalValue.getLockOwnerTid(transaction.transactionId, columnIndexes);
-            AMTransaction t = transaction.transactionEngine.getTransaction(tid);
-            // 有可能在这一步事务提交了
-            if (t == null)
-                return Transaction.OPERATION_NEED_RETRY;
-            else
-                return t.addWaitingTransaction(key, transaction, (Transaction.Listener) object);
-        } else {
-            return Transaction.OPERATION_NEED_WAIT;
-        }
+            return t.addWaitingTransaction(key, transaction, (Transaction.Listener) object);
     }
 
     @Override
-    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue, int[] columnIndexes) {
-        DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
+    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes, boolean isForUpdate) {
+        DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
-        TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
-        List<String> retryReplicationNames = ref.getRetryReplicationNames();
+        TransactionalValue tv = (TransactionalValue) oldTValue;
+
+        List<String> retryReplicationNames = tv.getRetryReplicationNames();
         if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
             String name = retryReplicationNames.get(0);
             if (name.equals(transaction.getSession().getReplicationName())) {
-                if (tryCAS(key, columnIndexes, ref.getRefValue(), ref)) {
+                if (tv.tryLock(transaction, columnIndexes)) {
                     transaction.getSession().setFinalResult(true);
                     retryReplicationNames.remove(0);
                     return true;
-                } else {
-                    return false;
                 }
-            } else {
-                return false;
             }
+            return false;
         }
-        while (true) {
-            // 准确的步骤是: 先取出旧值、然后判断是否锁住、最后尝试通过CAS用新值替换旧值
-            TransactionalValue oldValue = ref.getRefValue();
-            if (ref.isLocked(transaction.transactionId, columnIndexes)) {
-                if (addToWaitingQueue) {
-                    // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
-                    // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
-                    addWaitingTransaction(key, ref, columnIndexes);
-                }
-                return false;
-            }
-            if (tryCAS(key, columnIndexes, oldValue, ref)) {
-                return true;
-            }
-            // CAS失败但更新的列没有被锁住时继续重试
-        }
-    }
 
-    private boolean tryCAS(K key, int[] columnIndexes, TransactionalValue oldValue, TransactionalValue ref) {
-        return tryCAS(key, oldValue.getValue(), columnIndexes, oldValue, ref, true);
-    }
-
-    private boolean tryCAS(K key, Object value, int[] columnIndexes, TransactionalValue oldValue,
-            TransactionalValue ref, boolean isForUpdate) {
-        TransactionalValue newValue = createUncommitted(value, oldValue, columnIndexes, ref);
-        if (ref.compareAndSet(oldValue, newValue)) {
-            transaction.undoLog.add(getName(), key, oldValue, newValue, isForUpdate);
+        if (tv.tryLock(transaction, columnIndexes)) {
+            if (isForUpdate) {
+                // select for update，在提交阶段解锁
+                transaction.undoLog.add(getName(), key, null, tv, true);
+            }
             return true;
+        } else {
+            // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
+            // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
+            addWaitingTransaction(key, tv, columnIndexes);
+            return false;
         }
-        return false;
-    }
-
-    private TransactionalValue createUncommitted(Object value, TransactionalValue oldValue, int[] columnIndexes,
-            TransactionalValue ref) {
-        return TransactionalValue.createUncommitted(transaction, value, oldValue, map.getValueType(), columnIndexes,
-                ref);
     }
 
     @Override
-    public boolean isLocked(Object oldValue, int[] columnIndexes) {
-        TransactionalValue tv = ((TransactionalValue) oldValue);
+    public boolean isLocked(Object oldTValue, int[] columnIndexes) {
+        TransactionalValue tv = (TransactionalValue) oldTValue;
         if (transaction.globalReplicationName != null
                 && transaction.globalReplicationName.equals(tv.getGlobalReplicationName()))
             return false;
@@ -818,13 +750,13 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Object[] getValueAndRef(K key, int[] columnIndexes) {
-        TransactionalValue ref = map.get(key, columnIndexes);
-        return new Object[] { getUnwrapValue(key, ref), ref };
+        TransactionalValue tv = map.get(key, columnIndexes);
+        return new Object[] { getUnwrapValue(key, tv), tv };
     }
 
     @Override
-    public Object getValue(Object oldTransactionalValue) {
-        return ((TransactionalValue) oldTransactionalValue).getValue();
+    public Object getValue(Object oldTValue) {
+        return ((TransactionalValue) oldTValue).getValue();
     }
 
     @Override

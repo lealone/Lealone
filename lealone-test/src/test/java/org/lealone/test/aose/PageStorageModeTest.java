@@ -20,8 +20,8 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.PageStorageMode;
 import org.lealone.test.TestBase;
-import org.lealone.transaction.aote.tvalue.TransactionalValue;
-import org.lealone.transaction.aote.tvalue.TransactionalValueType;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 
 public class PageStorageModeTest extends TestBase {
 

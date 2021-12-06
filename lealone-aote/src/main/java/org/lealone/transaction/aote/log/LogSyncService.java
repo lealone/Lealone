@@ -32,6 +32,8 @@ public abstract class LogSyncService extends Thread {
     protected boolean running = true;
     protected RedoLog redoLog;
 
+    private volatile boolean waiting;
+
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(true);
@@ -70,12 +72,14 @@ public abstract class LogSyncService extends Thread {
             long sleep = syncStarted + syncIntervalMillis - now;
             if (sleep < 0)
                 continue;
-
+            waiting = true;
             try {
                 haveWork.tryAcquire(sleep, TimeUnit.MILLISECONDS);
                 haveWork.drainPermits();
             } catch (InterruptedException e) {
                 throw new AssertionError();
+            } finally {
+                waiting = false;
             }
         }
         // 结束前最后sync一次
@@ -103,7 +107,7 @@ public abstract class LogSyncService extends Thread {
     public void addRedoLogRecord(RedoLogRecord r) {
         redoLog.addRedoLogRecord(r);
         // 对于需要立即做同步的场景，及时唤醒日志同步线程
-        if (isInstantSync())
+        if (isInstantSync() || waiting)
             haveWork.release();
     }
 

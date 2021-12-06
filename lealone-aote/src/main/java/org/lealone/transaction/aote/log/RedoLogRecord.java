@@ -74,12 +74,12 @@ public abstract class RedoLogRecord {
     }
 
     public static LocalTransactionRedoLogRecord createLocalTransactionRedoLogRecord(long transactionId,
-            ByteBuffer operations) {
+            DataBuffer operations) {
         return new LocalTransactionRedoLogRecord(transactionId, operations);
     }
 
     public static DistributedTransactionRedoLogRecord createDistributedTransactionRedoLogRecord(long transactionId,
-            String transactionName, String globalTransactionName, long commitTimestamp, ByteBuffer operations) {
+            String transactionName, String globalTransactionName, long commitTimestamp, DataBuffer operations) {
 
         return new DistributedTransactionRedoLogRecord(transactionId, transactionName, globalTransactionName,
                 commitTimestamp, operations);
@@ -225,13 +225,23 @@ public abstract class RedoLogRecord {
 
     static class LocalTransactionRedoLogRecord extends TransactionRedoLogRecord {
 
+        private DataBuffer buffer;
+
         public LocalTransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
             super(transactionId, operations);
+        }
+
+        public LocalTransactionRedoLogRecord(long transactionId, DataBuffer operations) {
+            super(transactionId, operations.getBuffer());
+            this.buffer = operations;
         }
 
         @Override
         public void write(DataBuffer buff) {
             write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
+            if (buffer != null) {
+                buffer.close();
+            }
         }
 
         public static LocalTransactionRedoLogRecord read(ByteBuffer buff) {
@@ -246,6 +256,13 @@ public abstract class RedoLogRecord {
         private final String transactionName;
         private final String globalTransactionName;
         private final long commitTimestamp;
+        private DataBuffer buffer;
+
+        public DistributedTransactionRedoLogRecord(long transactionId, String transactionName,
+                String globalTransactionName, long commitTimestamp, DataBuffer operations) {
+            this(transactionId, transactionName, globalTransactionName, commitTimestamp, operations.getBuffer());
+            this.buffer = operations;
+        }
 
         public DistributedTransactionRedoLogRecord(long transactionId, String transactionName,
                 String globalTransactionName, long commitTimestamp, ByteBuffer operations) {
@@ -261,6 +278,9 @@ public abstract class RedoLogRecord {
             ValueString.type.write(buff, transactionName);
             ValueString.type.write(buff, globalTransactionName);
             buff.putVarLong(commitTimestamp);
+            if (buffer != null) {
+                buffer.close();
+            }
         }
 
         public static DistributedTransactionRedoLogRecord read(ByteBuffer buff) {
@@ -295,8 +315,10 @@ public abstract class RedoLogRecord {
             buffer.putVarLong(transactionId);
             int pos = buffer.position();
             buffer.putInt(0);
-            for (UndoLogRecord r : undoLog.getUndoLogRecords()) {
+            UndoLogRecord r = undoLog.getFirst();
+            while (r != null) {
                 r.writeForRedo(buffer, transactionEngine);
+                r = r.next;
             }
             int length = buffer.position() - pos - 4;
             buffer.putInt(pos, length);

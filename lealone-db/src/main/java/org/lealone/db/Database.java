@@ -817,9 +817,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 Row newRow = MetaRecord.getRow(meta, obj);
                 newRow.setKey(oldRow.getKey());
                 Column sqlColumn = meta.getColumn(2);
-                List<Column> updateColumns = new ArrayList<>(1);
-                updateColumns.add(sqlColumn);
-                meta.updateRow(session, oldRow, newRow, updateColumns);
+                meta.updateRow(session, oldRow, newRow, new int[] { sqlColumn.getColumnId() });
             }
         }
     }

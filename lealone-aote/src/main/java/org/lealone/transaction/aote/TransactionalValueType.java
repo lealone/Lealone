@@ -3,11 +3,12 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.transaction.aote.tvalue;
+package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
 
 import org.lealone.db.DataBuffer;
+import org.lealone.db.value.ValueArray;
 import org.lealone.storage.type.StorageDataType;
 
 public class TransactionalValueType implements StorageDataType {
@@ -98,6 +99,11 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
         valueType.setColumns(oldObj, newObj, columnIndexes);
+    }
+
+    @Override
+    public ValueArray getColumns(Object obj) {
+        return valueType.getColumns(obj);
     }
 
     @Override
