@@ -14,6 +14,10 @@ import java.util.Map;
 
 public interface NetEventLoop {
 
+    Object getOwner();
+
+    void setOwner(Object owner);
+
     Selector getSelector();
 
     void select() throws IOException;

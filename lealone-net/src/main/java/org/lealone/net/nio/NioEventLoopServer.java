@@ -31,6 +31,7 @@ class NioEventLoopServer extends NetServerBase {
         logger.info("Starting nio event loop server");
         try {
             nioEventLoop = new NioEventLoop(config, "server_nio_event_loop_interval", 1000); // 默认1秒
+            nioEventLoop.setOwner(this);
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
             serverChannel.configureBlocking(false);

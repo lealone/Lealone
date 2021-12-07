@@ -38,11 +38,22 @@ class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private final long loopInterval;
+    private Object owner;
 
     public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval)
             throws IOException {
         loopInterval = DateTimeUtils.getLoopInterval(config, loopIntervalKey, defaultLoopInterval);
         selector = Selector.open();
+    }
+
+    @Override
+    public Object getOwner() {
+        return owner;
+    }
+
+    @Override
+    public void setOwner(Object owner) {
+        this.owner = owner;
     }
 
     @Override
@@ -120,15 +131,12 @@ class NioEventLoop implements NetEventLoop {
         if (queue != null) {
             SelectionKey key = keyFor(channel);
             // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
-            if (key != null && key.isValid() && queue.isEmpty()) {
-                Object obj = Thread.currentThread();
-                if (obj instanceof NetEventLoop) {
-                    if (write(key, channel, nioBuffer)) {
-                        if ((key.interestOps() & SelectionKey.OP_WRITE) != 0) {
-                            deregisterWrite(key);
-                        }
-                        return;
+            if (key != null && key.isValid() && Thread.currentThread() == owner && queue.isEmpty()) {
+                if (write(key, channel, nioBuffer)) {
+                    if ((key.interestOps() & SelectionKey.OP_WRITE) != 0) {
+                        deregisterWrite(key);
                     }
+                    return;
                 }
             }
             writeQueueSize.incrementAndGet();
