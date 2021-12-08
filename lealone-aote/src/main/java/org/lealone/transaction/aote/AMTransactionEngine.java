@@ -51,6 +51,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     // key: transactionId
     private final ConcurrentSkipListMap<Long, AMTransaction> currentTransactions = new ConcurrentSkipListMap<>();
     private final AtomicLong lastTransactionId = new AtomicLong();
+    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.OldValue> tValues = new ConcurrentHashMap<>();
 
     private LogSyncService logSyncService;
     private CheckpointService checkpointService;
@@ -269,6 +270,18 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         for (String mapName : storage.getMapNames()) {
             maps.remove(mapName);
         }
+    }
+
+    void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
+        tValues.put(tv, ov);
+    }
+
+    void removeTransactionalValue(TransactionalValue tv) {
+        tValues.remove(tv);
+    }
+
+    TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
+        return tValues.get(tv);
     }
 
     private class CheckpointService extends Thread {

@@ -49,19 +49,14 @@ public class TransactionalValueTest extends TestBase {
         map.put("2", "b2");
         map.put("2", "b3");
         t.commit();
-        // 同一个事务对同一个key更新了多次时只保留最近的一次，并且旧的值为null
-        TransactionalValue tv = (TransactionalValue) map.getTransactionalValue("2");
-        assertNull(tv.getOldValue());
 
         t = te.beginTransaction(false);
         map = t.openMap("testExclusiveCommit", storage);
         map.put("2", "b4");
         map.put("2", "b5");
         t.commit();
-        tv = (TransactionalValue) map.getTransactionalValue("2");
-        assertNotNull(tv.getOldValue());
+        TransactionalValue tv = (TransactionalValue) map.getTransactionalValue("2");
         assertEquals("b5", tv.getValue());
-        assertEquals("b3", tv.getOldValue().getValue());
     }
 
     void testExclusiveRollback() {

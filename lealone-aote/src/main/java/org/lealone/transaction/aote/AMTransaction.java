@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
@@ -57,6 +58,8 @@ public class AMTransaction implements Transaction {
     // 有哪些事务在等待我释放锁
     private final AtomicReference<LinkedList<WaitingTransaction>> waitingTransactionsRef = new AtomicReference<>(
             EMPTY_LINKED_LIST);
+
+    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.LockOwner> tValues = new ConcurrentHashMap<>();
 
     public AMTransaction(AMTransactionEngine engine, long tid) {
         this(engine, tid, null);
@@ -530,5 +533,17 @@ public class AMTransaction implements Transaction {
         buff.append(':');
         buff.append(tid);
         return buff.toString();
+    }
+
+    void addTransactionalValue(TransactionalValue tv, TransactionalValue.LockOwner lo) {
+        tValues.put(tv, lo);
+    }
+
+    void removeTransactionalValue(TransactionalValue tv) {
+        tValues.remove(tv);
+    }
+
+    TransactionalValue.LockOwner getLockOwner(TransactionalValue tv) {
+        return tValues.get(tv);
     }
 }

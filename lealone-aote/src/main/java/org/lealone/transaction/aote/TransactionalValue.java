@@ -9,12 +9,27 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.Transaction;
 
+//每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段
 public class TransactionalValue {
+
+    public static class LockOwner {
+        int logId;
+        Object oldValue;
+        List<String> retryReplicationNames;
+    }
+
+    public static class OldValue {
+        long tid;
+        Object value;
+        OldValue next;
+    }
 
     // 对于一个已经提交的值，如果当前事务因为隔离级别的原因读不到这个值，那么就返回SIGHTLESS
     public static final TransactionalValue SIGHTLESS = createCommitted(null);
@@ -42,38 +57,47 @@ public class TransactionalValue {
     }
 
     public Object getValue(AMTransaction transaction) {
-        return value;
-        // AMTransaction t = this.t;
-        // if (t.isCommitted()) {
-        // switch (transaction.getIsolationLevel()) {
-        // case Transaction.IL_REPEATABLE_READ:
-        // case Transaction.IL_SERIALIZABLE:
-        // // if (transaction.getTransactionId() >= t)
-        // // return this;
-        // // else if (oldValue != null) {
-        // // return oldValue.getCommitted(transaction);
-        // // }
-        // return SIGHTLESS;
-        // default:
-        // return this;
-        // }
-        // } else {
-        // if (transaction.getIsolationLevel() == Transaction.IL_READ_UNCOMMITTED) {
-        // return this;
-        // } else if (oldValue != null) {
-        // return oldValue.getCommitted(transaction);
-        // } else {
-        // return null;
-        // }
-        // }
-        // return value;
-    }
-
-    public TransactionalValue getOldValue() {
-        return null;
-    }
-
-    public void setOldValue(TransactionalValue oldValue) {
+        AMTransaction t = this.t;
+        if (t == transaction)
+            return value;
+        switch (transaction.getIsolationLevel()) {
+        case Transaction.IL_READ_COMMITTED: {
+            if (t != null) {
+                if (t.isCommitted()) {
+                    return value;
+                } else {
+                    LockOwner owner = t.getLockOwner(this);
+                    return owner == null ? value : owner.oldValue;
+                }
+            }
+            return value;
+        }
+        case Transaction.IL_REPEATABLE_READ:
+        case Transaction.IL_SERIALIZABLE: {
+            long tid = transaction.getTransactionId();
+            if (t != null) {
+                if (t.isCommitted() && tid >= t.transactionId)
+                    return value;
+            }
+            OldValue oldValue = transaction.transactionEngine.getOldValue(this);
+            while (oldValue != null) {
+                if (tid >= oldValue.tid)
+                    return oldValue.value;
+                oldValue = oldValue.next;
+            }
+            if (t != null) {
+                LockOwner owner = t.getLockOwner(this);
+                if (owner != null)
+                    return owner.oldValue;
+            }
+            return SIGHTLESS;
+        }
+        case Transaction.IL_READ_UNCOMMITTED: {
+            return value;
+        }
+        default:
+            throw DbException.getInternalError();
+        }
     }
 
     // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
@@ -85,7 +109,12 @@ public class TransactionalValue {
 
     public int getLogId() {
         AMTransaction t = this.t;
-        return t == null ? 0 : t.getUndoLog().getLogId();
+        if (t != null) {
+            LockOwner owner = t.getLockOwner(this);
+            if (owner != null)
+                return owner.logId;
+        }
+        return 0;
     }
 
     public boolean supportsColumnLock() {
@@ -95,15 +124,32 @@ public class TransactionalValue {
     public boolean tryLock(AMTransaction t, int[] columnIndexes) {
         if (t == this.t)
             return true;
-        return tUpdater.compareAndSet(this, null, t);
+        boolean ok = tUpdater.compareAndSet(this, null, t);
+        if (ok) {
+            LockOwner owner = new LockOwner();
+            owner.logId = t.getUndoLog().getLogId();
+            owner.oldValue = value;
+            t.addTransactionalValue(this, owner);
+        }
+        return ok;
     }
 
     public void unlock() {
-        t = null;
+        AMTransaction t = this.t;
+        if (t.transactionEngine.containsRepeatableReadTransactions()) {
+            OldValue v = new OldValue();
+            v.value = value;
+            v.tid = t.transactionId;
+            v.next = t.transactionEngine.getOldValue(this);
+            t.transactionEngine.addTransactionalValue(this, v);
+        }
+        this.t = null;
+        t.removeTransactionalValue(this);
     }
 
     public boolean isLocked(long tid, int[] columnIndexes) {
-        return false;
+        AMTransaction t = this.t;
+        return t == null ? false : t.transactionId == tid;
     }
 
     public AMTransaction getLockOwner(int[] columnIndexes) {
@@ -141,10 +187,32 @@ public class TransactionalValue {
     }
 
     public boolean isCommitted() {
-        return true;
+        AMTransaction t = this.t;
+        return t == null || t.isCommitted();
     }
 
     public void rollback() {
+    }
+
+    public List<String> getRetryReplicationNames() {
+        AMTransaction t = this.t;
+        if (t != null) {
+            LockOwner owner = t.getLockOwner(this);
+            return owner != null ? owner.retryReplicationNames : null;
+        }
+        return null;
+    }
+
+    public void setRetryReplicationNames(List<String> retryReplicationNames) {
+        AMTransaction t = this.t;
+        if (t != null) {
+            LockOwner owner = t.getLockOwner(this);
+            if (owner != null)
+                owner.retryReplicationNames = retryReplicationNames;
+        }
+    }
+
+    public void gc(AMTransaction transaction) {
     }
 
     public void write(DataBuffer buff, StorageDataType valueType) {
@@ -170,46 +238,32 @@ public class TransactionalValue {
         }
     }
 
-    public List<String> getRetryReplicationNames() {
-        return null;
-    }
-
-    public void setRetryReplicationNames(List<String> retryReplicationNames) {
-    }
-
-    public void gc(AMTransaction transaction) {
-    }
-
     public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
             int columnCount) {
         long tid = DataUtils.readVarLong(buff);
-        if (tid == 0) {
-            Object value = valueType.readMeta(buff, columnCount);
-            return TransactionalValue.createCommitted(value);
-        } else {
-            // TODO 有没有必要写未提交的事务
-            Object value = valueType.readMeta(buff, columnCount);
-            return TransactionalValue.createCommitted(value);
-        }
-    }
-
-    public static Object readValue(ByteBuffer buff, StorageDataType valueType) {
-        Object value = null;
-        if (buff.get() == 1) {
-            value = valueType.read(buff);
-        }
-        return value;
+        Object value = valueType.readMeta(buff, columnCount);
+        return create(tid, value);
     }
 
     public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType) {
         long tid = DataUtils.readVarLong(buff);
+        Object value = readValue(buff, valueType);
+        return create(tid, value);
+    }
+
+    private static Object readValue(ByteBuffer buff, StorageDataType valueType) {
+        if (buff.get() == 1)
+            return valueType.read(buff);
+        else
+            return null;
+    }
+
+    private static TransactionalValue create(long tid, Object value) {
         if (tid == 0) {
-            Object value = TransactionalValue.readValue(buff, valueType);
-            return TransactionalValue.createCommitted(value);
+            return createCommitted(value);
         } else {
             // TODO 有没有必要写未提交的事务
-            Object value = TransactionalValue.readValue(buff, valueType);
-            return TransactionalValue.createCommitted(value);
+            return createCommitted(value);
         }
     }
 
