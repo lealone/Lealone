@@ -597,7 +597,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
-        TransactionalValue newTV = new TValue(value, transaction);
+        TransactionalValue newTV = new TransactionalValue(value, transaction);
         String mapName = getName();
         final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newTV, false);
 
@@ -640,7 +640,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public K append(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
-        TransactionalValue newTV = new TValue(value, transaction);
+        TransactionalValue newTV = new TransactionalValue(value, transaction);
         K key;
         if (handler != null)
             key = map.append(newTV, handler);
