@@ -52,7 +52,7 @@ public class TableAlterHistoryRecord {
                 Column column = (Column) session.getParser().parseColumnForTable(a[i]);
                 Value value = null;
                 Value v2;
-                if (column.getComputed()) {
+                if (column.isComputed()) {
                     // force updating the value
                     value = null;
                     v2 = column.computeValue(session, row);

@@ -498,7 +498,7 @@ public class MetaTable extends Table {
                             // NULLABLE
                             "" + (c.isNullable() ? DatabaseMetaData.columnNullable : DatabaseMetaData.columnNoNulls),
                             // IS_COMPUTED
-                            "" + (c.getComputed() ? "TRUE" : "FALSE"),
+                            "" + (c.isComputed() ? "TRUE" : "FALSE"),
                             // SELECTIVITY
                             "" + (c.getSelectivity()),
                             // CHECK_CONSTRAINT

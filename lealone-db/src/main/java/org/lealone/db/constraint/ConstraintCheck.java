@@ -84,7 +84,10 @@ public class ConstraintCheck extends Constraint {
         }
         Boolean b;
         try {
-            b = exprEvaluator.getExpressionValue(session, expr, newRow).getBoolean();
+            synchronized (this) {
+                // 这里要同步，多个事务会把exprEvaluator的值修改
+                b = exprEvaluator.getExpressionValue(session, expr, newRow).getBoolean();
+            }
         } catch (DbException ex) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_INVALID, ex, getShortDescription());
         }

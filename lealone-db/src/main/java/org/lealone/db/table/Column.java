@@ -153,7 +153,7 @@ public class Column {
         }
     }
 
-    boolean getComputed() {
+    boolean isComputed() {
         return isComputed;
     }
 
@@ -258,19 +258,14 @@ public class Column {
      * @return the new or converted value
      */
     public Value validateConvertUpdateSequence(ServerSession session, Value value) {
-        // take a local copy of defaultExpression to avoid holding the lock
-        // while calling getValue
-        final IExpression localDefaultExpression;
-        synchronized (this) {
-            localDefaultExpression = defaultExpression;
-        }
+        final IExpression localDefaultExpression = defaultExpression;
         if (value == null) {
             if (localDefaultExpression == null) {
                 value = ValueNull.INSTANCE;
             } else {
-                synchronized (this) {
-                    value = localDefaultExpression.getValue(session).convertTo(type);
-                }
+                // 虽然defaultExpression会被多个事务同时访问，
+                // 但是defaultExpression要么是sequence要么是没有字段构成的表达式，所以执行getValue不用同步
+                value = localDefaultExpression.getValue(session).convertTo(type);
                 if (primaryKey) {
                     session.setLastIdentity(value);
                 }
@@ -303,6 +298,7 @@ public class Column {
         if (checkConstraint != null) {
             Value v;
             synchronized (this) {
+                // 这里要同步，多个事务会把checkConstraintEvaluator的值修改
                 v = checkConstraintEvaluator.getExpressionValue(session, checkConstraint, value);
             }
             // Both TRUE and NULL are ok
@@ -726,5 +722,4 @@ public class Column {
         selectivity = source.selectivity;
         primaryKey = source.primaryKey;
     }
-
 }
