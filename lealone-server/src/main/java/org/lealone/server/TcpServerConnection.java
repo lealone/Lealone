@@ -52,11 +52,6 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     @Override
-    public boolean onePacketPerLoop() {
-        return scheduler.onePacketPerLoop();
-    }
-
-    @Override
     public void handleException(Exception e) {
         tcpServer.removeConnection(this);
     }

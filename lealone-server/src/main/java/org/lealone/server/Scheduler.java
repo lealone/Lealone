@@ -460,11 +460,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         }
     }
 
-    public boolean onePacketPerLoop() {
-        // 每次循环只处理一个包，避免在队列中放入过多元素
-        return netEventLoop != null;
-    }
-
     @Override
     public PageOperation.Listener<Object> createListener() {
         return new PageOperation.Listener<Object>() {

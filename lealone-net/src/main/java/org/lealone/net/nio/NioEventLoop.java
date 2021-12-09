@@ -38,11 +38,15 @@ class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private final long loopInterval;
+    private int maxPacketCountPerLoop = 20; // 每次循环最多读取多少个数据包
     private Object owner;
 
     public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval)
             throws IOException {
         loopInterval = DateTimeUtils.getLoopInterval(config, loopIntervalKey, defaultLoopInterval);
+        String s = config.get("max_packet_count_per_loop");
+        if (s != null)
+            maxPacketCountPerLoop = Integer.parseInt(s);
         selector = Selector.open();
     }
 
@@ -172,6 +176,7 @@ class NioEventLoop implements NetEventLoop {
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
         DataBuffer dataBuffer = attachment.dataBuffer;
+        int packetCount = 1;
         try {
             while (true) {
                 // 每次循环重新取一次，一些实现会返回不同的Buffer
@@ -201,7 +206,7 @@ class NioEventLoop implements NetEventLoop {
                         NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
                         dataBuffer = null;
                         conn.handle(nioBuffer);
-                        if (conn.onePacketPerLoop())
+                        if (++packetCount > maxPacketCountPerLoop)
                             break;
                     } else {
                         packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
