@@ -21,6 +21,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
 
 /**
@@ -82,17 +83,17 @@ public class ConstraintCheck extends Constraint {
         if (newRow == null) {
             return;
         }
-        Boolean b;
+        Value v;
         try {
             synchronized (this) {
                 // 这里要同步，多个事务会把exprEvaluator的值修改
-                b = exprEvaluator.getExpressionValue(session, expr, newRow).getBoolean();
+                v = exprEvaluator.getExpressionValue(session, expr, newRow);
             }
         } catch (DbException ex) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_INVALID, ex, getShortDescription());
         }
         // Both TRUE and NULL are ok
-        if (Boolean.FALSE.equals(b)) {
+        if (v.isFalse()) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getShortDescription());
         }
     }

@@ -759,8 +759,15 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case LONG: {
                     long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 56), (byte) (x >> 48), (byte) (x >> 40),
-                            (byte) (x >> 32), (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] {
+                            (byte) (x >> 56),
+                            (byte) (x >> 48),
+                            (byte) (x >> 40),
+                            (byte) (x >> 32),
+                            (byte) (x >> 24),
+                            (byte) (x >> 16),
+                            (byte) (x >> 8),
+                            (byte) x });
                 }
                 }
                 break;
@@ -1107,4 +1114,8 @@ public abstract class Value implements Comparable<Value> {
     }
 
     private static CompareMode compareMode = CompareMode.getInstance(null, 0, false);
+
+    public final boolean isFalse() {
+        return this != ValueNull.INSTANCE && !getBoolean();
+    }
 }

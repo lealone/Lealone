@@ -302,7 +302,7 @@ public class Column {
                 v = checkConstraintEvaluator.getExpressionValue(session, checkConstraint, value);
             }
             // Both TRUE and NULL are ok
-            if (Boolean.FALSE.equals(v.getBoolean())) {
+            if (v.isFalse()) {
                 throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, checkConstraint.getSQL());
             }
         }
