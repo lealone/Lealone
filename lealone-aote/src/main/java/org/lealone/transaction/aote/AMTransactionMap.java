@@ -518,6 +518,29 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         return (V) (oldValue == null ? null : oldValue.getValue());
     }
 
+    // 子类在hasNext()中取出下一行，这样能保证不会多读一行
+    private abstract class TIterator<E> implements Iterator<E> {
+
+        final StorageMapCursor<K, TransactionalValue> cursor;
+        E current;
+
+        TIterator(IterationParameters<K> parameters) {
+            cursor = map.cursor(parameters);
+        }
+
+        @Override
+        public E next() {
+            E e = current;
+            current = null;
+            return e;
+        }
+
+        @Override
+        public void remove() {
+            throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+        }
+    }
+
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(K from) {
         return entryIterator(IterationParameters.create(from));
@@ -528,17 +551,20 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         return new TIterator<TransactionMapEntry<K, V>>(parameters) {
             @Override
             @SuppressWarnings("unchecked")
-            protected void fetchNext() {
+            public boolean hasNext() {
+                if (current != null)
+                    return true;
                 while (cursor.hasNext()) {
                     K key = cursor.next();
                     TransactionalValue tv = cursor.getValue();
                     Object v = getValue(key, tv);
                     if (v != null) {
                         current = new TransactionMapEntry<>(key, (V) v, tv);
-                        return;
+                        return true;
                     }
                 }
                 current = null;
+                return false;
             }
         };
     }
@@ -552,45 +578,19 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new TIterator<K>(IterationParameters.create(from)) {
             @Override
-            protected void fetchNext() {
+            public boolean hasNext() {
+                if (current != null)
+                    return true;
                 while (cursor.hasNext()) {
                     current = cursor.next();
                     if (includeUncommitted || containsKey(current)) {
-                        return;
+                        return true;
                     }
                 }
                 current = null;
+                return false;
             }
         };
-    }
-
-    private abstract class TIterator<E> implements Iterator<E> {
-        E current;
-        final StorageMapCursor<K, TransactionalValue> cursor;
-
-        TIterator(IterationParameters<K> parameters) {
-            cursor = map.cursor(parameters);
-            fetchNext();
-        }
-
-        protected abstract void fetchNext();
-
-        @Override
-        public boolean hasNext() {
-            return current != null;
-        }
-
-        @Override
-        public E next() {
-            E result = current;
-            fetchNext();
-            return result;
-        }
-
-        @Override
-        public void remove() {
-            throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-        }
     }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
