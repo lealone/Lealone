@@ -23,39 +23,57 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     private final IterationParameters<K> parameters;
 
     private CursorPos pos;
-    private K currentKey, lastKey;
-    private V currentValue, lastValue;
+    private K key;
+    private V value;
 
     BTreeCursor(BTreeMap<K, ?> map, BTreePage root, IterationParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
-
         // 定位到>=from的第一个leaf page
         min(root, parameters.from);
-        fetchNext();
     }
 
     @Override
     public K getKey() {
-        return lastKey;
+        return key;
     }
 
     @Override
     public V getValue() {
-        return lastValue;
+        return value;
     }
 
     @Override
     public boolean hasNext() {
-        return currentKey != null;
+        while (pos != null) {
+            if (pos.index < pos.page.getKeyCount()) {
+                return true;
+            }
+            pos = pos.parent;
+            if (pos == null) {
+                return false;
+            }
+            if (pos.index < map.getChildPageCount(pos.page)) {
+                min(pos.page.getChildPage(pos.index++), null);
+            }
+        }
+        return false;
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public K next() {
-        lastKey = currentKey;
-        lastValue = currentValue;
-        fetchNext();
-        return lastKey;
+        // 不再检测了，让调用者自己先调用hasNext()再调用next()
+        // if (!hasNext()) {
+        // throw new NoSuchElementException();
+        // }
+        int index = pos.index++;
+        key = (K) pos.page.getKey(index);
+        if (parameters.allColumns)
+            value = (V) pos.page.getValue(index, true);
+        else
+            value = (V) pos.page.getValue(index, parameters.columnIndexes);
+        return key;
     }
 
     /**
@@ -85,31 +103,5 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
             pos = new CursorPos(p, x + 1, pos);
             p = p.getChildPage(x);
         }
-    }
-
-    /**
-     * Fetch the next entry if there is one.
-     */
-    @SuppressWarnings("unchecked")
-    private void fetchNext() {
-        while (pos != null) {
-            if (pos.index < pos.page.getKeyCount()) {
-                int index = pos.index++;
-                currentKey = (K) pos.page.getKey(index);
-                if (parameters.allColumns)
-                    currentValue = (V) pos.page.getValue(index, true);
-                else
-                    currentValue = (V) pos.page.getValue(index, parameters.columnIndexes);
-                return;
-            }
-            pos = pos.parent;
-            if (pos == null) {
-                break;
-            }
-            if (pos.index < map.getChildPageCount(pos.page)) {
-                min(pos.page.getChildPage(pos.index++), null);
-            }
-        }
-        currentKey = null;
     }
 }
