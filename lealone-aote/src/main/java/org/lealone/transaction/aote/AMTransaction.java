@@ -539,8 +539,8 @@ public class AMTransaction implements Transaction {
         tValues.put(tv, lo);
     }
 
-    void removeTransactionalValue(TransactionalValue tv) {
-        tValues.remove(tv);
+    TransactionalValue.LockOwner removeTransactionalValue(TransactionalValue tv) {
+        return tValues.remove(tv);
     }
 
     TransactionalValue.LockOwner getLockOwner(TransactionalValue tv) {

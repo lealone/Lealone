@@ -55,7 +55,8 @@ public class UndoLog {
     private UndoLogRecord removeLast() {
         UndoLogRecord r = last;
         if (last != null) {
-            last.prev.next = null;
+            if (last.prev != null)
+                last.prev.next = null;
             last = last.prev;
             if (last == null) {
                 first = null;

@@ -153,21 +153,19 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     public synchronized void close() {
         if (logSyncService == null)
             return;
-        if (logSyncService != null) {
-            // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
-            try {
-                checkpointService.close();
-                checkpointService.join();
-            } catch (Exception e) {
-            }
-            try {
-                logSyncService.close();
-                logSyncService.join();
-            } catch (Exception e) {
-            }
-            this.logSyncService = null;
-            this.checkpointService = null;
+        // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
+        try {
+            checkpointService.close();
+            checkpointService.join();
+        } catch (Exception e) {
         }
+        try {
+            logSyncService.close();
+            logSyncService.join();
+        } catch (Exception e) {
+        }
+        this.logSyncService = null;
+        this.checkpointService = null;
     }
 
     @Override
@@ -255,14 +253,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public void checkpoint() {
+    public synchronized void checkpoint() {
         checkpointService.checkpoint();
     }
 
     ///////////////////// 实现StorageEventListener接口 /////////////////////
 
     @Override
-    public void beforeClose(Storage storage) {
+    public synchronized void beforeClose(Storage storage) {
         // 事务引擎已经关闭了，此时忽略存储引擎的事件响应
         if (logSyncService == null)
             return;

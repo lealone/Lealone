@@ -178,10 +178,6 @@ public class TransactionalValue {
         return this;
     }
 
-    public TransactionalValue getCommitted(AMTransaction transaction) {
-        return this;
-    }
-
     public TransactionalValue commit(long tid) {
         return this;
     }
@@ -269,5 +265,14 @@ public class TransactionalValue {
 
     public static TransactionalValue createCommitted(Object value) {
         return new TransactionalValue(value);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder buff = new StringBuilder("TV[ ");
+        buff.append("tid = ").append(getTid());
+        buff.append(", value = ").append(value);
+        buff.append(" ]");
+        return buff.toString();
     }
 }
