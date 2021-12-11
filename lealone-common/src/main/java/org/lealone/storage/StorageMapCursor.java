@@ -7,8 +7,6 @@ package org.lealone.storage;
 
 import java.util.Iterator;
 
-import org.lealone.common.util.DataUtils;
-
 public interface StorageMapCursor<K, V> extends Iterator<K> {
 
     /**
@@ -25,8 +23,4 @@ public interface StorageMapCursor<K, V> extends Iterator<K> {
      */
     V getValue();
 
-    @Override
-    default void remove() {
-        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-    }
 }

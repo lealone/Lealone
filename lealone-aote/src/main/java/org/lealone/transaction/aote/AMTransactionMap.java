@@ -534,11 +534,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             current = null;
             return e;
         }
-
-        @Override
-        public void remove() {
-            throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-        }
     }
 
     @Override
