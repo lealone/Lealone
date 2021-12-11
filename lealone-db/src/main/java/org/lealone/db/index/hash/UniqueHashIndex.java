@@ -104,11 +104,6 @@ public class UniqueHashIndex extends HashIndex {
         }
 
         @Override
-        public SearchRow getSearchRow() {
-            return row;
-        }
-
-        @Override
         public boolean next() {
             if (row == null || end) {
                 row = null;

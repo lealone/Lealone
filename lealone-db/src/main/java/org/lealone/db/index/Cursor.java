@@ -16,7 +16,9 @@ import org.lealone.db.result.SearchRow;
  * that (such as a hash index), only one row is returned.
  * The cursor is initially positioned before the first row, that means
  * next() must be called before accessing data.
- *
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface Cursor {
 
@@ -38,7 +40,9 @@ public interface Cursor {
      *
      * @return the search row
      */
-    SearchRow getSearchRow();
+    default SearchRow getSearchRow() {
+        return get();
+    }
 
     /**
      * Skip to the next row if one is available.

@@ -59,11 +59,6 @@ public class MergedIndex extends IndexBase {
         }
 
         @Override
-        public SearchRow getSearchRow() {
-            return get();
-        }
-
-        @Override
         public boolean next() {
             return result.next();
         }

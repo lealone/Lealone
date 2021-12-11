@@ -82,8 +82,8 @@ public class MetaIndex extends IndexBase {
      */
     private static class MetaCursor implements Cursor {
 
-        private Row current;
         private final ArrayList<Row> rows;
+        private Row current;
         private int index;
 
         MetaCursor(ArrayList<Row> rows) {
@@ -92,11 +92,6 @@ public class MetaIndex extends IndexBase {
 
         @Override
         public Row get() {
-            return current;
-        }
-
-        @Override
-        public SearchRow getSearchRow() {
             return current;
         }
 

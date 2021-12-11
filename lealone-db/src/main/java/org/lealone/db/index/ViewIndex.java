@@ -375,11 +375,6 @@ public class ViewIndex extends IndexBase {
         }
 
         @Override
-        public SearchRow getSearchRow() {
-            return current;
-        }
-
-        @Override
         public boolean next() {
             while (true) {
                 boolean res = result.next();

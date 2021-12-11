@@ -6,7 +6,6 @@
 package org.lealone.db.index;
 
 import org.lealone.db.result.Row;
-import org.lealone.db.result.SearchRow;
 
 public class EmptyCursor implements Cursor {
 
@@ -18,13 +17,7 @@ public class EmptyCursor implements Cursor {
     }
 
     @Override
-    public SearchRow getSearchRow() {
-        return null;
-    }
-
-    @Override
     public boolean next() {
         return false;
     }
-
 }

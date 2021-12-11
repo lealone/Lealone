@@ -107,8 +107,8 @@ public class NonUniqueHashIndex extends HashIndex {
     private static class NonUniqueHashCursor implements Cursor {
 
         private final ServerSession session;
-        private final ArrayList<Long> positions;
         private final Table table;
+        private final ArrayList<Long> positions;
 
         private int index = -1;
 
@@ -125,11 +125,6 @@ public class NonUniqueHashIndex extends HashIndex {
                 return null;
             }
             return table.getRow(session, positions.get(index));
-        }
-
-        @Override
-        public SearchRow getSearchRow() {
-            return get();
         }
 
         @Override

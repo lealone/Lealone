@@ -105,11 +105,6 @@ public class FunctionIndex extends IndexBase {
         }
 
         @Override
-        public SearchRow getSearchRow() {
-            return get();
-        }
-
-        @Override
         public boolean next() {
             row = null;
             if (result != null && result.next()) {
@@ -151,11 +146,6 @@ public class FunctionIndex extends IndexBase {
                 row = new Row(values, 1);
             }
             return row;
-        }
-
-        @Override
-        public SearchRow getSearchRow() {
-            return get();
         }
 
         @Override

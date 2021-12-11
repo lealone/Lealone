@@ -99,10 +99,10 @@ public class RangeIndex extends IndexBase {
      */
     private static class RangeCursor implements Cursor {
 
+        private final long start, end, step;
         private boolean beforeFirst;
         private long current;
         private Row currentRow;
-        private final long start, end, step;
 
         RangeCursor(long start, long end) {
             this(start, end, 1);
@@ -117,11 +117,6 @@ public class RangeIndex extends IndexBase {
 
         @Override
         public Row get() {
-            return currentRow;
-        }
-
-        @Override
-        public SearchRow getSearchRow() {
             return currentRow;
         }
 
