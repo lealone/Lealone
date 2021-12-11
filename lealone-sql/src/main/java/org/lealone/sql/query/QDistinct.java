@@ -28,7 +28,7 @@ class QDistinct extends QOperator {
         index = select.topTableFilter.getIndex();
         columnIds = index.getColumnIds();
         size = columnIds.length;
-        cursor = index.findDistinct(session, null, null);
+        cursor = index.findDistinct(session);
         yieldableSelect.disableOlap(); // 无需从oltp转到olap
     }
 

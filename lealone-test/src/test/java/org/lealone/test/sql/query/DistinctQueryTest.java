@@ -29,9 +29,14 @@ public class DistinctQueryTest extends SqlTestBase {
         stmt.executeUpdate("insert into DistinctQueryTest(f1, f2, f3) values(8,2,3)");
         stmt.executeUpdate("insert into DistinctQueryTest(f1, f2, f3) values(5,9,3)");
 
+        // 带查询条件的都不会触发Distinct查询优化
         sql = "select distinct * from DistinctQueryTest where f1 > 3";
-        sql = "select distinct f1 from DistinctQueryTest";
+        sql = "select distinct f1 from DistinctQueryTest where f1 > 3";
         int count = printResultSet();
+        assertEquals(2, count);
+
+        sql = "select distinct f1 from DistinctQueryTest";
+        count = printResultSet();
         assertEquals(4, count);
         sql = "select count(distinct f1) from DistinctQueryTest";
         assertEquals(4, getIntValue(1, true));

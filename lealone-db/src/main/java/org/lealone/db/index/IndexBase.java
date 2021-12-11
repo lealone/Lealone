@@ -157,8 +157,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last) {
-        throw DbException.getInternalError();
+    public Cursor findDistinct(ServerSession session) {
+        throw DbException.getUnsupportedException("findDistinct");
     }
 
     @Override
