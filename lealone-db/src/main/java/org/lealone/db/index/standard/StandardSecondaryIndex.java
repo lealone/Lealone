@@ -389,15 +389,14 @@ public class StandardSecondaryIndex extends StandardIndex {
     private class StandardSecondaryIndexCursor implements Cursor {
 
         private final ServerSession session;
-        private final Iterator<Value> it;
+        private final Iterator<Value> iterator;
         private final SearchRow last;
-        private Value current;
         private SearchRow searchRow;
         private Row row;
 
-        public StandardSecondaryIndexCursor(ServerSession session, Iterator<Value> it, SearchRow last) {
+        public StandardSecondaryIndexCursor(ServerSession session, Iterator<Value> iterator, SearchRow last) {
             this.session = session;
-            this.it = it;
+            this.iterator = iterator;
             this.last = last;
         }
 
@@ -408,32 +407,33 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         @Override
         public Row get(int[] columnIndexes) {
-            if (row == null) {
-                SearchRow r = getSearchRow();
-                if (r != null) {
-                    row = table.getRow(session, r.getKey(), columnIndexes);
-                }
+            if (row == null && searchRow != null) {
+                row = table.getRow(session, searchRow.getKey(), columnIndexes);
             }
             return row;
         }
 
         @Override
         public SearchRow getSearchRow() {
-            if (searchRow == null && current != null) {
-                searchRow = convertToSearchRow((ValueArray) current);
-            }
             return searchRow;
         }
 
         @Override
         public boolean next() {
-            searchRow = null;
-            row = null;
-            current = it.hasNext() ? it.next() : null;
-            if (current != null && last != null && compareRows(getSearchRow(), last) > 0) {
-                current = null;
+            Value current = iterator.hasNext() ? iterator.next() : null;
+            searchRow = createSearchRow(current);
+            if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+                searchRow = null;
             }
-            return current != null;
+            row = null; // 延迟构建
+            return searchRow != null;
+        }
+
+        private SearchRow createSearchRow(Value current) {
+            if (current == null)
+                return null;
+            else
+                return convertToSearchRow((ValueArray) current);
         }
     }
 

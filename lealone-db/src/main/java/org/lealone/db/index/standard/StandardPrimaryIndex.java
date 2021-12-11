@@ -520,60 +520,65 @@ public class StandardPrimaryIndex extends StandardIndex {
         private final ServerSession session;
         private final StandardTable table;
         private final StandardPrimaryIndex index;
-        private final Iterator<TransactionMapEntry<Value, VersionedValue>> it;
+        private final Iterator<TransactionMapEntry<Value, VersionedValue>> iterator;
         private final ValueLong last;
-        private TransactionMapEntry<Value, VersionedValue> current;
         private Row row;
 
         public StandardPrimaryIndexCursor(ServerSession session, StandardTable table, StandardPrimaryIndex index,
-                Iterator<TransactionMapEntry<Value, VersionedValue>> it, ValueLong last) {
+                Iterator<TransactionMapEntry<Value, VersionedValue>> iterator, ValueLong last) {
             this.session = session;
             this.table = table;
             this.index = index;
-            this.it = it;
+            this.iterator = iterator;
             this.last = last;
         }
 
         @Override
         public Row get() {
-            if (row == null && current != null) {
-                Object tv = current.getTValue();
-                VersionedValue value = current.getValue();
-                Value[] data = value.value.getList();
-                int version = value.version;
-                row = new Row(data, 0);
-                row.setKey(current.getKey().getLong());
-                row.setVersion(version);
-                row.setTValue(tv);
-
-                if (table.getVersion() != version) {
-                    ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
-                            .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
-                    Value[] newValues = data;
-                    for (TableAlterHistoryRecord record : records) {
-                        newValues = record.redo(session, newValues);
-                    }
-                    if (newValues != data) {
-                        index.remove(session, row);
-                        row = new Row(newValues, 0);
-                        row.setKey(current.getKey().getLong());
-                        row.setVersion(table.getVersion());
-                        row.setTValue(tv);
-                        index.add(session, row);
-                    }
-                }
-            }
             return row;
         }
 
         @Override
         public boolean next() {
-            row = null;
-            current = it.hasNext() ? it.next() : null;
+            TransactionMapEntry<Value, VersionedValue> current = iterator.hasNext() ? iterator.next() : null;
             if (last != null && current != null && current.getKey().getLong() > last.getLong()) {
                 current = null;
             }
-            return current != null;
+            if (current != null) {
+                createRow(current);
+                return true;
+            } else {
+                row = null;
+                return false;
+            }
+        }
+
+        private void createRow(TransactionMapEntry<Value, VersionedValue> current) {
+            Object tv = current.getTValue();
+            VersionedValue value = current.getValue();
+            Value[] data = value.value.getList();
+            int version = value.version;
+            row = new Row(data, 0);
+            row.setKey(current.getKey().getLong());
+            row.setVersion(version);
+            row.setTValue(tv);
+
+            if (table.getVersion() != version) {
+                ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
+                        .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
+                Value[] newValues = data;
+                for (TableAlterHistoryRecord record : records) {
+                    newValues = record.redo(session, newValues);
+                }
+                if (newValues != data) {
+                    index.remove(session, row);
+                    row = new Row(newValues, 0);
+                    row.setKey(current.getKey().getLong());
+                    row.setVersion(table.getVersion());
+                    row.setTValue(tv);
+                    index.add(session, row);
+                }
+            }
         }
     }
 }
