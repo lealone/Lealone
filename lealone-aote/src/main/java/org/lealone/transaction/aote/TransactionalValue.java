@@ -67,7 +67,10 @@ public class TransactionalValue {
                     return value;
                 } else {
                     LockOwner owner = t.getLockOwner(this);
-                    return owner == null ? value : owner.oldValue;
+                    if (owner == null)
+                        return SIGHTLESS;
+                    else
+                        return owner.oldValue;
                 }
             }
             return value;
@@ -76,21 +79,27 @@ public class TransactionalValue {
         case Transaction.IL_SERIALIZABLE: {
             long tid = transaction.getTransactionId();
             if (t != null) {
-                if (t.isCommitted() && tid >= t.transactionId)
+                if (t.isCommitted() && tid >= t.commitTimestamp)
                     return value;
             }
             OldValue oldValue = transaction.transactionEngine.getOldValue(this);
+            boolean hasOld = oldValue != null;
             while (oldValue != null) {
                 if (tid >= oldValue.tid)
                     return oldValue.value;
                 oldValue = oldValue.next;
             }
+            if (hasOld) {
+                return SIGHTLESS; // insert成功后的记录，旧事务看不到
+            }
             if (t != null) {
                 LockOwner owner = t.getLockOwner(this);
                 if (owner != null)
                     return owner.oldValue;
+            } else {
+                return value;
             }
-            return SIGHTLESS;
+            return SIGHTLESS; // 刚刚insert但是还没有提交的记录
         }
         case Transaction.IL_READ_UNCOMMITTED: {
             return value;
@@ -139,7 +148,7 @@ public class TransactionalValue {
         if (t.transactionEngine.containsRepeatableReadTransactions()) {
             OldValue v = new OldValue();
             v.value = value;
-            v.tid = t.transactionId;
+            v.tid = t.commitTimestamp;
             v.next = t.transactionEngine.getOldValue(this);
             t.transactionEngine.addTransactionalValue(this, v);
         }

@@ -564,6 +564,10 @@ public class ServerSession extends SessionBase {
         Transaction transaction = this.transaction;
         if (transaction.isLocal())
             this.transaction = null;
+        // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
+        if (!isAutoCommit() && transaction.getSavepointId() > 0)
+            database.getNextModificationDataId();
+
         if (globalTransactionName == null)
             transaction.commit();
         else

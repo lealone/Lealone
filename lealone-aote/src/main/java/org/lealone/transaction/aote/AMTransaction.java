@@ -40,6 +40,7 @@ public class AMTransaction implements Transaction {
     final long transactionId;
     final String transactionName;
     final LogSyncService logSyncService;
+    long commitTimestamp;
 
     UndoLog undoLog = new UndoLog();
     RunMode runMode;
@@ -305,6 +306,7 @@ public class AMTransaction implements Transaction {
         AMTransaction t = transactionEngine.removeTransaction(tid);
         if (t == null)
             return;
+        t.commitTimestamp = t.transactionEngine.nextEvenTransactionId(); // 生成新的
         // 先提交，事务变成结束状态再解锁
         UndoLog undoLog = t.undoLog;
         undoLog.commit(transactionEngine, tid);

@@ -242,15 +242,14 @@ public class Update extends ManipulationStatement {
             Row newRow = table.getTemplateRow();
             newRow.setKey(oldRow.getKey()); // 复用原来的行号
             for (int i = 0; i < columnCount; i++) {
-                Expression newExpr = statement.expressionMap.get(columns[i]);
+                Column column = columns[i];
+                Expression newExpr = statement.expressionMap.get(column);
                 Value newValue;
                 if (newExpr == null) {
                     newValue = oldRow.getValue(i);
                 } else if (newExpr == ValueExpression.getDefault()) {
-                    Column column = table.getColumn(i);
                     newValue = table.getDefaultValue(session, column);
                 } else {
-                    Column column = table.getColumn(i);
                     newValue = column.convert(newExpr.getValue(session));
                 }
                 newRow.setValue(i, newValue);
