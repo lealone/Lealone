@@ -27,13 +27,13 @@ public class TcpClientConnection extends TransferConnection {
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final int maxSharedSize;
-    // private final NetClient netClient;
+    private final NetClient netClient;
 
     private Throwable pendingException;
 
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize) {
         super(writableChannel, false);
-        // this.netClient = netClient;
+        this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
     }
 
@@ -137,6 +137,7 @@ public class TcpClientConnection extends TransferConnection {
     @Override
     public void handleException(Exception e) {
         pendingException = e;
+        netClient.removeConnection(this);
     }
 
     public Throwable getPendingException() {
