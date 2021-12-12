@@ -1874,6 +1874,25 @@ public class ServerSession extends SessionBase {
         return transactionIsolationLevel;
     }
 
+    public void setTransactionIsolationLevel(String transactionIsolationLevel) {
+        switch (transactionIsolationLevel.toUpperCase()) {
+        case "READ_COMMITTED":
+            this.transactionIsolationLevel = Connection.TRANSACTION_READ_COMMITTED;
+            break;
+        case "REPEATABLE_READ":
+            this.transactionIsolationLevel = Connection.TRANSACTION_REPEATABLE_READ;
+            break;
+        case "SERIALIZABLE":
+            this.transactionIsolationLevel = Connection.TRANSACTION_SERIALIZABLE;
+            break;
+        case "READ_UNCOMMITTED":
+            this.transactionIsolationLevel = Connection.TRANSACTION_READ_UNCOMMITTED;
+            break;
+        default:
+            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+        }
+    }
+
     public void setTransactionIsolationLevel(int transactionIsolationLevel) {
         switch (transactionIsolationLevel) {
         case Connection.TRANSACTION_READ_COMMITTED:

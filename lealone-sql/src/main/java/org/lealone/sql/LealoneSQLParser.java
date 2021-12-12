@@ -4842,6 +4842,15 @@ public class LealoneSQLParser implements SQLParser {
             boolean value = readBooleanSetting();
             int setting = value ? SQLStatement.SET_AUTOCOMMIT_TRUE : SQLStatement.SET_AUTOCOMMIT_FALSE;
             return new TransactionStatement(session, setting);
+        } else if (readIf(SessionSetting.TRANSACTION_ISOLATION_LEVEL.name())) {
+            SetSession command = new SetSession(session, SessionSetting.TRANSACTION_ISOLATION_LEVEL);
+            readIfEqualOrTo();
+            // 支持标识符和数字两种格式
+            if (currentTokenType == IDENTIFIER)
+                command.setString(readAliasIdentifier());
+            else
+                command.setExpression(readExpression());
+            return command;
         } else if (readIf("PASSWORD")) {
             readIfEqualOrTo();
             AlterUser command = new AlterUser(session);
