@@ -58,7 +58,7 @@ public class Constants {
     /**
      * The build date is updated for each public release.
      */
-    public static final String BUILD_DATE = "2019-11-15";
+    public static final String BUILD_DATE = "2021-12-12";
 
     /**
      * The build id is incremented for each public release.

@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
@@ -28,6 +29,7 @@ import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.QueryStatisticsData;
+import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -165,7 +167,7 @@ public class MetaTable extends Table {
             break;
         case SETTINGS:
             setObjectName("SETTINGS");
-            cols = createColumns("NAME", "VALUE");
+            cols = createColumns("NAME", "SCOPE", "VALUE");
             break;
         case HELP:
             setObjectName("HELP");
@@ -606,13 +608,7 @@ public class MetaTable extends Table {
             break;
         }
         case SETTINGS: {
-            for (Map.Entry<String, String> e : database.getParameters().entrySet()) {
-                add(rows, identifier(e.getKey()), e.getValue());
-            }
-            add(rows, "info.BUILD_ID", "" + Constants.BUILD_ID);
-            add(rows, "info.VERSION_MAJOR", "" + Constants.VERSION_MAJOR);
-            add(rows, "info.VERSION_MINOR", "" + Constants.VERSION_MINOR);
-            add(rows, "info.VERSION", "" + Constants.getFullVersion());
+            // system properties
             if (admin) {
                 String[] settings = {
                         "java.runtime.version",
@@ -622,32 +618,55 @@ public class MetaTable extends Table {
                         "os.arch",
                         "os.version",
                         "sun.os.patch.level",
-                        "file.separator",
+                        // "file.separator",
                         "path.separator",
-                        "line.separator",
+                        // "line.separator",
                         "user.country",
                         "user.language",
                         "user.variant",
-                        "file.encoding" };
+                        // "file.encoding"
+                };
                 for (String s : settings) {
-                    add(rows, "property." + s, Utils.getProperty(s, ""));
+                    add(rows, s, "property", Utils.getProperty(s, ""));
                 }
             }
-            add(rows, "EXCLUSIVE", database.getExclusiveSession() == null ? "FALSE" : "TRUE");
-            add(rows, "MODE", database.getMode().getName());
-            add(rows, "MULTI_THREADED", "1");
-            add(rows, "MVCC", database.isMultiVersion() ? "TRUE" : "FALSE");
-            add(rows, "QUERY_TIMEOUT", "" + session.getQueryTimeout());
+
+            // system settings
+            add(rows, "BUILD_ID", "system", "" + Constants.BUILD_ID);
+            add(rows, "VERSION_MAJOR", "system", "" + Constants.VERSION_MAJOR);
+            add(rows, "VERSION_MINOR", "system", "" + Constants.VERSION_MINOR);
+            add(rows, "VERSION", "system", "" + Constants.getFullVersion());
+            if (admin) {
+                for (Entry<String, String> e : SysProperties.getSettings().entrySet()) {
+                    String v = e.getValue();
+                    if (v.contains("\r") || v.contains("\n"))
+                        v = v.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n");
+                    add(rows, e.getKey(), "system", v);
+                }
+            }
+
             // database settings
+            add(rows, "EXCLUSIVE", "database", database.getExclusiveSession() == null ? "FALSE" : "TRUE");
+            add(rows, "MODE", "database", database.getMode().getName());
+            add(rows, "MULTI_THREADED", "database", "1");
+            add(rows, "MVCC", "database", database.isMultiVersion() ? "TRUE" : "FALSE");
+            for (Map.Entry<String, String> e : database.getParameters().entrySet()) {
+                add(rows, identifier(e.getKey()), "database", e.getValue());
+            }
             Map<String, String> s = database.getSettings().getSettings();
             ArrayList<String> settingNames = new ArrayList<>(s.size());
             settingNames.addAll(s.keySet());
             Collections.sort(settingNames);
             for (String k : settingNames) {
-                add(rows, k, s.get(k));
+                add(rows, k, "database", s.get(k));
             }
             if (database.isPersistent()) {
                 database.addPersistentMetaInfo(this, rows);
+            }
+
+            // session settings
+            for (Entry<String, String> e : session.getSettings().entrySet()) {
+                add(rows, e.getKey(), "session", e.getValue());
             }
             break;
         }
@@ -1595,5 +1614,4 @@ public class MetaTable extends Table {
     public static int getMetaTableTypeCount() {
         return META_TABLE_TYPE_COUNT;
     }
-
 }

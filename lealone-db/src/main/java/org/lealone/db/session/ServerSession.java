@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -1958,5 +1959,48 @@ public class ServerSession extends SessionBase {
 
     public void setOlapThreshold(int olapThreshold) {
         this.olapThreshold = olapThreshold;
+    }
+
+    public Map<String, String> getSettings() {
+        Map<String, String> settings = new LinkedHashMap<>(SessionSetting.values().length);
+        for (SessionSetting setting : SessionSetting.values()) {
+            Object v = "";
+            switch (setting) {
+            case LOCK_TIMEOUT:
+                v = lockTimeout;
+                break;
+            case QUERY_TIMEOUT:
+                v = queryTimeout;
+                break;
+            case SCHEMA:
+                v = currentSchemaName;
+                break;
+            case SCHEMA_SEARCH_PATH:
+                v = schemaSearchPath;
+                break;
+            case VARIABLE:
+                continue;
+            case THROTTLE:
+                v = throttle;
+                break;
+            case TRANSACTION_ISOLATION_LEVEL:
+                v = transactionIsolationLevel;
+                break;
+            case VALUE_VECTOR_FACTORY_NAME:
+                v = valueVectorFactoryName;
+                break;
+            case EXPRESSION_COMPILE_THRESHOLD:
+                v = expressionCompileThreshold;
+                break;
+            case OLAP_OPERATOR_FACTORY_NAME:
+                v = olapOperatorFactoryName;
+                break;
+            case OLAP_THRESHOLD:
+                v = olapThreshold;
+                break;
+            }
+            settings.put(setting.name(), v == null ? "null" : v.toString());
+        }
+        return settings;
     }
 }
