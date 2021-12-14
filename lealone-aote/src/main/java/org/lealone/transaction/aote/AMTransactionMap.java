@@ -72,10 +72,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     // 获得当前事务能看到的值，依据不同的隔离级别看到的值是不一样的
     protected Object getValue(K key, TransactionalValue tv) {
-        // tv为null说明记录不存在，tv.getValue()为null说明是一个删除标记
-        if (tv == null || tv.getValue() == null) {
+        // tv为null说明记录不存在
+        if (tv == null)
             return null;
-        }
 
         // 如果tv是未提交的，并且就是当前事务，那么这里也会返回未提交的值
         Object v = tv.getValue(transaction);
@@ -674,6 +673,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             return addWaitingTransaction(key, tv);
         }
         Object oldValue = tv.getValue();
+        tv.setTransaction(transaction);
         tv.setValue(value);
         transaction.undoLog.add(getName(), key, oldValue, tv, false);
         return Transaction.OPERATION_COMPLETE;

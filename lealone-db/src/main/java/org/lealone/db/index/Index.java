@@ -89,14 +89,10 @@ public interface Index extends SchemaObject {
         throw DbException.getUnsupportedException("add row");
     }
 
-    default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, int[] updateColumns) {
-        return update(session, oldRow, newRow, updateColumns, false);
-    }
-
     default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
             boolean isLockedBySelf) {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
-        remove(session, oldRow).onSuccess(v -> {
+        remove(session, oldRow, isLockedBySelf).onSuccess(v -> {
             add(session, newRow).onComplete(ar -> {
                 ac.setAsyncResult(ar);
             });

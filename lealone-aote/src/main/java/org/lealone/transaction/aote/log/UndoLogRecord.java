@@ -74,7 +74,7 @@ public class UndoLogRecord {
         if (oldValue == null) { // insert
             newTV.commit(tid);
         } else if (newTV != null && newTV.getValue() == null) { // delete
-            if (!transactionEngine.containsRepeatableReadTransactions(tid)) {
+            if (!transactionEngine.containsRepeatableReadTransactions()) {
                 map.remove(key);
             } else {
                 newTV.commit(tid);

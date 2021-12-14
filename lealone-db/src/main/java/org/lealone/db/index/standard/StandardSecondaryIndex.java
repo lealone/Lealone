@@ -94,17 +94,17 @@ public class StandardSecondaryIndex extends StandardIndex {
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         final TransactionMap<ValueArray, Value> map = getMap(session);
-        final ValueArray array = convertToKey(row);
+        final ValueArray key = convertToKey(row);
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
-        map.addIfAbsent(array, ValueNull.INSTANCE).onComplete(ar -> {
+        map.addIfAbsent(key, ValueNull.INSTANCE).onComplete(ar -> {
             if (ar.isFailed()) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
                 // 因为StandardPrimaryIndex和StandardSecondaryIndex的add是异步并行执行的，
                 // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
                 // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
-                DbException e = getDuplicateKeyException(array.toString());
+                DbException e = getDuplicateKeyException(key.toString());
                 ac.setAsyncResult(e);
             } else {
                 ac.setAsyncResult(ar);
@@ -128,12 +128,12 @@ public class StandardSecondaryIndex extends StandardIndex {
     @Override
     public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         TransactionMap<ValueArray, Value> map = getMap(session);
-        ValueArray array = convertToKey(row);
-        Object tv = map.getTransactionalValue(array);
+        ValueArray key = convertToKey(row);
+        Object tv = map.getTransactionalValue(key);
         if (!isLockedBySelf && map.isLocked(tv, null))
-            return Future.succeededFuture(map.addWaitingTransaction(ValueLong.get(row.getKey()), tv));
+            return Future.succeededFuture(map.addWaitingTransaction(key, tv));
         else
-            return Future.succeededFuture(map.tryRemove(array, tv, isLockedBySelf));
+            return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf));
     }
 
     @Override

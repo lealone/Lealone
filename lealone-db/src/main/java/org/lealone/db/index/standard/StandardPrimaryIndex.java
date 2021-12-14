@@ -571,7 +571,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                     newValues = record.redo(session, newValues);
                 }
                 if (newValues != data) {
-                    index.remove(session, row);
+                    index.remove(session, row, false);
                     row = new Row(newValues, 0);
                     row.setKey(current.getKey().getLong());
                     row.setVersion(table.getVersion());
