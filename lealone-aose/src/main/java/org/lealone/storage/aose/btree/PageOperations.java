@@ -249,13 +249,11 @@ public abstract class PageOperations {
         @Override
         protected Object writeLocal(int index) {
             markDirtyPages();
-            Object result;
             if (index < 0) {
                 insertLeaf(index, value);
                 return null;
             } else {
-                result = p.setValue(index, value);
-                return result;
+                return p.setValue(index, value);
             }
         }
 

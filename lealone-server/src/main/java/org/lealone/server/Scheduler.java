@@ -69,13 +69,13 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         if (NetEventLoop.isRunInScheduler(config)) {
             // 如果返回null，就不在调度器里处理网络IO
             netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, 0);
-            netEventLoop.setOwner(this);
         }
         if (netEventLoop == null) {
             // 默认100毫秒
             loopInterval = DateTimeUtils.getLoopInterval(config, key, 100);
         } else {
             loopInterval = 0;
+            netEventLoop.setOwner(this);
         }
     }
 

@@ -8,13 +8,22 @@ package org.lealone.db.async;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.Packet;
 
+@SuppressWarnings("rawtypes")
 public class AsyncCallback<T> implements Future<T> {
+
+    private static final AtomicReferenceFieldUpdater<AsyncCallback, AsyncHandler> cUpdater = AtomicReferenceFieldUpdater
+            .newUpdater(AsyncCallback.class, AsyncHandler.class, "completeHandler");
+    private static final AtomicReferenceFieldUpdater<AsyncCallback, AsyncHandler> sUpdater = AtomicReferenceFieldUpdater
+            .newUpdater(AsyncCallback.class, AsyncHandler.class, "successHandler");
+    private static final AtomicReferenceFieldUpdater<AsyncCallback, AsyncHandler> fUpdater = AtomicReferenceFieldUpdater
+            .newUpdater(AsyncCallback.class, AsyncHandler.class, "failureHandler");
 
     protected volatile boolean runEnd;
     protected volatile AsyncHandler<AsyncResult<T>> completeHandler;
@@ -100,31 +109,34 @@ public class AsyncCallback<T> implements Future<T> {
 
     @Override
     public Future<T> onSuccess(AsyncHandler<T> handler) {
-        // asyncResult为null时才给successHandler赋值，避免setAsyncResult重复调用handler.handle
-        if (asyncResult != null && asyncResult.isSucceeded())
-            handler.handle(asyncResult.getResult());
-        else
-            successHandler = handler;
+        successHandler = handler;
+        if (asyncResult != null && asyncResult.isSucceeded()) {
+            if (sUpdater.compareAndSet(this, successHandler, null)) {
+                handler.handle(asyncResult.getResult());
+            }
+        }
         return this;
     }
 
     @Override
     public Future<T> onFailure(AsyncHandler<Throwable> handler) {
-        // asyncResult为null时才给failureHandler赋值，避免setAsyncResult重复调用handler.handle
-        if (asyncResult != null && asyncResult.isFailed())
-            handler.handle(asyncResult.getCause());
-        else
-            failureHandler = handler;
+        failureHandler = handler;
+        if (asyncResult != null && asyncResult.isFailed()) {
+            if (fUpdater.compareAndSet(this, failureHandler, null)) {
+                handler.handle(asyncResult.getCause());
+            }
+        }
         return this;
     }
 
     @Override
     public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
-        // asyncResult为null时才给completeHandler赋值，避免setAsyncResult重复调用handler.handle
-        if (asyncResult != null)
-            handler.handle(asyncResult);
-        else
-            completeHandler = handler;
+        completeHandler = handler;
+        if (asyncResult != null) {
+            if (cUpdater.compareAndSet(this, completeHandler, null)) {
+                handler.handle(asyncResult);
+            }
+        }
         return this;
     }
 
@@ -140,14 +152,26 @@ public class AsyncCallback<T> implements Future<T> {
         runEnd = true;
         this.asyncResult = asyncResult;
         try {
-            if (completeHandler != null)
-                completeHandler.handle(asyncResult);
+            if (completeHandler != null) {
+                AsyncHandler<AsyncResult<T>> handler = completeHandler;
+                if (cUpdater.compareAndSet(this, completeHandler, null)) {
+                    handler.handle(asyncResult);
+                }
+            }
 
-            if (successHandler != null && asyncResult != null && asyncResult.isSucceeded())
-                successHandler.handle(asyncResult.getResult());
+            if (successHandler != null && asyncResult != null && asyncResult.isSucceeded()) {
+                AsyncHandler<T> handler = successHandler;
+                if (sUpdater.compareAndSet(this, successHandler, null)) {
+                    handler.handle(asyncResult.getResult());
+                }
+            }
 
-            if (failureHandler != null && asyncResult != null && asyncResult.isFailed())
-                failureHandler.handle(asyncResult.getCause());
+            if (failureHandler != null && asyncResult != null && asyncResult.isFailed()) {
+                AsyncHandler<Throwable> handler = failureHandler;
+                if (fUpdater.compareAndSet(this, failureHandler, null)) {
+                    handler.handle(asyncResult.getCause());
+                }
+            }
         } finally {
             countDown();
         }
