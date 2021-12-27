@@ -152,23 +152,21 @@ public class AsyncCallback<T> implements Future<T> {
         runEnd = true;
         this.asyncResult = asyncResult;
         try {
-            if (completeHandler != null) {
-                AsyncHandler<AsyncResult<T>> handler = completeHandler;
-                if (cUpdater.compareAndSet(this, completeHandler, null)) {
-                    handler.handle(asyncResult);
-                }
+            AsyncHandler<AsyncResult<T>> cHandler = completeHandler;
+            if (cHandler != null && cUpdater.compareAndSet(this, completeHandler, null)) {
+                cHandler.handle(asyncResult);
             }
 
-            if (successHandler != null && asyncResult != null && asyncResult.isSucceeded()) {
+            if (asyncResult != null && asyncResult.isSucceeded()) {
                 AsyncHandler<T> handler = successHandler;
-                if (sUpdater.compareAndSet(this, successHandler, null)) {
+                if (handler != null && sUpdater.compareAndSet(this, successHandler, null)) {
                     handler.handle(asyncResult.getResult());
                 }
             }
 
-            if (failureHandler != null && asyncResult != null && asyncResult.isFailed()) {
+            if (asyncResult != null && asyncResult.isFailed()) {
                 AsyncHandler<Throwable> handler = failureHandler;
-                if (fUpdater.compareAndSet(this, failureHandler, null)) {
+                if (handler != null && fUpdater.compareAndSet(this, failureHandler, null)) {
                     handler.handle(asyncResult.getCause());
                 }
             }
