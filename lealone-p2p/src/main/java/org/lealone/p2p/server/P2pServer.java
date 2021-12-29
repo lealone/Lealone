@@ -79,7 +79,9 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
     public void init(Map<String, String> config) {
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(Constants.DEFAULT_P2P_PORT));
-
+        if (!config.containsKey("name"))
+            config.put("name", getName());
+        config.put("net_event_loop_run_in_scheduler", "false"); // 不支持在scheduler中执行
         NetFactory factory = NetFactoryManager.getFactory(config);
         NetServer netServer = factory.createNetServer();
         netServer.setConnectionManager(this);
