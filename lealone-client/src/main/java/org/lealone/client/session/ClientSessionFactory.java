@@ -151,17 +151,6 @@ public class ClientSessionFactory implements SessionFactory {
             AtomicInteger count = new AtomicInteger();
             CopyOnWriteArrayList<Session> sessions = new CopyOnWriteArrayList<>();
 
-            AsyncCallback<ClientSession> replicationAc = new AsyncCallback<>();
-            replicationAc.onComplete(ar -> {
-                if (ar.isSucceeded()) {
-                    addSessionForReplication(parent, ar.getResult(), sessions, size, count, topAc);
-                } else {
-                    if (count.incrementAndGet() == size) {
-                        topAc.setAsyncResult(ar.getCause());
-                    }
-                }
-            });
-
             InetSocketAddress inetSocketAddress = clientSession.getInetSocketAddress();
             for (int i = 0; i < size; i++) {
                 // 如果首次连接的节点就是复制节点之一，则复用它
@@ -172,6 +161,17 @@ public class ClientSessionFactory implements SessionFactory {
                         continue;
                     }
                 }
+                // 每个节点使用独立的AsyncCallback，因为AsyncCallback调用一次处理器后就自动置null了
+                AsyncCallback<ClientSession> replicationAc = new AsyncCallback<>();
+                replicationAc.onComplete(ar -> {
+                    if (ar.isSucceeded()) {
+                        addSessionForReplication(parent, ar.getResult(), sessions, size, count, topAc);
+                    } else {
+                        if (count.incrementAndGet() == size) {
+                            topAc.setAsyncResult(ar.getCause());
+                        }
+                    }
+                });
                 ConnectionInfo ci2 = ci.copy(replicationServers[i]);
                 createClientSession(parent, ci2, replicationServers[i], replicationAc);
             }
