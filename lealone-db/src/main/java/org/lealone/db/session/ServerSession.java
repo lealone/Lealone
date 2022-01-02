@@ -848,7 +848,7 @@ public class ServerSession extends SessionBase {
                 currentCommandStart = now;
                 cancelAt = now + queryTimeout;
             }
-            currentCommandSavepointId = getTransaction(statement.isLocal()).getSavepointId();
+            currentCommandSavepointId = getTransaction().getSavepointId();
             currentCommandLockIndex = locks.size();
         }
     }
@@ -1257,14 +1257,10 @@ public class ServerSession extends SessionBase {
     }
 
     public Transaction getTransaction() {
-        return getTransaction(false);
-    }
-
-    public Transaction getTransaction(boolean isLocal) {
         if (transaction != null)
             return transaction;
 
-        RunMode runMode = isLocal ? RunMode.CLIENT_SERVER : getRunMode();
+        RunMode runMode = getRunMode();
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode);
         transaction.setSession(this);
         transaction.setGlobalReplicationName(replicationName);
