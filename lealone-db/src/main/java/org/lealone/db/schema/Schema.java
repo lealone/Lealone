@@ -9,10 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
@@ -53,9 +51,7 @@ public class Schema extends DbObjectBase {
      */
     private final HashSet<String> temporaryUniqueNames = new HashSet<>();
 
-    @SuppressWarnings("unchecked")
-    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs //
-            = new AtomicReference[DbObjectType.TYPES.length];
+    private final TransactionalDbObjects[] dbObjectsArray = new TransactionalDbObjects[DbObjectType.TYPES.length];
     private final DbObjectLock[] locks = new DbObjectLock[DbObjectType.TYPES.length];
 
     private final User owner;
@@ -74,8 +70,7 @@ public class Schema extends DbObjectBase {
         super(database, id, schemaName);
         for (DbObjectType type : DbObjectType.TYPES) {
             if (type.isSchemaObject) {
-                dbObjectsRefs[type.value] = new AtomicReference<>(
-                        new TransactionalDbObjects<>(new CaseInsensitiveMap<>()));
+                dbObjectsArray[type.value] = new TransactionalDbObjects();
                 locks[type.value] = new DbObjectLockImpl(type);
             }
         }
@@ -172,7 +167,7 @@ public class Schema extends DbObjectBase {
 
     @SuppressWarnings("unchecked")
     private <T> HashMap<String, T> getDbObjects(DbObjectType type) {
-        return (HashMap<String, T>) dbObjectsRefs[type.value].get().getDbObjects();
+        return (HashMap<String, T>) dbObjectsArray[type.value].getDbObjects();
     }
 
     public DbObjectLock tryExclusiveLock(DbObjectType type, ServerSession session) {
@@ -191,8 +186,7 @@ public class Schema extends DbObjectBase {
      */
     // 执行DDL语句时session不为null，需要在meta表中增加一条对应的记录
     public void add(ServerSession session, SchemaObject obj, DbObjectLock lock) {
-        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
-        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        TransactionalDbObjects dbObjects = dbObjectsArray[obj.getType().value];
         int id = obj.getId();
 
         if (SysProperties.CHECK) {
@@ -222,18 +216,15 @@ public class Schema extends DbObjectBase {
 
         // 先执行addMeta再执行put，因为addMeta可能会失败
         database.tryAddMeta(session, obj);
-
-        dbObjects = dbObjects.copy(session);
-        dbObjects.add(obj);
-        dbObjectsRef.set(dbObjects);
+        dbObjects.copyOnAdd(session, obj);
 
         if (lock != null) {
             lock.addHandler(ar -> {
                 if (ar.isSucceeded() && ar.getResult()) {
-                    dbObjectsRef.set(dbObjectsRef.get().commit());
+                    dbObjects.commit();
                 } else {
                     database.clearObjectId(obj.getId());
-                    dbObjectsRef.set(dbObjectsRef.get().rollback());
+                    dbObjects.rollback();
                 }
                 freeUniqueName(obj.getName());
             });
@@ -252,8 +243,7 @@ public class Schema extends DbObjectBase {
             freeUniqueName(objName);
             obj.invalidate();
         } else {
-            AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
-            TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+            TransactionalDbObjects dbObjects = dbObjectsArray[type.value];
             if (SysProperties.CHECK && !dbObjects.containsKey(session, objName)) {
                 DbException.throwInternalError("not found: " + objName);
             }
@@ -266,17 +256,15 @@ public class Schema extends DbObjectBase {
 
             obj.removeChildrenAndResources(session, lock);
             database.tryRemoveMeta(session, obj, lock);
+            dbObjects.copyOnRemove(session, objName);
 
-            dbObjects = dbObjects.copy(session);
-            dbObjects.remove(objName);
-            dbObjectsRef.set(dbObjects);
             if (lock != null) {
                 lock.addHandler(ar -> {
                     if (ar.isSucceeded() && ar.getResult()) {
-                        dbObjectsRef.set(dbObjectsRef.get().commit());
+                        dbObjects.commit();
                         removeInternal(obj);
                     } else {
-                        dbObjectsRef.set(dbObjectsRef.get().rollback());
+                        dbObjects.rollback();
                     }
                 });
             }
@@ -323,8 +311,7 @@ public class Schema extends DbObjectBase {
      * @param newName the new name
      */
     public void rename(ServerSession session, SchemaObject obj, String newName, DbObjectLock lock) {
-        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
-        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        TransactionalDbObjects dbObjects = dbObjectsArray[obj.getType().value];
         String oldName = obj.getName();
         if (SysProperties.CHECK) {
             if (!dbObjects.containsKey(session, oldName)) {
@@ -336,18 +323,16 @@ public class Schema extends DbObjectBase {
         }
 
         obj.checkRename();
-        dbObjects = dbObjects.copy(session);
-        dbObjects.remove(oldName);
+        dbObjects.copyOnRemove(session, oldName);
         obj.rename(newName);
         dbObjects.add(obj);
-        dbObjectsRef.set(dbObjects);
 
         lock.addHandler(ar -> {
             if (ar.isSucceeded() && ar.getResult()) {
-                dbObjectsRef.set(dbObjectsRef.get().commit());
+                dbObjects.commit();
             } else {
                 obj.rename(oldName);
-                dbObjectsRef.set(dbObjectsRef.get().rollback());
+                dbObjects.rollback();
             }
             freeUniqueName(oldName);
             freeUniqueName(newName);
@@ -359,7 +344,7 @@ public class Schema extends DbObjectBase {
 
     @SuppressWarnings("unchecked")
     private <T> T find(DbObjectType type, ServerSession session, String name) {
-        return (T) dbObjectsRefs[type.value].get().find(session, name);
+        return (T) dbObjectsArray[type.value].find(session, name);
     }
 
     /**

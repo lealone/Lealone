@@ -22,7 +22,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -109,9 +108,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private volatile State state = State.CONSTRUCTOR_CALLED;
 
-    @SuppressWarnings("unchecked")
-    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs //
-            = new AtomicReference[DbObjectType.TYPES.length];
+    private final TransactionalDbObjects[] dbObjectsArray = new TransactionalDbObjects[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
     private final DbObjectLock authLock = new DbObjectLockImpl(DbObjectType.USER);
@@ -266,8 +263,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
         for (DbObjectType type : DbObjectType.TYPES) {
             if (!type.isSchemaObject) {
-                dbObjectsRefs[type.value] = new AtomicReference<>(
-                        new TransactionalDbObjects<>(new CaseInsensitiveMap<>()));
+                dbObjectsArray[type.value] = new TransactionalDbObjects();
             }
         }
     }
@@ -847,8 +843,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object to add
      */
     public void addDatabaseObject(ServerSession session, DbObject obj, DbObjectLock lock) {
-        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
-        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        TransactionalDbObjects dbObjects = dbObjectsArray[obj.getType().value];
 
         if (SysProperties.CHECK && dbObjects.containsKey(session, obj.getName())) {
             DbException.throwInternalError("object already exists");
@@ -860,18 +855,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         tryAddMeta(session, obj);
-
-        dbObjects = dbObjects.copy(session);
-        dbObjects.add(obj);
-        dbObjectsRef.set(dbObjects);
+        dbObjects.copyOnAdd(session, obj);
 
         if (lock != null) {
             lock.addHandler(ar -> {
                 if (ar.isSucceeded() && ar.getResult()) {
-                    dbObjectsRef.set(dbObjectsRef.get().commit());
+                    dbObjects.commit();
                 } else {
                     clearObjectId(obj.getId());
-                    dbObjectsRef.set(dbObjectsRef.get().rollback());
+                    dbObjects.rollback();
                 }
             });
         }
@@ -887,8 +879,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         checkWritingAllowed();
         String objName = obj.getName();
         DbObjectType type = obj.getType();
-        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
-        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        TransactionalDbObjects dbObjects = dbObjectsArray[type.value];
         if (SysProperties.CHECK && !dbObjects.containsKey(session, objName)) {
             DbException.throwInternalError("not found: " + objName);
         }
@@ -904,18 +895,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
         int id = obj.getId();
         obj.removeChildrenAndResources(session, lock);
         tryRemoveMeta(session, id);
-
-        dbObjects = dbObjects.copy(session);
-        dbObjects.remove(objName);
-        dbObjectsRef.set(dbObjects);
+        dbObjects.copyOnRemove(session, objName);
 
         if (lock != null) {
             lock.addHandler(ar -> {
                 if (ar.isSucceeded() && ar.getResult()) {
-                    dbObjectsRef.set(dbObjectsRef.get().commit());
+                    dbObjects.commit();
                     removeInternal(obj);
                 } else {
-                    dbObjectsRef.set(dbObjectsRef.get().rollback());
+                    dbObjects.rollback();
                 }
             });
         }
@@ -936,8 +924,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public void renameDatabaseObject(ServerSession session, DbObject obj, String newName, DbObjectLock lock) {
         checkWritingAllowed();
         DbObjectType type = obj.getType();
-        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
-        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        TransactionalDbObjects dbObjects = dbObjectsArray[type.value];
         String oldName = obj.getName();
         if (SysProperties.CHECK) {
             if (!dbObjects.containsKey(session, oldName)) {
@@ -949,18 +936,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         obj.checkRename();
-        dbObjects = dbObjects.copy(session);
-        dbObjects.remove(oldName);
+        dbObjects.copyOnRemove(session, oldName);
         obj.rename(newName);
         dbObjects.add(obj);
-        dbObjectsRef.set(dbObjects);
 
         lock.addHandler(ar -> {
             if (ar.isSucceeded() && ar.getResult()) {
-                dbObjectsRef.set(dbObjectsRef.get().commit());
+                dbObjects.commit();
             } else {
                 obj.rename(oldName);
-                dbObjectsRef.set(dbObjectsRef.get().rollback());
+                dbObjects.rollback();
             }
         });
 
@@ -984,12 +969,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @SuppressWarnings("unchecked")
     protected <T> HashMap<String, T> getDbObjects(DbObjectType type) {
-        return (HashMap<String, T>) dbObjectsRefs[type.value].get().getDbObjects();
+        return (HashMap<String, T>) dbObjectsArray[type.value].getDbObjects();
     }
 
     @SuppressWarnings("unchecked")
     protected <T> T find(DbObjectType type, ServerSession session, String name) {
-        return (T) dbObjectsRefs[type.value].get().find(session, name);
+        return (T) dbObjectsArray[type.value].find(session, name);
     }
 
     /**
