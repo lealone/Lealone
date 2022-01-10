@@ -503,6 +503,7 @@ public class StandardTable extends Table {
             }
             // needed for session temporary indexes
             indexes.remove(index);
+            indexesExcludeDelegate.remove(index);
         }
         if (SysProperties.CHECK) {
             for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.INDEX)) {
@@ -514,6 +515,12 @@ public class StandardTable extends Table {
         }
         primaryIndex.remove(session);
         close(session);
+    }
+
+    @Override
+    public void removeIndex(Index index) {
+        super.removeIndex(index);
+        indexesExcludeDelegate.remove(index);
     }
 
     @Override
