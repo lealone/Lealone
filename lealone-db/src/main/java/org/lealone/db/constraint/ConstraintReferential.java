@@ -625,7 +625,6 @@ public class ConstraintReferential extends Constraint {
             // don't check at startup
             return;
         }
-        // session.startStatementWithinTransaction(); //TODO
         StatementBuilder buff = new StatementBuilder("SELECT 1 FROM (SELECT ");
         for (IndexColumn c : columns) {
             buff.appendExceptFirst(", ");
@@ -652,10 +651,15 @@ public class ConstraintReferential extends Constraint {
         }
         buff.append(')');
         String sql = buff.toString();
-        Result r = session.prepareStatement(sql).query(1);
-        if (r.next()) {
-            throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
-                    getShortDescription(null, null));
+        session.startNestedStatement();
+        try {
+            Result r = session.prepareStatement(sql).query(1);
+            if (r.next()) {
+                throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
+                        getShortDescription(null, null));
+            }
+        } finally {
+            session.endNestedStatement();
         }
     }
 

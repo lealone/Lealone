@@ -862,6 +862,8 @@ public class ServerSession extends SessionBase {
     }
 
     public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        if (executingNestedStatement)
+            return;
         if (lastReplicationName != null && isAutoCommit()) {
             getTransaction().replicaCommit(lastReplicationName);
             lastReplicationName = null;
@@ -1998,5 +2000,15 @@ public class ServerSession extends SessionBase {
             settings.put(setting.name(), v == null ? "null" : v.toString());
         }
         return settings;
+    }
+
+    private boolean executingNestedStatement;
+
+    public void startNestedStatement() {
+        executingNestedStatement = true;
+    }
+
+    public void endNestedStatement() {
+        executingNestedStatement = false;
     }
 }
