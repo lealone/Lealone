@@ -231,7 +231,12 @@ public abstract class InsertBase extends ManipulationStatement {
                 pendingOperationCount.incrementAndGet();
                 table.addRow(session, newRow).onComplete(ar -> {
                     if (ar.isSucceeded()) {
-                        table.fireAfterRow(session, null, newRow, false);
+                        try {
+                            // 有可能抛出异常
+                            table.fireAfterRow(session, null, newRow, false);
+                        } catch (Throwable e) {
+                            setPendingException(e);
+                        }
                     }
                     onComplete(ar);
                 });

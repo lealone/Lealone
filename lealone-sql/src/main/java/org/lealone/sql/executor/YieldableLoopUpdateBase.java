@@ -72,12 +72,13 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     }
 
     protected void onComplete(AsyncResult<Integer> ar) {
-        pendingOperationCount.decrementAndGet();
         if (ar.isSucceeded()) {
             updateCount.incrementAndGet();
         } else {
             setPendingException(ar.getCause());
         }
+        // 不能提前，前面设置PendingException后再减，否则主线程调用isCompleted()后就结束了，没有对外抛出异常
+        pendingOperationCount.decrementAndGet();
 
         if (isCompleted()) {
             setResult(updateCount.get());
