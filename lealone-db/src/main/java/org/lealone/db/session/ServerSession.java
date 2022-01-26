@@ -905,12 +905,15 @@ public class ServerSession extends SessionBase {
 
     public void rollbackCurrentCommand() {
         rollbackTo(currentCommandSavepointId);
-        if (!locks.isEmpty()) {
-            for (int i = currentCommandLockIndex, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
+        int size = locks.size();
+        if (currentCommandLockIndex < size) {
+            // 只解除当前语句拥有的锁
+            ArrayList<DbObjectLock> list = new ArrayList<>(locks);
+            for (int i = currentCommandLockIndex; i < size; i++) {
+                DbObjectLock lock = list.get(i);
                 lock.unlock(this, false, null);
+                locks.remove(lock);
             }
-            locks.clear();
         }
     }
 
