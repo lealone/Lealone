@@ -6,16 +6,9 @@
 package org.lealone.common.util;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Properties;
-
-import javax.naming.Context;
-import javax.sql.DataSource;
-
-import org.lealone.common.exceptions.DbException;
 
 /**
  * This is a utility class with JDBC helper functions.
@@ -70,58 +63,4 @@ public class JdbcUtils {
             }
         }
     }
-
-    /**
-     * Open a new database connection with the given settings.
-     *
-     * @param driver the driver class name
-     * @param url the database URL
-     * @param user the user name
-     * @param password the password
-     * @return the database connection
-     */
-    public static Connection getConnection(String driver, String url, String user, String password)
-            throws SQLException {
-        Properties prop = new Properties();
-        if (user != null) {
-            prop.setProperty("user", user);
-        }
-        if (password != null) {
-            prop.setProperty("password", password);
-        }
-        return getConnection(driver, url, prop);
-    }
-
-    /**
-     * Open a new database connection with the given settings.
-     *
-     * @param driver the driver class name
-     * @param url the database URL
-     * @param prop the properties containing at least the user name and password
-     * @return the database connection
-     */
-    public static Connection getConnection(String driver, String url, Properties prop) throws SQLException {
-        Class<?> d = Utils.loadUserClass(driver);
-        if (java.sql.Driver.class.isAssignableFrom(d)) {
-            return DriverManager.getConnection(url, prop);
-        } else if (javax.naming.Context.class.isAssignableFrom(d)) {
-            // JNDI context
-            try {
-                Context context = (Context) d.getDeclaredConstructor().newInstance();
-                DataSource ds = (DataSource) context.lookup(url);
-                String user = prop.getProperty("user");
-                String password = prop.getProperty("password");
-                if (StringUtils.isNullOrEmpty(user) && StringUtils.isNullOrEmpty(password)) {
-                    return ds.getConnection();
-                }
-                return ds.getConnection(user, password);
-            } catch (Exception e) {
-                throw DbException.toSQLException(e);
-            }
-        } else {
-            // don't know, but maybe it loaded a JDBC Driver
-            return DriverManager.getConnection(url, prop);
-        }
-    }
-
 }
