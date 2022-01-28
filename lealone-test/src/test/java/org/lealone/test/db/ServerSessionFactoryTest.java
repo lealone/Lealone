@@ -16,7 +16,7 @@ public class ServerSessionFactoryTest extends UnitTestBase {
     @Test
     public void run() {
         setInMemory(true);
-        // setEmbedded(true);
+        setEmbedded(false); // 如果是true的话会自动创建数据库
 
         ConnectionInfo ci;
         try {

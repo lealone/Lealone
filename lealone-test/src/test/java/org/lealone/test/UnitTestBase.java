@@ -21,9 +21,13 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
         initTransactionEngine();
     }
 
+    private Connection getConn() throws SQLException {
+        return DriverManager.getConnection(getURL());
+    }
+
     @Override
     public void execute(String sql) {
-        try (Connection conn = DriverManager.getConnection(getURL()); Statement stmt = conn.createStatement()) {
+        try (Connection conn = getConn(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -31,7 +35,7 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
     }
 
     public int count(String sql) {
-        try (Connection conn = DriverManager.getConnection(getURL()); Statement stmt = conn.createStatement()) {
+        try (Connection conn = getConn(); Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery(sql);
             if (rs.next()) {
                 return rs.getInt(1);
@@ -43,7 +47,7 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
     }
 
     public void explain(String sql) {
-        try (Connection conn = DriverManager.getConnection(getURL()); Statement stmt = conn.createStatement()) {
+        try (Connection conn = getConn(); Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery("EXPLAIN " + sql);
             if (rs.next()) {
                 System.out.println();
