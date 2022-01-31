@@ -50,7 +50,7 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         rows.remove(row.getValue(indexColumn));
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }

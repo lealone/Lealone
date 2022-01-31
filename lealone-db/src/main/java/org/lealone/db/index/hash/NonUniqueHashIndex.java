@@ -57,7 +57,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         if (rowCount == 1) {
             // last row in table
             reset();
