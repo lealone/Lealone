@@ -4247,6 +4247,10 @@ public class LealoneSQLParser implements SQLParser {
                 command.addServiceMethod(serviceMethod);
             } while (readIfMore());
         }
+        if (readIf("LANGUAGE")) {
+            String language = readExpression().getValue(session).getString();
+            command.setLanguage(language);
+        }
         if (readIf("PACKAGE")) {
             String packageName = readExpression().getValue(session).getString();
             command.setPackageName(packageName);

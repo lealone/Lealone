@@ -21,6 +21,7 @@ import org.lealone.db.value.Value;
 
 public class Service extends SchemaObjectBase {
 
+    private String language;
     private String packageName;
     private String implementBy;
     private final String sql;
@@ -40,6 +41,14 @@ public class Service extends SchemaObjectBase {
     @Override
     public DbObjectType getType() {
         return DbObjectType.SERVICE;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
     }
 
     public String getPackageName() {
@@ -65,6 +74,10 @@ public class Service extends SchemaObjectBase {
     @Override
     public String getCreateSQL() {
         return sql;
+    }
+
+    public void setExecutor(ServiceExecutor executor) {
+        this.executor = executor;
     }
 
     // 延迟创建executor的实例，因为执行create service语句时，依赖的服务实现类还不存在

@@ -20,11 +20,14 @@ import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.service.JavaServiceExecutorFactory;
 import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
+import org.lealone.db.service.ServiceExecutorFactory;
 import org.lealone.db.service.ServiceMethod;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
@@ -46,6 +49,7 @@ public class CreateService extends SchemaStatement {
     private String serviceName;
     private boolean ifNotExists;
     private String comment;
+    private String language = "java";
     private String packageName;
     private String implementBy;
     private boolean genCode;
@@ -84,6 +88,10 @@ public class CreateService extends SchemaStatement {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
     }
 
     public void setPackageName(String packageName) {
@@ -135,14 +143,27 @@ public class CreateService extends SchemaStatement {
             }
             serviceMethods.add(m);
         }
+
+        PluginManager<ServiceExecutorFactory> pluginManager = PluginManager.getInstance(ServiceExecutorFactory.class);
+        ServiceExecutorFactory factory = pluginManager.getPlugin(language);
+        if (factory == null)
+            factory = new JavaServiceExecutorFactory();
         Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(), serviceMethods);
+        service.setLanguage(language);
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
         service.setComment(comment);
+        ServiceExecutor executor = factory.createServiceExecutor(service);
+        service.setExecutor(executor);
         schema.add(session, service, lock);
         // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
-        if (genCode && !session.getDatabase().isStarting())
-            genCode();
+        if (genCode && !session.getDatabase().isStarting()) {
+            if (factory.supportsGenCode()) {
+                factory.genCode(service);
+            } else {
+                genCode();
+            }
+        }
         return 0;
     }
 
@@ -173,6 +194,9 @@ public class CreateService extends SchemaStatement {
             buff.append("\n");
         }
         buff.append(")\n");
+        if (language != null) {
+            buff.append("LANGUAGE '").append(language).append("'\n");
+        }
         if (packageName != null) {
             buff.append("PACKAGE '").append(packageName).append("'\n");
         }
@@ -199,11 +223,12 @@ public class CreateService extends SchemaStatement {
     }
 
     private void genCode() {
-        genServiceInterfaceCode();
+        // genServiceInterfaceCode();
         genServiceImplementClassCode();
-        genServiceExecutorCode();
+        // genServiceExecutorCode();
     }
 
+    @SuppressWarnings("unused")
     private void genServiceInterfaceCode() {
         StringBuilder psBuff = new StringBuilder();
         StringBuilder psInitBuff = new StringBuilder();
@@ -425,7 +450,7 @@ public class CreateService extends SchemaStatement {
         buff.append("\r\n");
 
         // 生成Service实现类的骨架代码
-        buff.append("public class ").append(implementClassName).append(" implements ").append(serviceInterfaceName)
+        buff.append("public class ").append(implementClassName) // .append(" implements ").append(serviceInterfaceName)
                 .append(" {\r\n");
         for (int i = 0; i < methodSize; i++) {
             buff.append("\r\n");
@@ -602,6 +627,7 @@ public class CreateService extends SchemaStatement {
         }
     }
 
+    @SuppressWarnings("unused")
     private void genServiceExecutorCode() {
         TreeSet<String> importSet = new TreeSet<>();
         importSet.add(ServiceExecutor.class.getName());
