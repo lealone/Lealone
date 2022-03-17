@@ -20,11 +20,6 @@ JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
 
 CLASSPATH=$LEALONE_HOME/conf:$LEALONE_HOME/lib/*
 
-if [ "x$1" = "x" ]; then
-    LEALONE_PARAMS="$1"
-fi
-if [ "x$2" = "x" ]; then
-    LEALONE_PARAMS="$LEALONE_PARAMS $2"
-fi
+LEALONE_PARAMS=$@
 
 "$JAVA_HOME/bin/java" $JAVA_OPTS -cp $CLASSPATH $LEALONE_MAIN $LEALONE_PARAMS
