@@ -5,9 +5,9 @@
  */
 package org.lealone.net;
 
-import org.lealone.db.PluggableEngine;
+import org.lealone.db.Plugin;
 
-public interface NetFactory extends PluggableEngine {
+public interface NetFactory extends Plugin {
 
     NetServer createNetServer();
 

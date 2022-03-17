@@ -5,11 +5,11 @@
  */
 package org.lealone.sql.operator;
 
-import org.lealone.db.PluggableEngine;
+import org.lealone.db.Plugin;
 import org.lealone.db.result.LocalResult;
 import org.lealone.sql.query.Select;
 
-public interface OperatorFactory extends PluggableEngine {
+public interface OperatorFactory extends Plugin {
 
     Operator createOperator(Select select);
 

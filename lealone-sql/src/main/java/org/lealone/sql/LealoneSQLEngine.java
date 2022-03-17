@@ -5,10 +5,9 @@
  */
 package org.lealone.sql;
 
-import java.util.Map;
-
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
+import org.lealone.db.PluggableEngineBase;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -19,23 +18,15 @@ import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 
-public class LealoneSQLEngine implements SQLEngine {
+public class LealoneSQLEngine extends PluggableEngineBase implements SQLEngine {
 
     public LealoneSQLEngine() {
+        super(Constants.DEFAULT_SQL_ENGINE_NAME);
     }
 
     @Override
     public SQLParser createParser(Session session) {
         return new LealoneSQLParser((ServerSession) session);
-    }
-
-    @Override
-    public String getName() {
-        return Constants.DEFAULT_SQL_ENGINE_NAME;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
     }
 
     @Override
@@ -61,9 +52,5 @@ public class LealoneSQLEngine implements SQLEngine {
     @Override
     public IExpression createConditionAndOr(boolean and, IExpression left, IExpression right) {
         return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR, (Expression) left, (Expression) right);
-    }
-
-    @Override
-    public void close() {
     }
 }

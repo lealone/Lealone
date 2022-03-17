@@ -5,33 +5,16 @@
  */
 package org.lealone.storage;
 
-import java.util.Map;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DataHandler;
+import org.lealone.db.PluggableEngineBase;
 
-public abstract class StorageEngineBase implements StorageEngine {
+public abstract class StorageEngineBase extends PluggableEngineBase implements StorageEngine {
 
-    protected final String name;
-    protected Map<String, String> config;
     protected PageOperationHandlerFactory pohFactory;
 
     public StorageEngineBase(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        this.config = config;
-    }
-
-    @Override
-    public void close() {
+        super(name);
     }
 
     @Override

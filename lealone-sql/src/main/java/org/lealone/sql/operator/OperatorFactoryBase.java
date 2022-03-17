@@ -5,28 +5,11 @@
  */
 package org.lealone.sql.operator;
 
-import java.util.Map;
+import org.lealone.db.PluginBase;
 
-public abstract class OperatorFactoryBase implements OperatorFactory {
-
-    protected final String name;
-    protected Map<String, String> config;
+public abstract class OperatorFactoryBase extends PluginBase implements OperatorFactory {
 
     public OperatorFactoryBase(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        this.config = config;
-    }
-
-    @Override
-    public void close() {
+        super(name);
     }
 }

@@ -8,9 +8,9 @@ package org.lealone.net;
 import java.util.Map;
 
 import org.lealone.db.Constants;
-import org.lealone.db.PluggableEngineManager;
+import org.lealone.db.PluginManager;
 
-public class NetFactoryManager extends PluggableEngineManager<NetFactory> {
+public class NetFactoryManager extends PluginManager<NetFactory> {
 
     private static final NetFactoryManager instance = new NetFactoryManager();
 
@@ -23,7 +23,7 @@ public class NetFactoryManager extends PluggableEngineManager<NetFactory> {
     }
 
     public static NetFactory getFactory(String name) {
-        return instance.getEngine(name);
+        return instance.getPlugin(name);
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
@@ -40,10 +40,10 @@ public class NetFactoryManager extends PluggableEngineManager<NetFactory> {
     }
 
     public static void registerFactory(NetFactory factory) {
-        instance.registerEngine(factory);
+        instance.registerPlugin(factory);
     }
 
     public static void deregisterFactory(NetFactory factory) {
-        instance.deregisterEngine(factory);
+        instance.deregisterPlugin(factory);
     }
 }

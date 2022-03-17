@@ -5,35 +5,19 @@
  */
 package org.lealone.net;
 
-import java.util.Map;
+import org.lealone.db.PluginBase;
 
-public abstract class NetFactoryBase implements NetFactory {
+public abstract class NetFactoryBase extends PluginBase implements NetFactory {
 
-    protected final String name;
     protected final NetClient netClient;
-    protected Map<String, String> config;
 
     public NetFactoryBase(String name, NetClient netClient) {
-        this.name = name;
+        super(name);
         this.netClient = netClient;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
     public NetClient getNetClient() {
         return netClient;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        this.config = config;
-    }
-
-    @Override
-    public void close() {
     }
 }

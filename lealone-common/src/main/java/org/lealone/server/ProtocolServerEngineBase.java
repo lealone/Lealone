@@ -7,26 +7,19 @@ package org.lealone.server;
 
 import java.util.Map;
 
-public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
+import org.lealone.db.PluggableEngineBase;
 
-    protected final String name;
+public abstract class ProtocolServerEngineBase extends PluggableEngineBase implements ProtocolServerEngine {
+
     protected boolean inited;
 
-    // 目前用不到
-    // protected Map<String, String> config;
-
     public ProtocolServerEngineBase(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public String getName() {
-        return name;
+        super(name);
     }
 
     @Override
     public void init(Map<String, String> config) {
-        // this.config = config;
+        super.init(config);
         inited = true;
     }
 
@@ -34,9 +27,4 @@ public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
     public boolean isInited() {
         return inited;
     }
-
-    @Override
-    public void close() {
-    }
-
 }

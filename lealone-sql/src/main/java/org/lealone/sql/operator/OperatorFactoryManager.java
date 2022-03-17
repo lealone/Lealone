@@ -5,9 +5,9 @@
  */
 package org.lealone.sql.operator;
 
-import org.lealone.db.PluggableEngineManager;
+import org.lealone.db.PluginManager;
 
-public class OperatorFactoryManager extends PluggableEngineManager<OperatorFactory> {
+public class OperatorFactoryManager extends PluginManager<OperatorFactory> {
 
     private static final OperatorFactoryManager instance = new OperatorFactoryManager();
 
@@ -20,14 +20,14 @@ public class OperatorFactoryManager extends PluggableEngineManager<OperatorFacto
     }
 
     public static OperatorFactory getFactory(String name) {
-        return instance.getEngine(name);
+        return instance.getPlugin(name);
     }
 
     public static void registerFactory(OperatorFactory factory) {
-        instance.registerEngine(factory);
+        instance.registerPlugin(factory);
     }
 
     public static void deregisterFactory(OperatorFactory factory) {
-        instance.deregisterEngine(factory);
+        instance.deregisterPlugin(factory);
     }
 }

@@ -5,6 +5,14 @@
  */
 package org.lealone.db;
 
-//4大引擎的标记接口
-public interface PluggableEngine extends Plugin {
+import java.util.Map;
+
+public interface Plugin {
+
+    String getName();
+
+    void init(Map<String, String> config);
+
+    void close();
+
 }
