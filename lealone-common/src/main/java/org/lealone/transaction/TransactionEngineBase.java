@@ -5,9 +5,9 @@
  */
 package org.lealone.transaction;
 
-import org.lealone.db.PluggableEngineBase;
+import org.lealone.db.PluginBase;
 
-public abstract class TransactionEngineBase extends PluggableEngineBase implements TransactionEngine {
+public abstract class TransactionEngineBase extends PluginBase implements TransactionEngine {
 
     public TransactionEngineBase(String name) {
         super(name);

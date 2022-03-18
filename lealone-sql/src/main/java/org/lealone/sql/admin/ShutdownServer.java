@@ -6,10 +6,10 @@
 package org.lealone.sql.admin;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
+import org.lealone.db.PluginManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
-import org.lealone.server.ProtocolServerEngineManager;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -38,7 +38,7 @@ public class ShutdownServer extends AdminStatement {
                 Thread.sleep(1000); // 返回结果给客户端需要一点时间，如果立刻关闭网络连接就不能发送结果了
             } catch (InterruptedException e) {
             }
-            for (ProtocolServerEngine e : ProtocolServerEngineManager.getInstance().getEngines()) {
+            for (ProtocolServerEngine e : PluginManager.getPlugins(ProtocolServerEngine.class)) {
                 // 没有初始化的不用管
                 if (e.isInited()) {
                     ProtocolServer server = e.getProtocolServer();

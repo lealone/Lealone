@@ -5,6 +5,7 @@
  */
 package org.lealone.sql.query;
 
+import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.LocalResult;
@@ -15,7 +16,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.operator.Operator;
 import org.lealone.sql.operator.OperatorFactory;
-import org.lealone.sql.operator.OperatorFactoryManager;
 
 public class YieldableSelect extends YieldableQueryBase {
 
@@ -59,7 +59,7 @@ public class YieldableSelect extends YieldableQueryBase {
         if (olapOperatorFactoryName == null) {
             olapOperatorFactoryName = "olap";
         }
-        OperatorFactory operatorFactory = OperatorFactoryManager.getFactory(olapOperatorFactoryName);
+        OperatorFactory operatorFactory = PluginManager.getPlugin(OperatorFactory.class, olapOperatorFactoryName);
         if (operatorFactory != null) {
             olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();

@@ -7,9 +7,9 @@ package org.lealone.server;
 
 import java.util.Map;
 
-import org.lealone.db.PluggableEngineBase;
+import org.lealone.db.PluginBase;
 
-public abstract class ProtocolServerEngineBase extends PluggableEngineBase implements ProtocolServerEngine {
+public abstract class ProtocolServerEngineBase extends PluginBase implements ProtocolServerEngine {
 
     protected boolean inited;
 

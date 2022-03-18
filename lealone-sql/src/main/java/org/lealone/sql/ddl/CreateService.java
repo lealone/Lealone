@@ -144,8 +144,7 @@ public class CreateService extends SchemaStatement {
             serviceMethods.add(m);
         }
 
-        PluginManager<ServiceExecutorFactory> pluginManager = PluginManager.getInstance(ServiceExecutorFactory.class);
-        ServiceExecutorFactory factory = pluginManager.getPlugin(language);
+        ServiceExecutorFactory factory = PluginManager.getPlugin(ServiceExecutorFactory.class, language);
         if (factory == null)
             factory = new JavaServiceExecutorFactory();
         Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(), serviceMethods);

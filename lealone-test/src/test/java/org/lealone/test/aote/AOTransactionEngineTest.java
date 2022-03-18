@@ -9,21 +9,20 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageEngineManager;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
 
 public class AOTransactionEngineTest extends TestBase {
 
     public static TransactionEngine getTransactionEngine(boolean isDistributed) {
-        TransactionEngine te = TransactionEngineManager.getInstance()
-                .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
+                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
 
         Map<String, String> config = AMTransactionEngineTest.getDefaultConfig();
@@ -36,7 +35,7 @@ public class AOTransactionEngineTest extends TestBase {
     }
 
     public static Storage getStorage() {
-        StorageEngine se = StorageEngineManager.getInstance().getEngine(Constants.DEFAULT_STORAGE_ENGINE_NAME);
+        StorageEngine se = PluginManager.getPlugin(StorageEngine.class, Constants.DEFAULT_STORAGE_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();

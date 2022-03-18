@@ -83,7 +83,44 @@ public class PluginManager<T extends Plugin> {
         }
     }
 
-    public static <P extends Plugin> PluginManager<P> getInstance(Class<P> pluginClass) {
-        return new PluginManager<>(pluginClass);
+    private static final Map<Class<?>, PluginManager<?>> instances = new ConcurrentHashMap<>();
+
+    @SuppressWarnings("unchecked")
+    private static <P extends Plugin> PluginManager<P> getInstance(P plugin) {
+        return (PluginManager<P>) getInstance(plugin.getClass());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <P extends Plugin> PluginManager<P> getInstance(Class<P> pluginClass) {
+        PluginManager<?> instance = instances.get(pluginClass);
+        if (instance == null) {
+            instance = instances.putIfAbsent(pluginClass, new PluginManager<>(pluginClass));
+        }
+        return (PluginManager<P>) instance;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <P extends Plugin> P getPlugin(Class<P> pluginClass, String name) {
+        PluginManager<?> instance = instances.get(pluginClass);
+        if (instance == null) {
+            instance = new PluginManager<>(pluginClass);
+            PluginManager<?> old = instances.putIfAbsent(pluginClass, instance);
+            if (old != null) {
+                instance = old;
+            }
+        }
+        return (P) instance.getPlugin(name);
+    }
+
+    public static <P extends Plugin> Collection<P> getPlugins(Class<P> pluginClass) {
+        return getInstance(pluginClass).getPlugins();
+    }
+
+    public static <P extends Plugin> void register(P plugin, String... alias) {
+        getInstance(plugin).registerPlugin(plugin, alias);
+    }
+
+    public static <P extends Plugin> void deregister(P plugin, String... alias) {
+        getInstance(plugin).deregisterPlugin(plugin, alias);
     }
 }

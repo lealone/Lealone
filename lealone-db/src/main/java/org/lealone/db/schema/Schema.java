@@ -17,6 +17,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
 import org.lealone.db.TransactionalDbObjects;
 import org.lealone.db.api.ErrorCode;
@@ -32,7 +33,6 @@ import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFactory;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.memory.MemoryStorageEngine;
 
 /**
@@ -691,12 +691,12 @@ public class Schema extends DbObjectBase {
             data.storageEngineName = database.getDefaultStorageEngineName();
         }
         if (data.storageEngineName != null) {
-            StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngineName);
+            StorageEngine engine = PluginManager.getPlugin(StorageEngine.class, data.storageEngineName);
             if (engine == null) {
                 try {
                     engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).getDeclaredConstructor()
                             .newInstance();
-                    StorageEngineManager.getInstance().registerEngine(engine);
+                    PluginManager.register(engine);
                 } catch (Exception e) {
                     throw DbException.convert(e);
                 }

@@ -18,6 +18,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
+import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
@@ -28,13 +29,9 @@ import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
-import org.lealone.server.ProtocolServerEngineManager;
 import org.lealone.sql.SQLEngine;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageEngineManager;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionEngineManager;
 
 public class Lealone {
 
@@ -153,11 +150,11 @@ public class Lealone {
 
     private static void initStorageEngineEngines() {
         registerAndInitEngines(config.storage_engines, "storage", "default.storage.engine", def -> {
-            StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
+            StorageEngine se = PluginManager.getPlugin(StorageEngine.class, def.name);
             if (se == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
                 se = (StorageEngine) clz.getDeclaredConstructor().newInstance();
-                StorageEngineManager.getInstance().registerEngine(se);
+                PluginManager.register(se);
             }
             return se;
         });
@@ -167,14 +164,14 @@ public class Lealone {
         registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
             TransactionEngine te;
             try {
-                te = TransactionEngineManager.getInstance().getEngine(def.name);
+                te = PluginManager.getPlugin(TransactionEngine.class, def.name);
                 if (te == null) {
                     Class<?> clz = Utils.loadUserClass(def.name);
                     te = (TransactionEngine) clz.getDeclaredConstructor().newInstance();
-                    TransactionEngineManager.getInstance().registerEngine(te);
+                    PluginManager.register(te);
                 }
             } catch (Throwable e) {
-                te = TransactionEngineManager.getInstance().getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                te = PluginManager.getPlugin(TransactionEngine.class, Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
                 if (te == null) {
                     throw e;
                 }
@@ -186,11 +183,11 @@ public class Lealone {
 
     private static void initSQLEngines() {
         registerAndInitEngines(config.sql_engines, "sql", "default.sql.engine", def -> {
-            SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
+            SQLEngine se = PluginManager.getPlugin(SQLEngine.class, def.name);
             if (se == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
                 se = (SQLEngine) clz.getDeclaredConstructor().newInstance();
-                SQLEngineManager.getInstance().registerEngine(se);
+                PluginManager.register(se);
             }
             return se;
         });
@@ -201,11 +198,12 @@ public class Lealone {
             // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
             if (!def.getParameters().containsKey("host") && config.listen_address != null)
                 def.getParameters().put("host", config.listen_address);
-            ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
+            ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
+
             if (pse == null) {
                 Class<?> clz = Utils.loadUserClass(def.name);
                 pse = (ProtocolServerEngine) clz.getDeclaredConstructor().newInstance();
-                ProtocolServerEngineManager.getInstance().registerEngine(pse);
+                PluginManager.register(pse);
             }
             return pse;
         });
@@ -282,7 +280,7 @@ public class Lealone {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
-                    ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
+                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
                     if (protocolServer.isRunInMainThread()) {
                         // 默认是第一个

@@ -68,7 +68,6 @@ import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLEngine;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
@@ -79,7 +78,6 @@ import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionEngineManager;
 
 /**
  * There is one database object per open database.
@@ -235,11 +233,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         String engineName = dbSettings.defaultSQLEngine;
-        SQLEngine sqlEngine = SQLEngineManager.getInstance().getEngine(engineName);
+        SQLEngine sqlEngine = PluginManager.getPlugin(SQLEngine.class, engineName);
         if (sqlEngine == null) {
             try {
                 sqlEngine = (SQLEngine) Utils.loadUserClass(engineName).getDeclaredConstructor().newInstance();
-                SQLEngineManager.getInstance().registerEngine(sqlEngine);
+                PluginManager.register(sqlEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found", e);
                 throw DbException.convert(e);
@@ -248,12 +246,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
         this.sqlEngine = sqlEngine;
 
         engineName = dbSettings.defaultTransactionEngine;
-        TransactionEngine transactionEngine = TransactionEngineManager.getInstance().getEngine(engineName);
+        TransactionEngine transactionEngine = PluginManager.getPlugin(TransactionEngine.class, engineName);
         if (transactionEngine == null) {
             try {
                 transactionEngine = (TransactionEngine) Utils.loadUserClass(engineName).getDeclaredConstructor()
                         .newInstance();
-                TransactionEngineManager.getInstance().registerEngine(transactionEngine);
+                PluginManager.register(transactionEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the transaction engine '" + engineName + "' not found", e);
                 throw DbException.convert(e);

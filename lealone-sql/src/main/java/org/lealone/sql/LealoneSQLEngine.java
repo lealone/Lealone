@@ -7,7 +7,7 @@ package org.lealone.sql;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
-import org.lealone.db.PluggableEngineBase;
+import org.lealone.db.PluginBase;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -18,7 +18,7 @@ import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 
-public class LealoneSQLEngine extends PluggableEngineBase implements SQLEngine {
+public class LealoneSQLEngine extends PluginBase implements SQLEngine {
 
     public LealoneSQLEngine() {
         super(Constants.DEFAULT_SQL_ENGINE_NAME);

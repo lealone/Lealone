@@ -8,10 +8,10 @@ package org.lealone.server;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageEngineManager;
 
 public class ScheduleService {
 
@@ -36,7 +36,7 @@ public class ScheduleService {
 
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         PageOperationHandlerFactory pohFactory = PageOperationHandlerFactory.create(config, schedulers);
-        for (StorageEngine e : StorageEngineManager.getInstance().getEngines()) {
+        for (StorageEngine e : PluginManager.getPlugins(StorageEngine.class)) {
             e.setPageOperationHandlerFactory(pohFactory);
         }
     }

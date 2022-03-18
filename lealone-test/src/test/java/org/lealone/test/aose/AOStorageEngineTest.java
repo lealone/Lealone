@@ -6,11 +6,11 @@
 package org.lealone.test.aose;
 
 import org.junit.Test;
+import org.lealone.db.PluginManager;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.lob.LobStreamStorage;
@@ -20,7 +20,7 @@ public class AOStorageEngineTest extends TestBase {
 
     @Test
     public void run() {
-        StorageEngine se = StorageEngineManager.getStorageEngine(AOStorageEngine.NAME);
+        StorageEngine se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
         assertTrue(se instanceof AOStorageEngine);
         assertEquals(AOStorageEngine.NAME, se.getName());
         StorageBuilder builder = se.getStorageBuilder();
