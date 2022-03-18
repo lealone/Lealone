@@ -5,8 +5,6 @@
  */
 package org.lealone.db;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -60,27 +58,19 @@ public class PluginManager<T extends Plugin> {
     private synchronized void loadPlugins() {
         if (loaded)
             return;
-        AccessController.doPrivileged(new PluginService());
+        try {
+            // 执行next时ServiceLoader内部会自动为每一个实现Plugin接口的类生成一个新实例
+            // 所以Plugin接口的实现类必需有一个public的无参数构造函数
+            for (T p : ServiceLoader.load(pluginClass)) {
+                PluginManager.this.registerPlugin(p);
+            }
+        } catch (Throwable t) {
+            // 只是发出警告
+            logger.warn("Failed to load plugin: " + pluginClass.getName(), t);
+            // DbException.convert(t);
+        }
         // 注意在load完之后再设为true，否则其他线程可能会因为不用等待load完成从而得到一个NPE
         loaded = true;
-    }
-
-    private class PluginService implements PrivilegedAction<Void> {
-        @Override
-        public Void run() {
-            try {
-                // 执行next时ServiceLoader内部会自动为每一个实现Plugin接口的类生成一个新实例
-                // 所以Plugin接口的实现类必需有一个public的无参数构造函数
-                for (T p : ServiceLoader.load(pluginClass)) {
-                    PluginManager.this.registerPlugin(p);
-                }
-            } catch (Throwable t) {
-                // 只是发出警告
-                logger.warn("Failed to load plugin: " + pluginClass.getName(), t);
-                // DbException.convert(t);
-            }
-            return null;
-        }
     }
 
     private static final Map<Class<?>, PluginManager<?>> instances = new ConcurrentHashMap<>();
@@ -94,22 +84,17 @@ public class PluginManager<T extends Plugin> {
     private static <P extends Plugin> PluginManager<P> getInstance(Class<P> pluginClass) {
         PluginManager<?> instance = instances.get(pluginClass);
         if (instance == null) {
-            instance = instances.putIfAbsent(pluginClass, new PluginManager<>(pluginClass));
-        }
-        return (PluginManager<P>) instance;
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <P extends Plugin> P getPlugin(Class<P> pluginClass, String name) {
-        PluginManager<?> instance = instances.get(pluginClass);
-        if (instance == null) {
             instance = new PluginManager<>(pluginClass);
             PluginManager<?> old = instances.putIfAbsent(pluginClass, instance);
             if (old != null) {
                 instance = old;
             }
         }
-        return (P) instance.getPlugin(name);
+        return (PluginManager<P>) instance;
+    }
+
+    public static <P extends Plugin> P getPlugin(Class<P> pluginClass, String name) {
+        return getInstance(pluginClass).getPlugin(name);
     }
 
     public static <P extends Plugin> Collection<P> getPlugins(Class<P> pluginClass) {
