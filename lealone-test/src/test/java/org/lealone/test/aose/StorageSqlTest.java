@@ -12,7 +12,6 @@ public class StorageSqlTest extends SqlTestBase {
 
     public StorageSqlTest() {
         super("StorageSqlTest");
-        initTransactionEngine();
         setEmbedded(true);
     }
 

@@ -18,7 +18,6 @@ import org.junit.Before;
 public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
 
     public UnitTestBase() {
-        initTransactionEngine();
     }
 
     private Connection getConn() throws SQLException {
@@ -66,14 +65,13 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
 
     @After
     public void tearDownAfter() {
-        closeTransactionEngine();
     }
 
     public void runTest() {
-        runTest(true, true);
+        runTest(true);
     }
 
-    public void runTest(boolean isEmbeddedMemoryMode, boolean closeTransactionEngine) {
+    public void runTest(boolean isEmbeddedMemoryMode) {
         if (isEmbeddedMemoryMode) {
             setEmbedded(true);
             setInMemory(true);
@@ -83,9 +81,6 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
             test();
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (closeTransactionEngine)
-                closeTransactionEngine();
         }
     }
 

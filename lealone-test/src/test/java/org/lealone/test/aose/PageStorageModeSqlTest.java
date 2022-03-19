@@ -14,7 +14,6 @@ public class PageStorageModeSqlTest extends SqlTestBase implements TodoTest {
 
     public PageStorageModeSqlTest() {
         super("PageStorageModeSqlTest");
-        initTransactionEngine();
         setEmbedded(true);
         addConnectionParameter("PAGE_SIZE", (2 * 1024 * 1024) + "");
         // addConnectionParameter("COMPRESS", "true");

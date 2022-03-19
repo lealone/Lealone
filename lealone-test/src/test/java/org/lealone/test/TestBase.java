@@ -21,13 +21,10 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.DbSetting;
-import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
-import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.aote.log.LogSyncService;
 
 public class TestBase extends Assert {
 
@@ -54,8 +51,6 @@ public class TestBase extends Assert {
     public static final String DEFAULT_PASSWORD = "";
     public static final int NETWORK_TIMEOUT_MILLISECONDS = Integer.MAX_VALUE; // 方便在eclipse中调试代码
 
-    public static TransactionEngine te;
-
     static {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
@@ -79,25 +74,6 @@ public class TestBase extends Assert {
 
     public static String getDefaultStorageEngineName() {
         return "AOSE";
-    }
-
-    public static synchronized void initTransactionEngine() {
-        if (te == null) {
-            te = PluginManager.getPlugin(TransactionEngine.class, Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-
-            Map<String, String> config = new HashMap<>();
-            config.put("base_dir", TEST_DIR);
-            config.put("redo_log_dir", "redo_log");
-            config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-            // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_NO_SYNC);
-            te.init(config);
-        }
-    }
-
-    public static synchronized void closeTransactionEngine() {
-        if (te != null) {
-            te.close();
-        }
     }
 
     protected String dbName = DEFAULT_DB_NAME;
