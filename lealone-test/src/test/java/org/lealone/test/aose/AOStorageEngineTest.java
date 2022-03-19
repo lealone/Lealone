@@ -17,7 +17,6 @@ import org.lealone.storage.aose.lob.LobStreamStorage;
 import org.lealone.test.TestBase;
 
 public class AOStorageEngineTest extends TestBase {
-
     @Test
     public void run() {
         StorageEngine se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
@@ -40,5 +39,4 @@ public class AOStorageEngineTest extends TestBase {
         LobStorage lobStorage = se.getLobStorage(null, storage);
         assertTrue(lobStorage instanceof LobStreamStorage);
     }
-
 }

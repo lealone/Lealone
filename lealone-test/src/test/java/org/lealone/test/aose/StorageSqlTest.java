@@ -17,7 +17,8 @@ public class StorageSqlTest extends SqlTestBase {
 
     @Test
     public void run() {
-        executeUpdate("CREATE TABLE IF NOT EXISTS StorageSqlTest(f1 int, f2 int) ENGINE " + DEFAULT_STORAGE_ENGINE_NAME
+        executeUpdate("CREATE TABLE IF NOT EXISTS StorageSqlTest(f1 int, f2 int)" //
+                + " ENGINE " + DEFAULT_STORAGE_ENGINE_NAME //
                 + " PARAMETERS(mapType='BTreeMap')");
         executeUpdate("INSERT INTO StorageSqlTest(f1, f2) VALUES(1, 10)");
         executeUpdate("INSERT INTO StorageSqlTest(f1, f2) VALUES(2, 20)");

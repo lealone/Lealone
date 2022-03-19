@@ -33,7 +33,7 @@ public class BTreeStorageTest extends TestBase {
         }
     }
 
-    void testChunkMetaData() {
+    private void testChunkMetaData() {
         int count = 500;
         for (int i = 1; i <= count; i++) {
             Integer key = i;

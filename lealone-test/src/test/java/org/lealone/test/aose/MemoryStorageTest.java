@@ -11,7 +11,6 @@ import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 
 public class MemoryStorageTest extends TestBase {
-
     @Test
     public void run() throws Exception {
         TestBase test = new TestBase();
@@ -20,5 +19,4 @@ public class MemoryStorageTest extends TestBase {
         test.printURL();
         CRUDExample.crud(test.getConnection());
     }
-
 }

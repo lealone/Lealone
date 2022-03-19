@@ -5,85 +5,40 @@
  */
 package org.lealone.test.aose;
 
+import org.junit.Test;
 import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.btree.PageStorageMode;
-import org.lealone.test.TestBase.TodoTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class PageStorageModeSqlTest extends SqlTestBase implements TodoTest {
+public class PageStorageModeSqlTest extends SqlTestBase {
+
+    private int rowCount = 6000;
+    private int columnCount = 20;
 
     public PageStorageModeSqlTest() {
         super("PageStorageModeSqlTest");
         setEmbedded(true);
-        addConnectionParameter("PAGE_SIZE", (2 * 1024 * 1024) + "");
+        addConnectionParameter("PAGE_SIZE", 2 * 1024 * 1024);
         // addConnectionParameter("COMPRESS", "true");
 
         printURL();
     }
 
-    int rowCount = 6000;
-    int columnCount = 20;
-    int pageSplitSize = 1024 * 1024;
-
-    // @Test //TODO 有bug
+    @Test
     public void run() throws Exception {
         testRowStorage();
         testColumnStorage();
     }
 
-    void createTestTable(String tableName, String pageStorageMode) {
-        // executeUpdate("drop table IF EXISTS " + tableName);
-        StringBuilder sql = new StringBuilder("create table IF NOT EXISTS ").append(tableName)
-                .append("(pk int primary key");
-        for (int col = 1; col <= columnCount; col++) {
-            sql.append(", f").append(col).append(" varchar");
-        }
-        sql.append(") Engine ").append(AOStorageEngine.NAME).append(" PARAMETERS(pageStorageMode='")
-                .append(pageStorageMode).append("')");
-        executeUpdate(sql.toString());
-    }
-
-    void putData(String tableName) {
-        sql = "select count(*) from " + tableName;
-        int count = 0;
-        try {
-            count = getIntValue(1, true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (count <= 0) {
-            // Random random = new Random();
-            for (int row = 1; row <= rowCount; row++) {
-                StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(").append(row);
-                for (int col = 1; col <= columnCount; col++) {
-                    sql.append(", 'value-row" + row + "-col" + col + "'");
-                    // columns[col] = ValueString.get("a string");
-                    // int randomIndex = random.nextInt(columnCount);
-                    // columns[col] = ValueString.get("value-" + randomIndex);
-                    // if (col % 2 == 0) {
-                    // columns[col] = ValueString.get("a string");
-                    // } else {
-                    // columns[col] = ValueString.get("value-row" + row + "-col" + (col + 1));
-                    // }
-                }
-                sql.append(")");
-                // System.out.println(Arrays.asList(columns));
-                executeUpdate(sql.toString());
-            }
-            executeUpdate("checkpoint");
-            // map.remove();
-        }
-    }
-
-    void testRowStorage() {
+    private void testRowStorage() {
         testCRUD("testRowStorage", PageStorageMode.ROW_STORAGE);
     }
 
-    void testColumnStorage() {
+    private void testColumnStorage() {
         testCRUD("testColumnStorage", PageStorageMode.COLUMN_STORAGE);
     }
 
-    void testCRUD(String tableName, PageStorageMode pageStorageMode) {
+    private void testCRUD(String tableName, PageStorageMode pageStorageMode) {
         executeUpdate("SET OPTIMIZE_REUSE_RESULTS 0");
         long t0 = System.currentTimeMillis();
         long t1 = System.currentTimeMillis();
@@ -118,5 +73,49 @@ public class PageStorageModeSqlTest extends SqlTestBase implements TodoTest {
         System.out.println(pageStorageMode + " agg time: " + (t2 - t1) + " ms" + ", count: " + count + ", sum: " + sum);
 
         System.out.println(pageStorageMode + " total time: " + (t2 - t0) + " ms");
+    }
+
+    private void createTestTable(String tableName, String pageStorageMode) {
+        // executeUpdate("drop table IF EXISTS " + tableName);
+        StringBuilder sql = new StringBuilder("create table IF NOT EXISTS ").append(tableName)
+                .append("(pk int primary key");
+        for (int col = 1; col <= columnCount; col++) {
+            sql.append(", f").append(col).append(" varchar");
+        }
+        sql.append(") Engine ").append(AOStorageEngine.NAME).append(" PARAMETERS(pageStorageMode='")
+                .append(pageStorageMode).append("')");
+        executeUpdate(sql.toString());
+    }
+
+    private void putData(String tableName) {
+        sql = "select count(*) from " + tableName;
+        int count = 0;
+        try {
+            count = getIntValue(1, true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (count <= 0) {
+            // Random random = new Random();
+            for (int row = 1; row <= rowCount; row++) {
+                StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(").append(row);
+                for (int col = 1; col <= columnCount; col++) {
+                    sql.append(", 'value-row" + row + "-col" + col + "'");
+                    // columns[col] = ValueString.get("a string");
+                    // int randomIndex = random.nextInt(columnCount);
+                    // columns[col] = ValueString.get("value-" + randomIndex);
+                    // if (col % 2 == 0) {
+                    // columns[col] = ValueString.get("a string");
+                    // } else {
+                    // columns[col] = ValueString.get("value-row" + row + "-col" + (col + 1));
+                    // }
+                }
+                sql.append(")");
+                // System.out.println(Arrays.asList(columns));
+                executeUpdate(sql.toString());
+            }
+            executeUpdate("checkpoint");
+            // map.remove();
+        }
     }
 }

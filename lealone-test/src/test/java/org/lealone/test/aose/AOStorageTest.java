@@ -36,7 +36,7 @@ public class AOStorageTest extends TestBase {
         storage = openStorage(builder);
     }
 
-    void testDrop() {
+    private void testDrop() {
         BTreeMap<Integer, String> map = storage.openBTreeMap("AOStorageTest_testDrop");
         for (int i = 1; i <= 100; i++) {
             map.put(i, "value" + i);
@@ -47,7 +47,7 @@ public class AOStorageTest extends TestBase {
         assertTrue(!p.exists());
     }
 
-    void testBackupTo() {
+    private void testBackupTo() {
         BTreeMap<Integer, String> map = storage.openBTreeMap("AOStorageTest_testBackupTo");
         for (int i = 1; i <= 100; i++) {
             map.put(i, "value" + i);
@@ -60,7 +60,7 @@ public class AOStorageTest extends TestBase {
         assertTrue(p.size() > 0);
     }
 
-    void testOpenMap() {
+    private void testOpenMap() {
         storage.openBTreeMap("AOStorageTest_map1");
         storage.openBTreeMap("AOStorageTest_map2", null, null, null);
 
