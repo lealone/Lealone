@@ -14,11 +14,8 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Constants;
-import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
 import org.lealone.server.ProtocolServerBase;
-import org.lealone.transaction.TransactionEngine;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -127,19 +124,8 @@ public class HttpServer extends ProtocolServerBase {
                 config.put("default_database", ci.getDatabaseName());
             if (!config.containsKey("default_schema"))
                 config.put("default_schema", "public");
-            if (ci.isEmbedded()) {
-                initTransactionEngine(config);
-            }
         }
         inited = true;
-    }
-
-    private static synchronized void initTransactionEngine(Map<String, String> config) {
-        TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-        config.put("redo_log_dir", "redo_log");
-        config.put("log_sync_type", "periodic");
-        te.init(config);
     }
 
     @Override

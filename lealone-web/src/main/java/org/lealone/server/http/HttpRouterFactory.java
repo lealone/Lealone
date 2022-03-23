@@ -133,6 +133,8 @@ public class HttpRouterFactory implements RouterFactory {
 
     protected void setStaticHandler(Router router, Map<String, String> config) {
         String webRoot = config.get("web_root");
+        if (webRoot == null) // 没有配置就不需要处理静态文件
+            return;
         for (String root : webRoot.split(",", -1)) {
             root = root.trim();
             if (root.isEmpty())
