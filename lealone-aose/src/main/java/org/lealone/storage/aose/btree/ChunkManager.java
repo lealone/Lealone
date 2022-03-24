@@ -88,8 +88,12 @@ class ChunkManager {
         return ++maxSeq;
     }
 
+    synchronized TreeSet<Long> getRemovedPagesCopy() {
+        return new TreeSet<>(removedPages);
+    }
+
     synchronized TreeSet<Long> getRemovedPages() {
-        return removedPages;
+        return new TreeSet<>(removedPages);
     }
 
     synchronized void addRemovedPage(long pagePos) {
@@ -113,8 +117,7 @@ class ChunkManager {
 
     synchronized Chunk readChunk(int chunkId) {
         Chunk chunk = new Chunk(chunkId);
-        chunk.readHeader(btreeStorage);
-        chunk.readPagePositions();
+        chunk.read(btreeStorage);
         chunks.put(chunk.id, chunk);
         return chunk;
     }

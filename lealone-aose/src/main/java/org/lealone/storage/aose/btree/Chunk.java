@@ -122,7 +122,7 @@ class Chunk {
         return asStringBuilder().toString();
     }
 
-    public void readPagePositions() {
+    private void readPagePositions() {
         if (!pagePositionToLengthMap.isEmpty())
             return;
         ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset), pageCount * 8 + pageCount * 4);
@@ -157,9 +157,14 @@ class Chunk {
         }
     }
 
-    public void readHeader(BTreeStorage btreeStorage) {
+    public void read(BTreeStorage btreeStorage) {
         if (fileStorage == null)
             fileStorage = btreeStorage.getFileStorage(id);
+        readHeader();
+        readPagePositions();
+    }
+
+    private void readHeader() {
         boolean ok = false;
         ByteBuffer chunkHeaderBlocks = fileStorage.readFully(0, CHUNK_HEADER_SIZE);
         byte[] buff = new byte[BLOCK_SIZE];

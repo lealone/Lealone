@@ -29,7 +29,7 @@ class ChunkCompactor {
     }
 
     void executeCompact() {
-        TreeSet<Long> removedPages = chunkManager.getRemovedPages();
+        TreeSet<Long> removedPages = chunkManager.getRemovedPagesCopy();
         if (removedPages.isEmpty())
             return;
 
@@ -44,7 +44,7 @@ class ChunkCompactor {
                 boolean saveIfNeeded = rewrite(old, removedPages);
                 if (saveIfNeeded) {
                     btreeStorage.executeSave(false);
-                    removedPages = chunkManager.getRemovedPages();
+                    removedPages = chunkManager.getRemovedPagesCopy();
                     removeUnusedChunks(removedPages);
                 }
             }
@@ -90,9 +90,6 @@ class ChunkCompactor {
             if (!chunkManager.containsChunk(id)) {
                 chunkManager.readChunk(id);
             }
-        }
-        for (Chunk c : chunkManager.getChunks()) {
-            c.readPagePositions();
         }
     }
 
