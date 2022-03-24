@@ -29,7 +29,6 @@ public class BTreeMapTest extends TestBase {
 
         testSyncOperations();
         testAsyncOperations();
-        testCompact();
         testSplit();
         testRemove();
         testSave();
@@ -198,29 +197,6 @@ public class BTreeMapTest extends TestBase {
         }
 
         assertEquals(1, map.size());
-    }
-
-    void testCompact() {
-        map = storage.openBTreeMap("BTreeMapTest");
-
-        map.clear();
-
-        map.put(1, "v1");
-        map.put(50, "v50");
-        map.put(100, "v100");
-
-        map.save();
-
-        for (int i = 1; i <= 200; i++)
-            map.put(i, "value" + i);
-        map.save();
-
-        // map.printPage();
-
-        for (int i = 50; i <= 200; i++)
-            map.put(i, "value" + i);
-
-        map.save();
     }
 
     // 性能测试
