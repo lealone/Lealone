@@ -31,7 +31,7 @@ public class AOStorageTest extends TestBase {
     private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
         builder.pageSplitSize(1024);
-        builder.encryptionKey("mykey".toCharArray());
+        // builder.encryptionKey("mykey".toCharArray());
         // builder.inMemory();
         storage = openStorage(builder);
     }
