@@ -25,7 +25,7 @@ import org.lealone.storage.fs.FileStorage;
  * @author H2 Group
  * @author zhh
  */
-public class BTreeChunk {
+class Chunk {
     /**
      * The block size (physical sector size) of the disk. The chunk header is
      * written twice, one copy in each block, to ensure it survives a crash.
@@ -83,7 +83,7 @@ public class BTreeChunk {
     public int removedPageOffset;
     public int removedPageCount;
 
-    BTreeChunk(int id) {
+    Chunk(int id) {
         this.id = id;
     }
 
@@ -114,7 +114,7 @@ public class BTreeChunk {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof BTreeChunk && ((BTreeChunk) o).id == id;
+        return o instanceof Chunk && ((Chunk) o).id == id;
     }
 
     @Override
@@ -125,9 +125,8 @@ public class BTreeChunk {
     public void readPagePositions() {
         if (!pagePositionToLengthMap.isEmpty())
             return;
-        int size = pageCount;
-        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset), size * 8 + size * 4);
-        for (int i = 0; i < size; i++) {
+        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset), pageCount * 8 + pageCount * 4);
+        for (int i = 0; i < pageCount; i++) {
             long position = buff.getLong();
             int length = buff.getInt();
             pagePositionToLengthMap.put(position, length);
@@ -159,7 +158,8 @@ public class BTreeChunk {
     }
 
     public void readHeader(BTreeStorage btreeStorage) {
-        fileStorage = btreeStorage.getFileStorage(id);
+        if (fileStorage == null)
+            fileStorage = btreeStorage.getFileStorage(id);
         boolean ok = false;
         ByteBuffer chunkHeaderBlocks = fileStorage.readFully(0, CHUNK_HEADER_SIZE);
         byte[] buff = new byte[BLOCK_SIZE];

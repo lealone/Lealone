@@ -26,8 +26,8 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class BTreeStorage {
 
-    final BTreeMap<Object, Object> map;
-    final String mapBaseDir;
+    private final BTreeMap<Object, Object> map;
+    private final String mapBaseDir;
 
     private final ChunkManager chunkManager;
 
@@ -80,7 +80,7 @@ public class BTreeStorage {
         if (!FileUtils.exists(mapBaseDir))
             FileUtils.createDirectories(mapBaseDir);
         else {
-            chunkManager.init();
+            chunkManager.init(mapBaseDir);
         }
     }
 
@@ -102,7 +102,11 @@ public class BTreeStorage {
         return e;
     }
 
-    BTreeChunk getLastChunk() {
+    BTreeMap<Object, Object> getMap() {
+        return map;
+    }
+
+    Chunk getLastChunk() {
         return chunkManager.getLastChunk();
     }
 
@@ -112,7 +116,7 @@ public class BTreeStorage {
      * @param pos the position
      * @return the chunk
      */
-    BTreeChunk getChunk(long pos) {
+    Chunk getChunk(long pos) {
         return chunkManager.getChunk(pos);
     }
 
@@ -204,8 +208,8 @@ public class BTreeStorage {
         BTreePage p = getPageFromCache(pos);
         if (p != null)
             return p;
-        BTreeChunk c = getChunk(pos);
-        long filePos = BTreeChunk.getFilePos(PageUtils.getPageOffset(pos));
+        Chunk c = getChunk(pos);
+        long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
         int pageLength = c.getPageLength(pos);
         p = BTreePage.read(map, c.fileStorage, pos, filePos, pageLength);
         cachePage(pos, p, p.getMemory());
@@ -393,8 +397,8 @@ public class BTreeStorage {
     synchronized void executeSave(boolean force) {
         DataBuffer chunkBody = DataBuffer.create();
         try {
-            BTreeChunk c = chunkManager.createChunk();
-            c.fileStorage = createFileStorage(c.fileName);
+            Chunk c = chunkManager.createChunk();
+            c.fileStorage = getFileStorage(c.fileName);
             c.mapSize = map.size();
 
             BTreePage p = map.root;
@@ -421,7 +425,7 @@ public class BTreeStorage {
         return openFileStorage(chunkFileName);
     }
 
-    private FileStorage createFileStorage(String chunkFileName) {
+    private FileStorage getFileStorage(String chunkFileName) {
         chunkFileName = mapBaseDir + File.separator + chunkFileName;
         return openFileStorage(chunkFileName);
     }

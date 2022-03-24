@@ -39,7 +39,7 @@ class ChunkCompactor {
             return;
 
         if (!removedPages.isEmpty()) {
-            List<BTreeChunk> old = getOldChunks();
+            List<Chunk> old = getOldChunks();
             if (!old.isEmpty()) {
                 boolean saveIfNeeded = rewrite(old, removedPages);
                 if (saveIfNeeded) {
@@ -53,7 +53,7 @@ class ChunkCompactor {
 
     private void removeUnusedChunks(TreeSet<Long> removedPages) {
         int size = removedPages.size();
-        for (BTreeChunk c : findUnusedChunks(removedPages)) {
+        for (Chunk c : findUnusedChunks(removedPages)) {
             chunkManager.removeUnusedChunk(c);
             removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         }
@@ -63,14 +63,14 @@ class ChunkCompactor {
         }
     }
 
-    private ArrayList<BTreeChunk> findUnusedChunks(TreeSet<Long> removedPages) {
-        ArrayList<BTreeChunk> unusedChunks = new ArrayList<>();
+    private ArrayList<Chunk> findUnusedChunks(TreeSet<Long> removedPages) {
+        ArrayList<Chunk> unusedChunks = new ArrayList<>();
         if (removedPages.isEmpty())
             return unusedChunks;
 
         readAllChunks();
 
-        for (BTreeChunk c : chunkManager.getChunks()) {
+        for (Chunk c : chunkManager.getChunks()) {
             c.sumOfLivePageLength = 0;
             boolean unused = true;
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
@@ -91,15 +91,15 @@ class ChunkCompactor {
                 chunkManager.readChunk(id);
             }
         }
-        for (BTreeChunk c : chunkManager.getChunks()) {
+        for (Chunk c : chunkManager.getChunks()) {
             c.readPagePositions();
         }
     }
 
-    private List<BTreeChunk> getOldChunks() {
-        long maxBytesToWrite = BTreeChunk.MAX_SIZE;
-        List<BTreeChunk> old = new ArrayList<>();
-        for (BTreeChunk c : chunkManager.getChunks()) {
+    private List<Chunk> getOldChunks() {
+        long maxBytesToWrite = Chunk.MAX_SIZE;
+        List<Chunk> old = new ArrayList<>();
+        for (Chunk c : chunkManager.getChunks()) {
             if (c.getFillRate() > btreeStorage.getMinFillRate())
                 continue;
             old.add(c);
@@ -107,9 +107,9 @@ class ChunkCompactor {
         if (old.isEmpty())
             return old;
 
-        Collections.sort(old, new Comparator<BTreeChunk>() {
+        Collections.sort(old, new Comparator<Chunk>() {
             @Override
-            public int compare(BTreeChunk o1, BTreeChunk o2) {
+            public int compare(Chunk o1, Chunk o2) {
                 long comp = o1.getFillRate() - o2.getFillRate();
                 if (comp == 0) {
                     comp = o1.sumOfLivePageLength - o2.sumOfLivePageLength;
@@ -129,9 +129,10 @@ class ChunkCompactor {
         return index == size ? old : old.subList(0, index + 1);
     }
 
-    private boolean rewrite(List<BTreeChunk> old, TreeSet<Long> removedPages) {
+    private boolean rewrite(List<Chunk> old, TreeSet<Long> removedPages) {
         boolean saveIfNeeded = false;
-        for (BTreeChunk c : old) {
+        BTreeMap<Object, Object> map = btreeStorage.getMap();
+        for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
                 long pos = e.getKey();
                 if (PageUtils.isLeafPage(pos)) {
@@ -139,8 +140,8 @@ class ChunkCompactor {
                         BTreePage p = btreeStorage.readPage(pos);
                         if (p.getKeyCount() > 0) {
                             Object key = p.getKey(0);
-                            Object value = btreeStorage.map.get(key);
-                            if (value != null && btreeStorage.map.replace(key, value, value))
+                            Object value = map.get(key);
+                            if (value != null && map.replace(key, value, value))
                                 saveIfNeeded = true;
                         }
                     }

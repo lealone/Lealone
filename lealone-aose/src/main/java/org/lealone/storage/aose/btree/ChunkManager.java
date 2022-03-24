@@ -21,19 +21,19 @@ class ChunkManager {
     private final BTreeStorage btreeStorage;
     private final TreeSet<Long> removedPages = new TreeSet<>();
     private final ConcurrentHashMap<Integer, String> idToChunkFileNameMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Chunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
 
-    private BTreeChunk lastChunk;
+    private Chunk lastChunk;
     private long maxSeq;
 
     ChunkManager(BTreeStorage bTreeStorage) {
         btreeStorage = bTreeStorage;
     }
 
-    void init() {
+    void init(String mapBaseDir) {
         int lastChunkId = 0;
-        String[] files = new File(btreeStorage.mapBaseDir).list();
+        String[] files = new File(mapBaseDir).list();
         for (String f : files) {
             if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
                 // chunk文件名格式: c_[chunkId]_[sequence]
@@ -67,11 +67,11 @@ class ChunkManager {
         }
     }
 
-    BTreeChunk getLastChunk() {
+    Chunk getLastChunk() {
         return lastChunk;
     }
 
-    void setLastChunk(BTreeChunk lastChunk) {
+    void setLastChunk(Chunk lastChunk) {
         this.lastChunk = lastChunk;
     }
 
@@ -102,25 +102,26 @@ class ChunkManager {
     }
 
     synchronized void close() {
-        for (BTreeChunk c : chunks.values()) {
+        for (Chunk c : chunks.values()) {
             if (c.fileStorage != null)
                 c.fileStorage.close();
         }
         chunks.clear();
         removedPages.clear();
+        idToChunkFileNameMap.clear();
     }
 
-    synchronized BTreeChunk readChunk(int chunkId) {
-        BTreeChunk chunk = new BTreeChunk(chunkId);
+    synchronized Chunk readChunk(int chunkId) {
+        Chunk chunk = new Chunk(chunkId);
         chunk.readHeader(btreeStorage);
         chunk.readPagePositions();
         chunks.put(chunk.id, chunk);
         return chunk;
     }
 
-    BTreeChunk getChunk(long pos) {
+    Chunk getChunk(long pos) {
         int chunkId = PageUtils.getPageChunkId(pos);
-        BTreeChunk c = chunks.get(chunkId);
+        Chunk c = chunks.get(chunkId);
         if (c == null)
             c = readChunk(chunkId);
         if (c == null)
@@ -128,22 +129,22 @@ class ChunkManager {
         return c;
     }
 
-    BTreeChunk createChunk() {
+    Chunk createChunk() {
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
-        BTreeChunk c = new BTreeChunk(id);
+        Chunk c = new Chunk(id);
         c.fileName = createChunkFileName(id);
         // chunks.put(id, c);
         return c;
     }
 
-    void addChunk(BTreeChunk c) {
+    void addChunk(Chunk c) {
         chunkIds.set(c.id);
         chunks.put(c.id, c);
         idToChunkFileNameMap.put(c.id, c.fileName);
     }
 
-    Collection<BTreeChunk> getChunks() {
+    Collection<Chunk> getChunks() {
         return chunks.values();
     }
 
@@ -151,7 +152,7 @@ class ChunkManager {
         return chunks.containsKey(id);
     }
 
-    void removeUnusedChunk(BTreeChunk c) {
+    void removeUnusedChunk(Chunk c) {
         c.fileStorage.close();
         c.fileStorage.delete();
         chunkIds.clear(c.id);

@@ -100,7 +100,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         db = (IDatabase) config.get("db");
 
         btreeStorage = new BTreeStorage((BTreeMap<Object, Object>) this);
-        BTreeChunk lastChunk = btreeStorage.getLastChunk();
+        Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
             root = btreeStorage.readPage(lastChunk.rootPagePos);
             size.set(lastChunk.mapSize);

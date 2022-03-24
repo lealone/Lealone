@@ -68,7 +68,7 @@ class BTreeColumnPage extends BTreePage {
         buff = null;
     }
 
-    long write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    long write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_COLUMN;
         buff.putInt(0); // 回填pageLength

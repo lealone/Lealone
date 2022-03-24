@@ -252,7 +252,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private int write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -307,7 +307,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
+    void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
@@ -385,7 +385,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                     long pos = children[i].pos;
                     int type = PageUtils.getPageType(pos);
                     if (type == PageUtils.PAGE_TYPE_LEAF) {
-                        BTreeChunk c = map.btreeStorage.getChunk(pos);
+                        Chunk c = map.btreeStorage.getChunk(pos);
                         int mem = c.getPageLength(pos);
                         map.btreeStorage.removePage(pos, mem);
                     } else {
@@ -461,7 +461,7 @@ public class BTreeNodePage extends BTreeLocalPage {
             p.children[i] = r;
         }
 
-        BTreeChunk chunk = new BTreeChunk(0);
+        Chunk chunk = new Chunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_NODE);
         int start = buff.position();
         buff.putInt(0); // 回填pageLength

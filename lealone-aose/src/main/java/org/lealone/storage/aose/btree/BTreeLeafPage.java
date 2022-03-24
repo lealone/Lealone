@@ -336,7 +336,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
+    void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
@@ -344,7 +344,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         write(chunk, buff, false);
     }
 
-    private void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
         switch (map.pageStorageMode) {
         case COLUMN_STORAGE:
             writeColumnStorage(chunk, buff, replicatePage);
@@ -355,7 +355,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
     }
 
-    private void writeRowStorage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeRowStorage(Chunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -385,7 +385,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
     }
 
-    private void writeColumnStorage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeColumnStorage(Chunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -505,7 +505,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     @Override
     void replicatePage(DataBuffer buff) {
         BTreeLeafPage p = copy(false);
-        BTreeChunk chunk = new BTreeChunk(0);
+        Chunk chunk = new Chunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
         int start = buff.position();
         buff.putInt(0); // 回填pageLength
