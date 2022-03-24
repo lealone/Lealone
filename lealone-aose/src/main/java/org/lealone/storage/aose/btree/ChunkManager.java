@@ -93,7 +93,7 @@ class ChunkManager {
     }
 
     synchronized TreeSet<Long> getRemovedPages() {
-        return new TreeSet<>(removedPages);
+        return removedPages;
     }
 
     synchronized void addRemovedPage(long pagePos) {
