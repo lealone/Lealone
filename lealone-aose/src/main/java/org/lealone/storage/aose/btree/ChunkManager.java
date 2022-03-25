@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
@@ -76,7 +77,10 @@ class ChunkManager {
     }
 
     String getChunkFileName(int chunkId) {
-        return idToChunkFileNameMap.get(chunkId);
+        String f = idToChunkFileNameMap.get(chunkId);
+        if (f == null)
+            throw DbException.getInternalError();
+        return f;
     }
 
     String createChunkFileName(int chunkId) {
@@ -103,6 +107,7 @@ class ChunkManager {
     synchronized void updateRemovedPages(TreeSet<Long> removedPages) {
         this.removedPages.clear();
         this.removedPages.addAll(removedPages);
+        getLastChunk().updateRemovedPages(removedPages);
     }
 
     synchronized void close() {

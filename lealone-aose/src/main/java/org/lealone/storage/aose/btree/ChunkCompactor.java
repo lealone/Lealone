@@ -35,18 +35,16 @@ class ChunkCompactor {
 
         removeUnusedChunks(removedPages);
 
-        if (btreeStorage.getMinFillRate() <= 0)
+        if (btreeStorage.getMinFillRate() <= 0 || removedPages.isEmpty())
             return;
 
-        if (!removedPages.isEmpty()) {
-            List<Chunk> old = getOldChunks();
-            if (!old.isEmpty()) {
-                boolean saveIfNeeded = rewrite(old, removedPages);
-                if (saveIfNeeded) {
-                    btreeStorage.executeSave(false);
-                    removedPages = chunkManager.getRemovedPagesCopy();
-                    removeUnusedChunks(removedPages);
-                }
+        List<Chunk> old = getOldChunks();
+        if (!old.isEmpty()) {
+            boolean saveIfNeeded = rewrite(old, removedPages);
+            if (saveIfNeeded) {
+                btreeStorage.executeSave(false);
+                removedPages = chunkManager.getRemovedPagesCopy();
+                removeUnusedChunks(removedPages);
             }
         }
     }

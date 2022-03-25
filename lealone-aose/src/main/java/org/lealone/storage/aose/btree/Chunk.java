@@ -276,4 +276,21 @@ class Chunk {
         fileStorage.writeFully(CHUNK_HEADER_SIZE, body.getBuffer());
         fileStorage.sync();
     }
+
+    public void updateRemovedPages(TreeSet<Long> removedPages) {
+        removedPageCount = removedPages.size();
+        writeHeader();
+        if (removedPageCount > 0) {
+            DataBuffer buff = DataBuffer.create();
+            try {
+                for (long pos : removedPages) {
+                    buff.putLong(pos);
+                }
+                fileStorage.writeFully(getFilePos(removedPageOffset), buff.getAndFlipBuffer());
+            } finally {
+                buff.close();
+            }
+        }
+        fileStorage.sync();
+    }
 }
