@@ -102,10 +102,6 @@ public class BTreeStorage {
         return e;
     }
 
-    BTreeMap<Object, Object> getMap() {
-        return map;
-    }
-
     Chunk getLastChunk() {
         return chunkManager.getLastChunk();
     }

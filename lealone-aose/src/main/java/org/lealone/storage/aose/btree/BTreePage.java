@@ -485,6 +485,15 @@ public class BTreePage {
         }
     }
 
+    void markDirtyRecursive() {
+        markDirty();
+        PageReference parentRef = getParentRef();
+        while (parentRef != null) {
+            parentRef.page.markDirty();
+            parentRef = parentRef.page.getParentRef();
+        }
+    }
+
     /**
      * Remove this page and all child pages.
      */

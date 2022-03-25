@@ -126,20 +126,13 @@ class ChunkCompactor {
 
     private boolean rewrite(List<Chunk> old, TreeSet<Long> removedPages) {
         boolean saveIfNeeded = false;
-        BTreeMap<Object, Object> map = btreeStorage.getMap();
         for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
                 long pos = e.getKey();
-                if (PageUtils.isLeafPage(pos)) {
-                    if (!removedPages.contains(pos)) {
-                        BTreePage p = btreeStorage.readPage(pos);
-                        if (p.getKeyCount() > 0) {
-                            Object key = p.getKey(0);
-                            Object value = map.get(key);
-                            if (value != null && map.replace(key, value, value))
-                                saveIfNeeded = true;
-                        }
-                    }
+                if (PageUtils.isLeafPage(pos) && !removedPages.contains(pos)) {
+                    BTreePage p = btreeStorage.readPage(pos);
+                    p.markDirtyRecursive(); // 直接标记为脏页即可，不用更新元素
+                    saveIfNeeded = true;
                 }
             }
         }

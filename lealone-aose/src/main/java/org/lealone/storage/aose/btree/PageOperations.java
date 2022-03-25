@@ -219,12 +219,7 @@ public abstract class PageOperations {
         }
 
         protected void markDirtyPages() {
-            p.markDirty();
-            PageReference parentRef = p.getParentRef();
-            while (parentRef != null) {
-                parentRef.page.markDirty();
-                parentRef = parentRef.page.getParentRef();
-            }
+            p.markDirtyRecursive();
             p.map.getRootPage().markDirty();
         }
 
