@@ -145,7 +145,7 @@ public class BTreeStorage {
         } else if (ref != null && pos < 0) {
             return ref.readRemotePage(map);
         }
-        return readLocalPageAsync(pos);
+        return readLocalPageSync(pos);
     }
 
     private SQLStatementExecutor getSQLStatementExecutor() {
@@ -156,6 +156,8 @@ public class BTreeStorage {
             return null;
     }
 
+    // TODO 没什么用，还会产生bug
+    @SuppressWarnings("unused")
     private BTreePage readLocalPageAsync(final long pos) {
         final SQLStatementExecutor sqlStatementExecutor = getSQLStatementExecutor();
         if (sqlStatementExecutor == null)
