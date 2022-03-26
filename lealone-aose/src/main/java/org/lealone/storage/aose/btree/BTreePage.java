@@ -492,6 +492,7 @@ public class BTreePage {
             parentRef.page.markDirty();
             parentRef = parentRef.page.getParentRef();
         }
+        map.root.markDirty();
     }
 
     /**

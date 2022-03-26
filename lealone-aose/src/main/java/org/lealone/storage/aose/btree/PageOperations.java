@@ -220,7 +220,6 @@ public abstract class PageOperations {
 
         protected void markDirtyPages() {
             p.markDirtyRecursive();
-            p.map.getRootPage().markDirty();
         }
 
         // 允许子类覆盖，比如Append操作可以做自己的特殊优化
