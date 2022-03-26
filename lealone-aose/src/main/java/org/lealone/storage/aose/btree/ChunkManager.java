@@ -7,7 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -120,7 +120,7 @@ class ChunkManager {
         idToChunkFileNameMap.clear();
     }
 
-    synchronized Chunk readChunk(int chunkId) {
+    private synchronized Chunk readChunk(int chunkId) {
         Chunk chunk = new Chunk(chunkId);
         chunk.read(btreeStorage);
         chunks.put(chunk.id, chunk);
@@ -152,14 +152,6 @@ class ChunkManager {
         idToChunkFileNameMap.put(c.id, c.fileName);
     }
 
-    Collection<Chunk> getChunks() {
-        return chunks.values();
-    }
-
-    boolean containsChunk(int id) {
-        return chunks.containsKey(id);
-    }
-
     void removeUnusedChunk(Chunk c) {
         c.fileStorage.close();
         c.fileStorage.delete();
@@ -168,7 +160,14 @@ class ChunkManager {
         idToChunkFileNameMap.remove(c.id);
     }
 
-    List<Integer> getAllChunkIds() {
-        return new ArrayList<>(idToChunkFileNameMap.keySet());
+    List<Chunk> readChunks(HashSet<Integer> chunkIds) {
+        ArrayList<Chunk> list = new ArrayList<>(chunkIds.size());
+        for (int id : chunkIds) {
+            if (!chunks.containsKey(id)) {
+                readChunk(id);
+            }
+            list.add(chunks.get(id));
+        }
+        return list;
     }
 }

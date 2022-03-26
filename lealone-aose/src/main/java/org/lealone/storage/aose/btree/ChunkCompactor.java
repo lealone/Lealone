@@ -7,7 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
@@ -33,42 +33,33 @@ class ChunkCompactor {
         if (removedPages.isEmpty())
             return;
 
-        removeUnusedChunks(removedPages);
+        // 读取被删除了至少一个page的chunk的元数据
+        List<Chunk> chunks = readChunks(removedPages);
 
-        if (btreeStorage.getMinFillRate() <= 0 || removedPages.isEmpty())
-            return;
-
-        List<Chunk> old = getOldChunks();
-        if (!old.isEmpty()) {
-            boolean saveIfNeeded = rewrite(old, removedPages);
-            if (saveIfNeeded) {
-                btreeStorage.executeSave(false);
-                removedPages = chunkManager.getRemovedPagesCopy();
-                removeUnusedChunks(removedPages);
-            }
+        // 如果chunk中的page都被标记为删除了，说明这个chunk已经不再使用了，可以直接删除它
+        List<Chunk> unusedChunks = findUnusedChunks(chunks, removedPages);
+        if (!unusedChunks.isEmpty()) {
+            removeUnusedChunks(unusedChunks, removedPages);
+            chunks.removeAll(unusedChunks);
         }
+
+        // 看看哪些chunk中未被删除的page占比<=MinFillRate，然后重写它们到一个新的chunk中
+        rewrite(chunks, removedPages);
     }
 
-    private void removeUnusedChunks(TreeSet<Long> removedPages) {
-        int size = removedPages.size();
-        for (Chunk c : findUnusedChunks(removedPages)) {
-            chunkManager.removeUnusedChunk(c);
-            removedPages.removeAll(c.pagePositionToLengthMap.keySet());
+    private List<Chunk> readChunks(TreeSet<Long> removedPages) {
+        HashSet<Integer> chunkIds = new HashSet<>();
+        for (Long pagePos : removedPages) {
+            if (!PageUtils.isNodePage(pagePos))
+                chunkIds.add(PageUtils.getPageChunkId(pagePos));
         }
-
-        if (size > removedPages.size()) {
-            chunkManager.updateRemovedPages(removedPages);
-        }
+        return chunkManager.readChunks(chunkIds);
     }
 
-    private ArrayList<Chunk> findUnusedChunks(TreeSet<Long> removedPages) {
+    // 在这里顺便把LivePage的总长度都算好了
+    private List<Chunk> findUnusedChunks(List<Chunk> chunks, TreeSet<Long> removedPages) {
         ArrayList<Chunk> unusedChunks = new ArrayList<>();
-        if (removedPages.isEmpty())
-            return unusedChunks;
-
-        readAllChunks();
-
-        for (Chunk c : chunkManager.getChunks()) {
+        for (Chunk c : chunks) {
             c.sumOfLivePageLength = 0;
             boolean unused = true;
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
@@ -83,48 +74,25 @@ class ChunkCompactor {
         return unusedChunks;
     }
 
-    private void readAllChunks() {
-        for (int id : chunkManager.getAllChunkIds()) {
-            if (!chunkManager.containsChunk(id)) {
-                chunkManager.readChunk(id);
-            }
+    private void removeUnusedChunks(List<Chunk> unusedChunks, TreeSet<Long> removedPages) {
+        if (removedPages.isEmpty())
+            return;
+        int size = removedPages.size();
+        for (Chunk c : unusedChunks) {
+            chunkManager.removeUnusedChunk(c);
+            removedPages.removeAll(c.pagePositionToLengthMap.keySet());
+        }
+        if (size > removedPages.size()) {
+            chunkManager.updateRemovedPages(removedPages);
         }
     }
 
-    private List<Chunk> getOldChunks() {
-        long maxBytesToWrite = Chunk.MAX_SIZE;
-        List<Chunk> old = new ArrayList<>();
-        for (Chunk c : chunkManager.getChunks()) {
-            if (c.getFillRate() > btreeStorage.getMinFillRate())
-                continue;
-            old.add(c);
-        }
-        if (old.isEmpty())
-            return old;
+    private void rewrite(List<Chunk> chunks, TreeSet<Long> removedPages) {
+        // minFillRate <= 0时相当于禁用rewrite了，removedPages为空说明没有page被删除了
+        if (btreeStorage.getMinFillRate() <= 0 || removedPages.isEmpty())
+            return;
 
-        Collections.sort(old, new Comparator<Chunk>() {
-            @Override
-            public int compare(Chunk o1, Chunk o2) {
-                long comp = o1.getFillRate() - o2.getFillRate();
-                if (comp == 0) {
-                    comp = o1.sumOfLivePageLength - o2.sumOfLivePageLength;
-                }
-                return Long.signum(comp);
-            }
-        });
-
-        long bytes = 0;
-        int index = 0;
-        int size = old.size();
-        for (; index < size; index++) {
-            bytes += old.get(index).sumOfLivePageLength;
-            if (bytes > maxBytesToWrite)
-                break;
-        }
-        return index == size ? old : old.subList(0, index + 1);
-    }
-
-    private boolean rewrite(List<Chunk> old, TreeSet<Long> removedPages) {
+        List<Chunk> old = getRewritableChunks(chunks);
         boolean saveIfNeeded = false;
         for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
@@ -136,6 +104,42 @@ class ChunkCompactor {
                 }
             }
         }
-        return saveIfNeeded;
+        if (saveIfNeeded) {
+            btreeStorage.executeSave(false);
+            removedPages = chunkManager.getRemovedPagesCopy();
+            removeUnusedChunks(old, removedPages);
+        }
+    }
+
+    // 按chunk的FillRate从小到大排序，然后选一批chunk出来重写，并且这批chunk重写后的总长度不能超过一个chunk的容量
+    private List<Chunk> getRewritableChunks(List<Chunk> chunks) {
+        int minFillRate = btreeStorage.getMinFillRate();
+        List<Chunk> old = new ArrayList<>();
+        for (Chunk c : chunks) {
+            if (c.getFillRate() > minFillRate)
+                continue;
+            old.add(c);
+        }
+        if (old.isEmpty())
+            return old;
+
+        Collections.sort(old, (o1, o2) -> {
+            long comp = o1.getFillRate() - o2.getFillRate();
+            if (comp == 0) {
+                comp = o1.sumOfLivePageLength - o2.sumOfLivePageLength;
+            }
+            return Long.signum(comp);
+        });
+
+        long bytes = 0;
+        int index = 0;
+        int size = old.size();
+        long maxBytesToWrite = Chunk.MAX_SIZE;
+        for (; index < size; index++) {
+            bytes += old.get(index).sumOfLivePageLength;
+            if (bytes > maxBytesToWrite) // 不能超过chunk的最大容量
+                break;
+        }
+        return index == size ? old : old.subList(0, index + 1);
     }
 }
