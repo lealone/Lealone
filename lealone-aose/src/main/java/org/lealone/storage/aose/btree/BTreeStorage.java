@@ -62,7 +62,10 @@ public class BTreeStorage {
     BTreeStorage(BTreeMap<Object, Object> map) {
         this.map = map;
         pageSplitSize = getIntValue("pageSplitSize", 16 * 1024);
-        minFillRate = getIntValue("minFillRate", 30);
+        int minFillRate = getIntValue("minFillRate", 30);
+        if (minFillRate > 50) // 超过50没有实际意义
+            minFillRate = 50;
+        this.minFillRate = minFillRate;
         compressionLevel = getIntValue("compress", 0);
         backgroundExceptionHandler = (UncaughtExceptionHandler) map.config.get("backgroundExceptionHandler");
 
