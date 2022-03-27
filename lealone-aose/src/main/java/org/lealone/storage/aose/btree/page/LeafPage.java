@@ -14,7 +14,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.Chunk;
+import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.page.LeafPageMovePlan;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;

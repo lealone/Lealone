@@ -3,18 +3,18 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.chunk;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.TreeSet;
 
+import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
-
-import java.util.TreeSet;
 
 /**
  * Try to increase the fill rate by re-writing partially full chunks. 
@@ -22,17 +22,17 @@ import java.util.TreeSet;
  * <p>
  * If the current fill rate is higher than the minimum fill rate, nothing is done.
  */
-class ChunkCompactor {
+public class ChunkCompactor {
 
     private final BTreeStorage btreeStorage;
     private final ChunkManager chunkManager;
 
-    ChunkCompactor(BTreeStorage btreeStorage, ChunkManager chunkManager) {
+    public ChunkCompactor(BTreeStorage btreeStorage, ChunkManager chunkManager) {
         this.btreeStorage = btreeStorage;
         this.chunkManager = chunkManager;
     }
 
-    void executeCompact() {
+    public void executeCompact() {
         TreeSet<Long> removedPages = chunkManager.getRemovedPagesCopy();
         if (removedPages.isEmpty())
             return;

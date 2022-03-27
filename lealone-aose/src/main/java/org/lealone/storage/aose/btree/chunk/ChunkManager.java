@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.chunk;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,9 +16,10 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageUtils;
 
-class ChunkManager {
+public class ChunkManager {
 
     private final BTreeStorage btreeStorage;
     private final TreeSet<Long> removedPages = new TreeSet<>();
@@ -29,11 +30,11 @@ class ChunkManager {
     private Chunk lastChunk;
     private long maxSeq;
 
-    ChunkManager(BTreeStorage bTreeStorage) {
+    public ChunkManager(BTreeStorage bTreeStorage) {
         btreeStorage = bTreeStorage;
     }
 
-    void init(String mapBaseDir) {
+    public void init(String mapBaseDir) {
         int lastChunkId = 0;
         String[] files = new File(mapBaseDir).list();
         for (String f : files) {
@@ -69,15 +70,15 @@ class ChunkManager {
         }
     }
 
-    Chunk getLastChunk() {
+    public Chunk getLastChunk() {
         return lastChunk;
     }
 
-    void setLastChunk(Chunk lastChunk) {
+    public void setLastChunk(Chunk lastChunk) {
         this.lastChunk = lastChunk;
     }
 
-    String getChunkFileName(int chunkId) {
+    public String getChunkFileName(int chunkId) {
         String f = idToChunkFileNameMap.get(chunkId);
         if (f == null)
             throw DbException.getInternalError();
@@ -97,11 +98,11 @@ class ChunkManager {
         return new TreeSet<>(removedPages);
     }
 
-    synchronized TreeSet<Long> getRemovedPages() {
+    public synchronized TreeSet<Long> getRemovedPages() {
         return removedPages;
     }
 
-    synchronized void addRemovedPage(long pagePos) {
+    public synchronized void addRemovedPage(long pagePos) {
         removedPages.add(pagePos);
     }
 
@@ -111,7 +112,7 @@ class ChunkManager {
         getLastChunk().updateRemovedPages(removedPages);
     }
 
-    synchronized void close() {
+    public synchronized void close() {
         for (Chunk c : chunks.values()) {
             if (c.fileStorage != null)
                 c.fileStorage.close();
@@ -128,7 +129,7 @@ class ChunkManager {
         return chunk;
     }
 
-    Chunk getChunk(long pos) {
+    public Chunk getChunk(long pos) {
         int chunkId = PageUtils.getPageChunkId(pos);
         Chunk c = chunks.get(chunkId);
         if (c == null)
@@ -138,7 +139,7 @@ class ChunkManager {
         return c;
     }
 
-    Chunk createChunk() {
+    public Chunk createChunk() {
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         Chunk c = new Chunk(id);
@@ -147,7 +148,7 @@ class ChunkManager {
         return c;
     }
 
-    void addChunk(Chunk c) {
+    public void addChunk(Chunk c) {
         chunkIds.set(c.id);
         chunks.put(c.id, c);
         idToChunkFileNameMap.put(c.id, c.fileName);

@@ -10,7 +10,7 @@ import java.util.List;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.Chunk;
+import org.lealone.storage.aose.btree.chunk.Chunk;
 
 public class RemotePage extends Page {
 

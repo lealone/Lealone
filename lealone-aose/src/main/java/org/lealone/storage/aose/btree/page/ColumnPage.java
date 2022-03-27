@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.Chunk;
+import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.type.StorageDataType;
 
 class ColumnPage extends Page {

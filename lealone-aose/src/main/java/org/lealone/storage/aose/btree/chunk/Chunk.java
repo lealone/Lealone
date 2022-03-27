@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.chunk;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -13,6 +13,7 @@ import java.util.TreeSet;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.fs.FileStorage;
 
 /**
@@ -34,7 +35,7 @@ public class Chunk {
     private static final int CHUNK_HEADER_BLOCKS = 2;
     private static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
 
-    static long getFilePos(int offset) {
+    public static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
         if (filePos < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);

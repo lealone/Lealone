@@ -35,6 +35,7 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.LeafPage;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageKeyCursor;

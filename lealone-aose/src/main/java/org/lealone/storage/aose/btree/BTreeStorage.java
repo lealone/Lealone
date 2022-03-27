@@ -16,6 +16,9 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.sql.SQLStatementExecutor;
+import org.lealone.storage.aose.btree.chunk.Chunk;
+import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
+import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageOperations.CallableOperation;
 import org.lealone.storage.aose.btree.page.PageReference;
@@ -95,12 +98,12 @@ public class BTreeStorage {
         return value != null ? (Integer) value : defaultValue;
     }
 
-    IllegalStateException panic(int errorCode, String message, Object... arguments) {
+    public IllegalStateException panic(int errorCode, String message, Object... arguments) {
         IllegalStateException e = DataUtils.newIllegalStateException(errorCode, message, arguments);
         return panic(e);
     }
 
-    IllegalStateException panic(IllegalStateException e) {
+    public IllegalStateException panic(IllegalStateException e) {
         if (backgroundExceptionHandler != null) {
             backgroundExceptionHandler.uncaughtException(null, e);
         }
@@ -398,7 +401,7 @@ public class BTreeStorage {
         executeSave(true);
     }
 
-    synchronized void executeSave(boolean force) {
+    public synchronized void executeSave(boolean force) {
         DataBuffer chunkBody = DataBuffer.create();
         try {
             Chunk c = chunkManager.createChunk();
@@ -424,7 +427,7 @@ public class BTreeStorage {
         }
     }
 
-    FileStorage getFileStorage(int chunkId) {
+    public FileStorage getFileStorage(int chunkId) {
         String chunkFileName = mapBaseDir + File.separator + chunkManager.getChunkFileName(chunkId);
         return openFileStorage(chunkFileName);
     }

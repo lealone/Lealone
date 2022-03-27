@@ -19,7 +19,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
-import org.lealone.storage.aose.btree.Chunk;
+import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.LeafPageMovePlan;
