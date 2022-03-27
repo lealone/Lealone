@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage;
+package org.lealone.storage.page;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;

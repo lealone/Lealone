@@ -3,18 +3,20 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.Chunk;
 
-public class BTreeRemotePage extends BTreePage {
+public class RemotePage extends Page {
 
     private List<String> replicationHostIds;
 
-    BTreeRemotePage(BTreeMap<?, ?> map) {
+    public RemotePage(BTreeMap<?, ?> map) {
         super(map);
     }
 
@@ -34,7 +36,7 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
@@ -43,7 +45,7 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
@@ -74,25 +76,25 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void writeLeaf(DataBuffer buff, boolean remote) {
+    public void writeLeaf(DataBuffer buff, boolean remote) {
         buff.put((byte) PageUtils.PAGE_TYPE_REMOTE);
         writeReplicationHostIds(replicationHostIds, buff);
     }
 
-    static BTreePage readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
+    public static Page readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
         List<String> replicationHostIds = readReplicationHostIds(page);
-        BTreeRemotePage p = new BTreeRemotePage(map);
+        RemotePage p = new RemotePage(map);
         p.replicationHostIds = replicationHostIds;
         return p;
     }
 
     @Override
-    public BTreeRemotePage copy() {
+    public RemotePage copy() {
         return copy(true);
     }
 
-    private BTreeRemotePage copy(boolean removePage) {
-        BTreeRemotePage newPage = new BTreeRemotePage(map);
+    private RemotePage copy(boolean removePage) {
+        RemotePage newPage = new RemotePage(map);
         if (removePage) {
             // mark the old as deleted
             removePage();
@@ -101,18 +103,18 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void removeAllRecursive() {
+    public void removeAllRecursive() {
         removePage();
     }
 
     @Override
     public void removePage() {
-        map.btreeStorage.removePage(pos, 0);
+        map.getBtreeStorage().removePage(pos, 0);
     }
 
     @Override
-    void replicatePage(DataBuffer buff) {
-        BTreeRemotePage p = copy(false);
+    public void replicatePage(DataBuffer buff) {
+        RemotePage p = copy(false);
         Chunk chunk = new Chunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_REMOTE);
         int start = buff.position();

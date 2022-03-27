@@ -26,7 +26,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * Most index implementations extend the base index.

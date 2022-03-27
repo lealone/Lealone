@@ -3,24 +3,26 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.Chunk;
 import org.lealone.storage.type.StorageDataType;
 
-class BTreeColumnPage extends BTreePage {
+class ColumnPage extends Page {
 
     Object[] values; // 每个元素指向一条记录，并不是字段值
     private int columnIndex;
     private ByteBuffer buff;
 
-    BTreeColumnPage(BTreeMap<?, ?> map) {
+    ColumnPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
-    BTreeColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
+    ColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
         super(map);
         this.values = values;
         this.columnIndex = columnIndex;
@@ -44,7 +46,7 @@ class BTreeColumnPage extends BTreePage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);

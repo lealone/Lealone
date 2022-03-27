@@ -12,7 +12,7 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 public class StorageReadPage implements Packet {
 

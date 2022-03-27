@@ -33,8 +33,8 @@ import org.lealone.server.protocol.storage.StorageReplace;
 import org.lealone.server.protocol.storage.StorageReplaceAck;
 import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.server.protocol.storage.StorageWrite;
-import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.page.LeafPageMovePlan;
 
 class StoragePacketHandlers extends PacketHandlers {
 

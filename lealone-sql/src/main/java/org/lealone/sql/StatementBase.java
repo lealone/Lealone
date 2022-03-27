@@ -37,7 +37,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.YieldableLocalQuery;
 import org.lealone.sql.query.sharding.YieldableShardingQuery;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * A parsed and prepared statement.

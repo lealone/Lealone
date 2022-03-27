@@ -20,7 +20,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * An index that delegates indexing to another index.

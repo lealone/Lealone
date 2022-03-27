@@ -16,6 +16,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.btree.page.PageUtils;
 
 class ChunkManager {
 

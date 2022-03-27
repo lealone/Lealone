@@ -1,12 +1,13 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.storage.aose.btree;
 
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.aose.btree.page.Page;
 
 /**
  * A cursor to iterate over elements in ascending order.
@@ -26,7 +27,7 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     private K key;
     private V value;
 
-    BTreeCursor(BTreeMap<K, ?> map, BTreePage root, IterationParameters<K> parameters) {
+    BTreeCursor(BTreeMap<K, ?> map, Page root, IterationParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
         // 定位到>=from的第一个leaf page
@@ -83,7 +84,7 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
      * @param p the page to start
      * @param from the key to search
      */
-    private void min(BTreePage p, K from) {
+    private void min(Page p, K from) {
         while (true) {
             if (p.isLeaf()) {
                 p = p.tmpCopyIfSplited();

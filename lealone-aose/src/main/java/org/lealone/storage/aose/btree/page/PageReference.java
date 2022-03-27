@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -12,14 +12,15 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.page.PageKey;
 
 public class PageReference {
 
     private static final long REMOTE_PAGE_POS = -1;
 
-    static PageReference createRemotePageReference(Object key, boolean first) {
+    public static PageReference createRemotePageReference(Object key, boolean first) {
         return new PageReference(null, REMOTE_PAGE_POS, key, first);
     }
 
@@ -27,7 +28,7 @@ public class PageReference {
         return new PageReference(null, REMOTE_PAGE_POS);
     }
 
-    volatile BTreePage page;
+    volatile Page page;
     PageKey pageKey;
     long pos;
     List<String> replicationHostIds;
@@ -36,7 +37,7 @@ public class PageReference {
         this.pos = pos;
     }
 
-    public PageReference(BTreePage page, long pos) {
+    public PageReference(Page page, long pos) {
         this.page = page;
         this.pos = pos;
         if (page != null) {
@@ -44,7 +45,7 @@ public class PageReference {
         }
     }
 
-    public PageReference(BTreePage page) {
+    public PageReference(Page page) {
         this.page = page;
         if (page != null) {
             pos = page.getPos();
@@ -52,17 +53,37 @@ public class PageReference {
         }
     }
 
-    PageReference(BTreePage page, long pos, Object key, boolean first) {
+    PageReference(Page page, long pos, Object key, boolean first) {
         this(page, pos);
         setPageKey(key, first);
     }
 
-    PageReference(BTreePage page, Object key, boolean first) {
+    public PageReference(Page page, Object key, boolean first) {
         this(page);
         setPageKey(key, first);
     }
 
-    public void replacePage(BTreePage page) {
+    public long getPos() {
+        return pos;
+    }
+
+    public Page getPage() {
+        return page;
+    }
+
+    public PageKey getPageKey() {
+        return pageKey;
+    }
+
+    public List<String> getReplicationHostIds() {
+        return replicationHostIds;
+    }
+
+    public void setReplicationHostIds(List<String> replicationHostIds) {
+        this.replicationHostIds = replicationHostIds;
+    }
+
+    public void replacePage(Page page) {
         this.page = page;
         if (page != null) {
             pos = page.getPos();
@@ -79,7 +100,7 @@ public class PageReference {
         pageKey = new PageKey(key, first);
     }
 
-    boolean isRemotePage() {
+    public boolean isRemotePage() {
         if (page != null)
             return page.isRemote();
         else
@@ -100,7 +121,7 @@ public class PageReference {
             return pos != REMOTE_PAGE_POS && PageUtils.isNodePage(pos);
     }
 
-    synchronized BTreePage readRemotePage(BTreeMap<Object, Object> map) {
+    public synchronized Page readRemotePage(BTreeMap<Object, Object> map) {
         if (page != null) {
             return page;
         }
@@ -112,7 +133,7 @@ public class PageReference {
         try (StorageCommand c = s.createStorageCommand()) {
             Future<ByteBuffer> f = c.readRemotePage(map.getName(), pageKey);
             ByteBuffer pageBuffer = f.get();
-            page = BTreePage.readReplicatedPage(map, pageBuffer);
+            page = Page.readReplicatedPage(map, pageBuffer);
         }
 
         if (!map.isShardingMode() || (page.getReplicationHostIds() != null
@@ -120,15 +141,5 @@ public class PageReference {
             pos = 0;
         }
         return page;
-    }
-
-    // test only
-    public BTreePage getPage() {
-        return page;
-    }
-
-    // test only
-    public void setReplicationHostIds(List<String> replicationHostIds) {
-        this.replicationHostIds = replicationHostIds;
     }
 }

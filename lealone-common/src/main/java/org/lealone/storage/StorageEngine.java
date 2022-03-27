@@ -7,6 +7,7 @@ package org.lealone.storage;
 
 import org.lealone.db.DataHandler;
 import org.lealone.db.PluggableEngine;
+import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public interface StorageEngine extends PluggableEngine {
 

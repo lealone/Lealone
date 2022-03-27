@@ -1,9 +1,11 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.storage.aose.btree;
+
+import org.lealone.storage.aose.btree.page.Page;
 
 /**
  * A position in a cursor
@@ -16,7 +18,7 @@ public class CursorPos {
     /**
      * The current page.
      */
-    public final BTreePage page;
+    public final Page page;
 
     /**
      * The current index.
@@ -28,7 +30,7 @@ public class CursorPos {
      */
     public final CursorPos parent;
 
-    public CursorPos(BTreePage page, int index, CursorPos parent) {
+    public CursorPos(Page page, int index, CursorPos parent) {
         this.page = page;
         this.index = index;
         this.parent = parent;

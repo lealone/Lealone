@@ -21,7 +21,7 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {

@@ -32,8 +32,8 @@ import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
-import org.lealone.storage.PageOperation;
-import org.lealone.storage.PageOperationHandler;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 
 public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler,

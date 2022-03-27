@@ -7,7 +7,7 @@ package org.lealone.test.aose;
 
 import org.junit.Test;
 import org.lealone.storage.aose.AOStorageEngine;
-import org.lealone.storage.aose.btree.PageStorageMode;
+import org.lealone.storage.aose.btree.page.PageStorageMode;
 import org.lealone.test.sql.SqlTestBase;
 
 public class PageStorageModeSqlTest extends SqlTestBase {

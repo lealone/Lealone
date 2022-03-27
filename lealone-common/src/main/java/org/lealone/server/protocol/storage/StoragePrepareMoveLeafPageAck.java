@@ -12,7 +12,7 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.page.LeafPageMovePlan;
 
 public class StoragePrepareMoveLeafPageAck implements AckPacket {
 

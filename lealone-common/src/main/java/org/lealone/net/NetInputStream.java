@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.value.Value;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 public interface NetInputStream {
 

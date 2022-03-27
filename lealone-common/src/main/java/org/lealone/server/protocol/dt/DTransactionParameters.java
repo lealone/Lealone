@@ -11,7 +11,7 @@ import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 public class DTransactionParameters {
 

@@ -25,7 +25,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * The filter used to walk through an index. This class supports IN(..)

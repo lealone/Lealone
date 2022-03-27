@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
-import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public class ScheduleService {
 

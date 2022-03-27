@@ -30,8 +30,8 @@ import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
 import org.lealone.server.protocol.storage.StorageReplace;
 import org.lealone.server.protocol.storage.StorageReplaceAck;
 import org.lealone.server.protocol.storage.StorageReplicatePages;
-import org.lealone.storage.LeafPageMovePlan;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.storage.type.StorageDataType;
 

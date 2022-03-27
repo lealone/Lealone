@@ -3,16 +3,17 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.util.List;
 
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.aose.btree.CursorPos;
+import org.lealone.storage.page.PageKey;
 
 //按page key遍历对应的page
-class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
+public class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final List<PageKey> pageKeys;
     private CursorPos pos;
@@ -20,14 +21,14 @@ class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
     private V currentValue, lastValue;
     private int index;
 
-    PageKeyCursor(List<PageKey> pageKeys, BTreePage root, K from) {
+    PageKeyCursor(List<PageKey> pageKeys, Page root, K from) {
         this.pageKeys = pageKeys;
         // 提前fetch
         min(root, from);
         fetchNext();
     }
 
-    PageKeyCursor(BTreePage root, IterationParameters<K> parameters) {
+    public PageKeyCursor(Page root, IterationParameters<K> parameters) {
         this.pageKeys = parameters.pageKeys;
         // 提前fetch
         min(root, parameters.from);
@@ -65,7 +66,7 @@ class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
     * @param p the page to start
     * @param from the key to search
     */
-    private boolean min(BTreePage p, K from) {
+    private boolean min(Page p, K from) {
         if (index >= pageKeys.size())
             return true;
         PageKey pk = pageKeys.get(index++);

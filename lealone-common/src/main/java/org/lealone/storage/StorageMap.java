@@ -13,6 +13,8 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
+import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageMap<K, V> {

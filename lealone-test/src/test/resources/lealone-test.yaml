@@ -19,7 +19,7 @@ transaction_engines:
     enabled: true
     parameters: {
         redo_log_dir: redo_log, # 会组合成这样的目录: ${base_dir} + "/"+ ${redo_log_dir},
-        log_sync_type: no_sync
+        # log_sync_type: no_sync
     }
 
 sql_engines:

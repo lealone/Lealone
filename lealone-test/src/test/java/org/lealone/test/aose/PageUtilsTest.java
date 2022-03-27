@@ -7,7 +7,7 @@ package org.lealone.test.aose;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.storage.aose.btree.PageUtils;
+import org.lealone.storage.aose.btree.page.PageUtils;
 
 public class PageUtilsTest extends Assert {
     @Test

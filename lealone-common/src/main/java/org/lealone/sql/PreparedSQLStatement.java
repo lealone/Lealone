@@ -11,7 +11,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
 public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {

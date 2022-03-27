@@ -19,7 +19,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * An index. Indexes are used to speed up searching data.

@@ -8,8 +8,8 @@ package org.lealone.storage.aose;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageBuilder;
+import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public class AOStorageBuilder extends StorageBuilder {
 

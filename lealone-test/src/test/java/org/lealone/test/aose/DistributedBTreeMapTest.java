@@ -17,12 +17,12 @@ import java.util.Set;
 import org.junit.Test;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.IterationParameters;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.BTreePage;
-import org.lealone.storage.aose.btree.PageReference;
+import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.aose.btree.page.PageReference;
+import org.lealone.storage.page.PageKey;
 import org.lealone.test.TestBase;
 import org.lealone.test.TestBase.TodoTest;
 
@@ -108,7 +108,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
     }
 
     void testGetNodeToKeyMap(BTreeMap<Integer, String> map) {
-        BTreePage root = map.getRootPage();
+        Page root = map.getRootPage();
         Random random = new Random();
         String[] ids = { "a", "b", "c", "d", "e", "f" };
         injectReplicationHostIds(root, random, ids);
@@ -139,7 +139,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         System.out.println("count: " + count + ", to-from: " + (to - from + 1));
     }
 
-    void injectReplicationHostIds(BTreePage page, Random random, String[] ids) {
+    void injectReplicationHostIds(Page page, Random random, String[] ids) {
         if (page.isLeaf()) {
             injectReplicationHostIds(null, page, random, ids);
             return;
@@ -153,7 +153,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         }
     }
 
-    void injectReplicationHostIds(PageReference pf, BTreePage page, Random random, String[] ids) {
+    void injectReplicationHostIds(PageReference pf, Page page, Random random, String[] ids) {
         int needNodes = 3;
         ArrayList<String> replicationHostIds = new ArrayList<>(needNodes);
         int totalNodes = ids.length;

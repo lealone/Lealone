@@ -3,17 +3,18 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.util.concurrent.Callable;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.storage.PageKey;
-import org.lealone.storage.PageOperation;
-import org.lealone.storage.PageOperationHandler;
-import org.lealone.storage.aose.btree.BTreePage.DynamicInfo;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.page.Page.DynamicInfo;
+import org.lealone.storage.page.PageKey;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperationHandler;
 
 public abstract class PageOperations {
 
@@ -57,7 +58,7 @@ public abstract class PageOperations {
         private final BTreeMap<K, V> map;
         private final K key;
         private final AsyncHandler<AsyncResult<V>> handler;
-        private BTreePage p;
+        private Page p;
 
         public Get(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> handler) {
             this.map = map;
@@ -92,7 +93,7 @@ public abstract class PageOperations {
         final AsyncHandler<AsyncResult<R>> asyncResultHandler;
 
         // 最终要操作的leaf page
-        BTreePage p;
+        Page p;
         PageReference pRef;
 
         public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
@@ -107,9 +108,9 @@ public abstract class PageOperations {
             // 也不适合把所有的写操作都转入root leaf page的处理器队列，
             // 这样会导致root leaf page的处理器队列变得更长，反而不适合并行化了，
             // 所以只有BTree的root page是一个node page，并且子节点数至少大于2时才是并行化的最佳时机。
-            if (map.parallelDisabled) {
+            if (map.isParallelDisabled()) {
                 synchronized (map) {
-                    if (map.parallelDisabled) { // 需要再判断一次，上一个线程会修改这个字段
+                    if (map.isParallelDisabled()) { // 需要再判断一次，上一个线程会修改这个字段
                         PageOperationResult rageOperationResult = write(currentHandler, false);
                         map.enableParallelIfNeeded();
                         return rageOperationResult;
@@ -158,7 +159,7 @@ public abstract class PageOperations {
                 return write(currentHandler, true);
             } else if (oldDynamicInfo.isRemoving()) {
                 // 如果正在删除中，尝试让它变回正常状态，如果失败了，重新从root page开始
-                DynamicInfo newDynamicInfo = new DynamicInfo(BTreePage.State.NORMAL);
+                DynamicInfo newDynamicInfo = new DynamicInfo(Page.State.NORMAL);
                 if (!p.updateDynamicInfo(oldDynamicInfo, newDynamicInfo)) {
                     p = null;
                     return write(currentHandler, true);
@@ -166,7 +167,7 @@ public abstract class PageOperations {
             }
 
             if (ASSERT) {
-                if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL
+                if (!p.isLeaf() || p.dynamicInfo.state != Page.State.NORMAL
                         || (isShiftEnabled && currentHandler != p.getHandler())) {
                     DbException.throwInternalError();
                 }
@@ -208,7 +209,7 @@ public abstract class PageOperations {
 
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
-            BTreePage old = p;
+            Page old = p;
             p = old.copyLeaf(index, key, value);
             if (old.getRef() != null) {
                 old.getRef().replacePage(p);
@@ -223,7 +224,7 @@ public abstract class PageOperations {
         }
 
         // 允许子类覆盖，比如Append操作可以做自己的特殊优化
-        protected BTreePage gotoLeafPage() {
+        protected Page gotoLeafPage() {
             return map.gotoLeafPage(key);
         }
 
@@ -293,8 +294,8 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected BTreePage gotoLeafPage() { // 直接定位到最后一页
-            BTreePage p = map.root;
+        protected Page gotoLeafPage() { // 直接定位到最后一页
+            Page p = map.getRootPage();
             while (true) {
                 if (p.isLeaf()) {
                     p = p.redirectIfSplited(false);
@@ -360,9 +361,9 @@ public abstract class PageOperations {
             Object old = p.getValue(index);
             p.remove(index);
             if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
-                p.dynamicInfo = new DynamicInfo(BTreePage.State.REMOVING);
+                p.dynamicInfo = new DynamicInfo(Page.State.REMOVING);
                 RemoveChild task = new RemoveChild(p, key);
-                p.map.nodePageOperationHandler.handlePageOperation(task);
+                p.map.getNodePageOperationHandler().handlePageOperation(task);
             }
             return old;
         }
@@ -387,7 +388,7 @@ public abstract class PageOperations {
             insertChildren(tmpNodePage);
         }
 
-        private static int binarySearch(BTreePage p, Object key) {
+        private static int binarySearch(Page p, Object key) {
             int index = p.binarySearch(key);
             if (index < 0) {
                 index = -index - 1;
@@ -398,7 +399,7 @@ public abstract class PageOperations {
         }
 
         private static void insertChildren(TmpNodePage tmpNodePage) {
-            BTreePage parent = tmpNodePage.old.getParentRef().page;
+            Page parent = tmpNodePage.old.getParentRef().page;
             PageReference parentRef = parent.getRef();
             int index = binarySearch(parent, tmpNodePage.key);
             parent = parent.copy();
@@ -433,10 +434,10 @@ public abstract class PageOperations {
 
     // 不处理root leaf page的场景，Remove类那里已经保证不会删除root leaf page
     public static class RemoveChild implements PageOperation {
-        final BTreePage old;
+        final Page old;
         final Object key;
 
-        public RemoveChild(BTreePage old, Object key) {
+        public RemoveChild(Page old, Object key) {
             this.old = old;
             this.key = key;
         }
@@ -448,14 +449,14 @@ public abstract class PageOperations {
             // 可能造成不必要的RemoveChild操作，所以直接忽视RemoveChild操作了
             if (!oldDynamicInfo.isRemoving())
                 return;
-            BTreePage root = old.map.getRootPage();
-            BTreePage p = root.copy();
+            Page root = old.map.getRootPage();
+            Page p = root.copy();
             remove(p, key);
             if (p.isNode() && p.isEmpty()) {
                 p.removePage();
-                p = BTreeLeafPage.createEmpty(old.map);
+                p = LeafPage.createEmpty(old.map);
             }
-            DynamicInfo newDynamicInfo = new DynamicInfo(BTreePage.State.REMOVED);
+            DynamicInfo newDynamicInfo = new DynamicInfo(Page.State.REMOVED);
             // 状态改变了，可能又有新的数据加到old page中了，那么就放弃这次删除子节点的操作
             if (old.updateDynamicInfo(oldDynamicInfo, newDynamicInfo)) {
                 // 虽然先更新old的dynamicInfo字段再更新map的root字段不是原子操作，但依然是安全的，
@@ -465,7 +466,7 @@ public abstract class PageOperations {
             }
         }
 
-        private void remove(BTreePage p, Object key) {
+        private void remove(Page p, Object key) {
             if (p.isLeaf()) {
                 return;
             }
@@ -475,8 +476,8 @@ public abstract class PageOperations {
             } else {
                 index++;
             }
-            BTreePage cOld = p.getChildPage(index);
-            BTreePage c = cOld.copy();
+            Page cOld = p.getChildPage(index);
+            Page c = cOld.copy();
             remove(c, key);
             if (c.isNotEmpty()) {
                 // no change, or there are more nodes
@@ -497,13 +498,13 @@ public abstract class PageOperations {
     }
 
     public static class TmpNodePage {
-        final BTreePage parent;
-        final BTreePage old;
+        final Page parent;
+        final Page old;
         final PageReference left;
         final PageReference right;
         final Object key;
 
-        public TmpNodePage(BTreePage parent, BTreePage old, PageReference left, PageReference right, Object key) {
+        public TmpNodePage(Page parent, Page old, PageReference left, PageReference right, Object key) {
             this.parent = parent;
             this.old = old;
             this.left = left;
@@ -512,7 +513,7 @@ public abstract class PageOperations {
         }
     }
 
-    private static void splitLeafPage(BTreePage p) {
+    private static void splitLeafPage(Page p) {
         // 第一步:
         // 切开page，得到一个临时的父节点和两个新的leaf page
         // 临时父节点只能通过被切割的page重定向访问
@@ -534,13 +535,13 @@ public abstract class PageOperations {
         // 把AddChild操作放入父节点的处理器队列中，等候处理。
         // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
         AddChild task = new AddChild(tmp);
-        p.map.nodePageOperationHandler.handlePageOperation(task);
+        p.map.getNodePageOperationHandler().handlePageOperation(task);
 
         // 第四步:
         // 原来的leaf page需要重定向到临时的父节点，能让那些还持有leaf page引入的操作能转向新的子leaf page。
         // 注意不能跟第三步调换顺序，有可能导致子leaf page被进一步split，然后得到新的AddChild，如果这个AddChild
         // 比它的上一级还先放入父节点的处理器队列中就会导致顺序错误
-        BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.SPLITTED, tmp.parent);
+        Page.DynamicInfo dynamicInfo = new Page.DynamicInfo(Page.State.SPLITTED, tmp.parent);
         p.dynamicInfo = dynamicInfo;
 
         // 第五步:
@@ -548,21 +549,21 @@ public abstract class PageOperations {
         p.map.fireLeafPageSplit(tmp.key);
     }
 
-    private static TmpNodePage splitPage(BTreePage p) {
+    private static TmpNodePage splitPage(Page p) {
         // 注意: 在这里被切割的页面可能是node page或leaf page
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
         // 切割前必须copy当前被切割的页面，否则其他读线程可能读到切割过程中不一致的数据
-        BTreePage old = p;
+        Page old = p;
         p = p.copy();
         // 对页面进行切割后，会返回右边的新页面，而copy后的当前被切割页面变成左边的新页面
-        BTreePage rightChildPage = p.split(at);
-        BTreePage leftChildPage = p;
+        Page rightChildPage = p.split(at);
+        Page leftChildPage = p;
         PageReference leftRef = new PageReference(leftChildPage, k, true);
         PageReference rightRef = new PageReference(rightChildPage, k, false);
         Object[] keys = { k };
         PageReference[] children = { leftRef, rightRef };
-        BTreePage parent = BTreePage.createNode(p.map, keys, children, 0);
+        Page parent = Page.createNode(p.map, keys, children, 0);
         PageReference parentRef = new PageReference(parent);
         parent.setRef(parentRef);
         // leftChildPage.setParentRef(parentRef);

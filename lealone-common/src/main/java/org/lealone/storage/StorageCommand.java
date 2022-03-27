@@ -9,6 +9,8 @@ import java.nio.ByteBuffer;
 
 import org.lealone.db.Command;
 import org.lealone.db.async.Future;
+import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageCommand extends Command {

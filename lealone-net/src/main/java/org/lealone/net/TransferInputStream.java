@@ -43,7 +43,7 @@ import org.lealone.db.value.ValueStringIgnoreCase;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to receive Value objects.

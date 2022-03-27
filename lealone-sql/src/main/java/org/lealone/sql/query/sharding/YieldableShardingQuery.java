@@ -24,7 +24,7 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.query.YieldableQueryBase;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 public class YieldableShardingQuery extends YieldableQueryBase {
 

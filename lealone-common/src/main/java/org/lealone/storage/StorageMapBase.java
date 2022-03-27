@@ -15,6 +15,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 

@@ -17,9 +17,9 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
-import org.lealone.storage.LeafPageMovePlan;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
+import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.PageKey;
 import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
 import org.lealone.storage.type.StorageDataType;
 

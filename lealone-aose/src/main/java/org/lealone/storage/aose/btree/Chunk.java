@@ -25,7 +25,7 @@ import org.lealone.storage.fs.FileStorage;
  * @author H2 Group
  * @author zhh
  */
-class Chunk {
+public class Chunk {
     /**
      * The block size (physical sector size) of the disk. The chunk header is
      * written twice, one copy in each block, to ensure it survives a crash.
@@ -83,11 +83,11 @@ class Chunk {
     public int removedPageOffset;
     public int removedPageCount;
 
-    Chunk(int id) {
+    public Chunk(int id) {
         this.id = id;
     }
 
-    int getPageLength(long pagePosition) {
+    public int getPageLength(long pagePosition) {
         return pagePositionToLengthMap.get(pagePosition);
     }
 

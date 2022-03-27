@@ -12,8 +12,8 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.BTreePage;
-import org.lealone.storage.aose.btree.PageOperations.RunnableOperation;
+import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.aose.btree.page.PageOperations.RunnableOperation;
 import org.lealone.test.TestBase;
 
 // -Xms800M -Xmx800M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
@@ -225,9 +225,9 @@ public class BTreeMapTest extends TestBase {
                     latch2.countDown();
                 }));
                 latch2.await();
-                BTreePage root = map.getRootPage();
+                Page root = map.getRootPage();
                 root.binarySearch(count);
-                BTreePage first = root.getChildPage(0);
+                Page first = root.getChildPage(0);
                 Object[] keys = first.getKeys();
                 keys.clone();
                 // System.out.println("keys: " + Arrays.asList(keys));

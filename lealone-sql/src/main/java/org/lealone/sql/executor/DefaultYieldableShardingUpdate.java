@@ -29,7 +29,7 @@ import org.lealone.server.protocol.dt.DTransactionParameters;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 //CREATE/ALTER/DROP DATABASE语句需要在所有节点上执行
 //其他与具体数据库相关的DDL语句会在数据库的目标节点上执行

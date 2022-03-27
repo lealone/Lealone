@@ -34,7 +34,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.query.Select;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 /**
  * A table filter represents a table that is used in a query. There is one such

@@ -21,7 +21,6 @@ import org.lealone.db.RunMode;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
-import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -29,6 +28,7 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
 
 /**

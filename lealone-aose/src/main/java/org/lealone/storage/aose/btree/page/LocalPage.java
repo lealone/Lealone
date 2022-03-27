@@ -3,13 +3,14 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.PageOperationHandler;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 
-public abstract class BTreeLocalPage extends BTreePage {
+public abstract class LocalPage extends Page {
 
     /**
      * Whether assertions are enabled.
@@ -42,11 +43,11 @@ public abstract class BTreeLocalPage extends BTreePage {
      */
     protected volatile boolean removedInMemory;
 
-    protected BTreeLocalPage(BTreeMap<?, ?> map) {
+    protected LocalPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
-    protected BTreeLocalPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
+    protected LocalPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
         super(map, handler);
     }
 
@@ -77,7 +78,7 @@ public abstract class BTreeLocalPage extends BTreePage {
     }
 
     @Override
-    Object getLastKey() {
+    public Object getLastKey() {
         if (keys == null || keys.length == 0)
             return null;
         else
@@ -140,7 +141,7 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     @Override
     boolean needSplit() {
-        return memory > map.btreeStorage.getPageSplitSize() && keys.length > 1;
+        return memory > map.getBtreeStorage().getPageSplitSize() && keys.length > 1;
     }
 
     /**
@@ -210,7 +211,7 @@ public abstract class BTreeLocalPage extends BTreePage {
         if (pos == 0) {
             removedInMemory = true;
         }
-        map.btreeStorage.removePage(pos, memory);
+        map.getBtreeStorage().removePage(pos, memory);
     }
 
     protected void removeIfInMemory() {
@@ -227,8 +228,8 @@ public abstract class BTreeLocalPage extends BTreePage {
         if (other == this) {
             return true;
         }
-        if (other instanceof BTreeLocalPage) {
-            if (pos != 0 && ((BTreeLocalPage) other).pos == pos) {
+        if (other instanceof LocalPage) {
+            if (pos != 0 && ((LocalPage) other).pos == pos) {
                 return true;
             }
             return this == other;
@@ -260,7 +261,7 @@ public abstract class BTreeLocalPage extends BTreePage {
     protected abstract void toString(StringBuilder buff);
 
     @Override
-    String getPrettyPageInfo(boolean readOffLinePage) {
+    public String getPrettyPageInfo(boolean readOffLinePage) {
         StringBuilder buff = new StringBuilder();
         PrettyPageInfo info = new PrettyPageInfo();
         info.readOffLinePage = readOffLinePage;

@@ -25,7 +25,7 @@ import org.lealone.sql.PreparedSQLStatement.Yieldable;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.page.PageKey;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
 

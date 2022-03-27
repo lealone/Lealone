@@ -18,7 +18,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.PageStorageMode;
+import org.lealone.storage.aose.btree.page.PageStorageMode;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;

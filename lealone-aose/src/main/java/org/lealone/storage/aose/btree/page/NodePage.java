@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.storage.aose.btree;
+package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -15,16 +15,18 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
-import org.lealone.storage.PageKey;
-import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
-import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.Chunk;
+import org.lealone.storage.aose.btree.page.PageOperations.CallableOperation;
+import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
+import org.lealone.storage.page.PageKey;
 
-public class BTreeNodePage extends BTreeLocalPage {
+public class NodePage extends LocalPage {
 
     // 对子page的引用，数组长度比keys的长度多一个
     private PageReference[] children;
 
-    BTreeNodePage(BTreeMap<?, ?> map) {
+    NodePage(BTreeMap<?, ?> map) {
         super(map);
     }
 
@@ -34,17 +36,17 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    boolean isRemoteChildPage(int index) {
+    public boolean isRemoteChildPage(int index) {
         return getChildPageReference(index).isRemotePage();
     }
 
     @Override
-    boolean isNodeChildPage(int index) {
+    public boolean isNodeChildPage(int index) {
         return getChildPageReference(index).isNodePage();
     }
 
     @Override
-    boolean isLeafChildPage(int index) {
+    public boolean isLeafChildPage(int index) {
         return getChildPageReference(index).isLeafPage();
     }
 
@@ -59,17 +61,17 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    PageReference getChildPageReference(int index) {
+    public PageReference getChildPageReference(int index) {
         return children[index];
     }
 
     @Override
-    public BTreePage getChildPage(int index) {
+    public Page getChildPage(int index) {
         PageReference ref = children[index];
         if (ref.page != null) {
             return ref.page;
         } else {
-            BTreePage p = map.btreeStorage.readPage(ref, ref.pos);
+            Page p = map.getBtreeStorage().readPage(ref, ref.pos);
             ref.replacePage(p);
             p.setRef(ref);
             p.setParentRef(getRef());
@@ -78,7 +80,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    BTreeNodePage split(int at) { // at对应的key只放在父节点中
+    NodePage split(int at) { // at对应的key只放在父节点中
         int a = at, b = keys.length - a;
         Object[] aKeys = new Object[a];
         Object[] bKeys = new Object[b - 1];
@@ -93,7 +95,7 @@ public class BTreeNodePage extends BTreeLocalPage {
         System.arraycopy(children, a + 1, bChildren, 0, b);
         children = aChildren;
 
-        BTreeNodePage newPage = create(map, bKeys, bChildren, 0);
+        NodePage newPage = create(map, bKeys, bChildren, 0);
         recalculateMemory();
         return newPage;
     }
@@ -110,7 +112,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    public void setChild(int index, BTreePage c) {
+    public void setChild(int index, Page c) {
         Object key;
         boolean first;
         if (keys.length > 0) {
@@ -163,7 +165,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    public void insertNode(int index, Object key, BTreePage childPage) {
+    public void insertNode(int index, Object key, Page childPage) {
         Object[] newKeys = new Object[keys.length + 1];
         DataUtils.copyWithGap(keys, newKeys, keys.length, index);
         newKeys[index] = key;
@@ -190,7 +192,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -307,14 +309,14 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
         }
         int patch = write(chunk, buff, false);
         for (int i = 0, len = children.length; i < len; i++) {
-            BTreePage p = children[i].page;
+            Page p = children[i].page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff);
                 children[i] = new PageReference(p);
@@ -356,12 +358,12 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    public BTreeNodePage copy() {
+    public NodePage copy() {
         return copy(true);
     }
 
-    private BTreeNodePage copy(boolean removePage) {
-        BTreeNodePage newPage = create(map, keys, children, getMemory());
+    private NodePage copy(boolean removePage) {
+        NodePage newPage = create(map, keys, children, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
@@ -373,7 +375,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void removeAllRecursive() {
+    public void removeAllRecursive() {
         if (children != null) {
             // TODO 消除这些难理解的规则
             // 不能直接使用getRawChildPageCount， RTreeMap这样的子类会返回getRawChildPageCount() - 1
@@ -385,11 +387,11 @@ public class BTreeNodePage extends BTreeLocalPage {
                     long pos = children[i].pos;
                     int type = PageUtils.getPageType(pos);
                     if (type == PageUtils.PAGE_TYPE_LEAF) {
-                        Chunk c = map.btreeStorage.getChunk(pos);
+                        Chunk c = map.getBtreeStorage().getChunk(pos);
                         int mem = c.getPageLength(pos);
-                        map.btreeStorage.removePage(pos, mem);
+                        map.getBtreeStorage().removePage(pos, mem);
                     } else {
-                        map.btreeStorage.readPage(pos).removeAllRecursive();
+                        map.getBtreeStorage().readPage(pos).removeAllRecursive();
                     }
                 }
             }
@@ -397,8 +399,8 @@ public class BTreeNodePage extends BTreeLocalPage {
         removePage();
     }
 
-    static BTreeNodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
-        BTreeNodePage p = new BTreeNodePage(map);
+    static NodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
+        NodePage p = new NodePage(map);
         // the position is 0
         p.keys = keys;
         p.children = children;
@@ -411,26 +413,26 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void readRemotePages() {
+    public void readRemotePages() {
         for (int i = 0, len = children.length; i < len; i++) {
             final int index = i;
-            Callable<BTreePage> task = new Callable<BTreePage>() {
+            Callable<Page> task = new Callable<Page>() {
                 @Override
-                public BTreePage call() throws Exception {
-                    BTreePage p = getChildPage(index);
+                public Page call() throws Exception {
+                    Page p = getChildPage(index);
                     return p;
                 }
             };
-            map.pohFactory.addPageOperation(new CallableOperation(task));
+            map.getPohFactory().addPageOperation(new CallableOperation(task));
         }
     }
 
     @Override
-    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
+    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.getDatabase(), newNodes);
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
-                BTreePage p = getChildPage(i);
+                Page p = getChildPage(i);
                 if (p.isNode()) {
                     p.moveAllLocalLeafPages(oldNodes, newNodes, newRunMode);
                 } else {
@@ -450,8 +452,8 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void replicatePage(DataBuffer buff) {
-        BTreeNodePage p = copy(false);
+    public void replicatePage(DataBuffer buff) {
+        NodePage p = copy(false);
         // 这里不需要为PageReference生成PageKey，
         // 生成PageReference只是为了调用write时把子Page当成RemotePage
         int len = children.length;
@@ -495,7 +497,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                     children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        map.btreeStorage.readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
+                        map.getBtreeStorage().readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");
                         buff.append("*** off-line *** ").append(children[i]).append('\n');
