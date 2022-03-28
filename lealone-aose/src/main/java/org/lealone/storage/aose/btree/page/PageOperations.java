@@ -411,10 +411,12 @@ public abstract class PageOperations {
                 // node page的切割直接由单一的node page处理器处理，不会产生并发问题
                 TmpNodePage tmp = splitPage(parent);
                 for (PageReference ref : tmp.left.page.getChildren()) {
-                    ref.page.setParentRef(tmp.left.page.getRef());
+                    if (ref.page != null)
+                        ref.page.setParentRef(tmp.left.page.getRef());
                 }
                 for (PageReference ref : tmp.right.page.getChildren()) {
-                    ref.page.setParentRef(tmp.right.page.getRef());
+                    if (ref.page != null)
+                        ref.page.setParentRef(tmp.right.page.getRef());
                 }
                 // 如果是root node page，那么直接替换
                 if (parent.getParentRef() == null) {

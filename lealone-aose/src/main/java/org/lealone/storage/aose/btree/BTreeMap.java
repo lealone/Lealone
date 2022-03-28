@@ -46,14 +46,14 @@ import org.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import org.lealone.storage.aose.btree.page.PageOperations.Remove;
 import org.lealone.storage.aose.btree.page.PageOperations.Replace;
 import org.lealone.storage.aose.btree.page.PageOperations.RunnableOperation;
+import org.lealone.storage.aose.btree.page.PageReference;
+import org.lealone.storage.aose.btree.page.PageStorageMode;
+import org.lealone.storage.aose.btree.page.RemotePage;
 import org.lealone.storage.page.LeafPageMovePlan;
 import org.lealone.storage.page.PageKey;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerFactory;
-import org.lealone.storage.aose.btree.page.PageReference;
-import org.lealone.storage.aose.btree.page.PageStorageMode;
-import org.lealone.storage.aose.btree.page.RemotePage;
 import org.lealone.storage.type.StorageDataType;
 
 /**
@@ -80,6 +80,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final PageOperationHandler nodePageOperationHandler;
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
+    private final PageReference rootRef = new PageReference(null);
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     private volatile Page root;
     private volatile boolean parallelDisabled;
@@ -111,6 +112,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (lastChunk != null) {
             root = btreeStorage.readPage(lastChunk.rootPagePos);
             size.set(lastChunk.mapSize);
+            setRootRef(); // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             setMaxKey(lastKey());
         } else {
             if (isShardingMode) {
@@ -128,8 +130,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             } else {
                 root = LeafPage.createEmpty(this);
             }
+            setRootRef();
         }
         disableParallelIfNeeded();
+    }
+
+    private void setRootRef() {
+        if (root.isNode() && root.getRef() == null) {
+            root.setRef(rootRef);
+            rootRef.replacePage(root);
+        }
     }
 
     private boolean containsLocalNode(String[] replicationNodes) {
@@ -325,6 +335,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void newRoot(Page newRoot) {
         if (root != newRoot) {
             root = newRoot;
+            setRootRef();
         }
     }
 

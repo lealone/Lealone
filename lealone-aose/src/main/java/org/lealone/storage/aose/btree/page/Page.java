@@ -126,11 +126,11 @@ public class Page {
         return parentRefRef.get();
     }
 
-    void setRef(PageReference ref) {
+    public void setRef(PageReference ref) {
         this.ref = ref;
     }
 
-    PageReference getRef() {
+    public PageReference getRef() {
         return ref;
     }
 
@@ -499,7 +499,6 @@ public class Page {
             parentRef.page.markDirty();
             parentRef = parentRef.page.getParentRef();
         }
-        map.getRootPage().markDirty();
     }
 
     /**
