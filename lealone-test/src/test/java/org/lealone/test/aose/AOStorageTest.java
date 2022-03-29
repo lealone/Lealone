@@ -31,9 +31,12 @@ public class AOStorageTest extends TestBase {
     private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
         builder.pageSplitSize(1024);
-        // builder.encryptionKey("mykey".toCharArray());
+        builder.encryptionKey("mykey".toCharArray());
         // builder.inMemory();
-        storage = openStorage(builder);
+        // 弄个子目录，避免跟其他测试冲突，encryptionKey也会影响其他测试
+        // 相同的storagePath会得到同样的Storage实例
+        String storagePath = joinDirs("aose", "AOStorageTest");
+        storage = openStorage(builder, storagePath);
     }
 
     private void testDrop() {
@@ -99,7 +102,12 @@ public class AOStorageTest extends TestBase {
     }
 
     public static AOStorage openStorage(AOStorageBuilder builder) {
-        String storagePath = joinDirs("aose");
+        return openStorage(builder, null);
+    }
+
+    public static AOStorage openStorage(AOStorageBuilder builder, String storagePath) {
+        if (storagePath == null)
+            storagePath = joinDirs("aose");
         builder.compressHigh();
         builder.storagePath(storagePath).reuseSpace().minFillRate(30);
         AOStorage storage = builder.openStorage();
