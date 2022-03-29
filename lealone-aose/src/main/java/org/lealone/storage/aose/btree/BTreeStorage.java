@@ -32,7 +32,7 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class BTreeStorage {
 
-    private final BTreeMap<Object, Object> map;
+    private final BTreeMap<?, ?> map;
     private final String mapBaseDir;
 
     private final ChunkManager chunkManager;
@@ -65,7 +65,7 @@ public class BTreeStorage {
      * @param map the map to use
      * @throws IllegalStateException if the file is corrupt, or an exception occurred while opening
      */
-    BTreeStorage(BTreeMap<Object, Object> map) {
+    BTreeStorage(BTreeMap<?, ?> map) {
         this.map = map;
         pageSplitSize = getIntValue("pageSplitSize", 16 * 1024);
         int minFillRate = getIntValue("minFillRate", 30);

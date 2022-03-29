@@ -121,7 +121,7 @@ public class PageReference {
             return pos != REMOTE_PAGE_POS && PageUtils.isNodePage(pos);
     }
 
-    public synchronized Page readRemotePage(BTreeMap<Object, Object> map) {
+    public synchronized Page readRemotePage(BTreeMap<?, ?> map) {
         if (page != null) {
             return page;
         }

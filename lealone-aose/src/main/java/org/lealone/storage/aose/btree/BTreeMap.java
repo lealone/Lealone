@@ -87,7 +87,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-    @SuppressWarnings("unchecked")
     protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
@@ -107,7 +106,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             isShardingMode = false;
         db = (IDatabase) config.get("db");
 
-        btreeStorage = new BTreeStorage((BTreeMap<Object, Object>) this);
+        btreeStorage = new BTreeStorage(this);
         Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
             root = btreeStorage.readPage(lastChunk.rootPagePos);
