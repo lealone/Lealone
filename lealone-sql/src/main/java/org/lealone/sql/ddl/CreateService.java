@@ -144,25 +144,46 @@ public class CreateService extends SchemaStatement {
             serviceMethods.add(m);
         }
 
-        ServiceExecutorFactory factory = PluginManager.getPlugin(ServiceExecutorFactory.class, language);
-        if (factory == null)
-            factory = new JavaServiceExecutorFactory();
+        // 非启动阶段，如果java服务实现类不存在时自动生成一个
+        if (!session.getDatabase().isStarting() && "java".equalsIgnoreCase(language) && implementBy != null) {
+            try {
+                Class.forName(implementBy);
+            } catch (Exception e) {
+                if (codePath == null)
+                    codePath = "./src/main/java";
+                int pos = implementBy.lastIndexOf('.');
+                if (packageName == null && pos > 0)
+                    packageName = implementBy.substring(0, pos);
+                genServiceImplementClassCode();
+            }
+        }
+
         Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(), serviceMethods);
         service.setLanguage(language);
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
         service.setComment(comment);
-        ServiceExecutor executor = factory.createServiceExecutor(service);
-        service.setExecutor(executor);
         schema.add(session, service, lock);
+
+        ServiceExecutorFactory factory = PluginManager.getPlugin(ServiceExecutorFactory.class, language);
+        if (factory == null)
+            factory = new JavaServiceExecutorFactory();
+
         // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
-        if (genCode && !session.getDatabase().isStarting()) {
-            if (factory.supportsGenCode()) {
+        if (!session.getDatabase().isStarting()) {
+            if (factory.supportsGenCode()) { // 支持其他语言插件生成自己的代码
                 factory.genCode(service);
             } else {
-                genCode();
+                if (genCode) {
+                    genServiceInterfaceCode();
+                    genServiceExecutorCode();
+                }
             }
         }
+
+        // 最后才创建执行器，此时implementBy肯定存在了
+        ServiceExecutor executor = factory.createServiceExecutor(service);
+        service.setExecutor(executor);
         return 0;
     }
 
@@ -205,6 +226,9 @@ public class CreateService extends SchemaStatement {
         if (genCode && codePath != null) {
             buff.append("GENERATE CODE '").append(codePath).append("'\n");
         }
+        if (codePath != null) {
+            buff.append("CODE PATH '").append(codePath).append("'\n");
+        }
         return buff.toString();
     }
 
@@ -221,13 +245,6 @@ public class CreateService extends SchemaStatement {
         return CamelCaseHelper.toCamelFromUnderscore(n);
     }
 
-    private void genCode() {
-        // genServiceInterfaceCode();
-        genServiceImplementClassCode();
-        // genServiceExecutorCode();
-    }
-
-    @SuppressWarnings("unused")
     private void genServiceInterfaceCode() {
         StringBuilder psBuff = new StringBuilder();
         StringBuilder psInitBuff = new StringBuilder();
@@ -442,18 +459,23 @@ public class CreateService extends SchemaStatement {
         // 生成package和import代码
         StringBuilder buff = new StringBuilder();
         buff.append("package ").append(implementPackageName).append(";\r\n");
-        buff.append("\r\n");
-        for (String i : importSet) {
-            buff.append("import ").append(i).append(";\r\n");
+        if (importSet.size() > 0) {
+            buff.append("\r\n");
+            for (String i : importSet) {
+                buff.append("import ").append(i).append(";\r\n");
+            }
         }
         buff.append("\r\n");
 
         // 生成Service实现类的骨架代码
-        buff.append("public class ").append(implementClassName) // .append(" implements ").append(serviceInterfaceName)
-                .append(" {\r\n");
+        buff.append("public class ").append(implementClassName);
+        if (genCode)
+            buff.append(" implements ").append(serviceInterfaceName);
+        buff.append(" {\r\n");
         for (int i = 0; i < methodSize; i++) {
             buff.append("\r\n");
-            buff.append("    @Override\r\n");
+            if (genCode)
+                buff.append(" @Override\r\n");
             buff.append("    public ").append(methodSignatureList.get(i)).append(" {\r\n");
             if (!methodReturnTypeList.get(i).equals("void"))
                 buff.append("        return null;\r\n");

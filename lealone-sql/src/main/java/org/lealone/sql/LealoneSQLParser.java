@@ -4266,6 +4266,11 @@ public class LealoneSQLParser implements SQLParser {
             command.setGenCode(true);
             command.setCodePath(codePath);
         }
+        if (readIf("CODE")) {
+            read("PATH");
+            String codePath = readExpression().getValue(session).getString();
+            command.setCodePath(codePath);
+        }
         return command;
     }
 

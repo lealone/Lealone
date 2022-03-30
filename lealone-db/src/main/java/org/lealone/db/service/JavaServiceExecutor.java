@@ -17,10 +17,18 @@ import org.lealone.db.value.ValueString;
 
 public class JavaServiceExecutor extends ServiceExecutorBase {
 
+    private final Service service;
     private Map<String, Method> objectMethodMap;
     private Object implementClassObject;
 
     public JavaServiceExecutor(Service service) {
+        this.service = service;
+    }
+
+    // 第一次调用时再初始化，否则会影响启动时间
+    private void init() {
+        if (implementClassObject != null)
+            return;
         Class<?> implementClass;
         try {
             implementClass = Class.forName(service.getImplementBy());
@@ -52,6 +60,7 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
 
     @Override
     public Value executeService(String methodName, Value[] methodArgs) {
+        init();
         Object[] args = getServiceMethodArgs(methodName, methodArgs);
         Method method = objectMethodMap.get(methodName);
         try {
@@ -66,6 +75,7 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
 
     @Override
     public String executeService(String methodName, Map<String, Object> methodArgs) {
+        init();
         Object[] args = getServiceMethodArgs(methodName, methodArgs);
         Method method = objectMethodMap.get(methodName);
         try {
@@ -80,6 +90,7 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
 
     @Override
     public String executeService(String methodName, String json) {
+        init();
         Object[] args = getServiceMethodArgs(methodName, json);
         Method method = objectMethodMap.get(methodName);
         try {
