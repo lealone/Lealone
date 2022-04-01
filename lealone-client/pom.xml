@@ -16,8 +16,16 @@
     <artifactId>lealone-client</artifactId>
     <packaging>jar</packaging>
     <version>5.0.0-SNAPSHOT</version>
-<!--
-    <build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-net</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <!--<build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -32,10 +40,8 @@
                         <configuration>
                             <artifactSet>
                                 <excludes>
-                                    <exclude>org.slf4j:slf4j-api</exclude>
-                                    <exclude>ch.qos.logback:logback-core</exclude>
-                                    <exclude>ch.qos.logback:logback-classic</exclude>
-                                    <exclude>log4j:log4j</exclude>
+                                    <exclude>org.apache.logging.log4j:log4j-api</exclude>
+                                    <exclude>org.apache.logging.log4j:log4j-core</exclude>
                                 </excludes>
                             </artifactSet>
                             <transformers>
@@ -47,13 +53,5 @@
                 </executions>
             </plugin> 
         </plugins>
-    </build>
--->
-    <dependencies>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-net</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
+    </build>-->
 </project>
