@@ -1,93 +1,60 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
- * -------------------------------------
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * and Apache License v2.0 which accompanies this distribution.
- *
- *     The Eclipse Public License is available at
- *     http://www.eclipse.org/legal/epl-v10.html
- *
- *     The Apache License v2.0 is available at
- *     http://www.opensource.org/licenses/apache2.0.php
- *
- * You may elect to redistribute this code under either of these licenses.
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
-
 package org.lealone.common.logging;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
-import org.lealone.common.logging.spi.LogDelegate;
-import org.lealone.common.logging.spi.LogDelegateFactory;
+import org.lealone.common.logging.impl.ConsoleLoggerFactory;
+import org.lealone.common.logging.impl.Log4j2LoggerFactory;
 
-/**
- * @author <a href="http://tfox.org">Tim Fox</a>
- */
-public class LoggerFactory {
+public abstract class LoggerFactory {
 
-    public static final String LOGGER_DELEGATE_FACTORY_CLASS_NAME = "lealone.logger-delegate-factory-class-name";
+    protected abstract Logger createLogger(String name);
 
-    private static volatile LogDelegateFactory delegateFactory;
+    public static final String LOGGER_FACTORY_CLASS_NAME = "lealone.logger.factory";
+    private static final ConcurrentHashMap<String, Logger> loggers = new ConcurrentHashMap<>();
+    private static final LoggerFactory loggerFactory = getLoggerFactory();
 
-    private static final ConcurrentMap<String, Logger> loggers = new ConcurrentHashMap<>();
-
-    static {
-        initialise();
-    }
-
-    public static synchronized void initialise() {
-        LogDelegateFactory delegateFactory;
-
-        // If a system property is specified then this overrides any delegate factory which is set
-        // programmatically - this is primarily of use so we can configure the logger delegate on the client side.
-        // call to System.getProperty is wrapped in a try block as it will fail if the client runs in a secured
-        // environment
-        String className = ConsoleLogDelegateFactory.class.getName();
+    // 优先使用自定义的LoggerFactory，然后是log4j2，最后是Console
+    private static LoggerFactory getLoggerFactory() {
+        String factoryClassName = null;
         try {
-            className = System.getProperty(LOGGER_DELEGATE_FACTORY_CLASS_NAME);
+            factoryClassName = System.getProperty(LOGGER_FACTORY_CLASS_NAME);
         } catch (Exception e) {
         }
-
-        if (className != null) {
+        if (factoryClassName != null) {
             ClassLoader loader = Thread.currentThread().getContextClassLoader();
             try {
-                Class<?> clz = loader.loadClass(className);
-                delegateFactory = (LogDelegateFactory) clz.getDeclaredConstructor().newInstance();
+                Class<?> clz = loader.loadClass(factoryClassName);
+                return (LoggerFactory) clz.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
-                throw new IllegalArgumentException("Error instantiating transformer class \"" + className + "\"", e);
+                throw new IllegalArgumentException("Error instantiating class \"" + factoryClassName + "\"", e);
             }
         } else if (LoggerFactory.class.getResource("/org/apache/logging/log4j/spi/ExtendedLogger.class") != null) {
-            delegateFactory = new Log4j2LogDelegateFactory();
+            return new Log4j2LoggerFactory();
         } else {
-            delegateFactory = new ConsoleLogDelegateFactory();
+            return new ConsoleLoggerFactory();
         }
-
-        LoggerFactory.delegateFactory = delegateFactory;
     }
 
-    public static Logger getLogger(final Class<?> clazz) {
+    public static Logger getLogger(Class<?> clazz) {
         String name = clazz.isAnonymousClass() ? clazz.getEnclosingClass().getCanonicalName()
                 : clazz.getCanonicalName();
         return getLogger(name);
     }
 
-    public static Logger getLogger(final String name) {
+    public static Logger getLogger(String name) {
         Logger logger = loggers.get(name);
-
         if (logger == null) {
-            LogDelegate delegate = delegateFactory.createDelegate(name);
-
-            logger = new Logger(delegate);
-
+            logger = loggerFactory.createLogger(name);
             Logger oldLogger = loggers.putIfAbsent(name, logger);
-
             if (oldLogger != null) {
                 logger = oldLogger;
             }
         }
-
         return logger;
     }
 

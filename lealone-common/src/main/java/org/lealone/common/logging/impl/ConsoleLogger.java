@@ -3,45 +3,11 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.common.logging;
+package org.lealone.common.logging.impl;
 
-import org.lealone.common.logging.spi.LogDelegate;
+import org.lealone.common.logging.Logger;
 
-public class ConsoleLogDelegate implements LogDelegate {
-
-    ConsoleLogDelegate() {
-    }
-
-    private void log(Object message) {
-        System.out.println(message);
-    }
-
-    private void log(Object message, Object... params) {
-        char[] chars = message.toString().toCharArray();
-        int length = chars.length;
-        StringBuilder s = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            if (chars[i] == '{' && chars[i + 1] == '}') {
-                s.append("%s");
-                i++;
-            } else {
-                s.append(chars[i]);
-            }
-        }
-        System.out.println(String.format(s.toString(), params));
-    }
-
-    private void log(Object message, Throwable t) {
-        log(message);
-        if (t != null)
-            t.printStackTrace(System.err);
-    }
-
-    private void log(Object message, Throwable t, Object... params) {
-        log(message, params);
-        if (t != null)
-            t.printStackTrace(System.err);
-    }
+class ConsoleLogger implements Logger {
 
     @Override
     public boolean isWarnEnabled() {
@@ -173,4 +139,34 @@ public class ConsoleLogDelegate implements LogDelegate {
         log(message, t, params);
     }
 
+    private void log(Object message) {
+        System.out.println(message);
+    }
+
+    private void log(Object message, Object... params) {
+        char[] chars = message.toString().toCharArray();
+        int length = chars.length;
+        StringBuilder s = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            if (chars[i] == '{' && chars[i + 1] == '}') {
+                s.append("%s");
+                i++;
+            } else {
+                s.append(chars[i]);
+            }
+        }
+        System.out.println(String.format(s.toString(), params));
+    }
+
+    private void log(Object message, Throwable t) {
+        log(message);
+        if (t != null)
+            t.printStackTrace(System.err);
+    }
+
+    private void log(Object message, Throwable t, Object... params) {
+        log(message, params);
+        if (t != null)
+            t.printStackTrace(System.err);
+    }
 }

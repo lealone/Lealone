@@ -1,33 +1,22 @@
 /*
- * Copyright (c) 2011-2019 Contributors to the Eclipse Foundation
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
- * which is available at https://www.apache.org/licenses/LICENSE-2.0.
- *
- * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
-package org.lealone.common.logging;
+package org.lealone.common.logging.impl;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.message.FormattedMessage;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.spi.ExtendedLogger;
-import org.lealone.common.logging.spi.LogDelegate;
+import org.lealone.common.logging.Logger;
 
-/**
- * A {@link LogDelegate} which delegates to Apache Log4j 2
- *
- * @author Clement Escoffier - clement@apache.org
- */
-public class Log4j2LogDelegate implements LogDelegate {
+class Log4j2Logger implements Logger {
 
-    final ExtendedLogger logger;
+    private final static String FQCN = Logger.class.getCanonicalName();
+    private final ExtendedLogger logger;
 
-    final static String FQCN = Logger.class.getCanonicalName();
-
-    Log4j2LogDelegate(final String name) {
+    Log4j2Logger(String name) {
         logger = (ExtendedLogger) org.apache.logging.log4j.LogManager.getLogger(name);
     }
 
@@ -52,17 +41,17 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void fatal(final Object message) {
+    public void fatal(Object message) {
         log(Level.FATAL, message);
     }
 
     @Override
-    public void fatal(final Object message, final Throwable t) {
+    public void fatal(Object message, Throwable t) {
         log(Level.FATAL, message, t);
     }
 
     @Override
-    public void error(final Object message) {
+    public void error(Object message) {
         log(Level.ERROR, message);
     }
 
@@ -72,7 +61,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void error(final Object message, final Throwable t) {
+    public void error(Object message, Throwable t) {
         log(Level.ERROR, message, t);
     }
 
@@ -82,7 +71,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void warn(final Object message) {
+    public void warn(Object message) {
         log(Level.WARN, message);
     }
 
@@ -92,7 +81,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void warn(final Object message, final Throwable t) {
+    public void warn(Object message, Throwable t) {
         log(Level.WARN, message, t);
     }
 
@@ -102,7 +91,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void info(final Object message) {
+    public void info(Object message) {
         log(Level.INFO, message);
     }
 
@@ -112,7 +101,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void info(final Object message, final Throwable t) {
+    public void info(Object message, Throwable t) {
         log(Level.INFO, message, t);
     }
 
@@ -122,7 +111,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void debug(final Object message) {
+    public void debug(Object message) {
         log(Level.DEBUG, message);
     }
 
@@ -132,7 +121,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void debug(final Object message, final Throwable t) {
+    public void debug(Object message, Throwable t) {
         log(Level.DEBUG, message, t);
     }
 
@@ -142,7 +131,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void trace(final Object message) {
+    public void trace(Object message) {
         log(Level.TRACE, message);
     }
 
@@ -152,7 +141,7 @@ public class Log4j2LogDelegate implements LogDelegate {
     }
 
     @Override
-    public void trace(final Object message, final Throwable t) {
+    public void trace(Object message, Throwable t) {
         log(Level.TRACE, message.toString(), t);
     }
 
@@ -179,10 +168,5 @@ public class Log4j2LogDelegate implements LogDelegate {
 
     private void log(Level level, String message, Throwable t, Object... params) {
         logger.logIfEnabled(FQCN, level, null, new FormattedMessage(message, params), t);
-    }
-
-    @Override
-    public Object unwrap() {
-        return logger;
     }
 }

@@ -1,148 +1,61 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
- * -------------------------------------
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * and Apache License v2.0 which accompanies this distribution.
- *
- *     The Eclipse Public License is available at
- *     http://www.eclipse.org/legal/epl-v10.html
- *
- *     The Apache License v2.0 is available at
- *     http://www.opensource.org/licenses/apache2.0.php
- *
- * You may elect to redistribute this code under either of these licenses.
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
-
 package org.lealone.common.logging;
 
-import org.lealone.common.logging.spi.LogDelegate;
+public interface Logger {
 
-/**
- * This class allows us to isolate all our logging dependencies in one place. It also allows us to have zero runtime
- * 3rd party logging jar dependencies, since we default to JUL by default.
- * <p>
- * By default logging will occur using JUL (Java-Util-Logging). The logging configuration file (logging.properties)
- * used by JUL will taken from the default logging.properties in the JDK installation if no {@code  java.util.logging.config.file} system
- * property is set.
- * <p>
- * If you would prefer to use Log4J or SLF4J instead of JUL then you can set a system property called
- * {@code lealone.logger-delegate-factory-class-name} to the class name of the delegate for your logging system.
- * For Log4J the value is {@code org.lealone.common.logging.Log4jLogDelegateFactory}, for SLF4J the value
- * is {@code org.lealone.common.logging.SLF4JLogDelegateFactory}. You will need to ensure whatever jar files
- * required by your favourite log framework are on your classpath.
- *
- * @author <a href="mailto:tim.fox@jboss.com">Tim Fox</a>
- */
-public class Logger {
+    boolean isWarnEnabled();
 
-    final LogDelegate delegate;
+    boolean isInfoEnabled();
 
-    public Logger(final LogDelegate delegate) {
-        this.delegate = delegate;
-    }
+    boolean isDebugEnabled();
 
-    public boolean isWarnEnabled() {
-        return delegate.isWarnEnabled();
-    }
+    boolean isTraceEnabled();
 
-    public boolean isInfoEnabled() {
-        return delegate.isInfoEnabled();
-    }
+    void fatal(Object message);
 
-    public boolean isDebugEnabled() {
-        return delegate.isDebugEnabled();
-    }
+    void fatal(Object message, Throwable t);
 
-    public boolean isTraceEnabled() {
-        return delegate.isTraceEnabled();
-    }
+    void error(Object message);
 
-    public void fatal(final Object message) {
-        delegate.fatal(message);
-    }
+    void error(Object message, Object... params);
 
-    public void fatal(final Object message, final Throwable t) {
-        delegate.fatal(message, t);
-    }
+    void error(Object message, Throwable t);
 
-    public void error(final Object message) {
-        delegate.error(message);
-    }
+    void error(Object message, Throwable t, Object... params);
 
-    public void error(final Object message, final Throwable t) {
-        delegate.error(message, t);
-    }
+    void warn(Object message);
 
-    public void error(final Object message, final Object... objects) {
-        delegate.error(message, objects);
-    }
+    void warn(Object message, Object... params);
 
-    public void error(final Object message, final Throwable t, final Object... objects) {
-        delegate.error(message, t, objects);
-    }
+    void warn(Object message, Throwable t);
 
-    public void warn(final Object message) {
-        delegate.warn(message);
-    }
+    void warn(Object message, Throwable t, Object... params);
 
-    public void warn(final Object message, final Throwable t) {
-        delegate.warn(message, t);
-    }
+    void info(Object message);
 
-    public void warn(final Object message, final Object... objects) {
-        delegate.warn(message, objects);
-    }
+    void info(Object message, Object... params);
 
-    public void warn(final Object message, final Throwable t, final Object... objects) {
-        delegate.warn(message, t, objects);
-    }
+    void info(Object message, Throwable t);
 
-    public void info(final Object message) {
-        delegate.info(message);
-    }
+    void info(Object message, Throwable t, Object... params);
 
-    public void info(final Object message, final Throwable t) {
-        delegate.info(message, t);
-    }
+    void debug(Object message);
 
-    public void info(final Object message, final Object... objects) {
-        delegate.info(message, objects);
-    }
+    void debug(Object message, Object... params);
 
-    public void info(final Object message, final Throwable t, final Object... objects) {
-        delegate.info(message, t, objects);
-    }
+    void debug(Object message, Throwable t);
 
-    public void debug(final Object message) {
-        delegate.debug(message);
-    }
+    void debug(Object message, Throwable t, Object... params);
 
-    public void debug(final Object message, final Throwable t) {
-        delegate.debug(message, t);
-    }
+    void trace(Object message);
 
-    public void debug(final Object message, final Object... objects) {
-        delegate.debug(message, objects);
-    }
+    void trace(Object message, Object... params);
 
-    public void debug(final Object message, final Throwable t, final Object... objects) {
-        delegate.debug(message, t, objects);
-    }
+    void trace(Object message, Throwable t);
 
-    public void trace(final Object message) {
-        delegate.trace(message);
-    }
-
-    public void trace(final Object message, final Throwable t) {
-        delegate.trace(message, t);
-    }
-
-    public void trace(final Object message, final Object... objects) {
-        delegate.trace(message, objects);
-    }
-
-    public void trace(final Object message, final Throwable t, final Object... objects) {
-        delegate.trace(message, t, objects);
-    }
+    void trace(Object message, Throwable t, Object... params);
 }
