@@ -30,15 +30,16 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version><!-- 2.3.2 加add-modules参数不起作用 -->
+                <version>3.8.1</version><!-- 2.3.2 鍔燼dd-modules鍙傛暟涓嶈捣浣滅敤 -->
                 <configuration>
-                    <source>16</source>
-                    <target>16</target>
+                    <source>17</source>
+                    <target>17</target>
                     <encoding>UTF-8</encoding>
                     <compilerArgs>
                         <arg>--add-modules</arg>
