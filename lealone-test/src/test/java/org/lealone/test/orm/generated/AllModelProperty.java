@@ -1,11 +1,7 @@
 package org.lealone.test.orm.generated;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelProperty;
-import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PArray;
 import org.lealone.orm.property.PBigDecimal;
@@ -25,15 +21,12 @@ import org.lealone.orm.property.PString;
 import org.lealone.orm.property.PTime;
 import org.lealone.orm.property.PTimestamp;
 import org.lealone.orm.property.PUuid;
-import org.lealone.test.orm.generated.AllModelProperty.AllModelPropertyDeserializer;
 
 /**
  * Model for table 'ALL_MODEL_PROPERTY'.
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = ModelSerializer.class)
-@JsonDeserialize(using = AllModelPropertyDeserializer.class)
 public class AllModelProperty extends Model<AllModelProperty> {
 
     public static final AllModelProperty dao = new AllModelProperty(null, ROOT_DAO);
@@ -97,10 +90,7 @@ public class AllModelProperty extends Model<AllModelProperty> {
         return new AllModelProperty(t, modelType);
     }
 
-    static class AllModelPropertyDeserializer extends ModelDeserializer<AllModelProperty> {
-        @Override
-        protected Model<AllModelProperty> newModelInstance() {
-            return new AllModelProperty();
-        }
+    public static AllModelProperty decode(String str) {
+        return new AllModelProperty().decode0(str);
     }
 }

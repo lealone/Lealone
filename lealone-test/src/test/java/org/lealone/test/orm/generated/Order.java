@@ -1,27 +1,20 @@
 package org.lealone.test.orm.generated;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.ArrayList;
 import java.util.List;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelProperty;
-import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PDate;
 import org.lealone.orm.property.PDouble;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
-import org.lealone.test.orm.generated.Order.OrderDeserializer;
 
 /**
  * Model for table 'ORDER'.
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = ModelSerializer.class)
-@JsonDeserialize(using = OrderDeserializer.class)
 public class Order extends Model<Order> {
 
     public static final Order dao = new Order(null, ROOT_DAO);
@@ -87,10 +80,7 @@ public class Order extends Model<Order> {
         return list;
     }
 
-    static class OrderDeserializer extends ModelDeserializer<Order> {
-        @Override
-        protected Model<Order> newModelInstance() {
-            return new Order();
-        }
+    public static Order decode(String str) {
+        return new Order().decode0(str);
     }
 }

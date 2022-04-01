@@ -369,13 +369,8 @@ public class CreateTable extends SchemaStatement {
         TreeSet<String> importSet = new TreeSet<>();
 
         importSet.add("org.lealone.orm.Model");
-        importSet.add("org.lealone.orm.ModelDeserializer");
-        importSet.add("org.lealone.orm.ModelSerializer");
         importSet.add("org.lealone.orm.ModelTable");
         importSet.add("org.lealone.orm.ModelProperty");
-        importSet.add("com.fasterxml.jackson.databind.annotation.JsonDeserialize");
-        importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
-        importSet.add(packageName + "." + className + "." + className + "Deserializer");
 
         for (Constraint constraint : getConstraints(table)) {
             if (constraint instanceof ConstraintReferential) {
@@ -427,8 +422,6 @@ public class CreateTable extends SchemaStatement {
         buff.append(" *\r\n");
         buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         buff.append(" */\r\n");
-        buff.append("@JsonSerialize(using = ModelSerializer.class)\r\n");
-        buff.append("@JsonDeserialize(using = ").append(className).append("Deserializer.class)\r\n");
         // 例如: public class Customer extends Model<Customer> {
         buff.append("public class ").append(className).append(" extends Model<").append(className).append("> {\r\n");
         buff.append("\r\n");
@@ -555,12 +548,8 @@ public class CreateTable extends SchemaStatement {
             buff.append("    }\r\n");
             buff.append("\r\n");
         }
-        buff.append("    static class ").append(className).append("Deserializer extends ModelDeserializer<")
-                .append(className).append("> {\r\n");
-        buff.append("        @Override\r\n");
-        buff.append("        protected Model<").append(className).append("> newModelInstance() {\r\n");
-        buff.append("            return new ").append(className).append("();\r\n");
-        buff.append("        }\r\n");
+        buff.append("    public static ").append(className).append(" decode(String str) {\r\n");
+        buff.append("        return new ").append(className).append("().decode0(str);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");
         // System.out.println(buff);

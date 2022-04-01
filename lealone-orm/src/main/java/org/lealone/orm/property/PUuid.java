@@ -5,15 +5,12 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * UUID property.
@@ -64,24 +61,18 @@ public class PUuid<R> extends PBaseValueEqual<R, UUID> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeStringField(getName(), value == null ? null : value.toString());
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        String text = node.asText();
-        set(UUID.fromString(text));
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = (UUID) ValueUuid.get(v.getBytesNoCopy()).getObject();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null)
+            map.put(getName(), value.toString());
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = UUID.fromString(v.toString());
     }
 }

@@ -5,20 +5,16 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
 import java.sql.Clob;
 import java.sql.SQLException;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.ReadonlyClob;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
 
 public class PClob<R> extends ModelProperty<R> {
 
@@ -49,34 +45,23 @@ public class PClob<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        try {
-            jgen.writeFieldName(getName());
-            jgen.writeBinary(value.getAsciiStream(), (int) value.length());
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        }
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        try {
-            byte[] bytes = node.binaryValue();
-            ReadonlyClob c = new ReadonlyClob(ValueBytes.get(bytes));
-            set(c);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getClob();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null) {
+            try {
+                map.put(getName(), value.getSubString(0, (int) value.length()));
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = new ReadonlyClob(v.toString());
     }
 }

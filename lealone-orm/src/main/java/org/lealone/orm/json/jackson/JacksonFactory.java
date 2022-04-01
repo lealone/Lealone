@@ -22,14 +22,16 @@ public class JacksonFactory implements org.lealone.orm.json.spi.JsonFactory {
     public static final JacksonCodec CODEC;
 
     static {
-        JacksonCodec codec;
-        try {
-            codec = new DatabindCodec();
-        } catch (Throwable ignore) {
-            // No databind
-            codec = new JacksonCodec();
-        }
-        CODEC = codec;
+        // JacksonCodec codec;
+        // try {
+        // codec = new DatabindCodec();
+        // } catch (Throwable ignore) {
+        // // No databind
+        // codec = new JacksonCodec();
+        // }
+        // CODEC = codec;
+
+        CODEC = new JacksonCodec();
     }
 
     @Override

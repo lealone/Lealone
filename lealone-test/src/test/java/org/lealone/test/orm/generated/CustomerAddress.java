@@ -1,23 +1,16 @@
 package org.lealone.test.orm.generated;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelProperty;
-import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
-import org.lealone.test.orm.generated.CustomerAddress.CustomerAddressDeserializer;
 
 /**
  * Model for table 'CUSTOMER_ADDRESS'.
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = ModelSerializer.class)
-@JsonDeserialize(using = CustomerAddressDeserializer.class)
 public class CustomerAddress extends Model<CustomerAddress> {
 
     public static final CustomerAddress dao = new CustomerAddress(null, ROOT_DAO);
@@ -56,10 +49,7 @@ public class CustomerAddress extends Model<CustomerAddress> {
         return new CustomerAddress(t, modelType);
     }
 
-    static class CustomerAddressDeserializer extends ModelDeserializer<CustomerAddress> {
-        @Override
-        protected Model<CustomerAddress> newModelInstance() {
-            return new CustomerAddress();
-        }
+    public static CustomerAddress decode(String str) {
+        return new CustomerAddress().decode0(str);
     }
 }

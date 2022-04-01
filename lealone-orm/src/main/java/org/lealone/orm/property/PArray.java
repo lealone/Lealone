@@ -5,17 +5,15 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueString;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 
 /**
  * Array property with E as the element type.
@@ -65,34 +63,17 @@ public class PArray<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeFieldName(getName());
-        jgen.writeStartArray();
-        if (values != null) {
-            for (int i = 0; i < values.length; i++) {
-                jgen.writeObject(values[i]);
-            }
-        }
-        jgen.writeEndArray();
-        return root;
+    protected void serialize(Map<String, Object> map) {
+        if (values != null)
+            map.put(getName(), Arrays.asList(values));
     }
 
     @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        ArrayNode arrayNode = (ArrayNode) node;
-        int length = arrayNode.size();
-        if (length > 0) {
-            Object[] values = new Object[length];
-            for (int i = 0; i < length; i++) {
-                values[i] = arrayNode.get(i);
-            }
-            set(values);
-        }
-        return root;
+    protected void deserialize(Object v) {
+        if (v instanceof List)
+            values = ((List<?>) v).toArray();
+        else if (v instanceof Object[])
+            values = (Object[]) v;
     }
 
     @Override
@@ -194,5 +175,4 @@ public class PArray<R> extends ModelProperty<R> {
         expr().arrayIsNotEmpty(name);
         return root;
     }
-
 }

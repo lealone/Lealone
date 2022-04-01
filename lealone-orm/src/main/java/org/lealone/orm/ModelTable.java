@@ -89,5 +89,4 @@ public class ModelTable {
             table = db.getSchema(session, schemaName).getTableOrView(session, tableName);
         }
     }
-
 }

@@ -5,16 +5,13 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
+import org.lealone.orm.json.util.JsonUtil;
 
 /**
  * byte[] property.
@@ -56,28 +53,18 @@ public class PBytes<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeBinaryField(getName(), value);
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-
-        try {
-            set(node.binaryValue());
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getBytes();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null)
+            map.put(getName(), JsonUtil.BASE64_ENCODER.encode(value));
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = JsonUtil.BASE64_DECODER.decode(v.toString());
     }
 }

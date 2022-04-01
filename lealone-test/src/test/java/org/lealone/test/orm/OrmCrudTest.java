@@ -10,7 +10,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.Test;
-import org.lealone.orm.json.JsonObject;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
@@ -26,12 +25,10 @@ public class OrmCrudTest extends UnitTestBase {
     void json() {
         User u = new User();
         u.name.set("Rob").phones.set(new Object[] { 1, 2, 3 });
-
-        JsonObject json = JsonObject.mapFrom(u);
-        String str = json.encode();
+        String str = u.encode();
         System.out.println("json: " + str);
 
-        u = new JsonObject(str).mapTo(User.class);
+        u = User.decode(str);
         assertEquals("Rob", u.name.get());
         System.out.println("phones: " + u.phones.get().length);
     }

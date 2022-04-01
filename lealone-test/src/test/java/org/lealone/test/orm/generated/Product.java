@@ -1,24 +1,17 @@
 package org.lealone.test.orm.generated;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelProperty;
-import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PDouble;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
-import org.lealone.test.orm.generated.Product.ProductDeserializer;
 
 /**
  * Model for table 'PRODUCT'.
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = ModelSerializer.class)
-@JsonDeserialize(using = ProductDeserializer.class)
 public class Product extends Model<Product> {
 
     public static final Product dao = new Product(null, ROOT_DAO);
@@ -48,10 +41,7 @@ public class Product extends Model<Product> {
         return new Product(t, modelType);
     }
 
-    static class ProductDeserializer extends ModelDeserializer<Product> {
-        @Override
-        protected Model<Product> newModelInstance() {
-            return new Product();
-        }
+    public static Product decode(String str) {
+        return new Product().decode0(str);
     }
 }

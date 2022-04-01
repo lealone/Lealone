@@ -5,15 +5,11 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.BooleanNode;
 
 /**
  * Boolean property.
@@ -124,23 +120,17 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeBooleanField(getName(), value);
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        set(((BooleanNode) node).booleanValue());
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getBoolean();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        map.put(getName(), value ? 1 : 0);
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = ((Number) v).byteValue() != 0;
     }
 }

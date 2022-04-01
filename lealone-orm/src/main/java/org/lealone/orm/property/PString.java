@@ -5,14 +5,11 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * String property.
@@ -225,19 +222,13 @@ public class PString<R> extends PBaseComparable<R, String> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeStringField(getName(), value);
-        return root;
+    protected void serialize(Map<String, Object> map) {
+        map.put(getName(), value);
     }
 
     @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        set(node.asText());
-        return root;
+    protected void deserialize(Object v) {
+        value = (String) v;
     }
 
     @Override

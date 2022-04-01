@@ -5,11 +5,12 @@
  */
 package org.lealone.orm;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EmptyStackException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -24,6 +25,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.orm.json.JsonObject;
 import org.lealone.orm.property.PBaseNumber;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
@@ -37,11 +39,6 @@ import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
 import org.lealone.transaction.Transaction;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Base root model bean.
@@ -565,22 +562,41 @@ public abstract class Model<T> {
         return null;
     }
 
-    protected void deserialize(JsonNode node) {
-        for (ModelProperty p : modelProperties) {
-            p.deserialize(node);
-        }
-    }
-
-    protected void serialize(JsonGenerator jgen) throws IOException {
-        for (ModelProperty p : modelProperties) {
-            p.serialize(jgen);
+    private Map<String, Object> toMap() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (ModelProperty<?> p : modelProperties) {
+            p.serialize(map);
         }
         if (modelMap != null) {
             for (Entry<Class, ArrayList<Model<?>>> e : modelMap.entrySet()) {
-                jgen.writeObjectField(e.getKey().getSimpleName() + "List", e.getValue());
+                map.put(e.getKey().getSimpleName() + "List", e.getValue());
             }
         }
-        jgen.writeNumberField("modelType", modelType);
+        map.put("modelType", modelType);
+        return map;
+    }
+
+    public String encode() {
+        return new JsonObject(toMap()).toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    protected T decode0(String str) {
+        Map<String, Object> map = new JsonObject(str).getMap();
+        for (ModelProperty<?> p : modelProperties) {
+            Object v = map.get(p.getName());
+            if (v != null)
+                p.deserialize(v);
+        }
+        Object v = map.get("modelType");
+        if (v == null) {
+            modelType = Model.REGULAR_MODEL;
+            // 如果不通过JsonSerializer得到的json串不一定包含isDao字段(比如前端直接传来的json串)，所以不抛异常
+            // DbException.throwInternalError("The isDao field is missing");
+        } else {
+            modelType = ((Number) v).shortValue();
+        }
+        return (T) this;
     }
 
     /**
@@ -858,14 +874,7 @@ public abstract class Model<T> {
 
     @Override
     public String toString() {
-        ObjectMapper mapper = new ObjectMapper();
-        String jsonString;
-        try {
-            jsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(this);
-        } catch (JsonProcessingException e) {
-            jsonString = e.getMessage();
-        }
-        return jsonString;
+        return new JsonObject(toMap()).encodePrettily();
     }
 
     public T limit(long v) {

@@ -5,16 +5,12 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDecimal;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.DecimalNode;
 
 /**
  * BigDecimal property.
@@ -64,23 +60,18 @@ public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value);
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        set(((DecimalNode) node).decimalValue());
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getBigDecimal();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null)
+            map.put(getName(), value.toString());
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = new BigDecimal(value.toString());
     }
 }

@@ -5,15 +5,11 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDouble;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
  * Double property.
@@ -64,23 +60,17 @@ public class PDouble<R> extends PBaseNumber<R, Double> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value);
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        set(((NumericNode) node).asDouble());
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getDouble();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        map.put(getName(), value);
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = ((Number) v).doubleValue();
     }
 }

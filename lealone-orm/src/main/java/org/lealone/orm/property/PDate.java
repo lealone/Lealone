@@ -5,16 +5,12 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
 import java.sql.Date;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDate;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
  * Java sql date property.
@@ -65,24 +61,20 @@ public class PDate<R> extends PBaseDate<R, Date> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value == null ? 0 : value.getTime());
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        Date date = new Date(((NumericNode) node).asLong());
-        set(date);
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getDate();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null)
+            map.put(getName(), value.getTime());
+        else
+            map.put(getName(), 0);
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = new Date(((Number) v).longValue());
     }
 }

@@ -5,15 +5,11 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
  * Integer property.
@@ -64,19 +60,13 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value);
-        return root;
+    protected void serialize(Map<String, Object> map) {
+        map.put(getName(), value);
     }
 
     @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        set(((NumericNode) node).asInt());
-        return root;
+    protected void deserialize(Object v) {
+        value = ((Number) v).intValue();
     }
 
     @Override

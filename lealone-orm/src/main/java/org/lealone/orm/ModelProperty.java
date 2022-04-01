@@ -5,15 +5,12 @@
  */
 package org.lealone.orm;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * A property used in type query.
@@ -150,12 +147,10 @@ public abstract class ModelProperty<R> {
         return root;
     }
 
-    public R serialize(JsonGenerator jgen) throws IOException {
-        return root;
+    protected void serialize(Map<String, Object> map) {
     }
 
-    public R deserialize(JsonNode node) {
-        return root;
+    protected void deserialize(Object v) {
     }
 
     // map存放的是查询结果集某一条记录各个字段的值
@@ -168,14 +163,6 @@ public abstract class ModelProperty<R> {
 
     // 子类不需要再对参数v做null判断
     protected abstract void deserialize(Value v);
-
-    protected JsonNode getJsonNode(JsonNode node) {
-        JsonNode n = node.get(name);
-        if (n == null) {
-            n = node.get(name.toLowerCase());
-        }
-        return n;
-    }
 
     /**
      * Helper method to check if two objects are equal.

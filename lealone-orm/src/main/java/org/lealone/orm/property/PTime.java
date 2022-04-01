@@ -5,16 +5,12 @@
  */
 package org.lealone.orm.property;
 
-import java.io.IOException;
 import java.sql.Time;
+import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueTime;
 import org.lealone.orm.Model;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
  * Time property.
@@ -65,24 +61,20 @@ public class PTime<R> extends PBaseNumber<R, Time> {
     }
 
     @Override
-    public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value == null ? 0 : value.getTime());
-        return root;
-    }
-
-    @Override
-    public R deserialize(JsonNode node) {
-        node = getJsonNode(node);
-        if (node == null) {
-            return root;
-        }
-        Time t = new Time(((NumericNode) node).asLong());
-        set(t);
-        return root;
-    }
-
-    @Override
     protected void deserialize(Value v) {
         value = v.getTime();
+    }
+
+    @Override
+    protected void serialize(Map<String, Object> map) {
+        if (value != null)
+            map.put(getName(), value.getTime());
+        else
+            map.put(getName(), 0);
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = new Time(((Number) v).longValue());
     }
 }
