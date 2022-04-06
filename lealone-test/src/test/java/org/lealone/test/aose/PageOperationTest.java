@@ -21,6 +21,8 @@ public class PageOperationTest extends TestBase {
     public void run() {
         init();
         testAddChild();
+        testRemoveChild();
+        testConcurrentGetAndRemove();
     }
 
     private void init() {
@@ -50,5 +52,23 @@ public class PageOperationTest extends TestBase {
         assertEquals(size, count.get());
 
         assertEquals(size, map.size());
+    }
+
+    private void testConcurrentGetAndRemove() {
+        map = storage.openBTreeMap("TestConcurrentGetAndRemove");
+        map.clear();
+        map.put(1, "a");
+        map.put(2, "b");
+        new Thread(() -> {
+            String v = map.get(2);
+            // 如果remove先执行完，v就是null，否则是b
+            assertTrue(v == null || v.equals("b"));
+        }).start();
+        map.remove(1);
+        map.remove(2);
+        assertEquals(0, map.size());
+    }
+
+    private void testRemoveChild() {
     }
 }

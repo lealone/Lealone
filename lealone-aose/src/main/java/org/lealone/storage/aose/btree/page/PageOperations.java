@@ -358,14 +358,21 @@ public abstract class PageOperations {
                 return null;
             }
             markDirtyPages();
-            Object old = p.getValue(index);
-            p.remove(index);
-            if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
+            Object oldValue = p.getValue(index);
+            Page newPage = p.copy(); // 删除元素需要先copy，否则会产生get和remove的并发问题
+            newPage.remove(index);
+            if (p.getRef() != null) {
+                p.getRef().replacePage(newPage);
+            }
+            if (newPage.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
                 p.dynamicInfo = new DynamicInfo(Page.State.REMOVING);
                 RemoveChild task = new RemoveChild(p, key);
                 p.map.getNodePageOperationHandler().handlePageOperation(task);
             }
-            return old;
+            if (p.getRef() == null) {
+                p.map.newRoot(newPage);
+            }
+            return oldValue;
         }
 
         @Override
