@@ -70,5 +70,33 @@ public class PageOperationTest extends TestBase {
     }
 
     private void testRemoveChild() {
+        map = storage.openBTreeMap("TestRemoveChild");
+        map.clear();
+        // 测试只有两层的btree，root是node page，删除所有元素后root又变成leaf page
+        for (int i = 1; i <= 30; i++)
+            map.put(i, "value" + i);
+        for (int i = 1; i <= 30; i++)
+            map.remove(i);
+
+        // 测试3层btree，只删除第一个node page及其leaf page
+        map.clear();
+        int size = 300;
+        for (int i = 1; i <= size; i++)
+            map.put(i, "value" + i);
+        map.save();
+        // map.printPage();
+        map.close();
+        map = storage.openBTreeMap("TestRemoveChild");
+
+        for (int i = 1; i <= 84; i++)
+            map.remove(i);
+        size = size - 84;
+        AtomicInteger count = new AtomicInteger();
+        map.cursor().forEachRemaining(e -> {
+            count.incrementAndGet();
+        });
+        assertEquals(size, count.get());
+
+        assertEquals(size, map.size());
     }
 }

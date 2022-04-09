@@ -183,7 +183,8 @@ public class NodePage extends LocalPage {
 
     @Override
     public void remove(int index) {
-        super.remove(index);
+        if (keys.length > 0) // 删除最后一个children时，keys已经空了
+            super.remove(index);
         addMemory(-PageUtils.PAGE_MEMORY_CHILD);
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];

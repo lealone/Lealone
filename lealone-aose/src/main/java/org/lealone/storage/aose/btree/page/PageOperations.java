@@ -12,7 +12,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.page.Page.DynamicInfo;
-import org.lealone.storage.page.PageKey;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
 
@@ -459,10 +458,12 @@ public abstract class PageOperations {
             if (!oldDynamicInfo.isRemoving())
                 return;
             Page root = old.map.getRootPage();
+            if (!root.isNode()) {
+                throw DbException.getInternalError();
+            }
             Page p = root.copy();
             remove(p, key);
-            if (p.isNode() && p.isEmpty()) {
-                p.removePage();
+            if (p.isEmpty()) {
                 p = LeafPage.createEmpty(old.map);
             }
             DynamicInfo newDynamicInfo = new DynamicInfo(Page.State.REMOVED);
@@ -476,32 +477,25 @@ public abstract class PageOperations {
         }
 
         private void remove(Page p, Object key) {
-            if (p.isLeaf()) {
-                return;
-            }
             int index = p.binarySearch(key);
             if (index < 0) {
                 index = -index - 1;
             } else {
                 index++;
             }
-            Page cOld = p.getChildPage(index);
-            Page c = cOld.copy();
-            remove(c, key);
+            Page c = p.getChildPage(index);
+            if (c.isNode()) {
+                c = c.copy(); // leaf page不需要copy
+                remove(c, key);
+            }
             if (c.isNotEmpty()) {
                 // no change, or there are more nodes
                 p.setChild(index, c);
             } else {
-                PageKey pageKey = p.getChildPageReference(index).pageKey;
-                // this child was deleted
-                if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
-                    p.setChild(index, c);
-                    c.removePage(); // 直接删除最后一个子节点，父节点在remove(Object)那里删除
-                } else {
-                    p.remove(index); // 删除没有记录的子节点
+                p.remove(index);
+                if (c.isLeaf()) {
+                    old.map.fireLeafPageRemove(c.getRef().pageKey, c);
                 }
-                if (c.isLeaf())
-                    old.map.fireLeafPageRemove(pageKey, c);
             }
         }
     }
