@@ -416,12 +416,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
             return (K) p.getKey(x);
         }
-        int x = p.binarySearch(key);
-        if (x < 0) {
-            x = -x - 1;
-        } else {
-            x++;
-        }
+        int x = p.getPageIndex(key);
         while (true) {
             if (x < 0 || x >= getChildPageCount(p)) {
                 return null;
@@ -953,12 +948,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             int index = 0;
             while (p.isNode()) {
                 parent = p;
-                index = p.binarySearch(key);
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
+                index = p.getPageIndex(key);
                 PageReference r = p.getChildPageReference(index);
                 if (r.isRemotePage()) {
                     break;
@@ -998,12 +988,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             return;
         }
         // node page
-        int x = p.binarySearch(pk.key);
-        if (x < 0) {
-            x = -x - 1;
-        } else {
-            x++;
-        }
+        int x = p.getPageIndex(pk.key);
         if (pk.first && p.isLeafChildPage(x)) {
             x = 0;
         }
@@ -1034,13 +1019,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (p.isLeaf() || p.isRemote()) {
             return getReplicationNodes(p);
         }
-        int index = p.binarySearch(key);
         // p is a node
-        if (index < 0) {
-            index = -index - 1;
-        } else {
-            index++;
-        }
+        int index = p.getPageIndex(key);
         return getReplicationNodes(p.getChildPage(index), key);
     }
 
@@ -1315,12 +1295,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Page p = root;
         while (p.isNode()) {
             // 注意: index是子page的数组索引，不是keys数组的索引
-            int index = from == null ? -1 : p.binarySearch(from);
-            if (index < 0) {
-                index = -index - 1;
-            } else {
-                index++;
-            }
+            int index = from == null ? 0 : p.getPageIndex(from);
             pos = new CursorPos(p, index + 1, pos);
             if (p.isNodeChildPage(index)) {
                 p = p.getChildPage(index);

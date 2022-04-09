@@ -394,20 +394,10 @@ public abstract class PageOperations {
             insertChildren(tmpNodePage);
         }
 
-        private static int binarySearch(Page p, Object key) {
-            int index = p.binarySearch(key);
-            if (index < 0) {
-                index = -index - 1;
-            } else {
-                index++;
-            }
-            return index;
-        }
-
         private static void insertChildren(TmpNodePage tmpNodePage) {
             Page parent = tmpNodePage.old.getParentRef().page;
             PageReference parentRef = parent.getRef();
-            int index = binarySearch(parent, tmpNodePage.key);
+            int index = parent.getPageIndex(tmpNodePage.key);
             parent = parent.copy();
             parent.setAndInsertChild(index, tmpNodePage);
             parentRef.replacePage(parent);
@@ -477,12 +467,7 @@ public abstract class PageOperations {
         }
 
         private void remove(Page p, Object key) {
-            int index = p.binarySearch(key);
-            if (index < 0) {
-                index = -index - 1;
-            } else {
-                index++;
-            }
+            int index = p.getPageIndex(key);
             Page c = p.getChildPage(index);
             if (c.isNode()) {
                 c = c.copy(); // leaf page不需要copy

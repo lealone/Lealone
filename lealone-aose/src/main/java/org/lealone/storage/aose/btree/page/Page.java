@@ -327,6 +327,16 @@ public class Page {
         throw ie();
     }
 
+    public int getPageIndex(Object key) {
+        int index = binarySearch(key);
+        if (index < 0) {
+            index = -index - 1;
+        } else {
+            index++;
+        }
+        return index;
+    }
+
     boolean needSplit() {
         throw ie();
     }
@@ -560,16 +570,12 @@ public class Page {
     public Page binarySearchLeafPage(Object key) {
         Page p = this;
         while (true) {
-            int index = p.binarySearch(key);
             if (p.isLeaf()) {
+                int index = p.binarySearch(key);
                 // 如果找不到，是返回null还是throw new AssertionError()，由调用者确保key总是存在
                 return index >= 0 ? p : null;
             } else {
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
+                int index = p.getPageIndex(key);
                 p = p.getChildPage(index);
             }
         }
@@ -579,12 +585,7 @@ public class Page {
     public Page gotoLeafPage(Object key) {
         Page p = this;
         while (p.isNode()) {
-            int index = p.binarySearch(key);
-            if (index < 0) {
-                index = -index - 1;
-            } else {
-                index++;
-            }
+            int index = p.getPageIndex(key);
             p = p.getChildPage(index);
         }
         return p;

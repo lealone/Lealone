@@ -95,12 +95,7 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
                 pos = new CursorPos(p, x, pos);
                 break;
             }
-            int x = from == null ? -1 : p.binarySearch(from);
-            if (x < 0) {
-                x = -x - 1;
-            } else {
-                x++;
-            }
+            int x = from == null ? 0 : p.getPageIndex(from);
             pos = new CursorPos(p, x + 1, pos);
             p = p.getChildPage(x);
         }
