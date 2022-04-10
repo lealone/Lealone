@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
 
 /**
@@ -62,10 +61,6 @@ public class LobStreamMap {
      */
     public LobStreamMap(BTreeMap<Long, byte[]> map) {
         this.map = map;
-    }
-
-    public StorageMap<Long, byte[]> getStorageMap() {
-        return map;
     }
 
     public boolean isEmpty() {

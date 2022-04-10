@@ -21,7 +21,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.storage.LobStorage;
@@ -53,7 +52,7 @@ public class LobStreamStorage implements LobStorage {
      * to the stream store id (which is a byte array).
      *
      * Key: lobId (long)
-     * Value: { streamStoreId (byte[]), tableId (int), byteCount (long), hash (long) }.
+     * Value: { streamStoreId (byte[]), tableId (int), byteCount (long), hash (long) }. //最后两个未使用
      */
     private BTreeMap<Long, Object[]> lobMap;
 
@@ -65,7 +64,7 @@ public class LobStreamStorage implements LobStorage {
      * Key: { streamStoreId (byte[]), lobId (long) }.
      * Value: true (boolean).
      */
-    private BTreeMap<Object[], Boolean> refMap;
+    private BTreeMap<Object[], Boolean> refMap; // 调用copyLob时会有多个lob引用同一个streamStoreId
 
     // 这个字段才是实际存放大对象字节流的，上面两个只是放引用
     private LobStreamMap lobStreamMap;
@@ -73,6 +72,10 @@ public class LobStreamStorage implements LobStorage {
     public LobStreamStorage(DataHandler dataHandler, Storage storage) {
         this.dataHandler = dataHandler;
         this.storage = (AOStorage) storage;
+    }
+
+    public LobStreamMap getLobStreamMap() {
+        return lobStreamMap;
     }
 
     @Override
@@ -139,7 +142,6 @@ public class LobStreamStorage implements LobStorage {
     @Override
     public ValueLob createBlob(InputStream in, long maxLength) {
         init();
-        int type = Value.BLOB;
         try {
             if (maxLength != -1 && maxLength <= dataHandler.getMaxLengthInplaceLob()) {
                 byte[] small = new byte[(int) maxLength];
@@ -147,14 +149,12 @@ public class LobStreamStorage implements LobStorage {
                 if (len < small.length) {
                     small = Arrays.copyOf(small, len);
                 }
-                return ValueLob.createSmallLob(type, small);
+                return ValueLob.createSmallLob(Value.BLOB, small);
             }
             if (maxLength != -1) {
                 in = new RangeInputStream(in, 0L, maxLength);
             }
-            return createLob(in, type);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+            return createLob(in, Value.BLOB);
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
@@ -187,24 +187,17 @@ public class LobStreamStorage implements LobStorage {
             // the length is not correct
             lob = ValueLob.create(type, dataHandler, lob.getTableId(), lob.getLobId(), null, in.getLength());
             return lob;
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
     }
 
     private ValueLob createLob(InputStream in, int type) throws IOException {
-        byte[] streamStoreId;
-        try {
-            streamStoreId = lobStreamMap.put(in);
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
+        byte[] streamStoreId = lobStreamMap.put(in);
         long lobId = generateLobId();
         long length = lobStreamMap.length(streamStoreId);
         int tableId = LobStorage.TABLE_TEMP;
-        Object[] value = { streamStoreId, tableId, length, 0 };
+        Object[] value = { streamStoreId, tableId };
         lobMap.put(lobId, value);
         Object[] key = { streamStoreId, lobId };
         refMap.put(key, Boolean.TRUE);
@@ -274,10 +267,10 @@ public class LobStreamStorage implements LobStorage {
 
     @Override
     public void removeAllForTable(int tableId) {
-        init();
         if (storage.isClosed()) {
             return;
         }
+        init();
         // this might not be very efficient -
         // to speed it up, we would need yet another map
         ArrayList<Long> list = new ArrayList<>();
