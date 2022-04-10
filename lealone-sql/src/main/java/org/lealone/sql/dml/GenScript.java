@@ -474,7 +474,7 @@ public class GenScript extends ScriptBase {
                 for (int i = 0;; i++) {
                     StringBuilder buff = new StringBuilder(lobBlockSize * 2);
                     buff.append("INSERT INTO SYSTEM_LOB_STREAM VALUES(" + id + ", " + i + ", NULL, '");
-                    int len = IOUtils.readFully(input, bytes, lobBlockSize);
+                    int len = IOUtils.readFully(input, bytes);
                     if (len <= 0) {
                         break;
                     }
@@ -494,7 +494,7 @@ public class GenScript extends ScriptBase {
                 for (int i = 0;; i++) {
                     StringBuilder buff = new StringBuilder(lobBlockSize * 2);
                     buff.append("INSERT INTO SYSTEM_LOB_STREAM VALUES(" + id + ", " + i + ", ");
-                    int len = IOUtils.readFully(reader, chars, lobBlockSize);
+                    int len = IOUtils.readFully(reader, chars);
                     if (len < 0) {
                         break;
                     }

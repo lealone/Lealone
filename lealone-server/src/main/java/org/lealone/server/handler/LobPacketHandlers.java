@@ -57,7 +57,7 @@ public class LobPacketHandlers extends PacketHandlers {
                 // limit the buffer size
                 length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
                 byte[] buff = new byte[length];
-                length = IOUtils.readFully(cachedInputStream, buff, length);
+                length = IOUtils.readFully(cachedInputStream, buff);
                 if (length != buff.length) {
                     byte[] newBuff = new byte[length];
                     System.arraycopy(buff, 0, newBuff, 0, length);

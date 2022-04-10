@@ -143,10 +143,7 @@ public class LobStreamStorage implements LobStorage {
         try {
             if (maxLength != -1 && maxLength <= dataHandler.getMaxLengthInplaceLob()) {
                 byte[] small = new byte[(int) maxLength];
-                int len = IOUtils.readFully(in, small, (int) maxLength);
-                if (len > maxLength) {
-                    throw new IllegalStateException("len > blobLength, " + len + " > " + maxLength);
-                }
+                int len = IOUtils.readFully(in, small);
                 if (len < small.length) {
                     small = Arrays.copyOf(small, len);
                 }
@@ -171,9 +168,9 @@ public class LobStreamStorage implements LobStorage {
             // we multiple by 3 here to get the worst-case size in bytes
             if (maxLength != -1 && maxLength * 3 <= dataHandler.getMaxLengthInplaceLob()) {
                 char[] small = new char[(int) maxLength];
-                int len = IOUtils.readFully(reader, small, (int) maxLength);
-                if (len > maxLength) {
-                    throw new IllegalStateException("len > blobLength, " + len + " > " + maxLength);
+                int len = IOUtils.readFully(reader, small);
+                if (len < small.length) {
+                    small = Arrays.copyOf(small, len);
                 }
                 byte[] utf8 = new String(small, 0, len).getBytes(StandardCharsets.UTF_8);
                 if (utf8.length > dataHandler.getMaxLengthInplaceLob()) {

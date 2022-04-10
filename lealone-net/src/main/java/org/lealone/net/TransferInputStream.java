@@ -270,11 +270,11 @@ public class TransferInputStream implements NetInputStream {
             int len = (int) length;
             if (type == Value.BLOB) {
                 small = new byte[len];
-                IOUtils.readFully(in, small, len);
+                IOUtils.readFully(in, small);
             } else {
                 DataReader reader = new DataReader(in);
                 char[] buff = new char[len];
-                IOUtils.readFully(reader, buff, len);
+                IOUtils.readFully(reader, buff);
                 small = new String(buff).getBytes("UTF-8");
             }
             int magic = readInt();

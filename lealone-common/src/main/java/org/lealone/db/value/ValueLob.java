@@ -96,7 +96,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
             char[] buff = new char[Constants.IO_BUFFER_SIZE];
             while (true) {
                 int len = getBufferSize(this.handler, false, remaining);
-                len = IOUtils.readFully(in, buff, len);
+                len = IOUtils.readFully(in, buff);
                 if (len <= 0) {
                     break;
                 }
@@ -134,7 +134,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
                     break;
                 }
                 len = getBufferSize(this.handler, compress, remaining);
-                len = IOUtils.readFully(in, buff, len);
+                len = IOUtils.readFully(in, buff);
                 if (len <= 0) {
                     break;
                 }
@@ -523,7 +523,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
             } else {
                 buff = new char[len];
                 reader.mark(len);
-                len = IOUtils.readFully(reader, buff, len);
+                len = IOUtils.readFully(reader, buff);
             }
             if (len <= handler.getMaxLengthInplaceLob()) {
                 byte[] small = new String(buff, 0, len).getBytes(Constants.UTF8);
@@ -559,7 +559,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
                 len = buff.length;
             } else {
                 buff = DataUtils.newBytes(len);
-                len = IOUtils.readFully(in, buff, len);
+                len = IOUtils.readFully(in, buff);
             }
             if (len <= handler.getMaxLengthInplaceLob()) {
                 byte[] small = DataUtils.newBytes(len);

@@ -306,18 +306,15 @@ public class IOUtils {
     }
 
     /**
-     * Try to read the given number of bytes to the buffer. This method reads
-     * until the maximum number of bytes have been read or until the end of
-     * file.
+     * Try to read the given number of bytes to the buffer. 
      *
      * @param in the input stream
      * @param buffer the output buffer
-     * @param max the number of bytes to read at most
      * @return the number of bytes read, 0 meaning EOF
      */
-    public static int readFully(InputStream in, byte[] buffer, int max) throws IOException {
+    public static int readFully(InputStream in, byte[] buffer) throws IOException {
         try {
-            int result = 0, len = Math.min(max, buffer.length);
+            int result = 0, len = buffer.length;
             while (len > 0) {
                 int l = in.read(buffer, result, len);
                 if (l < 0) {
@@ -333,18 +330,15 @@ public class IOUtils {
     }
 
     /**
-     * Try to read the given number of characters to the buffer. This method
-     * reads until the maximum number of characters have been read or until the
-     * end of file.
+     * Try to read the given number of characters to the buffer. 
      *
      * @param in the reader
      * @param buffer the output buffer
-     * @param max the number of characters to read at most
      * @return the number of characters read
      */
-    public static int readFully(Reader in, char[] buffer, int max) throws IOException {
+    public static int readFully(Reader in, char[] buffer) throws IOException {
         try {
-            int off = 0, len = Math.min(max, buffer.length);
+            int off = 0, len = buffer.length;
             if (len == 0) {
                 return 0;
             }
