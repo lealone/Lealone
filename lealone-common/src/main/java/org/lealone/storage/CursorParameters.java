@@ -9,7 +9,7 @@ import java.util.List;
 
 import org.lealone.storage.page.PageKey;
 
-public class IterationParameters<K> {
+public class CursorParameters<K> {
 
     public K from;
     public K to;
@@ -17,8 +17,8 @@ public class IterationParameters<K> {
     public int[] columnIndexes;
     public boolean allColumns;
 
-    public <K2> IterationParameters<K2> copy(K2 from, K2 to) {
-        IterationParameters<K2> p = new IterationParameters<>();
+    public <K2> CursorParameters<K2> copy(K2 from, K2 to) {
+        CursorParameters<K2> p = new CursorParameters<>();
         p.from = from;
         p.to = to;
         p.pageKeys = pageKeys;
@@ -26,39 +26,39 @@ public class IterationParameters<K> {
         return p;
     }
 
-    public static <K> IterationParameters<K> create(K from) {
-        IterationParameters<K> p = new IterationParameters<>();
+    public static <K> CursorParameters<K> create(K from) {
+        CursorParameters<K> p = new CursorParameters<>();
         p.from = from;
         return p;
     }
 
-    public static <K> IterationParameters<K> create(K from, K to) {
-        IterationParameters<K> p = new IterationParameters<>();
+    public static <K> CursorParameters<K> create(K from, K to) {
+        CursorParameters<K> p = new CursorParameters<>();
         p.from = from;
         p.to = to;
         return p;
     }
 
-    public static <K> IterationParameters<K> create(K from, List<PageKey> pageKeys) {
-        IterationParameters<K> p = new IterationParameters<>();
+    public static <K> CursorParameters<K> create(K from, List<PageKey> pageKeys) {
+        CursorParameters<K> p = new CursorParameters<>();
         p.from = from;
         p.pageKeys = pageKeys;
         return p;
     }
 
-    public static <K> IterationParameters<K> create(K from, int columnIndex) {
+    public static <K> CursorParameters<K> create(K from, int columnIndex) {
         return create(from, new int[] { columnIndex });
     }
 
-    public static <K> IterationParameters<K> create(K from, int[] columnIndexes) {
-        IterationParameters<K> p = new IterationParameters<>();
+    public static <K> CursorParameters<K> create(K from, int[] columnIndexes) {
+        CursorParameters<K> p = new CursorParameters<>();
         p.from = from;
         p.columnIndexes = columnIndexes;
         return p;
     }
 
-    public static <K> IterationParameters<K> create(K from, K to, List<PageKey> pageKeys, int[] columnIndexes) {
-        IterationParameters<K> p = new IterationParameters<>();
+    public static <K> CursorParameters<K> create(K from, K to, List<PageKey> pageKeys, int[] columnIndexes) {
+        CursorParameters<K> p = new CursorParameters<>();
         p.from = from;
         p.to = to;
         p.pageKeys = pageKeys;

@@ -20,7 +20,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
@@ -523,7 +523,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         final StorageMapCursor<K, TransactionalValue> cursor;
         E current;
 
-        TIterator(IterationParameters<K> parameters) {
+        TIterator(CursorParameters<K> parameters) {
             cursor = map.cursor(parameters);
         }
 
@@ -537,11 +537,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(K from) {
-        return entryIterator(IterationParameters.create(from));
+        return entryIterator(CursorParameters.create(from));
     }
 
     @Override
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(IterationParameters<K> parameters) {
+    public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters) {
         return new TIterator<TransactionMapEntry<K, V>>(parameters) {
             @Override
             @SuppressWarnings("unchecked")
@@ -570,7 +570,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
-        return new TIterator<K>(IterationParameters.create(from)) {
+        return new TIterator<K>(CursorParameters.create(from)) {
             @Override
             public boolean hasNext() {
                 if (current != null)

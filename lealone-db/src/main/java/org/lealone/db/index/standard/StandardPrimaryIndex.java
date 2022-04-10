@@ -35,7 +35,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.page.PageKey;
@@ -252,14 +252,14 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        return find(session, IterationParameters.create(first, last));
+        return find(session, CursorParameters.create(first, last));
     }
 
     @Override
-    public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
+    public Cursor find(ServerSession session, CursorParameters<SearchRow> parameters) {
         ValueLong from = getPK(parameters.from);
         ValueLong to = getPK(parameters.to);
-        IterationParameters<Value> newParameters = parameters.copy(from, to);
+        CursorParameters<Value> newParameters = parameters.copy(from, to);
         return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(newParameters), to);
     }
 

@@ -7,7 +7,7 @@ package org.lealone.storage.aose.btree.page;
 
 import java.util.List;
 
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.btree.CursorPos;
 import org.lealone.storage.page.PageKey;
@@ -28,7 +28,7 @@ public class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
         fetchNext();
     }
 
-    public PageKeyCursor(Page root, IterationParameters<K> parameters) {
+    public PageKeyCursor(Page root, CursorParameters<K> parameters) {
         this.pageKeys = parameters.pageKeys;
         // 提前fetch
         min(root, parameters.from);

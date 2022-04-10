@@ -16,7 +16,7 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.lealone.db.value.ValueNull;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -129,7 +129,7 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         int count = 0;
         for (List<PageKey> pageKeys : nodeToPageKeyMap.values()) {
             // System.out.println("pageKeys: " + pageKeys);
-            StorageMapCursor<Integer, String> cursor = map.cursor(IterationParameters.create(from, pageKeys));
+            StorageMapCursor<Integer, String> cursor = map.cursor(CursorParameters.create(from, pageKeys));
             while (cursor.hasNext()) {
                 count++;
                 cursor.next();

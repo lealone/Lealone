@@ -30,7 +30,7 @@ import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.net.NetNode;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -473,11 +473,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
-        return cursor(IterationParameters.create(from));
+        return cursor(CursorParameters.create(from));
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
+    public StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
         if (parameters.pageKeys == null)
             return new BTreeCursor<>(this, root, parameters);
         else

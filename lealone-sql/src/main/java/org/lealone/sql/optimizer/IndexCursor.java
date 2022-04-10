@@ -24,7 +24,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.page.PageKey;
 
 /**
@@ -86,7 +86,7 @@ public class IndexCursor implements Cursor {
             } else {
                 columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
-            IterationParameters<SearchRow> parameters = IterationParameters.create(start, end, pageKeys, columnIndexes);
+            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, pageKeys, columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);
         }
     }

@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 import org.lealone.db.async.Future;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMap;
 
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
@@ -54,7 +54,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<TransactionMapEntry<K, V>> entryIterator(K from);
 
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(IterationParameters<K> parameters);
+    public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters);
 
     /**
      * Iterate over keys.

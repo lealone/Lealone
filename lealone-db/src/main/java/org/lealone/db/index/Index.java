@@ -18,7 +18,7 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.page.PageKey;
 
 /**
@@ -130,7 +130,7 @@ public interface Index extends SchemaObject {
      */
     Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
-    Cursor find(ServerSession session, IterationParameters<SearchRow> parameters);
+    Cursor find(ServerSession session, CursorParameters<SearchRow> parameters);
 
     /**
      * Check if the index can directly look up the lowest or highest value of a

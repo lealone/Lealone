@@ -19,7 +19,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.page.PageKey;
 
 /**
@@ -52,7 +52,7 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
+    public Cursor find(ServerSession session, CursorParameters<SearchRow> parameters) {
         return mainIndex.find(session, parameters);
     }
 

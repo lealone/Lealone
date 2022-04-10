@@ -5,7 +5,7 @@
  */
 package org.lealone.storage.aose.btree;
 
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.btree.page.Page;
 
@@ -21,13 +21,13 @@ import org.lealone.storage.aose.btree.page.Page;
 class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
-    private final IterationParameters<K> parameters;
+    private final CursorParameters<K> parameters;
 
     private CursorPos pos;
     private K key;
     private V value;
 
-    BTreeCursor(BTreeMap<K, ?> map, Page root, IterationParameters<K> parameters) {
+    BTreeCursor(BTreeMap<K, ?> map, Page root, CursorParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
         // 定位到>=from的第一个leaf page

@@ -13,7 +13,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueString;
-import org.lealone.storage.IterationParameters;
+import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
@@ -98,7 +98,7 @@ public class PageStorageModeTest extends TestBase {
         int rows = 0;
         ValueLong from = ValueLong.get(2000);
         StorageMapCursor<ValueLong, TransactionalValue> cursor = map
-                .cursor(IterationParameters.create(from, columnIndex));
+                .cursor(CursorParameters.create(from, columnIndex));
         while (cursor.hasNext()) {
             cursor.next();
             rows++;
