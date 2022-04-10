@@ -11,39 +11,38 @@ import org.lealone.storage.page.PageKey;
 
 public class CursorParameters<K> {
 
-    public K from;
-    public K to;
-    public List<PageKey> pageKeys;
-    public int[] columnIndexes;
-    public boolean allColumns;
+    public final K from;
+    public final K to;
+    public final List<PageKey> pageKeys;
+    public final int[] columnIndexes;
+    public final boolean allColumns;
+
+    public CursorParameters(K from, K to, List<PageKey> pageKeys, int[] columnIndexes) {
+        this(from, to, pageKeys, columnIndexes, false);
+    }
+
+    public CursorParameters(K from, K to, List<PageKey> pageKeys, int[] columnIndexes, boolean allColumns) {
+        this.from = from;
+        this.to = to;
+        this.pageKeys = pageKeys;
+        this.columnIndexes = columnIndexes;
+        this.allColumns = allColumns;
+    }
 
     public <K2> CursorParameters<K2> copy(K2 from, K2 to) {
-        CursorParameters<K2> p = new CursorParameters<>();
-        p.from = from;
-        p.to = to;
-        p.pageKeys = pageKeys;
-        p.columnIndexes = columnIndexes;
-        return p;
+        return new CursorParameters<>(from, to, pageKeys, columnIndexes, allColumns);
     }
 
     public static <K> CursorParameters<K> create(K from) {
-        CursorParameters<K> p = new CursorParameters<>();
-        p.from = from;
-        return p;
+        return new CursorParameters<>(from, null, null, null);
     }
 
     public static <K> CursorParameters<K> create(K from, K to) {
-        CursorParameters<K> p = new CursorParameters<>();
-        p.from = from;
-        p.to = to;
-        return p;
+        return new CursorParameters<>(from, to, null, null);
     }
 
     public static <K> CursorParameters<K> create(K from, List<PageKey> pageKeys) {
-        CursorParameters<K> p = new CursorParameters<>();
-        p.from = from;
-        p.pageKeys = pageKeys;
-        return p;
+        return new CursorParameters<>(from, null, pageKeys, null);
     }
 
     public static <K> CursorParameters<K> create(K from, int columnIndex) {
@@ -51,18 +50,10 @@ public class CursorParameters<K> {
     }
 
     public static <K> CursorParameters<K> create(K from, int[] columnIndexes) {
-        CursorParameters<K> p = new CursorParameters<>();
-        p.from = from;
-        p.columnIndexes = columnIndexes;
-        return p;
+        return new CursorParameters<>(from, null, null, columnIndexes);
     }
 
     public static <K> CursorParameters<K> create(K from, K to, List<PageKey> pageKeys, int[] columnIndexes) {
-        CursorParameters<K> p = new CursorParameters<>();
-        p.from = from;
-        p.to = to;
-        p.pageKeys = pageKeys;
-        p.columnIndexes = columnIndexes;
-        return p;
+        return new CursorParameters<>(from, to, pageKeys, columnIndexes);
     }
 }
