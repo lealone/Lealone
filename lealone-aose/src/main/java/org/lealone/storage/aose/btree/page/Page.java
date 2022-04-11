@@ -147,7 +147,7 @@ public class Page {
     // 这种情况发生在leaf page的处理器队列中有过期的由其他处理器移交过来的Put操作，
     // 但是当前处理器已经把原来的leaf page切割了，此时需要从一个重定向后的临时node page找到最新的leaf page，
     // 有可能发生多次切割，所以需要用循环来遍历
-    public Page redirectIfSplited(Object key) {
+    public Page redirectIfSplitted(Object key) {
         Page p = this;
         while (p.dynamicInfo.state == Page.State.SPLITTED) {
             p = p.dynamicInfo.redirect;
@@ -161,7 +161,7 @@ public class Page {
         return p;
     }
 
-    Page redirectIfSplited(boolean first) {
+    Page redirectIfSplitted(boolean first) {
         Page p = this;
         while (p.dynamicInfo.state == Page.State.SPLITTED) {
             p = p.dynamicInfo.redirect.getChildPage(first ? 0 : 1);
@@ -169,7 +169,7 @@ public class Page {
         return p;
     }
 
-    public Page tmpCopyIfSplited() {
+    public Page tmpCopyIfSplitted() {
         Page p = this;
         if (p.dynamicInfo.state == Page.State.SPLITTED) {
             p = p.dynamicInfo.redirect;

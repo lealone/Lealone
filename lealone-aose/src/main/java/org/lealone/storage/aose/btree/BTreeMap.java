@@ -247,7 +247,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, boolean allColumns) {
         Page p = root.gotoLeafPage(key);
-        p = p.redirectIfSplited(key);
+        p = p.redirectIfSplitted(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, allColumns) : null;
     }
@@ -255,7 +255,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, int[] columnIndexes) {
         Page p = root.gotoLeafPage(key);
-        p = p.redirectIfSplited(key);
+        p = p.redirectIfSplitted(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
@@ -362,7 +362,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Page p = root;
         while (true) {
             if (p.isLeaf()) {
-                p = p.redirectIfSplited(first);
+                p = p.redirectIfSplitted(first);
                 return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
             }
             p = p.getChildPage(first ? 0 : getChildPageCount(p) - 1);
@@ -404,7 +404,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     private K getMinMax(Page p, K key, boolean min, boolean excluding) {
         if (p.isLeaf()) {
-            p = p.redirectIfSplited(key);
+            p = p.redirectIfSplitted(key);
             int x = p.binarySearch(key);
             if (x < 0) {
                 x = -x - (min ? 2 : 1);

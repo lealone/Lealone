@@ -75,7 +75,7 @@ public abstract class PageOperations {
                     return PageOperationResult.SHIFTED;
                 }
             }
-            p = p.redirectIfSplited(key);
+            p = p.redirectIfSplitted(key);
             int index = p.binarySearch(key);
             V result = (V) (index >= 0 ? p.getValue(index, true) : null);
             AsyncResult<V> ar = new AsyncResult<>();
@@ -132,7 +132,7 @@ public abstract class PageOperations {
 
             // 看看是否需要重定向，比如发生了切割，
             // 避免移交到旧的leaf page处理器
-            p = p.redirectIfSplited(key);
+            p = p.redirectIfSplitted(key);
 
             // 发生切割后，重新获取最新的pRef
             if (pRef != null && pRef.page != p) {
@@ -297,7 +297,7 @@ public abstract class PageOperations {
             Page p = map.getRootPage();
             while (true) {
                 if (p.isLeaf()) {
-                    p = p.redirectIfSplited(false);
+                    p = p.redirectIfSplitted(false);
                     return p;
                 }
                 p = p.getChildPage(map.getChildPageCount(p) - 1);
