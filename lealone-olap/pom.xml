@@ -40,6 +40,7 @@
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                    <release>17</release>
                     <encoding>UTF-8</encoding>
                     <compilerArgs>
                         <arg>--add-modules</arg>

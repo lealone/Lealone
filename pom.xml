@@ -85,10 +85,11 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
+                    <version>3.8.1</version>
                     <configuration>
                         <source>1.8</source>
                         <target>1.8</target>
+                        <release>8</release>
                         <encoding>UTF-8</encoding>
                     </configuration>
                 </plugin>
@@ -231,10 +232,11 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>2.3.2</version>
+                        <version>3.8.1</version>
                         <configuration>
                             <source>1.8</source>
                             <target>1.8</target>
+                            <release>8</release>
                             <fork>true</fork>
                             <verbose>true</verbose>
                             <encoding>UTF-8</encoding>
