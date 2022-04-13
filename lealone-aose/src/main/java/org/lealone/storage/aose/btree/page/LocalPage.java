@@ -57,7 +57,7 @@ public abstract class LocalPage extends Page {
     public boolean tryLock(PageOperationHandler newLockOwner) {
         if (newLockOwner == lockOwner)
             return true;
-        while (lockOwner == null) {
+        do {
             PageOperationHandler owner = lockOwner;
             boolean ok = lockUpdater.compareAndSet(this, null, newLockOwner);
             if (!ok && owner != null) {
@@ -65,7 +65,7 @@ public abstract class LocalPage extends Page {
             }
             if (ok)
                 return true;
-        }
+        } while (lockOwner == null);
         return false;
     }
 

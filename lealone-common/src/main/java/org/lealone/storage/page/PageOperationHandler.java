@@ -11,12 +11,10 @@ public interface PageOperationHandler {
 
     void handlePageOperation(PageOperation po);
 
-    default void addWaitingHandler(PageOperationHandler handler) {
-    }
+    void addWaitingHandler(PageOperationHandler handler);
 
-    default void wakeUpWaitingHandlers() {
-    }
+    void wakeUpWaitingHandlers();
 
-    default void wakeUp() {
-    }
+    void wakeUp();
+
 }

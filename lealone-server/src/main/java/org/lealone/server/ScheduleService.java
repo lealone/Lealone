@@ -31,7 +31,7 @@ public class ScheduleService {
 
         schedulers = new Scheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
-            schedulers[i] = new Scheduler(i, config);
+            schedulers[i] = new Scheduler(i + 1, config);
         }
 
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);

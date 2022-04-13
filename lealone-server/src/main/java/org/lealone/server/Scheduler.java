@@ -33,16 +33,15 @@ import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperationHandler;
+import org.lealone.storage.page.PageOperationHandlerBase;
 import org.lealone.transaction.Transaction;
 
-public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler,
+public class Scheduler extends PageOperationHandlerBase implements Runnable, SQLStatementExecutor, AsyncTaskHandler,
         Transaction.Listener, PageOperation.ListenerFactory<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
     private final CopyOnWriteArrayList<SessionInfo> sessions = new CopyOnWriteArrayList<>();
-    private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
 
     private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
@@ -63,7 +62,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
 
     public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
-        setDaemon(true);
         String key = "scheduler_loop_interval";
         /// 是否在调度器里负责网络IO
         if (NetEventLoop.isRunInScheduler(config)) {
@@ -77,6 +75,11 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             loopInterval = 0;
             netEventLoop.setOwner(this);
         }
+    }
+
+    @Override
+    protected Logger getLogger() {
+        return logger;
     }
 
     void addSessionInfo(SessionInfo si) {
@@ -114,18 +117,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
                 logger.warn("Failed to run async queue task: " + task, e);
             }
             task = queue.poll();
-        }
-    }
-
-    private void runPageOperationTasks() {
-        PageOperation po = pageOperationQueue.poll();
-        while (po != null) {
-            try {
-                po.run(this);
-            } catch (Throwable e) {
-                logger.warn("Failed to run page operation: " + po, e);
-            }
-            po = pageOperationQueue.poll();
         }
     }
 
@@ -167,13 +158,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
 
     @Override
     public long getLoad() {
-        return sessions.size();
-    }
-
-    @Override
-    public void handlePageOperation(PageOperation po) {
-        pageOperationQueue.add(po);
-        wakeUp();
+        return sessions.size() + super.getLoad();
     }
 
     @Override

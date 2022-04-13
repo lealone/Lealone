@@ -5,10 +5,7 @@
  */
 package org.lealone.storage.page;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,20 +30,36 @@ public abstract class PageOperationHandlerFactory {
 
         pageOperationHandlers = new PageOperationHandler[handlerCount];
         for (int i = 0; i < handlerCount; i++) {
-            pageOperationHandlers[i] = new DefaultPageOperationHandler("LeafPageOperationHandler-" + i, config);
+            pageOperationHandlers[i] = new DefaultPageOperationHandler(i + 1, config);
         }
         startHandlers();
     }
 
-    public List<PageOperationHandler> getAllPageOperationHandlers() {
-        return new ArrayList<>(Arrays.asList(pageOperationHandlers));
-    }
-
     public abstract PageOperationHandler getPageOperationHandler();
+
+    public PageOperationHandler[] getPageOperationHandlers() {
+        return pageOperationHandlers;
+    }
 
     public void setPageOperationHandlers(PageOperationHandler[] handlers) {
         pageOperationHandlers = new PageOperationHandler[handlers.length];
         System.arraycopy(handlers, 0, pageOperationHandlers, 0, handlers.length);
+    }
+
+    public void startHandlers() {
+        for (PageOperationHandler h : pageOperationHandlers) {
+            if (h instanceof DefaultPageOperationHandler) {
+                ((DefaultPageOperationHandler) h).startHandler();
+            }
+        }
+    }
+
+    public void stopHandlers() {
+        for (PageOperationHandler h : pageOperationHandlers) {
+            if (h instanceof DefaultPageOperationHandler) {
+                ((DefaultPageOperationHandler) h).stopHandler();
+            }
+        }
     }
 
     public void addPageOperation(PageOperation po) {
@@ -63,36 +76,12 @@ public abstract class PageOperationHandlerFactory {
         }
     }
 
-    public int getPageOperationHandlerCount() {
-        return pageOperationHandlers.length;
-    }
-
-    public void startHandlers() {
-        for (PageOperationHandler h : pageOperationHandlers) {
-            if (h instanceof DefaultPageOperationHandler) {
-                ((DefaultPageOperationHandler) h).start();
-            }
-        }
-    }
-
-    public void stopHandlers() {
-        for (PageOperationHandler h : pageOperationHandlers) {
-            if (h instanceof DefaultPageOperationHandler) {
-                ((DefaultPageOperationHandler) h).stop();
-            }
-        }
-    }
-
-    public static PageOperationHandlerFactory instance;
-
     public static PageOperationHandlerFactory create(Map<String, String> config) {
         return create(config, null);
     }
 
     public static synchronized PageOperationHandlerFactory create(Map<String, String> config,
             PageOperationHandler[] handlers) {
-        if (instance != null)
-            return instance;
         if (config == null)
             config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
@@ -109,7 +98,6 @@ public abstract class PageOperationHandlerFactory {
         else {
             throw new RuntimeException("Unknow " + key + ": " + type);
         }
-        PageOperationHandlerFactory.instance = factory;
         return factory;
     }
 
