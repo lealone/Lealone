@@ -75,13 +75,17 @@ public class BTreeStorage {
         compressionLevel = getIntValue("compress", 0);
         backgroundExceptionHandler = (UncaughtExceptionHandler) map.getConfig("backgroundExceptionHandler");
 
-        int mb = getIntValue("cacheSize", 16);
-        if (mb > 0) {
-            CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
-            cc.maxMemory = mb * 1024L * 1024L;
-            cache = new CacheLongKeyLIRS<>(cc);
+        if (map.isInMemory()) {
+            cache = null;
         } else {
-            cache = null; // 当 cacheSize <= 0 时禁用缓存
+            int mb = getIntValue("cacheSize", 16);
+            if (mb > 0) {
+                CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
+                cc.maxMemory = mb * 1024L * 1024L;
+                cache = new CacheLongKeyLIRS<>(cc);
+            } else {
+                cache = null; // 当 cacheSize <= 0 时禁用缓存
+            }
         }
 
         chunkManager = new ChunkManager(this);
@@ -380,6 +384,9 @@ public class BTreeStorage {
         if (closed) {
             return;
         }
+        if (map.isInMemory()) {
+            return;
+        }
         if (map.isReadOnly()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
         }
@@ -402,6 +409,9 @@ public class BTreeStorage {
     }
 
     public synchronized void executeSave(boolean force) {
+        if (map.isInMemory()) {
+            return;
+        }
         DataBuffer chunkBody = DataBuffer.create();
         try {
             Chunk c = chunkManager.createChunk();

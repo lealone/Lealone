@@ -71,6 +71,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final AtomicLong size = new AtomicLong(0);
 
     private final boolean readOnly;
+    private final boolean inMemory;
     private final Map<String, Object> config;
     private final BTreeStorage btreeStorage;
     private final PageOperationHandlerFactory pohFactory;
@@ -94,6 +95,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());
         }
+        if (config.containsKey("isInMemory"))
+            inMemory = Boolean.parseBoolean(config.get("isInMemory").toString());
+        else
+            inMemory = false;
         if (config.containsKey("isShardingMode"))
             isShardingMode = Boolean.parseBoolean(config.get("isShardingMode").toString());
         else
@@ -428,7 +433,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public boolean isInMemory() {
-        return false;
+        return inMemory;
     }
 
     @Override

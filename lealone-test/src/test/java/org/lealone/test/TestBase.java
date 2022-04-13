@@ -24,7 +24,6 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.memory.MemoryStorageEngine;
 
 public class TestBase extends Assert {
 
@@ -220,7 +219,7 @@ public class TestBase extends Assert {
         StringBuilder url = new StringBuilder(100);
 
         url.append(Constants.URL_PREFIX);
-        if (inMemory || MemoryStorageEngine.NAME.equalsIgnoreCase(storageEngineName)) {
+        if (inMemory) {
             addConnectionParameter(DbSetting.PERSISTENT, "false");
         }
 

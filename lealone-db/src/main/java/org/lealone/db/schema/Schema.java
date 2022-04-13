@@ -33,7 +33,6 @@ import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFactory;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.memory.MemoryStorageEngine;
 
 /**
  * A schema as created by the SQL statement
@@ -682,10 +681,6 @@ public class Schema extends DbObjectBase {
      */
     public Table createTable(CreateTableData data) {
         data.schema = this;
-
-        if (data.isMemoryTable())
-            data.storageEngineName = MemoryStorageEngine.NAME;
-
         // 用默认的数据库参数
         if (data.storageEngineName == null) {
             data.storageEngineName = database.getDefaultStorageEngineName();

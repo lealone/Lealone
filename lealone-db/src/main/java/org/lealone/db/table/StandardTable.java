@@ -81,6 +81,8 @@ public class StandardTable extends Table {
                 parameters.put("initReplicationNodes", initReplicationNodes);
             }
         }
+        if (data.isMemoryTable())
+            parameters.put("isInMemory", "true");
         parameters.put("isShardingMode", data.session.isShardingMode() + "");
         RunMode runMode = data.session.getRunMode();
         if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)

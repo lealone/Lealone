@@ -75,7 +75,6 @@ import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.transaction.TransactionEngine;
 
@@ -528,8 +527,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         data.create = true;
         data.isHidden = true;
         data.session = systemSession;
-        data.storageEngineName = metaStorageEngineName = persistent ? getDefaultStorageEngineName()
-                : MemoryStorageEngine.NAME;
+        data.storageEngineName = metaStorageEngineName = getDefaultStorageEngineName();
         meta = mainSchema.createTable(data);
         objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
 
