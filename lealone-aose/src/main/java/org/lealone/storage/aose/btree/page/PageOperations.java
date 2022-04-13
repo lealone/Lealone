@@ -74,10 +74,6 @@ public abstract class PageOperations {
                 pRef = p.getRef();
             }
 
-            if (pRef != null) {
-                p = pRef.page; // 使用最新的page
-            }
-
             // 处理分布式场景
             if (p.isRemote() || p.getLeafPageMovePlan() != null) {
                 writeRemote();
@@ -85,27 +81,27 @@ public abstract class PageOperations {
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
-            if (p.isDataStructureChanged()) {
+            if (pRef.page != p || pRef.isDataStructureChanged()) {
                 p = null;
                 // 不用递归调用，让调度器重试
                 return PageOperationResult.RETRY;
             }
 
-            Page old = p; // p会变动
             if (childOperation != null) {
-                return runChildOperation(currentHandler, old);
+                return runChildOperation(currentHandler);
             }
-            if (old.tryLock(currentHandler)) {
-                // old有可能过期了
-                if ((pRef != null && pRef.page != old) || (pRef == null && p.map.getRootPage() != old)) {
+            if (pRef.tryLock(currentHandler)) {
+                if (pRef.page != p || pRef.isDataStructureChanged()) {
                     p = null;
+                    pRef.unlock();
                     return PageOperationResult.RETRY;
                 }
+                p = pRef.page; // 使用最新的page
                 write(currentHandler);
                 if (childOperation != null) {
-                    return runChildOperation(currentHandler, old);
+                    return runChildOperation(currentHandler);
                 } else {
-                    return handleAsyncResult(old);
+                    return handleAsyncResult();
                 }
             } else {
                 return PageOperationResult.LOCKED;
@@ -129,18 +125,18 @@ public abstract class PageOperations {
             }
         }
 
-        private PageOperationResult runChildOperation(PageOperationHandler currentHandler, Page old) {
+        private PageOperationResult runChildOperation(PageOperationHandler currentHandler) {
             if (childOperation.run(currentHandler)) {
                 childOperation = null;
-                old.setDataStructureChanged(true);
-                return handleAsyncResult(old);
+                pRef.setDataStructureChanged(true);
+                return handleAsyncResult();
             }
             return PageOperationResult.LOCKED;
         }
 
         @SuppressWarnings("unchecked")
-        private PageOperationResult handleAsyncResult(Page old) {
-            old.unlock();
+        private PageOperationResult handleAsyncResult() {
+            pRef.unlock();
             AsyncResult<R> ar = new AsyncResult<>();
             ar.setResult((R) result);
             asyncResultHandler.handle(ar);
@@ -156,13 +152,8 @@ public abstract class PageOperations {
 
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
-            Page old = p;
-            p = old.copyLeaf(index, key, value);
-            if (old.getRef() != null) {
-                old.getRef().replacePage(p);
-            } else {
-                old.map.newRoot(p);
-            }
+            p = p.copyLeaf(index, key, value); // copy之后Ref还是一样的
+            p.getRef().replacePage(p);
             map.setMaxKey(key);
         }
 
@@ -306,16 +297,12 @@ public abstract class PageOperations {
             }
             markDirtyPages();
             Object oldValue = p.getValue(index);
+            Page oldRootPage = p.map.getRootPage();
             Page newPage = p.copy(); // 删除元素需要先copy，否则会产生get和remove的并发问题
             newPage.remove(index);
-            if (p.getRef() != null) {
-                p.getRef().replacePage(newPage);
-            }
-            if (newPage.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
+            p.getRef().replacePage(newPage);
+            if (newPage.isEmpty() && p != oldRootPage) { // 删除leaf page，但是root leaf page除外
                 childOperation = new RemoveChild(p, key);
-            }
-            if (p.getRef() == null) {
-                p.map.newRoot(newPage);
             }
             return oldValue;
         }
@@ -349,7 +336,7 @@ public abstract class PageOperations {
             this.tmpNodePage = tmpNodePage;
             Page parent = tmpNodePage.old.getParentRef().page;
             Page old = parent;
-            if (!old.tryLock(currentHandler))
+            if (!old.getRef().tryLock(currentHandler))
                 return false;
             count++;
             PageReference parentRef = parent.getRef();
@@ -384,7 +371,7 @@ public abstract class PageOperations {
                     parent.map.newRoot(parent);
             }
             count--;
-            old.unlock();
+            old.getRef().unlock();
             return true;
         }
     }
@@ -435,7 +422,7 @@ public abstract class PageOperations {
                 // p.setChild(index, c);
             } else {
                 Page old = p;
-                if (!old.tryLock(currentHandler))
+                if (!old.getRef().tryLock(currentHandler))
                     return null;
                 count++;
                 p = p.copy();
@@ -445,7 +432,7 @@ public abstract class PageOperations {
                 }
                 old.getRef().replacePage(p);
                 count--;
-                old.unlock();
+                old.getRef().unlock();
             }
             return p;
         }

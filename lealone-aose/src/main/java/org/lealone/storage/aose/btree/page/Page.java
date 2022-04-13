@@ -22,7 +22,6 @@ import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageOperationHandler;
 
 public class Page {
 
@@ -31,7 +30,6 @@ public class Page {
     protected final BTreeMap<?, ?> map;
     protected long pos;
 
-    private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
     private PageReference ref;
     AtomicReference<PageReference> parentRefRef = new AtomicReference<>();
 
@@ -39,15 +37,7 @@ public class Page {
         this.map = map;
     }
 
-    public boolean isDataStructureChanged() {
-        return dataStructureChanged;
-    }
-
-    public void setDataStructureChanged(boolean dataStructureChanged) {
-        this.dataStructureChanged = dataStructureChanged;
-    }
-
-    void setParentRef(PageReference parentRef) {
+    public void setParentRef(PageReference parentRef) {
         parentRefRef.set(parentRef);
     }
 
@@ -666,12 +656,5 @@ public class Page {
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE, chunk.sumOfPageLength);
-    }
-
-    public boolean tryLock(PageOperationHandler lockOwner) {
-        return true;
-    }
-
-    public void unlock() {
     }
 }

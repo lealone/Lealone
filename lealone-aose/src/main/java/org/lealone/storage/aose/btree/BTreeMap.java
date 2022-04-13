@@ -77,9 +77,21 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final PageOperationHandlerFactory pohFactory;
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
-    private final PageReference rootRef = new PageReference(null);
+    private class RootPageReference extends PageReference {
+        public RootPageReference(Page page) {
+            super(page);
+        }
+
+        @Override
+        public void replacePage(Page page) {
+            super.replacePage(page);
+            setRootRef(page);
+        }
+    }
+
+    private final RootPageReference rootRef = new RootPageReference(null);
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
-    private volatile Page root;
+    private Page root;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -133,9 +145,25 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private void setRootRef() {
-        if (root.isNode() && root.getRef() == null) {
-            root.setRef(rootRef);
-            rootRef.replacePage(root);
+        setRootRef(root);
+    }
+
+    private void setRootRef(Page root) {
+        if (this.root != root) {
+            this.root = root;
+        }
+        if (rootRef.getPage() != root) {
+            if (root.getRef() != rootRef) {
+                root.setRef(rootRef);
+                rootRef.replacePage(root);
+            }
+            if (root.isNode()) {
+                for (PageReference ref : root.getChildren()) {
+                    Page p = ref.getPage();
+                    if (p != null && p.getParentRef() != rootRef)
+                        p.setParentRef(rootRef);
+                }
+            }
         }
     }
 

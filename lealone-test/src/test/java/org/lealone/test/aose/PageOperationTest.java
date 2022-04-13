@@ -5,6 +5,7 @@
  */
 package org.lealone.test.aose;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -12,6 +13,7 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
+//@SuppressWarnings("unused")
 public class PageOperationTest extends TestBase {
 
     private AOStorage storage;
@@ -20,6 +22,10 @@ public class PageOperationTest extends TestBase {
     @Test
     public void run() {
         init();
+        // for (int i = 1; i <= 10; i++) {
+        map.clear();
+        testConcurrenAddChild();
+        // }
         testAddChild();
         testRemoveChild();
         testConcurrentGetAndRemove();
@@ -30,6 +36,26 @@ public class PageOperationTest extends TestBase {
         storage = AOStorageTest.openStorage(pageSplitSize);
         map = storage.openBTreeMap("PageOperationTest");
         map.clear();
+    }
+
+    private void testConcurrenAddChild() {
+        int size = 60;
+        CountDownLatch latch = new CountDownLatch(size);
+        for (int i = 1; i <= size; i++) {
+            String v = "value" + i;
+            map.put(i, v, ar -> {
+                latch.countDown();
+            });
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // map.printPage();
+
+        assertEquals(size);
     }
 
     // fix https://github.com/lealone/Lealone/issues/142
@@ -45,13 +71,7 @@ public class PageOperationTest extends TestBase {
         for (int i = 31; i <= size; i++)
             map.put(i, "value" + i);
 
-        AtomicInteger count = new AtomicInteger();
-        map.cursor().forEachRemaining(e -> {
-            count.incrementAndGet();
-        });
-        assertEquals(size, count.get());
-
-        assertEquals(size, map.size());
+        assertEquals(size);
     }
 
     private void testConcurrentGetAndRemove() {
@@ -97,6 +117,10 @@ public class PageOperationTest extends TestBase {
         for (int i = 1; i <= 84; i++)
             map.remove(i);
         size = size - 84;
+        assertEquals(size);
+    }
+
+    private void assertEquals(int size) {
         AtomicInteger count = new AtomicInteger();
         map.cursor().forEachRemaining(e -> {
             count.incrementAndGet();

@@ -5,11 +5,8 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 
 public abstract class LocalPage extends Page {
@@ -19,10 +16,6 @@ public abstract class LocalPage extends Page {
      */
     public static final boolean ASSERT = false;
     public static final boolean DEBUG = true;
-
-    private static final AtomicReferenceFieldUpdater<LocalPage, PageOperationHandler> //
-    lockUpdater = AtomicReferenceFieldUpdater.newUpdater(LocalPage.class, PageOperationHandler.class, "lockOwner");
-    protected volatile PageOperationHandler lockOwner;
 
     /**
      * The last result of a find operation is cached.
@@ -51,31 +44,6 @@ public abstract class LocalPage extends Page {
 
     protected LocalPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    @Override
-    public boolean tryLock(PageOperationHandler newLockOwner) {
-        if (newLockOwner == lockOwner)
-            return true;
-        do {
-            PageOperationHandler owner = lockOwner;
-            boolean ok = lockUpdater.compareAndSet(this, null, newLockOwner);
-            if (!ok && owner != null) {
-                owner.addWaitingHandler(newLockOwner);
-            }
-            if (ok)
-                return true;
-        } while (lockOwner == null);
-        return false;
-    }
-
-    @Override
-    public void unlock() {
-        if (lockOwner != null) {
-            PageOperationHandler owner = lockOwner;
-            lockOwner = null;
-            owner.wakeUpWaitingHandlers();
-        }
     }
 
     @Override

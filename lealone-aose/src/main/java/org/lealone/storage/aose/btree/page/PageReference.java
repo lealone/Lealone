@@ -7,6 +7,7 @@ package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.db.IDatabase;
 import org.lealone.db.async.Future;
@@ -15,6 +16,7 @@ import org.lealone.net.NetNode;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.page.PageKey;
+import org.lealone.storage.page.PageOperationHandler;
 
 public class PageReference {
 
@@ -28,7 +30,43 @@ public class PageReference {
         return new PageReference(null, REMOTE_PAGE_POS);
     }
 
-    volatile Page page;
+    private static final AtomicReferenceFieldUpdater<PageReference, PageOperationHandler> //
+    lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageOperationHandler.class, "lockOwner");
+    protected volatile PageOperationHandler lockOwner;
+    private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
+
+    public boolean isDataStructureChanged() {
+        return dataStructureChanged;
+    }
+
+    public void setDataStructureChanged(boolean dataStructureChanged) {
+        this.dataStructureChanged = dataStructureChanged;
+    }
+
+    public boolean tryLock(PageOperationHandler newLockOwner) {
+        if (newLockOwner == lockOwner)
+            return true;
+        do {
+            PageOperationHandler owner = lockOwner;
+            boolean ok = lockUpdater.compareAndSet(this, null, newLockOwner);
+            if (!ok && owner != null) {
+                owner.addWaitingHandler(newLockOwner);
+            }
+            if (ok)
+                return true;
+        } while (lockOwner == null);
+        return false;
+    }
+
+    public void unlock() {
+        if (lockOwner != null) {
+            PageOperationHandler owner = lockOwner;
+            lockOwner = null;
+            owner.wakeUpWaitingHandlers();
+        }
+    }
+
+    Page page;
     PageKey pageKey;
     long pos;
     List<String> replicationHostIds;
