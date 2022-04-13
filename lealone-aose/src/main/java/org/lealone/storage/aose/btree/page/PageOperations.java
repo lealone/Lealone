@@ -81,7 +81,7 @@ public abstract class PageOperations {
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
-            if (pRef.page != p || pRef.isDataStructureChanged()) {
+            if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
                 p = null;
                 // 不用递归调用，让调度器重试
                 return PageOperationResult.RETRY;
@@ -91,7 +91,7 @@ public abstract class PageOperations {
                 return runChildOperation(currentHandler);
             }
             if (pRef.tryLock(currentHandler)) {
-                if (pRef.page != p || pRef.isDataStructureChanged()) {
+                if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
                     p = null;
                     pRef.unlock();
                     return PageOperationResult.RETRY;
