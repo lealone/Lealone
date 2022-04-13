@@ -40,7 +40,6 @@ import org.lealone.storage.aose.btree.page.LeafPage;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageKeyCursor;
 import org.lealone.storage.aose.btree.page.PageOperations.Append;
-import org.lealone.storage.aose.btree.page.PageOperations.Get;
 import org.lealone.storage.aose.btree.page.PageOperations.Put;
 import org.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import org.lealone.storage.aose.btree.page.PageOperations.Remove;
@@ -52,7 +51,6 @@ import org.lealone.storage.aose.btree.page.RemotePage;
 import org.lealone.storage.page.LeafPageMovePlan;
 import org.lealone.storage.page.PageKey;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
 
@@ -76,14 +74,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final Map<String, Object> config;
     private final BTreeStorage btreeStorage;
     private final PageOperationHandlerFactory pohFactory;
-    // 每个btree固定一个处理器用于处理node page的所有状态更新操作
-    private final PageOperationHandler nodePageOperationHandler;
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     private final PageReference rootRef = new PageReference(null);
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     private volatile Page root;
-    private volatile boolean parallelDisabled;
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -95,7 +90,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
         this.pohFactory = aoStorage.getPageOperationHandlerFactory();
-        this.nodePageOperationHandler = pohFactory.getNodePageOperationHandler();
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());
@@ -131,7 +125,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
             setRootRef();
         }
-        disableParallelIfNeeded();
     }
 
     private void setRootRef() {
@@ -147,21 +140,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 return true;
         }
         return false;
-    }
-
-    private void disableParallelIfNeeded() {
-        if (root.isLeaf())
-            parallelDisabled = true;
-    }
-
-    public void enableParallelIfNeeded() {
-        if (parallelDisabled && root.isNode() && root.getRawChildPageCount() >= 2) {
-            parallelDisabled = false;
-        }
-    }
-
-    public boolean isParallelDisabled() {
-        return parallelDisabled;
     }
 
     public void acquireSharedLock() {
@@ -218,10 +196,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return binarySearch(key, columnIndexes);
     }
 
-    public PageOperationHandler getNodePageOperationHandler() {
-        return nodePageOperationHandler;
-    }
-
     // test only
     public int getLevel(K key) {
         int level = 1;
@@ -231,23 +205,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             level++;
             parentRef = parentRef.getPage().getParentRef();
         }
-        while (p.getDynamicInfo().state == Page.State.SPLITTED) {
-            p = p.getDynamicInfo().redirect;
-            int index;
-            if (getKeyType().compare(key, p.getKey(0)) < 0)
-                index = 0;
-            else
-                index = 1;
-            p = p.getChildPage(index);
-            level++;
-        }
         return level;
     }
 
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, boolean allColumns) {
         Page p = root.gotoLeafPage(key);
-        p = p.redirectIfSplitted(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, allColumns) : null;
     }
@@ -255,7 +218,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, int[] columnIndexes) {
         Page p = root.gotoLeafPage(key);
-        p = p.redirectIfSplitted(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
@@ -362,7 +324,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Page p = root;
         while (true) {
             if (p.isLeaf()) {
-                p = p.redirectIfSplitted(first);
                 return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
             }
             p = p.getChildPage(first ? 0 : getChildPageCount(p) - 1);
@@ -404,7 +365,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     private K getMinMax(Page p, K key, boolean min, boolean excluding) {
         if (p.isLeaf()) {
-            p = p.redirectIfSplitted(key);
             int x = p.binarySearch(key);
             if (x < 0) {
                 x = -x - (min ? 2 : 1);
@@ -495,7 +455,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             size.set(0);
             maxKey.set(0);
             newRoot(LeafPage.createEmpty(this));
-            disableParallelIfNeeded();
             root.setReplicationHostIds(replicationHostIds);
         } finally {
             releaseExclusiveLock();
@@ -620,12 +579,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return root.gotoLeafPage(key);
     }
 
+    public Page gotoLeafPage(Object key, boolean markDirty) {
+        return root.gotoLeafPage(key, markDirty);
+    }
+
     //////////////////// 以下是异步API的实现 ////////////////////////////////
 
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
-        Get<K, V> get = new Get<>(this, key, handler);
-        pohFactory.addPageOperation(get);
+        V v = get(key);
+        AsyncResult<V> ar = new AsyncResult<>();
+        ar.setResult(v);
+        handler.handle(ar);
     }
 
     @Override

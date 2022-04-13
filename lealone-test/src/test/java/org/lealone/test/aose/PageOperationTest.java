@@ -75,6 +75,12 @@ public class PageOperationTest extends TestBase {
         // 测试只有两层的btree，root是node page，删除所有元素后root又变成leaf page
         for (int i = 1; i <= 30; i++)
             map.put(i, "value" + i);
+
+        // new Thread(() -> {
+        // for (int i = 1; i <= 30; i++)
+        // map.remove(i);
+        // }).start();
+
         for (int i = 1; i <= 30; i++)
             map.remove(i);
 

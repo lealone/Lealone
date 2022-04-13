@@ -17,6 +17,8 @@ public interface PageOperation extends AsyncTask {
         SPLITTING,
         SUCCEEDED,
         SHIFTED,
+        REMOTE_WRITTING,
+        RETRY,
         FAILED,
         LOCKED;
     }

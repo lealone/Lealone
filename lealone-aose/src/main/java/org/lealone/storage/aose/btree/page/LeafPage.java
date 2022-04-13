@@ -16,7 +16,6 @@ import org.lealone.net.NetNode;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 
 public class LeafPage extends LocalPage {
@@ -39,10 +38,6 @@ public class LeafPage extends LocalPage {
 
     public LeafPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    LeafPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
-        super(map, handler);
     }
 
     @Override
@@ -193,7 +188,7 @@ public class LeafPage extends LocalPage {
         newValues[index] = value;
         map.incrementSize();// 累加全局计数器
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-        LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory(), handler);
+        LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
@@ -478,16 +473,11 @@ public class LeafPage extends LocalPage {
      * @return the new page
      */
     public static LeafPage createEmpty(BTreeMap<?, ?> map) {
-        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, 0, PageUtils.PAGE_MEMORY, null);
+        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, 0, PageUtils.PAGE_MEMORY);
     }
 
     static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
-        return create(map, keys, values, totalCount, memory, null);
-    }
-
-    private static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory,
-            PageOperationHandler handler) {
-        LeafPage p = new LeafPage(map, handler);
+        LeafPage p = new LeafPage(map);
         // the position is 0
         p.keys = keys;
         p.values = values;

@@ -16,19 +16,21 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 
 public class DefaultPageOperationHandler implements PageOperationHandler, Runnable, PageOperation.Listener<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultPageOperationHandler.class);
     // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
     private final ConcurrentLinkedQueue<PageOperation> tasks = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<PageOperationHandler> waitingHandlers = new ConcurrentLinkedQueue<>();
     private final AtomicLong size = new AtomicLong();
     private final Semaphore haveWork = new Semaphore(1);
     private final String name;
     private final long loopInterval;
     private Thread thread;
     private boolean stopped;
-    private long shiftCount;
+    private volatile boolean waiting;
 
     public DefaultPageOperationHandler(int id, Map<String, String> config) {
         this(DefaultPageOperationHandler.class.getSimpleName() + "-" + id, config);
@@ -53,6 +55,21 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     }
 
     @Override
+    public void addWaitingHandler(PageOperationHandler handler) {
+        waitingHandlers.add(handler);
+    }
+
+    @Override
+    public void wakeUpWaitingHandlers() {
+        if (!waitingHandlers.isEmpty()) {
+            for (PageOperationHandler handler : waitingHandlers) {
+                handler.wakeUp();
+            }
+            waitingHandlers.clear();
+        }
+    }
+
+    @Override
     public String toString() {
         return name;
     }
@@ -64,7 +81,6 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     public void reset(boolean clearTasks) {
         thread = null;
         stopped = false;
-        shiftCount = 0;
         if (clearTasks) {
             size.set(0);
             tasks.clear();
@@ -89,43 +105,49 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         wakeUp();
     }
 
+    @Override
     public void wakeUp() {
-        haveWork.release(1);
-    }
-
-    public long getShiftCount() {
-        return shiftCount;
+        if (waiting)
+            haveWork.release(1);
     }
 
     @Override
     public void run() {
         while (!stopped) {
             runTasks();
-            try {
-                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                haveWork.drainPermits();
-            } catch (InterruptedException e) {
-                stopped = true;
-                // logger.warn(getName() + " is interrupted");
-                break;
-            }
+            doAwait();
         }
     }
 
     private void runTasks() {
-        PageOperation task = tasks.poll();
+        // 先peek，执行成功时再poll，严格保证每个PageOperation的执行顺序
+        PageOperation task = tasks.peek();
         while (task != null) {
-            size.decrementAndGet();
             try {
-                task.run(this);
-                // PageOperationResult result = task.run(this);
-                // if (result == PageOperationResult.SHIFTED) {
-                // shiftCount++;
-                // }
+                PageOperationResult result = task.run(this);
+                if (result == PageOperationResult.LOCKED) {
+                    break;
+                } else if (result == PageOperationResult.RETRY) {
+                    continue;
+                }
             } catch (Throwable e) {
                 logger.warn("Failed to run page operation: " + task, e);
             }
-            task = tasks.poll();
+            size.decrementAndGet();
+            tasks.poll();
+            task = tasks.peek();
+        }
+    }
+
+    private void doAwait() {
+        waiting = true;
+        try {
+            haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+            haveWork.drainPermits();
+        } catch (InterruptedException e) {
+            logger.warn("", e);
+        } finally {
+            waiting = false;
         }
     }
 
@@ -139,12 +161,7 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         result = null;
         while (result == null || e == null) {
             runTasks();
-            try {
-                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                haveWork.drainPermits();
-            } catch (InterruptedException e) {
-                break;
-            }
+            doAwait();
         }
         if (e != null)
             throw e;
