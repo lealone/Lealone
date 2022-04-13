@@ -46,6 +46,9 @@ public class AOStorage extends StorageBase {
     AOStorage(Map<String, Object> config, PageOperationHandlerFactory pohFactory) {
         super(config);
         this.pohFactory = pohFactory;
+        Integer inMemory = (Integer) config.get("inMemory");
+        if (inMemory != null && inMemory == 1)
+            return;
         String storagePath = getStoragePath();
         DataUtils.checkNotNull(storagePath, "storage path");
         if (!FileUtils.exists(storagePath))

@@ -75,8 +75,11 @@ public class BTreeStorage {
         compressionLevel = getIntValue("compress", 0);
         backgroundExceptionHandler = (UncaughtExceptionHandler) map.getConfig("backgroundExceptionHandler");
 
+        chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
             cache = null;
+            mapBaseDir = null;
+            return;
         } else {
             int mb = getIntValue("cacheSize", 16);
             if (mb > 0) {
@@ -88,7 +91,6 @@ public class BTreeStorage {
             }
         }
 
-        chunkManager = new ChunkManager(this);
         mapBaseDir = map.getStorage().getStoragePath() + File.separator + map.getName();
         if (!FileUtils.exists(mapBaseDir))
             FileUtils.createDirectories(mapBaseDir);
@@ -317,6 +319,8 @@ public class BTreeStorage {
      */
     synchronized void remove() {
         closeImmediately();
+        if (map.isInMemory())
+            return;
         FileUtils.deleteRecursive(mapBaseDir, true);
     }
 
