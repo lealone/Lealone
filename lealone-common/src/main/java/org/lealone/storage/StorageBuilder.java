@@ -147,21 +147,6 @@ public abstract class StorageBuilder {
         return set("backgroundExceptionHandler", exceptionHandler);
     }
 
-    /**
-     * Whether empty space in the file should be re-used. If enabled, old data
-     * is overwritten (default). If disabled, writes are appended at the end of
-     * the file.
-     * <p>
-     * This setting is specially useful for online backup. To create an online
-     * backup, disable this setting, then copy the file (starting at the
-     * beginning of the file). In this case, concurrent backup and write
-     * operations are possible (obviously the backup process needs to be faster
-     * than the write operations).
-     */
-    public StorageBuilder reuseSpace() {
-        return set("reuseSpace", 1);
-    }
-
     public StorageBuilder minFillRate(int minFillRate) {
         return set("minFillRate", minFillRate);
     }
@@ -174,5 +159,4 @@ public abstract class StorageBuilder {
     public String toString() {
         return DataUtils.appendMap(new StringBuilder(), config).toString();
     }
-
 }

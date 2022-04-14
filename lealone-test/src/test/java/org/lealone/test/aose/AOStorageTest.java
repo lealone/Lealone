@@ -109,7 +109,7 @@ public class AOStorageTest extends TestBase {
         if (storagePath == null)
             storagePath = joinDirs("aose");
         builder.compressHigh();
-        builder.storagePath(storagePath).reuseSpace().minFillRate(30);
+        builder.storagePath(storagePath).minFillRate(30);
         AOStorage storage = builder.openStorage();
         return storage;
     }
