@@ -95,7 +95,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-    protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
+    public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");

@@ -25,7 +25,6 @@ import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.BTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.page.PageOperationHandlerFactory;
@@ -62,6 +61,10 @@ public class AOStorage extends StorageBase {
         }
     }
 
+    public boolean isReadOnly() {
+        return config.containsKey("readOnly");
+    }
+
     public PageOperationHandlerFactory getPageOperationHandlerFactory() {
         return pohFactory;
     }
@@ -86,16 +89,9 @@ public class AOStorage extends StorageBase {
         return openBTreeMap(name, null, null, null);
     }
 
+    @SuppressWarnings("unchecked")
     public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
-        BTreeMapBuilder<K, V> builder = new BTreeMapBuilder<>();
-        builder.keyType(keyType);
-        builder.valueType(valueType);
-        return openMap(name, builder, parameters);
-    }
-
-    @SuppressWarnings("unchecked")
-    private <K, V> BTreeMap<K, V> openMap(String name, BTreeMapBuilder<K, V> builder, Map<String, String> parameters) {
         StorageMap<?, ?> map = maps.get(name);
         if (map == null) {
             synchronized (this) {
@@ -104,17 +100,12 @@ public class AOStorage extends StorageBase {
                     CaseInsensitiveMap<Object> c = new CaseInsensitiveMap<>(config);
                     if (parameters != null)
                         c.putAll(parameters);
-                    builder.name(name).config(c).aoStorage(this);
-                    map = builder.openMap();
+                    map = new BTreeMap<>(name, keyType, valueType, c, this);
                     maps.put(name, map);
                 }
             }
         }
         return (BTreeMap<K, V>) map;
-    }
-
-    public boolean isReadOnly() {
-        return config.containsKey("readOnly");
     }
 
     @Override
