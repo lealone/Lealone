@@ -109,7 +109,7 @@ public class RemotePage extends Page {
 
     @Override
     public void removePage() {
-        map.getBtreeStorage().removePage(pos, 0);
+        map.getBTreeStorage().removePage(pos, 0);
     }
 
     @Override

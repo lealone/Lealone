@@ -131,9 +131,7 @@ public abstract class PageOperations {
         @SuppressWarnings("unchecked")
         private PageOperationResult handleAsyncResult() {
             pRef.unlock();
-            AsyncResult<R> ar = new AsyncResult<>();
-            ar.setResult((R) result);
-            resultHandler.handle(ar);
+            resultHandler.handle(new AsyncResult<>((R) result));
             return PageOperationResult.SUCCEEDED;
         }
 

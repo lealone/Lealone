@@ -71,6 +71,9 @@ public class PageReference {
     long pos;
     List<String> replicationHostIds;
 
+    public PageReference() {
+    }
+
     public PageReference(long pos) {
         this.pos = pos;
     }

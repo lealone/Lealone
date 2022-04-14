@@ -136,7 +136,7 @@ public abstract class LocalPage extends Page {
 
     @Override
     boolean needSplit() {
-        return memory > map.getBtreeStorage().getPageSplitSize() && keys.length > 1;
+        return memory > map.getBTreeStorage().getPageSplitSize() && keys.length > 1;
     }
 
     /**
@@ -206,7 +206,7 @@ public abstract class LocalPage extends Page {
         if (pos == 0) {
             removedInMemory = true;
         }
-        map.getBtreeStorage().removePage(pos, memory);
+        map.getBTreeStorage().removePage(pos, memory);
     }
 
     protected void removeIfInMemory() {

@@ -69,6 +69,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // 只允许通过成员方法访问这个特殊的字段
     private final AtomicLong size = new AtomicLong(0);
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     private final boolean readOnly;
     private final boolean inMemory;
@@ -78,39 +79,31 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     private class RootPageReference extends PageReference {
-        public RootPageReference(Page page) {
-            super(page);
-        }
-
         @Override
         public void replacePage(Page page) {
             super.replacePage(page);
-            setRootRef(page);
+            setRootRef(page); // 当要替换page时也设置root page相关信息
         }
     }
 
-    private final RootPageReference rootRef = new RootPageReference(null);
+    private final RootPageReference rootRef = new RootPageReference();
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     private Page root;
-
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
+        // 只要包含就为true
+        readOnly = config.containsKey("readOnly");
+        inMemory = config.containsKey("inMemory");
 
-        this.readOnly = config.containsKey("readOnly");
         this.config = config;
         this.pohFactory = (PageOperationHandlerFactory) config.get("pohFactory");
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());
         }
-        if (config.containsKey("isInMemory"))
-            inMemory = Boolean.parseBoolean(config.get("isInMemory").toString());
-        else
-            inMemory = false;
         if (config.containsKey("isShardingMode"))
             isShardingMode = Boolean.parseBoolean(config.get("isShardingMode").toString());
         else
@@ -120,11 +113,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         btreeStorage = new BTreeStorage(this);
         Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
-            root = btreeStorage.readPage(lastChunk.rootPagePos);
             size.set(lastChunk.mapSize);
-            setRootRef(); // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
+            Page root = btreeStorage.readPage(lastChunk.rootPagePos);
+            // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
+            setRootRef(root);
             setMaxKey(lastKey());
         } else {
+            Page root;
             if (isShardingMode) {
                 String initReplicationNodes = (String) config.get("initReplicationNodes");
                 DataUtils.checkNotNull(initReplicationNodes, "initReplicationNodes");
@@ -140,12 +135,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             } else {
                 root = LeafPage.createEmpty(this);
             }
-            setRootRef();
+            setRootRef(root);
         }
     }
 
-    private void setRootRef() {
-        setRootRef(root);
+    private boolean containsLocalNode(String[] replicationNodes) {
+        for (String n : replicationNodes) {
+            if (NetNode.isLocalTcpNode(n))
+                return true;
+        }
+        return false;
     }
 
     private void setRootRef(Page root) {
@@ -167,27 +166,27 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    private boolean containsLocalNode(String[] replicationNodes) {
-        for (String e : replicationNodes) {
-            if (NetNode.isLocalTcpNode(e))
-                return true;
-        }
-        return false;
+    public Page getRootPage() {
+        return root;
     }
 
-    public void acquireSharedLock() {
+    public void newRoot(Page newRoot) {
+        setRootRef(newRoot);
+    }
+
+    private void acquireSharedLock() {
         lock.readLock().lock();
     }
 
-    public void releaseSharedLock() {
+    private void releaseSharedLock() {
         lock.readLock().unlock();
     }
 
-    void acquireExclusiveLock() {
+    private void acquireExclusiveLock() {
         lock.writeLock().lock();
     }
 
-    void releaseExclusiveLock() {
+    private void releaseExclusiveLock() {
         lock.writeLock().unlock();
     }
 
@@ -203,12 +202,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return config.get(key);
     }
 
-    public BTreeStorage getBtreeStorage() {
+    public BTreeStorage getBTreeStorage() {
         return btreeStorage;
     }
 
     public PageStorageMode getPageStorageMode() {
         return pageStorageMode;
+    }
+
+    public void setPageStorageMode(PageStorageMode pageStorageMode) {
+        this.pageStorageMode = pageStorageMode;
     }
 
     @Override
@@ -261,8 +264,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         checkWrite();
     }
 
-    // 有子类用到
-    protected void checkWrite() {
+    private void checkWrite() {
         if (btreeStorage.isClosed()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
         }
@@ -321,18 +323,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return key;
     }
 
-    /**
-     * Use the new root page from now on.
-     * 
-     * @param newRoot the new root page
-     */
-    public void newRoot(Page newRoot) {
-        if (root != newRoot) {
-            root = newRoot;
-            setRootRef();
-        }
-    }
-
     @Override
     public K firstKey() {
         return getFirstLast(true);
@@ -350,8 +340,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @return the key, or null if the map is empty
      */
     @SuppressWarnings("unchecked")
-    protected K getFirstLast(boolean first) {
-        if (size() == 0) {
+    private K getFirstLast(boolean first) {
+        if (isEmpty()) {
             return null;
         }
         Page p = root;
@@ -391,7 +381,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @param excluding if the given upper/lower bound is exclusive
      * @return the key, or null if no such key exists
      */
-    protected K getMinMax(K key, boolean min, boolean excluding) {
+    private K getMinMax(K key, boolean min, boolean excluding) {
         return getMinMax(root, key, min, excluding);
     }
 
@@ -445,10 +435,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         size.decrementAndGet();
     }
 
-    void resetSize() {
-        size.set(0);
-    }
-
     @Override
     public boolean containsKey(K key) {
         return get(key) != null;
@@ -462,6 +448,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public boolean isInMemory() {
         return inMemory;
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
     }
 
     @Override
@@ -538,27 +528,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    public boolean isReadOnly() {
-        return readOnly;
-    }
-
-    public BTreeStorage getBTreeStorage() {
-        return btreeStorage;
-    }
-
-    /**
-     * Get the child page count for this page. This is to allow another map
-     * implementation to override the default, in case the last child is not to be used.
-     * 
-     * @param p the page
-     * @return the number of direct children
-     */
     public int getChildPageCount(Page p) {
         return p.getRawChildPageCount();
-    }
-
-    protected String getType() {
-        return "BTree";
     }
 
     @Override
@@ -573,13 +544,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public String toString() {
-        StringBuilder buff = new StringBuilder();
-        DataUtils.appendMap(buff, "name", name);
-        String type = getType();
-        if (type != null) {
-            DataUtils.appendMap(buff, "type", type);
-        }
-        return buff.toString();
+        return name;
     }
 
     public void printPage() {
@@ -600,14 +565,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return btreeStorage.getMemorySpaceUsed();
     }
 
-    public Page getRootPage() {
-        return root;
-    }
-
-    public void setPageStorageMode(PageStorageMode pageStorageMode) {
-        this.pageStorageMode = pageStorageMode;
-    }
-
     public Page gotoLeafPage(Object key) {
         return root.gotoLeafPage(key);
     }
@@ -621,9 +578,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         V v = get(key);
-        AsyncResult<V> ar = new AsyncResult<>();
-        ar.setResult(v);
-        handler.handle(ar);
+        handler.handle(new AsyncResult<>(v));
     }
 
     @Override

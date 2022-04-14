@@ -366,7 +366,7 @@ public class Page {
         } else {
             // 频繁设置volatile类型的hasUnsavedChanges字段也影响性能
             if (hasUnsavedChanges)
-                map.getBtreeStorage().setUnsavedChanges(true);
+                map.getBTreeStorage().setUnsavedChanges(true);
         }
     }
 

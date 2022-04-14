@@ -82,7 +82,7 @@ public class StandardTable extends Table {
             }
         }
         if (data.isMemoryTable())
-            parameters.put("isInMemory", "true");
+            parameters.put("inMemory", "1");
         parameters.put("isShardingMode", data.session.isShardingMode() + "");
         RunMode runMode = data.session.getRunMode();
         if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
