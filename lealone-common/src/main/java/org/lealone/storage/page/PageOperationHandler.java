@@ -17,4 +17,26 @@ public interface PageOperationHandler {
 
     void wakeUp();
 
+    class DummyPageOperationHandler implements PageOperationHandler {
+        @Override
+        public long getLoad() {
+            return 0;
+        }
+
+        @Override
+        public void handlePageOperation(PageOperation po) {
+        }
+
+        @Override
+        public void addWaitingHandler(PageOperationHandler handler) {
+        }
+
+        @Override
+        public void wakeUpWaitingHandlers() {
+        }
+
+        @Override
+        public void wakeUp() {
+        }
+    }
 }

@@ -40,10 +40,17 @@ public class PageOperationTest extends TestBase {
 
     private void testConcurrenAddChild() {
         int size = 60;
+        new Thread(() -> {
+            for (int i = 1; i <= 10; i++) {
+                String v = "value" + i;
+                map.putIfAbsent(i, v);
+            }
+        }).start();
+
         CountDownLatch latch = new CountDownLatch(size);
         for (int i = 1; i <= size; i++) {
             String v = "value" + i;
-            map.put(i, v, ar -> {
+            map.putIfAbsent(i, v, ar -> {
                 latch.countDown();
             });
         }

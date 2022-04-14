@@ -45,12 +45,15 @@ import org.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import org.lealone.storage.aose.btree.page.PageOperations.Remove;
 import org.lealone.storage.aose.btree.page.PageOperations.Replace;
 import org.lealone.storage.aose.btree.page.PageOperations.RunnableOperation;
+import org.lealone.storage.aose.btree.page.PageOperations.SingleWrite;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
 import org.lealone.storage.aose.btree.page.RemotePage;
 import org.lealone.storage.page.LeafPageMovePlan;
 import org.lealone.storage.page.PageKey;
 import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
 
@@ -256,71 +259,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Page p = root.gotoLeafPage(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
-    }
-
-    // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null
-    private void checkWrite(V value) {
-        DataUtils.checkNotNull(value, "value");
-        checkWrite();
-    }
-
-    private void checkWrite() {
-        if (btreeStorage.isClosed()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
-        }
-        if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only");
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <R> PageOperation.Listener<R> getPageOperationListener() {
-        Object object = Thread.currentThread();
-        PageOperation.Listener<R> listener;
-        if (object instanceof PageOperation.Listener)
-            listener = (PageOperation.Listener<R>) object;
-        else if (object instanceof PageOperation.ListenerFactory)
-            listener = ((PageOperation.ListenerFactory<R>) object).createListener();
-        else
-            listener = new PageOperation.SyncListener<R>();
-        listener.startListen();
-        return listener;
-    }
-
-    @Override
-    public V put(K key, V value) {
-        PageOperation.Listener<V> listener = getPageOperationListener();
-        put(key, value, listener);
-        return listener.await();
-    }
-
-    @Override
-    public V putIfAbsent(K key, V value) {
-        PageOperation.Listener<V> listener = getPageOperationListener();
-        putIfAbsent(key, value, listener);
-        return listener.await();
-    }
-
-    @Override
-    public V remove(K key) {
-        PageOperation.Listener<V> listener = getPageOperationListener();
-        remove(key, listener);
-        return listener.await();
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        PageOperation.Listener<Boolean> listener = getPageOperationListener();
-        replace(key, oldValue, newValue, listener);
-        return listener.await();
-    }
-
-    @Override
-    public K append(V value) {
-        PageOperation.Listener<K> listener = getPageOperationListener();
-        K key = append(value, listener);
-        listener.await();
-        return key;
     }
 
     @Override
@@ -573,7 +511,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return root.gotoLeafPage(key, markDirty);
     }
 
-    //////////////////// 以下是异步API的实现 ////////////////////////////////
+    // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null
+    private void checkWrite(V value) {
+        DataUtils.checkNotNull(value, "value");
+        checkWrite();
+    }
+
+    private void checkWrite() {
+        if (btreeStorage.isClosed()) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
+        }
+        if (readOnly) {
+            throw DataUtils.newUnsupportedOperationException("This map is read-only");
+        }
+    }
+
+    //////////////////// 以下是同步和异步API的实现 ////////////////////////////////
 
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
@@ -582,42 +535,133 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
+    public V put(K key, V value) {
+        return put0(key, value, null);
+    }
+
+    @Override
     public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put0(key, value, handler);
+    }
+
+    private V put0(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite(value);
         Put<K, V, V> put = new Put<>(this, key, value, handler);
-        pohFactory.addPageOperation(put);
+        return runPageOperation(put);
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value) {
+        return putIfAbsent0(key, value, null);
     }
 
     @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent0(key, value, handler);
+    }
+
+    private V putIfAbsent0(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
-        pohFactory.addPageOperation(putIfAbsent);
+        return runPageOperation(putIfAbsent);
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        return replace0(key, oldValue, newValue, null);
     }
 
     @Override
     public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace0(key, oldValue, newValue, handler);
+    }
+
+    private boolean replace0(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
         checkWrite(newValue);
         Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);
-        pohFactory.addPageOperation(replace);
+        return runPageOperation(replace);
+    }
+
+    @Override
+    public K append(V value) {
+        return append0(value, null);
+    }
+
+    @Override
+    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        return append0(value, handler);
+    }
+
+    @SuppressWarnings("unchecked")
+    private K append0(V value, AsyncHandler<AsyncResult<K>> handler) {
+        checkWrite(value);
+        // 先得到一个long类型的key
+        K key = (K) ValueLong.get(maxKey.incrementAndGet());
+        Append<K, V> append = new Append<>(this, key, value, handler);
+        runPageOperation(append);
+        return key;
+    }
+
+    @Override
+    public V remove(K key) {
+        return remove0(key, null);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
-        checkWrite();
-        Remove<K, V> remove = new Remove<>(this, key, handler);
-        pohFactory.addPageOperation(remove);
+        remove0(key, handler);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+    private V remove0(K key, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite();
-        // 先得到一个long类型的key
-        K key = (K) ValueLong.get(maxKey.incrementAndGet());
-        Append<K, V> append = new Append<>(this, key, value, handler);
-        pohFactory.addPageOperation(append);
-        return key;
+        Remove<K, V> remove = new Remove<>(this, key, handler);
+        return runPageOperation(remove);
+    }
+
+    private <R> R runPageOperation(SingleWrite<?, ?, R> po) {
+        PageOperationHandler poHandler = getPageOperationHandler(false);
+        // 先快速试一次，如果不成功再用异步等待的方式
+        if (po.run(poHandler) == PageOperationResult.SUCCEEDED)
+            return po.getResult();
+        poHandler = getPageOperationHandler(true);
+        if (po.getResultHandler() == null) { // 同步
+            PageOperation.Listener<R> listener = getPageOperationListener();
+            po.setResultHandler(listener);
+            poHandler.handlePageOperation(po);
+            return listener.await();
+        } else { // 异步
+            poHandler.handlePageOperation(po);
+            return null;
+        }
+    }
+
+    // 如果当前线程不是PageOperationHandler，第一次运行时创建一个DummyPageOperationHandler
+    // 第二次运行时需要加到现有线程池某个PageOperationHandler的队列中
+    private PageOperationHandler getPageOperationHandler(boolean useThreadPool) {
+        Object t = Thread.currentThread();
+        if (t instanceof PageOperationHandler) {
+            return (PageOperationHandler) t;
+        } else {
+            if (useThreadPool) {
+                return pohFactory.getPageOperationHandler();
+            } else {
+                return new PageOperationHandler.DummyPageOperationHandler();
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <R> PageOperation.Listener<R> getPageOperationListener() {
+        Object object = Thread.currentThread();
+        PageOperation.Listener<R> listener;
+        if (object instanceof PageOperation.Listener)
+            listener = (PageOperation.Listener<R>) object;
+        else if (object instanceof PageOperation.ListenerFactory)
+            listener = ((PageOperation.ListenerFactory<R>) object).createListener();
+        else
+            listener = new PageOperation.SyncListener<R>();
+        listener.startListen();
+        return listener;
     }
 
     ////////////////////// 以下是分布式API的实现 ////////////////////////////////

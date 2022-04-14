@@ -64,9 +64,7 @@ public abstract class PageOperationHandlerFactory {
 
     public void addPageOperation(PageOperation po) {
         Object t = Thread.currentThread();
-        // 如果当前线程本身就是PageOperationHandler，就算PageOperation想要操作的page不是它管辖范围内的，
-        // 也可以提前帮此page的PageOperationHandler找到这个即将被操作的page，
-        // 然后把PageOperation移交到对应的PageOperationHandler的队列中，下次处理时就不用重新再遍历btree了。
+        // 如果当前线程本身就是PageOperationHandler，直接运行。
         if (t instanceof PageOperationHandler) {
             po.run((PageOperationHandler) t);
         } else {

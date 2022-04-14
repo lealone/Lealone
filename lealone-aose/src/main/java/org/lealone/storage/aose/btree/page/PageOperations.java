@@ -53,17 +53,32 @@ public abstract class PageOperations {
     public static abstract class SingleWrite<K, V, R> implements PageOperation {
         final BTreeMap<K, V> map;
         final K key;
-        final AsyncHandler<AsyncResult<R>> resultHandler;
+        AsyncHandler<AsyncResult<R>> resultHandler;
 
         Page p; // 最终要操作的leaf page
         PageReference pRef;
         Object result;
+
         ChildOperation childOperation; // 如果不为null，说明需要进一步切割或删除page
 
         public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
             this.map = map;
             this.key = key;
             this.resultHandler = resultHandler;
+        }
+
+        // 可以延后设置
+        public void setResultHandler(AsyncHandler<AsyncResult<R>> resultHandler) {
+            this.resultHandler = resultHandler;
+        }
+
+        public AsyncHandler<AsyncResult<R>> getResultHandler() {
+            return resultHandler;
+        }
+
+        @SuppressWarnings("unchecked")
+        public R getResult() {
+            return (R) result;
         }
 
         @Override
@@ -131,7 +146,8 @@ public abstract class PageOperations {
         @SuppressWarnings("unchecked")
         private PageOperationResult handleAsyncResult() {
             pRef.unlock();
-            resultHandler.handle(new AsyncResult<>((R) result));
+            if (resultHandler != null)
+                resultHandler.handle(new AsyncResult<>((R) result));
             return PageOperationResult.SUCCEEDED;
         }
 
