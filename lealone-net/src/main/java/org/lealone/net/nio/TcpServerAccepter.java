@@ -18,7 +18,7 @@ import org.lealone.net.NetServerBase;
 
 //只负责接收新的TCP连接
 //TODO 1.支持SSL 2.支持配置参数
-class TcpServerAccepter extends NetServerBase {
+class TcpServerAccepter extends NetServerBase implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
     private ServerSocketChannel serverChannel;
@@ -65,12 +65,11 @@ class TcpServerAccepter extends NetServerBase {
 
     @Override
     public Runnable getRunnable() {
-        return () -> {
-            TcpServerAccepter.this.run();
-        };
+        return this;
     }
 
-    private void run() {
+    @Override
+    public void run() {
         while (!isStopped()) {
             accept();
         }

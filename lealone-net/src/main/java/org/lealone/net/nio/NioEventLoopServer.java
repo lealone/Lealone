@@ -18,7 +18,7 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
 //TODO 1.支持SSL 2.支持配置参数
-class NioEventLoopServer extends NetServerBase {
+class NioEventLoopServer extends NetServerBase implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
     private ServerSocketChannel serverChannel;
@@ -54,12 +54,11 @@ class NioEventLoopServer extends NetServerBase {
 
     @Override
     public Runnable getRunnable() {
-        return () -> {
-            NioEventLoopServer.this.run();
-        };
+        return this;
     }
 
-    private void run() {
+    @Override
+    public void run() {
         for (;;) {
             try {
                 nioEventLoop.select();
