@@ -7,6 +7,9 @@ package org.lealone.storage.page;
 
 public interface PageOperationHandler {
 
+    // 没有用getId，考虑到实现类可能继承自java.lang.Thread，它里面也有一个getId，会导致冲突
+    int getHandlerId();
+
     long getLoad();
 
     void handlePageOperation(PageOperation po);
@@ -18,6 +21,11 @@ public interface PageOperationHandler {
     void wakeUp();
 
     class DummyPageOperationHandler implements PageOperationHandler {
+        @Override
+        public int getHandlerId() {
+            return -1;
+        }
+
         @Override
         public long getLoad() {
             return 0;

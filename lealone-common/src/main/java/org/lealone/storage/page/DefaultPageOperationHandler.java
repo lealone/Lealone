@@ -24,8 +24,8 @@ public class DefaultPageOperationHandler extends PageOperationHandlerBase
     private boolean stopped;
     private volatile boolean waiting;
 
-    public DefaultPageOperationHandler(int id, Map<String, String> config) {
-        super(DefaultPageOperationHandler.class.getSimpleName() + "-" + id);
+    public DefaultPageOperationHandler(int id, int waitingQueueSize, Map<String, String> config) {
+        super(id, DefaultPageOperationHandler.class.getSimpleName() + "-" + id, waitingQueueSize);
         // 默认100毫秒
         loopInterval = DateTimeUtils.getLoopInterval(config, "page_operation_handler_loop_interval", 100);
     }

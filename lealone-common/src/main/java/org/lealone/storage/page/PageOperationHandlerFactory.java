@@ -30,7 +30,7 @@ public abstract class PageOperationHandlerFactory {
 
         pageOperationHandlers = new PageOperationHandler[handlerCount];
         for (int i = 0; i < handlerCount; i++) {
-            pageOperationHandlers[i] = new DefaultPageOperationHandler(i + 1, config);
+            pageOperationHandlers[i] = new DefaultPageOperationHandler(i, handlerCount, config);
         }
         startHandlers();
     }

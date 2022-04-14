@@ -60,8 +60,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     private YieldableCommand nextBestCommand;
     private NetEventLoop netEventLoop;
 
-    public Scheduler(int id, Map<String, String> config) {
-        super(ScheduleService.class.getSimpleName() + "-" + id);
+    public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
+        super(id, ScheduleService.class.getSimpleName() + "-" + id, waitingQueueSize);
         String key = "scheduler_loop_interval";
         /// 是否在调度器里负责网络IO
         if (NetEventLoop.isRunInScheduler(config)) {
