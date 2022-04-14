@@ -27,7 +27,6 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
 
 /**
@@ -40,13 +39,9 @@ public class AOStorage extends StorageBase {
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    private final PageOperationHandlerFactory pohFactory;
-
-    AOStorage(Map<String, Object> config, PageOperationHandlerFactory pohFactory) {
+    AOStorage(Map<String, Object> config) {
         super(config);
-        this.pohFactory = pohFactory;
-        Integer inMemory = (Integer) config.get("inMemory");
-        if (inMemory != null && inMemory == 1)
+        if (config.containsKey("inMemory"))
             return;
         String storagePath = getStoragePath();
         DataUtils.checkNotNull(storagePath, "storage path");
@@ -63,10 +58,6 @@ public class AOStorage extends StorageBase {
 
     public boolean isReadOnly() {
         return config.containsKey("readOnly");
-    }
-
-    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
-        return pohFactory;
     }
 
     @Override

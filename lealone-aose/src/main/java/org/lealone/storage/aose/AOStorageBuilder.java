@@ -14,7 +14,6 @@ import org.lealone.storage.page.PageOperationHandlerFactory;
 public class AOStorageBuilder extends StorageBuilder {
 
     private static final HashMap<String, AOStorage> cache = new HashMap<>();
-    private final PageOperationHandlerFactory pohFactory;
 
     public AOStorageBuilder() {
         this(null, null);
@@ -27,9 +26,9 @@ public class AOStorageBuilder extends StorageBuilder {
     public AOStorageBuilder(Map<String, String> defaultConfig, PageOperationHandlerFactory pohFactory) {
         if (pohFactory == null)
             pohFactory = PageOperationHandlerFactory.create(defaultConfig);
-        this.pohFactory = pohFactory;
         if (defaultConfig != null)
             config.putAll(defaultConfig);
+        config.put("pohFactory", pohFactory);
     }
 
     @Override
@@ -40,7 +39,7 @@ public class AOStorageBuilder extends StorageBuilder {
             synchronized (cache) {
                 storage = cache.get(storagePath);
                 if (storage == null) {
-                    storage = new AOStorage(config, pohFactory);
+                    storage = new AOStorage(config);
                     cache.put(storagePath, storage);
                 }
             }

@@ -102,7 +102,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
-        this.pohFactory = aoStorage.getPageOperationHandlerFactory();
+        this.pohFactory = (PageOperationHandlerFactory) config.get("pohFactory");
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());
