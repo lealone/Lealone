@@ -359,22 +359,22 @@ public class Page {
         markDirty(false);
     }
 
-    void markDirty(boolean changes) {
+    void markDirty(boolean hasUnsavedChanges) {
         if (pos != 0) {
             removePage();
             pos = 0;
         } else {
             // 频繁设置volatile类型的hasUnsavedChanges字段也影响性能
-            if (changes)
+            if (hasUnsavedChanges)
                 map.getBtreeStorage().setUnsavedChanges(true);
         }
     }
 
     public void markDirtyRecursive() {
-        markDirty();
+        markDirty(true);
         PageReference parentRef = getParentRef();
         while (parentRef != null) {
-            parentRef.page.markDirty();
+            parentRef.page.markDirty(false);
             parentRef = parentRef.page.getParentRef();
         }
     }
@@ -451,12 +451,7 @@ public class Page {
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     public Page gotoLeafPage(Object key) {
-        Page p = this;
-        while (p.isNode()) {
-            int index = p.getPageIndex(key);
-            p = p.getChildPage(index);
-        }
-        return p;
+        return gotoLeafPage(key, false);
     }
 
     public Page gotoLeafPage(Object key, boolean markDirty) {

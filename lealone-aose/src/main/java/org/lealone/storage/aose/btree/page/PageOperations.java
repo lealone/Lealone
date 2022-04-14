@@ -53,21 +53,21 @@ public abstract class PageOperations {
     public static abstract class SingleWrite<K, V, R> implements PageOperation {
         final BTreeMap<K, V> map;
         final K key;
-        final AsyncHandler<AsyncResult<R>> asyncResultHandler;
+        final AsyncHandler<AsyncResult<R>> resultHandler;
 
         Page p; // 最终要操作的leaf page
         PageReference pRef;
         Object result;
         ChildOperation childOperation; // 如果不为null，说明需要进一步切割或删除page
 
-        public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+        public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
             this.map = map;
             this.key = key;
-            this.asyncResultHandler = asyncResultHandler;
+            this.resultHandler = resultHandler;
         }
 
         @Override
-        public PageOperationResult run(PageOperationHandler currentHandler) {
+        public PageOperationResult run(PageOperationHandler poHandler) {
             if (p == null) {
                 // 事先定位到leaf page，当加轻量级锁失败后再次运行时不用再定位leaf page
                 p = gotoLeafPage();
@@ -88,18 +88,18 @@ public abstract class PageOperations {
             }
 
             if (childOperation != null) {
-                return runChildOperation(currentHandler);
+                return runChildOperation(poHandler);
             }
-            if (pRef.tryLock(currentHandler)) {
+            if (pRef.tryLock(poHandler)) {
                 if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
                     p = null;
                     pRef.unlock();
                     return PageOperationResult.RETRY;
                 }
                 p = pRef.page; // 使用最新的page
-                write(currentHandler);
+                write(poHandler);
                 if (childOperation != null) {
-                    return runChildOperation(currentHandler);
+                    return runChildOperation(poHandler);
                 } else {
                     return handleAsyncResult();
                 }
@@ -108,25 +108,19 @@ public abstract class PageOperations {
             }
         }
 
-        private void write(PageOperationHandler currentHandler) {
-            int index;
-            try {
-                // p.map.acquireSharedLock();
-                index = getKeyIndex();
-                result = writeLocal(index);
-            } finally {
-                // p.map.releaseSharedLock();
-            }
+        private void write(PageOperationHandler poHandler) {
+            int index = getKeyIndex();
+            result = writeLocal(index);
 
             // 看看当前leaf page是否需要进行切割
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
             if (index < 0 && p.needSplit()) {
-                childOperation = splitLeafPage(currentHandler, p);
+                childOperation = splitLeafPage(p);
             }
         }
 
-        private PageOperationResult runChildOperation(PageOperationHandler currentHandler) {
-            if (childOperation.run(currentHandler)) {
+        private PageOperationResult runChildOperation(PageOperationHandler poHandler) {
+            if (childOperation.run(poHandler)) {
                 childOperation = null;
                 pRef.setDataStructureChanged(true);
                 return handleAsyncResult();
@@ -139,7 +133,7 @@ public abstract class PageOperations {
             pRef.unlock();
             AsyncResult<R> ar = new AsyncResult<>();
             ar.setResult((R) result);
-            asyncResultHandler.handle(ar);
+            resultHandler.handle(ar);
             return PageOperationResult.SUCCEEDED;
         }
 
@@ -161,9 +155,13 @@ public abstract class PageOperations {
             p.markDirtyRecursive();
         }
 
-        // 允许子类覆盖，比如Append操作可以做自己的特殊优化
+        // 一些像Put这样的操作可以一边定位leaf page一边把父节点标记为脏页
+        // 还有一些像Remove这类操作就不需要，因为元素可能不存在
+        protected abstract boolean isMarkDirtyEnabled();
+
+        // 以下两个API允许子类覆盖，比如Append操作可以做自己的特殊优化
         protected Page gotoLeafPage() {
-            return map.gotoLeafPage(key, true);
+            return map.gotoLeafPage(key, isMarkDirtyEnabled());
         }
 
         protected int getKeyIndex() {
@@ -174,15 +172,19 @@ public abstract class PageOperations {
     public static class Put<K, V, R> extends SingleWrite<K, V, R> {
         final V value;
 
-        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
-            super(map, key, asyncResultHandler);
+        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> resultHandler) {
+            super(map, key, resultHandler);
             this.value = value;
+        }
+
+        @Override
+        protected boolean isMarkDirtyEnabled() {
+            return true;
         }
 
         @Override
         protected Object writeLocal(int index) {
             p.markDirty(true);
-            // markDirtyPages();
             if (index < 0) {
                 insertLeaf(index, value);
                 return null;
@@ -193,14 +195,19 @@ public abstract class PageOperations {
 
         @Override
         protected void writeRemote() {
-            map.putRemote(p, key, value, false, asyncResultHandler);
+            map.putRemote(p, key, value, false, resultHandler);
         }
     }
 
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
 
-        public PutIfAbsent(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
-            super(map, key, value, asyncResultHandler);
+        public PutIfAbsent(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<V>> resultHandler) {
+            super(map, key, value, resultHandler);
+        }
+
+        @Override
+        protected boolean isMarkDirtyEnabled() {
+            return false;
         }
 
         @Override
@@ -215,21 +222,19 @@ public abstract class PageOperations {
 
         @Override
         protected void writeRemote() {
-            map.putRemote(p, key, value, true, asyncResultHandler);
+            map.putRemote(p, key, value, true, resultHandler);
         }
     }
 
     public static class Append<K, V> extends Put<K, V, K> {
 
-        public Append(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<K>> asyncResultHandler) {
-            super(map, key, value, asyncResultHandler);
+        public Append(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<K>> resultHandler) {
+            super(map, key, value, resultHandler);
         }
 
         @Override
-        protected Object writeLocal(int index) {
-            markDirtyPages();
-            insertLeaf(index, value);
-            return key;
+        protected boolean isMarkDirtyEnabled() { // 已经自己实现gotoLeafPage了，所以不可能调用到
+            throw DbException.getInternalError();
         }
 
         @Override
@@ -239,6 +244,7 @@ public abstract class PageOperations {
                 if (p.isLeaf()) {
                     return p;
                 }
+                p.markDirty();
                 p = p.getChildPage(map.getChildPageCount(p) - 1);
             }
         }
@@ -249,18 +255,30 @@ public abstract class PageOperations {
         }
 
         @Override
+        protected Object writeLocal(int index) {
+            p.markDirty(true);
+            insertLeaf(index, value);
+            return key;
+        }
+
+        @Override
         protected void writeRemote() {
-            map.appendRemote(p, value, asyncResultHandler);
+            map.appendRemote(p, value, resultHandler);
         }
     }
 
     public static class Replace<K, V> extends Put<K, V, Boolean> {
-        final V oldValue;
+        private final V oldValue;
 
         public Replace(BTreeMap<K, V> map, K key, V oldValue, V newValue,
-                AsyncHandler<AsyncResult<Boolean>> asyncResultHandler) {
-            super(map, key, newValue, asyncResultHandler);
+                AsyncHandler<AsyncResult<Boolean>> resultHandler) {
+            super(map, key, newValue, resultHandler);
             this.oldValue = oldValue;
+        }
+
+        @Override
+        protected boolean isMarkDirtyEnabled() {
+            return false;
         }
 
         @Override
@@ -280,14 +298,19 @@ public abstract class PageOperations {
 
         @Override
         protected void writeRemote() {
-            map.replaceRemote(p, key, oldValue, value, asyncResultHandler);
+            map.replaceRemote(p, key, oldValue, value, resultHandler);
         }
     }
 
     public static class Remove<K, V> extends SingleWrite<K, V, V> {
 
-        public Remove(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
-            super(map, key, asyncResultHandler);
+        public Remove(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> resultHandler) {
+            super(map, key, resultHandler);
+        }
+
+        @Override
+        protected boolean isMarkDirtyEnabled() {
+            return false;
         }
 
         @Override
@@ -297,7 +320,7 @@ public abstract class PageOperations {
             }
             markDirtyPages();
             Object oldValue = p.getValue(index);
-            Page oldRootPage = p.map.getRootPage();
+            Page oldRootPage = map.getRootPage();
             Page newPage = p.copy(); // 删除元素需要先copy，否则会产生get和remove的并发问题
             newPage.remove(index);
             p.getRef().replacePage(newPage);
@@ -309,34 +332,34 @@ public abstract class PageOperations {
 
         @Override
         protected void writeRemote() {
-            map.removeRemote(p, key, asyncResultHandler);
+            map.removeRemote(p, key, resultHandler);
         }
     }
 
     private static interface ChildOperation {
-        public boolean run(PageOperationHandler currentHandler);
+        public boolean run(PageOperationHandler poHandler);
     }
 
     // 这个类不处理root leaf page被切割的场景，在执行Put操作时已经直接处理，
     // 也就是说此时的btree至少有两层
     private static class AddChild implements ChildOperation {
-        TmpNodePage tmpNodePage;
-        int count;
+        private TmpNodePage tmpNodePage;
+        private int count;
 
         public AddChild(TmpNodePage tmpNodePage) {
             this.tmpNodePage = tmpNodePage;
         }
 
         @Override
-        public boolean run(PageOperationHandler currentHandler) {
-            return insertChildren(currentHandler, tmpNodePage) && count == 0;
+        public boolean run(PageOperationHandler poHandler) {
+            return insertChildren(poHandler, tmpNodePage) && count == 0;
         }
 
-        private boolean insertChildren(PageOperationHandler currentHandler, TmpNodePage tmpNodePage) {
+        private boolean insertChildren(PageOperationHandler poHandler, TmpNodePage tmpNodePage) {
             this.tmpNodePage = tmpNodePage;
             Page parent = tmpNodePage.old.getParentRef().page;
             Page old = parent;
-            if (!old.getRef().tryLock(currentHandler))
+            if (!old.getRef().tryLock(poHandler))
                 return false;
             count++;
             PageReference parentRef = parent.getRef();
@@ -350,7 +373,7 @@ public abstract class PageOperations {
                 // node page的切割直接由单一的node page处理器处理，不会产生并发问题
                 TmpNodePage tmp = splitPage(parent);
                 for (PageReference ref : tmp.left.page.getChildren()) {
-                    if (ref.page != null)
+                    if (ref.page != null) // 没有加载的子节点直接忽略
                         ref.page.setParentRef(tmp.left.page.getRef());
                 }
                 for (PageReference ref : tmp.right.page.getChildren()) {
@@ -363,7 +386,7 @@ public abstract class PageOperations {
                     tmp.right.page.setParentRef(tmp.parent.getRef());
                     parent.map.newRoot(tmp.parent);
                 } else {
-                    insertChildren(currentHandler, tmp);
+                    insertChildren(poHandler, tmp);
                 }
             } else {
                 // 如果是root node page，那么直接替换
@@ -376,11 +399,11 @@ public abstract class PageOperations {
         }
     }
 
-    // 不处理root leaf page的场景，Remove类那里已经保证不会删除root leaf page
+    // 不处理root leaf page的场景，在Remove类那里已经保证不会删除root leaf page
     private static class RemoveChild implements ChildOperation {
-        final Page old;
-        final Object key;
-        int count;
+        private final Page old;
+        private final Object key;
+        private int count;
 
         public RemoveChild(Page old, Object key) {
             this.old = old;
@@ -388,12 +411,12 @@ public abstract class PageOperations {
         }
 
         @Override
-        public boolean run(PageOperationHandler currentHandler) {
+        public boolean run(PageOperationHandler poHandler) {
             Page root = old.map.getRootPage();
             if (!root.isNode()) {
                 throw DbException.getInternalError();
             }
-            Page p = remove(currentHandler, root, key);
+            Page p = remove(poHandler, root, key);
             boolean ok = p != null;
             if (ok && count == 0) {
                 if (p.isEmpty()) {
@@ -405,24 +428,21 @@ public abstract class PageOperations {
             return false;
         }
 
-        private Page remove(PageOperationHandler currentHandler, Page p, Object key) {
+        private Page remove(PageOperationHandler poHandler, Page p, Object key) {
             int index = p.getPageIndex(key);
             Page c = p.getChildPage(index);
             Page cOld = c;
             if (c.isNode()) {
-                // c = c.copy(); // leaf page不需要copy
-                c = remove(currentHandler, c, key);
+                c = remove(poHandler, c, key);
                 if (c == null)
                     return null;
             }
             if (c.isNotEmpty()) {
                 if (cOld != c)
                     cOld.getRef().replacePage(c);
-                // no change, or there are more nodes
-                // p.setChild(index, c);
             } else {
-                Page old = p;
-                if (!old.getRef().tryLock(currentHandler))
+                PageReference ref = p.getRef();
+                if (!ref.tryLock(poHandler))
                     return null;
                 count++;
                 p = p.copy();
@@ -430,9 +450,9 @@ public abstract class PageOperations {
                 if (c.isLeaf()) {
                     old.map.fireLeafPageRemove(c.getRef().pageKey, c);
                 }
-                old.getRef().replacePage(p);
+                ref.replacePage(p);
                 count--;
-                old.getRef().unlock();
+                ref.unlock();
             }
             return p;
         }
@@ -454,7 +474,7 @@ public abstract class PageOperations {
         }
     }
 
-    private static AddChild splitLeafPage(PageOperationHandler currentHandler, Page p) {
+    private static AddChild splitLeafPage(Page p) {
         // 第一步:
         // 切开page，得到一个临时的父节点和两个新的leaf page
         // 临时父节点只能通过被切割的page重定向访问
