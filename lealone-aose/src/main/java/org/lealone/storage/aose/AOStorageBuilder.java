@@ -8,7 +8,9 @@ package org.lealone.storage.aose;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.lealone.db.PluginManager;
 import org.lealone.storage.StorageBuilder;
+import org.lealone.storage.StorageEngine;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public class AOStorageBuilder extends StorageBuilder {
@@ -24,11 +26,16 @@ public class AOStorageBuilder extends StorageBuilder {
     }
 
     public AOStorageBuilder(Map<String, String> defaultConfig, PageOperationHandlerFactory pohFactory) {
+        // 如果pohFactory为null，优先使用StorageEngine配置的，若没有再创建新的，避免嵌入式场景创建出多个pohFactory
+        StorageEngine se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
+        if (pohFactory == null)
+            pohFactory = se.getPageOperationHandlerFactory();
         if (pohFactory == null)
             pohFactory = PageOperationHandlerFactory.create(defaultConfig);
         if (defaultConfig != null)
             config.putAll(defaultConfig);
         config.put("pohFactory", pohFactory);
+        se.setPageOperationHandlerFactory(pohFactory);
     }
 
     @Override
