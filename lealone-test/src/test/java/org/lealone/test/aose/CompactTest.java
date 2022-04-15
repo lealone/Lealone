@@ -5,23 +5,12 @@
  */
 package org.lealone.test.aose;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.Test;
-import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.test.TestBase;
 
-public class CompactTest extends TestBase {
-
-    private AOStorage storage;
-    private BTreeMap<Integer, String> map;
-
+public class CompactTest extends AoseTestBase {
     @Test
     public void run() {
         init();
-
-        map = storage.openBTreeMap("CompactTest");
 
         // map.clear();
         //
@@ -54,20 +43,8 @@ public class CompactTest extends TestBase {
         map.save();
         map.printPage();
 
-        AtomicInteger count = new AtomicInteger();
-        map.cursor().forEachRemaining(e -> {
-            count.incrementAndGet();
-        });
-        assertEquals(200, count.get());
+        assertEquals(map.cursor(), 200);
 
         assertEquals(200, map.size());
-    }
-
-    private void init() {
-        int pageSplitSize = 16 * 1024;
-        pageSplitSize = 4 * 1024;
-        pageSplitSize = 1 * 1024;
-        // pageSplitSize = 32 * 1024;
-        storage = AOStorageTest.openStorage(pageSplitSize);
     }
 }

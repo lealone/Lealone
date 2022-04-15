@@ -14,9 +14,8 @@ import org.lealone.storage.StorageEngine;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.lob.LobStreamStorage;
-import org.lealone.test.TestBase;
 
-public class AOStorageEngineTest extends TestBase {
+public class AOStorageEngineTest extends AoseTestBase {
     @Test
     public void run() {
         StorageEngine se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);

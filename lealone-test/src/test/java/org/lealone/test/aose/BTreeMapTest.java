@@ -10,16 +10,10 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.Test;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.test.TestBase;
 
 // -Xms800M -Xmx800M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
-public class BTreeMapTest extends TestBase {
-
-    private AOStorage storage;
-    private BTreeMap<Integer, String> map;
-
+public class BTreeMapTest extends AoseTestBase {
     @Test
     public void run() {
         // for (int i = 0; i < 10; i++) {
@@ -32,21 +26,6 @@ public class BTreeMapTest extends TestBase {
         testSave();
         testAppend();
         // }
-    }
-
-    private void init() {
-        int pageSplitSize = 16 * 1024;
-        pageSplitSize = 4 * 1024;
-        pageSplitSize = 1 * 1024;
-        // pageSplitSize = 32 * 1024;
-        storage = AOStorageTest.openStorage(pageSplitSize);
-        openMap();
-    }
-
-    private void openMap() {
-        if (map == null || map.isClosed()) {
-            map = storage.openBTreeMap("BTreeMapTest");
-        }
     }
 
     void testSyncOperations() {

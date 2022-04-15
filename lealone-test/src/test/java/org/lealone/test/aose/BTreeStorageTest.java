@@ -6,31 +6,12 @@
 package org.lealone.test.aose;
 
 import org.junit.Test;
-import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.test.TestBase;
 
-public class BTreeStorageTest extends TestBase {
-
-    private AOStorage storage;
-    private BTreeMap<Integer, String> map;
-
+public class BTreeStorageTest extends AoseTestBase {
     @Test
     public void run() {
         init();
         testChunkMetaData();
-    }
-
-    private void init() {
-        int pageSplitSize = 1 * 1024;
-        storage = AOStorageTest.openStorage(pageSplitSize);
-        openMap();
-    }
-
-    private void openMap() {
-        if (map == null || map.isClosed()) {
-            map = storage.openBTreeMap("BTreeStorageTest");
-        }
     }
 
     private void testChunkMetaData() {

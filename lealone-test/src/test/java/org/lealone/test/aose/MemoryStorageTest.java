@@ -9,7 +9,7 @@ import org.junit.Test;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 
-public class MemoryStorageTest extends TestBase {
+public class MemoryStorageTest extends AoseTestBase {
     @Test
     public void run() throws Exception {
         TestBase test = new TestBase();

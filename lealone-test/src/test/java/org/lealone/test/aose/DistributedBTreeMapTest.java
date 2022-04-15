@@ -18,17 +18,14 @@ import org.junit.Test;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.page.PageKey;
-import org.lealone.test.TestBase;
 import org.lealone.test.TestBase.TodoTest;
 
-public class DistributedBTreeMapTest extends TestBase implements TodoTest {
+public class DistributedBTreeMapTest extends AoseTestBase implements TodoTest {
 
-    private AOStorage storage;
     private String storagePath;
 
     @Test
@@ -39,12 +36,9 @@ public class DistributedBTreeMapTest extends TestBase implements TodoTest {
         // testLeafPageRemove(); //TODO 有bug
     }
 
-    private void init() {
-        int pageSplitSize = 16 * 1024;
-        pageSplitSize = 4 * 1024;
-        pageSplitSize = 1 * 1024;
-        // pageSplitSize = 32 * 1024;
-        storage = AOStorageTest.openStorage(pageSplitSize);
+    @Override
+    protected void init() {
+        super.init();
         storagePath = storage.getStoragePath();
     }
 

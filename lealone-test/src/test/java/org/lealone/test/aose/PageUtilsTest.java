@@ -5,11 +5,10 @@
  */
 package org.lealone.test.aose;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.lealone.storage.aose.btree.page.PageUtils;
 
-public class PageUtilsTest extends Assert {
+public class PageUtilsTest extends AoseTestBase {
     @Test
     public void run() {
         int chunkId = 123;

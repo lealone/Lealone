@@ -19,9 +19,8 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.lob.LobStreamStorage;
 import org.lealone.storage.fs.FileStorage;
-import org.lealone.test.TestBase;
 
-public class LobStorageTest extends TestBase {
+public class LobStorageTest extends AoseTestBase {
     @Test
     public void run() throws Exception {
         AOStorage storage = AOStorageTest.openStorage();

@@ -6,22 +6,13 @@
 package org.lealone.test.aose;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
-import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.test.TestBase;
 
-//@SuppressWarnings("unused")
-public class PageOperationTest extends TestBase {
-
-    private AOStorage storage;
-    private BTreeMap<Integer, String> map;
-
+public class PageOperationTest extends AoseTestBase {
     @Test
     public void run() {
-        init();
+        init(true);
         // for (int i = 1; i <= 10; i++) {
         map.clear();
         testConcurrenAddChild();
@@ -29,13 +20,6 @@ public class PageOperationTest extends TestBase {
         testAddChild();
         testRemoveChild();
         testConcurrentGetAndRemove();
-    }
-
-    private void init() {
-        int pageSplitSize = 1 * 1024;
-        storage = AOStorageTest.openStorage(pageSplitSize);
-        map = storage.openBTreeMap("PageOperationTest");
-        map.clear();
     }
 
     private void testConcurrenAddChild() {
@@ -128,12 +112,7 @@ public class PageOperationTest extends TestBase {
     }
 
     private void assertEquals(int size) {
-        AtomicInteger count = new AtomicInteger();
-        map.cursor().forEachRemaining(e -> {
-            count.incrementAndGet();
-        });
-        assertEquals(size, count.get());
-
+        assertEquals(map.cursor(), size);
         assertEquals(size, map.size());
     }
 }

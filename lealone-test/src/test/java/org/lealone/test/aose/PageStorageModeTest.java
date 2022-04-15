@@ -19,11 +19,10 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
-public class PageStorageModeTest extends TestBase {
+public class PageStorageModeTest extends AoseTestBase {
 
     private final int rowCount = 6000;
     private final int columnCount = 10;
@@ -97,8 +96,7 @@ public class PageStorageModeTest extends TestBase {
 
         int rows = 0;
         ValueLong from = ValueLong.get(2000);
-        StorageMapCursor<ValueLong, TransactionalValue> cursor = map
-                .cursor(CursorParameters.create(from, columnIndex));
+        StorageMapCursor<ValueLong, TransactionalValue> cursor = map.cursor(CursorParameters.create(from, columnIndex));
         while (cursor.hasNext()) {
             cursor.next();
             rows++;

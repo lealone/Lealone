@@ -22,12 +22,12 @@ public abstract class AoseTestBase extends TestBase {
         init(false);
     }
 
-    protected void init(String mapName) {
-        init(mapName, false);
+    protected void init(boolean clearMap) {
+        init(getClass().getSimpleName(), clearMap);
     }
 
-    protected void init(boolean clearMap) {
-        init(getClass().getSimpleName(), false);
+    protected void init(String mapName) {
+        init(mapName, false);
     }
 
     protected void init(String mapName, boolean clearMap) {
@@ -35,6 +35,12 @@ public abstract class AoseTestBase extends TestBase {
         map = storage.openBTreeMap(mapName);
         if (clearMap)
             map.clear();
+    }
+
+    protected void openMap() {
+        if (map == null || map.isClosed()) {
+            map = storage.openBTreeMap(getClass().getSimpleName());
+        }
     }
 
     protected void assertEquals(StorageMapCursor<?, ?> cursor, int expectedSsize) {

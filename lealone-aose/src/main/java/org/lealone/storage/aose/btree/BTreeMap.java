@@ -122,7 +122,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             setRootRef(root);
             setMaxKey(lastKey());
         } else {
-            Page root;
             if (isShardingMode) {
                 String initReplicationNodes = (String) config.get("initReplicationNodes");
                 DataUtils.checkNotNull(initReplicationNodes, "initReplicationNodes");
