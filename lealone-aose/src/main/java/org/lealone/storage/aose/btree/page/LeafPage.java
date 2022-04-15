@@ -192,7 +192,7 @@ public class LeafPage extends LocalPage {
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
-        newPage.parentRefRef = parentRefRef;
+        newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         // mark the old as deleted
         removePage();
@@ -452,7 +452,7 @@ public class LeafPage extends LocalPage {
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
-        newPage.parentRefRef = parentRefRef;
+        newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         if (removePage) {
             // mark the old as deleted

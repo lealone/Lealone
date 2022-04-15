@@ -8,7 +8,6 @@ package org.lealone.storage.aose.btree.page;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -31,18 +30,18 @@ public class Page {
     protected long pos;
 
     private PageReference ref;
-    AtomicReference<PageReference> parentRefRef = new AtomicReference<>();
+    private PageReference parentRef;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
     }
 
     public void setParentRef(PageReference parentRef) {
-        parentRefRef.set(parentRef);
+        this.parentRef = parentRef;
     }
 
     public PageReference getParentRef() {
-        return parentRefRef.get();
+        return parentRef;
     }
 
     public void setRef(PageReference ref) {
