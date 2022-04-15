@@ -69,10 +69,6 @@ public class Page {
         throw ie();
     }
 
-    public Object[] getValues() {
-        throw ie();
-    }
-
     /**
     * Get the key at the given index.
     * 
@@ -80,6 +76,23 @@ public class Page {
     * @return the key
     */
     public Object getKey(int index) {
+        throw ie();
+    }
+
+    /**
+     * Get the number of keys in this page.
+     * 
+     * @return the number of keys
+     */
+    public int getKeyCount() {
+        throw ie();
+    }
+
+    public Object getLastKey() {
+        throw ie();
+    }
+
+    public Object[] getValues() {
         throw ie();
     }
 
@@ -118,18 +131,8 @@ public class Page {
     *
     * @return the number of key-value pairs
     */
-    @Deprecated
     public long getTotalCount() {
         return 0;
-    }
-
-    /**
-     * Get the number of keys in this page.
-     * 
-     * @return the number of keys
-     */
-    public int getKeyCount() {
-        throw ie();
     }
 
     /**
@@ -173,17 +176,6 @@ public class Page {
         return false;
     }
 
-    /**
-     * Search the key in this page using a binary search. Instead of always
-     * starting the search in the middle, the last found index is cached.
-     * <p>
-     * If the key was found, the returned value is the index in the key array.
-     * If not found, the returned value is negative, where -1 means the provided
-     * key is smaller than any keys in this page. See also Arrays.binarySearch.
-     * 
-     * @param key the key
-     * @return the value or null
-     */
     public int binarySearch(Object key) {
         throw ie();
     }
@@ -385,10 +377,6 @@ public class Page {
         throw ie();
     }
 
-    public String getPrettyPageInfo(boolean readOffLinePage) {
-        throw ie();
-    }
-
     /**
      * Read a page.
      * 
@@ -498,19 +486,22 @@ public class Page {
         return false;
     }
 
-    public Object getLastKey() {
-        throw ie();
-    }
-
     public PageReference[] getChildren() {
         throw ie();
     }
 
-    public void setReplicationHostIds(List<String> replicationHostIds) {
+    public LeafPageMovePlan getLeafPageMovePlan() {
+        return null;
+    }
+
+    public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
     }
 
     public List<String> getReplicationHostIds() {
         return null;
+    }
+
+    public void setReplicationHostIds(List<String> replicationHostIds) {
     }
 
     static void writeReplicationHostIds(List<String> replicationHostIds, DataBuffer buff) {
@@ -542,25 +533,6 @@ public class Page {
 
     public static NodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
         return NodePage.create(map, keys, children, memory);
-    }
-
-    static class PrettyPageInfo {
-        StringBuilder buff = new StringBuilder();
-        int pageCount;
-        int leafPageCount;
-        int nodePageCount;
-        int levelCount;
-        boolean readOffLinePage;
-    }
-
-    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
-    }
-
-    public LeafPageMovePlan getLeafPageMovePlan() {
-        return null;
-    }
-
-    public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
     }
 
     static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength, boolean disableCheck) {
@@ -650,5 +622,23 @@ public class Page {
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE, chunk.sumOfPageLength);
+    }
+
+    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
+
+    public String getPrettyPageInfo(boolean readOffLinePage) {
+        throw ie();
+    }
+
+    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
+    }
+
+    static class PrettyPageInfo {
+        StringBuilder buff = new StringBuilder();
+        int pageCount;
+        int leafPageCount;
+        int nodePageCount;
+        int levelCount;
+        boolean readOffLinePage;
     }
 }

@@ -101,7 +101,6 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    @Deprecated
     public long getTotalCount() {
         long totalCount = 0;
         for (PageReference x : children) {
@@ -471,21 +470,6 @@ public class NodePage extends LocalPage {
         p.write(chunk, buff, true);
         int pageLength = chunk.pagePositionToLengthMap.get(0L);
         buff.putInt(start, pageLength);
-    }
-
-    @Override
-    protected void toString(StringBuilder buff) {
-        for (int i = 0, len = keys.length; i <= len; i++) {
-            if (i > 0) {
-                buff.append(" ");
-            }
-            if (children != null) {
-                buff.append("[" + Long.toHexString(children[i].pos) + "] ");
-            }
-            if (i < keys.length) {
-                buff.append(keys[i]);
-            }
-        }
     }
 
     @Override

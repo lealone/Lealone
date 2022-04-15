@@ -15,7 +15,6 @@ public abstract class LocalPage extends Page {
      * Whether assertions are enabled.
      */
     public static final boolean ASSERT = false;
-    public static final boolean DEBUG = true;
 
     /**
      * The last result of a find operation is cached.
@@ -51,22 +50,11 @@ public abstract class LocalPage extends Page {
         return keys;
     }
 
-    /**
-    * Get the key at the given index.
-    * 
-    * @param index the index
-    * @return the key
-    */
     @Override
     public Object getKey(int index) {
         return keys[index];
     }
 
-    /**
-     * Get the number of keys in this page.
-     * 
-     * @return the number of keys
-     */
     @Override
     public int getKeyCount() {
         return keys.length;
@@ -117,21 +105,6 @@ public abstract class LocalPage extends Page {
         }
         cachedCompare = low;
         return -(low + 1);
-
-        // regular binary search (without caching)
-        // int low = 0, high = keys.length - 1;
-        // while (low <= high) {
-        // int x = (low + high) >>> 1;
-        // int compare = map.compare(key, keys[x]);
-        // if (compare > 0) {
-        // low = x + 1;
-        // } else if (compare < 0) {
-        // high = x - 1;
-        // } else {
-        // return x;
-        // }
-        // }
-        // return -(low + 1);
     }
 
     @Override
@@ -139,12 +112,6 @@ public abstract class LocalPage extends Page {
         return memory > map.getBTreeStorage().getPageSplitSize() && keys.length > 1;
     }
 
-    /**
-     * Replace the key at an index in this page.
-     * 
-     * @param index the index
-     * @param key the new key
-     */
     @Override
     public void setKey(int index, Object key) {
         // this is slightly slower:
@@ -198,9 +165,6 @@ public abstract class LocalPage extends Page {
         memory += mem;
     }
 
-    /**
-     * Remove the page.
-     */
     @Override
     public void removePage() {
         if (pos == 0) {
@@ -227,7 +191,6 @@ public abstract class LocalPage extends Page {
             if (pos != 0 && ((LocalPage) other).pos == pos) {
                 return true;
             }
-            return this == other;
         }
         return false;
     }
@@ -239,21 +202,10 @@ public abstract class LocalPage extends Page {
 
     @Override
     public String toString() {
-        if (DEBUG)
-            return getPrettyPageInfo(false);
-
-        StringBuilder buff = new StringBuilder();
-        buff.append("id: ").append(System.identityHashCode(this)).append('\n');
-        buff.append("pos: ").append(Long.toHexString(pos)).append("\n");
-        if (pos != 0) {
-            int chunkId = PageUtils.getPageChunkId(pos);
-            buff.append("chunk: ").append(Long.toHexString(chunkId)).append("\n");
-        }
-        toString(buff);
-        return buff.toString();
+        return getPrettyPageInfo(false);
     }
 
-    protected abstract void toString(StringBuilder buff);
+    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
 
     @Override
     public String getPrettyPageInfo(boolean readOffLinePage) {

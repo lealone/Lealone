@@ -147,7 +147,6 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    @Deprecated
     public long getTotalCount() {
         if (ASSERT) {
             long check = keys.length;
@@ -200,11 +199,6 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public int getKeyCount() {
-        return keys.length;
-    }
-
-    @Override
     public void remove(int index) {
         int keyLength = keys.length;
         super.remove(index);
@@ -215,6 +209,11 @@ public class LeafPage extends LocalPage {
         values = newValues;
         totalCount--;
         map.decrementSize(); // 递减全局计数器
+    }
+
+    @Override
+    public void removeAllRecursive() {
+        removePage();
     }
 
     @Override
@@ -461,11 +460,6 @@ public class LeafPage extends LocalPage {
         return newPage;
     }
 
-    @Override
-    public void removeAllRecursive() {
-        removePage();
-    }
-
     /**
      * Create a new, empty page.
      * 
@@ -506,22 +500,6 @@ public class LeafPage extends LocalPage {
         p.write(chunk, buff, true);
         int pageLength = chunk.pagePositionToLengthMap.get(0L);
         buff.putInt(start, pageLength);
-    }
-
-    @Override
-    protected void toString(StringBuilder buff) {
-        for (int i = 0, len = keys.length; i <= len; i++) {
-            if (i > 0) {
-                buff.append(" ");
-            }
-            if (i < len) {
-                buff.append(keys[i]);
-                if (values != null) {
-                    buff.append(':');
-                    buff.append(values[i]);
-                }
-            }
-        }
     }
 
     @Override
