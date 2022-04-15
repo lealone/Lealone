@@ -400,9 +400,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
         if (parameters.pageKeys == null)
-            return new BTreeCursor<>(this, root, parameters);
+            return new BTreeCursor<>(this, parameters);
         else
-            return new PageKeyCursor<>(root, parameters);
+            return new PageKeyCursor<>(this, parameters);
     }
 
     @Override

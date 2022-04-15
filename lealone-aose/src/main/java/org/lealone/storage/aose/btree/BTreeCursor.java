@@ -18,20 +18,23 @@ import org.lealone.storage.aose.btree.page.Page;
  * @author H2 Group
  * @author zhh
  */
-class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
+public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
-    private final BTreeMap<K, ?> map;
-    private final CursorParameters<K> parameters;
+    protected BTreeMap<K, ?> map;
+    protected CursorParameters<K> parameters;
+    protected CursorPos pos;
 
-    private CursorPos pos;
     private K key;
     private V value;
 
-    BTreeCursor(BTreeMap<K, ?> map, Page root, CursorParameters<K> parameters) {
+    protected BTreeCursor() {
+    }
+
+    public BTreeCursor(BTreeMap<K, ?> map, CursorParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
         // 定位到>=from的第一个leaf page
-        min(root, parameters.from);
+        min(map.getRootPage(), parameters.from);
     }
 
     @Override
