@@ -17,9 +17,6 @@ if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
 set JAVA_OPTS=-Xms10M^
  -Dlealone.logdir="%LEALONE_HOME%\logs"
 
-REM ***** CLASSPATH library setting *****
-
-REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%LEALONE_HOME%\conf;%LEALONE_HOME%\lib\*"
 
 REM set LEALONE_PARAMS=%1 %2

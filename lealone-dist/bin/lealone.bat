@@ -31,12 +31,19 @@ REM  -XX:+UseCMSInitiatingOccupancyOnly
 set logdir=%LEALONE_HOME%\logs
 set args=""
 
+set JAVA_OPTS=-Xms10M^
+ -Dlealone.logdir="%logdir%"
+
 set str=%1
 if "%str%"=="-nodes" (
     goto nodes
 )
 if "%str%"=="-cluster" (
     goto cluster
+)
+if "%str%"=="-debug" (
+    set JAVA_OPTS=%JAVA_OPTS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
+    goto exec
 )
 if "%str%"=="" (
     goto exec
@@ -57,21 +64,12 @@ set logdir="%logdir%\cluster\node%2"
 set args="-cluster %2"
 goto exec
 
-
 :exec
-set JAVA_OPTS=-Xms10M^
- -Dlealone.logdir="%logdir%"^
- -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader
-
-REM set JAVA_OPTS=%JAVA_OPTS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
-
-REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%LEALONE_HOME%\conf;%LEALONE_HOME%\lib\*"
 
 REM echo Starting Lealone Server
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% "%LEALONE_MAIN%" "%args%"
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %LEALONE_MAIN% %args%
 goto finally
-
 
 :err
 echo JAVA_HOME environment variable must be set!
