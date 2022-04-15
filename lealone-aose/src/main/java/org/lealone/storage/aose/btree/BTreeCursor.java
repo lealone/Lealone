@@ -20,15 +20,12 @@ import org.lealone.storage.aose.btree.page.Page;
  */
 public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
-    protected BTreeMap<K, ?> map;
-    protected CursorParameters<K> parameters;
+    protected final BTreeMap<K, ?> map;
+    protected final CursorParameters<K> parameters;
     protected CursorPos pos;
 
     private K key;
     private V value;
-
-    protected BTreeCursor() {
-    }
 
     public BTreeCursor(BTreeMap<K, ?> map, CursorParameters<K> parameters) {
         this.map = map;
@@ -87,7 +84,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
      * @param p the page to start
      * @param from the key to search
      */
-    private void min(Page p, K from) {
+    protected void min(Page p, K from) {
         while (true) {
             if (p.isLeaf()) {
                 int x = from == null ? 0 : p.binarySearch(from);

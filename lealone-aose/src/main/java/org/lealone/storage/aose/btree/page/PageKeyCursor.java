@@ -5,8 +5,6 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import java.util.List;
-
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.aose.btree.BTreeCursor;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -16,16 +14,9 @@ import org.lealone.storage.page.PageKey;
 //按page key遍历对应的page
 public class PageKeyCursor<K, V> extends BTreeCursor<K, V> {
 
-    // 可能是乱序的
-    private final List<PageKey> pageKeys;
-    private int index;
-
+    // 会先定位到>=from的第一个PageKey对应的leaf page
     public PageKeyCursor(BTreeMap<K, ?> map, CursorParameters<K> parameters) {
-        this.map = map;
-        this.parameters = parameters;
-        this.pageKeys = parameters.pageKeys;
-        // 定位到>=from的第一个PageKey对应的leaf page
-        pos = min(map.getRootPage(), parameters.from);
+        super(map, parameters);
     }
 
     @Override
@@ -34,7 +25,8 @@ public class PageKeyCursor<K, V> extends BTreeCursor<K, V> {
             if (pos.index < pos.page.getKeyCount()) {
                 return true;
             }
-            pos = min(map.getRootPage(), parameters.from);
+            // parameters.pageKeys 可能是乱序的，所以每次都从root page开始
+            min(map.getRootPage(), parameters.from);
             if (pos == null) {
                 return false;
             }
@@ -42,17 +34,23 @@ public class PageKeyCursor<K, V> extends BTreeCursor<K, V> {
         return false;
     }
 
-    private CursorPos min(Page p, K from) {
-        if (index >= pageKeys.size())
-            return null;
-        PageKey pk = pageKeys.get(index++);
+    private int index;
+
+    @Override
+    protected void min(Page p, K from) {
+        if (index >= parameters.pageKeys.size()) {
+            pos = null;
+            return;
+        }
+        PageKey pk = parameters.pageKeys.get(index++);
         while (true) {
             if (p.isLeaf()) {
                 int x = from == null ? 0 : p.binarySearch(from);
                 if (x < 0) {
                     x = -x - 1;
                 }
-                return new CursorPos(p, x, null);
+                pos = new CursorPos(p, x, null);
+                return;
             }
             int x = p.getPageIndex(pk.key);
             if (x == 1 && pk.first && p.isLeafChildPage(x)) {
