@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.orm.Model;
 import org.lealone.orm.json.DecodeException;
 import org.lealone.orm.json.EncodeException;
 import org.lealone.orm.json.JsonArray;
@@ -263,6 +264,9 @@ public class JacksonCodec implements JsonCodec {
                 generator.writeString(((Enum<?>) json).name());
             } else if (json == null) {
                 generator.writeNull();
+            } else if (json instanceof Model) {
+                // 需要转成Map，不能直接用encode，否则嵌套model编码为json时前端不能识别
+                encodeJson(((Model) json).toMap(), generator);
             } else {
                 throw new UnsupportedOperationException();
             }

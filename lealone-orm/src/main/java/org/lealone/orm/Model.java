@@ -562,7 +562,7 @@ public abstract class Model<T> {
         return null;
     }
 
-    private Map<String, Object> toMap() {
+    public Map<String, Object> toMap() {
         Map<String, Object> map = new LinkedHashMap<>();
         for (ModelProperty<?> p : modelProperties) {
             p.serialize(map);
