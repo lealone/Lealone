@@ -6,9 +6,8 @@
 package org.lealone.test.orm;
 
 import org.junit.Test;
-import org.lealone.test.UnitTestBase;
 
-public class AllModelPropertyTest extends UnitTestBase {
+public class AllModelPropertyTest extends OrmTestBase {
 
     @Test
     public void run() {

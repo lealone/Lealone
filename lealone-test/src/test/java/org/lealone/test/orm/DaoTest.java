@@ -9,10 +9,9 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.orm.json.JsonObject;
-import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
-public class DaoTest extends UnitTestBase {
+public class DaoTest extends OrmTestBase {
 
     @Test
     public void run() {

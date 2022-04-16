@@ -8,11 +8,10 @@ package org.lealone.test.orm;
 import java.util.List;
 
 import org.junit.Test;
-import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.Customer;
 import org.lealone.test.orm.generated.Order;
 
-public class OrmTest extends UnitTestBase {
+public class OrmTest extends OrmTestBase {
 
     @Test
     public void run() {

@@ -8,11 +8,10 @@ package org.lealone.test.orm;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
-import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.Product;
 import org.lealone.test.orm.generated.User;
 
-public class OrmTransactionTest extends UnitTestBase {
+public class OrmTransactionTest extends OrmTestBase {
 
     @Test
     public void run() {

@@ -8,10 +8,9 @@ package org.lealone.test.orm;
 import java.util.List;
 
 import org.junit.Test;
-import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
-public class OrmExpressionTest extends UnitTestBase {
+public class OrmExpressionTest extends OrmTestBase {
 
     @Test
     public void run() {
