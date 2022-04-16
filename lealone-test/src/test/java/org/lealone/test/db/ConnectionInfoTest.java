@@ -10,9 +10,8 @@ import java.util.Properties;
 import org.junit.Test;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
-import org.lealone.test.UnitTestBase;
 
-public class ConnectionInfoTest extends UnitTestBase {
+public class ConnectionInfoTest extends DbTestBase {
     @Test
     public void run() {
         setEmbedded(true);

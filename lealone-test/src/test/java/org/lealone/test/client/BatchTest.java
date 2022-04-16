@@ -8,9 +8,8 @@ package org.lealone.test.client;
 import java.sql.PreparedStatement;
 
 import org.junit.Test;
-import org.lealone.test.sql.SqlTestBase;
 
-public class BatchTest extends SqlTestBase {
+public class BatchTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         init();

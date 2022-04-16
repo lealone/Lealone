@@ -12,9 +12,8 @@ import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcArray;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcArrayTest extends SqlTestBase {
+public class JdbcArrayTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         Connection conn = getConnection();

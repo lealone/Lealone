@@ -12,8 +12,9 @@ import org.lealone.client.LealoneClient;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.async.Future;
 import org.lealone.test.TestBase;
+import org.lealone.test.TestBase.MainTest;
 
-public class LealoneClientTest {
+public class LealoneClientTest implements MainTest {
 
     public static void main(String[] args) {
         String url = new TestBase().getURL(LealoneDatabase.NAME);

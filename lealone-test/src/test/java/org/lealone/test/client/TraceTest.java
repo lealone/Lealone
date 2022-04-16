@@ -9,9 +9,8 @@ import java.sql.ResultSet;
 
 import org.junit.Test;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.test.sql.SqlTestBase;
 
-public class TraceTest extends SqlTestBase {
+public class TraceTest extends ClientTestBase {
 
     public TraceTest() {
         super("TraceTestDB");

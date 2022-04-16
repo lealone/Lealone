@@ -16,9 +16,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcResultSet;
 import org.lealone.client.jdbc.JdbcStatement;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcStatementTest extends SqlTestBase {
+public class JdbcStatementTest extends ClientTestBase {
 
     public JdbcStatementTest() {
         // enableTrace(TraceSystem.DEBUG);

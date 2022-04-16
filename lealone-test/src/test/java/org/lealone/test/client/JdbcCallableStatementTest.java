@@ -9,9 +9,8 @@ import java.sql.CallableStatement;
 import java.sql.Types;
 
 import org.junit.Test;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcCallableStatementTest extends SqlTestBase {
+public class JdbcCallableStatementTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         init();

@@ -15,9 +15,10 @@ import java.util.Map;
 import javax.net.ssl.SSLSocketFactory;
 
 import org.lealone.common.util.IOUtils;
+import org.lealone.test.TestBase.MainTest;
 import org.yaml.snakeyaml.Yaml;
 
-public class SnakeyamlTest {
+public class SnakeyamlTest implements MainTest {
 
     public static void main(String[] args) throws Exception {
         String str = "key: v1";

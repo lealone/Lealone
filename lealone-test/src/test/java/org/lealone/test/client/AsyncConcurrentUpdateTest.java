@@ -13,10 +13,8 @@ import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
-import org.lealone.test.sql.SqlTestBase;
 
-public class AsyncConcurrentUpdateTest extends SqlTestBase {
-
+public class AsyncConcurrentUpdateTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);

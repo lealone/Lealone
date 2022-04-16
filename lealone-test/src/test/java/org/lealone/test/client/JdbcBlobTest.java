@@ -12,9 +12,8 @@ import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcBlob;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcBlobTest extends SqlTestBase { // UnitTestBase {
+public class JdbcBlobTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         // setEmbedded(false).enableTrace(TraceSystem.DEBUG);

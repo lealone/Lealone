@@ -21,9 +21,9 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSessionFactory;
 import org.lealone.db.table.Table;
-import org.lealone.test.UnitTestBase;
 
-public class DbObjectTestBase extends UnitTestBase {
+public class DbObjectTestBase extends DbTestBase {
+
     public static final String DB_NAME = "DbObjectTest";
 
     protected Database db;

@@ -19,9 +19,8 @@ import org.junit.Test;
 import org.lealone.client.jdbc.JdbcPreparedStatement;
 import org.lealone.client.jdbc.JdbcResultSet;
 import org.lealone.db.SysProperties;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcPreparedStatementTest extends SqlTestBase {
+public class JdbcPreparedStatementTest extends ClientTestBase {
 
     private JdbcPreparedStatement ps;
 

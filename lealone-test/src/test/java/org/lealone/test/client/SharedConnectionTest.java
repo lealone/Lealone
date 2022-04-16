@@ -11,8 +11,9 @@ import org.lealone.db.ConnectionSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.async.Future;
 import org.lealone.test.TestBase;
+import org.lealone.test.TestBase.MainTest;
 
-public class SharedConnectionTest {
+public class SharedConnectionTest implements MainTest {
 
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();

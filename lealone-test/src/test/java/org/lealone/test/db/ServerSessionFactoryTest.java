@@ -10,9 +10,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSessionFactory;
-import org.lealone.test.UnitTestBase;
 
-public class ServerSessionFactoryTest extends UnitTestBase {
+public class ServerSessionFactoryTest extends DbTestBase {
     @Test
     public void run() {
         setInMemory(true);

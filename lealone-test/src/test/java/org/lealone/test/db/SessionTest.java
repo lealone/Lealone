@@ -9,10 +9,8 @@ import org.junit.Test;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSessionFactory;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.test.UnitTestBase;
 
-public class SessionTest extends UnitTestBase {
-
+public class SessionTest extends DbTestBase {
     @Test
     public void run() {
         setInMemory(true);

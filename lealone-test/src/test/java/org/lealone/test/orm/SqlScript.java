@@ -5,20 +5,20 @@
  */
 package org.lealone.test.orm;
 
+import org.lealone.test.TestBase.MainTest;
 import org.lealone.test.TestBase.SqlExecutor;
-import org.lealone.test.UnitTestBase;
 import org.lealone.test.service.ServiceTest;
 import org.lealone.test.service.impl.AllTypeServiceImpl;
 import org.lealone.test.service.impl.HelloWorldServiceImpl;
 import org.lealone.test.service.impl.UserServiceImpl;
 
-public class SqlScript {
+public class SqlScript implements MainTest {
 
     public static void main(String[] args) {
         new SqlScriptTest().runTest();
     }
 
-    private static class SqlScriptTest extends UnitTestBase {
+    private static class SqlScriptTest extends OrmTestBase {
         @Override
         public void test() {
             createCustomerTable(this);

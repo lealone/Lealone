@@ -14,10 +14,8 @@ import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcConnectionTest extends SqlTestBase {
-
+public class JdbcConnectionTest extends ClientTestBase {
     @Test
     public void run() throws Exception {
         testTransactionIsolationLevel();
