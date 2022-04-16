@@ -12,12 +12,11 @@ import org.lealone.db.async.Future;
 import org.lealone.db.value.ValueString;
 import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.storage.Storage;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-public class AOTransactionTest extends TestBase {
+public class AOTransactionTest extends AoteTestBase {
 
     private static class ParticipantTest implements Transaction.Participant {
         @Override

@@ -13,12 +13,11 @@ import org.lealone.db.PluginManager;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-public class AOTransactionEngineTest extends TestBase {
+public class AOTransactionEngineTest extends AoteTestBase {
 
     public static TransactionEngine getTransactionEngine(boolean isDistributed) {
         TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,

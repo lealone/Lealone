@@ -14,14 +14,13 @@ import org.lealone.db.PluginManager;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.AMTransactionEngine;
 import org.lealone.transaction.aote.log.LogSyncService;
 
-public class AMTransactionEngineTest extends TestBase {
+public class AMTransactionEngineTest extends AoteTestBase {
 
     public static Storage getStorage() {
         StorageEngine se = PluginManager.getPlugin(StorageEngine.class, Constants.DEFAULT_STORAGE_ENGINE_NAME);

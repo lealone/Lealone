@@ -6,28 +6,17 @@
 package org.lealone.test.aote;
 
 import org.junit.Test;
-import org.lealone.storage.Storage;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-public class IsolationLevelTest extends TestBase {
+public class IsolationLevelTest extends AoteTestBase {
 
-    private TransactionEngine te;
-    private Storage storage;
     private final String mapName = IsolationLevelTest.class.getSimpleName();
 
     @Test
     public void run() {
-        te = AMTransactionEngineTest.getTransactionEngine();
-        storage = AMTransactionEngineTest.getStorage();
-        try {
-            test1();
-            test2();
-        } finally {
-            te.close();
-        }
+        test1();
+        test2();
     }
 
     private void test1() {

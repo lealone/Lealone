@@ -13,28 +13,16 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueInt;
-import org.lealone.storage.Storage;
 import org.lealone.storage.type.ObjectDataType;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-public class AMTransactionMapTest extends TestBase {
-
-    private TransactionEngine te;
-    private Storage storage;
-
+public class AMTransactionMapTest extends AoteTestBase {
     @Test
     public void run() {
-        te = AMTransactionEngineTest.getTransactionEngine();
-        storage = AMTransactionEngineTest.getStorage();
-
         testSyncOperations();
         testTryOperations();
         testColumnLock();
-
-        te.close();
     }
 
     private String createMapName(String name) {

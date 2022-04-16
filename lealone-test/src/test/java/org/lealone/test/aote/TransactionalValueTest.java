@@ -15,30 +15,17 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueInt;
-import org.lealone.storage.Storage;
-import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.TransactionalValue;
 
-public class TransactionalValueTest extends TestBase {
-
-    private TransactionEngine te;
-    private Storage storage;
-
+public class TransactionalValueTest extends AoteTestBase {
     @Test
     public void run() {
-        te = AMTransactionEngineTest.getTransactionEngine();
-        storage = AMTransactionEngineTest.getStorage();
-        try {
-            testExclusiveCommit();
-            testExclusiveRollback();
-            testUncommittedCommit();
-            testRemove();
-        } finally {
-            te.close();
-        }
+        testExclusiveCommit();
+        testExclusiveRollback();
+        testUncommittedCommit();
+        testRemove();
     }
 
     void testExclusiveCommit() {
