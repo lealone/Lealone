@@ -10,19 +10,17 @@
  */
 package org.lealone.orm.json;
 
-import static java.time.format.DateTimeFormatter.ISO_INSTANT;
-import static org.lealone.orm.json.util.JsonUtil.BASE64_DECODER;
-import static org.lealone.orm.json.util.JsonUtil.BASE64_ENCODER;
-import static org.lealone.orm.json.util.JsonUtil.checkAndCopy;
-import static org.lealone.orm.json.util.JsonUtil.wrapJsonValue;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Stream;
+
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.service.JsonArrayGetter;
+import org.lealone.db.value.ReadonlyArray;
+import org.lealone.db.value.Value;
 
 /**
  * A representation of a <a href="http://json.org/">JSON</a> array in Java.
@@ -36,29 +34,12 @@ import java.util.stream.Stream;
  * Please see the documentation for more information.
  *
  * @author <a href="http://tfox.org">Tim Fox</a>
+ * @author zhh
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class JsonArray implements Iterable<Object> {
+public class JsonArray extends Json implements Iterable<Object> {
 
     private List<Object> list;
-
-    /**
-     * Create an instance from a String of JSON, this string must be a valid array otherwise an exception will be thrown.
-     * <p/>
-     * If you are unsure of the value, you should use instead {@link Json#decodeValue(String)} and check the result is
-     * a JSON array.
-     *
-     * @param json the string of JSON
-     */
-    public JsonArray(String json) {
-        if (json == null) {
-            throw new NullPointerException();
-        }
-        fromJson(json);
-        if (list == null) {
-            throw new DecodeException("Invalid JSON array: " + json);
-        }
-    }
 
     /**
      * Create an empty instance
@@ -80,27 +61,31 @@ public class JsonArray implements Iterable<Object> {
     }
 
     /**
+     * Create an instance from a String of JSON, this string must be a valid array otherwise an exception will be thrown.
+     * <p/>
+     * If you are unsure of the value, you should use instead {@link Json#decode(String)} and check the result is
+     * a JSON array.
+     *
+     * @param json the string of JSON
+     */
+    public JsonArray(String json) {
+        if (json == null) {
+            throw new NullPointerException();
+        }
+        list = JacksonCodec.decode(json, List.class);
+        if (list == null) {
+            throw new DecodeException("Invalid JSON array: " + json);
+        }
+    }
+
+    /**
      * Get the String at position {@code pos} in the array,
      *
      * @param pos the position in the array
      * @return the String (or String representation), or null if a null value present
      */
     public String getString(int pos) {
-        Object val = list.get(pos);
-
-        if (val == null) {
-            return null;
-        }
-
-        if (val instanceof Instant) {
-            return ISO_INSTANT.format((Instant) val);
-        } else if (val instanceof byte[]) {
-            return BASE64_ENCODER.encodeToString((byte[]) val);
-        } else if (val instanceof Enum) {
-            return ((Enum) val).name();
-        } else {
-            return val.toString();
-        }
+        return getString(list.get(pos));
     }
 
     /**
@@ -111,14 +96,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.lang.ClassCastException if the value cannot be converted to Integer
      */
     public Integer getInteger(int pos) {
-        Number number = (Number) list.get(pos);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Integer) {
-            return (Integer) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.intValue();
-        }
+        return getInteger(list.get(pos));
     }
 
     /**
@@ -129,14 +107,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.lang.ClassCastException if the value cannot be converted to Long
      */
     public Long getLong(int pos) {
-        Number number = (Number) list.get(pos);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Long) {
-            return (Long) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.longValue();
-        }
+        return getLong(list.get(pos));
     }
 
     /**
@@ -147,14 +118,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.lang.ClassCastException if the value cannot be converted to Double
      */
     public Double getDouble(int pos) {
-        Number number = (Number) list.get(pos);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Double) {
-            return (Double) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.doubleValue();
-        }
+        return getDouble(list.get(pos));
     }
 
     /**
@@ -165,14 +129,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.lang.ClassCastException if the value cannot be converted to Float
      */
     public Float getFloat(int pos) {
-        Number number = (Number) list.get(pos);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Float) {
-            return (Float) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.floatValue();
-        }
+        return getFloat(list.get(pos));
     }
 
     /**
@@ -228,19 +185,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.lang.IllegalArgumentException if the String value is not a legal Base64 encoded value
      */
     public byte[] getBinary(int pos) {
-        Object val = list.get(pos);
-        // no-op
-        if (val == null) {
-            return null;
-        }
-        // no-op if value is already an byte[]
-        if (val instanceof byte[]) {
-            return (byte[]) val;
-        }
-        // assume that the value is in String format as per RFC
-        String encoded = (String) val;
-        // parse to proper type
-        return BASE64_DECODER.decode(encoded);
+        return getBinary(list.get(pos));
     }
 
     /**
@@ -256,19 +201,7 @@ public class JsonArray implements Iterable<Object> {
      * @throws java.time.format.DateTimeParseException if the String value is not a legal ISO 8601 encoded value
      */
     public Instant getInstant(int pos) {
-        Object val = list.get(pos);
-        // no-op
-        if (val == null) {
-            return null;
-        }
-        // no-op if value is already an Instant
-        if (val instanceof Instant) {
-            return (Instant) val;
-        }
-        // assume that the value is in String format as per RFC
-        String encoded = (String) val;
-        // parse to proper type
-        return Instant.from(ISO_INSTANT.parse(encoded));
+        return getInstant(list.get(pos));
     }
 
     /**
@@ -451,6 +384,24 @@ public class JsonArray implements Iterable<Object> {
     }
 
     /**
+     * Encode the JSON array to a string
+     *
+     * @return the string encoding
+     */
+    public String encode() {
+        return JacksonCodec.encode(this, false);
+    }
+
+    /**
+     * Encode the JSON array prettily as a string
+     *
+     * @return the string encoding
+     */
+    public String encodePrettily() {
+        return JacksonCodec.encode(this, true);
+    }
+
+    /**
      * Get an Iterator over the values in the JSON array
      *
      * @return an iterator
@@ -461,48 +412,22 @@ public class JsonArray implements Iterable<Object> {
     }
 
     /**
-     * Encode the JSON array to a string
-     *
-     * @return the string encoding
-     */
-    public String encode() {
-        return Json.CODEC.toString(this, false);
-    }
-
-    /**
-     * Encode the JSON array prettily as a string
-     *
-     * @return the string encoding
-     */
-    public String encodePrettily() {
-        return Json.CODEC.toString(this, true);
-    }
-
-    /**
-     * Make a copy of the JSON array
-     *
-     * @return a copy
-     */
-    public JsonArray copy() {
-        List<Object> copiedList = new ArrayList<>(list.size());
-        for (Object val : list) {
-            copiedList.add(checkAndCopy(val));
-        }
-        return new JsonArray(copiedList);
-    }
-
-    /**
      * Get a Stream over the entries in the JSON array
      *
      * @return a Stream
      */
     public Stream<Object> stream() {
-        return JsonObject.asStream(iterator());
+        return asStream(iterator());
     }
 
     @Override
     public String toString() {
         return encode();
+    }
+
+    @Override
+    public int hashCode() {
+        return list.hashCode();
     }
 
     @Override
@@ -525,60 +450,12 @@ public class JsonArray implements Iterable<Object> {
         for (int i = 0; i < this.size(); i++) {
             Object thisValue = this.getValue(i);
             Object otherValue = other.getValue(i);
-            // identity check
-            if (thisValue == otherValue) {
+            if (valueEquals(thisValue, otherValue)) {
                 continue;
-            }
-            // special case for numbers
-            if (thisValue instanceof Number && otherValue instanceof Number
-                    && thisValue.getClass() != otherValue.getClass()) {
-                Number n1 = (Number) thisValue;
-                Number n2 = (Number) otherValue;
-                // floating point values
-                if (thisValue instanceof Float || thisValue instanceof Double || otherValue instanceof Float
-                        || otherValue instanceof Double) {
-                    // compare as floating point double
-                    if (n1.doubleValue() == n2.doubleValue()) {
-                        // same value check the next entry
-                        continue;
-                    }
-                }
-                if (thisValue instanceof Integer || thisValue instanceof Long || otherValue instanceof Integer
-                        || otherValue instanceof Long) {
-                    // compare as integer long
-                    if (n1.longValue() == n2.longValue()) {
-                        // same value check the next entry
-                        continue;
-                    }
-                }
-            }
-            // special case for char sequences
-            if (thisValue instanceof CharSequence && otherValue instanceof CharSequence
-                    && thisValue.getClass() != otherValue.getClass()) {
-                CharSequence s1 = (CharSequence) thisValue;
-                CharSequence s2 = (CharSequence) otherValue;
-
-                if (Objects.equals(s1.toString(), s2.toString())) {
-                    // same value check the next entry
-                    continue;
-                }
-            }
-            // fallback to standard object equals checks
-            if (!Objects.equals(thisValue, otherValue)) {
-                return false;
             }
         }
         // all checks passed
         return true;
-    }
-
-    @Override
-    public int hashCode() {
-        return list.hashCode();
-    }
-
-    private void fromJson(String json) {
-        list = Json.CODEC.fromString(json, List.class);
     }
 
     private static class Iter implements Iterator<Object> {
@@ -602,6 +479,90 @@ public class JsonArray implements Iterable<Object> {
         @Override
         public void remove() {
             listIter.remove();
+        }
+    }
+
+    public static class Getter implements JsonArrayGetter {
+
+        private JsonArray ja;
+
+        @Override
+        public void init(String json) {
+            ja = new JsonArray(json);
+        }
+
+        @Override
+        public Object getValue(int i, int type) {
+            Object v;
+            switch (type) {
+            case Value.BOOLEAN:
+                v = Boolean.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.BYTE:
+                v = Byte.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.SHORT:
+                v = Short.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.INT:
+                v = Integer.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.LONG:
+                v = Long.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.DECIMAL:
+                v = new java.math.BigDecimal(ja.getValue(i).toString());
+                break;
+            case Value.TIME:
+                v = java.sql.Time.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.DATE:
+                v = java.sql.Date.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.TIMESTAMP:
+                v = java.sql.Timestamp.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.BYTES:
+                v = ja.getString(i).getBytes();
+                break;
+            case Value.UUID:
+                v = java.util.UUID.fromString(ja.getValue(i).toString());
+                break;
+            case Value.STRING:
+            case Value.STRING_IGNORECASE:
+            case Value.STRING_FIXED:
+                v = ja.getString(i);
+                break;
+            case Value.BLOB:
+                v = new org.lealone.db.value.ReadonlyBlob(ja.getString(i));
+                break;
+            case Value.CLOB:
+                v = new org.lealone.db.value.ReadonlyClob(ja.getString(i));
+                break;
+            case Value.DOUBLE:
+                v = Double.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.FLOAT:
+                v = Float.valueOf(ja.getValue(i).toString());
+                break;
+            case Value.NULL:
+                return null;
+            case Value.JAVA_OBJECT:
+                v = ja.getValue(i);
+                break;
+            case Value.UNKNOWN:
+                v = ja.getValue(i);
+                break;
+            case Value.ARRAY:
+                v = new ReadonlyArray(ja.getJsonArray(i).getList());
+                break;
+            case Value.RESULT_SET:
+                v = ja.getValue(i);
+                break;
+            default:
+                throw DbException.getInternalError("type=" + type);
+            }
+            return v;
         }
     }
 }

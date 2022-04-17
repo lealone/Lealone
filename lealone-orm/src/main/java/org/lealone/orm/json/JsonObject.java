@@ -10,14 +10,7 @@
  */
 package org.lealone.orm.json;
 
-import static java.time.format.DateTimeFormatter.ISO_INSTANT;
-import static org.lealone.orm.json.util.JsonUtil.BASE64_DECODER;
-import static org.lealone.orm.json.util.JsonUtil.BASE64_ENCODER;
-import static org.lealone.orm.json.util.JsonUtil.checkAndCopy;
-import static org.lealone.orm.json.util.JsonUtil.wrapJsonValue;
-
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * A representation of a <a href="http://json.org/">JSON</a> object in Java.
@@ -39,26 +31,12 @@ import java.util.stream.StreamSupport;
  * Please see the documentation for more information.
  *
  * @author <a href="http://tfox.org">Tim Fox</a>
+ * @author zhh
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class JsonObject implements Iterable<Map.Entry<String, Object>> {
+public class JsonObject extends Json implements Iterable<Map.Entry<String, Object>> {
 
     private Map<String, Object> map;
-
-    /**
-     * Create an instance from a string of JSON
-     *
-     * @param json the string of JSON
-     */
-    public JsonObject(String json) {
-        if (json == null) {
-            throw new NullPointerException();
-        }
-        fromJson(json);
-        if (map == null) {
-            throw new DecodeException("Invalid JSON object: " + json);
-        }
-    }
 
     /**
      * Create a new, empty instance
@@ -80,31 +58,18 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
     }
 
     /**
-     * Create a JsonObject from the fields of a Java object.
-     * Faster than calling `new JsonObject(Json.encode(obj))`.
-     * <p/
-     * Returns {@code null} when {@code obj} is {@code null}.
+     * Create an instance from a string of JSON
      *
-     * @param obj The object to convert to a JsonObject.
-     * @throws IllegalArgumentException if conversion fails due to an incompatible type.
+     * @param json the string of JSON
      */
-    public static JsonObject mapFrom(Object obj) {
-        if (obj == null) {
-            return null;
-        } else {
-            return new JsonObject(Json.CODEC.fromValue(obj, Map.class));
+    public JsonObject(String json) {
+        if (json == null) {
+            throw new NullPointerException();
         }
-    }
-
-    /**
-     * Instantiate a Java object from a JsonObject.
-     * Faster than calling `Json.decodeValue(Json.encode(jsonObject), type)`.
-     *
-     * @param type The type to instantiate from the JsonObject.
-     * @throws IllegalArgumentException if the type cannot be instantiated.
-     */
-    public <T> T mapTo(Class<T> type) {
-        return Json.CODEC.fromValue(map, type);
+        map = JacksonCodec.decode(json, Map.class);
+        if (map == null) {
+            throw new DecodeException("Invalid JSON object: " + json);
+        }
     }
 
     /**
@@ -116,20 +81,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public String getString(String key) {
         Objects.requireNonNull(key);
-        Object val = map.get(key);
-        if (val == null) {
-            return null;
-        }
-
-        if (val instanceof Instant) {
-            return ISO_INSTANT.format((Instant) val);
-        } else if (val instanceof byte[]) {
-            return BASE64_ENCODER.encodeToString((byte[]) val);
-        } else if (val instanceof Enum) {
-            return ((Enum) val).name();
-        } else {
-            return val.toString();
-        }
+        return getString(map.get(key));
     }
 
     /**
@@ -141,14 +93,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public Integer getInteger(String key) {
         Objects.requireNonNull(key);
-        Number number = (Number) map.get(key);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Integer) {
-            return (Integer) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.intValue();
-        }
+        return getInteger(map.get(key));
     }
 
     /**
@@ -160,14 +105,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public Long getLong(String key) {
         Objects.requireNonNull(key);
-        Number number = (Number) map.get(key);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Long) {
-            return (Long) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.longValue();
-        }
+        return getLong(map.get(key));
     }
 
     /**
@@ -179,14 +117,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public Double getDouble(String key) {
         Objects.requireNonNull(key);
-        Number number = (Number) map.get(key);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Double) {
-            return (Double) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.doubleValue();
-        }
+        return getDouble(map.get(key));
     }
 
     /**
@@ -198,14 +129,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public Float getFloat(String key) {
         Objects.requireNonNull(key);
-        Number number = (Number) map.get(key);
-        if (number == null) {
-            return null;
-        } else if (number instanceof Float) {
-            return (Float) number; // Avoids unnecessary unbox/box
-        } else {
-            return number.floatValue();
-        }
+        return getFloat(map.get(key));
     }
 
     /**
@@ -265,19 +189,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public byte[] getBinary(String key) {
         Objects.requireNonNull(key);
-        Object val = map.get(key);
-        // no-op
-        if (val == null) {
-            return null;
-        }
-        // no-op if value is already an byte[]
-        if (val instanceof byte[]) {
-            return (byte[]) val;
-        }
-        // assume that the value is in String format as per RFC
-        String encoded = (String) val;
-        // parse to proper type
-        return BASE64_DECODER.decode(encoded);
+        return getBinary(map.get(key));
     }
 
     /**
@@ -294,19 +206,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      */
     public Instant getInstant(String key) {
         Objects.requireNonNull(key);
-        Object val = map.get(key);
-        // no-op
-        if (val == null) {
-            return null;
-        }
-        // no-op if value is already an Instant
-        if (val instanceof Instant) {
-            return (Instant) val;
-        }
-        // assume that the value is in String format as per RFC
-        String encoded = (String) val;
-        // parse to proper type
-        return Instant.from(ISO_INSTANT.parse(encoded));
+        return getInstant(map.get(key));
     }
 
     /**
@@ -335,12 +235,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public String getString(String key, String def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getString(key);
-        } else {
-            return def;
-        }
+        String v = getString(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -351,12 +247,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Integer getInteger(String key, Integer def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getInteger(key);
-        } else {
-            return def;
-        }
+        Integer v = getInteger(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -367,12 +259,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Long getLong(String key, Long def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getLong(key);
-        } else {
-            return def;
-        }
+        Long v = getLong(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -383,12 +271,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Double getDouble(String key, Double def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getDouble(key);
-        } else {
-            return def;
-        }
+        Double v = getDouble(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -399,12 +283,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Float getFloat(String key, Float def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getFloat(key);
-        } else {
-            return def;
-        }
+        Float v = getFloat(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -415,12 +295,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Boolean getBoolean(String key, Boolean def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getBoolean(key);
-        } else {
-            return def;
-        }
+        Boolean v = getBoolean(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -431,12 +307,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public JsonObject getJsonObject(String key, JsonObject def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getJsonObject(key);
-        } else {
-            return def;
-        }
+        JsonObject v = getJsonObject(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -447,12 +319,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public JsonArray getJsonArray(String key, JsonArray def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getJsonArray(key);
-        } else {
-            return def;
-        }
+        JsonArray v = getJsonArray(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -463,12 +331,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public byte[] getBinary(String key, byte[] def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getBinary(key);
-        } else {
-            return def;
-        }
+        byte[] v = getBinary(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -479,12 +343,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Instant getInstant(String key, Instant def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getInstant(key);
-        } else {
-            return def;
-        }
+        Instant v = getInstant(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -495,12 +355,8 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the value or {@code def} if no entry present
      */
     public Object getValue(String key, Object def) {
-        Objects.requireNonNull(key);
-        if (map.containsKey(key)) {
-            return getValue(key);
-        } else {
-            return def;
-        }
+        Object v = getValue(key);
+        return v != null ? v : def;
     }
 
     /**
@@ -629,7 +485,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the string encoding.
      */
     public String encode() {
-        return Json.CODEC.toString(this, false);
+        return JacksonCodec.encode(this, false);
     }
 
     /**
@@ -639,26 +495,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
      * @return the pretty string encoding.
      */
     public String encodePrettily() {
-        return Json.CODEC.toString(this, true);
-    }
-
-    /**
-     * Copy the JSON object
-     *
-     * @return a copy of the object
-     */
-    public JsonObject copy() {
-        Map<String, Object> copiedMap;
-        if (map instanceof LinkedHashMap) {
-            copiedMap = new LinkedHashMap<>(map.size());
-        } else {
-            copiedMap = new HashMap<>(map.size());
-        }
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            Object val = checkAndCopy(entry.getValue());
-            copiedMap.put(entry.getKey(), val);
-        }
-        return new JsonObject(copiedMap);
+        return JacksonCodec.encode(this, true);
     }
 
     /**
@@ -723,6 +560,11 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
     }
 
     @Override
+    public int hashCode() {
+        return map.hashCode();
+    }
+
+    @Override
     public boolean equals(Object o) {
         // null check
         if (o == null)
@@ -743,63 +585,14 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
             if (!other.containsKey(key)) {
                 return false;
             }
-
             Object thisValue = this.getValue(key);
             Object otherValue = other.getValue(key);
-            // identity check
-            if (thisValue == otherValue) {
+            if (valueEquals(thisValue, otherValue)) {
                 continue;
-            }
-            // special case for numbers
-            if (thisValue instanceof Number && otherValue instanceof Number
-                    && thisValue.getClass() != otherValue.getClass()) {
-                Number n1 = (Number) thisValue;
-                Number n2 = (Number) otherValue;
-                // floating point values
-                if (thisValue instanceof Float || thisValue instanceof Double || otherValue instanceof Float
-                        || otherValue instanceof Double) {
-                    // compare as floating point double
-                    if (n1.doubleValue() == n2.doubleValue()) {
-                        // same value check the next entry
-                        continue;
-                    }
-                }
-                if (thisValue instanceof Integer || thisValue instanceof Long || otherValue instanceof Integer
-                        || otherValue instanceof Long) {
-                    // compare as integer long
-                    if (n1.longValue() == n2.longValue()) {
-                        // same value check the next entry
-                        continue;
-                    }
-                }
-            }
-            // special case for char sequences
-            if (thisValue instanceof CharSequence && otherValue instanceof CharSequence
-                    && thisValue.getClass() != otherValue.getClass()) {
-                CharSequence s1 = (CharSequence) thisValue;
-                CharSequence s2 = (CharSequence) otherValue;
-
-                if (Objects.equals(s1.toString(), s2.toString())) {
-                    // same value check the next entry
-                    continue;
-                }
-            }
-            // fallback to standard object equals checks
-            if (!Objects.equals(thisValue, otherValue)) {
-                return false;
             }
         }
         // all checks passed
         return true;
-    }
-
-    @Override
-    public int hashCode() {
-        return map.hashCode();
-    }
-
-    private void fromJson(String json) {
-        map = Json.CODEC.fromString(json, Map.class);
     }
 
     private static class Iter implements Iterator<Map.Entry<String, Object>> {
@@ -821,11 +614,9 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
             final Object val = entry.getValue();
             // perform wrapping
             final Object wrapped = wrapJsonValue(val);
-
             if (val != wrapped) {
                 return new Entry(entry.getKey(), wrapped);
             }
-
             return entry;
         }
 
@@ -835,7 +626,7 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
         }
     }
 
-    private static final class Entry implements Map.Entry<String, Object> {
+    private static class Entry implements Map.Entry<String, Object> {
         final String key;
         final Object value;
 
@@ -858,10 +649,5 @@ public class JsonObject implements Iterable<Map.Entry<String, Object>> {
         public Object setValue(Object value) {
             throw new UnsupportedOperationException();
         }
-    }
-
-    static <T> Stream<T> asStream(Iterator<T> sourceIterator) {
-        Iterable<T> iterable = () -> sourceIterator;
-        return StreamSupport.stream(iterable.spliterator(), false);
     }
 }

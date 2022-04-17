@@ -11,7 +11,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
-import org.lealone.orm.json.util.JsonUtil;
+import org.lealone.orm.json.Json;
 
 /**
  * byte[] property.
@@ -60,11 +60,11 @@ public class PBytes<R> extends ModelProperty<R> {
     @Override
     protected void serialize(Map<String, Object> map) {
         if (value != null)
-            map.put(getName(), JsonUtil.BASE64_ENCODER.encode(value));
+            map.put(getName(), Json.BASE64_ENCODER.encode(value));
     }
 
     @Override
     protected void deserialize(Object v) {
-        value = JsonUtil.BASE64_DECODER.decode(v.toString());
+        value = Json.BASE64_DECODER.decode(v.toString());
     }
 }

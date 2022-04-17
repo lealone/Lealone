@@ -4,7 +4,6 @@ import java.util.Map;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.value.*;
 import org.lealone.orm.json.JsonArray;
-import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.impl.UserServiceImpl;
 
@@ -21,7 +20,7 @@ public class UserServiceExecutor implements ServiceExecutor {
     public Value executeService(String methodName, Value[] methodArgs) {
         switch (methodName) {
         case "ADD":
-            User p_user_1 =  new JsonObject(methodArgs[0].getString()).mapTo(User.class);
+            User p_user_1 = User.decode(methodArgs[0].getString());
             Long result1 = this.s.add(p_user_1);
             if (result1 == null)
                 return ValueNull.INSTANCE;
@@ -31,9 +30,9 @@ public class UserServiceExecutor implements ServiceExecutor {
             User result2 = this.s.find(p_name_2);
             if (result2 == null)
                 return ValueNull.INSTANCE;
-            return ValueString.get(JsonObject.mapFrom(result2).encode());
+            return ValueString.get(result2.encode());
         case "UPDATE":
-            User p_user_3 =  new JsonObject(methodArgs[0].getString()).mapTo(User.class);
+            User p_user_3 = User.decode(methodArgs[0].getString());
             Integer result3 = this.s.update(p_user_3);
             if (result3 == null)
                 return ValueNull.INSTANCE;
@@ -53,7 +52,7 @@ public class UserServiceExecutor implements ServiceExecutor {
     public String executeService(String methodName, Map<String, Object> methodArgs) {
         switch (methodName) {
         case "ADD":
-            User p_user_1 =  new JsonObject(ServiceExecutor.toString("USER", methodArgs)).mapTo(User.class);
+            User p_user_1 = User.decode(ServiceExecutor.toString("USER", methodArgs));
             Long result1 = this.s.add(p_user_1);
             if (result1 == null)
                 return null;
@@ -63,9 +62,9 @@ public class UserServiceExecutor implements ServiceExecutor {
             User result2 = this.s.find(p_name_2);
             if (result2 == null)
                 return null;
-            return JsonObject.mapFrom(result2).encode();
+            return result2.encode();
         case "UPDATE":
-            User p_user_3 =  new JsonObject(ServiceExecutor.toString("USER", methodArgs)).mapTo(User.class);
+            User p_user_3 = User.decode(ServiceExecutor.toString("USER", methodArgs));
             Integer result3 = this.s.update(p_user_3);
             if (result3 == null)
                 return null;
@@ -87,7 +86,7 @@ public class UserServiceExecutor implements ServiceExecutor {
         switch (methodName) {
         case "ADD":
             ja = new JsonArray(json);
-            User p_user_1 = ja.getJsonObject(0).mapTo(User.class);
+            User p_user_1 = User.decode(ja.getString(0));
             Long result1 = this.s.add(p_user_1);
             if (result1 == null)
                 return null;
@@ -98,10 +97,10 @@ public class UserServiceExecutor implements ServiceExecutor {
             User result2 = this.s.find(p_name_2);
             if (result2 == null)
                 return null;
-            return JsonObject.mapFrom(result2).encode();
+            return result2.encode();
         case "UPDATE":
             ja = new JsonArray(json);
-            User p_user_3 = ja.getJsonObject(0).mapTo(User.class);
+            User p_user_3 = User.decode(ja.getString(0));
             Integer result3 = this.s.update(p_user_3);
             if (result3 == null)
                 return null;

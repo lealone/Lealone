@@ -30,6 +30,7 @@ public class SqlScript implements MainTest {
             createAllModelPropertyTable(this);
             createUserService(this);
             createHelloWorldService(this);
+            createAllTypeService(this);
         }
     }
 

@@ -2,7 +2,6 @@ package org.lealone.test.service.generated;
 
 import java.sql.*;
 import org.lealone.client.ClientServiceProxy;
-import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 
 /**
@@ -44,7 +43,7 @@ public interface UserService {
         @Override
         public Long add(User user) {
             try {
-                ps1.setString(1, JsonObject.mapFrom(user).encode());
+                ps1.setString(1, user.encode());
                 ResultSet rs = ps1.executeQuery();
                 rs.next();
                 Long ret =  rs.getLong(1);
@@ -61,9 +60,9 @@ public interface UserService {
                 ps2.setString(1, name);
                 ResultSet rs = ps2.executeQuery();
                 rs.next();
-                JsonObject jo = new JsonObject(rs.getString(1));
+                String ret = rs.getString(1);
                 rs.close();
-                return jo.mapTo(User.class);
+                return User.decode(ret);
             } catch (Throwable e) {
                 throw ClientServiceProxy.failed("USER_SERVICE.FIND", e);
             }
@@ -72,7 +71,7 @@ public interface UserService {
         @Override
         public Integer update(User user) {
             try {
-                ps3.setString(1, JsonObject.mapFrom(user).encode());
+                ps3.setString(1, user.encode());
                 ResultSet rs = ps3.executeQuery();
                 rs.next();
                 Integer ret =  rs.getInt(1);

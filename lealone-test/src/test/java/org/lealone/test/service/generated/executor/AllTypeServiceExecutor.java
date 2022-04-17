@@ -12,7 +12,6 @@ import java.util.UUID;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.value.*;
 import org.lealone.orm.json.JsonArray;
-import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.impl.AllTypeServiceImpl;
 
@@ -53,7 +52,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return ValueNull.INSTANCE;
-            return ValueString.get(JsonObject.mapFrom(result1).encode());
+            return ValueString.get(result1.encode());
         case "TEST_UUID":
             UUID p_f1_2 = methodArgs[0].getUuid();
             UUID result2 = this.s.testUuid(p_f1_2);
@@ -93,7 +92,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return null;
-            return JsonObject.mapFrom(result1).encode();
+            return result1.encode();
         case "TEST_UUID":
             UUID p_f1_2 = java.util.UUID.fromString(ServiceExecutor.toString("F1", methodArgs));
             UUID result2 = this.s.testUuid(p_f1_2);
@@ -124,18 +123,18 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Date p_f11_1 = java.sql.Date.valueOf(ja.getValue(10).toString());
             Timestamp p_f12_1 = java.sql.Timestamp.valueOf(ja.getValue(11).toString());
             byte[] p_f13_1 = ja.getString(12).getBytes();
-            Object p_f14_1 = ja.getJsonObject(13);
+            Object p_f14_1 = ja.getValue(13);
             String p_f15_1 = ja.getString(14);
             String p_f16_1 = ja.getString(15);
             String p_f17_1 = ja.getString(16);
-            Blob p_f18_1 = ja.getJsonObject(17).mapTo(java.sql.Blob.class);
-            Clob p_f19_1 = ja.getJsonObject(18).mapTo(java.sql.Clob.class);
+            Blob p_f18_1 = new org.lealone.db.value.ReadonlyBlob(ja.getString(17));
+            Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(ja.getString(18));
             UUID p_f20_1 = java.util.UUID.fromString(ja.getValue(19).toString());
-            Array p_f21_1 = ja.getJsonObject(20).mapTo(java.sql.Array.class);
+            Array p_f21_1 = new org.lealone.db.value.ReadonlyArray(ja.getString(20));
             User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return null;
-            return JsonObject.mapFrom(result1).encode();
+            return result1.encode();
         case "TEST_UUID":
             ja = new JsonArray(json);
             UUID p_f1_2 = java.util.UUID.fromString(ja.getValue(0).toString());

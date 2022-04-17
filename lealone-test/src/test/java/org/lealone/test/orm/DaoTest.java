@@ -119,16 +119,16 @@ public class DaoTest extends OrmTestBase {
         new User().name.set("zhh").delete();
 
         // dao对象序列化后包含modelType字段，并且是ROOT_DAO
-        JsonObject json = JsonObject.mapFrom(User.dao);
+        JsonObject json = new JsonObject(User.dao.encode());
         assertTrue(json.getInteger("modelType") == User.ROOT_DAO);
 
         // 反序列化
         String str = json.encode();
-        User u = new JsonObject(str).mapTo(User.class);
+        User u = User.decode(str);
         assertTrue(u.isDao());
 
         // 普通User对象序列化后也包含modelType字段，但为REGULAR_MODEL
-        json = JsonObject.mapFrom(new User());
+        json = new JsonObject(new User().encode());
         assertTrue(json.getInteger("modelType") == User.REGULAR_MODEL);
     }
 }

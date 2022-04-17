@@ -11,7 +11,6 @@ import java.sql.Timestamp;
 import java.util.UUID;
 import org.lealone.client.ClientServiceProxy;
 import org.lealone.db.value.ValueUuid;
-import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 
 /**
@@ -68,9 +67,9 @@ public interface AllTypeService {
                 ps1.setArray(21, f21);
                 ResultSet rs = ps1.executeQuery();
                 rs.next();
-                JsonObject jo = new JsonObject(rs.getString(1));
+                String ret = rs.getString(1);
                 rs.close();
-                return jo.mapTo(User.class);
+                return User.decode(ret);
             } catch (Throwable e) {
                 throw ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_TYPE", e);
             }

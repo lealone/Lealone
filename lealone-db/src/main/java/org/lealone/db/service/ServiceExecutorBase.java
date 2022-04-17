@@ -182,10 +182,10 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
         ServiceMethod m = serviceMethodMap.get(methodName);
         List<Column> parameters = m.getParameters();
         Object[] args = new Object[parameters.size()];
-        JsonArrayDecoder decoder = JsonArrayDecoder.create(json);
+        JsonArrayGetter getter = JsonArrayGetter.create(json);
         for (int i = 0; i < parameters.size(); i++) {
             Column c = parameters.get(i);
-            args[i] = decoder.getValue(i, c.getType());
+            args[i] = getter.getValue(i, c.getType());
         }
         return args;
     }
