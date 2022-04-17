@@ -120,4 +120,8 @@ public interface DbObject {
 
     default void invalidate() {
     }
+
+    default boolean isInvalid() {
+        return getId() == -1;
+    }
 }
