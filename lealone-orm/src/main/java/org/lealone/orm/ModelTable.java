@@ -67,7 +67,8 @@ public class ModelTable {
 
     // 可能是延迟关联到Table
     private void attachToTable() {
-        if (table == null) {
+        // 沒有初始化，或已经无效了，比如drop table后还被引用
+        if (table == null || table.isInvalid()) {
             String url = System.getProperty("lealone.jdbc.url");
             if (url == null) {
                 // 默认用嵌入式

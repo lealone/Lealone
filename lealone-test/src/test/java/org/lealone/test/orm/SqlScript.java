@@ -42,6 +42,16 @@ public class SqlScript implements MainTest {
         GENERATED_CODE_PATH = path;
     }
 
+    public static void createTables(SqlExecutor executor) {
+        createCustomerTable(executor);
+        createCustomerAddressTable(executor);
+        createUserTable(executor);
+        createProductTable(executor);
+        createOrderTable(executor);
+        createOrderItemTable(executor);
+        createAllModelPropertyTable(executor);
+    }
+
     public static void createUserTable(SqlExecutor executor) {
         System.out.println("create table: user");
         executor.execute("drop table if exists user");

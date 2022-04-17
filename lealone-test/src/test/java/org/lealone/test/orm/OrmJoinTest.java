@@ -16,11 +16,11 @@ public class OrmJoinTest extends OrmTestBase {
 
     @Test
     public void run() {
-        SqlScript.createCustomerTable(this);
-        SqlScript.createCustomerAddressTable(this);
-        SqlScript.createProductTable(this);
-        SqlScript.createOrderTable(this);
-        SqlScript.createOrderItemTable(this);
+        // SqlScript.createCustomerTable(this);
+        // SqlScript.createCustomerAddressTable(this);
+        // SqlScript.createProductTable(this);
+        // SqlScript.createOrderTable(this);
+        // SqlScript.createOrderItemTable(this);
 
         join();
     }

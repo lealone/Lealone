@@ -16,7 +16,7 @@ public class OrmCrudTest extends OrmTestBase {
 
     @Test
     public void run() {
-        SqlScript.createUserTable(this);
+        // SqlScript.createUserTable(this);
         crud();
         json();
     }

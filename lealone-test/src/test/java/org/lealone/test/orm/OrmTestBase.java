@@ -5,7 +5,18 @@
  */
 package org.lealone.test.orm;
 
+import org.junit.Before;
 import org.lealone.test.UnitTestBase;
 
 public abstract class OrmTestBase extends UnitTestBase {
+    @Before
+    @Override
+    public void setUpBefore() {
+        setEmbedded(true);
+        setInMemory(true);
+        // String sql = "select count(*) from information_schema.tables where table_name='CUSTOMER'";
+        // if (count(sql) <= 0) {
+        SqlScript.createTables(this);
+        // }
+    }
 }

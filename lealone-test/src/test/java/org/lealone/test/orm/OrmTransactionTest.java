@@ -15,8 +15,8 @@ public class OrmTransactionTest extends OrmTestBase {
 
     @Test
     public void run() {
-        SqlScript.createUserTable(this);
-        SqlScript.createProductTable(this);
+        // SqlScript.createUserTable(this);
+        // SqlScript.createProductTable(this);
 
         // 测试在同一个线程中的多表事务
         try {

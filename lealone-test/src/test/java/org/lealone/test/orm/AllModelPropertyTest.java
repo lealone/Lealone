@@ -8,7 +8,6 @@ package org.lealone.test.orm;
 import org.junit.Test;
 
 public class AllModelPropertyTest extends OrmTestBase {
-
     @Test
     public void run() {
         SqlScript.createAllModelPropertyTable(this);

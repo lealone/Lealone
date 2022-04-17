@@ -14,7 +14,7 @@ public class OrmExpressionTest extends OrmTestBase {
 
     @Test
     public void run() {
-        SqlScript.createUserTable(this);
+        // SqlScript.createUserTable(this);
         testSelect();
         testOffsetLimit();
         testNot();
