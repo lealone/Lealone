@@ -25,7 +25,6 @@ public class PObject<M extends Model<M>> extends ModelProperty<M> {
         return this.<PObject<M>> getModelProperty(model);
     }
 
-    @Override
     public M set(Object value) {
         M m = getModel();
         if (m != model) {

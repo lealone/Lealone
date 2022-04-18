@@ -39,11 +39,6 @@ public class PTimestamp<M extends Model<M>> extends PBaseDate<M, Timestamp> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Timestamp.valueOf(value.toString()));
-    }
-
     public final Timestamp get() {
         M m = getModel();
         if (m != model) {

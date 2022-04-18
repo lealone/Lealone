@@ -78,11 +78,6 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Boolean.valueOf(value.toString()).booleanValue());
-    }
-
     public final boolean get() {
         M m = getModel();
         if (m != model) {

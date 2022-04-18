@@ -39,11 +39,6 @@ public class PUuid<M extends Model<M>> extends PBaseValueEqual<M, UUID> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(UUID.fromString(value.toString()));
-    }
-
     public final UUID get() {
         M m = getModel();
         if (m != model) {

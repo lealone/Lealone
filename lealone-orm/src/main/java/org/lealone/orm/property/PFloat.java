@@ -38,11 +38,6 @@ public class PFloat<M extends Model<M>> extends PBaseNumber<M, Float> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Float.valueOf(value.toString()).floatValue());
-    }
-
     public final float get() {
         M m = getModel();
         if (m != model) {

@@ -38,11 +38,6 @@ public class PInteger<M extends Model<M>> extends PBaseNumber<M, Integer> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Integer.valueOf(value.toString()).intValue());
-    }
-
     public final int get() {
         M m = getModel();
         if (m != model) {

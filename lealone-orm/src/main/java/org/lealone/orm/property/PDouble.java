@@ -38,11 +38,6 @@ public class PDouble<M extends Model<M>> extends PBaseNumber<M, Double> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Double.valueOf(value.toString()).doubleValue());
-    }
-
     public final double get() {
         M m = getModel();
         if (m != model) {

@@ -39,11 +39,6 @@ public class PDate<M extends Model<M>> extends PBaseDate<M, Date> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Date.valueOf(value.toString()));
-    }
-
     public final Date get() {
         M m = getModel();
         if (m != model) {

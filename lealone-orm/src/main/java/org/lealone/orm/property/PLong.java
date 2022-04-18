@@ -38,11 +38,6 @@ public class PLong<M extends Model<M>> extends PBaseNumber<M, Long> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Long.valueOf(value.toString()).longValue());
-    }
-
     public final long get() {
         M m = getModel();
         if (m != model) {

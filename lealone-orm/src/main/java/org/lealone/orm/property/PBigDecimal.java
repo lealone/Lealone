@@ -39,11 +39,6 @@ public class PBigDecimal<M extends Model<M>> extends PBaseNumber<M, BigDecimal> 
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(new BigDecimal(value.toString()));
-    }
-
     public final BigDecimal get() {
         M m = getModel();
         if (m != model) {

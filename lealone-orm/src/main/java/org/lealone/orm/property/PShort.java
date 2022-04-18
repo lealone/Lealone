@@ -38,11 +38,6 @@ public class PShort<M extends Model<M>> extends PBaseNumber<M, Short> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Short.valueOf(value.toString()).shortValue());
-    }
-
     public final short get() {
         M m = getModel();
         if (m != model) {

@@ -39,11 +39,6 @@ public class PTime<M extends Model<M>> extends PBaseNumber<M, Time> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Time.valueOf(value.toString()));
-    }
-
     public final Time get() {
         M m = getModel();
         if (m != model) {

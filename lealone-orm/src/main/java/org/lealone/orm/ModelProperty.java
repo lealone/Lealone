@@ -118,10 +118,6 @@ public abstract class ModelProperty<M extends Model<M>> {
         return expr().eq(name, p);
     }
 
-    public M set(Object value) {
-        return model;
-    }
-
     protected void serialize(Map<String, Object> map) {
     }
 

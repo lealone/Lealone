@@ -38,11 +38,6 @@ public class PByte<M extends Model<M>> extends PBaseNumber<M, Byte> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(Byte.valueOf(value.toString()).byteValue());
-    }
-
     public final byte get() {
         M m = getModel();
         if (m != model) {

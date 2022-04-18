@@ -150,11 +150,6 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
         return model;
     }
 
-    @Override
-    public M set(Object value) {
-        return set(value.toString());
-    }
-
     public final String get() {
         M m = getModel();
         if (m != model) {
