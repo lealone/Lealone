@@ -335,7 +335,8 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public void truncate(ServerSession session) {
-        if (table.containsLargeObject()) {
+        // 内存数据库没有LobStorage
+        if (table.containsLargeObject() && database.getLobStorage() != null) {
             database.getLobStorage().removeAllForTable(table.getId());
         }
         getMap(session).clear();

@@ -493,7 +493,8 @@ public class StandardTable extends Table {
         if (containsLargeObject) {
             // unfortunately, the data is gone on rollback
             truncate(session);
-            database.getLobStorage().removeAllForTable(getId());
+            if (database.getLobStorage() != null)
+                database.getLobStorage().removeAllForTable(getId());
         }
         super.removeChildrenAndResources(session, lock);
         // go backwards because database.removeIndex will
