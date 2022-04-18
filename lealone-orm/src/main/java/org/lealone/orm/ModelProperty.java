@@ -61,14 +61,14 @@ public abstract class ModelProperty<M extends Model<M>> {
         return (P) model.getModelProperty(name);
     }
 
-    private ModelProperty<M> P(M model) {
-        return this.<ModelProperty<M>> getModelProperty(model);
-    }
-
     /**
      * Internal method to return the underlying expression builder.
      */
-    protected ExpressionBuilder<?> expr() {
+    protected ExpressionBuilder<M> expr() {
+        M m = getModel();
+        if (m != model) {
+            return m.peekExprBuilder();
+        }
         return model.peekExprBuilder();
     }
 
@@ -76,48 +76,28 @@ public abstract class ModelProperty<M extends Model<M>> {
      * Is null.
      */
     public M isNull() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isNull();
-        }
-        expr().isNull(name);
-        return model;
+        return expr().isNull(name);
     }
 
     /**
      * Is not null.
      */
     public M isNotNull() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isNotNull();
-        }
-        expr().isNotNull(name);
-        return model;
+        return expr().isNotNull(name);
     }
 
     /**
      * Order by ascending on this property.
      */
     public M asc() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).asc();
-        }
-        expr().orderBy(name, false);
-        return model;
+        return expr().orderBy(name, false);
     }
 
     /**
      * Order by descending on this property.
      */
     public M desc() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).desc();
-        }
-        expr().orderBy(name, true);
-        return model;
+        return expr().orderBy(name, true);
     }
 
     /**
@@ -135,12 +115,7 @@ public abstract class ModelProperty<M extends Model<M>> {
     }
 
     public final M eq(ModelProperty<?> p) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).eq(p);
-        }
-        expr().eq(name, p);
-        return model;
+        return expr().eq(name, p);
     }
 
     public M set(Object value) {

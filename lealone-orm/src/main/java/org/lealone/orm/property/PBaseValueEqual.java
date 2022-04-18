@@ -22,100 +22,65 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends ModelProper
         super(name, model);
     }
 
-    private PBaseValueEqual<M, T> P(M model) {
-        return this.<PBaseValueEqual<M, T>> getModelProperty(model);
-    }
-
     /**
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M eq(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).eq(value);
-        }
-        expr().eq(name, value);
-        return model;
+        return expr().eq(name, value);
     }
 
     /**
      * Is not equal to.
      *
      * @param value the equal to bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M ne(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).ne(value);
-        }
-        expr().ne(name, value);
-        return model;
+        return expr().ne(name, value);
     }
 
     /**
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     @SafeVarargs
     public final M in(T... values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).in(values);
-        }
-        expr().in(name, (Object[]) values);
-        return model;
+        return expr().in(name, (Object[]) values);
     }
 
     /**
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     @SafeVarargs
     public final M notIn(T... values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).notIn(values);
-        }
-        expr().notIn(name, (Object[]) values);
-        return model;
+        return expr().notIn(name, (Object[]) values);
     }
 
     /**
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M in(Collection<T> values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).in(values);
-        }
-        expr().in(name, values);
-        return model;
+        return expr().in(name, values);
     }
 
     /**
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M notIn(Collection<T> values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).notIn(values);
-        }
-        expr().notIn(name, values);
-        return model;
+        return expr().notIn(name, values);
     }
-
 }

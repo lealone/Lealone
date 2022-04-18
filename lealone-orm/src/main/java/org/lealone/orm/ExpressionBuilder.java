@@ -25,30 +25,30 @@ import org.lealone.sql.expression.condition.ConditionIn;
 import org.lealone.sql.expression.condition.ConditionNot;
 import org.lealone.sql.expression.function.Function;
 
-public class ExpressionBuilder<T> {
+public class ExpressionBuilder<M extends Model<M>> {
 
-    private Model<?> model;
-    private Model<?> oldModel;
+    private M model;
+    private M oldModel;
     private Expression expression;
     private ArrayList<SelectOrderBy> orderList;
     private boolean isAnd = true;
     private boolean isNot;
 
-    ExpressionBuilder(Model<?> model) {
+    ExpressionBuilder(M model) {
         this.model = this.oldModel = model;
     }
 
     // 用于join时切换
-    void setModel(Model<?> model) {
+    void setModel(M model) {
         this.oldModel = this.model;
         this.model = model;
     }
 
-    Model<?> getModel() {
+    M getModel() {
         return model;
     }
 
-    Model<?> getOldModel() {
+    M getOldModel() {
         return oldModel;
     }
 
@@ -56,7 +56,7 @@ public class ExpressionBuilder<T> {
         return expression;
     }
 
-    ExpressionBuilder<T> junction(ExpressionBuilder<T> e) {
+    ExpressionBuilder<M> junction(ExpressionBuilder<M> e) {
         setRootExpression(e.getExpression());
         return this;
     }
@@ -113,72 +113,72 @@ public class ExpressionBuilder<T> {
         setRootExpression(c);
     }
 
-    public ExpressionBuilder<T> set(String propertyName, Value value) {
+    public M set(String propertyName, Value value) {
         model.addNVPair(propertyName, value);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> eq(String propertyName, ModelProperty<?> p) {
+    public M eq(String propertyName, ModelProperty<?> p) {
         ExpressionColumn left = model.getExpressionColumn(propertyName);
         ExpressionColumn right = Model.getExpressionColumn(p);
         Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, left, right);
         setRootExpression(c);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> eq(String propertyName, Object value) {
+    public M eq(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.EQUAL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> ne(String propertyName, Object value) {
+    public M ne(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.NOT_EQUAL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> ieq(String propertyName, String value) {
+    public M ieq(String propertyName, String value) {
         Expression left = createExpressionColumn(propertyName, true);
         value = value.toUpperCase();
         ValueExpression v = ValueExpression.get(ValueString.get(value));
         Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, left, v);
         setRootExpression(c);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> between(String propertyName, Object value1, Object value2) {
+    public M between(String propertyName, Object value1, Object value2) {
         setRootExpression(propertyName, value1, Comparison.BIGGER_EQUAL);
         setRootExpression(propertyName, value2, Comparison.SMALLER_EQUAL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> gt(String propertyName, Object value) {
+    public M gt(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.BIGGER);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> ge(String propertyName, Object value) {
+    public M ge(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.BIGGER_EQUAL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> lt(String propertyName, Object value) {
+    public M lt(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.SMALLER);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> le(String propertyName, Object value) {
+    public M le(String propertyName, Object value) {
         setRootExpression(propertyName, value, Comparison.SMALLER_EQUAL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> isNull(String propertyName) {
+    public M isNull(String propertyName) {
         setRootExpression(propertyName, ValueNull.INSTANCE, Comparison.IS_NULL);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> isNotNull(String propertyName) {
+    public M isNotNull(String propertyName) {
         setRootExpression(propertyName, ValueNull.INSTANCE, Comparison.IS_NOT_NULL);
-        return this;
+        return model;
     }
 
     private void arrayComparison(String propertyName, boolean contains, Object... values) {
@@ -198,32 +198,32 @@ public class ExpressionBuilder<T> {
         setRootExpression(c);
     }
 
-    public ExpressionBuilder<T> arrayContains(String propertyName, Object... values) {
+    public M arrayContains(String propertyName, Object... values) {
         arrayComparison(propertyName, true, values);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> arrayNotContains(String propertyName, Object... values) {
+    public M arrayNotContains(String propertyName, Object... values) {
         arrayComparison(propertyName, false, values);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> arrayIsEmpty(String propertyName) {
+    public M arrayIsEmpty(String propertyName) {
         return arrayLength(propertyName, Comparison.EQUAL);
     }
 
-    public ExpressionBuilder<T> arrayIsNotEmpty(String propertyName) {
+    public M arrayIsNotEmpty(String propertyName) {
         return arrayLength(propertyName, Comparison.BIGGER);
     }
 
-    private ExpressionBuilder<T> arrayLength(String propertyName, int compareType) {
+    private M arrayLength(String propertyName, int compareType) {
         ExpressionColumn ec = model.getExpressionColumn(propertyName);
         Function f = Function.getFunction(getModelTable().getDatabase(), "ARRAY_LENGTH");
         f.setParameter(0, ec);
         ValueExpression v = ValueExpression.get(ValueInt.get(0));
         Comparison c = new Comparison(getModelTable().getSession(), compareType, f, v);
         setRootExpression(c);
-        return this;
+        return model;
     }
 
     private ConditionIn createConditionIn(String propertyName, Object... values) {
@@ -233,33 +233,33 @@ public class ExpressionBuilder<T> {
         return c;
     }
 
-    public ExpressionBuilder<T> in(String propertyName, Object... values) {
+    public M in(String propertyName, Object... values) {
         ConditionIn c = createConditionIn(propertyName, values);
         setRootExpression(c);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> in(String propertyName, Collection<?> values) {
+    public M in(String propertyName, Collection<?> values) {
         Object[] valueArray = new Object[values.size()];
         values.toArray(valueArray);
         in(propertyName, valueArray);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> notIn(String propertyName, Object... values) {
+    public M notIn(String propertyName, Object... values) {
         ConditionIn c = createConditionIn(propertyName, values);
         setRootExpression(new ConditionNot(c));
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> notIn(String propertyName, Collection<?> values) {
+    public M notIn(String propertyName, Collection<?> values) {
         Object[] valueArray = new Object[values.size()];
         values.toArray(valueArray);
         notIn(propertyName, valueArray);
-        return this;
+        return model;
     }
 
-    private ExpressionBuilder<T> like(String propertyName, String value, boolean caseInsensitive) {
+    private M like(String propertyName, String value, boolean caseInsensitive) {
         return like(propertyName, value, caseInsensitive, false);
     }
 
@@ -272,7 +272,7 @@ public class ExpressionBuilder<T> {
         return f;
     }
 
-    private ExpressionBuilder<T> like(String propertyName, String value, boolean caseInsensitive, boolean regexp) {
+    private M like(String propertyName, String value, boolean caseInsensitive, boolean regexp) {
         Expression left = createExpressionColumn(propertyName, caseInsensitive);
         if (caseInsensitive) {
             value = value.toUpperCase();
@@ -280,73 +280,73 @@ public class ExpressionBuilder<T> {
         ValueExpression v = ValueExpression.get(ValueString.get(value));
         CompareLike like = new CompareLike(getModelTable().getDatabase(), left, v, null, regexp);
         setRootExpression(like);
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> like(String propertyName, String value) {
+    public M like(String propertyName, String value) {
         return like(propertyName, value, false);
     }
 
-    public ExpressionBuilder<T> ilike(String propertyName, String value) {
+    public M ilike(String propertyName, String value) {
         return like(propertyName, value, true);
     }
 
-    public ExpressionBuilder<T> startsWith(String propertyName, String value) {
+    public M startsWith(String propertyName, String value) {
         value = value + "%";
         return like(propertyName, value, false);
     }
 
-    public ExpressionBuilder<T> istartsWith(String propertyName, String value) {
+    public M istartsWith(String propertyName, String value) {
         value = value + "%";
         return like(propertyName, value, true);
     }
 
-    public ExpressionBuilder<T> endsWith(String propertyName, String value) {
+    public M endsWith(String propertyName, String value) {
         value = "%" + value;
         return like(propertyName, value, false);
     }
 
-    public ExpressionBuilder<T> iendsWith(String propertyName, String value) {
+    public M iendsWith(String propertyName, String value) {
         value = "%" + value;
         return like(propertyName, value, true);
     }
 
-    public ExpressionBuilder<T> contains(String propertyName, String value) {
+    public M contains(String propertyName, String value) {
         value = "%" + value + "%";
         return like(propertyName, value, false);
     }
 
-    public ExpressionBuilder<T> icontains(String propertyName, String value) {
+    public M icontains(String propertyName, String value) {
         value = "%" + value + "%";
         return like(propertyName, value, true);
     }
 
-    public ExpressionBuilder<T> match(String propertyName, String search) {
+    public M match(String propertyName, String search) {
         return like(propertyName, search, false, true);
     }
 
-    public ExpressionBuilder<T> and() {
+    public M and() {
         isAnd = true;
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> or() {
+    public M or() {
         isAnd = false;
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> not() {
+    public M not() {
         isNot = !isNot; // 两次not相当于无
-        return this;
+        return model;
     }
 
-    public ExpressionBuilder<T> orderBy(String propertyName, boolean isDesc) {
+    public M orderBy(String propertyName, boolean isDesc) {
         if (orderList == null)
             orderList = new ArrayList<>();
         SelectOrderBy order = new SelectOrderBy();
         order.expression = model.getExpressionColumn(propertyName);
         order.descending = isDesc;
         orderList.add(order);
-        return this;
+        return model;
     }
 }

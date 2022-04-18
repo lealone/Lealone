@@ -97,12 +97,7 @@ public class PArray<M extends Model<M>> extends ModelProperty<M> {
      */
     @SafeVarargs
     public final M contains(Object... values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).contains(values);
-        }
-        expr().arrayContains(name, values);
-        return model;
+        return expr().arrayContains(name, values);
     }
 
     /**
@@ -120,12 +115,7 @@ public class PArray<M extends Model<M>> extends ModelProperty<M> {
      */
     @SafeVarargs
     public final M notContains(Object... values) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).notContains(values);
-        }
-        expr().arrayNotContains(name, values);
-        return model;
+        return expr().arrayNotContains(name, values);
     }
 
     /**
@@ -140,12 +130,7 @@ public class PArray<M extends Model<M>> extends ModelProperty<M> {
      * }</pre>
      */
     public M isEmpty() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isEmpty();
-        }
-        expr().arrayIsEmpty(name);
-        return model;
+        return expr().arrayIsEmpty(name);
     }
 
     /**
@@ -160,11 +145,6 @@ public class PArray<M extends Model<M>> extends ModelProperty<M> {
      * }</pre>
      */
     public M isNotEmpty() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isNotEmpty();
-        }
-        expr().arrayIsNotEmpty(name);
-        return model;
+        return expr().arrayIsNotEmpty(name);
     }
 }

@@ -29,29 +29,19 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
     /**
      * Is true.
      *
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M isTrue() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isTrue();
-        }
-        expr().eq(name, Boolean.TRUE);
-        return model;
+        return expr().eq(name, Boolean.TRUE);
     }
 
     /**
      * Is false.
      *
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M isFalse() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).isFalse();
-        }
-        expr().eq(name, Boolean.FALSE);
-        return model;
+        return expr().eq(name, Boolean.FALSE);
     }
 
     /**
@@ -59,15 +49,10 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
      *
      * @param value the equal to bind value
      *
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M is(boolean value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).is(value);
-        }
-        expr().eq(name, value);
-        return model;
+        return expr().eq(name, value);
     }
 
     /**
@@ -75,15 +60,10 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
      *
      * @param value the equal to bind value
      *
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M eq(boolean value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).eq(value);
-        }
-        expr().eq(name, value);
-        return model;
+        return expr().eq(name, value);
     }
 
     public final M set(boolean value) {

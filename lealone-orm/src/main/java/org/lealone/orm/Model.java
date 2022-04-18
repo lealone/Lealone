@@ -46,7 +46,7 @@ import org.lealone.transaction.Transaction;
  * @param <T> Model 子类
  */
 @SuppressWarnings({ "rawtypes", "unchecked" })
-public abstract class Model<T> {
+public abstract class Model<T extends Model<T>> {
 
     public static final short REGULAR_MODEL = 0;
     public static final short ROOT_DAO = 1;
@@ -269,7 +269,7 @@ public abstract class Model<T> {
 
     private ExpressionBuilder<T> getWhereExpressionBuilder() {
         if (whereExpressionBuilder == null) {
-            whereExpressionBuilder = new ExpressionBuilder<T>(this);
+            whereExpressionBuilder = new ExpressionBuilder<T>(root);
         }
         return whereExpressionBuilder;
     }
@@ -337,7 +337,7 @@ public abstract class Model<T> {
             return m.having();
         }
         getStack().pop();
-        having = new ExpressionBuilder<>(this);
+        having = new ExpressionBuilder<>(root);
         pushExprBuilder(having);
         return root;
     }
@@ -587,12 +587,12 @@ public abstract class Model<T> {
         return list;
     }
 
-    public <M> M m(Model<M> m) {
+    public <M extends Model<M>> M m(Model<M> m) {
         Model<T> m2 = maybeCopy();
         if (m2 != this) {
             return m2.m(m);
         }
-        Model<T> old = (Model<T>) peekExprBuilder().getOldModel();
+        Model<T> old = peekExprBuilder().getOldModel();
         if (!old.isRootDao() && m.getClass() == old.getClass()) {
             m = (Model<M>) old;
         } else {
@@ -601,7 +601,7 @@ public abstract class Model<T> {
                 m = m3;
             }
         }
-        peekExprBuilder().setModel(m);
+        peekExprBuilder().setModel((T) m);
         m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;
     }
@@ -857,7 +857,7 @@ public abstract class Model<T> {
         if (m != this) {
             return m.lp();
         }
-        ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
+        ExpressionBuilder<T> e = new ExpressionBuilder<>(root);
         pushExprBuilder(e);
         return root;
     }
@@ -891,7 +891,7 @@ public abstract class Model<T> {
         if (m != this) {
             return m.on();
         }
-        ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
+        ExpressionBuilder<T> e = new ExpressionBuilder<>(root);
         pushExprBuilder(e);
         return root;
     }

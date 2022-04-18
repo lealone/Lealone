@@ -20,55 +20,36 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
         super(name, model);
     }
 
-    private PBaseNumber<M, T> P(M model) {
-        return this.<PBaseNumber<M, T>> getModelProperty(model);
-    }
-
     // Additional int versions -- seems the right thing to do
 
     /**
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M eq(int value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).eq(value);
-        }
-        expr().eq(name, value);
-        return model;
+        return expr().eq(name, value);
     }
 
     /**
      * Greater than.
      *
      * @param value the equal to bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M gt(int value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).gt(value);
-        }
-        expr().gt(name, value);
-        return model;
+        return expr().gt(name, value);
     }
 
     /**
      * Less than.
      *
      * @param value the equal to bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M lt(int value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).lt(value);
-        }
-        expr().lt(name, value);
-        return model;
+        return expr().lt(name, value);
     }
 
     /**
@@ -76,14 +57,9 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
      *
      * @param lower the lower bind value
      * @param upper the upper bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public M between(int lower, int upper) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).between(lower, upper);
-        }
-        expr().between(name, lower, upper);
-        return model;
+        return expr().between(name, lower, upper);
     }
 }

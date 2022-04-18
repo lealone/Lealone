@@ -20,69 +20,45 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
         super(name, model);
     }
 
-    private PBaseComparable<M, T> P(M model) {
-        return this.<PBaseComparable<M, T>> getModelProperty(model);
-    }
-
     // ---- range comparisons -------
     /**
      * Greater than.
      *
      * @param value the bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M gt(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).gt(value);
-        }
-        expr().gt(name, value);
-        return model;
+        return expr().gt(name, value);
     }
 
     /**
      * Greater than or Equal to.
      *
      * @param value the bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M ge(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).ge(value);
-        }
-        expr().ge(name, value);
-        return model;
+        return expr().ge(name, value);
     }
 
     /**
      * Less than.
      *
      * @param value the bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M lt(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).lt(value);
-        }
-        expr().lt(name, value);
-        return model;
+        return expr().lt(name, value);
     }
 
     /**
      * Less than or Equal to.
      *
      * @param value the bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M le(T value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).le(value);
-        }
-        expr().le(name, value);
-        return model;
+        return expr().le(name, value);
     }
 
     /**
@@ -90,15 +66,9 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      *
      * @param lower the lower bind value
      * @param upper the upper bind value
-     * @return the root model bean instance
+     * @return the model bean instance
      */
     public final M between(T lower, T upper) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).between(lower, upper);
-        }
-        expr().between(name, lower, upper);
-        return model;
+        return expr().between(name, lower, upper);
     }
-
 }
