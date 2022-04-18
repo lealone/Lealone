@@ -12,43 +12,41 @@ import org.lealone.db.value.ValueDouble;
 import org.lealone.orm.Model;
 
 /**
- * Double property.
- *
- * @param <R> the root model bean type
+ * Double property. 
  */
-public class PDouble<R> extends PBaseNumber<R, Double> {
+public class PDouble<M extends Model<M>> extends PBaseNumber<M, Double> {
 
     private double value;
 
-    public PDouble(String name, R root) {
-        super(name, root);
+    public PDouble(String name, M model) {
+        super(name, model);
     }
 
-    private PDouble<R> P(Model<?> model) {
-        return this.<PDouble<R>> getModelProperty(model);
+    private PDouble<M> P(M model) {
+        return this.<PDouble<M>> getModelProperty(model);
     }
 
-    public final R set(double value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(double value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueDouble.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Double.valueOf(value.toString()).doubleValue());
     }
 
     public final double get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

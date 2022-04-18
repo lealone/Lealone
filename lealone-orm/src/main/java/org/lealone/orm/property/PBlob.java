@@ -17,28 +17,28 @@ import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
 
-public class PBlob<R> extends ModelProperty<R> {
+public class PBlob<M extends Model<M>> extends ModelProperty<M> {
 
     private Blob value;
 
-    public PBlob(String name, R root) {
-        super(name, root);
+    public PBlob(String name, M model) {
+        super(name, model);
     }
 
-    private PBlob<R> P(Model<?> model) {
-        return this.<PBlob<R>> getModelProperty(model);
+    private PBlob<M> P(M model) {
+        return this.<PBlob<M>> getModelProperty(model);
     }
 
-    public R set(Blob value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(Blob value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueJavaObject.getNoCopy(value, null));
         }
-        return root;
+        return model;
     }
 
     public final Blob get() {

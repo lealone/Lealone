@@ -13,19 +13,17 @@ import org.lealone.orm.Model;
 
 /**
  * Boolean property.
- *
- * @param <R> the root model bean type
  */
-public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
+public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
 
     private boolean value;
 
-    public PBoolean(String name, R root) {
-        super(name, root);
+    public PBoolean(String name, M model) {
+        super(name, model);
     }
 
-    private PBoolean<R> P(Model<?> model) {
-        return this.<PBoolean<R>> getModelProperty(model);
+    private PBoolean<M> P(M model) {
+        return this.<PBoolean<M>> getModelProperty(model);
     }
 
     /**
@@ -33,13 +31,13 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
      *
      * @return the root model bean instance
      */
-    public R isTrue() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isTrue();
+    public M isTrue() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isTrue();
         }
         expr().eq(name, Boolean.TRUE);
-        return root;
+        return model;
     }
 
     /**
@@ -47,13 +45,13 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
      *
      * @return the root model bean instance
      */
-    public R isFalse() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isFalse();
+    public M isFalse() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isFalse();
         }
         expr().eq(name, Boolean.FALSE);
-        return root;
+        return model;
     }
 
     /**
@@ -63,13 +61,13 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
      *
      * @return the root model bean instance
      */
-    public R is(boolean value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).is(value);
+    public M is(boolean value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).is(value);
         }
         expr().eq(name, value);
-        return root;
+        return model;
     }
 
     /**
@@ -79,36 +77,36 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
      *
      * @return the root model bean instance
      */
-    public R eq(boolean value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).eq(value);
+    public M eq(boolean value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).eq(value);
         }
         expr().eq(name, value);
-        return root;
+        return model;
     }
 
-    public final R set(boolean value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(boolean value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueBoolean.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Boolean.valueOf(value.toString()).booleanValue());
     }
 
     public final boolean get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

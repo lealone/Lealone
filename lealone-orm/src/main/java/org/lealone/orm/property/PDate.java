@@ -13,43 +13,41 @@ import org.lealone.db.value.ValueDate;
 import org.lealone.orm.Model;
 
 /**
- * Java sql date property.
- *
- * @param <R> the root model bean type
+ * Java sql date property. 
  */
-public class PDate<R> extends PBaseDate<R, Date> {
+public class PDate<M extends Model<M>> extends PBaseDate<M, Date> {
 
     private Date value;
 
-    public PDate(String name, R root) {
-        super(name, root);
+    public PDate(String name, M model) {
+        super(name, model);
     }
 
-    private PDate<R> P(Model<?> model) {
-        return this.<PDate<R>> getModelProperty(model);
+    private PDate<M> P(M model) {
+        return this.<PDate<M>> getModelProperty(model);
     }
 
-    public final R set(Date value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(Date value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueDate.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Date.valueOf(value.toString()));
     }
 
     public final Date get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

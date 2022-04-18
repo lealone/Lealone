@@ -13,42 +13,40 @@ import org.lealone.orm.Model;
 
 /**
  * Short property.
- *
- * @param <R> the root model bean type
  */
-public class PShort<R> extends PBaseNumber<R, Short> {
+public class PShort<M extends Model<M>> extends PBaseNumber<M, Short> {
 
     private short value;
 
-    public PShort(String name, R root) {
-        super(name, root);
+    public PShort(String name, M model) {
+        super(name, model);
     }
 
-    private PShort<R> P(Model<?> model) {
-        return this.<PShort<R>> getModelProperty(model);
+    private PShort<M> P(M model) {
+        return this.<PShort<M>> getModelProperty(model);
     }
 
-    public final R set(short value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(short value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueShort.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Short.valueOf(value.toString()).shortValue());
     }
 
     public final short get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

@@ -14,32 +14,30 @@ import org.lealone.orm.ModelProperty;
 import org.lealone.orm.json.Json;
 
 /**
- * byte[] property.
- *
- * @param <R> the root model bean type
+ * byte[] property. 
  */
-public class PBytes<R> extends ModelProperty<R> {
+public class PBytes<M extends Model<M>> extends ModelProperty<M> {
 
     private byte[] value;
 
-    public PBytes(String name, R root) {
-        super(name, root);
+    public PBytes(String name, M model) {
+        super(name, model);
     }
 
-    private PBytes<R> P(Model<?> model) {
-        return this.<PBytes<R>> getModelProperty(model);
+    private PBytes<M> P(M model) {
+        return this.<PBytes<M>> getModelProperty(model);
     }
 
-    public R set(byte[] value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(byte[] value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueJavaObject.getNoCopy(value, null));
         }
-        return root;
+        return model;
     }
 
     public final byte[] get() {

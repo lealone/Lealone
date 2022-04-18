@@ -13,42 +13,40 @@ import org.lealone.orm.Model;
 
 /**
  * Byte property.
- *
- * @param <R> the root model bean type
  */
-public class PByte<R> extends PBaseNumber<R, Byte> {
+public class PByte<M extends Model<M>> extends PBaseNumber<M, Byte> {
 
     private byte value;
 
-    public PByte(String name, R root) {
-        super(name, root);
+    public PByte(String name, M model) {
+        super(name, model);
     }
 
-    private PByte<R> P(Model<?> model) {
-        return this.<PByte<R>> getModelProperty(model);
+    private PByte<M> P(M model) {
+        return this.<PByte<M>> getModelProperty(model);
     }
 
-    public final R set(byte value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(byte value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueByte.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Byte.valueOf(value.toString()).byteValue());
     }
 
     public final byte get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

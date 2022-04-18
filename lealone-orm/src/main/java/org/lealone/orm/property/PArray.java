@@ -17,25 +17,23 @@ import org.lealone.orm.ModelProperty;
 
 /**
  * Array property with E as the element type.
- *
- * @param <R> the root model bean type
  */
-public class PArray<R> extends ModelProperty<R> {
+public class PArray<M extends Model<M>> extends ModelProperty<M> {
 
     private Object[] values;
 
-    public PArray(String name, R root) {
-        super(name, root);
+    public PArray(String name, M model) {
+        super(name, model);
     }
 
-    private PArray<R> P(Model<?> model) {
-        return this.<PArray<R>> getModelProperty(model);
+    private PArray<M> P(M model) {
+        return this.<PArray<M>> getModelProperty(model);
     }
 
-    public final R set(Object[] values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(values);
+    public final M set(Object[] values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(values);
         }
         if (!areEqual(this.values, values)) {
             this.values = values;
@@ -45,13 +43,13 @@ public class PArray<R> extends ModelProperty<R> {
             }
             expr().set(name, ValueArray.get(array));
         }
-        return root;
+        return model;
     }
 
     public final Object[] get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return values;
     }
@@ -98,13 +96,13 @@ public class PArray<R> extends ModelProperty<R> {
      * @param values The values that should be contained in the array
      */
     @SafeVarargs
-    public final R contains(Object... values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).contains(values);
+    public final M contains(Object... values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).contains(values);
         }
         expr().arrayContains(name, values);
-        return root;
+        return model;
     }
 
     /**
@@ -121,13 +119,13 @@ public class PArray<R> extends ModelProperty<R> {
      * @param values The values that should not be contained in the array
      */
     @SafeVarargs
-    public final R notContains(Object... values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).notContains(values);
+    public final M notContains(Object... values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).notContains(values);
         }
         expr().arrayNotContains(name, values);
-        return root;
+        return model;
     }
 
     /**
@@ -141,13 +139,13 @@ public class PArray<R> extends ModelProperty<R> {
      *
      * }</pre>
      */
-    public R isEmpty() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isEmpty();
+    public M isEmpty() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isEmpty();
         }
         expr().arrayIsEmpty(name);
-        return root;
+        return model;
     }
 
     /**
@@ -161,12 +159,12 @@ public class PArray<R> extends ModelProperty<R> {
      *
      * }</pre>
      */
-    public R isNotEmpty() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isNotEmpty();
+    public M isNotEmpty() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isNotEmpty();
         }
         expr().arrayIsNotEmpty(name);
-        return root;
+        return model;
     }
 }

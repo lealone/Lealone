@@ -16,28 +16,28 @@ import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
 
-public class PClob<R> extends ModelProperty<R> {
+public class PClob<M extends Model<M>> extends ModelProperty<M> {
 
     private Clob value;
 
-    public PClob(String name, R root) {
-        super(name, root);
+    public PClob(String name, M model) {
+        super(name, model);
     }
 
-    private PClob<R> P(Model<?> model) {
-        return this.<PClob<R>> getModelProperty(model);
+    private PClob<M> P(M model) {
+        return this.<PClob<M>> getModelProperty(model);
     }
 
-    public R set(Clob value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(Clob value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueJavaObject.getNoCopy(value, null));
         }
-        return root;
+        return model;
     }
 
     public final Clob get() {

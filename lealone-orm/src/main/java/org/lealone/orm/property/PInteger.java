@@ -12,43 +12,41 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.orm.Model;
 
 /**
- * Integer property.
- *
- * @param <R> the root model bean type
+ * Integer property. 
  */
-public class PInteger<R> extends PBaseNumber<R, Integer> {
+public class PInteger<M extends Model<M>> extends PBaseNumber<M, Integer> {
 
     private int value;
 
-    public PInteger(String name, R root) {
-        super(name, root);
+    public PInteger(String name, M model) {
+        super(name, model);
     }
 
-    private PInteger<R> P(Model<?> model) {
-        return this.<PInteger<R>> getModelProperty(model);
+    private PInteger<M> P(M model) {
+        return this.<PInteger<M>> getModelProperty(model);
     }
 
-    public final R set(int value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(int value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueInt.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Integer.valueOf(value.toString()).intValue());
     }
 
     public final int get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

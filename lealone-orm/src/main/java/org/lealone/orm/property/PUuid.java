@@ -14,42 +14,40 @@ import org.lealone.orm.Model;
 
 /**
  * UUID property.
- *
- * @param <R> the root model bean type
  */
-public class PUuid<R> extends PBaseValueEqual<R, UUID> {
+public class PUuid<M extends Model<M>> extends PBaseValueEqual<M, UUID> {
 
     private UUID value;
 
-    public PUuid(String name, R root) {
-        super(name, root);
+    public PUuid(String name, M model) {
+        super(name, model);
     }
 
-    private PUuid<R> P(Model<?> model) {
-        return this.<PUuid<R>> getModelProperty(model);
+    private PUuid<M> P(M model) {
+        return this.<PUuid<M>> getModelProperty(model);
     }
 
-    public R set(UUID value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(UUID value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueUuid.get(value.getMostSignificantBits(), value.getLeastSignificantBits()));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(UUID.fromString(value.toString()));
     }
 
     public final UUID get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

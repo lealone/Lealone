@@ -13,29 +13,29 @@ import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
 import org.lealone.orm.json.Json;
 
-public class PObject<R> extends ModelProperty<R> {
+public class PObject<M extends Model<M>> extends ModelProperty<M> {
 
     private Object value;
 
-    public PObject(String name, R root) {
-        super(name, root);
+    public PObject(String name, M model) {
+        super(name, model);
     }
 
-    private PObject<R> P(Model<?> model) {
-        return this.<PObject<R>> getModelProperty(model);
+    private PObject<M> P(M model) {
+        return this.<PObject<M>> getModelProperty(model);
     }
 
     @Override
-    public R set(Object value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(Object value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueJavaObject.getNoCopy(value, null));
         }
-        return root;
+        return model;
     }
 
     public final Object get() {

@@ -14,42 +14,40 @@ import org.lealone.orm.Model;
 
 /**
  * Property for java sql Timestamp.
- *
- * @param <R> the root model bean type
  */
-public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
+public class PTimestamp<M extends Model<M>> extends PBaseDate<M, Timestamp> {
 
     private Timestamp value;
 
-    public PTimestamp(String name, R root) {
-        super(name, root);
+    public PTimestamp(String name, M model) {
+        super(name, model);
     }
 
-    private PTimestamp<R> P(Model<?> model) {
-        return this.<PTimestamp<R>> getModelProperty(model);
+    private PTimestamp<M> P(M model) {
+        return this.<PTimestamp<M>> getModelProperty(model);
     }
 
-    public final R set(Timestamp value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(Timestamp value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueTimestamp.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Timestamp.valueOf(value.toString()));
     }
 
     public final Timestamp get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

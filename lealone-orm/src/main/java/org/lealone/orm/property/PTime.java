@@ -14,42 +14,40 @@ import org.lealone.orm.Model;
 
 /**
  * Time property.
- *
- * @param <R> the root model bean type
  */
-public class PTime<R> extends PBaseNumber<R, Time> {
+public class PTime<M extends Model<M>> extends PBaseNumber<M, Time> {
 
     private Time value;
 
-    public PTime(String name, R root) {
-        super(name, root);
+    public PTime(String name, M model) {
+        super(name, model);
     }
 
-    private PTime<R> P(Model<?> model) {
-        return this.<PTime<R>> getModelProperty(model);
+    private PTime<M> P(M model) {
+        return this.<PTime<M>> getModelProperty(model);
     }
 
-    public final R set(Time value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(Time value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueTime.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Time.valueOf(value.toString()));
     }
 
     public final Time get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

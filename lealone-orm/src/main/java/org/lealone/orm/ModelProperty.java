@@ -15,13 +15,13 @@ import org.lealone.db.value.Value;
 /**
  * A property used in type query.
  *
- * @param <R> The type of the owning root bean
+ * @param <M> the type of the owning model bean
  */
 @SuppressWarnings("unchecked")
-public abstract class ModelProperty<R> {
+public abstract class ModelProperty<M extends Model<M>> {
 
     protected final String name;
-    protected final R root;
+    protected final M model;
 
     protected String fullName;
 
@@ -29,23 +29,23 @@ public abstract class ModelProperty<R> {
      * Construct with a property name and root instance.
      *
      * @param name the name of the property
-     * @param root the root model bean instance
+     * @param model the model bean instance
      */
-    public ModelProperty(String name, R root) {
+    public ModelProperty(String name, M model) {
         this.name = name;
-        this.root = root;
+        this.model = model;
     }
 
     public String getDatabaseName() {
-        return ((Model<?>) root).getDatabaseName();
+        return model.getDatabaseName();
     }
 
     public String getSchemaName() {
-        return ((Model<?>) root).getSchemaName();
+        return model.getSchemaName();
     }
 
     public String getTableName() {
-        return ((Model<?>) root).getTableName();
+        return model.getTableName();
     }
 
     @Override
@@ -53,71 +53,71 @@ public abstract class ModelProperty<R> {
         return name;
     }
 
-    protected Model<?> getModel() {
-        return ((Model<?>) root).maybeCopy();
+    protected M getModel() {
+        return (M) model.maybeCopy();
     }
 
-    protected <P> P getModelProperty(Model<?> model) {
+    protected <P> P getModelProperty(M model) {
         return (P) model.getModelProperty(name);
     }
 
-    private ModelProperty<R> P(Model<?> model) {
-        return this.<ModelProperty<R>> getModelProperty(model);
+    private ModelProperty<M> P(M model) {
+        return this.<ModelProperty<M>> getModelProperty(model);
     }
 
     /**
      * Internal method to return the underlying expression builder.
      */
     protected ExpressionBuilder<?> expr() {
-        return ((Model<?>) root).peekExprBuilder();
+        return model.peekExprBuilder();
     }
 
     /**
      * Is null.
      */
-    public R isNull() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isNull();
+    public M isNull() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isNull();
         }
         expr().isNull(name);
-        return root;
+        return model;
     }
 
     /**
      * Is not null.
      */
-    public R isNotNull() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).isNotNull();
+    public M isNotNull() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).isNotNull();
         }
         expr().isNotNull(name);
-        return root;
+        return model;
     }
 
     /**
      * Order by ascending on this property.
      */
-    public R asc() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).asc();
+    public M asc() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).asc();
         }
         expr().orderBy(name, false);
-        return root;
+        return model;
     }
 
     /**
      * Order by descending on this property.
      */
-    public R desc() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).desc();
+    public M desc() {
+        M m = getModel();
+        if (m != model) {
+            return P(m).desc();
         }
         expr().orderBy(name, true);
-        return root;
+        return model;
     }
 
     /**
@@ -134,17 +134,17 @@ public abstract class ModelProperty<R> {
         return fullName;
     }
 
-    public final R eq(ModelProperty<?> p) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).eq(p);
+    public final M eq(ModelProperty<?> p) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).eq(p);
         }
         expr().eq(name, p);
-        return root;
+        return model;
     }
 
-    public R set(Object value) {
-        return root;
+    public M set(Object value) {
+        return model;
     }
 
     protected void serialize(Map<String, Object> map) {

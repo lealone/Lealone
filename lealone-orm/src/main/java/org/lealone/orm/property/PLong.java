@@ -13,42 +13,40 @@ import org.lealone.orm.Model;
 
 /**
  * Long property.
- *
- * @param <R> the root model bean type
  */
-public class PLong<R> extends PBaseNumber<R, Long> {
+public class PLong<M extends Model<M>> extends PBaseNumber<M, Long> {
 
     private long value;
 
-    public PLong(String name, R root) {
-        super(name, root);
+    public PLong(String name, M model) {
+        super(name, model);
     }
 
-    private PLong<R> P(Model<?> model) {
-        return this.<PLong<R>> getModelProperty(model);
+    private PLong<M> P(M model) {
+        return this.<PLong<M>> getModelProperty(model);
     }
 
-    public R set(long value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public M set(long value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueLong.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(Long.valueOf(value.toString()).longValue());
     }
 
     public final long get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

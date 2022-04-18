@@ -45,7 +45,7 @@ import org.lealone.transaction.Transaction;
  *
  * @param <T> Model 子类
  */
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({ "rawtypes", "unchecked" })
 public abstract class Model<T> {
 
     public static final short REGULAR_MODEL = 0;
@@ -122,21 +122,21 @@ public abstract class Model<T> {
         }
     }
 
-    private static class PRowId<R> extends PBaseNumber<R, Long> {
+    private static class PRowId<M extends Model<M>> extends PBaseNumber<M, Long> {
 
         private long value;
 
-        public PRowId(String name, R root) {
-            super(name, root);
+        public PRowId(M root) {
+            super(Column.ROWID, root);
         }
 
         // 不需要通过外部设置
-        R set(long value) {
+        M set(long value) {
             if (!areEqual(this.value, value)) {
                 this.value = value;
                 expr().set(name, ValueLong.get(value));
             }
-            return root;
+            return model;
         }
 
         @Override
@@ -149,7 +149,7 @@ public abstract class Model<T> {
         }
     }
 
-    private final PRowId<Model<T>> _rowid_ = new PRowId<>(Column.ROWID, this);
+    private final PRowId _rowid_ = new PRowId(this);
 
     // The root model bean instance. Used to provide fluid query construction.
     private final T root;
@@ -175,7 +175,6 @@ public abstract class Model<T> {
     private Stack<ExpressionBuilder<T>> expressionBuilderStack;
     private Stack<TableFilter> tableFilterStack;
 
-    @SuppressWarnings("unchecked")
     protected Model(ModelTable table, short modelType) {
         root = (T) this;
         this.modelTable = table;
@@ -235,7 +234,6 @@ public abstract class Model<T> {
         return root;
     }
 
-    @SuppressWarnings("unchecked")
     protected <M> List<M> getModelList(Class c) {
         ArrayList<Model<?>> oldList = modelMap.get(c);
         if (oldList == null) {
@@ -478,7 +476,6 @@ public abstract class Model<T> {
         return select;
     }
 
-    @SuppressWarnings("unchecked")
     private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list) {
         Value[] row = result.currentRow();
         if (row == null)
@@ -513,7 +510,6 @@ public abstract class Model<T> {
         return (T) m;
     }
 
-    @SuppressWarnings("unchecked")
     private void deserializeAssociateInstances(HashMap<String, Value> map, List<Model<?>> associateModels) {
         if (associateModels != null) {
             for (Model associateModel : associateModels) {
@@ -552,7 +548,6 @@ public abstract class Model<T> {
         return new JsonObject(toMap()).encode();
     }
 
-    @SuppressWarnings("unchecked")
     protected T decode0(String str) {
         Map<String, Object> map = new JsonObject(str).getMap();
         for (ModelProperty<?> p : modelProperties) {
@@ -592,7 +587,6 @@ public abstract class Model<T> {
         return list;
     }
 
-    @SuppressWarnings("unchecked")
     public <M> M m(Model<M> m) {
         Model<T> m2 = maybeCopy();
         if (m2 != this) {
@@ -767,7 +761,6 @@ public abstract class Model<T> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     Model<T> maybeCopy() {
         if (isRootDao()) {
             return newInstance(modelTable.copy(), CHILD_DAO);

@@ -14,41 +14,40 @@ import org.lealone.orm.Model;
 
 /**
  * BigDecimal property.
- * @param <R> the root model bean type
  */
-public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
+public class PBigDecimal<M extends Model<M>> extends PBaseNumber<M, BigDecimal> {
 
     private BigDecimal value;
 
-    public PBigDecimal(String name, R root) {
-        super(name, root);
+    public PBigDecimal(String name, M model) {
+        super(name, model);
     }
 
-    private PBigDecimal<R> P(Model<?> model) {
-        return this.<PBigDecimal<R>> getModelProperty(model);
+    private PBigDecimal<M> P(M model) {
+        return this.<PBigDecimal<M>> getModelProperty(model);
     }
 
-    public final R set(BigDecimal value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
+    public final M set(BigDecimal value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
             expr().set(name, ValueDecimal.get(value));
         }
-        return root;
+        return model;
     }
 
     @Override
-    public R set(Object value) {
+    public M set(Object value) {
         return set(new BigDecimal(value.toString()));
     }
 
     public final BigDecimal get() {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).get();
+        M m = getModel();
+        if (m != model) {
+            return P(m).get();
         }
         return value;
     }

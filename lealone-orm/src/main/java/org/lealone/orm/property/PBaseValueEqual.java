@@ -13,17 +13,17 @@ import org.lealone.orm.ModelProperty;
 /**
  * Base property for types that primarily have equal to.
  *
- * @param <R> the root model bean type
+ * @param <M> the type of the owning model bean
  * @param <T> the property type
  */
-public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
+public abstract class PBaseValueEqual<M extends Model<M>, T> extends ModelProperty<M> {
 
-    public PBaseValueEqual(String name, R root) {
-        super(name, root);
+    public PBaseValueEqual(String name, M model) {
+        super(name, model);
     }
 
-    private PBaseValueEqual<R, T> P(Model<?> model) {
-        return this.<PBaseValueEqual<R, T>> getModelProperty(model);
+    private PBaseValueEqual<M, T> P(M model) {
+        return this.<PBaseValueEqual<M, T>> getModelProperty(model);
     }
 
     /**
@@ -32,13 +32,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @param value the equal to bind value
      * @return the root model bean instance
      */
-    public final R eq(T value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).eq(value);
+    public final M eq(T value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).eq(value);
         }
         expr().eq(name, value);
-        return root;
+        return model;
     }
 
     /**
@@ -47,13 +47,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @param value the equal to bind value
      * @return the root model bean instance
      */
-    public final R ne(T value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).ne(value);
+    public final M ne(T value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).ne(value);
         }
         expr().ne(name, value);
-        return root;
+        return model;
     }
 
     /**
@@ -63,13 +63,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @return the root model bean instance
      */
     @SafeVarargs
-    public final R in(T... values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).in(values);
+    public final M in(T... values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).in(values);
         }
         expr().in(name, (Object[]) values);
-        return root;
+        return model;
     }
 
     /**
@@ -79,13 +79,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @return the root model bean instance
      */
     @SafeVarargs
-    public final R notIn(T... values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).notIn(values);
+    public final M notIn(T... values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).notIn(values);
         }
         expr().notIn(name, (Object[]) values);
-        return root;
+        return model;
     }
 
     /**
@@ -94,13 +94,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @param values the list of values for the predicate
      * @return the root model bean instance
      */
-    public final R in(Collection<T> values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).in(values);
+    public final M in(Collection<T> values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).in(values);
         }
         expr().in(name, values);
-        return root;
+        return model;
     }
 
     /**
@@ -109,13 +109,13 @@ public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
      * @param values the list of values for the predicate
      * @return the root model bean instance
      */
-    public final R notIn(Collection<T> values) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).notIn(values);
+    public final M notIn(Collection<T> values) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).notIn(values);
         }
         expr().notIn(name, values);
-        return root;
+        return model;
     }
 
 }

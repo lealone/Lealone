@@ -10,18 +10,18 @@ import org.lealone.orm.Model;
 /**
  * Base property for date and date time types.
  *
- * @param <R> the root model bean type
+ * @param <M> the type of the owning model bean
  * @param <D> the date time type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable<R, D> {
+public abstract class PBaseDate<M extends Model<M>, D extends Comparable> extends PBaseComparable<M, D> {
 
-    public PBaseDate(String name, R root) {
-        super(name, root);
+    public PBaseDate(String name, M model) {
+        super(name, model);
     }
 
-    private PBaseDate<R, D> P(Model<?> model) {
-        return this.<PBaseDate<R, D>> getModelProperty(model);
+    private PBaseDate<M, D> P(M model) {
+        return this.<PBaseDate<M, D>> getModelProperty(model);
     }
 
     /**
@@ -30,13 +30,13 @@ public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable
      * @param value the equal to bind value
      * @return the root model bean instance
      */
-    public R after(D value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).after(value);
+    public M after(D value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).after(value);
         }
         expr().gt(name, value);
-        return root;
+        return model;
     }
 
     /**
@@ -45,12 +45,12 @@ public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable
      * @param value the equal to bind value
      * @return the root model bean instance
      */
-    public R before(D value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).before(value);
+    public M before(D value) {
+        M m = getModel();
+        if (m != model) {
+            return P(m).before(value);
         }
         expr().lt(name, value);
-        return root;
+        return model;
     }
 }
