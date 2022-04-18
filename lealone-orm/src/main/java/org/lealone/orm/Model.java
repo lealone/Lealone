@@ -6,9 +6,9 @@
 package org.lealone.orm;
 
 import java.util.ArrayList;
-import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -62,36 +62,32 @@ public abstract class Model<T> {
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
     private static final ConcurrentSkipListMap<Integer, List<ServerSession>> sessionMap = new ConcurrentSkipListMap<>();
 
-    private class PRowId extends PBaseNumber<T, Long> {
+    private static class Stack<E> {
 
-        private long value;
+        private final LinkedList<E> list = new LinkedList<>();
 
-        /**
-         * Construct with a property name and root instance.
-         *
-         * @param name property name
-         * @param root the root model bean instance
-         */
-        public PRowId(String name, T root) {
-            super(name, root);
+        public void push(E item) {
+            list.offerFirst(item);
         }
 
-        // 不需要通过外部设置
-        T set(long value) {
-            if (!areEqual(this.value, value)) {
-                this.value = value;
-                expr().set(name, ValueLong.get(value));
-            }
-            return root;
+        public E pop() {
+            return list.pollFirst();
         }
 
-        @Override
-        protected void deserialize(Value v) {
-            value = v.getLong();
+        public E peek() {
+            return list.peekFirst();
         }
 
-        public final long get() {
-            return value;
+        public boolean isEmpty() {
+            return list.isEmpty();
+        }
+
+        public int size() {
+            return list.size();
+        }
+
+        public E first() {
+            return list.peekLast();
         }
     }
 
@@ -130,8 +126,34 @@ public abstract class Model<T> {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
+    private static class PRowId<R> extends PBaseNumber<R, Long> {
+
+        private long value;
+
+        public PRowId(String name, R root) {
+            super(name, root);
+        }
+
+        // 不需要通过外部设置
+        R set(long value) {
+            if (!areEqual(this.value, value)) {
+                this.value = value;
+                expr().set(name, ValueLong.get(value));
+            }
+            return root;
+        }
+
+        @Override
+        protected void deserialize(Value v) {
+            value = v.getLong();
+        }
+
+        public final long get() {
+            return value;
+        }
+    }
+
+    private final PRowId<Model<T>> _rowid_ = new PRowId<>(Column.ROWID, this);
 
     private final ModelTable modelTable;
 
@@ -151,16 +173,16 @@ public abstract class Model<T> {
     private Expression offsetExpr;
 
     /**
-    * The underlying expression builders held as a stack. Pushed and popped based on and/or (conjunction/disjunction).
+    * The underlying expression builders held as a stack. Pushed and popped based on and/or.
     */
-    private ArrayStack<ExpressionBuilder<T>> expressionBuilderStack;
+    private Stack<ExpressionBuilder<T>> expressionBuilderStack;
 
-    private ArrayStack<TableFilter> tableFilterStack;
+    private Stack<TableFilter> tableFilterStack;
     private HashMap<String, ModelProperty> modelPropertiesMap;
 
-    ModelProperty[] modelProperties;
+    private ModelProperty[] modelProperties;
     // 0: regular model; 1: root dao; 2: child dao
-    short modelType;
+    private short modelType;
 
     private ArrayList<Model<?>> modelList;
     private HashMap<Class, ArrayList<Model<?>>> modelMap;
@@ -577,7 +599,7 @@ public abstract class Model<T> {
     }
 
     public String encode() {
-        return new JsonObject(toMap()).toString();
+        return new JsonObject(toMap()).encode();
     }
 
     @SuppressWarnings("unchecked")
@@ -836,9 +858,9 @@ public abstract class Model<T> {
         }
     }
 
-    private ArrayStack<ExpressionBuilder<T>> getStack() {
+    private Stack<ExpressionBuilder<T>> getStack() {
         if (expressionBuilderStack == null) {
-            expressionBuilderStack = new ArrayStack<ExpressionBuilder<T>>();
+            expressionBuilderStack = new Stack<ExpressionBuilder<T>>();
             expressionBuilderStack.push(getWhereExpressionBuilder());
         }
         return expressionBuilderStack;
@@ -848,10 +870,10 @@ public abstract class Model<T> {
         return new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
     }
 
-    private ArrayStack<TableFilter> getTableFilterStack() {
+    private Stack<TableFilter> getTableFilterStack() {
         if (tableFilterStack == null) {
             TableFilter tableFilter = createTableFilter();
-            tableFilterStack = new ArrayStack<>();
+            tableFilterStack = new Stack<>();
             tableFilterStack.push(tableFilter);
         }
         return tableFilterStack;
@@ -1037,98 +1059,5 @@ public abstract class Model<T> {
 
     private int getCurrentThreadHashCode() {
         return Thread.currentThread().hashCode();
-    }
-
-    /**
-    * Stack based on ArrayList.
-    *
-    * @author rbygrave
-    */
-    static class ArrayStack<E> {
-
-        private final List<E> list;
-
-        /**
-        * Creates an empty Stack with an initial size.
-        */
-        public ArrayStack(int size) {
-            this.list = new ArrayList<>(size);
-        }
-
-        /**
-        * Creates an empty Stack.
-        */
-        public ArrayStack() {
-            this.list = new ArrayList<>();
-        }
-
-        @Override
-        public String toString() {
-            return list.toString();
-        }
-
-        /**
-        * Pushes an item onto the top of this stack.
-        */
-        public void push(E item) {
-            list.add(item);
-        }
-
-        /**
-        * Removes the object at the top of this stack and returns that object as
-        * the value of this function.
-        */
-        public E pop() {
-            int len = list.size();
-            if (len == 0) {
-                throw new EmptyStackException();
-            }
-            return list.remove(len - 1);
-        }
-
-        private E peekZero(boolean retNull) {
-            int len = list.size();
-            if (len == 0) {
-                if (retNull) {
-                    return null;
-                }
-                throw new EmptyStackException();
-            }
-            return list.get(len - 1);
-        }
-
-        /**
-        * Returns the object at the top of this stack without removing it.
-        */
-        public E peek() {
-            return peekZero(false);
-        }
-
-        /**
-        * Returns the object at the top of this stack without removing it.
-        * If the stack is empty this returns null.
-        */
-        public E peekWithNull() {
-            return peekZero(true);
-        }
-
-        /**
-        * Tests if this stack is empty.
-        */
-        public boolean isEmpty() {
-            return list.isEmpty();
-        }
-
-        public int size() {
-            return list.size();
-        }
-
-        public E first() {
-            int len = list.size();
-            if (len == 0) {
-                throw new EmptyStackException();
-            }
-            return list.get(0);
-        }
     }
 }
