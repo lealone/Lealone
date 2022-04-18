@@ -10,7 +10,7 @@ import org.lealone.orm.Model;
 /**
  * Base property for number types.
  *
- * @param <M> the type of the owning model bean
+ * @param <M> the type of the owning model
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
@@ -26,7 +26,7 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M eq(int value) {
         return expr().eq(name, value);
@@ -36,7 +36,7 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
      * Greater than.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M gt(int value) {
         return expr().gt(name, value);
@@ -46,7 +46,7 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
      * Less than.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M lt(int value) {
         return expr().lt(name, value);
@@ -57,7 +57,7 @@ public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> exte
      *
      * @param lower the lower bind value
      * @param upper the upper bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M between(int lower, int upper) {
         return expr().between(name, lower, upper);

@@ -135,7 +135,7 @@ public abstract class Model<T extends Model<T>> {
 
     private final PRowId _rowid_ = new PRowId(this);
 
-    // The root model bean instance. Used to provide fluid query construction.
+    // The root model instance. Used to provide fluid query construction.
     private final T root;
 
     private final ModelTable modelTable;
@@ -381,7 +381,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     /**
-     * Execute the query returning either a single bean or null (if no matching bean is found).
+     * Execute the query returning either a single model or null (if no matching model is found).
      */
     public T findOne() {
         return findOne(null);

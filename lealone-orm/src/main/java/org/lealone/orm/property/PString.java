@@ -37,7 +37,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive is equal to.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M ieq(String value) {
         return iequalTo(value);
@@ -47,7 +47,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive is equal to.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M iequalTo(String value) {
         return expr().ieq(name, value);
@@ -57,7 +57,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Like - include '%' and '_' placeholders as necessary.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M like(String value) {
         return expr().like(name, value);
@@ -67,7 +67,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Starts with - uses a like with '%' wildcard added to the end.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M startsWith(String value) {
         return expr().startsWith(name, value);
@@ -77,7 +77,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Ends with - uses a like with '%' wildcard added to the beginning.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M endsWith(String value) {
         return expr().endsWith(name, value);
@@ -87,7 +87,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Contains - uses a like with '%' wildcard added to the beginning and end.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M contains(String value) {
         return expr().contains(name, value);
@@ -97,7 +97,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive like.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M ilike(String value) {
         return expr().ilike(name, value);
@@ -107,7 +107,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive starts with.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M istartsWith(String value) {
         return expr().istartsWith(name, value);
@@ -117,7 +117,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive ends with.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M iendsWith(String value) {
         return expr().iendsWith(name, value);
@@ -127,7 +127,7 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
      * Case insensitive contains.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M icontains(String value) {
         return expr().icontains(name, value);

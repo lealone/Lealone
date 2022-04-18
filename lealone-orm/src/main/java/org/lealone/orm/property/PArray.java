@@ -14,7 +14,7 @@ import org.lealone.db.value.ValueString;
 import org.lealone.orm.Model;
 
 /**
- * Array property with E as the element type.
+ * Array property.
  */
 public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
@@ -60,14 +60,6 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     /**
      * ARRAY contains the values.
-     * <p>
-     * <pre>{@code
-     *
-     *   new QContact()
-     *    .phoneNumbers.contains("4321")
-     *    .findList();
-     *
-     * }</pre>
      *
      * @param values The values that should be contained in the array
      */
@@ -78,14 +70,6 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     /**
      * ARRAY does not contain the values.
-     * <p>
-     * <pre>{@code
-     *
-     *   new QContact()
-     *    .phoneNumbers.notContains("4321")
-     *    .findList();
-     *
-     * }</pre>
      *
      * @param values The values that should not be contained in the array
      */
@@ -96,14 +80,6 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     /**
      * ARRAY is empty.
-     * <p>
-     * <pre>{@code
-     *
-     *   new QContact()
-     *    .phoneNumbers.isEmpty()
-     *    .findList();
-     *
-     * }</pre>
      */
     public M isEmpty() {
         return expr().arrayIsEmpty(name);
@@ -111,14 +87,6 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     /**
      * ARRAY is not empty.
-     * <p>
-     * <pre>{@code
-     *
-     *   new QContact()
-     *    .phoneNumbers.isNotEmpty()
-     *    .findList();
-     *
-     * }</pre>
      */
     public M isNotEmpty() {
         return expr().arrayIsNotEmpty(name);

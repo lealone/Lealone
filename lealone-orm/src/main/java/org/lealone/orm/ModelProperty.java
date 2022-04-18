@@ -15,7 +15,7 @@ import org.lealone.db.value.Value;
 /**
  * A property used in type query.
  *
- * @param <M> the type of the owning model bean
+ * @param <M> the type of the owning model
  */
 @SuppressWarnings("unchecked")
 public abstract class ModelProperty<M extends Model<M>> {
@@ -26,25 +26,39 @@ public abstract class ModelProperty<M extends Model<M>> {
     protected String fullName;
 
     /**
-     * Construct with a property name and root instance.
+     * Construct with a property name and model instance.
      *
      * @param name the name of the property
-     * @param model the model bean instance
+     * @param model the model instance
      */
     public ModelProperty(String name, M model) {
         this.name = name;
         this.model = model;
     }
 
-    public String getDatabaseName() {
+    /**
+     * Return the property name.
+     */
+    public String getName() {
+        return name;
+    }
+
+    protected String getFullName() {
+        if (fullName == null) {
+            fullName = getSchemaName() + "." + getTableName() + "." + name;
+        }
+        return fullName;
+    }
+
+    protected String getDatabaseName() {
         return model.getDatabaseName();
     }
 
-    public String getSchemaName() {
+    protected String getSchemaName() {
         return model.getSchemaName();
     }
 
-    public String getTableName() {
+    protected String getTableName() {
         return model.getTableName();
     }
 
@@ -98,20 +112,6 @@ public abstract class ModelProperty<M extends Model<M>> {
      */
     public M desc() {
         return expr().orderBy(name, true);
-    }
-
-    /**
-     * Return the property name.
-     */
-    public String getName() {
-        return name;
-    }
-
-    protected String getFullName() {
-        if (fullName == null) {
-            fullName = getSchemaName() + "." + getTableName() + "." + name;
-        }
-        return fullName;
     }
 
     public final M eq(ModelProperty<?> p) {

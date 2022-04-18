@@ -10,7 +10,7 @@ import org.lealone.orm.Model;
 /**
  * Base property for date and date time types.
  *
- * @param <M> the type of the owning model bean
+ * @param <M> the type of the owning model
  * @param <D> the date time type
  */
 @SuppressWarnings("rawtypes")
@@ -24,7 +24,7 @@ public abstract class PBaseDate<M extends Model<M>, D extends Comparable> extend
      * Same as greater than.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M after(D value) {
         return expr().gt(name, value);
@@ -34,7 +34,7 @@ public abstract class PBaseDate<M extends Model<M>, D extends Comparable> extend
      * Same as less than.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public M before(D value) {
         return expr().lt(name, value);

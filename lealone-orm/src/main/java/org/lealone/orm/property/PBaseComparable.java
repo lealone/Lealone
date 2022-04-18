@@ -10,7 +10,7 @@ import org.lealone.orm.Model;
 /**
  * Base property for all comparable types. 
  *
- * @param <M> the type of the owning model bean
+ * @param <M> the type of the owning model
  * @param <T> the type of the scalar property
  */
 @SuppressWarnings("rawtypes")
@@ -25,7 +25,7 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      * Greater than.
      *
      * @param value the bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M gt(T value) {
         return expr().gt(name, value);
@@ -35,7 +35,7 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      * Greater than or Equal to.
      *
      * @param value the bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M ge(T value) {
         return expr().ge(name, value);
@@ -45,7 +45,7 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      * Less than.
      *
      * @param value the bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M lt(T value) {
         return expr().lt(name, value);
@@ -55,7 +55,7 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      * Less than or Equal to.
      *
      * @param value the bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M le(T value) {
         return expr().le(name, value);
@@ -66,7 +66,7 @@ public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> 
      *
      * @param lower the lower bind value
      * @param upper the upper bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M between(T lower, T upper) {
         return expr().between(name, lower, upper);

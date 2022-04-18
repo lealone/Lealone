@@ -41,7 +41,7 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
     /**
      * Is true.
      *
-     * @return the model bean instance
+     * @return the model instance
      */
     public M isTrue() {
         return expr().eq(name, Boolean.TRUE);
@@ -50,7 +50,7 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
     /**
      * Is false.
      *
-     * @return the model bean instance
+     * @return the model instance
      */
     public M isFalse() {
         return expr().eq(name, Boolean.FALSE);
@@ -61,7 +61,7 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
      *
      * @param value the equal to bind value
      *
-     * @return the model bean instance
+     * @return the model instance
      */
     public M is(boolean value) {
         return expr().eq(name, value);
@@ -72,7 +72,7 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
      *
      * @param value the equal to bind value
      *
-     * @return the model bean instance
+     * @return the model instance
      */
     public M eq(boolean value) {
         return expr().eq(name, value);

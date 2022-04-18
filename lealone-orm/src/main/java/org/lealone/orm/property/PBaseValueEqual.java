@@ -12,7 +12,7 @@ import org.lealone.orm.Model;
 /**
  * Base property for types that primarily have equal to.
  *
- * @param <M> the type of the owning model bean
+ * @param <M> the type of the owning model
  * @param <T> the property type
  */
 public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T> {
@@ -25,7 +25,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M eq(T value) {
         return expr().eq(name, value);
@@ -35,7 +35,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is not equal to.
      *
      * @param value the equal to bind value
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M ne(T value) {
         return expr().ne(name, value);
@@ -45,7 +45,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the model bean instance
+     * @return the model instance
      */
     @SafeVarargs
     public final M in(T... values) {
@@ -56,7 +56,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the model bean instance
+     * @return the model instance
      */
     @SafeVarargs
     public final M notIn(T... values) {
@@ -67,7 +67,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M in(Collection<T> values) {
         return expr().in(name, values);
@@ -77,7 +77,7 @@ public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T>
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the model bean instance
+     * @return the model instance
      */
     public final M notIn(Collection<T> values) {
         return expr().notIn(name, values);
