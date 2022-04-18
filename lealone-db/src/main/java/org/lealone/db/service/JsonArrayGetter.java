@@ -11,7 +11,7 @@ public interface JsonArrayGetter {
 
     public static JsonArrayGetter create(String json) {
         try {
-            String className = "org.lealone.orm.json.JsonArray.Getter";
+            String className = "org.lealone.orm.json.JsonArray$Getter";
             JsonArrayGetter getter = (JsonArrayGetter) Class.forName(className).getDeclaredConstructor().newInstance();
             getter.init(json);
             return getter;
