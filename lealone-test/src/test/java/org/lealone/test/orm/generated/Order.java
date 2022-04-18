@@ -31,13 +31,11 @@ public class Order extends Model<Order> {
 
     private Order(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER") : t, modelType);
-        super.setRoot(this);
-
-        this.customerId = new PLong<>("CUSTOMER_ID", this);
-        this.orderId = new PInteger<>("ORDER_ID", this);
-        this.orderDate = new PDate<>("ORDER_DATE", this);
-        this.total = new PDouble<>("TOTAL", this);
-        super.setModelProperties(new ModelProperty[] { this.customerId, this.orderId, this.orderDate, this.total });
+        customerId = new PLong<>("CUSTOMER_ID", this);
+        orderId = new PInteger<>("ORDER_ID", this);
+        orderDate = new PDate<>("ORDER_DATE", this);
+        total = new PDouble<>("TOTAL", this);
+        super.setModelProperties(new ModelProperty[] { customerId, orderId, orderDate, total });
     }
 
     public Customer getCustomer() {

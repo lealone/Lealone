@@ -59,30 +59,28 @@ public class AllModelProperty extends Model<AllModelProperty> {
 
     private AllModelProperty(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ALL_MODEL_PROPERTY") : t, modelType);
-        super.setRoot(this);
-
-        this.f1 = new PInteger<>("F1", this);
-        this.f2 = new PBoolean<>("F2", this);
-        this.f3 = new PByte<>("F3", this);
-        this.f4 = new PShort<>("F4", this);
-        this.f5 = new PLong<>("F5", this);
-        this.f6 = new PLong<>("F6", this);
-        this.f7 = new PBigDecimal<>("F7", this);
-        this.f8 = new PDouble<>("F8", this);
-        this.f9 = new PFloat<>("F9", this);
-        this.f10 = new PTime<>("F10", this);
-        this.f11 = new PDate<>("F11", this);
-        this.f12 = new PTimestamp<>("F12", this);
-        this.f13 = new PBytes<>("F13", this);
-        this.f14 = new PObject<>("F14", this);
-        this.f15 = new PString<>("F15", this);
-        this.f16 = new PString<>("F16", this);
-        this.f17 = new PString<>("F17", this);
-        this.f18 = new PBlob<>("F18", this);
-        this.f19 = new PClob<>("F19", this);
-        this.f20 = new PUuid<>("F20", this);
-        this.f21 = new PArray<>("F21", this);
-        super.setModelProperties(new ModelProperty[] { this.f1, this.f2, this.f3, this.f4, this.f5, this.f6, this.f7, this.f8, this.f9, this.f10, this.f11, this.f12, this.f13, this.f14, this.f15, this.f16, this.f17, this.f18, this.f19, this.f20, this.f21 });
+        f1 = new PInteger<>("F1", this);
+        f2 = new PBoolean<>("F2", this);
+        f3 = new PByte<>("F3", this);
+        f4 = new PShort<>("F4", this);
+        f5 = new PLong<>("F5", this);
+        f6 = new PLong<>("F6", this);
+        f7 = new PBigDecimal<>("F7", this);
+        f8 = new PDouble<>("F8", this);
+        f9 = new PFloat<>("F9", this);
+        f10 = new PTime<>("F10", this);
+        f11 = new PDate<>("F11", this);
+        f12 = new PTimestamp<>("F12", this);
+        f13 = new PBytes<>("F13", this);
+        f14 = new PObject<>("F14", this);
+        f15 = new PString<>("F15", this);
+        f16 = new PString<>("F16", this);
+        f17 = new PString<>("F17", this);
+        f18 = new PBlob<>("F18", this);
+        f19 = new PClob<>("F19", this);
+        f20 = new PUuid<>("F20", this);
+        f21 = new PArray<>("F21", this);
+        super.setModelProperties(new ModelProperty[] { f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21 });
     }
 
     @Override

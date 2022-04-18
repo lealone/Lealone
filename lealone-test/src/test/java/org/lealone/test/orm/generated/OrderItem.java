@@ -27,12 +27,10 @@ public class OrderItem extends Model<OrderItem> {
 
     private OrderItem(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER_ITEM") : t, modelType);
-        super.setRoot(this);
-
-        this.orderId = new PInteger<>("ORDER_ID", this);
-        this.productId = new PLong<>("PRODUCT_ID", this);
-        this.productCount = new PInteger<>("PRODUCT_COUNT", this);
-        super.setModelProperties(new ModelProperty[] { this.orderId, this.productId, this.productCount });
+        orderId = new PInteger<>("ORDER_ID", this);
+        productId = new PLong<>("PRODUCT_ID", this);
+        productCount = new PInteger<>("PRODUCT_COUNT", this);
+        super.setModelProperties(new ModelProperty[] { orderId, productId, productCount });
     }
 
     public Order getOrder() {

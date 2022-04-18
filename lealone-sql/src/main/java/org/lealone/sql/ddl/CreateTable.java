@@ -401,15 +401,14 @@ public class CreateTable extends SchemaStatement {
             fields.append("    public final ").append(modelPropertyClassName).append('<').append(className).append("> ")
                     .append(columnName).append(";\r\n");
 
-            // 例如: this.id = new PLong<>("id", this);
-            init.append("        this.").append(columnName).append(" = new ").append(modelPropertyClassName)
-                    .append("<>(\"").append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
-                    .append("\", this);\r\n");
+            // 例如: id = new PLong<>("id", this);
+            init.append("        ").append(columnName).append(" = new ").append(modelPropertyClassName).append("<>(\"")
+                    .append(databaseToUpper ? c.getName().toUpperCase() : c.getName()).append("\", this);\r\n");
 
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");
             }
-            fieldNames.append("this.").append(columnName);
+            fieldNames.append(columnName);
         }
 
         buff.append("package ").append(packageName).append(";\r\n\r\n");
@@ -527,8 +526,6 @@ public class CreateTable extends SchemaStatement {
         buff.append("\r\n");
         buff.append("    private ").append(className).append("(ModelTable t, short modelType) {\r\n");
         buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, modelType);\r\n");
-        buff.append("        super.setRoot(this);\r\n");
-        buff.append("\r\n");
         buff.append(init);
         buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames).append(" });\r\n");
         buff.append("    }\r\n");

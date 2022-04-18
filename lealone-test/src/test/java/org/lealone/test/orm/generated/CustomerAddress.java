@@ -26,12 +26,10 @@ public class CustomerAddress extends Model<CustomerAddress> {
 
     private CustomerAddress(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "CUSTOMER_ADDRESS") : t, modelType);
-        super.setRoot(this);
-
-        this.customerId = new PLong<>("CUSTOMER_ID", this);
-        this.city = new PString<>("CITY", this);
-        this.street = new PString<>("STREET", this);
-        super.setModelProperties(new ModelProperty[] { this.customerId, this.city, this.street });
+        customerId = new PLong<>("CUSTOMER_ID", this);
+        city = new PString<>("CITY", this);
+        street = new PString<>("STREET", this);
+        super.setModelProperties(new ModelProperty[] { customerId, city, street });
     }
 
     public Customer getCustomer() {
