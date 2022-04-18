@@ -8,7 +8,6 @@ package org.lealone.orm.property;
 import java.util.Collection;
 
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelProperty;
 
 /**
  * Base property for types that primarily have equal to.
@@ -16,7 +15,7 @@ import org.lealone.orm.ModelProperty;
  * @param <M> the type of the owning model bean
  * @param <T> the property type
  */
-public abstract class PBaseValueEqual<M extends Model<M>, T> extends ModelProperty<M> {
+public abstract class PBaseValueEqual<M extends Model<M>, T> extends PBase<M, T> {
 
     public PBaseValueEqual(String name, M model) {
         super(name, model);

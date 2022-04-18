@@ -5,52 +5,30 @@
  */
 package org.lealone.orm.property;
 
-import java.util.Map;
-
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelProperty;
 import org.lealone.orm.json.Json;
 
-public class PObject<M extends Model<M>> extends ModelProperty<M> {
-
-    private Object value;
+public class PObject<M extends Model<M>> extends PBase<M, Object> {
 
     public PObject(String name, M model) {
         super(name, model);
     }
 
-    private PObject<M> P(M model) {
-        return this.<PObject<M>> getModelProperty(model);
+    @Override
+    protected Value createValue(Object value) {
+        return ValueJavaObject.getNoCopy(value, null);
     }
 
-    public M set(Object value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).set(value);
-        }
-        if (!areEqual(this.value, value)) {
-            this.value = value;
-            expr().set(name, ValueJavaObject.getNoCopy(value, null));
-        }
-        return model;
-    }
-
-    public final Object get() {
-        return value;
+    @Override
+    protected Object encodeValue() {
+        return Json.encode(value);
     }
 
     @Override
     protected void deserialize(Value v) {
         value = v.getObject();
-    }
-
-    @Override
-    protected void serialize(Map<String, Object> map) {
-        if (value != null) {
-            map.put(getName(), Json.encode(value));
-        }
     }
 
     @Override

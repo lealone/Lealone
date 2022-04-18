@@ -5,8 +5,6 @@
  */
 package org.lealone.orm.property;
 
-import java.util.Map;
-
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.orm.Model;
@@ -16,14 +14,28 @@ import org.lealone.orm.Model;
  */
 public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
 
-    private boolean value;
-
     public PBoolean(String name, M model) {
         super(name, model);
     }
 
-    private PBoolean<M> P(M model) {
-        return this.<PBoolean<M>> getModelProperty(model);
+    @Override
+    protected Value createValue(Boolean value) {
+        return ValueBoolean.get(value);
+    }
+
+    @Override
+    protected Object encodeValue() {
+        return value ? 1 : 0;
+    }
+
+    @Override
+    protected void deserialize(Value v) {
+        value = v.getBoolean();
+    }
+
+    @Override
+    protected void deserialize(Object v) {
+        value = ((Number) v).byteValue() != 0;
     }
 
     /**
@@ -64,40 +76,5 @@ public class PBoolean<M extends Model<M>> extends PBaseValueEqual<M, Boolean> {
      */
     public M eq(boolean value) {
         return expr().eq(name, value);
-    }
-
-    public final M set(boolean value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).set(value);
-        }
-        if (!areEqual(this.value, value)) {
-            this.value = value;
-            expr().set(name, ValueBoolean.get(value));
-        }
-        return model;
-    }
-
-    public final boolean get() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).get();
-        }
-        return value;
-    }
-
-    @Override
-    protected void deserialize(Value v) {
-        value = v.getBoolean();
-    }
-
-    @Override
-    protected void serialize(Map<String, Object> map) {
-        map.put(getName(), value ? 1 : 0);
-    }
-
-    @Override
-    protected void deserialize(Object v) {
-        value = ((Number) v).byteValue() != 0;
     }
 }

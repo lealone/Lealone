@@ -6,7 +6,6 @@
 package org.lealone.orm.property;
 
 import java.sql.Date;
-import java.util.Map;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDate;
@@ -17,47 +16,27 @@ import org.lealone.orm.Model;
  */
 public class PDate<M extends Model<M>> extends PBaseDate<M, Date> {
 
-    private Date value;
-
     public PDate(String name, M model) {
         super(name, model);
     }
 
-    private PDate<M> P(M model) {
-        return this.<PDate<M>> getModelProperty(model);
+    public M set(String value) {
+        return set(Date.valueOf(value.toString()));
     }
 
-    public final M set(Date value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).set(value);
-        }
-        if (!areEqual(this.value, value)) {
-            this.value = value;
-            expr().set(name, ValueDate.get(value));
-        }
-        return model;
+    @Override
+    protected Value createValue(Date value) {
+        return ValueDate.get(value);
     }
 
-    public final Date get() {
-        M m = getModel();
-        if (m != model) {
-            return P(m).get();
-        }
-        return value;
+    @Override
+    protected Object encodeValue() {
+        return value.getTime();
     }
 
     @Override
     protected void deserialize(Value v) {
         value = v.getDate();
-    }
-
-    @Override
-    protected void serialize(Map<String, Object> map) {
-        if (value != null)
-            map.put(getName(), value.getTime());
-        else
-            map.put(getName(), 0);
     }
 
     @Override

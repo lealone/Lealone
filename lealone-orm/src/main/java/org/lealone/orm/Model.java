@@ -26,7 +26,7 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.orm.json.JsonObject;
-import org.lealone.orm.property.PBaseNumber;
+import org.lealone.orm.property.PLong;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Update;
@@ -122,30 +122,14 @@ public abstract class Model<T extends Model<T>> {
         }
     }
 
-    private static class PRowId<M extends Model<M>> extends PBaseNumber<M, Long> {
-
-        private long value;
-
+    private static class PRowId<M extends Model<M>> extends PLong<M> {
         public PRowId(M root) {
             super(Column.ROWID, root);
         }
 
-        // 不需要通过外部设置
-        M set(long value) {
-            if (!areEqual(this.value, value)) {
-                this.value = value;
-                expr().set(name, ValueLong.get(value));
-            }
-            return model;
-        }
-
         @Override
-        protected void deserialize(Value v) {
-            value = v.getLong();
-        }
-
-        public final long get() {
-            return value;
+        public Long get() {
+            return value == null ? 0 : value;
         }
     }
 

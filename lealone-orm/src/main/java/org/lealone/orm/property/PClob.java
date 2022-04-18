@@ -7,57 +7,36 @@ package org.lealone.orm.property;
 
 import java.sql.Clob;
 import java.sql.SQLException;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.ReadonlyClob;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
-import org.lealone.orm.ModelProperty;
 
-public class PClob<M extends Model<M>> extends ModelProperty<M> {
-
-    private Clob value;
+public class PClob<M extends Model<M>> extends PBase<M, Clob> {
 
     public PClob(String name, M model) {
         super(name, model);
     }
 
-    private PClob<M> P(M model) {
-        return this.<PClob<M>> getModelProperty(model);
+    @Override
+    protected Value createValue(Clob value) {
+        return ValueJavaObject.getNoCopy(value, null);
     }
 
-    public M set(Clob value) {
-        M m = getModel();
-        if (m != model) {
-            return P(m).set(value);
+    @Override
+    protected Object encodeValue() {
+        try {
+            return value.getSubString(0, (int) value.length());
+        } catch (SQLException e) {
+            throw DbException.convert(e);
         }
-        if (!areEqual(this.value, value)) {
-            this.value = value;
-            expr().set(name, ValueJavaObject.getNoCopy(value, null));
-        }
-        return model;
-    }
-
-    public final Clob get() {
-        return value;
     }
 
     @Override
     protected void deserialize(Value v) {
         value = v.getClob();
-    }
-
-    @Override
-    protected void serialize(Map<String, Object> map) {
-        if (value != null) {
-            try {
-                map.put(getName(), value.getSubString(0, (int) value.length()));
-            } catch (SQLException e) {
-                throw DbException.convert(e);
-            }
-        }
     }
 
     @Override
