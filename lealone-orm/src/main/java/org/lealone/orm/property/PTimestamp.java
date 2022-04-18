@@ -21,12 +21,6 @@ public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
 
     private Timestamp value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PTimestamp(String name, R root) {
         super(name, root);
     }

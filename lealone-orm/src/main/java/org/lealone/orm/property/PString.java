@@ -20,12 +20,6 @@ public class PString<R> extends PBaseComparable<R, String> {
 
     private String value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PString(String name, R root) {
         super(name, root);
     }

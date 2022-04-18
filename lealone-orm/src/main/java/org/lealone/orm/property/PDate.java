@@ -21,12 +21,6 @@ public class PDate<R> extends PBaseDate<R, Date> {
 
     private Date value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PDate(String name, R root) {
         super(name, root);
     }

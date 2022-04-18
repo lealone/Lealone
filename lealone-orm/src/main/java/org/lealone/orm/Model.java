@@ -92,6 +92,7 @@ public abstract class Model<T> {
     }
 
     private static class NVPair {
+
         public final String name;
         public final Value value;
 

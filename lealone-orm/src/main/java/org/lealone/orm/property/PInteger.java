@@ -20,12 +20,6 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
 
     private int value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PInteger(String name, R root) {
         super(name, root);
     }

@@ -20,12 +20,6 @@ public class PFloat<R> extends PBaseNumber<R, Float> {
 
     private float value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PFloat(String name, R root) {
         super(name, root);
     }

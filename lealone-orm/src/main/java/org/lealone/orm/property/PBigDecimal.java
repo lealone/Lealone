@@ -20,12 +20,6 @@ public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
 
     private BigDecimal value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PBigDecimal(String name, R root) {
         super(name, root);
     }

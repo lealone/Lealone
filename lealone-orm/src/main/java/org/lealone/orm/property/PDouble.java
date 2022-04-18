@@ -20,12 +20,6 @@ public class PDouble<R> extends PBaseNumber<R, Double> {
 
     private double value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PDouble(String name, R root) {
         super(name, root);
     }

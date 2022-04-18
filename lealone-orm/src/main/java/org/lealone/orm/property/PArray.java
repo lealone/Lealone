@@ -24,12 +24,6 @@ public class PArray<R> extends ModelProperty<R> {
 
     private Object[] values;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PArray(String name, R root) {
         super(name, root);
     }

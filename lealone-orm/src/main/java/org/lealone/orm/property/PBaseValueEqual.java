@@ -18,12 +18,6 @@ import org.lealone.orm.ModelProperty;
  */
 public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PBaseValueEqual(String name, R root) {
         super(name, root);
     }

@@ -20,12 +20,6 @@ public class PLong<R> extends PBaseNumber<R, Long> {
 
     private long value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PLong(String name, R root) {
         super(name, root);
     }

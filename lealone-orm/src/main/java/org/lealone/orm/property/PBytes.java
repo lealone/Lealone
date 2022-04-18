@@ -22,12 +22,6 @@ public class PBytes<R> extends ModelProperty<R> {
 
     private byte[] value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PBytes(String name, R root) {
         super(name, root);
     }

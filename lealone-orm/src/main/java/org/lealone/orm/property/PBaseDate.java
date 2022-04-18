@@ -16,12 +16,6 @@ import org.lealone.orm.Model;
 @SuppressWarnings("rawtypes")
 public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable<R, D> {
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PBaseDate(String name, R root) {
         super(name, root);
     }

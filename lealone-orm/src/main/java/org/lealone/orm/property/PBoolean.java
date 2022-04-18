@@ -20,12 +20,6 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
 
     private boolean value;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root model bean instance
-     */
     public PBoolean(String name, R root) {
         super(name, root);
     }
