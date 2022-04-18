@@ -18,8 +18,9 @@ public class ModelTable {
     private final String schemaName;
     private final String tableName;
 
-    private Table table;
+    // 这两个字段延后初始化
     private ServerSession session;
+    private Table table;
 
     public ModelTable(String databaseName, String schemaName, String tableName) {
         this(null, databaseName, schemaName, tableName);
@@ -30,8 +31,10 @@ public class ModelTable {
         this.databaseName = databaseName;
         this.schemaName = schemaName;
         this.tableName = tableName;
-        if (url != null)
-            attachToTable();
+    }
+
+    ModelTable copy() {
+        return new ModelTable(url, databaseName, schemaName, tableName);
     }
 
     String getDatabaseName() {
@@ -46,48 +49,37 @@ public class ModelTable {
         return tableName;
     }
 
-    Table getTable() {
-        attachToTable();
-        return table;
-    }
-
-    ServerSession getSession() {
-        attachToTable();
-        return session;
-    }
-
     Database getDatabase() {
-        attachToTable();
+        bindTable();
         return table.getDatabase();
     }
 
-    public ModelTable copy() {
-        return new ModelTable(url, databaseName, schemaName, tableName);
+    ServerSession getSession() {
+        bindTable();
+        return session;
     }
 
-    // 可能是延迟关联到Table
-    private void attachToTable() {
+    Table getTable() {
+        bindTable();
+        return table;
+    }
+
+    private void bindTable() {
         // 沒有初始化，或已经无效了，比如drop table后还被引用
         if (table == null || table.isInvalid()) {
-            String url = System.getProperty("lealone.jdbc.url");
-            if (url == null) {
-                // 默认用嵌入式
-                url = Constants.URL_PREFIX + Constants.URL_EMBED + databaseName + ";password=;user=root";
-                // throw new RuntimeException("'lealone.jdbc.url' must be set");
-            }
-            session = (ServerSession) ServerSessionFactory.getInstance().createSession(url).get();
+            session = (ServerSession) ServerSessionFactory.getInstance().createSession(getUrl()).get();
             Database db = session.getDatabase();
-
-            // if (db.getSettings().databaseToUpper) {
-            // tableName = tableName.toUpperCase();
-            // }
-            // int dotPos = tableName.indexOf('.');
-            // String schemaName = Constants.SCHEMA_MAIN;
-            // if (dotPos > -1) {
-            // schemaName = tableName.substring(0, dotPos);
-            // tableName = tableName.substring(dotPos + 1);
-            // }
             table = db.getSchema(session, schemaName).getTableOrView(session, tableName);
         }
+    }
+
+    private String getUrl() {
+        String url = this.url;
+        if (url == null)
+            url = System.getProperty("lealone.jdbc.url");
+        // 默认用嵌入式
+        if (url == null)
+            url = Constants.URL_PREFIX + Constants.URL_EMBED + databaseName + ";password=;user=root";
+        return url;
     }
 }
