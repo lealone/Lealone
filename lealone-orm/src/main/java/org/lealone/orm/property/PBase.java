@@ -60,4 +60,10 @@ public abstract class PBase<M extends Model<M>, T> extends ModelProperty<M> {
     protected void deserialize(Object v) {
         value = (T) v;
     }
+
+    @Override
+    protected void deserializeAndSet(Object v) {
+        deserialize(v);
+        expr().set(name, createValue(value));
+    }
 }

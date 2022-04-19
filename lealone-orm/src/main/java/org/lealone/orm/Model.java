@@ -536,8 +536,10 @@ public abstract class Model<T extends Model<T>> {
         Map<String, Object> map = new JsonObject(str).getMap();
         for (ModelProperty<?> p : modelProperties) {
             Object v = map.get(p.getName());
-            if (v != null)
-                p.deserialize(v);
+            if (v != null) {
+                // 先反序列化再set，这样Model的子类对象就可以在后续调用insert之类的方法
+                p.deserializeAndSet(v);
+            }
         }
         Object v = map.get("modelType");
         if (v == null) {
