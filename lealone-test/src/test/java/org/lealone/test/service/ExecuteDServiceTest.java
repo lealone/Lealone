@@ -11,15 +11,15 @@ import org.lealone.test.orm.SqlScript;
 import org.lealone.test.service.generated.HelloWorldService;
 import org.lealone.test.sql.DSqlTestBase;
 
-public class DServiceTest extends DSqlTestBase {
+public class ExecuteDServiceTest extends DSqlTestBase {
 
-    public DServiceTest() {
+    public ExecuteDServiceTest() {
         super(LealoneDatabase.NAME);
     }
 
     @Test
     public void run() throws Exception {
-        String dbName = DServiceTest.class.getSimpleName();
+        String dbName = ExecuteDServiceTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication "
                 + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
 

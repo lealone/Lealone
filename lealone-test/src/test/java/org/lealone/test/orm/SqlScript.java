@@ -7,7 +7,7 @@ package org.lealone.test.orm;
 
 import org.lealone.test.TestBase.MainTest;
 import org.lealone.test.TestBase.SqlExecutor;
-import org.lealone.test.service.ServiceTest;
+import org.lealone.test.service.ExecuteServiceTest;
 import org.lealone.test.service.impl.AllTypeServiceImpl;
 import org.lealone.test.service.impl.HelloWorldServiceImpl;
 import org.lealone.test.service.impl.UserServiceImpl;
@@ -35,7 +35,7 @@ public class SqlScript implements MainTest {
     }
 
     private static final String MODEL_PACKAGE_NAME = OrmTest.class.getPackage().getName() + ".generated";
-    private static final String SERVICE_PACKAGE_NAME = ServiceTest.class.getPackage().getName() + ".generated";
+    private static final String SERVICE_PACKAGE_NAME = ExecuteServiceTest.class.getPackage().getName() + ".generated";
     private static String GENERATED_CODE_PATH = "./src/test/java";
 
     public static void setCodePath(String path) {

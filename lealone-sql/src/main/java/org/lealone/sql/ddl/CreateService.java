@@ -180,10 +180,12 @@ public class CreateService extends SchemaStatement {
                 }
             }
         }
-
         // 最后才创建执行器，此时implementBy肯定存在了
-        ServiceExecutor executor = factory.createServiceExecutor(service);
-        service.setExecutor(executor);
+        // 如果没有提前生成ServiceExecutor才去使用JavaServiceExecutor
+        if (!genCode) {
+            ServiceExecutor executor = factory.createServiceExecutor(service);
+            service.setExecutor(executor);
+        }
         return 0;
     }
 

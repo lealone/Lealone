@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
@@ -84,13 +85,8 @@ public class Service extends SchemaObjectBase {
     public ServiceExecutor getExecutor() {
         if (executor == null) {
             synchronized (this) {
-                try {
-                    if (executor == null)
-                        executor = (ServiceExecutor) Class.forName(serviceExecutorClassName).getDeclaredConstructor()
-                                .newInstance();
-                } catch (Exception e) {
-                    throw new RuntimeException("newInstance exception: " + serviceExecutorClassName, e);
-                }
+                if (executor == null)
+                    executor = Utils.newInstance(serviceExecutorClassName);
             }
         }
         return executor;

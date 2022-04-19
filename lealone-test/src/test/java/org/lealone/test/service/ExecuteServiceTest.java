@@ -8,7 +8,6 @@ package org.lealone.test.service;
 import java.util.UUID;
 
 import org.junit.Test;
-import org.lealone.test.orm.AllModelPropertyTest;
 import org.lealone.test.orm.SqlScript;
 import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.generated.AllTypeService;
@@ -16,14 +15,14 @@ import org.lealone.test.service.generated.HelloWorldService;
 import org.lealone.test.service.generated.UserService;
 import org.lealone.test.sql.SqlTestBase;
 
-public class ServiceTest extends SqlTestBase {
+public class ExecuteServiceTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
         // 创建user表
         SqlScript.createUserTable(this);
         createService(this);
-        callService(getURL());
+        executeService(getURL());
     }
 
     private static void createService(SqlExecutor executor) {
@@ -32,7 +31,7 @@ public class ServiceTest extends SqlTestBase {
         SqlScript.createAllTypeService(executor);
     }
 
-    private static void callService(String url) {
+    private static void executeService(String url) {
         HelloWorldService helloWorldService = HelloWorldService.create(url);
         helloWorldService.sayHello();
         String r = helloWorldService.sayGoodbyeTo("zhh");
@@ -59,6 +58,6 @@ public class ServiceTest extends SqlTestBase {
         f1 = allTypeService.testUuid(f1);
         System.out.println(f1);
 
-        AllModelPropertyTest.insertRemote(allTypeService);
+        // AllModelPropertyTest.insertRemote(allTypeService);
     }
 }
