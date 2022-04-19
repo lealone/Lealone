@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.ReadonlyClob;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueString;
 import org.lealone.orm.Model;
 
 public class PClob<M extends Model<M>> extends PBase<M, Clob> {
@@ -22,13 +22,13 @@ public class PClob<M extends Model<M>> extends PBase<M, Clob> {
 
     @Override
     protected Value createValue(Clob value) {
-        return ValueJavaObject.getNoCopy(value, null);
+        return ValueString.get(encodeValue().toString());
     }
 
     @Override
     protected Object encodeValue() {
         try {
-            return value.getSubString(0, (int) value.length());
+            return value.getSubString(1, (int) value.length());
         } catch (SQLException e) {
             throw DbException.convert(e);
         }

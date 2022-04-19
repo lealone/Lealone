@@ -5,9 +5,12 @@
  */
 package org.lealone.orm.property;
 
+import java.sql.Array;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueString;
@@ -20,6 +23,14 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     public PArray(String name, M model) {
         super(name, model);
+    }
+
+    public M set(Array value) {
+        try {
+            return set((Object[]) value.getArray());
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override

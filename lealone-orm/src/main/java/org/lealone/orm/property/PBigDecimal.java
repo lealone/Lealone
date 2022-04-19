@@ -37,6 +37,6 @@ public class PBigDecimal<M extends Model<M>> extends PBaseNumber<M, BigDecimal> 
 
     @Override
     protected void deserialize(Object v) {
-        value = new BigDecimal(value.toString());
+        value = new BigDecimal(v.toString());
     }
 }

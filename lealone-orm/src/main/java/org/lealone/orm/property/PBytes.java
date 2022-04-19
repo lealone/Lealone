@@ -6,7 +6,7 @@
 package org.lealone.orm.property;
 
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueBytes;
 import org.lealone.orm.Model;
 import org.lealone.orm.json.Json;
 
@@ -21,7 +21,7 @@ public class PBytes<M extends Model<M>> extends PBase<M, byte[]> {
 
     @Override
     protected Value createValue(byte[] value) {
-        return ValueJavaObject.getNoCopy(value, null);
+        return ValueBytes.getNoCopy(value);
     }
 
     @Override

@@ -12,7 +12,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.ReadonlyBlob;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBytes;
-import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.Model;
 
 public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
@@ -23,13 +22,13 @@ public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
 
     @Override
     protected Value createValue(Blob value) {
-        return ValueJavaObject.getNoCopy(value, null);
+        return ValueBytes.getNoCopy((byte[]) encodeValue());
     }
 
     @Override
     protected Object encodeValue() {
         try {
-            return value.getBytes(0, (int) value.length());
+            return value.getBytes(1, (int) value.length());
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
@@ -42,6 +41,11 @@ public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
 
     @Override
     protected void deserialize(Object v) {
-        value = new ReadonlyBlob(ValueBytes.get((byte[]) v));
+        byte[] bytes;
+        if (v instanceof byte[])
+            bytes = (byte[]) v;
+        else
+            bytes = v.toString().getBytes();
+        value = new ReadonlyBlob(ValueBytes.get(bytes));
     }
 }
