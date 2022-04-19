@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.logging.impl.ConsoleLoggerFactory;
 import org.lealone.common.logging.impl.Log4j2LoggerFactory;
+import org.lealone.common.util.Utils;
 
 public abstract class LoggerFactory {
 
@@ -29,7 +30,7 @@ public abstract class LoggerFactory {
             ClassLoader loader = Thread.currentThread().getContextClassLoader();
             try {
                 Class<?> clz = loader.loadClass(factoryClassName);
-                return (LoggerFactory) clz.getDeclaredConstructor().newInstance();
+                return Utils.newInstance(clz);
             } catch (Exception e) {
                 throw new IllegalArgumentException("Error instantiating class \"" + factoryClassName + "\"", e);
             }

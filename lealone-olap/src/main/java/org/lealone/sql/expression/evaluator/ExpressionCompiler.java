@@ -83,7 +83,7 @@ public class ExpressionCompiler extends VoidExpressionVisitor {
         // SourceCompiler compiler = session.getDatabase().getCompiler();
         // compiler.setSource(fullClassName, buff.toString());
         // try {
-        // return (JitEvaluator) compiler.getClass(fullClassName).getDeclaredConstructor().newInstance();
+        // return Utils.newInstance(fullClassName);
         // } catch (Exception e) {
         // throw DbException.convert(e);
         // }

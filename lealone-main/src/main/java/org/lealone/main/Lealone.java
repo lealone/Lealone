@@ -152,8 +152,7 @@ public class Lealone {
         registerAndInitEngines(config.storage_engines, "storage", "default.storage.engine", def -> {
             StorageEngine se = PluginManager.getPlugin(StorageEngine.class, def.name);
             if (se == null) {
-                Class<?> clz = Utils.loadUserClass(def.name);
-                se = (StorageEngine) clz.getDeclaredConstructor().newInstance();
+                se = Utils.newInstance(def.name);
                 PluginManager.register(se);
             }
             return se;
@@ -166,8 +165,7 @@ public class Lealone {
             try {
                 te = PluginManager.getPlugin(TransactionEngine.class, def.name);
                 if (te == null) {
-                    Class<?> clz = Utils.loadUserClass(def.name);
-                    te = (TransactionEngine) clz.getDeclaredConstructor().newInstance();
+                    te = Utils.newInstance(def.name);
                     PluginManager.register(te);
                 }
             } catch (Throwable e) {
@@ -185,8 +183,7 @@ public class Lealone {
         registerAndInitEngines(config.sql_engines, "sql", "default.sql.engine", def -> {
             SQLEngine se = PluginManager.getPlugin(SQLEngine.class, def.name);
             if (se == null) {
-                Class<?> clz = Utils.loadUserClass(def.name);
-                se = (SQLEngine) clz.getDeclaredConstructor().newInstance();
+                se = Utils.newInstance(def.name);
                 PluginManager.register(se);
             }
             return se;
@@ -199,10 +196,8 @@ public class Lealone {
             if (!def.getParameters().containsKey("host") && config.listen_address != null)
                 def.getParameters().put("host", config.listen_address);
             ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
-
             if (pse == null) {
-                Class<?> clz = Utils.loadUserClass(def.name);
-                pse = (ProtocolServerEngine) clz.getDeclaredConstructor().newInstance();
+                pse = Utils.newInstance(def.name);
                 PluginManager.register(pse);
             }
             return pse;

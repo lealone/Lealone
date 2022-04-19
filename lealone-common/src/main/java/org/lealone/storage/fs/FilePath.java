@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.MathUtils;
+import org.lealone.common.util.Utils;
 
 /**
  * A path to a file. It similar to the Java 7 <code>java.nio.file.Path</code>,
@@ -73,7 +74,7 @@ public abstract class FilePath {
             for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",
                     "FilePathNioMemLZF", "FilePathSplit", "FilePathNio", "FilePathNioMapped", "FilePathZip" }) {
                 try {
-                    FilePath p = (FilePath) Class.forName(packageName + c).getDeclaredConstructor().newInstance();
+                    FilePath p = Utils.newInstance(packageName + c);
                     map.put(p.getScheme(), p);
                     if (defaultProvider == null) {
                         defaultProvider = p;

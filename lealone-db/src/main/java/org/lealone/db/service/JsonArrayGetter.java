@@ -6,13 +6,14 @@
 package org.lealone.db.service;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.Utils;
 
 public interface JsonArrayGetter {
 
     public static JsonArrayGetter create(String json) {
         try {
             String className = "org.lealone.orm.json.JsonArray$Getter";
-            JsonArrayGetter getter = (JsonArrayGetter) Class.forName(className).getDeclaredConstructor().newInstance();
+            JsonArrayGetter getter = Utils.newInstance(className);
             getter.init(json);
             return getter;
         } catch (Exception e) {

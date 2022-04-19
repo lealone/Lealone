@@ -235,7 +235,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         SQLEngine sqlEngine = PluginManager.getPlugin(SQLEngine.class, engineName);
         if (sqlEngine == null) {
             try {
-                sqlEngine = (SQLEngine) Utils.loadUserClass(engineName).getDeclaredConstructor().newInstance();
+                sqlEngine = Utils.newInstance(engineName);
                 PluginManager.register(sqlEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found", e);
@@ -248,8 +248,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         TransactionEngine transactionEngine = PluginManager.getPlugin(TransactionEngine.class, engineName);
         if (transactionEngine == null) {
             try {
-                transactionEngine = (TransactionEngine) Utils.loadUserClass(engineName).getDeclaredConstructor()
-                        .newInstance();
+                transactionEngine = Utils.newInstance(engineName);
                 PluginManager.register(transactionEngine);
             } catch (Exception e) {
                 e = new RuntimeException("Fatal error: the transaction engine '" + engineName + "' not found", e);

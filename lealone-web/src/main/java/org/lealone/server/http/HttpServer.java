@@ -13,6 +13,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.common.util.Utils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
 import org.lealone.server.ProtocolServerBase;
@@ -111,7 +112,7 @@ public class HttpServer extends ProtocolServerBase {
         String routerFactoryStr = config.get("router_factory");
         if (routerFactoryStr != null) {
             try {
-                routerFactory = (RouterFactory) Class.forName(routerFactoryStr).getDeclaredConstructor().newInstance();
+                routerFactory = Utils.newInstance(routerFactoryStr);
             } catch (Exception e) {
                 throw new ConfigException("Failed to init router factory: " + routerFactoryStr, e);
             }

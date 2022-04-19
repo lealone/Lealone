@@ -72,11 +72,7 @@ public class Utils {
     static {
         String clazz = SysProperties.JAVA_OBJECT_SERIALIZER;
         if (clazz != null) {
-            try {
-                serializer = (JavaObjectSerializer) loadUserClass(clazz).getDeclaredConstructor().newInstance();
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
+            serializer = Utils.newInstance(clazz);
         }
     }
 
@@ -767,6 +763,20 @@ public class Utils {
             throw new NoSuchMethodException(className);
         }
         return best.newInstance(params);
+    }
+
+    public static <T> T newInstance(String className) {
+        Class<?> clz = loadUserClass(className);
+        return newInstance(clz);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T newInstance(Class<?> clz) {
+        try {
+            return (T) clz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     private static int match(Class<?>[] params, Object[] values) {
