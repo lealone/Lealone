@@ -76,7 +76,7 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
             setEmbedded(true);
             setInMemory(true);
         }
-        System.setProperty("lealone.jdbc.url", getURL());
+        System.setProperty(org.lealone.db.Constants.JDBC_URL_KEY, getURL());
         try {
             test();
         } catch (Exception e) {

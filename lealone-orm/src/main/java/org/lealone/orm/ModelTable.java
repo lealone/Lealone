@@ -76,7 +76,7 @@ public class ModelTable {
     private String getUrl() {
         String url = this.url;
         if (url == null)
-            url = System.getProperty("lealone.jdbc.url");
+            url = System.getProperty(Constants.JDBC_URL_KEY);
         // 默认用嵌入式
         if (url == null)
             url = Constants.URL_PREFIX + Constants.URL_EMBED + databaseName + ";password=;user=root";

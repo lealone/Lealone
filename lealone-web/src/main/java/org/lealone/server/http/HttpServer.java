@@ -67,7 +67,7 @@ public class HttpServer extends ProtocolServerBase {
     public void setJdbcUrl(String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
         config.put("jdbc_url", jdbcUrl);
-        System.setProperty("lealone.jdbc.url", jdbcUrl);
+        System.setProperty(org.lealone.db.Constants.JDBC_URL_KEY, jdbcUrl);
     }
 
     @Override

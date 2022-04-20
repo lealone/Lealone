@@ -289,6 +289,8 @@ public class Constants {
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
 
+    public static final String JDBC_URL_KEY = "lealone.jdbc.url";
+
     /**
      * The database URL used when calling a function if only the column list
      * should be returned.
