@@ -8,6 +8,7 @@ package org.lealone.test.service;
 import java.util.UUID;
 
 import org.junit.Test;
+import org.lealone.db.Constants;
 import org.lealone.test.orm.SqlScript;
 import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.generated.AllTypeService;
@@ -19,10 +20,14 @@ public class ExecuteServiceTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
+        String url = getURL();
+        // 设置jdbc url后，创建服务可以不用传url
+        System.setProperty(Constants.JDBC_URL_KEY, url);
+
         // 创建user表
         SqlScript.createUserTable(this);
         createService(this);
-        executeService(getURL());
+        executeService(url);
     }
 
     private static void createService(SqlExecutor executor) {
@@ -40,7 +45,8 @@ public class ExecuteServiceTest extends SqlTestBase {
         System.out.println(helloWorldService.getDate());
         System.out.println(helloWorldService.getTwo("zhh", 18));
 
-        UserService userService = UserService.create(url);
+        // 调用create没有传递url时，通过getProperty(Constants.JDBC_URL_KEY)自动获取
+        UserService userService = UserService.create();
 
         User user = new User().name.set("zhh").phone.set(123);
         userService.add(user);

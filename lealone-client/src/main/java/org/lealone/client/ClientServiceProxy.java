@@ -11,7 +11,9 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Properties;
 
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
+import org.lealone.db.Constants;
 
 public class ClientServiceProxy {
 
@@ -39,5 +41,13 @@ public class ClientServiceProxy {
 
     public static RuntimeException failed(String serviceName, Throwable cause) {
         return new RuntimeException("Failed to execute service: " + serviceName, cause);
+    }
+
+    public static boolean isEmbedded(String url) {
+        return url == null || new ConnectionInfo(url).isEmbedded();
+    }
+
+    public static String getUrl() {
+        return System.getProperty(Constants.JDBC_URL_KEY);
     }
 }

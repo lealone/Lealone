@@ -335,7 +335,7 @@ public class CreateService extends SchemaStatement {
                         proxyMethodBodyBuff.append("ValueUuid.get(rs.").append(getResultSetReturnMethodName(returnType))
                                 .append("(1)).getUuid();\r\n");
                     } else {
-                        proxyMethodBodyBuff.append(" rs.").append(getResultSetReturnMethodName(returnType))
+                        proxyMethodBodyBuff.append("rs.").append(getResultSetReturnMethodName(returnType))
                                 .append("(1);\r\n");
                     }
                     proxyMethodBodyBuff.append("                rs.close();\r\n");
@@ -371,18 +371,27 @@ public class CreateService extends SchemaStatement {
         String serviceInterfaceName = toClassName(serviceName);
         buff.append("public interface ").append(serviceInterfaceName).append(" {\r\n");
         buff.append("\r\n");
+
+        // 生成服务接口方法
+        for (StringBuilder m : methodSignatureList) {
+            buff.append("    ").append(m).append(";\r\n");
+            buff.append("\r\n");
+        }
+
+        // 生成两个static create方法
+        buff.append("    static ").append(serviceInterfaceName).append(" create() {\r\n");
+        buff.append("        return create(null);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
         buff.append("    static ").append(serviceInterfaceName).append(" create(String url) {\r\n");
-        buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
+        buff.append("        if (url == null)\r\n");
+        buff.append("            url = ClientServiceProxy.getUrl();\r\n");
+        buff.append("\r\n");
+        buff.append("        if (ClientServiceProxy.isEmbedded(url))\r\n");
         buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
         buff.append("        else\r\n");
         buff.append("            return new ServiceProxy(url);\r\n");
         buff.append("    }\r\n");
-
-        // 生成服务接口方法
-        for (StringBuilder m : methodSignatureList) {
-            buff.append("\r\n");
-            buff.append("    ").append(m).append(";\r\n");
-        }
 
         // 生成Service Proxy类
         buff.append("\r\n");

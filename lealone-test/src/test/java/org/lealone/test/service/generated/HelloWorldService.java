@@ -11,13 +11,6 @@ import org.lealone.client.ClientServiceProxy;
  */
 public interface HelloWorldService {
 
-    static HelloWorldService create(String url) {
-        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
-            return new org.lealone.test.service.impl.HelloWorldServiceImpl();
-        else
-            return new ServiceProxy(url);
-    }
-
     void sayHello();
 
     Date getDate();
@@ -27,6 +20,20 @@ public interface HelloWorldService {
     Integer getTwo(String name, Integer age);
 
     String sayGoodbyeTo(String name);
+
+    static HelloWorldService create() {
+        return create(null);
+    }
+
+    static HelloWorldService create(String url) {
+        if (url == null)
+            url = ClientServiceProxy.getUrl();
+
+        if (ClientServiceProxy.isEmbedded(url))
+            return new org.lealone.test.service.impl.HelloWorldServiceImpl();
+        else
+            return new ServiceProxy(url);
+    }
 
     static class ServiceProxy implements HelloWorldService {
 
@@ -58,7 +65,7 @@ public interface HelloWorldService {
             try {
                 ResultSet rs = ps2.executeQuery();
                 rs.next();
-                Date ret =  rs.getDate(1);
+                Date ret = rs.getDate(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
@@ -71,7 +78,7 @@ public interface HelloWorldService {
             try {
                 ResultSet rs = ps3.executeQuery();
                 rs.next();
-                Integer ret =  rs.getInt(1);
+                Integer ret = rs.getInt(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
@@ -86,7 +93,7 @@ public interface HelloWorldService {
                 ps4.setInt(2, age);
                 ResultSet rs = ps4.executeQuery();
                 rs.next();
-                Integer ret =  rs.getInt(1);
+                Integer ret = rs.getInt(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
@@ -100,7 +107,7 @@ public interface HelloWorldService {
                 ps5.setString(1, name);
                 ResultSet rs = ps5.executeQuery();
                 rs.next();
-                String ret =  rs.getString(1);
+                String ret = rs.getString(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {

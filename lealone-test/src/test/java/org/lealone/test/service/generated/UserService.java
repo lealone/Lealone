@@ -11,13 +11,6 @@ import org.lealone.test.orm.generated.User;
  */
 public interface UserService {
 
-    static UserService create(String url) {
-        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
-            return new org.lealone.test.service.impl.UserServiceImpl();
-        else
-            return new ServiceProxy(url);
-    }
-
     Long add(User user);
 
     User find(String name);
@@ -25,6 +18,20 @@ public interface UserService {
     Integer update(User user);
 
     Integer delete(String name);
+
+    static UserService create() {
+        return create(null);
+    }
+
+    static UserService create(String url) {
+        if (url == null)
+            url = ClientServiceProxy.getUrl();
+
+        if (ClientServiceProxy.isEmbedded(url))
+            return new org.lealone.test.service.impl.UserServiceImpl();
+        else
+            return new ServiceProxy(url);
+    }
 
     static class ServiceProxy implements UserService {
 
@@ -46,7 +53,7 @@ public interface UserService {
                 ps1.setString(1, user.encode());
                 ResultSet rs = ps1.executeQuery();
                 rs.next();
-                Long ret =  rs.getLong(1);
+                Long ret = rs.getLong(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
@@ -74,7 +81,7 @@ public interface UserService {
                 ps3.setString(1, user.encode());
                 ResultSet rs = ps3.executeQuery();
                 rs.next();
-                Integer ret =  rs.getInt(1);
+                Integer ret = rs.getInt(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
@@ -88,7 +95,7 @@ public interface UserService {
                 ps4.setString(1, name);
                 ResultSet rs = ps4.executeQuery();
                 rs.next();
-                Integer ret =  rs.getInt(1);
+                Integer ret = rs.getInt(1);
                 rs.close();
                 return ret;
             } catch (Throwable e) {
