@@ -39,7 +39,6 @@ import org.lealone.transaction.TransactionEngine;
 public class Lealone {
 
     private static final Logger logger = LoggerFactory.getLogger(Lealone.class);
-    private static Config config;
 
     public static void main(String[] args) {
         new Lealone().start(args);
@@ -51,9 +50,10 @@ public class Lealone {
 
     // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
     public static void run(String[] args, boolean embedded, CountDownLatch latch) {
-        new Lealone().run0(args, embedded, latch);
+        new Lealone().run(embedded, latch);
     }
 
+    private Config config;
     private String baseDir;
     private boolean isClusterMode;
     private String host;
@@ -88,17 +88,16 @@ public class Lealone {
                 // return;
             }
         }
-
-        run0(args, false, null);
+        run(false, null);
     }
 
-    private void run0(String[] args, boolean embedded, CountDownLatch latch) {
+    private void run(boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Utils.getReleaseVersionString());
 
         try {
             long t = System.currentTimeMillis();
 
-            loadConfig(args);
+            loadConfig();
 
             long t1 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
@@ -114,7 +113,7 @@ public class Lealone {
                 return;
             }
 
-            ProtocolServer mainProtocolServer = start();
+            ProtocolServer mainProtocolServer = startProtocolServers();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
@@ -133,7 +132,7 @@ public class Lealone {
         }
     }
 
-    private void loadConfig(String[] args) {
+    private void loadConfig() {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
         if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
@@ -173,10 +172,10 @@ public class Lealone {
             }
         }
         ConfigDescriptor.applyConfig(config);
-        Lealone.config = config;
+        this.config = config;
     }
 
-    private static void init() {
+    private void init() {
         initBaseDir();
         initPluggableEngines();
 
@@ -196,7 +195,7 @@ public class Lealone {
         }
     }
 
-    private static void initBaseDir() {
+    private void initBaseDir() {
         if (config.base_dir == null || config.base_dir.isEmpty())
             throw new ConfigException("base_dir must be specified and not empty");
         SysProperties.setBaseDir(config.base_dir);
@@ -205,14 +204,14 @@ public class Lealone {
     }
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
-    private static void initPluggableEngines() {
+    private void initPluggableEngines() {
         initStorageEngineEngines();
         initTransactionEngineEngines();
         initSQLEngines();
         initProtocolServerEngines();
     }
 
-    private static void initStorageEngineEngines() {
+    private void initStorageEngineEngines() {
         registerAndInitEngines(config.storage_engines, "storage", "default.storage.engine", def -> {
             StorageEngine se = PluginManager.getPlugin(StorageEngine.class, def.name);
             if (se == null) {
@@ -223,7 +222,7 @@ public class Lealone {
         });
     }
 
-    private static void initTransactionEngineEngines() {
+    private void initTransactionEngineEngines() {
         registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
             TransactionEngine te;
             try {
@@ -243,7 +242,7 @@ public class Lealone {
         });
     }
 
-    private static void initSQLEngines() {
+    private void initSQLEngines() {
         registerAndInitEngines(config.sql_engines, "sql", "default.sql.engine", def -> {
             SQLEngine se = PluginManager.getPlugin(SQLEngine.class, def.name);
             if (se == null) {
@@ -254,7 +253,7 @@ public class Lealone {
         });
     }
 
-    private static void initProtocolServerEngines() {
+    private void initProtocolServerEngines() {
         registerAndInitEngines(config.protocol_server_engines, "protocol server", null, def -> {
             // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
             if (!def.getParameters().containsKey("host") && config.listen_address != null)
@@ -272,8 +271,8 @@ public class Lealone {
         V call(PluggableEngineDef def) throws Exception;
     }
 
-    private static <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name,
-            String defaultEngineKey, CallableTask<T> callableTask) {
+    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name, String defaultEngineKey,
+            CallableTask<T> callableTask) {
         long t1 = System.currentTimeMillis();
         if (engines != null) {
             name += " engine";
@@ -323,18 +322,14 @@ public class Lealone {
             throw new ConfigException(engineName + " name is missing.");
     }
 
-    private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {
+    private void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {
         Map<String, String> parameters = def.getParameters();
         if (!parameters.containsKey("base_dir"))
             parameters.put("base_dir", config.base_dir);
         pe.init(parameters);
     }
 
-    private static ProtocolServer start() throws Exception {
-        return startProtocolServers();
-    }
-
-    private static ProtocolServer startProtocolServers() throws Exception {
+    private ProtocolServer startProtocolServers() throws Exception {
         ProtocolServer mainProtocolServer = null;
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
@@ -355,7 +350,7 @@ public class Lealone {
         return mainProtocolServer;
     }
 
-    private static void startProtocolServer(final ProtocolServer server) throws Exception {
+    private void startProtocolServer(final ProtocolServer server) throws Exception {
         server.setServerEncryptionOptions(config.server_encryption_options);
         server.start();
         final String name = server.getName();

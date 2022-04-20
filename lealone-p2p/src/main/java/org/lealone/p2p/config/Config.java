@@ -130,7 +130,7 @@ public class Config {
                 defaultE.parameters.putAll(e.parameters);
             }
         }
-        return defaultList;
+        return new ArrayList<>(map.values());
     }
 
     private static <T extends MapPropertyTypeDef> T mergeMap(T defaultMap, T newMap) {
