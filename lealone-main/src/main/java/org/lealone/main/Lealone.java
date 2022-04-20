@@ -5,6 +5,7 @@
  */
 package org.lealone.main;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -20,6 +21,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
 import org.lealone.p2p.config.ConfigDescriptor;
@@ -29,6 +31,7 @@ import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
+import org.lealone.server.TcpServerEngine;
 import org.lealone.sql.SQLEngine;
 import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.TransactionEngine;
@@ -39,7 +42,7 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
-        run(args, false, null);
+        new Lealone().start(args);
     }
 
     public static void embed(String[] args) {
@@ -48,6 +51,48 @@ public class Lealone {
 
     // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
     public static void run(String[] args, boolean embedded, CountDownLatch latch) {
+        new Lealone().run0(args, embedded, latch);
+    }
+
+    private String baseDir;
+    private boolean isClusterMode;
+    private String host;
+    private String port;
+    private String p2pHost;
+    private String p2pPort;
+
+    private void start(String[] args) {
+        for (int i = 0; args != null && i < args.length; i++) {
+            String arg = args[i].trim();
+            if (arg.isEmpty())
+                continue;
+            if (arg.equals("-embed") || arg.equals("-client")) {
+                Shell.main(args);
+                return;
+            } else if (arg.equals("-config")) {
+                Config.setProperty("config", args[++i]);
+            } else if (arg.equals("-cluster")) {
+                isClusterMode = true;
+            } else if (arg.equals("-host")) {
+                host = args[++i];
+            } else if (arg.equals("-port")) {
+                port = args[++i];
+            } else if (arg.equals("-p2pHost")) {
+                p2pHost = args[++i];
+            } else if (arg.equals("-p2pPort")) {
+                p2pPort = args[++i];
+            } else if (arg.equals("-baseDir")) {
+                baseDir = args[++i];
+            } else {
+                // showUsage();
+                // return;
+            }
+        }
+
+        run0(args, false, null);
+    }
+
+    private void run0(String[] args, boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Utils.getReleaseVersionString());
 
         try {
@@ -88,28 +133,47 @@ public class Lealone {
         }
     }
 
-    private static void loadConfig(String[] args) {
+    private void loadConfig(String[] args) {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
         if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
-            loader = Utils.<ConfigLoader> construct(loaderClass, "configuration loading");
+            loader = Utils.construct(loaderClass, "configuration loading");
         } else {
             loader = new YamlConfigLoader();
         }
-        if (args != null && args.length >= 2 && args[0].equalsIgnoreCase("-cluster")) {
-            String nodeId = args[1];
-            config = loader.loadConfig(true);
-            config.base_dir = config.base_dir + "/node" + nodeId;
-            config.listen_address = "127.0.0." + nodeId;
+        Config config = loader.loadConfig(true);
+        config = Config.mergeDefaultConfig(config);
+        if (host != null || port != null) {
+            if (host != null)
+                config.listen_address = host;
+            for (PluggableEngineDef e : config.protocol_server_engines) {
+                if (TcpServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                    if (host != null)
+                        e.parameters.put("host", host);
+                    if (port != null)
+                        e.parameters.put("port", port);
+                }
+            }
+        }
+        if (baseDir != null)
+            config.base_dir = baseDir;
+        if (isClusterMode) {
+            if (baseDir == null && NetNode.createTCP(config.listen_address).geInetAddress().isLoopbackAddress()) {
+                String nodeId = config.listen_address.replace('.', '_');
+                config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_" + nodeId;
+            }
             for (PluggableEngineDef e : config.protocol_server_engines) {
                 if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
                     e.enabled = true;
+                    if (p2pHost != null)
+                        e.parameters.put("host", p2pHost);
+                    if (p2pPort != null)
+                        e.parameters.put("port", p2pPort);
                 }
             }
-            ConfigDescriptor.applyConfig(config);
-        } else {
-            config = loader.loadConfig();
         }
+        ConfigDescriptor.applyConfig(config);
+        Lealone.config = config;
     }
 
     private static void init() {

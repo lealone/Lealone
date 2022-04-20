@@ -53,7 +53,11 @@ public class Shell {
     private Statement stat;
     private boolean listMode;
     private int maxColumnSize = 100;
-    private String url, user, password;
+    private String url, user = "root", password;
+    private String host = Constants.DEFAULT_HOST;
+    private String port = Constants.DEFAULT_TCP_PORT + "";
+    private String database = "lealone";
+    private boolean embedded;
 
     public static void main(String[] args) {
         Shell shell = new Shell(args);
@@ -76,12 +80,18 @@ public class Shell {
             String arg = args[i].trim();
             if (arg.isEmpty())
                 continue;
-            if (arg.equals("-url")) {
+            if (arg.equals("-host")) {
+                host = args[++i];
+            } else if (arg.equals("-port")) {
+                port = args[++i];
+            } else if (arg.equals("-url")) {
                 url = args[++i];
             } else if (arg.equals("-user")) {
                 user = args[++i];
             } else if (arg.equals("-password")) {
                 password = args[++i];
+            } else if (arg.equals("-database")) {
+                database = args[++i];
             } else if (arg.equals("-sql")) {
                 sql = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
@@ -89,38 +99,59 @@ public class Shell {
                 return;
             } else if (arg.equals("-list")) {
                 listMode = true;
+            } else if (arg.equals("-embed")) {
+                embedded = true;
+            } else if (arg.equals("-client")) {
+                continue;
             } else {
                 showUsage();
                 return;
             }
         }
+
         showWelcome();
         if (url == null) {
-            readConnectionArgs();
+            StringBuilder buff = new StringBuilder(100);
+            buff.append(Constants.URL_PREFIX);
+            if (embedded) {
+                buff.append(Constants.URL_EMBED);
+            } else {
+                buff.append(Constants.URL_TCP).append("//");
+                buff.append(host).append(":").append(port).append('/');
+            }
+            buff.append(database);
+            url = buff.toString();
+            // readConnectionArgs();
         }
+        println("Connect to " + url);
+        // println();
+
         connect();
-        if (sql != null) {
+        if (sql != null)
+
+        {
             executeSqlScript(sql);
         } else {
             promptLoop();
         }
     }
 
+    @SuppressWarnings("unused")
     private void readConnectionArgs() throws Exception {
         StringBuilder buff = new StringBuilder(100);
         buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//127.0.0.1:")
                 .append(Constants.DEFAULT_TCP_PORT).append('/').append(Constants.PROJECT_NAME);
         url = buff.toString();
-        println("[Enter]   " + url);
-        print("URL       ");
+        println("[Enter] " + url);
+        print("URL ");
         url = readLine(url).trim();
 
         user = "root";
-        println("[Enter]   " + user);
-        print("User      ");
+        println("[Enter] " + user);
+        print("User ");
         user = readLine(user);
 
-        println("[Enter]   Hide");
+        println("[Enter] Hide");
         password = readPassword();
     }
 
@@ -176,7 +207,7 @@ public class Shell {
     private void showWelcome() {
         println();
         println("Welcome to Lealone Shell " + Constants.getVersion());
-        println("Exit with Ctrl+C");
+        // println("Exit with Ctrl+C");
     }
 
     private void showUsage() {

@@ -52,15 +52,17 @@ public class YamlConfigLoader implements ConfigLoader {
             ClassLoader loader = YamlConfigLoader.class.getClassLoader();
             url = loader.getResource(configUrl);
             if (url == null) {
-                String required = "file:" + File.separator + File.separator;
-                if (!configUrl.startsWith(required))
-                    throw new ConfigException(
-                            "Expecting URI in variable: [lealone.config].  Please prefix the file with " + required
-                                    + File.separator + " for local files or " + required + "<server>" + File.separator
-                                    + " for remote files.  Aborting.");
-                throw new ConfigException(
-                        "Cannot locate " + configUrl + ".  If this is a local file, please confirm you've provided "
-                                + required + File.separator + " as a URI prefix.");
+                logger.info("Use default config");
+                return null;
+                // String required = "file:" + File.separator + File.separator;
+                // if (!configUrl.startsWith(required))
+                // throw new ConfigException(
+                // "Expecting URI in variable: [lealone.config]. Please prefix the file with " + required
+                // + File.separator + " for local files or " + required + "<server>" + File.separator
+                // + " for remote files. Aborting.");
+                // throw new ConfigException(
+                // "Cannot locate " + configUrl + ". If this is a local file, please confirm you've provided "
+                // + required + File.separator + " as a URI prefix.");
             }
         }
         return url;
@@ -73,7 +75,10 @@ public class YamlConfigLoader implements ConfigLoader {
 
     @Override
     public Config loadConfig(boolean lazyApply) throws ConfigException {
-        Config config = loadConfig(getConfigURL());
+        URL url = getConfigURL();
+        if (url == null)
+            return null;
+        Config config = loadConfig(url);
         if (!lazyApply)
             applyConfig(config);
         return config;

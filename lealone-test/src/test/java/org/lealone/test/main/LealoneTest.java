@@ -10,8 +10,12 @@ import org.lealone.main.Lealone;
 public class LealoneTest {
 
     public static void main(String[] args) {
-        System.setProperty("lealone.config", "lealone-test.yaml");
-        String[] args2 = { "-cluster", "1" };
+        // System.setProperty("lealone.config", "lealone-test.yaml");
+        String[] args2 = { //
+                // "-cluster", //
+                // "-port", "9000", //
+                // "-config", "lealone-test.yaml",//
+        };
         Lealone.main(args2);
     }
 
