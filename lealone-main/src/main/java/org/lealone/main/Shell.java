@@ -101,7 +101,7 @@ public class Shell {
                 listMode = true;
             } else if (arg.equals("-embed")) {
                 embedded = true;
-            } else if (arg.equals("-client")) {
+            } else if (arg.equals("-client") || arg.equals("-debug")) {
                 continue;
             } else {
                 showUsage();
@@ -127,9 +127,7 @@ public class Shell {
         // println();
 
         connect();
-        if (sql != null)
-
-        {
+        if (sql != null) {
             executeSqlScript(sql);
         } else {
             promptLoop();

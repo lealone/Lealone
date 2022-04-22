@@ -107,7 +107,7 @@ public class Lealone {
         println("[-port <port>]          Tcp server port");
         println("[-p2pHost <host>]       P2p server host");
         println("[-p2pPort <port>]       P2p server port");
-        println("[-seeds]                The seed node list");
+        println("[-seeds <nodes>]        The seed node list");
         println("[-cluster]              Cluster mode");
         println("[-embed]                Embedded mode");
         println("[-client]               Client mode");
