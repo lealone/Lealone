@@ -97,20 +97,23 @@ public class Lealone {
     }
 
     private void showUsage() {
-        println("Options are case sensitive. Supported options are:");
-        println("[-help] or [-?]      Print the list of options");
-        println("[-baseDir <dir>]     Database base dir");
-        println("[-config <file>]     The config file");
-        println("[-host <host>]       Tcp server host");
-        println("[-port <port>]       Tcp server port");
-        println("[-p2pHost <host>]    P2p server host");
-        println("[-p2pPort <port>]    P2p server port");
-        println("[-seeds]             The seed node list");
-        println("[-cluster]           Cluster mode");
-        println("[-embed]             Embedded mode");
-        println("[-client]            Client mode");
         println();
-        println("Client or embedded mode options");
+        println("Options are case sensitive. Supported options are:");
+        println("-------------------------------------------------");
+        println("[-help] or [-?]         Print the list of options");
+        println("[-baseDir <dir>]        Database base dir");
+        println("[-config <file>]        The config file");
+        println("[-host <host>]          Tcp server host");
+        println("[-port <port>]          Tcp server port");
+        println("[-p2pHost <host>]       P2p server host");
+        println("[-p2pPort <port>]       P2p server port");
+        println("[-seeds]                The seed node list");
+        println("[-cluster]              Cluster mode");
+        println("[-embed]                Embedded mode");
+        println("[-client]               Client mode");
+        println();
+        println("Client or embedded mode options:");
+        println("-------------------------------------------------");
         new Shell(null).showClientOrEmbeddedModeOptions();
     }
 
