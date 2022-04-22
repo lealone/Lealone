@@ -13,21 +13,23 @@ import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 
-public class ScheduleService {
+public class SchedulerFactory {
 
     private static Scheduler[] schedulers;
-    private static boolean started;
     private static final AtomicInteger index = new AtomicInteger(0);
-    private static final AtomicInteger indexForSession = new AtomicInteger(0);
+
+    public static Scheduler getScheduler() {
+        return schedulers[index.getAndIncrement() % schedulers.length];
+    }
 
     public static synchronized void init(Map<String, String> config) {
         if (schedulers != null)
             return;
         int schedulerCount;
         if (config.containsKey("scheduler_count"))
-            schedulerCount = Integer.parseInt(config.get("scheduler_count"));
+            schedulerCount = Math.max(1, Integer.parseInt(config.get("scheduler_count")));
         else
-            schedulerCount = Math.max(1, Runtime.getRuntime().availableProcessors());
+            schedulerCount = Runtime.getRuntime().availableProcessors();
 
         schedulers = new Scheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
@@ -39,19 +41,15 @@ public class ScheduleService {
         for (StorageEngine e : PluginManager.getPlugins(StorageEngine.class)) {
             e.setPageOperationHandlerFactory(pohFactory);
         }
-    }
 
-    public static synchronized void start() {
-        if (schedulers == null || started)
-            return;
+        // 提前启动，LealoneDatabase要用到存储引擎
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
-        started = true;
     }
 
-    public static synchronized void stop() {
-        if (schedulers == null || !started)
+    public static synchronized void destroy() {
+        if (schedulers == null)
             return;
         for (Scheduler scheduler : schedulers) {
             scheduler.end();
@@ -64,14 +62,6 @@ public class ScheduleService {
                 }
             }
         }
-        started = false;
-    }
-
-    public static Scheduler getScheduler() {
-        return schedulers[index.getAndIncrement() % schedulers.length];
-    }
-
-    public static Scheduler getSchedulerForSession() {
-        return schedulers[indexForSession.getAndIncrement() % schedulers.length];
+        schedulers = null;
     }
 }

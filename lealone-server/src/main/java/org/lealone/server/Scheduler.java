@@ -61,7 +61,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     private NetEventLoop netEventLoop;
 
     public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
-        super(id, ScheduleService.class.getSimpleName() + "-" + id, waitingQueueSize);
+        super(id, "ScheduleService-" + id, waitingQueueSize);
         String key = "scheduler_loop_interval";
         /// 是否在调度器里负责网络IO
         if (NetEventLoop.isRunInScheduler(config)) {

@@ -70,7 +70,7 @@ public class TcpServerConnection extends TransferConnection {
                     readInitPacket(in, packetId, sessionId, this.scheduler);
                 } else {
                     // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                    Scheduler scheduler = ScheduleService.getSchedulerForSession();
+                    Scheduler scheduler = SchedulerFactory.getScheduler();
                     scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
                 }
             } else {
@@ -125,7 +125,7 @@ public class TcpServerConnection extends TransferConnection {
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
             session.setTransactionListener(scheduler);
-            session.setCache(new ExpiringMap<>(ScheduleService.getScheduler(), tcpServer.getSessionTimeout(),
+            session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
                     new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
                         @Override
                         public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {

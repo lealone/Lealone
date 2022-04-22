@@ -22,11 +22,9 @@ public abstract class PageOperationHandlerFactory {
         // 如果未指定处理器集，那么使用默认的
         int handlerCount;
         if (config.containsKey("page_operation_handler_count"))
-            handlerCount = Integer.parseInt(config.get("page_operation_handler_count"));
+            handlerCount = Math.max(1, Integer.parseInt(config.get("page_operation_handler_count")));
         else
-            handlerCount = Math.max(1, Runtime.getRuntime().availableProcessors());
-
-        handlerCount = Math.max(1, handlerCount);
+            handlerCount = Runtime.getRuntime().availableProcessors();
 
         pageOperationHandlers = new PageOperationHandler[handlerCount];
         for (int i = 0; i < handlerCount; i++) {

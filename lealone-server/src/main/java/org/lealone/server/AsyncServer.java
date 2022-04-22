@@ -39,8 +39,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         netServer.init(config);
 
         NetNode.setLocalTcpNode(getHost(), getPort());
-        ScheduleService.init(config);
-        ScheduleService.start(); // 提前启动，LealoneDatabase要用到存储引擎
+        SchedulerFactory.init(config);
     }
 
     @Override
@@ -59,7 +58,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         for (T c : connections) {
             c.close();
         }
-        ScheduleService.stop();
+        SchedulerFactory.destroy();
     }
 
     protected int getConnectionSize() {
@@ -81,7 +80,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     @Override
     public T createConnection(WritableChannel writableChannel, boolean isServer) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            Scheduler scheduler = ScheduleService.getSchedulerForSession();
+            Scheduler scheduler = SchedulerFactory.getScheduler();
             T conn = createConnection(writableChannel, scheduler);
             connections.add(conn);
             beforeRegister(conn, scheduler);
