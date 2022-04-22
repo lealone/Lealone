@@ -42,6 +42,14 @@
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/maven/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <outputFile>${project.build.directory}/lealone-${project.version}.jar</outputFile>
                         </configuration>
                     </execution>
