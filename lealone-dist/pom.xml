@@ -39,6 +39,7 @@
                                         <Main-Class>org.lealone.main.Lealone</Main-Class>
                                          <!-- 让log4j2选择合适的jdk，避免启动时出现WARNING: sun.reflect.Reflection.getCallerClass is not supported -->
                                         <Multi-Release>true</Multi-Release>
+                                        <Built-By>Lealone Database Group</Built-By>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
