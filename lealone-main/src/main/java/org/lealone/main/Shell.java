@@ -70,7 +70,7 @@ public class Shell {
         }
     }
 
-    private Shell(String[] args) {
+    Shell(String[] args) {
         this.args = args;
     }
 
@@ -212,10 +212,15 @@ public class Shell {
 
     private void showUsage() {
         println("Options are case sensitive. Supported options are:");
+        showClientOrEmbeddedModeOptions();
+    }
+
+    void showClientOrEmbeddedModeOptions() {
         println("[-help] or [-?]           Print the list of options");
         println("[-url \"<url>\"]            The database URL (jdbc:lealone:...)");
         println("[-user <user>]            The user name");
         println("[-password <pwd>]         The password");
+        println("[-database <db>]          The database");
         println("[-sql \"<statements>\"]     Execute the SQL statements and exit");
         println();
         println("If special characters don't work as expected, ");

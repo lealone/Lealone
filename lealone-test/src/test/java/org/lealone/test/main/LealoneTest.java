@@ -12,7 +12,10 @@ public class LealoneTest {
     public static void main(String[] args) {
         // System.setProperty("lealone.config", "lealone-test.yaml");
         String[] args2 = { //
+                // "-help", //
                 // "-cluster", //
+                // "-seeds", "127.0.0.2", //
+                // "-host", "127.0.0.1", //
                 // "-port", "9000", //
                 // "-config", "lealone-test.yaml",//
         };

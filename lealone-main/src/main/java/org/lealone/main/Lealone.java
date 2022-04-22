@@ -60,6 +60,7 @@ public class Lealone {
     private String port;
     private String p2pHost;
     private String p2pPort;
+    private String seeds;
 
     private void start(String[] args) {
         for (int i = 0; args != null && i < args.length; i++) {
@@ -83,12 +84,42 @@ public class Lealone {
                 p2pPort = args[++i];
             } else if (arg.equals("-baseDir")) {
                 baseDir = args[++i];
+            } else if (arg.equals("-seeds")) {
+                seeds = args[++i];
+            } else if (arg.equals("-help") || arg.equals("-?")) {
+                showUsage();
+                return;
             } else {
-                // showUsage();
-                // return;
+                continue;
             }
         }
         run(false, null);
+    }
+
+    private void showUsage() {
+        println("Options are case sensitive. Supported options are:");
+        println("[-help] or [-?]      Print the list of options");
+        println("[-baseDir <dir>]     Database base dir");
+        println("[-config <file>]     The config file");
+        println("[-host <host>]       Tcp server host");
+        println("[-port <port>]       Tcp server port");
+        println("[-p2pHost <host>]    P2p server host");
+        println("[-p2pPort <port>]    P2p server port");
+        println("[-seeds]             The seed node list");
+        println("[-cluster]           Cluster mode");
+        println("[-embed]             Embedded mode");
+        println("[-client]            Client mode");
+        println();
+        println("Client or embedded mode options");
+        new Shell(null).showClientOrEmbeddedModeOptions();
+    }
+
+    private void println() {
+        System.out.println();
+    }
+
+    private void println(String s) {
+        System.out.println(s);
     }
 
     private void run(boolean embedded, CountDownLatch latch) {
@@ -170,6 +201,9 @@ public class Lealone {
                         e.parameters.put("port", p2pPort);
                 }
             }
+        }
+        if (seeds != null) {
+            config.cluster_config.seed_provider.parameters.put("seeds", seeds);
         }
         ConfigDescriptor.applyConfig(config);
         this.config = config;

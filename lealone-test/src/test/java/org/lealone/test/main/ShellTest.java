@@ -14,6 +14,7 @@ public class ShellTest {
         // String url = "jdbc:lealone:tcp://localhost:9210/lealone";
         // url = "jdbc:lealone:embed:lealone";
         String[] args2 = { //
+                // "-help", //
                 // "-url", url, //
                 // "-user", "root," //
                 // "-embed", //
