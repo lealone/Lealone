@@ -484,7 +484,7 @@ public class CreateService extends SchemaStatement {
         for (int i = 0; i < methodSize; i++) {
             buff.append("\r\n");
             if (genCode)
-                buff.append(" @Override\r\n");
+                buff.append("    @Override\r\n");
             buff.append("    public ").append(methodSignatureList.get(i)).append(" {\r\n");
             if (!methodReturnTypeList.get(i).equals("void"))
                 buff.append("        return null;\r\n");
