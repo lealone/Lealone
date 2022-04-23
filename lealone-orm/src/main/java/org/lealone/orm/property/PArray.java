@@ -11,9 +11,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.db.value.ValueString;
 import org.lealone.orm.Model;
 
 /**
@@ -35,11 +35,7 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
 
     @Override
     protected Value createValue(Object[] values) {
-        Value[] array = new Value[values.length];
-        for (int i = 0; i < values.length; i++) {
-            array[i] = ValueString.get(values[i].toString());
-        }
-        return ValueArray.get(array);
+        return DataType.convertToValue(values, Value.ARRAY);
     }
 
     @Override

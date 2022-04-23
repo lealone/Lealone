@@ -26,7 +26,7 @@ public class PBytes<M extends Model<M>> extends PBase<M, byte[]> {
 
     @Override
     protected Object encodeValue() {
-        return Json.BASE64_ENCODER.encode(value);
+        return Json.BASE64_ENCODER.encodeToString(value);
     }
 
     @Override

@@ -5,10 +5,13 @@
  */
 package org.lealone.db.value;
 
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.sql.SQLException;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.db.LocalDataHandler;
 
 /**
  * Represents a readonly CLOB value.
@@ -21,7 +24,11 @@ public class ReadonlyClob extends ClobBase {
     }
 
     public ReadonlyClob(String value) {
-        this(ValueString.get(value));
+        this(new StringReader(value));
+    }
+
+    public ReadonlyClob(Reader reader) {
+        this(new LocalDataHandler().getLobStorage().createClob(reader, -1));
     }
 
     @Override

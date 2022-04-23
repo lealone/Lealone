@@ -45,6 +45,7 @@ public abstract class PBase<M extends Model<M>, T> extends ModelProperty<M> {
         return value;
     }
 
+    // 把value编码为json
     protected Object encodeValue() {
         return value;
     }

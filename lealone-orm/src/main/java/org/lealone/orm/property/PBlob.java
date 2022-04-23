@@ -13,6 +13,7 @@ import org.lealone.db.value.ReadonlyBlob;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBytes;
 import org.lealone.orm.Model;
+import org.lealone.orm.json.Json;
 
 public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
 
@@ -20,18 +21,22 @@ public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
         super(name, model);
     }
 
-    @Override
-    protected Value createValue(Blob value) {
-        return ValueBytes.getNoCopy((byte[]) encodeValue());
-    }
-
-    @Override
-    protected Object encodeValue() {
+    private byte[] getBytes() {
         try {
             return value.getBytes(1, (int) value.length());
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
+    }
+
+    @Override
+    protected Value createValue(Blob value) {
+        return ValueBytes.getNoCopy(getBytes());
+    }
+
+    @Override
+    protected Object encodeValue() {
+        return Json.BASE64_ENCODER.encodeToString(getBytes());
     }
 
     @Override
@@ -45,7 +50,7 @@ public class PBlob<M extends Model<M>> extends PBase<M, Blob> {
         if (v instanceof byte[])
             bytes = (byte[]) v;
         else
-            bytes = v.toString().getBytes();
+            bytes = Json.BASE64_DECODER.decode(v.toString());
         value = new ReadonlyBlob(ValueBytes.get(bytes));
     }
 }

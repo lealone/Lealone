@@ -5,10 +5,13 @@
  */
 package org.lealone.db.value;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.sql.SQLException;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.db.LocalDataHandler;
 
 /**
  * Represents a readonly BLOB value.
@@ -22,6 +25,14 @@ public class ReadonlyBlob extends BlobBase {
 
     public ReadonlyBlob(String value) {
         this(ValueString.get(value));
+    }
+
+    public ReadonlyBlob(byte[] bytes) {
+        this(new ByteArrayInputStream(bytes));
+    }
+
+    public ReadonlyBlob(InputStream in) {
+        this(new LocalDataHandler().getLobStorage().createBlob(in, -1));
     }
 
     @Override
