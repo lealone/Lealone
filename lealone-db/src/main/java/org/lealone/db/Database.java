@@ -69,12 +69,12 @@ import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.transaction.TransactionEngine;
 
@@ -1264,6 +1264,21 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return state == State.POWER_OFF;
     }
 
+    @Override
+    public void checkWritingAllowed() {
+        if (readOnly) {
+            throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
+        }
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public int getWriteDelay() {
+        return dbSettings.writeDelay;
+    }
+
     public ArrayList<Comment> getAllComments() {
         HashMap<String, Comment> map = getDbObjects(DbObjectType.COMMENT);
         return new ArrayList<>(map.values());
@@ -1509,21 +1524,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         this.compareMode = compareMode;
     }
 
-    @Override
-    public void checkWritingAllowed() {
-        if (readOnly) {
-            throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
-        }
-    }
-
-    public boolean isReadOnly() {
-        return readOnly;
-    }
-
-    public int getWriteDelay() {
-        return dbSettings.writeDelay;
-    }
-
     public void setBackgroundException(DbException e) {
         if (backgroundException == null) {
             backgroundException = e;
@@ -1637,6 +1637,27 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return persistent ? dbSettings.maxLengthInplaceLob : Integer.MAX_VALUE;
     }
 
+    @Override
+    public String getLobCompressionAlgorithm(int type) {
+        return dbSettings.lobCompressionAlgorithm;
+    }
+
+    @Override
+    public Object getLobSyncObject() {
+        return lobSyncObject;
+    }
+
+    @Override
+    public LobStorage getLobStorage() {
+        return lobStorage;
+    }
+
+    public void setLobStorage(LobStorage lobStorage) {
+        if (lobStorage != null) {
+            this.lobStorage = lobStorage;
+        }
+    }
+
     public boolean getIgnoreCase() {
         if (isStarting()) {
             // tables created at startup must not be converted to ignorecase
@@ -1653,22 +1674,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return deleteFilesOnDisconnect;
     }
 
-    @Override
-    public String getLobCompressionAlgorithm(int type) {
-        return dbSettings.lobCompressionAlgorithm;
-    }
-
     public boolean getOptimizeReuseResults() {
         return dbSettings.optimizeReuseResults;
     }
 
     public boolean getReferentialIntegrity() {
         return dbSettings.referentialIntegrity;
-    }
-
-    @Override
-    public Object getLobSyncObject() {
-        return lobSyncObject;
     }
 
     public int getSessionCount() {
@@ -1862,17 +1873,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return compiler;
     }
 
-    @Override
-    public LobStorage getLobStorage() {
-        return lobStorage;
-    }
-
-    public void setLobStorage(LobStorage lobStorage) {
-        if (lobStorage != null) {
-            this.lobStorage = lobStorage;
-        }
-    }
-
     public Connection getInternalConnection() {
         return systemSession.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
     }
@@ -1908,11 +1908,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             return true;
         }
         return false;
-    }
-
-    @Override
-    public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-        throw DbException.getInternalError();
     }
 
     public void backupTo(String fileName) {

@@ -7,13 +7,13 @@ package org.lealone.test.aose;
 
 import org.junit.Test;
 import org.lealone.db.PluginManager;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.lob.LobStreamStorage;
+import org.lealone.storage.lob.LobStorage;
 
 public class AOStorageEngineTest extends AoseTestBase {
     @Test

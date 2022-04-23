@@ -6,11 +6,11 @@
 package org.lealone.storage.aose;
 
 import org.lealone.db.DataHandler;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngineBase;
 import org.lealone.storage.aose.lob.LobStreamStorage;
+import org.lealone.storage.lob.LobStorage;
 
 public class AOStorageEngine extends StorageEngineBase {
 

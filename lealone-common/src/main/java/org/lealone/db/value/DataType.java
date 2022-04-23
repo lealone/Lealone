@@ -24,6 +24,8 @@ import java.util.UUID;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
+import org.lealone.db.LocalDataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
@@ -163,8 +165,14 @@ public class DataType {
                 // the value is always in the cache
                 0);
         add(Value.STRING, Types.VARCHAR, "String", createString(true),
-                new String[] { "VARCHAR", "VARCHAR2", "NVARCHAR", "NVARCHAR2", "VARCHAR_CASESENSITIVE",
-                        "CHARACTER VARYING", "TID" },
+                new String[] {
+                        "VARCHAR",
+                        "VARCHAR2",
+                        "NVARCHAR",
+                        "NVARCHAR2",
+                        "VARCHAR_CASESENSITIVE",
+                        "CHARACTER VARYING",
+                        "TID" },
                 // 24 for ValueString, 24 for String
                 48);
         add(Value.STRING, Types.LONGVARCHAR, "String", createString(true),
@@ -796,6 +804,14 @@ public class DataType {
      * @return the value
      */
     public static Value convertToValue(Session session, Object x, int type) {
+        return convertToValue(session.getDataHandler(), x, type);
+    }
+
+    public static Value convertToValue(Object x, int type) {
+        return convertToValue(new LocalDataHandler(), x, type);
+    }
+
+    public static Value convertToValue(DataHandler dataHandler, Object x, int type) {
         if (x == null) {
             return ValueNull.INSTANCE;
         }
@@ -834,19 +850,19 @@ public class DataType {
             return ValueTimestamp.get(new Timestamp(((java.util.Date) x).getTime()));
         } else if (x instanceof java.io.Reader) {
             Reader r = new BufferedReader((java.io.Reader) x);
-            return session.getDataHandler().getLobStorage().createClob(r, -1);
+            return dataHandler.getLobStorage().createClob(r, -1);
         } else if (x instanceof java.sql.Clob) {
             try {
                 Reader r = new BufferedReader(((java.sql.Clob) x).getCharacterStream());
-                return session.getDataHandler().getLobStorage().createClob(r, -1);
+                return dataHandler.getLobStorage().createClob(r, -1);
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
         } else if (x instanceof java.io.InputStream) {
-            return session.getDataHandler().getLobStorage().createBlob((java.io.InputStream) x, -1);
+            return dataHandler.getLobStorage().createBlob((java.io.InputStream) x, -1);
         } else if (x instanceof java.sql.Blob) {
             try {
-                return session.getDataHandler().getLobStorage().createBlob(((java.sql.Blob) x).getBinaryStream(), -1);
+                return dataHandler.getLobStorage().createBlob(((java.sql.Blob) x).getBinaryStream(), -1);
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
@@ -865,7 +881,7 @@ public class DataType {
             int len = o.length;
             Value[] v = new Value[len];
             for (int i = 0; i < len; i++) {
-                v[i] = convertToValue(session, o[i], type);
+                v[i] = convertToValue(dataHandler, o[i], type);
             }
             return ValueArray.get(x.getClass().getComponentType(), v);
         } else if (x instanceof Character) {

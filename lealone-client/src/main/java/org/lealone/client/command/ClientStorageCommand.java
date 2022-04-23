@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.client.storage;
+package org.lealone.client.command;
 
 import java.nio.ByteBuffer;
 import java.util.List;

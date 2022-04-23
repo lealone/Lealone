@@ -22,7 +22,7 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
-import org.lealone.storage.LobStorage;
+import org.lealone.storage.lob.LobStorage;
 
 public class LobPacketHandlers extends PacketHandlers {
 

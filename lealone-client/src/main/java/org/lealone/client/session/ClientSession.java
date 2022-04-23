@@ -11,17 +11,14 @@ import java.net.SocketAddress;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
-import org.lealone.client.storage.ClientLobStorage;
-import org.lealone.client.storage.ClientStorageCommand;
+import org.lealone.client.command.ClientStorageCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
-import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.DbSetting;
-import org.lealone.db.SysProperties;
+import org.lealone.db.LocalDataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -49,10 +46,8 @@ import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
-import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.lob.LobLocalStorage;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicaStorageCommand;
 
@@ -67,18 +62,15 @@ import org.lealone.storage.replication.ReplicaStorageCommand;
 // 同JdbcConnection一样，每个ClientSession对象也不是线程安全的，只能在单线程中使用。
 // 另外，每个ClientSession只对应一个server，
 // 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在ClientSessionFactory中处理了。
-public class ClientSession extends SessionBase implements DataHandler {
+public class ClientSession extends SessionBase implements LobLocalStorage.LobReader {
 
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
     private final String server;
     private final Session parent;
     private final int id;
-    private final String cipher;
-    private final byte[] fileEncryptionKey;
+    private final LocalDataHandler dataHandler;
     private final Trace trace;
-    private final Object lobSyncObject = new Object();
-    private LobStorage lobStorage;
 
     ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int id) {
         this.tcpConnection = tcpConnection;
@@ -87,8 +79,9 @@ public class ClientSession extends SessionBase implements DataHandler {
         this.parent = parent;
         this.id = id;
 
-        cipher = ci.getProperty(DbSetting.CIPHER.getName());
-        fileEncryptionKey = cipher == null ? null : MathUtils.secureRandomBytes(32);
+        String cipher = ci.getProperty(DbSetting.CIPHER.getName());
+        dataHandler = new LocalDataHandler(cipher);
+        dataHandler.setLobReader(this);
 
         initTraceSystem(ci);
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
@@ -265,72 +258,8 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
-    public void checkPowerOff() {
-        // ok
-    }
-
-    @Override
-    public void checkWritingAllowed() {
-        // ok
-    }
-
-    @Override
-    public String getDatabasePath() {
-        return "";
-    }
-
-    @Override
-    public String getLobCompressionAlgorithm(int type) {
-        return null;
-    }
-
-    @Override
-    public int getMaxLengthInplaceLob() {
-        return SysProperties.LOB_CLIENT_MAX_SIZE_MEMORY;
-    }
-
-    @Override
-    public FileStorage openFile(String name, String mode, boolean mustExist) {
-        if (mustExist && !FileUtils.exists(name)) {
-            throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
-        }
-        FileStorage fileStorage;
-        if (cipher == null) {
-            fileStorage = FileStorage.open(this, name, mode);
-        } else {
-            fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey, 0);
-        }
-        fileStorage.setCheckedWriting(false);
-        try {
-            fileStorage.init();
-        } catch (DbException e) {
-            fileStorage.closeSilently();
-            throw e;
-        }
-        return fileStorage;
-    }
-
-    @Override
     public DataHandler getDataHandler() {
-        return this;
-    }
-
-    @Override
-    public Object getLobSyncObject() {
-        return lobSyncObject;
-    }
-
-    @Override
-    public TempFileDeleter getTempFileDeleter() {
-        return TempFileDeleter.getInstance();
-    }
-
-    @Override
-    public LobStorage getLobStorage() {
-        if (lobStorage == null) {
-            lobStorage = new ClientLobStorage(this);
-        }
-        return lobStorage;
+        return dataHandler;
     }
 
     @Override

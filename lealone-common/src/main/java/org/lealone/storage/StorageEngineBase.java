@@ -8,6 +8,7 @@ package org.lealone.storage;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DataHandler;
 import org.lealone.db.PluginBase;
+import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public abstract class StorageEngineBase extends PluginBase implements StorageEngine {

@@ -7,8 +7,8 @@ package org.lealone.db;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.TempFileDeleter;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileStorage;
+import org.lealone.storage.lob.LobStorage;
 
 /**
  * A data handler contains a number of callback methods.
@@ -86,18 +86,4 @@ public interface DataHandler {
      * @return the lob storage mechanism
      */
     LobStorage getLobStorage();
-
-    /**
-     * Read from a lob.
-     *
-     * @param lobId the lob
-     * @param hmac the message authentication code
-     * @param offset the offset within the lob
-     * @param buff the target buffer
-     * @param off the offset within the target buffer
-     * @param length the number of bytes to read
-     * @return the number of bytes read
-     */
-    int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length);
-
 }

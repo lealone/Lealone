@@ -23,11 +23,11 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.lob.LobStorage;
 
 /**
  * This class stores LOB objects in the database, in maps.

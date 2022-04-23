@@ -9,16 +9,11 @@ import java.io.InputStream;
 import java.io.StringReader;
 
 import org.junit.Test;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.TempFileDeleter;
-import org.lealone.db.Constants;
-import org.lealone.db.DataHandler;
+import org.lealone.db.LocalDataHandler;
 import org.lealone.db.value.ValueLob;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.lob.LobStreamStorage;
-import org.lealone.storage.fs.FileStorage;
 
 public class LobStorageTest extends AoseTestBase {
     @Test
@@ -28,7 +23,7 @@ public class LobStorageTest extends AoseTestBase {
         name = "/" + name.replace('.', '/') + ".class";
         InputStream in = LobStorageTest.class.getResourceAsStream(name);
         int length = in.available();
-        LobStreamStorage lobStorage = new LobStreamStorage(new DataHandlerMock(), storage);
+        LobStreamStorage lobStorage = new LobStreamStorage(new LocalDataHandler(), storage);
         lobStorage.init();
         lobStorage.getLobStreamMap().setMaxBlockSize(512); // 设置小一点可以测试LobStreamMap中的indirect块
 
@@ -59,56 +54,5 @@ public class LobStorageTest extends AoseTestBase {
         lobStorage.setTable(lob, 20);
         lobStorage.removeAllForTable(20);
         lobStorage.removeLob(lob);
-    }
-
-    private static class DataHandlerMock implements DataHandler {
-
-        @Override
-        public String getDatabasePath() {
-            return null;
-        }
-
-        @Override
-        public FileStorage openFile(String name, String mode, boolean mustExist) {
-            return null;
-        }
-
-        @Override
-        public void checkPowerOff() throws DbException {
-        }
-
-        @Override
-        public void checkWritingAllowed() throws DbException {
-        }
-
-        @Override
-        public int getMaxLengthInplaceLob() {
-            return Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2;
-        }
-
-        @Override
-        public String getLobCompressionAlgorithm(int type) {
-            return null;
-        }
-
-        @Override
-        public TempFileDeleter getTempFileDeleter() {
-            return null;
-        }
-
-        @Override
-        public Object getLobSyncObject() {
-            return null;
-        }
-
-        @Override
-        public LobStorage getLobStorage() {
-            return null;
-        }
-
-        @Override
-        public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-            return 0;
-        }
     }
 }
