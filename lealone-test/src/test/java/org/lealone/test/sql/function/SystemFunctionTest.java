@@ -9,13 +9,50 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class SystemFunctionTest extends SqlTestBase {
+
     @Test
     public void run() throws Exception {
-        test();
+        testCASE();
+        testSystemFunction();
     }
 
-    @Override
-    protected void test() throws Exception {
+    private void testCASE() throws Exception {
+        // sql = "SELECT CASE(1>0, 1, b<0, 2)"; //不能这样用
+
+        // 如果为null，取ELSE
+        sql = "SELECT CASE @v3 WHEN 0 THEN 'No' WHEN 1 THEN 'One' ELSE 'Some' END";
+        assertCASE("Some", 1);
+
+        // 如果为null，取ELSE
+        sql = "SELECT SET(@v, null), CASE @v WHEN 0 THEN 'No' WHEN 1 THEN 'One' ELSE 'Some' END";
+        assertCASE("Some", 2);
+
+        // 如果为null，没有ELSE，返回null
+        sql = "SELECT SET(@v, null), CASE @v WHEN 0 THEN 'No' WHEN 1 THEN 'One' END";
+        assertCASE(null, 2);
+
+        sql = "SELECT SET(@v, 1), CASE @v WHEN 0 THEN 'No' WHEN 1 THEN 'One' ELSE 'Some' END";
+        assertCASE("One", 2);
+
+        sql = "SELECT CASE @v5 WHEN 0 THEN 'No' WHEN 1 THEN 'One'END";
+        assertCASE(null, 1);
+
+        sql = "SELECT SET(@v, 9), CASE WHEN @v<10 THEN 'Low' ELSE 'High' END";
+        assertCASE("Low", 2);
+
+        sql = "SELECT SET(@v, 15), CASE WHEN @v<10 THEN 'Low' ELSE 'High' END";
+        assertCASE("High", 2);
+
+        sql = "SELECT SET(@v, 15), CASE WHEN @v<10 THEN 'Low'END";
+        assertCASE(null, 2);
+    }
+
+    private void assertCASE(Object expected, int index) throws Exception {
+        executeQuery(sql);
+        assertEquals(expected, getStringValue(index, true));
+    }
+
+    private void testSystemFunction() throws Exception {
         sql = "SELECT DECODE(RAND()>0.5, 0, 'Red', 1, 'Black')";
 
         sql = "SELECT DECODE(RAND()>0.5, 0, 'Red1', 0, 'Red2', 1, 'Black1', 1, 'Black2')";
@@ -49,12 +86,7 @@ public class SystemFunctionTest extends SqlTestBase {
         sql = "SELECT ARRAY_GET(('Hello', 'World'), 2), ARRAY_LENGTH(('Hello', 'World')), "
                 + "ARRAY_CONTAINS(('Hello', 'World'), 'Hello')";
 
-        // sql = "SELECT CASE(1>0, 1, b<0, 2)"; //不能这样用
-
-        sql = "SELECT SET(@v, 1), CASE @v WHEN 0 THEN 'No' WHEN 1 THEN 'One' ELSE 'Some' END";
-        sql = "SELECT SET(@v, 11), CASE WHEN @v<10 THEN 'Low' ELSE 'High' END";
         executeUpdate("CREATE SEQUENCE IF NOT EXISTS SEQ_ID");
-
         sql = "SELECT CURRVAL('SEQ_ID'), NEXTVAL('SEQ_ID')";
         printResultSet();
 

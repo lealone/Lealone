@@ -116,7 +116,7 @@ public abstract class BuiltInFunction extends Function {
             return null;
         }
         Value v = values[i];
-        if (v == null) {
+        if (v == null && args[i] != null) {
             v = values[i] = args[i].getValue(session);
         }
         return v;

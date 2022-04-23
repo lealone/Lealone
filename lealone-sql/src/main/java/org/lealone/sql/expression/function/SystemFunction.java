@@ -448,18 +448,43 @@ public class SystemFunction extends BuiltInFunction {
             break;
         }
         case CASE: {
-            result = null;
-            int i = 0;
-            for (; i < args.length; i++) {
-                Value when = getNullOrValue(session, args, values, i++);
-                if (when.getBoolean()) {
-                    result = getNullOrValue(session, args, values, i);
-                    break;
+            Expression then = null;
+            // 像这样: SELECT SET(@v, 15), CASE WHEN @v<10 THEN 'Low' ELSE 'High' END
+            // 此时v0为null
+            if (v0 == null) {
+                // Searched CASE expression
+                // (null, when, then)
+                // (null, when, then, else)
+                // (null, when, then, when, then)
+                // (null, when, then, when, then, else)
+                for (int i = 1, len = args.length - 1; i < len; i += 2) {
+                    Value when = args[i].getValue(session);
+                    if (when.getBoolean()) {
+                        then = args[i + 1];
+                        break;
+                    }
+                }
+            } else {
+                // Simple CASE expression
+                // (expr, when, then)
+                // (expr, when, then, else)
+                // (expr, when, then, when, then)
+                // (expr, when, then, when, then, else)
+                if (v0 != ValueNull.INSTANCE) {
+                    for (int i = 1, len = args.length - 1; i < len; i += 2) {
+                        Value when = args[i].getValue(session);
+                        if (session.getDatabase().areEqual(v0, when)) {
+                            then = args[i + 1];
+                            break;
+                        }
+                    }
                 }
             }
-            if (result == null) {
-                result = i < args.length ? getNullOrValue(session, args, values, i) : ValueNull.INSTANCE;
+            if (then == null && args.length % 2 == 0) {
+                // then = elsePart
+                then = args[args.length - 1];
             }
+            result = then == null ? ValueNull.INSTANCE : then.getValue(session);
             break;
         }
         case ARRAY_GET: {
