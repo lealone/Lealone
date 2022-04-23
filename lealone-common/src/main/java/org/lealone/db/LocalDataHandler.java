@@ -17,11 +17,10 @@ import org.lealone.storage.lob.LobStorage;
 
 public class LocalDataHandler implements DataHandler {
 
-    private final Object lobSyncObject = new Object();
     private final String cipher;
     private final byte[] fileEncryptionKey;
+    private final Object lobSyncObject = new Object();
     private LobReader lobReader;
-
     private LobStorage lobStorage;
 
     public LocalDataHandler() {
@@ -47,12 +46,7 @@ public class LocalDataHandler implements DataHandler {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStorage fileStorage;
-        if (cipher == null) {
-            fileStorage = FileStorage.open(this, name, mode);
-        } else {
-            fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey, 0);
-        }
+        FileStorage fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey, 0);
         fileStorage.setCheckedWriting(false);
         try {
             fileStorage.init();

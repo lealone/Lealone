@@ -54,13 +54,6 @@ public class LobLocalStorage implements LobStorage {
         return ValueLob.createTempBlob(in, maxLength, handler);
     }
 
-    /**
-     * Create a CLOB object.
-     *
-     * @param reader the reader
-     * @param maxLength the maximum length (-1 if not known)
-     * @return the LOB
-     */
     @Override
     public Value createClob(Reader reader, long maxLength) {
         // need to use a temp file, because the input stream could come from
@@ -74,14 +67,6 @@ public class LobLocalStorage implements LobStorage {
         throw new UnsupportedOperationException();
     }
 
-    /**
-    * Get the input stream for the given lob.
-    *
-    * @param lob the lob
-    * @param hmac the message authentication code (for remote input streams)
-    * @param byteCount the number of bytes to read, or -1 if not known
-    * @return the stream
-    */
     @Override
     public InputStream getInputStream(ValueLob lob, byte[] hmac, long byteCount) throws IOException {
         if (byteCount < 0) {
@@ -111,19 +96,9 @@ public class LobLocalStorage implements LobStorage {
     private static class LobInputStream extends InputStream {
 
         private final LobReader lobReader;
-
-        /**
-         * The lob id.
-         */
         private final long lobId;
-
         private final byte[] hmac;
-
-        /**
-         * The position.
-         */
         private long pos;
-
         /**
          * The remaining bytes in the lob.
          */
