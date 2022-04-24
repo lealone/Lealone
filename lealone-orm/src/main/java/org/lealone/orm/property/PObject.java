@@ -18,7 +18,11 @@ public class PObject<M extends Model<M>> extends PBase<M, Object> {
 
     @Override
     protected Value createValue(Object value) {
-        return ValueJavaObject.getNoCopy(value, null);
+        // 如果是一个字节数组，直接创建即可，不必再序列化
+        if (value instanceof byte[])
+            return ValueJavaObject.getNoCopy(null, (byte[]) value);
+        else
+            return ValueJavaObject.getNoCopy(value, null);
     }
 
     @Override

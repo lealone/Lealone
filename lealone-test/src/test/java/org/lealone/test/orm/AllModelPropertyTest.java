@@ -5,6 +5,7 @@
  */
 package org.lealone.test.orm;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Blob;
@@ -15,7 +16,6 @@ import java.sql.Timestamp;
 import java.util.UUID;
 
 import org.junit.Test;
-import org.lealone.common.util.Utils;
 import org.lealone.db.api.JavaObjectSerializer;
 import org.lealone.db.value.ReadonlyArray;
 import org.lealone.db.value.ReadonlyBlob;
@@ -26,7 +26,7 @@ import org.lealone.test.service.generated.AllTypeService;
 public class AllModelPropertyTest extends OrmTestBase {
     @Test
     public void run() throws Exception {
-        Utils.serializer = new MyJavaObjectSerializer();
+        // Utils.serializer = new MyJavaObjectSerializer();
         SqlScript.createAllModelPropertyTable(this);
 
         insertLocal();
@@ -97,6 +97,18 @@ public class AllModelPropertyTest extends OrmTestBase {
         }
     }
 
+    public static class MyObject implements Serializable {
+        private String name = "test";
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+
     public static AllModelProperty create(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7,
             Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16,
             String f17, Blob f18, Clob f19, UUID f20, Array f21) {
@@ -154,7 +166,7 @@ public class AllModelPropertyTest extends OrmTestBase {
         Date f11 = new Date(time);
         Timestamp f12 = new Timestamp(time);
         byte[] f13 = new byte[] { 13 };
-        Object f14 = new Object();
+        MyObject f14 = new MyObject();
         String f15 = "15";
         String f16 = "16";
         String f17 = "17";
