@@ -45,6 +45,13 @@ public class SystemFunctionTest extends SqlTestBase {
 
         sql = "SELECT SET(@v, 15), CASE WHEN @v<10 THEN 'Low'END";
         assertCASE(null, 2);
+
+        // https://github.com/lealone/Lealone/issues/147
+        sql = "SELECT CASE WHEN SEQUENCE_NAME IS NULL THEN 0 ELSE 1 END IS_AUTOINCREMENT"
+                + " FROM INFORMATION_SCHEMA.COLUMNS ";
+        // 执行两次，触发缓存
+        executeQuery(sql);
+        executeQuery(sql);
     }
 
     private void assertCASE(Object expected, int index) throws Exception {

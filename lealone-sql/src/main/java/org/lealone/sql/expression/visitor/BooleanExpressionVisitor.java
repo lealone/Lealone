@@ -197,7 +197,7 @@ public abstract class BooleanExpressionVisitor extends ExpressionVisitorBase<Boo
     @Override
     public Boolean visitFunction(Function e) {
         for (Expression e2 : e.getArgs()) {
-            if (e != null && !e2.accept(this)) {
+            if (e2 != null && !e2.accept(this)) {
                 return false;
             }
         }
