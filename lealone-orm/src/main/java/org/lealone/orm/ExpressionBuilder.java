@@ -8,8 +8,8 @@ package org.lealone.orm;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
@@ -186,11 +186,8 @@ public class ExpressionBuilder<M extends Model<M>> {
         Function f = Function.getFunction(getModelTable().getDatabase(), "ARRAY_CONTAINS");
         f.setParameter(0, ec);
 
-        Value[] array = new Value[values.length];
-        for (int i = 0; i < values.length; i++) {
-            array[i] = ValueString.get(values[i].toString());
-        }
-        ValueExpression v = ValueExpression.get(ValueArray.get(array));
+        Value array = DataType.convertToValue(values, Value.ARRAY);
+        ValueExpression v = ValueExpression.get(array);
         f.setParameter(1, v);
 
         Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, f,
