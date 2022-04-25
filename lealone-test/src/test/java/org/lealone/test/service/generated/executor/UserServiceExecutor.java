@@ -1,5 +1,6 @@
 package org.lealone.test.service.generated.executor;
 
+import java.sql.Array;
 import java.util.Map;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.value.*;
@@ -37,12 +38,17 @@ public class UserServiceExecutor implements ServiceExecutor {
             if (result3 == null)
                 return ValueNull.INSTANCE;
             return ValueInt.get(result3);
-        case "DELETE":
-            String p_name_4 = methodArgs[0].getString();
-            Integer result4 = this.s.delete(p_name_4);
+        case "GET_LIST":
+            Array result4 = this.s.getList();
             if (result4 == null)
                 return ValueNull.INSTANCE;
-            return ValueInt.get(result4);
+            return ValueArray.get(result4);
+        case "DELETE":
+            String p_name_5 = methodArgs[0].getString();
+            Integer result5 = this.s.delete(p_name_5);
+            if (result5 == null)
+                return ValueNull.INSTANCE;
+            return ValueInt.get(result5);
         default:
             throw new RuntimeException("no method: " + methodName);
         }
@@ -69,12 +75,17 @@ public class UserServiceExecutor implements ServiceExecutor {
             if (result3 == null)
                 return null;
             return result3.toString();
-        case "DELETE":
-            String p_name_4 = ServiceExecutor.toString("NAME", methodArgs);
-            Integer result4 = this.s.delete(p_name_4);
+        case "GET_LIST":
+            Array result4 = this.s.getList();
             if (result4 == null)
                 return null;
             return result4.toString();
+        case "DELETE":
+            String p_name_5 = ServiceExecutor.toString("NAME", methodArgs);
+            Integer result5 = this.s.delete(p_name_5);
+            if (result5 == null)
+                return null;
+            return result5.toString();
         default:
             throw new RuntimeException("no method: " + methodName);
         }
@@ -105,13 +116,18 @@ public class UserServiceExecutor implements ServiceExecutor {
             if (result3 == null)
                 return null;
             return result3.toString();
-        case "DELETE":
-            ja = new JsonArray(json);
-            String p_name_4 = ja.getString(0);
-            Integer result4 = this.s.delete(p_name_4);
+        case "GET_LIST":
+            Array result4 = this.s.getList();
             if (result4 == null)
                 return null;
             return result4.toString();
+        case "DELETE":
+            ja = new JsonArray(json);
+            String p_name_5 = ja.getString(0);
+            Integer result5 = this.s.delete(p_name_5);
+            if (result5 == null)
+                return null;
+            return result5.toString();
         default:
             throw new RuntimeException("no method: " + methodName);
         }

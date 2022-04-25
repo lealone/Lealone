@@ -5,6 +5,7 @@
  */
 package org.lealone.orm;
 
+import java.sql.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,6 +22,8 @@ import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.ReadonlyArray;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
@@ -571,6 +574,20 @@ public abstract class Model<T extends Model<T>> {
             deserialize(result, models, list);
         }
         return list;
+    }
+
+    public Array findArray() {
+        return findArray(null);
+    }
+
+    public Array findArray(Long tid) {
+        List<T> list = findList(tid);
+        int size = list.size();
+        Object[] values = new Object[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = list.get(i).encode();
+        }
+        return new ReadonlyArray(DataType.convertToValue(values, Value.ARRAY));
     }
 
     public <M extends Model<M>> M m(Model<M> m) {

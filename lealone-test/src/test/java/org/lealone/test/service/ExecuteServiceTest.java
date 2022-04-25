@@ -5,6 +5,7 @@
  */
 package org.lealone.test.service;
 
+import java.sql.Array;
 import java.util.UUID;
 
 import org.junit.Test;
@@ -53,7 +54,13 @@ public class ExecuteServiceTest extends SqlTestBase {
         User user = new User().name.set("zhh").phone.set(123);
         userService.add(user);
 
+        user = new User().name.set("zhh2").phone.set(456);
+        userService.add(user);
+
         user = userService.find("zhh");
+
+        Array list = userService.getList();
+        System.out.println(list.toString());
 
         user.notes.set("call remote service");
         userService.update(user);

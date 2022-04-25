@@ -8,6 +8,7 @@ package org.lealone.db.value;
 import java.util.List;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.common.util.StatementBuilder;
 
 /**
  * Represents a readonly ARRAY value.
@@ -53,4 +54,17 @@ public class ReadonlyArray extends ArrayBase {
         this.value = ValueString.get(value);
     }
 
+    @Override
+    public String toString() {
+        if (value instanceof ValueArray) {
+            ValueArray va = (ValueArray) value;
+            StatementBuilder buff = new StatementBuilder("[");
+            for (Value v : va.getList()) {
+                buff.appendExceptFirst(", ");
+                buff.append(v.getTraceSQL());
+            }
+            return buff.append(']').toString();
+        }
+        return value.toString();
+    }
 }

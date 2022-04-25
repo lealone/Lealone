@@ -1,6 +1,7 @@
 package org.lealone.test.service.generated;
 
 import java.sql.*;
+import java.sql.Array;
 import org.lealone.client.ClientServiceProxy;
 import org.lealone.test.orm.generated.User;
 
@@ -16,6 +17,8 @@ public interface UserService {
     User find(String name);
 
     Integer update(User user);
+
+    Array getList();
 
     Integer delete(String name);
 
@@ -39,12 +42,14 @@ public interface UserService {
         private final PreparedStatement ps2;
         private final PreparedStatement ps3;
         private final PreparedStatement ps4;
+        private final PreparedStatement ps5;
 
         private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE ADD(?)");
             ps2 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE FIND(?)");
             ps3 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE UPDATE(?)");
-            ps4 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE DELETE(?)");
+            ps4 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE GET_LIST()");
+            ps5 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE DELETE(?)");
         }
 
         @Override
@@ -90,10 +95,23 @@ public interface UserService {
         }
 
         @Override
+        public Array getList() {
+            try {
+                ResultSet rs = ps4.executeQuery();
+                rs.next();
+                Array ret = rs.getArray(1);
+                rs.close();
+                return ret;
+            } catch (Throwable e) {
+                throw ClientServiceProxy.failed("USER_SERVICE.GET_LIST", e);
+            }
+        }
+
+        @Override
         public Integer delete(String name) {
             try {
-                ps4.setString(1, name);
-                ResultSet rs = ps4.executeQuery();
+                ps5.setString(1, name);
+                ResultSet rs = ps5.executeQuery();
                 rs.next();
                 Integer ret = rs.getInt(1);
                 rs.close();
