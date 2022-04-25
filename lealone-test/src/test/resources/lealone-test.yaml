@@ -52,7 +52,14 @@ protocol_server_engines:
         port: 9211,
         ssl: false
     }
-
+  - name: HTTP
+    enabled: true
+    parameters: {
+        port: 9000,
+        environment: prod,
+        web_root: ../web,
+        jdbc_url: "jdbc:lealone:embed:test"
+    }
 server_encryption_options:
     keystore: conf/.keystore
     keystore_password: lealone

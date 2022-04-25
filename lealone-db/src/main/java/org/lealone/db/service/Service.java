@@ -116,11 +116,13 @@ public class Service extends SchemaObjectBase {
 
     // 通过http调用
     public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
-        serviceName = serviceName.toUpperCase();
-        methodName = methodName.toUpperCase();
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 3) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
+            if (db.getSettings().databaseToUpper) {
+                serviceName = serviceName.toUpperCase();
+                methodName = methodName.toUpperCase();
+            }
             Service service = getService(null, db, a[1], a[2]);
             return service.getExecutor().executeService(methodName, methodArgs);
         } else {
@@ -130,12 +132,15 @@ public class Service extends SchemaObjectBase {
 
     // 通过sockjs调用
     public static String execute(String serviceName, String json) {
-        serviceName = serviceName.toUpperCase();
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
+            String methodName = a[3];
+            if (db.getSettings().databaseToUpper) {
+                methodName = methodName.toUpperCase();
+            }
             Service service = getService(null, db, a[1], a[2]);
-            return service.getExecutor().executeService(a[3], json);
+            return service.getExecutor().executeService(methodName, json);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
         }
