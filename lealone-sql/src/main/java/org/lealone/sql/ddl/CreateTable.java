@@ -439,7 +439,6 @@ public class CreateTable extends SchemaStatement {
         // buff.append(" }\r\n");
         // buff.append("\r\n");
         buff.append(fields);
-        // buff.append("\r\n");
 
         StringBuilder listBuff = new StringBuilder();
         StringBuilder newAssociateInstanceBuff = new StringBuilder();
@@ -554,8 +553,6 @@ public class CreateTable extends SchemaStatement {
         CreateService.writeFile(table.getCodePath(), packageName, className, buff);
     }
 
-    private static final String TYPE_QUERY_PACKAGE_NAME = "org.lealone.orm.property";
-
     private static String getModelPropertyClassName(int type, TreeSet<String> importSet) {
         String name;
         switch (type) {
@@ -573,25 +570,7 @@ public class CreateTable extends SchemaStatement {
             name = name.substring(pos + 1);
         }
         name = "P" + name;
-        importSet.add(TYPE_QUERY_PACKAGE_NAME + "." + name);
+        importSet.add("org.lealone.orm.property." + name);
         return name;
     }
-
-    // private static String getTypeClassName(int type, TreeSet<String> importSet) {
-    // switch (type) {
-    // case Value.BYTES:
-    // return "byte[]";
-    // case Value.UUID:
-    // importSet.add(UUID.class.getName());
-    // return UUID.class.getSimpleName();
-    // case Value.NULL:
-    // throw DbException.getInternalError("type = null");
-    // default:
-    // String name = DataType.getTypeClassName(type);
-    // if (!name.startsWith("java.lang.")) {
-    // importSet.add(name);
-    // }
-    // return name.substring(name.lastIndexOf('.') + 1);
-    // }
-    // }
 }
