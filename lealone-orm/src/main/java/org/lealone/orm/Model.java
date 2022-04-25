@@ -286,6 +286,7 @@ public abstract class Model<T extends Model<T>> {
         if (m != this) {
             return m.orderBy();
         }
+        joinTableFilter();
         getStack().pop();
         pushExprBuilder(getWhereExpressionBuilder());
         return root;

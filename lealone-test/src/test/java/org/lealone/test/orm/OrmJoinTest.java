@@ -31,18 +31,27 @@ public class OrmJoinTest extends OrmTestBase {
         Customer customer = new Customer().id.set(100).name.set("c1").phone.set(123);
         customer.addOrder(o1, o2).insert();
 
+        Order o30 = new Order().orderId.set(2003).orderDate.set("2018-01-01");
+        Order o40 = new Order().orderId.set(2004).orderDate.set("2018-01-01");
+        customer = new Customer().id.set(600).name.set("c2").phone.set(456);
+        customer.addOrder(o30, o40).insert();
+
         Customer c = Customer.dao;
         Order o = Order.dao;
 
+        List<Customer> customerList = c.join(o).on().id.eq(o.customerId).orderBy().id.desc().findList();
+        assertEquals(2, customerList.size());
+        List<Order> orderList = customerList.get(0).getOrderList();
+        assertEquals(2, orderList.size());
+
         customer = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId).where().id.eq(100)
                 .findOne();
-
-        List<Order> orderList = customer.getOrderList();
+        orderList = customer.getOrderList();
         assertEquals(2, orderList.size());
         assertTrue(customer == orderList.get(0).getCustomer());
 
-        List<Customer> customerList = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId)
-                .where().id.eq(100).findList();
+        customerList = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId).where().id
+                .eq(100).findList();
         assertEquals(1, customerList.size());
 
         customer = c.join(o).on().id.eq(o.customerId).where().id.eq(100).findOne();
