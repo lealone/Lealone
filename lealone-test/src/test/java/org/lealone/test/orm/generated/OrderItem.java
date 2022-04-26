@@ -31,6 +31,12 @@ public class OrderItem extends Model<OrderItem> {
         productId = new PLong<>("PRODUCT_ID", this);
         productCount = new PInteger<>("PRODUCT_COUNT", this);
         super.setModelProperties(new ModelProperty[] { orderId, productId, productCount });
+        super.initSetters(new OrderSetter(), new ProductSetter());
+    }
+
+    @Override
+    protected OrderItem newInstance(ModelTable t, short modelType) {
+        return new OrderItem(t, modelType);
     }
 
     public Order getOrder() {
@@ -53,9 +59,36 @@ public class OrderItem extends Model<OrderItem> {
         return this;
     }
 
-    @Override
-    protected OrderItem newInstance(ModelTable t, short modelType) {
-        return new OrderItem(t, modelType);
+    protected class OrderSetter implements AssociateSetter<Order> {
+        @Override
+        public Order getDao() {
+            return Order.dao;
+        }
+
+        @Override
+        public boolean set(Order m) {
+            if (areEqual(orderId, m.orderId)) {
+                setOrder(m);
+                return true;
+            }
+            return false;
+        }
+    }
+
+    protected class ProductSetter implements AssociateSetter<Product> {
+        @Override
+        public Product getDao() {
+            return Product.dao;
+        }
+
+        @Override
+        public boolean set(Product m) {
+            if (areEqual(productId, m.productId)) {
+                setProduct(m);
+                return true;
+            }
+            return false;
+        }
     }
 
     public static OrderItem decode(String str) {

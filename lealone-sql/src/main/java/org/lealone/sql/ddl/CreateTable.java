@@ -350,7 +350,11 @@ public class CreateTable extends SchemaStatement {
     private static void genCode(ServerSession session, Table table, Table owner, int level) {
         String packageName = table.getPackageName();
         String tableName = table.getName();
+        String className = CreateService.toClassName(tableName);
+        Database db = session.getDatabase();
         Schema schema = table.getSchema();
+        boolean databaseToUpper = db.getSettings().databaseToUpper;
+
         for (Constraint constraint : getConstraints(table)) {
             if (constraint instanceof ConstraintReferential) {
                 ConstraintReferential ref = (ConstraintReferential) constraint;
@@ -360,14 +364,9 @@ public class CreateTable extends SchemaStatement {
                 }
             }
         }
-        boolean databaseToUpper = session.getDatabase().getSettings().databaseToUpper;
-        String className = CreateService.toClassName(tableName);
-        StringBuilder buff = new StringBuilder();
-        StringBuilder fields = new StringBuilder();
-        StringBuilder fieldNames = new StringBuilder();
-        StringBuilder init = new StringBuilder();
-        TreeSet<String> importSet = new TreeSet<>();
 
+        // 收集需要导入的类
+        TreeSet<String> importSet = new TreeSet<>();
         importSet.add("org.lealone.orm.Model");
         importSet.add("org.lealone.orm.ModelTable");
         importSet.add("org.lealone.orm.ModelProperty");
@@ -383,7 +382,6 @@ public class CreateTable extends SchemaStatement {
                         importSet.add(pn + "." + CreateService.toClassName(owner.getName()));
                     }
                     importSet.add(List.class.getName());
-                    importSet.add(ArrayList.class.getName());
                 } else {
                     String pn = refTable.getPackageName();
                     if (!packageName.equals(pn)) {
@@ -392,6 +390,10 @@ public class CreateTable extends SchemaStatement {
                 }
             }
         }
+
+        StringBuilder fields = new StringBuilder();
+        StringBuilder fieldNames = new StringBuilder();
+        StringBuilder initFields = new StringBuilder();
 
         for (Column c : table.getColumns()) {
             int type = c.getType();
@@ -402,8 +404,9 @@ public class CreateTable extends SchemaStatement {
                     .append(columnName).append(";\r\n");
 
             // 例如: id = new PLong<>("id", this);
-            init.append("        ").append(columnName).append(" = new ").append(modelPropertyClassName).append("<>(\"")
-                    .append(databaseToUpper ? c.getName().toUpperCase() : c.getName()).append("\", this);\r\n");
+            initFields.append("        ").append(columnName).append(" = new ").append(modelPropertyClassName)
+                    .append("<>(\"").append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
+                    .append("\", this);\r\n");
 
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");
@@ -411,6 +414,153 @@ public class CreateTable extends SchemaStatement {
             fieldNames.append(columnName);
         }
 
+        /////////////////////////// 以下是表关联的相关代码 ///////////////////////////
+
+        // associate method(set, get, add) buff
+        StringBuilder amBuff = new StringBuilder();
+        StringBuilder adderBuff = new StringBuilder();
+        StringBuilder adderInitBuff = new StringBuilder();
+        StringBuilder setterBuff = new StringBuilder();
+        StringBuilder setterInitBuff = new StringBuilder();
+
+        for (Constraint constraint : getConstraints(table)) {
+            if (constraint instanceof ConstraintReferential) {
+                ConstraintReferential ref = (ConstraintReferential) constraint;
+                Table refTable = ref.getRefTable();
+                owner = ref.getTable();
+                String refTableClassName = CreateService.toClassName(refTable.getName());
+                if (refTable == table) {
+                    String ownerClassName = CreateService.toClassName(owner.getName());
+                    // add方法，增加单个model实例
+                    amBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
+                            .append(ownerClassName).append(" m) {\r\n");
+                    amBuff.append("        m.set").append(refTableClassName).append("(this);\r\n");
+                    amBuff.append("        super.addModel(m);\r\n");
+                    amBuff.append("        return this;\r\n");
+                    amBuff.append("    }\r\n");
+                    amBuff.append("\r\n");
+
+                    // add方法，增加多个model实例
+                    amBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
+                            .append(ownerClassName).append("... mArray) {\r\n");
+                    amBuff.append("        for (").append(ownerClassName).append(" m : mArray)\r\n");
+                    amBuff.append("            add").append(ownerClassName).append("(m);\r\n");
+                    amBuff.append("        return this;\r\n");
+                    amBuff.append("    }\r\n");
+                    amBuff.append("\r\n");
+
+                    // get list方法
+                    amBuff.append("    public List<").append(ownerClassName).append("> get").append(ownerClassName)
+                            .append("List() {\r\n");
+                    amBuff.append("        return super.getModelList(").append(ownerClassName).append(".class);\r\n");
+                    amBuff.append("    }\r\n");
+                    amBuff.append("\r\n");
+
+                    // Adder类
+                    IndexColumn[] refColumns = ref.getRefColumns();
+                    IndexColumn[] columns = ref.getColumns();
+                    adderBuff.append("    protected class ").append(ownerClassName)
+                            .append("Adder implements AssociateAdder<").append(ownerClassName).append("> {\r\n");
+                    adderBuff.append("        @Override\r\n");
+                    adderBuff.append("        public ").append(ownerClassName).append(" getDao() {\r\n");
+                    adderBuff.append("            return ").append(ownerClassName).append(".dao;\r\n");
+                    adderBuff.append("        }\r\n");
+                    adderBuff.append("\r\n");
+                    adderBuff.append("        @Override\r\n");
+                    adderBuff.append("        public void add(").append(ownerClassName).append(" m) {\r\n");
+                    adderBuff.append("            if (");
+                    for (int i = 0; i < columns.length; i++) {
+                        if (i != 0) {
+                            adderBuff.append(" && ");
+                        }
+                        String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
+                        String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
+                        adderBuff.append("areEqual(").append(refColumnName).append(", m.").append(columnName)
+                                .append(")");
+                    }
+                    adderBuff.append(") {\r\n");
+                    adderBuff.append("                add").append(ownerClassName).append("(m);\r\n");
+                    adderBuff.append("            }\r\n");
+                    adderBuff.append("        }\r\n");
+                    adderBuff.append("    }\r\n");
+                    adderBuff.append("\r\n");
+
+                    // new Adder()
+                    if (adderInitBuff.length() > 0)
+                        adderInitBuff.append(", ");
+                    adderInitBuff.append("new ").append(ownerClassName).append("Adder()");
+                } else {
+                    String refTableVar = CamelCaseHelper.toCamelFromUnderscore(refTable.getName());
+
+                    // 引用表字段
+                    fields.append("    private ").append(refTableClassName).append(" ").append(refTableVar)
+                            .append(";\r\n");
+
+                    // get方法
+                    amBuff.append("    public ").append(refTableClassName).append(" get").append(refTableClassName)
+                            .append("() {\r\n");
+                    amBuff.append("        return ").append(refTableVar).append(";\r\n");
+                    amBuff.append("    }\r\n");
+                    amBuff.append("\r\n");
+
+                    // set方法
+                    amBuff.append("    public ").append(className).append(" set").append(refTableClassName).append("(")
+                            .append(refTableClassName).append(" ").append(refTableVar).append(") {\r\n");
+                    amBuff.append("        this.").append(refTableVar).append(" = ").append(refTableVar)
+                            .append(";\r\n");
+
+                    IndexColumn[] refColumns = ref.getRefColumns();
+                    IndexColumn[] columns = ref.getColumns();
+                    for (int i = 0; i < columns.length; i++) {
+                        String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
+                        String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
+                        amBuff.append("        this.").append(columnName).append(".set(").append(refTableVar)
+                                .append(".").append(refColumnName).append(".get());\r\n");
+                    }
+                    amBuff.append("        return this;\r\n");
+                    amBuff.append("    }\r\n");
+                    amBuff.append("\r\n");
+
+                    // Setter类
+                    setterBuff.append("    protected class ").append(refTableClassName)
+                            .append("Setter implements AssociateSetter<").append(refTableClassName).append("> {\r\n");
+                    setterBuff.append("        @Override\r\n");
+                    setterBuff.append("        public ").append(refTableClassName).append(" getDao() {\r\n");
+                    setterBuff.append("            return ").append(refTableClassName).append(".dao;\r\n");
+                    setterBuff.append("        }\r\n");
+                    setterBuff.append("\r\n");
+                    setterBuff.append("        @Override\r\n");
+                    setterBuff.append("        public boolean set(").append(refTableClassName).append(" m) {\r\n");
+                    setterBuff.append("            if (");
+                    for (int i = 0; i < columns.length; i++) {
+                        if (i != 0) {
+                            setterBuff.append(" && ");
+                        }
+                        String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
+                        String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
+                        setterBuff.append("areEqual(").append(columnName).append(", m.").append(refColumnName)
+                                .append(")");
+                    }
+                    setterBuff.append(") {\r\n");
+                    setterBuff.append("                set").append(refTableClassName).append("(m);\r\n");
+                    setterBuff.append("                return true;\r\n");
+                    setterBuff.append("            }\r\n");
+                    setterBuff.append("            return false;\r\n");
+                    setterBuff.append("        }\r\n");
+                    setterBuff.append("    }\r\n");
+                    setterBuff.append("\r\n");
+
+                    // new Setter()
+                    if (setterInitBuff.length() > 0)
+                        setterInitBuff.append(", ");
+                    setterInitBuff.append("new ").append(refTableClassName).append("Setter()");
+                }
+            }
+        }
+
+        /////////////////////////// 以下是生成model类的相关代码 ///////////////////////////
+
+        StringBuilder buff = new StringBuilder();
         buff.append("package ").append(packageName).append(";\r\n\r\n");
         for (String p : importSet) {
             buff.append("import ").append(p).append(";\r\n");
@@ -425,130 +575,71 @@ public class CreateTable extends SchemaStatement {
         buff.append("public class ").append(className).append(" extends Model<").append(className).append("> {\r\n");
         buff.append("\r\n");
 
-        buff.append("    public static final ").append(className).append(" dao = new ").append(className)
-                .append("(null, ROOT_DAO);\r\n");
-        buff.append("\r\n");
-        Database db = schema.getDatabase();
-        String tableFullName = "\"" + db.getName() + "\", \"" + schema.getName() + "\", \"" + tableName + "\"";
-        if (db.getSettings().databaseToUpper) {
-            tableFullName = tableFullName.toUpperCase();
-        }
+        // static create 方法
         // buff.append(" public static ").append(className).append(" create(String url) {\r\n");
         // buff.append(" ModelTable t = new ModelTable(url, ").append(tableFullName).append(");\r\n");
         // buff.append(" return new ").append(className).append("(t, REGULAR_MODEL);\r\n");
         // buff.append(" }\r\n");
         // buff.append("\r\n");
-        buff.append(fields);
 
-        StringBuilder listBuff = new StringBuilder();
-        StringBuilder newAssociateInstanceBuff = new StringBuilder();
-        int mVar = 0;
-        for (Constraint constraint : getConstraints(table)) {
-            if (constraint instanceof ConstraintReferential) {
-                ConstraintReferential ref = (ConstraintReferential) constraint;
-                Table refTable = ref.getRefTable();
-                owner = ref.getTable();
-                String refTableClassName = CreateService.toClassName(refTable.getName());
-                if (refTable == table) {
-                    mVar++;
-                    String ownerClassName = CreateService.toClassName(owner.getName());
-
-                    listBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
-                            .append(ownerClassName).append(" m) {\r\n");
-                    listBuff.append("        m.set").append(refTableClassName).append("(this);\r\n");
-                    listBuff.append("        super.addModel(m);\r\n");
-                    listBuff.append("        return this;\r\n");
-                    listBuff.append("    }\r\n");
-                    listBuff.append("\r\n");
-                    listBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
-                            .append(ownerClassName).append("... mArray) {\r\n");
-                    listBuff.append("        for (").append(ownerClassName).append(" m : mArray)\r\n");
-                    listBuff.append("            add").append(ownerClassName).append("(m);\r\n");
-                    listBuff.append("        return this;\r\n");
-                    listBuff.append("    }\r\n");
-                    listBuff.append("\r\n");
-                    listBuff.append("    public List<").append(ownerClassName).append("> get").append(ownerClassName)
-                            .append("List() {\r\n");
-                    listBuff.append("        return super.getModelList(").append(ownerClassName).append(".class);\r\n");
-                    listBuff.append("    }\r\n");
-                    listBuff.append("\r\n");
-                    // newAssociateInstanceBuff.append(" @Override\r\n");
-                    // newAssociateInstanceBuff.append(" protected ").append(ownerClassName)
-                    // .append(" newAssociateInstance() {\r\n");
-                    // newAssociateInstanceBuff.append(" ").append(ownerClassName).append(" m = new ")
-                    // .append(ownerClassName).append("();\r\n");
-                    // newAssociateInstanceBuff.append(" add").append(ownerClassName).append("(m);\r\n");
-                    // newAssociateInstanceBuff.append(" return m;\r\n");
-                    // newAssociateInstanceBuff.append(" }\r\n");
-                    // newAssociateInstanceBuff.append("\r\n");
-
-                    String m = "m" + mVar;
-                    newAssociateInstanceBuff.append("        ").append(ownerClassName).append(" ").append(m)
-                            .append(" = new ").append(ownerClassName).append("();\r\n");
-                    newAssociateInstanceBuff.append("        add").append(ownerClassName).append("(").append(m)
-                            .append(");\r\n");
-                    newAssociateInstanceBuff.append("        list.add").append("(").append(m).append(");\r\n");
-                } else {
-                    String refTableVar = CamelCaseHelper.toCamelFromUnderscore(refTable.getName());
-
-                    buff.append("    private ").append(refTableClassName).append(" ").append(refTableVar)
-                            .append(";\r\n");
-                    listBuff.append("    public ").append(refTableClassName).append(" get").append(refTableClassName)
-                            .append("() {\r\n");
-                    listBuff.append("        return ").append(refTableVar).append(";\r\n");
-                    listBuff.append("    }\r\n");
-                    listBuff.append("\r\n");
-                    listBuff.append("    public ").append(className).append(" set").append(refTableClassName)
-                            .append("(").append(refTableClassName).append(" ").append(refTableVar).append(") {\r\n");
-                    listBuff.append("        this.").append(refTableVar).append(" = ").append(refTableVar)
-                            .append(";\r\n");
-
-                    IndexColumn[] refColumns = ref.getRefColumns();
-                    IndexColumn[] columns = ref.getColumns();
-                    for (int i = 0; i < columns.length; i++) {
-                        String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
-                        String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
-                        listBuff.append("        this.").append(columnName).append(".set(").append(refTableVar)
-                                .append(".").append(refColumnName).append(".get());\r\n");
-                    }
-                    listBuff.append("        return this;\r\n");
-                    listBuff.append("    }\r\n");
-                    listBuff.append("\r\n");
-                }
-            }
-        }
-
+        // static dao字段
+        buff.append("    public static final ").append(className).append(" dao = new ").append(className)
+                .append("(null, ROOT_DAO);\r\n");
         buff.append("\r\n");
+
+        // 字段
+        buff.append(fields);
+        buff.append("\r\n");
+
+        // 默认构造函数
         buff.append("    public ").append(className).append("() {\r\n");
         buff.append("        this(null, REGULAR_MODEL);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
+
+        String tableFullName = "\"" + db.getName() + "\", \"" + schema.getName() + "\", \"" + tableName + "\"";
+        if (databaseToUpper) {
+            tableFullName = tableFullName.toUpperCase();
+        }
+        // 内部构造函数
         buff.append("    private ").append(className).append("(ModelTable t, short modelType) {\r\n");
         buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, modelType);\r\n");
-        buff.append(init);
+        buff.append(initFields);
         buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames).append(" });\r\n");
+        if (setterInitBuff.length() > 0) {
+            buff.append("        super.initSetters(").append(setterInitBuff).append(");\r\n");
+        }
+        if (adderInitBuff.length() > 0) {
+            buff.append("        super.initAdders(").append(adderInitBuff).append(");\r\n");
+        }
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append(listBuff);
+
+        // newInstance方法
         buff.append("    @Override\r\n");
         buff.append("    protected ").append(className).append(" newInstance(ModelTable t, short modelType) {\r\n");
         buff.append("        return new ").append(className).append("(t, modelType);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        if (newAssociateInstanceBuff.length() > 0) {
-            buff.append("    @Override\r\n");
-            buff.append("    protected List<Model<?>> newAssociateInstances() {\r\n");
-            buff.append("        ArrayList<Model<?>> list = new ArrayList<>();\r\n");
-            buff.append(newAssociateInstanceBuff);
-            buff.append("        return list;\r\n");
-            buff.append("    }\r\n");
-            buff.append("\r\n");
+
+        // associate method
+        buff.append(amBuff);
+
+        // Setter类
+        if (setterBuff.length() > 0) {
+            buff.append(setterBuff);
         }
+
+        // Adder类
+        if (adderBuff.length() > 0) {
+            buff.append(adderBuff);
+        }
+
+        // static decode方法
         buff.append("    public static ").append(className).append(" decode(String str) {\r\n");
         buff.append("        return new ").append(className).append("().decode0(str);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");
-        // System.out.println(buff);
 
         CreateService.writeFile(table.getCodePath(), packageName, className, buff);
     }

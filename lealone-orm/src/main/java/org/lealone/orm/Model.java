@@ -8,11 +8,13 @@ package org.lealone.orm;
 import java.sql.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.common.logging.Logger;
@@ -29,6 +31,7 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.orm.json.JsonObject;
+import org.lealone.orm.property.PBase;
 import org.lealone.orm.property.PLong;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
@@ -396,10 +399,10 @@ public abstract class Model<T extends Model<T>> {
         // 进行关联查询时，主表取一条记录，但引用表要取多条
         if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
             List<T> list = findList();
-            if (!list.isEmpty()) {
-                return list.get(0);
-            } else {
+            if (list.isEmpty()) {
                 return null;
+            } else {
+                return list.get(0);
             }
         }
         Select select = createSelect(tid);
@@ -410,7 +413,18 @@ public abstract class Model<T extends Model<T>> {
         Result result = select.executeQuery(1).get();
         result.next();
         reset();
-        return deserialize(result, new HashMap<>(1), new ArrayList<>(1));
+
+        Map<Class<?>, Map<Long, Model<?>>> map = new LinkedHashMap<>();
+        Set<Model<?>> set = getAllAssociateInstances();
+        deserialize(result, set, map);
+        Map<Long, Model<?>> models = map.get(this.getClass());
+        if (models != null) {
+            for (Model<?> m : models.values()) {
+                m.bindAssociateInstances(map);
+                return ((T) m);
+            }
+        }
+        return null;
     }
 
     private Select createSelect(Long tid) {
@@ -464,10 +478,10 @@ public abstract class Model<T extends Model<T>> {
         return select;
     }
 
-    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list) {
+    private void deserialize(Result result, Set<Model<?>> set, Map<Class<?>, Map<Long, Model<?>>> topMap) {
         Value[] row = result.currentRow();
         if (row == null)
-            return null;
+            return;
 
         int len = row.length;
         HashMap<String, Value> map = new HashMap<>(len);
@@ -478,44 +492,41 @@ public abstract class Model<T extends Model<T>> {
                 map.put(key, row[i]);
             }
         }
-
-        Model m = newInstance(modelTable, REGULAR_MODEL);
-
-        if (m != null) {
+        for (Model<?> m : set) {
+            m = m.newInstance(m.modelTable, REGULAR_MODEL);
             m._rowid_.deserialize(map);
-            Model old = models.get(m._rowid_.get());
+            if (m._rowid_.get() == 0)
+                continue;
+            Model<?> old = putIfAbsent(topMap, m);
             if (old == null) {
-                models.put(m._rowid_.get(), m);
                 for (ModelProperty p : m.modelProperties) {
                     p.deserialize(map);
                 }
-                list.add((T) m);
-            } else {
-                m = old;
             }
         }
-        deserializeAssociateInstances(map, m.newAssociateInstances());
-        return (T) m;
     }
 
-    private void deserializeAssociateInstances(HashMap<String, Value> map, List<Model<?>> associateModels) {
-        if (associateModels != null) {
-            for (Model associateModel : associateModels) {
-                for (ModelProperty p : associateModel.modelProperties) {
-                    p.deserialize(map);
-                }
-                associateModel._rowid_.deserialize(map);
-                deserializeAssociateInstances(map, associateModel.newAssociateInstances());
-            }
+    private Model putIfAbsent(Map<Class<?>, Map<Long, Model<?>>> topMap, Model m) {
+        Map<Long, Model<?>> models = topMap.get(m.getClass());
+        Model old = null;
+        if (models == null) {
+            models = new LinkedHashMap<>();
+            topMap.put(m.getClass(), models);
+        } else {
+            old = models.get(m._rowid_.get());
         }
+        if (old == null) {
+            models.put(m._rowid_.get(), m);
+        }
+        return old;
     }
 
     protected Model newInstance(ModelTable t, short modelType) {
         return null;
     }
 
-    protected List<Model<?>> newAssociateInstances() {
-        return null;
+    protected static boolean areEqual(PBase<?, ?> p1, PBase<?, ?> p2) {
+        return ModelProperty.areEqual(p1.get(), p2.get());
     }
 
     public Map<String, Object> toMap() {
@@ -569,10 +580,19 @@ public abstract class Model<T extends Model<T>> {
         logger.info("execute sql: " + select.getPlanSQL());
         Result result = select.executeQuery(-1).get();
         reset();
-        ArrayList<T> list = new ArrayList<>(result.getRowCount());
-        HashMap<Long, Model> models = new HashMap<>(result.getRowCount());
+
+        Map<Class<?>, Map<Long, Model<?>>> map = new HashMap<>();
+        Set<Model<?>> set = getAllAssociateInstances();
         while (result.next()) {
-            deserialize(result, models, list);
+            deserialize(result, set, map);
+        }
+        ArrayList<T> list = new ArrayList<>(result.getRowCount());
+        Map<Long, Model<?>> models = map.get(this.getClass());
+        if (models != null) {
+            for (Model<?> m : models.values()) {
+                m.bindAssociateInstances(map);
+                list.add((T) m);
+            }
         }
         return list;
     }
@@ -605,6 +625,8 @@ public abstract class Model<T extends Model<T>> {
                 m = m3;
             }
         }
+        m.tableFilterStack = this.tableFilterStack;
+        m.whereExpressionBuilder = (ExpressionBuilder<M>) this.whereExpressionBuilder;
         peekExprBuilder().setModel((T) m);
         m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;
@@ -1035,5 +1057,87 @@ public abstract class Model<T extends Model<T>> {
             }
         }
         System.out.println(sql);
+    }
+
+    ////////////////////// 以下代码从结果集构建出模型实例后，再把模型实例彼此的关联关系绑定 /////////////////////
+
+    private Set<Model<?>> getAllAssociateInstances() {
+        HashMap<Class<?>, Model<?>> map = new HashMap();
+        getAllAssociateInstances(map);
+        return new HashSet(map.values());
+    }
+
+    private void getAllAssociateInstances(HashMap<Class<?>, Model<?>> map) {
+        if (map.containsKey(getClass()))
+            return;
+        map.put(getClass(), this);
+
+        if (setters != null) {
+            getAllAssociateInstances(map, setters);
+        }
+        if (adders != null) {
+            getAllAssociateInstances(map, adders);
+        }
+    }
+
+    private void getAllAssociateInstances(HashMap<Class<?>, Model<?>> map, AssociateOperation... aos) {
+        for (AssociateOperation ao : aos) {
+            ao.getDao().getAllAssociateInstances(map);
+        }
+    }
+
+    private AssociateSetter[] setters;
+    private AssociateAdder[] adders;
+
+    protected void initSetters(AssociateSetter... setters) {
+        this.setters = setters;
+    }
+
+    protected void initAdders(AssociateAdder... adders) {
+        this.adders = adders;
+    }
+
+    protected static interface AssociateOperation<T extends Model> {
+        public T getDao();
+    }
+
+    protected static interface AssociateSetter<T extends Model> extends AssociateOperation<T> {
+        public boolean set(T m);
+    }
+
+    protected static interface AssociateAdder<T extends Model> extends AssociateOperation<T> {
+        public void add(T m);
+    }
+
+    private boolean bound;
+
+    private void bindAssociateInstances(Map<Class<?>, Map<Long, Model<?>>> map) {
+        if (bound)
+            return;
+        bound = true;
+        if (setters != null) {
+            for (AssociateSetter setter : setters) {
+                Map<Long, Model<?>> models = map.get(setter.getDao().getClass());
+                if (models != null) {
+                    for (Model<?> m : models.values()) {
+                        m.bindAssociateInstances(map);
+                        if (setter.set(m)) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (adders != null) {
+            for (AssociateAdder adder : adders) {
+                Map<Long, Model<?>> models = map.get(adder.getDao().getClass());
+                if (models != null) {
+                    for (Model<?> m : models.values()) {
+                        m.bindAssociateInstances(map);
+                        adder.add(m);
+                    }
+                }
+            }
+        }
     }
 }

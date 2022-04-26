@@ -1,6 +1,5 @@
 package org.lealone.test.orm.generated;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
@@ -36,6 +35,13 @@ public class Order extends Model<Order> {
         orderDate = new PDate<>("ORDER_DATE", this);
         total = new PDouble<>("TOTAL", this);
         super.setModelProperties(new ModelProperty[] { customerId, orderId, orderDate, total });
+        super.initSetters(new CustomerSetter());
+        super.initAdders(new OrderItemAdder());
+    }
+
+    @Override
+    protected Order newInstance(ModelTable t, short modelType) {
+        return new Order(t, modelType);
     }
 
     public Customer getCustomer() {
@@ -64,18 +70,34 @@ public class Order extends Model<Order> {
         return super.getModelList(OrderItem.class);
     }
 
-    @Override
-    protected Order newInstance(ModelTable t, short modelType) {
-        return new Order(t, modelType);
+    protected class CustomerSetter implements AssociateSetter<Customer> {
+        @Override
+        public Customer getDao() {
+            return Customer.dao;
+        }
+
+        @Override
+        public boolean set(Customer m) {
+            if (areEqual(customerId, m.id)) {
+                setCustomer(m);
+                return true;
+            }
+            return false;
+        }
     }
 
-    @Override
-    protected List<Model<?>> newAssociateInstances() {
-        ArrayList<Model<?>> list = new ArrayList<>();
-        OrderItem m1 = new OrderItem();
-        addOrderItem(m1);
-        list.add(m1);
-        return list;
+    protected class OrderItemAdder implements AssociateAdder<OrderItem> {
+        @Override
+        public OrderItem getDao() {
+            return OrderItem.dao;
+        }
+
+        @Override
+        public void add(OrderItem m) {
+            if (areEqual(orderId, m.orderId)) {
+                addOrderItem(m);
+            }
+        }
     }
 
     public static Order decode(String str) {

@@ -61,8 +61,8 @@ public class OrmJoinTest extends OrmTestBase {
 
         // SELECT c.name, c.phone, o.order_id, o.order_date FROM customer c JOIN order o ON c.id = o.customer_id
         // WHERE c.id = 100 or o.customer_id = 200
-        customerList = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId).where().id
-                .eq(100).or().m(o).customerId.eq(200).m(c).findList();
+        customerList = c.select(c.id, c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId)
+                .where().id.eq(100).or().m(o).customerId.eq(200).m(c).findList();
         assertEquals(2, customerList.size());
         assertEquals(2, customerList.get(0).getOrderList().size());
         assertEquals(1, customerList.get(1).getOrderList().size());

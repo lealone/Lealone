@@ -1,6 +1,5 @@
 package org.lealone.test.orm.generated;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelProperty;
@@ -34,6 +33,12 @@ public class Customer extends Model<Customer> {
         notes = new PString<>("NOTES", this);
         phone = new PInteger<>("PHONE", this);
         super.setModelProperties(new ModelProperty[] { id, name, notes, phone });
+        super.initAdders(new CustomerAddressAdder(), new OrderAdder());
+    }
+
+    @Override
+    protected Customer newInstance(ModelTable t, short modelType) {
+        return new Customer(t, modelType);
     }
 
     public Customer addCustomerAddress(CustomerAddress m) {
@@ -68,21 +73,32 @@ public class Customer extends Model<Customer> {
         return super.getModelList(Order.class);
     }
 
-    @Override
-    protected Customer newInstance(ModelTable t, short modelType) {
-        return new Customer(t, modelType);
+    protected class CustomerAddressAdder implements AssociateAdder<CustomerAddress> {
+        @Override
+        public CustomerAddress getDao() {
+            return CustomerAddress.dao;
+        }
+
+        @Override
+        public void add(CustomerAddress m) {
+            if (areEqual(id, m.customerId)) {
+                addCustomerAddress(m);
+            }
+        }
     }
 
-    @Override
-    protected List<Model<?>> newAssociateInstances() {
-        ArrayList<Model<?>> list = new ArrayList<>();
-        CustomerAddress m1 = new CustomerAddress();
-        addCustomerAddress(m1);
-        list.add(m1);
-        Order m2 = new Order();
-        addOrder(m2);
-        list.add(m2);
-        return list;
+    protected class OrderAdder implements AssociateAdder<Order> {
+        @Override
+        public Order getDao() {
+            return Order.dao;
+        }
+
+        @Override
+        public void add(Order m) {
+            if (areEqual(id, m.customerId)) {
+                addOrder(m);
+            }
+        }
     }
 
     public static Customer decode(String str) {

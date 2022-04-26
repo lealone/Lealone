@@ -30,6 +30,12 @@ public class CustomerAddress extends Model<CustomerAddress> {
         city = new PString<>("CITY", this);
         street = new PString<>("STREET", this);
         super.setModelProperties(new ModelProperty[] { customerId, city, street });
+        super.initSetters(new CustomerSetter());
+    }
+
+    @Override
+    protected CustomerAddress newInstance(ModelTable t, short modelType) {
+        return new CustomerAddress(t, modelType);
     }
 
     public Customer getCustomer() {
@@ -42,9 +48,20 @@ public class CustomerAddress extends Model<CustomerAddress> {
         return this;
     }
 
-    @Override
-    protected CustomerAddress newInstance(ModelTable t, short modelType) {
-        return new CustomerAddress(t, modelType);
+    protected class CustomerSetter implements AssociateSetter<Customer> {
+        @Override
+        public Customer getDao() {
+            return Customer.dao;
+        }
+
+        @Override
+        public boolean set(Customer m) {
+            if (areEqual(customerId, m.id)) {
+                setCustomer(m);
+                return true;
+            }
+            return false;
+        }
     }
 
     public static CustomerAddress decode(String str) {
