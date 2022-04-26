@@ -7,6 +7,7 @@ package org.lealone.orm;
 
 import java.sql.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -17,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.index.Index;
@@ -415,8 +417,9 @@ public abstract class Model<T extends Model<T>> {
         reset();
 
         Map<Class<?>, Map<Long, Model<?>>> map = new LinkedHashMap<>();
-        Set<Model<?>> set = getAllAssociateInstances();
-        deserialize(result, set, map);
+        String[] fieldNames = getFieldNames(result);
+        Set<Model<?>> set = getAllAssociateInstances(fieldNames);
+        deserialize(result, fieldNames, set, map);
         Map<Long, Model<?>> models = map.get(this.getClass());
         if (models != null) {
             for (Model<?> m : models.values()) {
@@ -478,7 +481,8 @@ public abstract class Model<T extends Model<T>> {
         return select;
     }
 
-    private void deserialize(Result result, Set<Model<?>> set, Map<Class<?>, Map<Long, Model<?>>> topMap) {
+    private void deserialize(Result result, String[] fieldNames, Set<Model<?>> set,
+            Map<Class<?>, Map<Long, Model<?>>> topMap) {
         Value[] row = result.currentRow();
         if (row == null)
             return;
@@ -488,15 +492,15 @@ public abstract class Model<T extends Model<T>> {
         for (int i = 0; i < len; i++) {
             // 只反序列化非null字段
             if (row[i] != null && row[i] != ValueNull.INSTANCE) {
-                String key = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
-                map.put(key, row[i]);
+                map.put(fieldNames[i], row[i]);
             }
         }
         for (Model<?> m : set) {
             m = m.newInstance(m.modelTable, REGULAR_MODEL);
             m._rowid_.deserialize(map);
-            if (m._rowid_.get() == 0)
-                continue;
+            if (m._rowid_.get() == 0) {
+                DbException.throwInternalError();
+            }
             Model<?> old = putIfAbsent(topMap, m);
             if (old == null) {
                 for (ModelProperty p : m.modelProperties) {
@@ -582,9 +586,10 @@ public abstract class Model<T extends Model<T>> {
         reset();
 
         Map<Class<?>, Map<Long, Model<?>>> map = new HashMap<>();
-        Set<Model<?>> set = getAllAssociateInstances();
+        String[] fieldNames = getFieldNames(result);
+        Set<Model<?>> set = getAllAssociateInstances(fieldNames);
         while (result.next()) {
-            deserialize(result, set, map);
+            deserialize(result, fieldNames, set, map);
         }
         ArrayList<T> list = new ArrayList<>(result.getRowCount());
         Map<Long, Model<?>> models = map.get(this.getClass());
@@ -595,6 +600,15 @@ public abstract class Model<T extends Model<T>> {
             }
         }
         return list;
+    }
+
+    private String[] getFieldNames(Result result) {
+        int len = result.getVisibleColumnCount();
+        String[] fieldNames = new String[len];
+        for (int i = 0; i < len; i++) {
+            fieldNames[i] = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
+        }
+        return fieldNames;
     }
 
     public Array findArray() {
@@ -1061,10 +1075,18 @@ public abstract class Model<T extends Model<T>> {
 
     ////////////////////// 以下代码从结果集构建出模型实例后，再把模型实例彼此的关联关系绑定 /////////////////////
 
-    private Set<Model<?>> getAllAssociateInstances() {
+    private Set<Model<?>> getAllAssociateInstances(String[] fieldNames) {
         HashMap<Class<?>, Model<?>> map = new HashMap();
         getAllAssociateInstances(map);
-        return new HashSet(map.values());
+        HashSet<Model<?>> set = new HashSet<>();
+        HashSet<String> names = new HashSet<>(Arrays.asList(fieldNames));
+        for (Model<?> m : map.values()) {
+            // 结果集中没有model对应的表的记录，不用处理
+            if (names.contains(m._rowid_.getFullName())) {
+                set.add(m);
+            }
+        }
+        return set;
     }
 
     private void getAllAssociateInstances(HashMap<Class<?>, Model<?>> map) {
