@@ -70,20 +70,13 @@ public class YamlConfigLoader implements ConfigLoader {
 
     @Override
     public Config loadConfig() throws ConfigException {
-        return loadConfig(false);
-    }
-
-    @Override
-    public Config loadConfig(boolean lazyApply) throws ConfigException {
         URL url = getConfigURL();
         if (url == null)
             return null;
-        Config config = loadConfig(url);
-        if (!lazyApply)
-            applyConfig(config);
-        return config;
+        return loadConfig(url);
     }
 
+    @Override
     public void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.applyConfig(config);
     }

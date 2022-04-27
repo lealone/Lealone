@@ -17,7 +17,6 @@ public interface ConfigLoader {
      */
     Config loadConfig() throws ConfigException;
 
-    default Config loadConfig(boolean lazyApply) throws ConfigException {
-        return loadConfig();
-    }
+    void applyConfig(Config config) throws ConfigException;
+
 }
