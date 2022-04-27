@@ -20,6 +20,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.FileSystemAccess;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
@@ -139,12 +140,15 @@ public class HttpRouterFactory implements RouterFactory {
             root = root.trim();
             if (root.isEmpty())
                 continue;
-            StaticHandler sh = StaticHandler.create(root);
+            // 开发环境允许使用绝对路径
+            boolean isDev = isDevelopmentEnvironment(config);
+            FileSystemAccess visibility = isDev ? FileSystemAccess.ROOT : FileSystemAccess.RELATIVE;
+            StaticHandler sh = StaticHandler.create(visibility, root);
             String defaultEncoding = config.get("default_encoding");
             if (defaultEncoding == null)
                 defaultEncoding = "UTF-8";
             sh.setDefaultContentEncoding(defaultEncoding);
-            if (isDevelopmentEnvironment(config))
+            if (isDev)
                 sh.setCachingEnabled(false);
             router.route("/*").handler(sh);
         }
