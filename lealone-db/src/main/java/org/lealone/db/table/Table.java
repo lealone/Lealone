@@ -22,6 +22,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
+import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
@@ -814,6 +815,19 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
 
     public ArrayList<Constraint> getConstraints() {
         return constraints;
+    }
+
+    public ArrayList<ConstraintReferential> getReferentialConstraints() {
+        ArrayList<ConstraintReferential> refConstraints = new ArrayList<>();
+        if (constraints != null) {
+            for (Constraint constraint : constraints) {
+                if (constraint instanceof ConstraintReferential) {
+                    ConstraintReferential ref = (ConstraintReferential) constraint;
+                    refConstraints.add(ref);
+                }
+            }
+        }
+        return refConstraints;
     }
 
     /**

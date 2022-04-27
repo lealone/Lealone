@@ -21,7 +21,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
@@ -310,6 +313,10 @@ public abstract class Model<T extends Model<T>> {
         return root;
     }
 
+    private static ExpressionColumn getExpressionColumn(Table table, String cName) {
+        return new ExpressionColumn(table.getDatabase(), table.getSchema().getName(), table.getName(), cName);
+    }
+
     static ExpressionColumn getExpressionColumn(ModelProperty<?> p) {
         return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
     }
@@ -430,6 +437,42 @@ public abstract class Model<T extends Model<T>> {
         return null;
     }
 
+    // 如果select字段列表中没有加上引用约束的字段，那么自动加上
+    private HashMap<String, ExpressionColumn> getRefConstraintColumns(HashSet<Table> tables) {
+        CaseInsensitiveMap<ExpressionColumn> columnMap = new CaseInsensitiveMap<>();
+        CaseInsensitiveMap<ExpressionColumn> selectMap = new CaseInsensitiveMap<>(selectExpressions.size());
+        for (Expression e : selectExpressions) {
+            if (e instanceof ExpressionColumn) {
+                ExpressionColumn c = (ExpressionColumn) e;
+                selectMap.put(c.getAlias(), c);
+            }
+        }
+
+        for (Table table : tables) {
+            for (ConstraintReferential ref : table.getReferentialConstraints()) {
+                Table refTable = ref.getRefTable();
+                Table owner = ref.getTable();
+                if (tables.contains(refTable) && tables.contains(owner)) {
+                    IndexColumn[] refColumns = ref.getRefColumns();
+                    IndexColumn[] columns = ref.getColumns();
+                    for (int i = 0; i < columns.length; i++) {
+                        String name = columns[i].column.getName();
+                        String refName = refColumns[i].column.getName();
+                        String key = owner.getName() + "." + name;
+                        String refKey = refTable.getName() + "." + refName;
+                        if (!columnMap.containsKey(key) && !selectMap.containsKey(key)) {
+                            columnMap.put(key, getExpressionColumn(owner, name));
+                        }
+                        if (!columnMap.containsKey(refKey) && !selectMap.containsKey(refKey)) {
+                            columnMap.put(refKey, getExpressionColumn(refTable, refName));
+                        }
+                    }
+                }
+            }
+        }
+        return columnMap;
+    }
+
     private Select createSelect(Long tid) {
         ServerSession session = getSession(tid);
         Select select = new Select(session);
@@ -439,12 +482,17 @@ public abstract class Model<T extends Model<T>> {
                 // 表join时，如果没加where条件，在这里把TableFilter连在一起
                 joinTableFilter();
             }
+            HashSet<Table> tables;
             tableFilter = tableFilterStack.peek();
             select.addTableFilter(tableFilter, true);
             boolean selectExpressionsIsNull = false;
             if (selectExpressions == null) {
+                tables = null;
                 selectExpressionsIsNull = true;
                 getSelectExpressions().add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+            } else {
+                tables = new HashSet<>();
+                tables.add(tableFilter.getTable());
             }
             selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
             while (tableFilter.getJoin() != null) {
@@ -452,8 +500,12 @@ public abstract class Model<T extends Model<T>> {
                 tableFilter = tableFilter.getJoin();
                 if (selectExpressionsIsNull)
                     selectExpressions.add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+                else
+                    tables.add(tableFilter.getTable());
                 selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
             }
+            if (!selectExpressionsIsNull)
+                selectExpressions.addAll(getRefConstraintColumns(tables).values());
         } else {
             tableFilter = new TableFilter(session, modelTable.getTable(), null, true, null);
             select.addTableFilter(tableFilter, true);
