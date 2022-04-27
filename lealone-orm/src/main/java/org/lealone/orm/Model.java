@@ -704,6 +704,10 @@ public abstract class Model<T extends Model<T>> {
             throw new UnsupportedOperationException("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
         }
+        // 批量提交子model需要在一个事务中执行
+        if (modelList != null) {
+            tid = beginTransaction();
+        }
         ServerSession session = getSession(tid);
         Table dbTable = modelTable.getTable();
         Insert insert = new Insert(session);
@@ -725,13 +729,19 @@ public abstract class Model<T extends Model<T>> {
         long rowId = session.getLastIdentity().getLong(); // session.getLastRowKey()在事务提交时被设为null了
         _rowid_.set(rowId);
 
+        if (modelList != null) {
+            try {
+                for (Model<?> m : modelList) {
+                    m.insert(tid);
+                }
+                commitTransaction(tid);
+            } catch (Exception e) {
+                rollbackTransaction(tid);
+                throw DbException.convert(e);
+            }
+        }
         if (session.isAutoCommit()) {
             session.commit();
-        }
-        if (modelList != null) {
-            for (Model<?> m : modelList) {
-                m.insert(tid);
-            }
         }
         reset();
         return rowId;
@@ -937,7 +947,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     public long beginTransaction() {
-        checkDao("beginTransaction");
+        // checkDao("beginTransaction");
         Table dbTable = modelTable.getTable();
         ServerSession session = dbTable.getDatabase().createSession(modelTable.getSession().getUser());
         Transaction t = session.getTransaction();
@@ -955,7 +965,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     public void commitTransaction() {
-        checkDao("commitTransaction");
+        // checkDao("commitTransaction");
         Long tid = getAndRemoveLastTransaction();
         if (tid != null) {
             commitTransaction(tid.longValue());
@@ -963,7 +973,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     public void commitTransaction(long tid) {
-        checkDao("commitTransaction");
+        // checkDao("commitTransaction");
         ServerSession s = currentSessions.remove(tid);
         if (s != null) {
             removeSession(tid);
@@ -972,7 +982,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     public void rollbackTransaction() {
-        checkDao("rollbackTransaction");
+        // checkDao("rollbackTransaction");
         Long tid = getAndRemoveLastTransaction();
         if (tid != null) {
             rollbackTransaction(tid.longValue());
@@ -980,7 +990,7 @@ public abstract class Model<T extends Model<T>> {
     }
 
     public void rollbackTransaction(long tid) {
-        checkDao("rollbackTransaction");
+        // checkDao("rollbackTransaction");
         ServerSession s = currentSessions.remove(tid);
         if (s != null) {
             removeSession(tid);
