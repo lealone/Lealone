@@ -7,6 +7,7 @@ package org.lealone.db.table;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -21,6 +22,8 @@ import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -318,6 +321,19 @@ public class StandardTable extends Table {
         return first.column.getColumnId();
     }
 
+    // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
+    private AsyncHandler<AsyncResult<Integer>> createHandler(AsyncCallback<Integer> ac, AtomicInteger count,
+            AtomicBoolean isFailed) {
+        return ar -> {
+            if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
+                ac.setAsyncResult(ar);
+            }
+            if (count.decrementAndGet() == 0 && !isFailed.get()) {
+                ac.setAsyncResult(ar);
+            }
+        };
+    }
+
     @Override
     public Future<Integer> addRow(ServerSession session, Row row) {
         row.setVersion(getVersion());
@@ -327,15 +343,12 @@ public class StandardTable extends Table {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
+        AtomicBoolean isFailed = new AtomicBoolean();
         try {
             // 第一个是PrimaryIndex
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < size && !isFailed.get(); i++) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.add(session, row).onComplete(ar -> {
-                    if (count.decrementAndGet() == 0) {
-                        ac.setAsyncResult(ar);
-                    }
-                });
+                index.add(session, row).onComplete(createHandler(ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
@@ -355,15 +368,13 @@ public class StandardTable extends Table {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
+        AtomicBoolean isFailed = new AtomicBoolean();
         try {
             // 第一个是PrimaryIndex
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < size && !isFailed.get(); i++) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf).onComplete(ar -> {
-                    if (count.decrementAndGet() == 0) {
-                        ac.setAsyncResult(ar);
-                    }
-                });
+                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
+                        .onComplete(createHandler(ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
@@ -381,14 +392,11 @@ public class StandardTable extends Table {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
+        AtomicBoolean isFailed = new AtomicBoolean();
         try {
-            for (int i = size - 1; i >= 0; i--) {
+            for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.remove(session, row, isLockedBySelf).onComplete(ar -> {
-                    if (count.decrementAndGet() == 0) {
-                        ac.setAsyncResult(ar);
-                    }
-                });
+                index.remove(session, row, isLockedBySelf).onComplete(createHandler(ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
