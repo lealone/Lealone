@@ -21,13 +21,7 @@ public class SqlScript implements MainTest {
     private static class SqlScriptTest extends OrmTestBase {
         @Override
         public void test() {
-            createCustomerTable(this);
-            createCustomerAddressTable(this);
-            createUserTable(this);
-            createProductTable(this);
-            createOrderTable(this);
-            createOrderItemTable(this);
-            createAllModelPropertyTable(this);
+            createTables(this);
             createUserService(this);
             createHelloWorldService(this);
             createAllTypeService(this);
@@ -43,9 +37,9 @@ public class SqlScript implements MainTest {
     }
 
     public static void createTables(SqlExecutor executor) {
+        createUserTable(executor);
         createCustomerTable(executor);
         createCustomerAddressTable(executor);
-        createUserTable(executor);
         createProductTable(executor);
         createOrderTable(executor);
         createOrderItemTable(executor);

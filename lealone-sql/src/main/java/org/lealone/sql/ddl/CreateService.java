@@ -144,16 +144,22 @@ public class CreateService extends SchemaStatement {
             serviceMethods.add(m);
         }
 
+        boolean isJava = "java".equalsIgnoreCase(language);
+        if (isJava && implementBy != null && packageName == null) {
+            int pos = implementBy.lastIndexOf('.');
+            if (pos > 0)
+                packageName = implementBy.substring(0, pos);
+            else
+                packageName = "";
+        }
+
         // 非启动阶段，如果java服务实现类不存在时自动生成一个
-        if (!session.getDatabase().isStarting() && "java".equalsIgnoreCase(language) && implementBy != null) {
+        if (!session.getDatabase().isStarting() && isJava && implementBy != null) {
             try {
                 Class.forName(implementBy);
             } catch (Exception e) {
                 if (codePath == null)
                     codePath = "./src/main/java";
-                int pos = implementBy.lastIndexOf('.');
-                if (packageName == null && pos > 0)
-                    packageName = implementBy.substring(0, pos);
                 genServiceImplementClassCode();
             }
         }
@@ -176,15 +182,19 @@ public class CreateService extends SchemaStatement {
             } else {
                 if (genCode) {
                     genServiceInterfaceCode();
-                    genServiceExecutorCode();
+                    genServiceExecutorCode(true);
                 }
             }
         }
         // 最后才创建执行器，此时implementBy肯定存在了
         // 如果没有提前生成ServiceExecutor才去使用JavaServiceExecutor
         if (!genCode) {
-            ServiceExecutor executor = factory.createServiceExecutor(service);
-            service.setExecutor(executor);
+            if (isJava) {
+                service.setExecutorCode(genServiceExecutorCode(false));
+            } else {
+                ServiceExecutor executor = factory.createServiceExecutor(service);
+                service.setExecutor(executor);
+            }
         }
         return 0;
     }
@@ -248,7 +258,9 @@ public class CreateService extends SchemaStatement {
     }
 
     private void genServiceInterfaceCode() {
+        // PreparedStatement字段声明
         StringBuilder psBuff = new StringBuilder();
+        // PreparedStatement字段初始化
         StringBuilder psInitBuff = new StringBuilder();
 
         TreeSet<String> importSet = new TreeSet<>();
@@ -315,7 +327,7 @@ public class CreateService extends SchemaStatement {
             methodSignatureBuff.append(")");
             methodSignatureList.add(methodSignatureBuff);
 
-            if (returnType.equalsIgnoreCase("void")) {
+            if (returnType.equals("void")) {
                 proxyMethodBodyBuff.append("                ").append(psVarName).append(".executeUpdate();\r\n");
             } else {
                 proxyMethodBodyBuff.append("                ResultSet rs = ").append(psVarName)
@@ -348,7 +360,6 @@ public class CreateService extends SchemaStatement {
             proxyMethodBodyBuff.append("            }\r\n");
 
             proxyMethodBodyList.add(proxyMethodBodyBuff);
-
         }
 
         // 生成package和import代码
@@ -388,7 +399,7 @@ public class CreateService extends SchemaStatement {
         buff.append("            url = ClientServiceProxy.getUrl();\r\n");
         buff.append("\r\n");
         buff.append("        if (ClientServiceProxy.isEmbedded(url))\r\n");
-        buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
+        buff.append("            return new ").append(implementBy).append("();\r\n");
         buff.append("        else\r\n");
         buff.append("            return new ServiceProxy(url);\r\n");
         buff.append("    }\r\n");
@@ -495,11 +506,8 @@ public class CreateService extends SchemaStatement {
         writeFile(codePath, implementPackageName, implementClassName, buff);
     }
 
-    private String getServiceImplementClassName() {
-        return implementBy;
-    }
-
     private abstract class ServiceExecutorMethodGenerator {
+
         public StringBuilder genCode(TreeSet<String> importSet, String method) {
             return genCode(importSet, method, "");
         }
@@ -542,7 +550,7 @@ public class CreateService extends SchemaStatement {
                         argsBuff.append(cName);
                     }
                 }
-                boolean isVoid = returnType.equalsIgnoreCase("void");
+                boolean isVoid = returnType.equals("void");
                 buff.append("            ");
                 if (!isVoid) {
                     buff.append(returnType).append(" ").append(resultVarName).append(" = ");
@@ -652,7 +660,7 @@ public class CreateService extends SchemaStatement {
         }
     }
 
-    private void genServiceExecutorCode() {
+    private StringBuilder genServiceExecutorCode(boolean writeFile) {
         TreeSet<String> importSet = new TreeSet<>();
         importSet.add(ServiceExecutor.class.getName());
 
@@ -679,11 +687,13 @@ public class CreateService extends SchemaStatement {
         StringBuilder buffJsonMethod = new JsonServiceExecutorMethodGenerator().genCode(importSet,
                 "String executeService(String methodName, String json)", varInit);
 
+        String executorPackageName = getExecutorPackageName();
+
         // 生成package和import代码
         String serviceImplementClassName = implementBy;
         if (implementBy != null) {
-            if (implementBy.startsWith(packageName)) {
-                serviceImplementClassName = implementBy.substring(packageName.length() + 1);
+            if (implementBy.startsWith(executorPackageName)) {
+                serviceImplementClassName = implementBy.substring(executorPackageName.length() + 1);
             } else {
                 int lastDotPos = implementBy.lastIndexOf('.');
                 if (lastDotPos > 0) {
@@ -693,7 +703,7 @@ public class CreateService extends SchemaStatement {
             }
         }
         StringBuilder buff = new StringBuilder();
-        buff.append("package ").append(getExecutorPackageName()).append(";\r\n");
+        buff.append("package ").append(executorPackageName).append(";\r\n");
         buff.append("\r\n");
         for (String i : importSet) {
             buff.append("import ").append(i).append(";\r\n");
@@ -725,8 +735,9 @@ public class CreateService extends SchemaStatement {
         buff.append(buffJsonMethod);
 
         buff.append("}\r\n");
-
-        writeFile(codePath, getExecutorPackageName(), className, buff);
+        if (writeFile)
+            writeFile(codePath, executorPackageName, className, buff);
+        return buff;
     }
 
     private String getExecutorPackageName() {
@@ -771,7 +782,6 @@ public class CreateService extends SchemaStatement {
             if (packageName != null)
                 cType = packageName + "." + cType;
         } else {
-            // cType = c.getOriginalSQL();
             switch (c.getType()) {
             case Value.BYTES:
                 cType = "byte[]";

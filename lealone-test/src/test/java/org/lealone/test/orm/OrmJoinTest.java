@@ -63,7 +63,7 @@ public class OrmJoinTest extends OrmTestBase {
         } catch (Exception e) {
         }
 
-        Order o3 = new Order().orderId.set(2022).orderDate.set("2018-01-02"); // orderId 重复了
+        Order o3 = new Order().orderId.set(2022).orderDate.set("2018-01-02");
         new Customer().id.set(200).name.set("c2").phone.set(123).addOrder(o3).insert();
 
         // SELECT c.name, c.phone, o.order_id, o.order_date FROM customer c JOIN order o ON c.id = o.customer_id

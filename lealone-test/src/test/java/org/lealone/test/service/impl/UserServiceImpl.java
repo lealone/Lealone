@@ -36,5 +36,4 @@ public class UserServiceImpl implements UserService {
     public Array getList() {
         return User.dao.findArray();
     }
-
 }

@@ -266,7 +266,7 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
             rs = stmt.executeQuery(sql);
             rs.next();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw DbException.convert(e);
         }
     }
 
@@ -287,7 +287,7 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
             count = printResultSet(rs);
             rs = null;
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw DbException.convert(e);
         }
         return count;
     }
@@ -297,7 +297,7 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
         try {
             stmt.execute(sql);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            throw DbException.convert(e);
         }
     }
 

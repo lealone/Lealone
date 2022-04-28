@@ -18,6 +18,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.Value;
 
 public class Service extends SchemaObjectBase {
@@ -30,6 +31,7 @@ public class Service extends SchemaObjectBase {
     private final List<ServiceMethod> serviceMethods;
 
     private ServiceExecutor executor;
+    private StringBuilder executorCode;
 
     public Service(Schema schema, int id, String name, String sql, String serviceExecutorClassName,
             List<ServiceMethod> serviceMethods) {
@@ -77,6 +79,10 @@ public class Service extends SchemaObjectBase {
         return sql;
     }
 
+    public void setExecutorCode(StringBuilder executorCode) {
+        this.executorCode = executorCode;
+    }
+
     public void setExecutor(ServiceExecutor executor) {
         this.executor = executor;
     }
@@ -85,8 +91,15 @@ public class Service extends SchemaObjectBase {
     public ServiceExecutor getExecutor() {
         if (executor == null) {
             synchronized (this) {
-                if (executor == null)
-                    executor = Utils.newInstance(serviceExecutorClassName);
+                if (executor == null) {
+                    if (executorCode != null) {
+                        String code = executorCode.toString();
+                        executorCode = null;
+                        executor = SourceCompiler.compileAsInstance(serviceExecutorClassName, code);
+                    } else {
+                        executor = Utils.newInstance(serviceExecutorClassName);
+                    }
+                }
             }
         }
         return executor;
