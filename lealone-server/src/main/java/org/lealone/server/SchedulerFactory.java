@@ -39,6 +39,11 @@ public class SchedulerFactory {
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         PageOperationHandlerFactory pohFactory = PageOperationHandlerFactory.create(config, schedulers);
         for (StorageEngine e : PluginManager.getPlugins(StorageEngine.class)) {
+            // 停掉旧的处理器，不能同时有两个
+            PageOperationHandlerFactory factory = e.getPageOperationHandlerFactory();
+            if (factory != null && factory != pohFactory) {
+                factory.stopHandlers();
+            }
             e.setPageOperationHandlerFactory(pohFactory);
         }
 
