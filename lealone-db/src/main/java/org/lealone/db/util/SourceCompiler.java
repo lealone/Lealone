@@ -304,9 +304,15 @@ public class SourceCompiler {
         return compileAsClass(SourceCompiler.class.getClassLoader(), className, sourceCode);
     }
 
+    public static <T> T compileAsInstance(String className, String sourceCode) {
+        Class<?> clz = compileAsClass(className, sourceCode);
+        return Utils.newInstance(clz);
+    }
+
     public static Class<?> compileAsClass(ClassLoader classLoader, String className, String sourceCode) {
-        byte[] bytes = compile(classLoader, className, sourceCode);
+        // 不能直接传递参数classLoader给compile，要传自定义SCClassLoader，否则会有各种类找不到的问题
         SCClassLoader cl = new SCClassLoader(classLoader);
+        byte[] bytes = compile(cl, className, sourceCode);
         return cl.getClass(className, bytes);
     }
 

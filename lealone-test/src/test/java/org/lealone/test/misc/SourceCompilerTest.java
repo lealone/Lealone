@@ -17,6 +17,9 @@ public class SourceCompilerTest {
         Class<?> clz = SourceCompiler.compileAsClass("Test", str);
         Object obj = clz.getDeclaredConstructor().newInstance();
         clz.getDeclaredMethod("m").invoke(obj);
+
+        obj = SourceCompiler.compileAsInstance("Test", str);
+        obj.getClass().getDeclaredMethod("m").invoke(obj);
     }
 
     public static void test() {

@@ -7,7 +7,6 @@ package org.lealone.sql.expression.evaluator;
 
 import java.util.TreeSet;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.Mode;
 import org.lealone.db.async.AsyncHandler;
@@ -87,13 +86,7 @@ public class ExpressionCompiler extends VoidExpressionVisitor {
         // } catch (Exception e) {
         // throw DbException.convert(e);
         // }
-
-        try {
-            return (JitEvaluator) SourceCompiler.compileAsClass(fullClassName, buff.toString()).getDeclaredConstructor()
-                    .newInstance();
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
+        return SourceCompiler.compileAsInstance(fullClassName, buff.toString());
     }
 
     public static synchronized void createJitEvaluatorAsync(HotSpotEvaluator evaluator, ServerSession session,
