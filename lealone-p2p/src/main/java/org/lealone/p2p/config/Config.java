@@ -79,6 +79,17 @@ public class Config {
         protocol_server_engines.add(p2p);
     }
 
+    public Map<String, String> getProtocolServerParameters(String name) {
+        if (protocol_server_engines != null) {
+            for (PluggableEngineDef def : protocol_server_engines) {
+                if (name.equalsIgnoreCase(def.name)) {
+                    return def.parameters;
+                }
+            }
+        }
+        return new HashMap<>(0);
+    }
+
     public static String getProperty(String key) {
         return getProperty(key, null);
     }

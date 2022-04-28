@@ -61,7 +61,7 @@ public class Lealone {
     private String p2pPort;
     private String seeds;
 
-    private void start(String[] args) {
+    public void start(String[] args) {
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
             if (arg.isEmpty())
@@ -135,7 +135,9 @@ public class Lealone {
             long t1 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
+            beforeInit();
             init();
+            afterInit(config);
 
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
@@ -163,6 +165,12 @@ public class Lealone {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
+    }
+
+    protected void beforeInit() {
+    }
+
+    protected void afterInit(Config config) {
     }
 
     private void loadConfig() {

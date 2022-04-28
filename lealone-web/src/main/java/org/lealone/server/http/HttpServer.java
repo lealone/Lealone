@@ -120,6 +120,8 @@ public class HttpServer extends ProtocolServerBase {
         super.init(config);
         String url = config.get("jdbc_url");
         if (url != null) {
+            if (this.jdbcUrl == null)
+                setJdbcUrl(url);
             ConnectionInfo ci = new ConnectionInfo(url);
             if (!config.containsKey("default_database"))
                 config.put("default_database", ci.getDatabaseName());
