@@ -17,8 +17,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
@@ -49,7 +47,7 @@ import org.lealone.sql.IExpression;
  * @author H2 Group
  * @author zhh
  */
-public abstract class Table extends SchemaObjectBase implements DbObjectLock {
+public abstract class Table extends SchemaObjectBase {
 
     /**
      * The table type that means this table is a regular persistent table.
@@ -94,7 +92,7 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
     private String packageName;
     private String codePath;
 
-    private final DbObjectLock dbObjectLock = new DbObjectLockImpl(DbObjectType.TABLE_OR_VIEW);
+    private final DbObjectLockImpl dbObjectLock = new DbObjectLockImpl(DbObjectType.TABLE_OR_VIEW);
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name);
@@ -154,16 +152,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
         // nothing to do
     }
 
-    @Override
-    public DbObjectType getDbObjectType() {
-        return dbObjectLock.getDbObjectType();
-    }
-
-    @Override
-    public void addHandler(AsyncHandler<AsyncResult<Boolean>> handler) {
-        dbObjectLock.addHandler(handler);
-    }
-
     /**
      * Lock the table for the given session.
      * This method waits until the lock is granted.
@@ -172,39 +160,16 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param exclusive true for write locks, false for read locks
      * @throws DbException if a lock timeout occurred
      */
-    @Override
     public boolean lock(ServerSession session, boolean exclusive) {
         return dbObjectLock.lock(session, exclusive);
     }
 
-    @Override
     public boolean trySharedLock(ServerSession session) {
         return dbObjectLock.trySharedLock(session);
     }
 
-    @Override
     public boolean tryExclusiveLock(ServerSession session) {
         return dbObjectLock.tryExclusiveLock(session);
-    }
-
-    /**
-     * Release the lock for this session.
-     *
-     * @param s the session
-     */
-    @Override
-    public void unlock(ServerSession s) {
-        dbObjectLock.unlock(s);
-    }
-
-    @Override
-    public void unlock(ServerSession s, boolean succeeded) {
-        dbObjectLock.unlock(s, succeeded);
-    }
-
-    @Override
-    public void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession) {
-        dbObjectLock.unlock(oldSession, succeeded, newSession);
     }
 
     /**
@@ -212,7 +177,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      *
      * @return true if it is.
      */
-    @Override
     public boolean isLockedExclusively() {
         return dbObjectLock.isLockedExclusively();
     }
@@ -223,7 +187,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param session the session
      * @return true if it is
      */
-    @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
         return dbObjectLock.isLockedExclusivelyBy(session);
     }
