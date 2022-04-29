@@ -64,9 +64,9 @@
 * [文档与演示例子](https://github.com/lealone/Lealone-Examples)
 
 
-### Lealone ORM/DSL 框架
+### Lealone ORM 框架
 
-* 超简洁的类型安全的 ORM/DSL 框架
+* 超简洁的类型安全的 ORM 框架
 
 * [Lealone ORM 框架快速入门](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/Lealone%20ORM%E6%A1%86%E6%9E%B6%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8.md)
 
@@ -76,6 +76,11 @@
 * [使用 MySQL 或 PostgreSQL 的客户端和 SQL 语法访问 Lealone 数据库](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E4%BD%BF%E7%94%A8MySQL%E6%88%96PostgreSQL%E7%9A%84%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%92%8CSQL%E8%AF%AD%E6%B3%95%E8%AE%BF%E9%97%AELealone%E6%95%B0%E6%8D%AE%E5%BA%93.md)
 
 * [更多细节...](https://github.com/lealone/Lealone-xSQL)
+
+
+### Lealone Web 客户端
+
+* [Ops Center](https://github.com/lealone/Lealone-OpsCenter)
 
 
 ### Lealone Plugins
