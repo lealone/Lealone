@@ -12,11 +12,9 @@ import org.lealone.common.util.MapUtils;
 
 class InstantLogSyncService extends LogSyncService {
 
-    private static final long DEFAULT_LOG_SYNC_INTERVAL = 5;
-
     InstantLogSyncService(Map<String, String> config) {
         super(config);
-        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", DEFAULT_LOG_SYNC_INTERVAL);
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 5);
     }
 
     @Override
@@ -26,7 +24,7 @@ class InstantLogSyncService extends LogSyncService {
 
     @Override
     public void maybeWaitForSync(RedoLogRecord r) {
-        haveWork.release();
+        wakeUp();
         if (!r.isSynced() && running) {
             while (true) {
                 WaitQueue.Signal signal = syncComplete.register();

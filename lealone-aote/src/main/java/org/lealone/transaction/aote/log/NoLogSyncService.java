@@ -16,10 +16,6 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void start() {
-    }
-
-    @Override
     public void run() {
     }
 
@@ -29,11 +25,27 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(RedoLogRecord r) {
+    public void asyncCommit(AMTransaction t) {
+        t.asyncCommitComplete();
     }
 
     @Override
-    public void asyncCommit(AMTransaction t) {
-        t.asyncCommitComplete();
+    public void close() {
+    }
+
+    @Override
+    public void addRedoLogRecord(RedoLogRecord r) {
+    }
+
+    @Override
+    public void addAndMaybeWaitForSync(RedoLogRecord r) {
+    }
+
+    @Override
+    public void checkpoint(long checkpointId) {
+    }
+
+    @Override
+    public void maybeWaitForSync(RedoLogRecord r) {
     }
 }

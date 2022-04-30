@@ -13,38 +13,37 @@ import org.lealone.transaction.aote.AMTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
 
-    private static final long DEFAULT_LOG_SYNC_PERIOD = 500;
-
     private final long blockWhenSyncLagsMillis;
 
     PeriodicLogSyncService(Map<String, String> config) {
         super(config);
-        syncIntervalMillis = MapUtils.getLong(config, "log_sync_period", DEFAULT_LOG_SYNC_PERIOD);
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_period", 500);
         blockWhenSyncLagsMillis = (long) (syncIntervalMillis * 1.5);
     }
 
     @Override
     public void maybeWaitForSync(RedoLogRecord r) {
-        haveWork.release();
-        if (!r.isSynced()) {
-            // 因为Long.MAX_VALUE > Long.MAX_VALUE + 1
-            // lastSyncedAt是long类型，当lastSyncedAt为Long.MAX_VALUE时，
-            // 再加一个int类型的blockWhenSyncLagsMillis时还是小于Long.MAX_VALUE；
-            // 当lastSyncedAt + blockWhenSyncLagsMillis正好等于Long.MAX_VALUE时，就不阻塞了
-            // 也就是这个if只有lastSyncedAt + blockWhenSyncLagsMillis正好等于Long.MAX_VALUE时才是false
-            if (waitForSyncToCatchUp(Long.MAX_VALUE)) {
-                // wait until periodic sync() catches up with its schedule
-                long started = System.currentTimeMillis();
-                while (waitForSyncToCatchUp(started)) {
-                    WaitQueue.Signal signal = syncComplete.register();
-                    if (r.isSynced()) {
-                        signal.cancel();
-                        return;
-                    } else if (waitForSyncToCatchUp(started)) {
-                        signal.awaitUninterruptibly();
-                    } else {
-                        signal.cancel();
-                    }
+        wakeUp();
+        if (r.isSynced())
+            return;
+
+        // 因为Long.MAX_VALUE > Long.MAX_VALUE + 1
+        // lastSyncedAt是long类型，当lastSyncedAt为Long.MAX_VALUE时，
+        // 再加一个int类型的blockWhenSyncLagsMillis时还是小于Long.MAX_VALUE；
+        // 当lastSyncedAt + blockWhenSyncLagsMillis正好等于Long.MAX_VALUE时，就不阻塞了
+        // 也就是这个if只有lastSyncedAt + blockWhenSyncLagsMillis正好等于Long.MAX_VALUE时才是false
+        if (waitForSyncToCatchUp(Long.MAX_VALUE)) {
+            // wait until periodic sync() catches up with its schedule
+            long started = System.currentTimeMillis();
+            while (waitForSyncToCatchUp(started)) {
+                WaitQueue.Signal signal = syncComplete.register();
+                if (r.isSynced()) {
+                    signal.cancel();
+                    return;
+                } else if (waitForSyncToCatchUp(started)) {
+                    signal.awaitUninterruptibly();
+                } else {
+                    signal.cancel();
                 }
             }
         }

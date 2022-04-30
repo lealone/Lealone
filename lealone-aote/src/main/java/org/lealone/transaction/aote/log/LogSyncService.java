@@ -12,6 +12,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.common.util.MapUtils;
 import org.lealone.transaction.aote.AMTransaction;
 
 public abstract class LogSyncService extends Thread {
@@ -20,43 +21,29 @@ public abstract class LogSyncService extends Thread {
     public static final String LOG_SYNC_TYPE_INSTANT = "instant";
     public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
+    protected final LinkedBlockingQueue<AMTransaction> transactions = new LinkedBlockingQueue<>();
     protected final Semaphore haveWork = new Semaphore(1);
     protected final WaitQueue syncComplete = new WaitQueue();
 
     // 只要达到一定的阈值就可以立即同步了
     protected final int redoLogRecordSyncThreshold;
-    protected final LinkedBlockingQueue<AMTransaction> transactions = new LinkedBlockingQueue<>();
+    protected final RedoLog redoLog;
 
     protected long syncIntervalMillis;
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected boolean running = true;
-    protected RedoLog redoLog;
 
     private volatile boolean waiting;
 
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(true);
-        if (config.containsKey("redo_log_record_sync_threshold"))
-            redoLogRecordSyncThreshold = Integer.parseInt(config.get("redo_log_record_sync_threshold"));
-        else
-            redoLogRecordSyncThreshold = 100;
+        redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
+        redoLog = new RedoLog(config);
     }
 
     public RedoLog getRedoLog() {
         return redoLog;
-    }
-
-    public abstract void maybeWaitForSync(RedoLogRecord r);
-
-    public void asyncCommit(AMTransaction t) {
-        transactions.add(t);
-        haveWork.release();
-    }
-
-    public void close() {
-        running = false;
-        haveWork.release(1);
     }
 
     @Override
@@ -89,8 +76,7 @@ public abstract class LogSyncService extends Thread {
     }
 
     private void sync() {
-        if (redoLog != null)
-            redoLog.save();
+        redoLog.save();
         notifyComplete();
     }
 
@@ -102,6 +88,29 @@ public abstract class LogSyncService extends Thread {
         for (AMTransaction t : oldTransactions) {
             t.asyncCommitComplete();
         }
+    }
+
+    protected void wakeUp() {
+        if (waiting)
+            haveWork.release();
+    }
+
+    public boolean isInstantSync() {
+        return false;
+    }
+
+    public boolean needSync() {
+        return true;
+    }
+
+    public void asyncCommit(AMTransaction t) {
+        transactions.add(t);
+        wakeUp();
+    }
+
+    public void close() {
+        running = false;
+        wakeUp();
     }
 
     public void addRedoLogRecord(RedoLogRecord r) {
@@ -122,13 +131,7 @@ public abstract class LogSyncService extends Thread {
         maybeWaitForSync(r);
     }
 
-    public boolean isInstantSync() {
-        return false;
-    }
-
-    public boolean needSync() {
-        return true;
-    }
+    public abstract void maybeWaitForSync(RedoLogRecord r);
 
     public static LogSyncService create(Map<String, String> config) {
         LogSyncService logSyncService;
@@ -141,7 +144,6 @@ public abstract class LogSyncService extends Thread {
             logSyncService = new NoLogSyncService(config);
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
-        logSyncService.redoLog = new RedoLog(config);
         return logSyncService;
     }
 }
