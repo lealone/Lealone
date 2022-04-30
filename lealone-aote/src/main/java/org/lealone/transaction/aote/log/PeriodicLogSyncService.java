@@ -8,6 +8,7 @@ package org.lealone.transaction.aote.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.common.util.MapUtils;
 import org.lealone.transaction.aote.AMTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
@@ -18,11 +19,7 @@ class PeriodicLogSyncService extends LogSyncService {
 
     PeriodicLogSyncService(Map<String, String> config) {
         super(config);
-        if (config.containsKey("log_sync_period"))
-            syncIntervalMillis = Long.parseLong(config.get("log_sync_period"));
-        else
-            syncIntervalMillis = DEFAULT_LOG_SYNC_PERIOD;
-
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_period", DEFAULT_LOG_SYNC_PERIOD);
         blockWhenSyncLagsMillis = (long) (syncIntervalMillis * 1.5);
     }
 

@@ -897,14 +897,7 @@ public class Utils {
      */
     public static int getProperty(String key, int defaultValue) {
         String s = getProperty(key, null);
-        if (s != null) {
-            try {
-                return Integer.decode(s).intValue();
-            } catch (NumberFormatException e) {
-                // ignore
-            }
-        }
-        return defaultValue;
+        return toInt(s, defaultValue);
     }
 
     /**
@@ -917,14 +910,7 @@ public class Utils {
      */
     public static boolean getProperty(String key, boolean defaultValue) {
         String s = getProperty(key, null);
-        if (s != null) {
-            try {
-                return Boolean.parseBoolean(s);
-            } catch (NumberFormatException e) {
-                // ignore
-            }
-        }
-        return defaultValue;
+        return toBoolean(s, defaultValue);
     }
 
     /**
@@ -984,5 +970,49 @@ public class Utils {
             releaseVersion = "Unknown(error: " + e.getMessage() + ")";
         }
         return releaseVersion;
+    }
+
+    public static int toInt(String value, int def) {
+        if (value == null)
+            return def;
+        try {
+            return Integer.parseInt(value);
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+            return def;
+        }
+    }
+
+    public static int toIntMB(String value, int def) {
+        if (value == null)
+            return def;
+        try {
+            return Integer.parseInt(value) * 1024 * 1024;
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+            return def;
+        }
+    }
+
+    public static long toLong(String value, long def) {
+        if (value == null)
+            return def;
+        try {
+            return Long.parseLong(value);
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+            return def;
+        }
+    }
+
+    public static boolean toBoolean(String value, boolean def) {
+        if (value == null)
+            return def;
+        try {
+            return Boolean.parseBoolean(value);
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+            return def;
+        }
     }
 }

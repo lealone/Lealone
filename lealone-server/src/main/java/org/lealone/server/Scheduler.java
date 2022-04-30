@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DateTimeUtils;
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
@@ -70,7 +70,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         }
         if (netEventLoop == null) {
             // 默认100毫秒
-            loopInterval = DateTimeUtils.getLoopInterval(config, key, 100);
+            loopInterval = MapUtils.getLong(config, key, 100);
         } else {
             loopInterval = 0;
             netEventLoop.setOwner(this);

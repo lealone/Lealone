@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DateTimeUtils;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.async.AsyncResult;
 
@@ -27,7 +27,7 @@ public class DefaultPageOperationHandler extends PageOperationHandlerBase
     public DefaultPageOperationHandler(int id, int waitingQueueSize, Map<String, String> config) {
         super(id, DefaultPageOperationHandler.class.getSimpleName() + "-" + id, waitingQueueSize);
         // 默认100毫秒
-        loopInterval = DateTimeUtils.getLoopInterval(config, "page_operation_handler_loop_interval", 100);
+        loopInterval = MapUtils.getLong(config, "page_operation_handler_loop_interval", 100);
     }
 
     @Override

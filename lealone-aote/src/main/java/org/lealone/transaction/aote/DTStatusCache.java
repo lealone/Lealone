@@ -7,6 +7,7 @@ package org.lealone.transaction.aote;
 
 import java.util.Arrays;
 
+import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.Constants;
 
 /**
@@ -19,12 +20,12 @@ import org.lealone.db.Constants;
  */
 class DTStatusCache {
     // 桶个数
-    private static final int BUCKET_NUMBER = Integer.valueOf(System.getProperty(
-            Constants.PROJECT_NAME_PREFIX + "transaction.status.cache.bucket.number", Integer.toString(1 << 15)));
+    private static final int BUCKET_NUMBER = SystemPropertyUtils
+            .getInt(Constants.PROJECT_NAME_PREFIX + "transaction.status.cache.bucket.number", 1 << 15);
 
     // 每个桶的容量大小
-    private static final int BUCKET_SIZE = Integer.valueOf(System.getProperty(
-            Constants.PROJECT_NAME_PREFIX + "transaction.status.cache.bucket.size", Integer.toString(1 << 14)));
+    private static final int BUCKET_SIZE = SystemPropertyUtils
+            .getInt(Constants.PROJECT_NAME_PREFIX + "transaction.status.cache.bucket.size", 1 << 14);
 
     private final Bucket buckets[] = new Bucket[BUCKET_NUMBER];
 

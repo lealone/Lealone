@@ -10,10 +10,11 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.lealone.common.util.Utils;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.gossip.protocol.IVersionedSerializer;
 import org.lealone.p2p.server.MessagingService;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 /**
  * This abstraction represents the state associated with a particular node which an
@@ -75,7 +76,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
     }
 
     private static String versionString(String... args) {
-        return Utils.join(args, VersionedValue.DELIMITER);
+        return P2pUtils.join(args, VersionedValue.DELIMITER);
     }
 
     public static class VersionedValueFactory {

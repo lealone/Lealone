@@ -13,13 +13,13 @@ import javax.management.ObjectName;
 
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 public class NodeSnitchInfo implements NodeSnitchInfoMBean {
     public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(new NodeSnitchInfo(), new ObjectName(Utils.getJmxObjectName("NodeSnitchInfo")));
+            mbs.registerMBean(new NodeSnitchInfo(), new ObjectName(P2pUtils.getJmxObjectName("NodeSnitchInfo")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

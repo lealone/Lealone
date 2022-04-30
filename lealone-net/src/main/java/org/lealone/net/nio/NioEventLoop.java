@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DateTimeUtils;
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
@@ -38,15 +38,13 @@ class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private final long loopInterval;
-    private int maxPacketCountPerLoop = 20; // 每次循环最多读取多少个数据包
+    private int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
     private Object owner;
 
     public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval)
             throws IOException {
-        loopInterval = DateTimeUtils.getLoopInterval(config, loopIntervalKey, defaultLoopInterval);
-        String s = config.get("max_packet_count_per_loop");
-        if (s != null)
-            maxPacketCountPerLoop = Integer.parseInt(s);
+        loopInterval = MapUtils.getLong(config, loopIntervalKey, defaultLoopInterval);
+        maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 20);
         selector = Selector.open();
     }
 

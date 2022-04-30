@@ -22,7 +22,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.locator.TopologyMetaData.Topology;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 /**
  * This Replication Strategy takes a property file that gives the intended
@@ -60,7 +60,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
 
         datacenters = Collections.unmodifiableMap(newDatacenters);
         if (logger.isDebugEnabled())
-            logger.debug("Configured datacenter replicas are {}", Utils.toString(datacenters));
+            logger.debug("Configured datacenter replicas are {}", P2pUtils.toString(datacenters));
     }
 
     @Override

@@ -8,6 +8,7 @@ package org.lealone.net;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionSetting;
 
 public class AsyncConnectionPool {
@@ -61,17 +62,11 @@ public class AsyncConnectionPool {
     public static int getMaxSharedSize(Map<String, String> config) {
         if (!isShared(config))
             return 1; // 独享受模式
-        int maxSharedSize;
-        if (config.containsKey(ConnectionSetting.MAX_SHARED_SIZE.name()))
-            maxSharedSize = Integer.parseInt(config.get(ConnectionSetting.MAX_SHARED_SIZE.name()));
-        else
-            maxSharedSize = -1;
-        return maxSharedSize;
+        return MapUtils.getInt(config, ConnectionSetting.MAX_SHARED_SIZE.name(), -1);
     }
 
     public static boolean isShared(Map<String, String> config) {
-        String str = config.get(ConnectionSetting.IS_SHARED.name());
         // 为null时默认是共享模式
-        return str == null || Boolean.parseBoolean(str);
+        return MapUtils.getBoolean(config, ConnectionSetting.IS_SHARED.name(), true);
     }
 }

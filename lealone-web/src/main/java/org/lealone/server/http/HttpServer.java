@@ -13,6 +13,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
@@ -165,11 +166,8 @@ public class HttpServer extends ProtocolServerBase {
         }
         final String path = apiPath;
         VertxOptions opt = new VertxOptions();
-        String blockedThreadCheckInterval = config.get("blocked_thread_check_interval");
-        if (blockedThreadCheckInterval == null)
-            opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
-        else
-            opt.setBlockedThreadCheckInterval(Long.parseLong(blockedThreadCheckInterval));
+        long interval = MapUtils.getLong(config, "blocked_thread_check_interval", Integer.MAX_VALUE);
+        opt.setBlockedThreadCheckInterval(interval);
         vertx = Vertx.vertx(opt);
         vertxHttpServer = vertx.createHttpServer();
         Router router = routerFactory.createRouter(config, vertx);

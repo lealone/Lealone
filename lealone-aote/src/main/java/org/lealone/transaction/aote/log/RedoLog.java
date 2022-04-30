@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
@@ -44,10 +45,7 @@ public class RedoLog {
 
     RedoLog(Map<String, String> config) {
         this.config = config;
-        if (config.containsKey("log_chunk_size"))
-            logChunkSize = Long.parseLong(config.get("log_chunk_size"));
-        else
-            logChunkSize = DEFAULT_LOG_CHUNK_SIZE;
+        logChunkSize = MapUtils.getLong(config, "log_chunk_size", DEFAULT_LOG_CHUNK_SIZE);
 
         String baseDir = config.get("base_dir");
         String logDir = config.get("redo_log_dir");

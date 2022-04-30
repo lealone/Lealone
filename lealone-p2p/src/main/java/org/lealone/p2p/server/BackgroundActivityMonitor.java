@@ -22,7 +22,7 @@ import org.lealone.p2p.gossip.ApplicationState;
 import org.lealone.p2p.gossip.Gossiper;
 import org.lealone.p2p.gossip.NodeState;
 import org.lealone.p2p.gossip.VersionedValue;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 public class BackgroundActivityMonitor {
 
@@ -51,7 +51,7 @@ public class BackgroundActivityMonitor {
             statsFile = new RandomAccessFile(PROC_STAT_PATH, "r");
             lastReading = readAndCompute();
         } catch (IOException ex) {
-            if (Utils.isUnix())
+            if (P2pUtils.isUnix())
                 logger.warn("Couldn't open /proc/stats");
             statsFile = null;
         }
@@ -127,7 +127,7 @@ public class BackgroundActivityMonitor {
                 report = getIOWait();
             } catch (IOException e) {
                 // ignore;
-                if (Utils.isUnix())
+                if (P2pUtils.isUnix())
                     logger.warn("Couldn't read /proc/stats");
             }
             if (report == -1d)

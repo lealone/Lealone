@@ -44,42 +44,6 @@ public class SortedProperties extends Properties {
     }
 
     /**
-     * Get a boolean property value from a properties object.
-     *
-     * @param prop the properties object
-     * @param key the key
-     * @param def the default value
-     * @return the value if set, or the default value if not
-     */
-    public static boolean getBooleanProperty(Properties prop, String key, boolean def) {
-        String value = prop.getProperty(key, "" + def);
-        try {
-            return Boolean.parseBoolean(value);
-        } catch (Exception e) {
-            DbException.traceThrowable(e);
-            return def;
-        }
-    }
-
-    /**
-     * Get an int property value from a properties object.
-     *
-     * @param prop the properties object
-     * @param key the key
-     * @param def the default value
-     * @return the value if set, or the default value if not
-     */
-    public static int getIntProperty(Properties prop, String key, int def) {
-        String value = prop.getProperty(key, "" + def);
-        try {
-            return Integer.decode(value);
-        } catch (Exception e) {
-            DbException.traceThrowable(e);
-            return def;
-        }
-    }
-
-    /**
      * Load a properties object from a file.
      *
      * @param fileName the name of the properties file

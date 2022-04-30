@@ -31,7 +31,7 @@ import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.BoundedStatsDeque;
 import org.lealone.p2p.util.FSWriteError;
 import org.lealone.p2p.util.FileUtils;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 /**
  * This FailureDetector is an implementation of the paper titled
@@ -59,7 +59,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         // Register this instance with JMX
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("FailureDetector")));
+            mbs.registerMBean(this, new ObjectName(P2pUtils.getJmxObjectName("FailureDetector")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -311,7 +311,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
 
         @Override
         public String toString() {
-            return Utils.join(arrivalIntervals.iterator(), " ");
+            return P2pUtils.join(arrivalIntervals.iterator(), " ");
         }
     }
 }

@@ -48,7 +48,7 @@ import org.lealone.p2p.gossip.protocol.GossipResponse;
 import org.lealone.p2p.gossip.protocol.GossipShutdown;
 import org.lealone.p2p.gossip.protocol.P2pPacketOut;
 import org.lealone.p2p.locator.ILatencySubscriber;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.PacketType;
 
@@ -159,7 +159,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("MessagingService")));
+            mbs.registerMBean(this, new ObjectName(P2pUtils.getJmxObjectName("MessagingService")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

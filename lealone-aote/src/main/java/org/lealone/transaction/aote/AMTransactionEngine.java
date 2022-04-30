@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DateTimeUtils;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
@@ -298,25 +298,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             setName(getClass().getSimpleName());
             setDaemon(true);
 
-            String v = config.get("committed_data_cache_size_in_mb");
-            if (v != null)
-                committedDataCacheSize = Integer.parseInt(v) * 1024 * 1024;
-            else
-                committedDataCacheSize = DEFAULT_COMMITTED_DATA_CACHE_SIZE;
-
-            v = config.get("checkpoint_period");
-            if (v != null)
-                checkpointPeriod = Long.parseLong(v);
-            else
-                checkpointPeriod = DEFAULT_CHECKPOINT_PERIOD;
+            committedDataCacheSize = MapUtils.getIntMB(config, "committed_data_cache_size_in_mb",
+                    DEFAULT_COMMITTED_DATA_CACHE_SIZE);
+            checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", DEFAULT_CHECKPOINT_PERIOD);
 
             // 默认1分钟
-            long loopInterval = DateTimeUtils.getLoopInterval(config, "checkpoint_service_loop_interval",
-                    1 * 60 * 1000);
-
+            long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval", 1 * 60 * 1000);
             if (checkpointPeriod < loopInterval)
                 loopInterval = checkpointPeriod;
-
             this.loopInterval = loopInterval;
         }
 

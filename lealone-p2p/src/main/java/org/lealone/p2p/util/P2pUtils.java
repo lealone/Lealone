@@ -11,9 +11,8 @@ import java.util.Iterator;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.db.Constants;
-import org.lealone.p2p.config.Config;
 
-public class Utils extends org.lealone.common.util.Utils {
+public class P2pUtils {
 
     private static String JMX_OBJECT_NAME_PREFIX = "org.lealone.cluster:type=";
 
@@ -21,15 +20,8 @@ public class Utils extends org.lealone.common.util.Utils {
         return JMX_OBJECT_NAME_PREFIX + type;
     }
 
-    public static int getAvailableProcessors() {
-        if (Config.getProperty("available.processors") != null)
-            return Integer.parseInt(Config.getProperty("available.processors"));
-        else
-            return Runtime.getRuntime().availableProcessors();
-    }
-
     public static String resourceToFile(String filename) throws ConfigException {
-        ClassLoader loader = Utils.class.getClassLoader();
+        ClassLoader loader = P2pUtils.class.getClassLoader();
         URL scpurl = loader.getResource(filename);
         if (scpurl == null)
             throw new ConfigException("unable to locate " + filename);

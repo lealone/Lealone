@@ -7,6 +7,7 @@ package org.lealone.net;
 
 import java.util.Map;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
 
@@ -27,10 +28,8 @@ public class NetFactoryManager extends PluginManager<NetFactory> {
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
-        String netFactoryName = config.get(Constants.NET_FACTORY_NAME_KEY);
-        if (netFactoryName == null)
-            netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
-
+        String netFactoryName = MapUtils.getString(config, Constants.NET_FACTORY_NAME_KEY,
+                Constants.DEFAULT_NET_FACTORY_NAME);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {
             throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");

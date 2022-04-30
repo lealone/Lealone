@@ -20,7 +20,7 @@ import org.lealone.p2p.gossip.NodeState;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ResourceWatcher;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
@@ -51,7 +51,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
             fileName = System.getProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME);
             if (fileName == null)
                 fileName = SnitchProperties.RACKDC_PROPERTY_FILENAME;
-            Utils.resourceToFile(fileName);
+            P2pUtils.resourceToFile(fileName);
             Runnable runnable = () -> {
                 try {
                     reloadConfiguration();

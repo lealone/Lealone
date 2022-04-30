@@ -22,6 +22,7 @@ import java.util.Set;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.Config.ClusterConfig;
@@ -35,7 +36,6 @@ import org.lealone.p2p.locator.RandomNodeAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
 import org.lealone.p2p.server.P2pServerEngine;
-import org.lealone.p2p.util.Utils;
 import org.lealone.server.protocol.PacketType;
 
 public class ConfigDescriptor {

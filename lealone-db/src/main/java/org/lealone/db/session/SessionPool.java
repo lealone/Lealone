@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.async.Future;
@@ -18,7 +19,7 @@ import org.lealone.transaction.Transaction;
 
 public class SessionPool {
 
-    private static final int QUEUE_SIZE = Integer.parseInt(System.getProperty("lealone.session.pool.queue.size", "3"));
+    private static final int QUEUE_SIZE = SystemPropertyUtils.getInt("lealone.session.pool.queue.size", 3);
 
     // key是访问数据库的JDBC URL
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<Session>> pool = new ConcurrentHashMap<>();

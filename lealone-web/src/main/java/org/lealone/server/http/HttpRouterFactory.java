@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.common.util.MapUtils;
 import org.lealone.server.template.TemplateEngine;
 
 import io.vertx.core.Vertx;
@@ -89,10 +90,7 @@ public class HttpRouterFactory implements RouterFactory {
     }
 
     protected String getServicePath(Map<String, String> config) {
-        String servicePath = config.get("service_path");
-        if (servicePath == null)
-            servicePath = "/service/:serviceName/:methodName";
-        return servicePath;
+        return MapUtils.getString(config, "service_path", "/service/:serviceName/:methodName");
     }
 
     protected void setHttpServiceHandler(Map<String, String> config, Vertx vertx, Router router) {

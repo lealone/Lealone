@@ -8,7 +8,7 @@ package org.lealone.transaction.aote.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.common.util.DateTimeUtils;
+import org.lealone.common.util.MapUtils;
 
 class InstantLogSyncService extends LogSyncService {
 
@@ -16,8 +16,7 @@ class InstantLogSyncService extends LogSyncService {
 
     InstantLogSyncService(Map<String, String> config) {
         super(config);
-        syncIntervalMillis = DateTimeUtils.getLoopInterval(config, "log_sync_service_loop_interval",
-                DEFAULT_LOG_SYNC_INTERVAL);
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", DEFAULT_LOG_SYNC_INTERVAL);
     }
 
     @Override

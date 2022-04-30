@@ -26,7 +26,7 @@ import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.metrics.ExponentiallyDecayingSample;
 import org.lealone.p2p.server.MessagingService;
 import org.lealone.p2p.server.P2pServer;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 /**
  * A dynamic snitch that sorts nodes by latency with an adapted phi failure detector
@@ -56,7 +56,7 @@ public class DynamicNodeSnitch extends AbstractNodeSnitch implements ILatencySub
     }
 
     public DynamicNodeSnitch(INodeSnitch snitch, String instance) {
-        mbeanName = Utils.getJmxObjectName("DynamicNodeSnitch");
+        mbeanName = P2pUtils.getJmxObjectName("DynamicNodeSnitch");
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;

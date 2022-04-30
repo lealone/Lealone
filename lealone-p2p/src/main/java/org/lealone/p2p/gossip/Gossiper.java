@@ -50,7 +50,7 @@ import org.lealone.p2p.server.IAsyncCallback;
 import org.lealone.p2p.server.MessagingService;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.Uninterruptibles;
-import org.lealone.p2p.util.Utils;
+import org.lealone.p2p.util.P2pUtils;
 
 /**
  * This module is responsible for Gossiping information for the local node. This abstraction
@@ -193,7 +193,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // Register this instance with JMX
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("Gossiper")));
+            mbs.registerMBean(this, new ObjectName(P2pUtils.getJmxObjectName("Gossiper")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

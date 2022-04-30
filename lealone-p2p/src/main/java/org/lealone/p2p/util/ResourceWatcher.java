@@ -35,7 +35,7 @@ public class ResourceWatcher {
         @Override
         public void run() {
             try {
-                String filename = Utils.resourceToFile(resource);
+                String filename = P2pUtils.resourceToFile(resource);
                 long lastModified = new File(filename).lastModified();
                 if (lastModified > lastLoaded) {
                     callback.run();

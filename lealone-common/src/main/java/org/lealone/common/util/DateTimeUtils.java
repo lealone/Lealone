@@ -14,7 +14,6 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;
-import java.util.Map;
 import java.util.TimeZone;
 
 import org.lealone.common.exceptions.DbException;
@@ -856,15 +855,5 @@ public class DateTimeUtils {
             m -= 12;
         }
         return dateValue(y, m + 3, (int) d);
-    }
-
-    public static long getLoopInterval(Map<String, String> config, String key, long defaultValue) {
-        if (config == null)
-            return defaultValue;
-        String v = config.get(key);
-        if (v != null)
-            return Long.parseLong(v);
-        else
-            return defaultValue;
     }
 }

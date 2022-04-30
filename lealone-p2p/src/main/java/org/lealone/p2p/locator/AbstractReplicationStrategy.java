@@ -15,8 +15,8 @@ import java.util.Set;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Utils;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.util.Utils;
 
 /**
  * A abstract parent for all replication strategies.
