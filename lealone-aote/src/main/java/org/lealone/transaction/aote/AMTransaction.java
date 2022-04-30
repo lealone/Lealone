@@ -243,8 +243,7 @@ public class AMTransaction implements Transaction {
             if (logSyncService.isInstantSync()) {
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
                 if (asyncCommit) {
-                    logSyncService.addRedoLogRecord(r);
-                    logSyncService.asyncCommit(this);
+                    logSyncService.asyncCommit(r, this, null);
                     return false;
                 } else {
                     logSyncService.addAndMaybeWaitForSync(r);
@@ -265,6 +264,7 @@ public class AMTransaction implements Transaction {
         }
     }
 
+    @Override
     public void asyncCommitComplete() {
         commitFinal();
         if (session != null) {

@@ -7,6 +7,7 @@ package org.lealone.test.aote;
 
 import java.util.Map;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
@@ -43,10 +44,15 @@ public class AOTransactionEngineTest extends AoteTestBase {
         return storage;
     }
 
+    @Before
+    @Override
+    public void before() {
+    }
+
     @Test
     public void run() {
-        TransactionEngine te = getTransactionEngine(false);
-        Storage storage = getStorage();
+        te = getTransactionEngine(false);
+        storage = getStorage();
 
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);
@@ -98,7 +104,5 @@ public class AOTransactionEngineTest extends AoteTestBase {
         map.remove("1");
         assertEquals(1, map.size());
         t4.commit();
-
-        te.close();
     }
 }

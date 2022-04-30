@@ -8,6 +8,7 @@ package org.lealone.test.aote;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
@@ -27,7 +28,7 @@ public class AMTransactionEngineTest extends AoteTestBase {
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
-        storageBuilder.storagePath(joinDirs("amte", "data"));
+        storageBuilder.storagePath(joinDirs("aote", "data"));
         Storage storage = storageBuilder.openStorage();
         return storage;
     }
@@ -69,19 +70,22 @@ public class AMTransactionEngineTest extends AoteTestBase {
         return config;
     }
 
+    @Before
+    @Override
+    public void before() {
+    }
+
     @Test
     public void testEngine() {
-        AMTransactionEngine te = new AMTransactionEngine();
-
+        te = new AMTransactionEngine();
         te.init(getDefaultConfig());
-        Storage storage = getStorage();
+        storage = getStorage();
 
         Transaction t1 = te.beginTransaction(false);
         t1.openMap("testEngine", storage);
         assertNotNull(te.getTransactionMap("testEngine", t1));
         storage.close();
         assertNull(te.getTransactionMap("testEngine", t1));
-        te.close();
     }
 
     @Test
@@ -90,8 +94,8 @@ public class AMTransactionEngineTest extends AoteTestBase {
         config.put("committed_data_cache_size_in_mb", "1");
         config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-        TransactionEngine te = getTransactionEngine(config);
-        Storage storage = getStorage();
+        te = getTransactionEngine(config);
+        storage = getStorage();
 
         Transaction t1 = te.beginTransaction(false);
         TransactionMap<String, String> map = t1.openMap("testCheckpoint", storage);
@@ -120,6 +124,5 @@ public class AMTransactionEngineTest extends AoteTestBase {
 
         te.checkpoint();
         assertTrue(map.getDiskSpaceUsed() > 0);
-        te.close();
     }
 }

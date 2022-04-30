@@ -88,8 +88,7 @@ public class AOTransaction extends AMTransaction {
         if (r != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
             if (asyncCommit) {
-                logSyncService.addRedoLogRecord(r);
-                logSyncService.asyncCommit(this);
+                logSyncService.asyncCommit(r, this, null);
             } else {
                 logSyncService.addAndMaybeWaitForSync(r);
             }

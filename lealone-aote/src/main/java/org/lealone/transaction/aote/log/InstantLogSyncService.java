@@ -7,7 +7,6 @@ package org.lealone.transaction.aote.log;
 
 import java.util.Map;
 
-import org.lealone.common.concurrent.WaitQueue;
 import org.lealone.common.util.MapUtils;
 
 class InstantLogSyncService extends LogSyncService {
@@ -23,17 +22,8 @@ class InstantLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(RedoLogRecord r) {
-        wakeUp();
-        if (!r.isSynced() && running) {
-            while (true) {
-                WaitQueue.Signal signal = syncComplete.register();
-                if (r.isSynced() || !running) {
-                    signal.cancel();
-                    return;
-                } else
-                    signal.awaitUninterruptibly();
-            }
-        }
+    public void addAndMaybeWaitForSync(RedoLogRecord r) {
+        // 总是等待
+        addAndWaitForSync(r);
     }
 }

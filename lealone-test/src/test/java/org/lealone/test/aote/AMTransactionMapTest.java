@@ -22,7 +22,7 @@ public class AMTransactionMapTest extends AoteTestBase {
     public void run() {
         testSyncOperations();
         testTryOperations();
-        testColumnLock();
+        // testColumnLock();
     }
 
     private String createMapName(String name) {

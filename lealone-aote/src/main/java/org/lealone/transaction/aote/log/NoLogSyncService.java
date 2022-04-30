@@ -7,6 +7,7 @@ package org.lealone.transaction.aote.log;
 
 import java.util.Map;
 
+import org.lealone.transaction.RedoLogSyncListener;
 import org.lealone.transaction.aote.AMTransaction;
 
 class NoLogSyncService extends LogSyncService {
@@ -25,7 +26,7 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void asyncCommit(AMTransaction t) {
+    public void asyncCommit(RedoLogRecord r, AMTransaction t, RedoLogSyncListener listener) {
         t.asyncCommitComplete();
     }
 
@@ -43,9 +44,5 @@ class NoLogSyncService extends LogSyncService {
 
     @Override
     public void checkpoint(long checkpointId) {
-    }
-
-    @Override
-    public void maybeWaitForSync(RedoLogRecord r) {
     }
 }

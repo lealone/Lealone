@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -29,6 +30,7 @@ public abstract class RedoLogRecord {
     private static byte TYPE_REPLICA_COMMIT_REDO_LOG_RECORD = 5;
 
     private volatile boolean synced;
+    private CountDownLatch latch;
 
     boolean isSynced() {
         return synced;
@@ -36,6 +38,12 @@ public abstract class RedoLogRecord {
 
     void setSynced(boolean synced) {
         this.synced = synced;
+        if (latch != null)
+            latch.countDown();
+    }
+
+    void setLatch(CountDownLatch latch) {
+        this.latch = latch;
     }
 
     boolean isCheckpoint() {
