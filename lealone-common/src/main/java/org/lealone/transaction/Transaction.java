@@ -121,6 +121,8 @@ public interface Transaction {
 
     void asyncCommit(Runnable asyncTask);
 
+    void asyncCommitComplete();
+
     void commit();
 
     void commit(String globalTransactionName);
