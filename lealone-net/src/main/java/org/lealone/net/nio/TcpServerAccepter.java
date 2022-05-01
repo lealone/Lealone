@@ -14,6 +14,7 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetServerBase;
 
 //只负责接收新的TCP连接
@@ -27,21 +28,27 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
     public synchronized void start() {
         if (isStarted())
             return;
-        logger.info("Starting tcp server accepter");
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
-            serverChannel.configureBlocking(true);
-            super.start();
-            String name = getName() + "Accepter-" + getPort();
-            if (isRunInMainThread()) {
-                Thread t = Thread.currentThread();
-                if (t.getName().equals("main"))
-                    t.setName(name);
+
+            if (NetEventLoop.isAccepterRunInScheduler(config)) {
+                serverChannel.configureBlocking(false);
+                connectionManager.registerAccepter(serverChannel);
             } else {
-                ConcurrentUtils.submitTask(name, isDaemon(), () -> {
-                    TcpServerAccepter.this.run();
-                });
+                logger.info("Starting tcp server accepter");
+                serverChannel.configureBlocking(true);
+                super.start();
+                String name = getName() + "Accepter-" + getPort();
+                if (isRunInMainThread()) {
+                    Thread t = Thread.currentThread();
+                    if (t.getName().equals("main"))
+                        t.setName(name);
+                } else {
+                    ConcurrentUtils.submitTask(name, isDaemon(), () -> {
+                        TcpServerAccepter.this.run();
+                    });
+                }
             }
         } catch (Exception e) {
             checkBindException(e, "Failed to start tcp server accepter");
@@ -70,19 +77,27 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
 
     @Override
     public void run() {
+        if (NetEventLoop.isAccepterRunInScheduler(config)) {
+            return;
+        }
         while (!isStopped()) {
             accept();
         }
     }
 
     private void accept() {
+        accept(null);
+    }
+
+    @Override
+    public void accept(Object scheduler) {
         SocketChannel channel = null;
         AsyncConnection conn = null;
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
             NioWritableChannel writableChannel = new NioWritableChannel(channel, null);
-            conn = createConnection(writableChannel);
+            conn = createConnection(writableChannel, scheduler);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);

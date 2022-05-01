@@ -6,7 +6,9 @@
 package org.lealone.server;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
@@ -413,6 +415,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                             netEventLoop.read(key);
                         } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                             netEventLoop.write(key);
+                        } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
+                            accept(key);
                         } else {
                             key.cancel();
                         }
@@ -440,11 +444,41 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
         // jdk16不存在这个问题
         if (netEventLoop != null) {
-            handle(() -> {
+            if (asyncServer != null) {
                 conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
                 netEventLoop.register(conn);
+            } else {
+                handle(() -> {
+                    conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
+                    netEventLoop.register(conn);
+                });
+            }
+        }
+    }
+
+    private AsyncServer<?> asyncServer;
+    private ServerSocketChannel serverChannel;
+
+    public void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
+        if (netEventLoop != null) {
+            this.asyncServer = asyncServer;
+            this.serverChannel = serverChannel;
+            handle(() -> {
+                try {
+                    serverChannel.register(netEventLoop.getSelector(), SelectionKey.OP_ACCEPT);
+                } catch (ClosedChannelException e) {
+                    logger.warn("Failed to register server channel: " + serverChannel);
+                }
             });
         }
+    }
+
+    private void accept(SelectionKey key) {
+        key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
+        asyncServer.getProtocolServer().accept(this);
+        asyncServer.registerAccepter(serverChannel);
+        asyncServer = null;
+        serverChannel = null;
     }
 
     @Override

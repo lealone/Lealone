@@ -40,7 +40,7 @@ public abstract class LogSyncService extends Thread {
 
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
-        setDaemon(true);
+        // setDaemon(true);
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config);
 

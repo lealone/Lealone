@@ -26,7 +26,7 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
 
     public PageOperationHandlerBase(int handlerId, String name, int waitingQueueSize) {
         super(name);
-        setDaemon(true);
+        setDaemon(false);
         this.handlerId = handlerId;
         this.waitingQueueSize = waitingQueueSize;
         waitingHandlers = new AtomicReferenceArray<>(waitingQueueSize);

@@ -5,6 +5,7 @@
  */
 package org.lealone.server;
 
+import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -79,8 +80,17 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public T createConnection(WritableChannel writableChannel, boolean isServer) {
+        return createConnection(writableChannel, isServer, null);
+    }
+
+    @Override
+    public T createConnection(WritableChannel writableChannel, boolean isServer, Object schedulerObj) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            Scheduler scheduler = SchedulerFactory.getScheduler();
+            Scheduler scheduler;
+            if (schedulerObj instanceof Scheduler)
+                scheduler = (Scheduler) schedulerObj;
+            else
+                scheduler = SchedulerFactory.getScheduler();
             T conn = createConnection(writableChannel, scheduler);
             connections.add(conn);
             beforeRegister(conn, scheduler);
@@ -97,5 +107,11 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     public void removeConnection(AsyncConnection conn) {
         connections.remove(conn);
         conn.close();
+    }
+
+    @Override
+    public void registerAccepter(ServerSocketChannel serverChannel) {
+        Scheduler scheduler = SchedulerFactory.getScheduler();
+        scheduler.registerAccepter(this, serverChannel);
     }
 }

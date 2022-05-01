@@ -148,7 +148,9 @@ public class Lealone {
                 return;
             }
 
-            ProtocolServer mainProtocolServer = startProtocolServers();
+            // ProtocolServer mainProtocolServer = startProtocolServers();
+
+            startProtocolServers();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
@@ -158,9 +160,16 @@ public class Lealone {
             if (latch != null)
                 latch.countDown();
 
+            Thread thread = Thread.currentThread();
+            if (thread.getName().equals("main"))
+                thread.setName("CheckpointService");
+            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
+                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+            te.getRunnable().run();
+
             // 在主线程中运行，避免出现DestroyJavaVM线程
-            if (mainProtocolServer != null)
-                mainProtocolServer.getRunnable().run();
+            // if (mainProtocolServer != null)
+            // mainProtocolServer.getRunnable().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);

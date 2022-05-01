@@ -23,4 +23,8 @@ public interface TransactionEngine extends PluggableEngine {
     TransactionMap<?, ?> getTransactionMap(String mapName, Transaction transaction);
 
     void checkpoint();
+
+    default Runnable getRunnable() {
+        return null;
+    }
 }

@@ -131,4 +131,7 @@ public interface ProtocolServer {
     default int getSessionTimeout() {
         return -1;
     }
+
+    default void accept(Object scheduler) {
+    }
 }
