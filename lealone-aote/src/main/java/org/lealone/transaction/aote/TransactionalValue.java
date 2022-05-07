@@ -216,7 +216,8 @@ public class TransactionalValue {
         return t == null || t.isCommitted();
     }
 
-    public void rollback() {
+    public void rollback(Object oldValue) {
+        this.value = oldValue;
     }
 
     public List<String> getRetryReplicationNames() {

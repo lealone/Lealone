@@ -105,7 +105,7 @@ public class UndoLogRecord {
         if (undone)
             return;
         if (isForUpdate) {
-            newTV.rollback();
+            newTV.rollback(oldValue);
             return;
         }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
@@ -114,7 +114,7 @@ public class UndoLogRecord {
             if (oldValue == null) {
                 map.remove(key);
             } else {
-                newTV.rollback();
+                newTV.rollback(oldValue);
             }
         }
     }
