@@ -86,6 +86,10 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 return v;
         }
 
+        // 已经删除
+        if (tv.isCommitted() && tv.getValue() == null)
+            return null;
+
         // 复制和分布式事务的场景
         v = getDistributedValue(key, tv);
         if (v != null)
