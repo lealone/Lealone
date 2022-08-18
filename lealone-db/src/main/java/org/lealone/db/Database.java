@@ -79,7 +79,7 @@ import org.lealone.transaction.TransactionEngine;
  * @author H2 Group
  * @author zhh
  */
-public class Database implements DataHandler, DbObject, IDatabase {
+public class Database implements DataHandler, DbObject {
 
     /**
      * The default name of the system user. This name is only used as long as
@@ -264,14 +264,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return name;
     }
 
-    @Override
     public String getShortName() {
         return getName();
-    }
-
-    @Override
-    public String getSysMapName() {
-        return "t_" + id + "_0"; // SYS(META)表对应存储层的MAP名称
     }
 
     public DbSettings getSettings() {
@@ -328,7 +322,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return dbSettings.defaultStorageEngine;
     }
 
-    @Override
     public Map<String, String> getParameters() {
         return parameters;
     }
@@ -337,7 +330,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         parameters.putAll(newParameters);
     }
 
-    @Override
     public Map<String, String> getReplicationParameters() {
         return replicationParameters;
     }
@@ -346,7 +338,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         this.replicationParameters = replicationParameters;
     }
 
-    @Override
     public Map<String, String> getNodeAssignmentParameters() {
         return nodeAssignmentParameters;
     }
@@ -361,12 +352,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    @Override
     public RunMode getRunMode() {
         return runMode;
     }
 
-    @Override
     public synchronized Database copy() {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
@@ -1712,7 +1701,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
      *
      * @return true if the database is still starting
      */
-    @Override
     public boolean isStarting() {
         return state == State.STARTING;
     }
@@ -1904,7 +1892,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return storages.get(metaStorageEngineName);
     }
 
-    @Override
     public List<Storage> getStorages() {
         return new ArrayList<>(storages.values());
     }

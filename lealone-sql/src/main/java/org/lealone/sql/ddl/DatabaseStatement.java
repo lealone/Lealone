@@ -6,7 +6,6 @@
 package org.lealone.sql.ddl;
 
 import java.util.Collection;
-import java.util.HashSet;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
@@ -16,7 +15,6 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
-import org.lealone.net.NetNodeManagerHolder;
 
 //CREATE/ALTER/DROP DATABASE语句在所有节点上都会执行一次，
 //差别是数据库所在节点会执行更多操作，其他节点只在LealoneDatabase中有一条相应记录，
@@ -60,78 +58,20 @@ public abstract class DatabaseStatement extends DefinitionStatement {
 
         // 第一步: 验证可识别的参数
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
-        String replicationStrategy = parameters.get("replication_strategy");
-        String nodeAssignmentStrategy = parameters.get("node_assignment_strategy");
         removeParameters(parameters);
 
-        Collection<String> recognizedReplicationStrategyOptions = NetNodeManagerHolder.get()
-                .getRecognizedReplicationStrategyOptions(replicationStrategy);
-        if (recognizedReplicationStrategyOptions == null) {
-            recognizedReplicationStrategyOptions = new HashSet<>(1);
-        } else {
-            recognizedReplicationStrategyOptions = new HashSet<>(recognizedReplicationStrategyOptions);
-        }
-        recognizedReplicationStrategyOptions.add("replication_strategy");
-
-        Collection<String> recognizedNodeAssignmentStrategyOptions = NetNodeManagerHolder.get()
-                .getRecognizedNodeAssignmentStrategyOptions(nodeAssignmentStrategy);
-
-        if (recognizedNodeAssignmentStrategyOptions == null) {
-            recognizedNodeAssignmentStrategyOptions = new HashSet<>(1);
-        } else {
-            recognizedNodeAssignmentStrategyOptions = new HashSet<>(recognizedNodeAssignmentStrategyOptions);
-        }
-        recognizedNodeAssignmentStrategyOptions.add("node_assignment_strategy");
-
         Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings().keySet();
-        parameters.removeAll(recognizedReplicationStrategyOptions);
-        parameters.removeAll(recognizedNodeAssignmentStrategyOptions);
         parameters.removeAll(recognizedSettingOptions);
         if (!parameters.isEmpty()) {
             throw new ConfigException(String.format("Unrecognized parameters: %s for database %s, " //
-                    + "recognized replication strategy options: %s, " //
-                    + "node assignment strategy options: %s, " //
                     + "database setting options: %s", //
-                    parameters.keySet(), dbName, recognizedReplicationStrategyOptions,
-                    recognizedNodeAssignmentStrategyOptions, recognizedSettingOptions));
+                    parameters.keySet(), dbName, recognizedSettingOptions));
         }
 
         // 第二步: 初始化replicationParameters、nodeAssignmentParameters、database settings
         parameters = new CaseInsensitiveMap<>(this.parameters);
         removeParameters(parameters);
 
-        replicationParameters = new CaseInsensitiveMap<>();
-        if (!parameters.containsKey("replication_factor")) {
-            replicationParameters.put("replication_factor",
-                    NetNodeManagerHolder.get().getDefaultReplicationFactor() + "");
-        }
-        if (replicationStrategy != null) {
-            replicationParameters.put("class", replicationStrategy);
-        } else {
-            replicationParameters.put("class", NetNodeManagerHolder.get().getDefaultReplicationStrategy());
-        }
-        for (String option : recognizedReplicationStrategyOptions) {
-            if (parameters.containsKey(option))
-                replicationParameters.put(option, parameters.get(option));
-        }
-
-        nodeAssignmentParameters = new CaseInsensitiveMap<>();
-        if (!parameters.containsKey("assignment_factor")) {
-            nodeAssignmentParameters.put("assignment_factor",
-                    NetNodeManagerHolder.get().getDefaultNodeAssignmentFactor() + "");
-        }
-        if (nodeAssignmentStrategy != null) {
-            nodeAssignmentParameters.put("class", nodeAssignmentStrategy);
-        } else {
-            nodeAssignmentParameters.put("class", NetNodeManagerHolder.get().getDefaultNodeAssignmentStrategy());
-        }
-        for (String option : recognizedNodeAssignmentStrategyOptions) {
-            if (parameters.containsKey(option))
-                nodeAssignmentParameters.put(option, parameters.get(option));
-        }
-        if (runMode == RunMode.CLIENT_SERVER) {
-            nodeAssignmentParameters.put("assignment_factor", "1");
-        }
         // parameters剩下的当成database setting
     }
 
