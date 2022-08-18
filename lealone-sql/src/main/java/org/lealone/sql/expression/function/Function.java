@@ -48,7 +48,8 @@ public abstract class Function extends Expression {
         FUNCTIONS.put(name, info);
     }
 
-    protected static void addFunctionNotDeterministic(String name, int type, int parameterCount, int dataType) {
+    protected static void addFunctionNotDeterministic(String name, int type, int parameterCount,
+            int dataType) {
         addFunction(name, type, parameterCount, dataType, true, false);
     }
 

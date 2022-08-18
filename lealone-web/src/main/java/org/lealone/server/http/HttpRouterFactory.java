@@ -48,7 +48,8 @@ public class HttpRouterFactory implements RouterFactory {
         return getMethodArgs(routingContext, true);
     }
 
-    protected static CaseInsensitiveMap<Object> getMethodArgs(RoutingContext routingContext, boolean parseJson) {
+    protected static CaseInsensitiveMap<Object> getMethodArgs(RoutingContext routingContext,
+            boolean parseJson) {
         CaseInsensitiveMap<Object> methodArgs = new CaseInsensitiveMap<>();
         for (Map.Entry<String, String> e : routingContext.request().params().entries()) {
             addMethodArgs(methodArgs, e.getKey(), e.getValue());
@@ -86,7 +87,8 @@ public class HttpRouterFactory implements RouterFactory {
     }
 
     protected void setCorsHandler(Map<String, String> config, Vertx vertx, Router router) {
-        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
+        router.route().handler(
+                CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
     }
 
     protected String getServicePath(Map<String, String> config) {
@@ -103,20 +105,22 @@ public class HttpRouterFactory implements RouterFactory {
         });
     }
 
-    protected void handleHttpServiceRequest(final HttpServiceHandler serviceHandler, RoutingContext routingContext) {
+    protected void handleHttpServiceRequest(final HttpServiceHandler serviceHandler,
+            RoutingContext routingContext) {
         String serviceName = routingContext.request().params().get("serviceName");
         String methodName = routingContext.request().params().get("methodName");
         CaseInsensitiveMap<Object> methodArgs = getMethodArgs(routingContext);
         Buffer result;
         if (methodArgs.containsKey("methodArgs"))
-            result = serviceHandler.executeService(serviceName, methodName, methodArgs.get("methodArgs").toString());
+            result = serviceHandler.executeService(serviceName, methodName,
+                    methodArgs.get("methodArgs").toString());
         else
             result = serviceHandler.executeService(serviceName, methodName, methodArgs);
         sendHttpServiceResponse(routingContext, serviceName, methodName, result);
     }
 
-    protected void sendHttpServiceResponse(RoutingContext routingContext, String serviceName, String methodName,
-            Buffer result) {
+    protected void sendHttpServiceResponse(RoutingContext routingContext, String serviceName,
+            String methodName, Buffer result) {
         routingContext.response().putHeader("content-type", "application/json; charset=utf-8");
         routingContext.response().putHeader("Access-Control-Allow-Origin", "*");
         routingContext.response().end(result);
@@ -163,7 +167,8 @@ public class HttpRouterFactory implements RouterFactory {
         return false;
     }
 
-    protected void setDevelopmentEnvironmentRouter(Map<String, String> config, Vertx vertx, Router router) {
+    protected void setDevelopmentEnvironmentRouter(Map<String, String> config, Vertx vertx,
+            Router router) {
         if (!isDevelopmentEnvironment(config))
             return;
         System.setProperty("vertxweb.environment", "development");
@@ -178,7 +183,8 @@ public class HttpRouterFactory implements RouterFactory {
             String file = routingContext.request().path();
             try {
                 String str = te.process(file);
-                routingContext.response().putHeader("Content-Type", "text/html; charset=utf-8").end(str, "utf-8");
+                routingContext.response().putHeader("Content-Type", "text/html; charset=utf-8").end(str,
+                        "utf-8");
             } catch (Exception e) {
                 routingContext.fail(e);
             }

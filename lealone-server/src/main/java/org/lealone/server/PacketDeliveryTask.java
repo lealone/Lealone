@@ -28,8 +28,8 @@ public class PacketDeliveryTask implements AsyncTask {
     public final int sessionId;
     public final SessionInfo si;
 
-    public PacketDeliveryTask(TcpServerConnection conn, TransferInputStream in, int packetId, int packetType,
-            SessionInfo si) {
+    public PacketDeliveryTask(TcpServerConnection conn, TransferInputStream in, int packetId,
+            int packetType, SessionInfo si) {
         this.conn = conn;
         this.in = in;
         this.packetId = packetId;

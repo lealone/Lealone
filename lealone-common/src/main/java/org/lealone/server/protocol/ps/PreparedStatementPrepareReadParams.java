@@ -42,7 +42,8 @@ public class PreparedStatementPrepareReadParams implements Packet {
 
     private static class Decoder implements PacketDecoder<PreparedStatementPrepareReadParams> {
         @Override
-        public PreparedStatementPrepareReadParams decode(NetInputStream in, int version) throws IOException {
+        public PreparedStatementPrepareReadParams decode(NetInputStream in, int version)
+                throws IOException {
             int commandId = in.readInt();
             String sql = in.readString();
             return new PreparedStatementPrepareReadParams(commandId, sql);

@@ -95,10 +95,11 @@ public class ADefault extends BuiltInAggregate {
         case AVG:
             if (isDistributed) {
                 if (distinct) {
-                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT " + on.getSQL(isDistributed)
-                            + ")";
+                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT "
+                            + on.getSQL(isDistributed) + ")";
                 } else {
-                    return "COUNT(" + on.getSQL(isDistributed) + "), SUM(" + on.getSQL(isDistributed) + ")";
+                    return "COUNT(" + on.getSQL(isDistributed) + "), SUM(" + on.getSQL(isDistributed)
+                            + ")";
                 }
             }
             text = "AVG";
@@ -144,8 +145,8 @@ public class ADefault extends BuiltInAggregate {
     private String getSQL_STDDEV_VAR() {
         String onSQL = on.getSQL(true);
         if (distinct) {
-            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + " * " + onSQL
-                    + ")";
+            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL
+                    + " * " + onSQL + ")";
         } else {
             return "COUNT(" + onSQL + "), SUM(" + onSQL + "), SUM(" + onSQL + " * " + onSQL + ")";
         }

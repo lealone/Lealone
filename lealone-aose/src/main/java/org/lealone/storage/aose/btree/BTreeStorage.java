@@ -69,7 +69,8 @@ public class BTreeStorage {
             minFillRate = 50;
         this.minFillRate = minFillRate;
         compressionLevel = getIntValue("compress", 0);
-        backgroundExceptionHandler = (UncaughtExceptionHandler) map.getConfig("backgroundExceptionHandler");
+        backgroundExceptionHandler = (UncaughtExceptionHandler) map
+                .getConfig("backgroundExceptionHandler");
 
         chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
@@ -338,7 +339,8 @@ public class BTreeStorage {
             return;
         }
         if (map.isReadOnly()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
+                    "This storage is read-only");
         }
         if (!hasUnsavedChanges()) {
             return;

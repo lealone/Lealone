@@ -11,7 +11,8 @@ import org.lealone.sql.StatementBase;
 
 public abstract class YieldableUpdateBase extends YieldableBase<Integer> {
 
-    public YieldableUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableUpdateBase(StatementBase statement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
     }
 

@@ -93,7 +93,8 @@ public class FilePathEncrypt extends FilePathWrapper {
         int idx = fileName.indexOf(':');
         String password;
         if (idx < 0) {
-            throw new IllegalArgumentException(fileName + " doesn't contain encryption algorithm and password");
+            throw new IllegalArgumentException(
+                    fileName + " doesn't contain encryption algorithm and password");
         }
         password = fileName.substring(0, idx);
         fileName = fileName.substring(idx + 1);

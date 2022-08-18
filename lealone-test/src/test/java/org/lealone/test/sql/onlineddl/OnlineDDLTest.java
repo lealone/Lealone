@@ -17,7 +17,8 @@ public class OnlineDDLTest extends SqlTestBase {
         stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema_test");
         stmt.executeUpdate("USE schema_test");
         stmt.executeUpdate("DROP TABLE IF EXISTS test CASCADE");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long, f3 int, f_blob blob)");
+        stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long, f3 int, f_blob blob)");
         stmt.executeUpdate("CREATE VIEW IF NOT EXISTS test_view (v_f1,v_f2) AS SELECT f1,f2 FROM test");
         // stmt.executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS test_trigger"
         // + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON test"
@@ -26,7 +27,8 @@ public class OnlineDDLTest extends SqlTestBase {
         stmt.executeUpdate("ALTER TABLE test ADD CONSTRAINT test_constraint_check CHECK (f1 > 1)");
         stmt.executeUpdate("ALTER TABLE test ADD CONSTRAINT test_constraint_unique UNIQUE KEY (f2)");
         stmt.executeUpdate("DROP TABLE IF EXISTS ConstraintReferentialTestTable CASCADE");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ConstraintReferentialTestTable (f1 int PRIMARY KEY not null)");
+        stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS ConstraintReferentialTestTable (f1 int PRIMARY KEY not null)");
         ResultSet rs2 = stmt.executeQuery("SELECT count(*) FROM test");
         rs2.next();
         System.out.println("count=" + rs2.getInt(1));
@@ -35,7 +37,8 @@ public class OnlineDDLTest extends SqlTestBase {
 
         stmt.executeUpdate("GRANT SELECT,DELETE,INSERT ON test TO PUBLIC");
 
-        stmt.executeUpdate("CREATE SEQUENCE IF NOT EXISTS test_sequence START WITH 1000 INCREMENT BY 1 CACHE 20");
+        stmt.executeUpdate(
+                "CREATE SEQUENCE IF NOT EXISTS test_sequence START WITH 1000 INCREMENT BY 1 CACHE 20");
 
         stmt.executeUpdate("INSERT INTO ConstraintReferentialTestTable(f1) VALUES(3)");
         stmt.executeUpdate("INSERT INTO test(f1, f2, f3) VALUES(2, 2, 3)");

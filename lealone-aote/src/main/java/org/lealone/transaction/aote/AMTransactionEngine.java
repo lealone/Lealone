@@ -303,7 +303,8 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", DEFAULT_CHECKPOINT_PERIOD);
 
             // 默认1分钟
-            long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval", 1 * 60 * 1000);
+            long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval",
+                    1 * 60 * 1000);
             if (checkpointPeriod < loopInterval)
                 loopInterval = checkpointPeriod;
             this.loopInterval = loopInterval;

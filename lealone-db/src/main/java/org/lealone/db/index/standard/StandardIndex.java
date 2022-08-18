@@ -13,7 +13,8 @@ import org.lealone.db.table.StandardTable;
 
 public abstract class StandardIndex extends IndexBase {
 
-    protected StandardIndex(StandardTable table, int id, String name, IndexType indexType, IndexColumn[] indexColumns) {
+    protected StandardIndex(StandardTable table, int id, String name, IndexType indexType,
+            IndexColumn[] indexColumns) {
         super(table, id, name, indexType, indexColumns);
     }
 

@@ -19,7 +19,8 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     protected final AtomicInteger updateCount = new AtomicInteger();
     protected final AtomicInteger pendingOperationCount = new AtomicInteger();
 
-    public YieldableLoopUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableLoopUpdateBase(StatementBase statement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
     }
 

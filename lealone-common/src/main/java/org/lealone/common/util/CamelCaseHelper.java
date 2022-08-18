@@ -17,7 +17,8 @@ public class CamelCaseHelper {
     /**
      * Convert and return the string to underscore from camel case.
      */
-    public static String toUnderscoreFromCamel(String camelCase, boolean digitsCompressed, boolean forceUpperCase) {
+    public static String toUnderscoreFromCamel(String camelCase, boolean digitsCompressed,
+            boolean forceUpperCase) {
         int lastUpper = -1;
         StringBuilder sb = new StringBuilder(camelCase.length() + 4);
         for (int i = 0; i < camelCase.length(); i++) {

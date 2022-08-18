@@ -45,7 +45,8 @@ public class TcpServerConnection extends TransferConnection {
     private final TcpServer tcpServer;
     private final Scheduler scheduler;
 
-    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, Scheduler scheduler) {
+    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
+            Scheduler scheduler) {
         super(writableChannel, true);
         this.tcpServer = tcpServer;
         this.scheduler = scheduler;
@@ -58,7 +59,8 @@ public class TcpServerConnection extends TransferConnection {
 
     // 这个方法是由网络事件循环线程执行的
     @Override
-    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType)
+            throws IOException {
         // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
         int sessionId = in.readInt();
         SessionInfo si = sessions.get(sessionId);
@@ -83,12 +85,14 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId, Scheduler scheduler) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId,
+            Scheduler scheduler) {
         SessionInit packet;
         try {
             packet = SessionInit.decoder.decode(in, 0);
         } catch (Throwable e) {
-            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
+            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId,
+                    e);
             sendError(null, packetId, e);
             return;
         } finally {
@@ -132,14 +136,16 @@ public class TcpServerConnection extends TransferConnection {
                         return null;
                     }
                 }));
-        SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
+        SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
+                tcpServer.getSessionTimeout());
         session.setSessionInfo(si);
         scheduler.addSessionInfo(si);
         sessions.put(sessionId, si);
         return session;
     }
 
-    private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session) throws Exception {
+    private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session)
+            throws Exception {
         TransferOutputStream out = createTransferOutputStream(session);
         out.writeResponseHeader(packetId, Session.STATUS_OK);
         SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit());
@@ -148,7 +154,8 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     private void sessionNotFound(int packetId, int sessionId) {
-        String msg = "Server session not found, maybe closed or timeout. client session id: " + sessionId;
+        String msg = "Server session not found, maybe closed or timeout. client session id: "
+                + sessionId;
         RuntimeException e = new RuntimeException(msg);
         // logger.warn(msg, e); //打印错误堆栈不是很大必要
         logger.warn(msg);

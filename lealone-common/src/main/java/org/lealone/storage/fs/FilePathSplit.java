@@ -166,8 +166,10 @@ public class FilePathSplit extends FilePathWrapper {
         return 1L << Integer.decode(parse(name)[0]).intValue();
     }
 
-    private void closeAndThrow(int id, FileChannel[] array, FileChannel o, long maxLength) throws IOException {
-        String message = "Expected file length: " + maxLength + " got: " + o.size() + " for " + getName(id);
+    private void closeAndThrow(int id, FileChannel[] array, FileChannel o, long maxLength)
+            throws IOException {
+        String message = "Expected file length: " + maxLength + " got: " + o.size() + " for "
+                + getName(id);
         for (FileChannel f : array) {
             f.close();
         }

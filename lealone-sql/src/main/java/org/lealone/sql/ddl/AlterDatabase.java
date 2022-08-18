@@ -22,7 +22,8 @@ public class AlterDatabase extends DatabaseStatement {
     private final Database db;
     private String hostIds; // 可以指定具体的hostId
 
-    public AlterDatabase(ServerSession session, Database db, RunMode runMode, CaseInsensitiveMap<String> parameters) {
+    public AlterDatabase(ServerSession session, Database db, RunMode runMode,
+            CaseInsensitiveMap<String> parameters) {
         super(session, db.getName());
         this.db = db;
         this.runMode = runMode;

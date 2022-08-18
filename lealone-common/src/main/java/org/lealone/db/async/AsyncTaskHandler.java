@@ -13,7 +13,8 @@ public interface AsyncTaskHandler extends AsyncHandler<AsyncTask> {
     @Override
     void handle(AsyncTask task);
 
-    ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit);
+    ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay,
+            TimeUnit unit);
 
     default void addPeriodicTask(AsyncPeriodicTask task) {
     }

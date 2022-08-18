@@ -129,26 +129,29 @@ public class MetaTable extends Table {
             setObjectName("TABLES");
             cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
                     // extensions
-                    "STORAGE_TYPE", "SQL", "REMARKS", "LAST_MODIFICATION BIGINT", "ID INT", "TYPE_NAME", "TABLE_CLASS");
+                    "STORAGE_TYPE", "SQL", "REMARKS", "LAST_MODIFICATION BIGINT", "ID INT", "TYPE_NAME",
+                    "TABLE_CLASS");
             indexColumnName = "TABLE_NAME";
             break;
         case COLUMNS:
             setObjectName("COLUMNS");
-            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "COLUMN_NAME", "ORDINAL_POSITION INT",
-                    "COLUMN_DEFAULT", "IS_NULLABLE", "DATA_TYPE INT", "CHARACTER_MAXIMUM_LENGTH INT",
-                    "CHARACTER_OCTET_LENGTH INT", "NUMERIC_PRECISION INT", "NUMERIC_PRECISION_RADIX INT",
-                    "NUMERIC_SCALE INT", "CHARACTER_SET_NAME", "COLLATION_NAME",
+            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "COLUMN_NAME",
+                    "ORDINAL_POSITION INT", "COLUMN_DEFAULT", "IS_NULLABLE", "DATA_TYPE INT",
+                    "CHARACTER_MAXIMUM_LENGTH INT", "CHARACTER_OCTET_LENGTH INT",
+                    "NUMERIC_PRECISION INT", "NUMERIC_PRECISION_RADIX INT", "NUMERIC_SCALE INT",
+                    "CHARACTER_SET_NAME", "COLLATION_NAME",
                     // extensions
-                    "TYPE_NAME", "NULLABLE INT", "IS_COMPUTED BIT", "SELECTIVITY INT", "CHECK_CONSTRAINT",
-                    "SEQUENCE_NAME", "REMARKS", "SOURCE_DATA_TYPE SMALLINT");
+                    "TYPE_NAME", "NULLABLE INT", "IS_COMPUTED BIT", "SELECTIVITY INT",
+                    "CHECK_CONSTRAINT", "SEQUENCE_NAME", "REMARKS", "SOURCE_DATA_TYPE SMALLINT");
             indexColumnName = "TABLE_NAME";
             break;
         case INDEXES:
             setObjectName("INDEXES");
-            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "NON_UNIQUE BIT", "INDEX_NAME",
-                    "ORDINAL_POSITION SMALLINT", "COLUMN_NAME", "CARDINALITY INT", "PRIMARY_KEY BIT", "INDEX_TYPE_NAME",
-                    "IS_GENERATED BIT", "INDEX_TYPE SMALLINT", "ASC_OR_DESC", "PAGES INT", "FILTER_CONDITION",
-                    "REMARKS", "SQL", "ID INT", "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS");
+            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "NON_UNIQUE BIT",
+                    "INDEX_NAME", "ORDINAL_POSITION SMALLINT", "COLUMN_NAME", "CARDINALITY INT",
+                    "PRIMARY_KEY BIT", "INDEX_TYPE_NAME", "IS_GENERATED BIT", "INDEX_TYPE SMALLINT",
+                    "ASC_OR_DESC", "PAGES INT", "FILTER_CONDITION", "REMARKS", "SQL", "ID INT",
+                    "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS");
             indexColumnName = "TABLE_NAME";
             break;
         case TABLE_TYPES:
@@ -157,9 +160,10 @@ public class MetaTable extends Table {
             break;
         case TYPE_INFO:
             setObjectName("TYPE_INFO");
-            cols = createColumns("TYPE_NAME", "DATA_TYPE INT", "PRECISION INT", "PREFIX", "SUFFIX", "PARAMS",
-                    "AUTO_INCREMENT BIT", "MINIMUM_SCALE SMALLINT", "MAXIMUM_SCALE SMALLINT", "RADIX INT", "POS INT",
-                    "CASE_SENSITIVE BIT", "NULLABLE SMALLINT", "SEARCHABLE SMALLINT");
+            cols = createColumns("TYPE_NAME", "DATA_TYPE INT", "PRECISION INT", "PREFIX", "SUFFIX",
+                    "PARAMS", "AUTO_INCREMENT BIT", "MINIMUM_SCALE SMALLINT", "MAXIMUM_SCALE SMALLINT",
+                    "RADIX INT", "POS INT", "CASE_SENSITIVE BIT", "NULLABLE SMALLINT",
+                    "SEARCHABLE SMALLINT");
             break;
         case CATALOGS:
             setObjectName("CATALOGS");
@@ -175,8 +179,9 @@ public class MetaTable extends Table {
             break;
         case SEQUENCES:
             setObjectName("SEQUENCES");
-            cols = createColumns("SEQUENCE_CATALOG", "SEQUENCE_SCHEMA", "SEQUENCE_NAME", "CURRENT_VALUE BIGINT",
-                    "INCREMENT BIGINT", "IS_GENERATED BIT", "REMARKS", "CACHE BIGINT", "ID INT");
+            cols = createColumns("SEQUENCE_CATALOG", "SEQUENCE_SCHEMA", "SEQUENCE_NAME",
+                    "CURRENT_VALUE BIGINT", "INCREMENT BIGINT", "IS_GENERATED BIT", "REMARKS",
+                    "CACHE BIGINT", "ID INT");
             break;
         case USERS:
             setObjectName("USERS");
@@ -188,38 +193,39 @@ public class MetaTable extends Table {
             break;
         case RIGHTS:
             setObjectName("RIGHTS");
-            cols = createColumns("GRANTEE", "GRANTEETYPE", "GRANTEDROLE", "RIGHTS", "TABLE_SCHEMA", "TABLE_NAME",
-                    "ID INT");
+            cols = createColumns("GRANTEE", "GRANTEETYPE", "GRANTEDROLE", "RIGHTS", "TABLE_SCHEMA",
+                    "TABLE_NAME", "ID INT");
             indexColumnName = "TABLE_NAME";
             break;
         case FUNCTION_ALIASES:
             setObjectName("FUNCTION_ALIASES");
-            cols = createColumns("ALIAS_CATALOG", "ALIAS_SCHEMA", "ALIAS_NAME", "JAVA_CLASS", "JAVA_METHOD",
-                    "DATA_TYPE INT", "TYPE_NAME", "COLUMN_COUNT INT", "RETURNS_RESULT SMALLINT", "REMARKS", "ID INT",
-                    "SOURCE");
+            cols = createColumns("ALIAS_CATALOG", "ALIAS_SCHEMA", "ALIAS_NAME", "JAVA_CLASS",
+                    "JAVA_METHOD", "DATA_TYPE INT", "TYPE_NAME", "COLUMN_COUNT INT",
+                    "RETURNS_RESULT SMALLINT", "REMARKS", "ID INT", "SOURCE");
             break;
         case FUNCTION_COLUMNS:
             setObjectName("FUNCTION_COLUMNS");
-            cols = createColumns("ALIAS_CATALOG", "ALIAS_SCHEMA", "ALIAS_NAME", "JAVA_CLASS", "JAVA_METHOD",
-                    "COLUMN_COUNT INT", "POS INT", "COLUMN_NAME", "DATA_TYPE INT", "TYPE_NAME", "PRECISION INT",
-                    "SCALE SMALLINT", "RADIX SMALLINT", "NULLABLE SMALLINT", "COLUMN_TYPE SMALLINT", "REMARKS",
-                    "COLUMN_DEFAULT");
+            cols = createColumns("ALIAS_CATALOG", "ALIAS_SCHEMA", "ALIAS_NAME", "JAVA_CLASS",
+                    "JAVA_METHOD", "COLUMN_COUNT INT", "POS INT", "COLUMN_NAME", "DATA_TYPE INT",
+                    "TYPE_NAME", "PRECISION INT", "SCALE SMALLINT", "RADIX SMALLINT",
+                    "NULLABLE SMALLINT", "COLUMN_TYPE SMALLINT", "REMARKS", "COLUMN_DEFAULT");
             break;
         case SCHEMATA:
             setObjectName("SCHEMATA");
-            cols = createColumns("CATALOG_NAME", "SCHEMA_NAME", "SCHEMA_OWNER", "DEFAULT_CHARACTER_SET_NAME",
-                    "DEFAULT_COLLATION_NAME", "IS_DEFAULT BIT", "REMARKS", "ID INT");
+            cols = createColumns("CATALOG_NAME", "SCHEMA_NAME", "SCHEMA_OWNER",
+                    "DEFAULT_CHARACTER_SET_NAME", "DEFAULT_COLLATION_NAME", "IS_DEFAULT BIT", "REMARKS",
+                    "ID INT");
             break;
         case TABLE_PRIVILEGES:
             setObjectName("TABLE_PRIVILEGES");
-            cols = createColumns("GRANTOR", "GRANTEE", "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "PRIVILEGE_TYPE",
-                    "IS_GRANTABLE");
+            cols = createColumns("GRANTOR", "GRANTEE", "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME",
+                    "PRIVILEGE_TYPE", "IS_GRANTABLE");
             indexColumnName = "TABLE_NAME";
             break;
         case COLUMN_PRIVILEGES:
             setObjectName("COLUMN_PRIVILEGES");
-            cols = createColumns("GRANTOR", "GRANTEE", "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "COLUMN_NAME",
-                    "PRIVILEGE_TYPE", "IS_GRANTABLE");
+            cols = createColumns("GRANTOR", "GRANTEE", "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME",
+                    "COLUMN_NAME", "PRIVILEGE_TYPE", "IS_GRANTABLE");
             indexColumnName = "TABLE_NAME";
             break;
         case COLLATIONS:
@@ -228,8 +234,8 @@ public class MetaTable extends Table {
             break;
         case VIEWS:
             setObjectName("VIEWS");
-            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "VIEW_DEFINITION", "CHECK_OPTION",
-                    "IS_UPDATABLE", "STATUS", "REMARKS", "ID INT");
+            cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "VIEW_DEFINITION",
+                    "CHECK_OPTION", "IS_UPDATABLE", "STATUS", "REMARKS", "ID INT");
             indexColumnName = "TABLE_NAME";
             break;
         case IN_DOUBT:
@@ -239,33 +245,34 @@ public class MetaTable extends Table {
         case CROSS_REFERENCES:
             setObjectName("CROSS_REFERENCES");
             cols = createColumns("PKTABLE_CATALOG", "PKTABLE_SCHEMA", "PKTABLE_NAME", "PKCOLUMN_NAME",
-                    "FKTABLE_CATALOG", "FKTABLE_SCHEMA", "FKTABLE_NAME", "FKCOLUMN_NAME", "ORDINAL_POSITION SMALLINT",
-                    "UPDATE_RULE SMALLINT", "DELETE_RULE SMALLINT", "FK_NAME", "PK_NAME", "DEFERRABILITY SMALLINT");
+                    "FKTABLE_CATALOG", "FKTABLE_SCHEMA", "FKTABLE_NAME", "FKCOLUMN_NAME",
+                    "ORDINAL_POSITION SMALLINT", "UPDATE_RULE SMALLINT", "DELETE_RULE SMALLINT",
+                    "FK_NAME", "PK_NAME", "DEFERRABILITY SMALLINT");
             indexColumnName = "PKTABLE_NAME";
             break;
         case CONSTRAINTS:
             setObjectName("CONSTRAINTS");
-            cols = createColumns("CONSTRAINT_CATALOG", "CONSTRAINT_SCHEMA", "CONSTRAINT_NAME", "CONSTRAINT_TYPE",
-                    "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "UNIQUE_INDEX_NAME", "CHECK_EXPRESSION",
-                    "COLUMN_LIST", "REMARKS", "SQL", "ID INT");
+            cols = createColumns("CONSTRAINT_CATALOG", "CONSTRAINT_SCHEMA", "CONSTRAINT_NAME",
+                    "CONSTRAINT_TYPE", "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME",
+                    "UNIQUE_INDEX_NAME", "CHECK_EXPRESSION", "COLUMN_LIST", "REMARKS", "SQL", "ID INT");
             indexColumnName = "TABLE_NAME";
             break;
         case CONSTANTS:
             setObjectName("CONSTANTS");
-            cols = createColumns("CONSTANT_CATALOG", "CONSTANT_SCHEMA", "CONSTANT_NAME", "DATA_TYPE INT", "REMARKS",
-                    "SQL", "ID INT");
+            cols = createColumns("CONSTANT_CATALOG", "CONSTANT_SCHEMA", "CONSTANT_NAME", "DATA_TYPE INT",
+                    "REMARKS", "SQL", "ID INT");
             break;
         case DOMAINS:
             setObjectName("DOMAINS");
-            cols = createColumns("DOMAIN_CATALOG", "DOMAIN_SCHEMA", "DOMAIN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
-                    "DATA_TYPE INT", "PRECISION INT", "SCALE INT", "TYPE_NAME", "SELECTIVITY INT", "CHECK_CONSTRAINT",
-                    "REMARKS", "SQL", "ID INT");
+            cols = createColumns("DOMAIN_CATALOG", "DOMAIN_SCHEMA", "DOMAIN_NAME", "COLUMN_DEFAULT",
+                    "IS_NULLABLE", "DATA_TYPE INT", "PRECISION INT", "SCALE INT", "TYPE_NAME",
+                    "SELECTIVITY INT", "CHECK_CONSTRAINT", "REMARKS", "SQL", "ID INT");
             break;
         case TRIGGERS:
             setObjectName("TRIGGERS");
-            cols = createColumns("TRIGGER_CATALOG", "TRIGGER_SCHEMA", "TRIGGER_NAME", "TRIGGER_TYPE", "TABLE_CATALOG",
-                    "TABLE_SCHEMA", "TABLE_NAME", "BEFORE BIT", "JAVA_CLASS", "QUEUE_SIZE INT", "NO_WAIT BIT",
-                    "REMARKS", "SQL", "ID INT");
+            cols = createColumns("TRIGGER_CATALOG", "TRIGGER_SCHEMA", "TRIGGER_NAME", "TRIGGER_TYPE",
+                    "TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "BEFORE BIT", "JAVA_CLASS",
+                    "QUEUE_SIZE INT", "NO_WAIT BIT", "REMARKS", "SQL", "ID INT");
             break;
         case SESSIONS: {
             setObjectName("SESSIONS");
@@ -285,9 +292,10 @@ public class MetaTable extends Table {
         case QUERY_STATISTICS: {
             setObjectName("QUERY_STATISTICS");
             cols = createColumns("SQL_STATEMENT", "EXECUTION_COUNT INT", "MIN_EXECUTION_TIME DOUBLE",
-                    "MAX_EXECUTION_TIME DOUBLE", "CUMULATIVE_EXECUTION_TIME DOUBLE", "AVERAGE_EXECUTION_TIME DOUBLE",
-                    "STD_DEV_EXECUTION_TIME DOUBLE", "MIN_ROW_COUNT INT", "MAX_ROW_COUNT INT",
-                    "CUMULATIVE_ROW_COUNT LONG", "AVERAGE_ROW_COUNT DOUBLE", "STD_DEV_ROW_COUNT DOUBLE");
+                    "MAX_EXECUTION_TIME DOUBLE", "CUMULATIVE_EXECUTION_TIME DOUBLE",
+                    "AVERAGE_EXECUTION_TIME DOUBLE", "STD_DEV_EXECUTION_TIME DOUBLE",
+                    "MIN_ROW_COUNT INT", "MAX_ROW_COUNT INT", "CUMULATIVE_ROW_COUNT LONG",
+                    "AVERAGE_ROW_COUNT DOUBLE", "STD_DEV_ROW_COUNT DOUBLE");
             break;
         }
         case DATABASES:
@@ -325,7 +333,8 @@ public class MetaTable extends Table {
             int dataType;
             String name;
             if (idx < 0) {
-                dataType = database.getMode().lowerCaseIdentifiers ? Value.STRING_IGNORECASE : Value.STRING;
+                dataType = database.getMode().lowerCaseIdentifiers ? Value.STRING_IGNORECASE
+                        : Value.STRING;
                 name = nameType;
             } else {
                 dataType = DataType.getTypeByName(nameType.substring(idx + 1)).type;
@@ -498,7 +507,8 @@ public class MetaTable extends Table {
                             // TYPE_NAME
                             identifier(DataType.getDataType(c.getType()).name),
                             // NULLABLE
-                            "" + (c.isNullable() ? DatabaseMetaData.columnNullable : DatabaseMetaData.columnNoNulls),
+                            "" + (c.isNullable() ? DatabaseMetaData.columnNullable
+                                    : DatabaseMetaData.columnNoNulls),
                             // IS_COMPUTED
                             "" + (c.isComputed() ? "TRUE" : "FALSE"),
                             // SELECTIVITY
@@ -610,8 +620,8 @@ public class MetaTable extends Table {
         case SETTINGS: {
             // system properties
             if (admin) {
-                String[] settings = { "java.runtime.version", "java.vm.name", "java.vendor", "os.name", "os.arch",
-                        "os.version", "sun.os.patch.level",
+                String[] settings = { "java.runtime.version", "java.vm.name", "java.vendor", "os.name",
+                        "os.arch", "os.version", "sun.os.patch.level",
                         // "file.separator",
                         "path.separator",
                         // "line.separator",
@@ -638,7 +648,8 @@ public class MetaTable extends Table {
             }
 
             // database settings
-            add(rows, "EXCLUSIVE", "database", database.getExclusiveSession() == null ? "FALSE" : "TRUE");
+            add(rows, "EXCLUSIVE", "database",
+                    database.getExclusiveSession() == null ? "FALSE" : "TRUE");
             add(rows, "MODE", "database", database.getMode().getName());
             add(rows, "MULTI_THREADED", "database", "1");
             add(rows, "MVCC", "database", database.isMultiVersion() ? "TRUE" : "FALSE");
@@ -839,10 +850,12 @@ public class MetaTable extends Table {
             break;
         }
         case FUNCTION_ALIASES: {
-            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
+            for (SchemaObject aliasAsSchemaObject : database
+                    .getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
                 FunctionAlias alias = (FunctionAlias) aliasAsSchemaObject;
                 for (FunctionAlias.JavaMethod method : alias.getJavaMethods()) {
-                    int returnsResult = method.getDataType() == Value.NULL ? DatabaseMetaData.procedureNoResult
+                    int returnsResult = method.getDataType() == Value.NULL
+                            ? DatabaseMetaData.procedureNoResult
                             : DatabaseMetaData.procedureReturnsResult;
                     add(rows,
                             // ALIAS_CATALOG
@@ -907,7 +920,8 @@ public class MetaTable extends Table {
             break;
         }
         case FUNCTION_COLUMNS: {
-            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
+            for (SchemaObject aliasAsSchemaObject : database
+                    .getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
                 FunctionAlias alias = (FunctionAlias) aliasAsSchemaObject;
                 for (FunctionAlias.JavaMethod method : alias.getJavaMethods()) {
                     Class<?>[] columnList = method.getColumnClasses();
@@ -1141,7 +1155,8 @@ public class MetaTable extends Table {
                 }
                 if (constraintType.equals(Constraint.CHECK)) {
                     checkExpression = ((ConstraintCheck) constraint).getExpression().getSQL();
-                } else if (constraintType.equals(Constraint.UNIQUE) || constraintType.equals(Constraint.PRIMARY_KEY)) {
+                } else if (constraintType.equals(Constraint.UNIQUE)
+                        || constraintType.equals(Constraint.PRIMARY_KEY)) {
                     indexColumns = ((ConstraintUnique) constraint).getColumns();
                 } else if (constraintType.equals(Constraint.REFERENTIAL)) {
                     indexColumns = ((ConstraintReferential) constraint).getColumns();
@@ -1311,7 +1326,8 @@ public class MetaTable extends Table {
                                 // SESSION_ID
                                 "" + s.getId(),
                                 // LOCK_TYPE
-                                lock.getDbObjectType() + " " + (lock.isLockedExclusivelyBy(s) ? "WRITE" : "READ"));
+                                lock.getDbObjectType() + " "
+                                        + (lock.isLockedExclusivelyBy(s) ? "WRITE" : "READ"));
                     }
                 }
             }
@@ -1445,8 +1461,8 @@ public class MetaTable extends Table {
         }
     }
 
-    private void addPrivileges(ArrayList<Row> rows, DbObject grantee, String catalog, Table table, String column,
-            int rightMask) {
+    private void addPrivileges(ArrayList<Row> rows, DbObject grantee, String catalog, Table table,
+            String column, int rightMask) {
         if ((rightMask & Right.SELECT) != 0) {
             addPrivilege(rows, grantee, catalog, table, column, "SELECT");
         }
@@ -1461,8 +1477,8 @@ public class MetaTable extends Table {
         }
     }
 
-    private void addPrivilege(ArrayList<Row> rows, DbObject grantee, String catalog, Table table, String column,
-            String right) {
+    private void addPrivilege(ArrayList<Row> rows, DbObject grantee, String catalog, Table table,
+            String column, String right) {
         String isGrantable = "NO";
         if (grantee.getType() == DbObjectType.USER) {
             User user = (User) grantee;

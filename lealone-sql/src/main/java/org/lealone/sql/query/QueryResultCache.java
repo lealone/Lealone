@@ -46,7 +46,8 @@ class QueryResultCache {
             Value[] params = getParameterValues();
             long now = session.getDatabase().getModificationDataId();
             // 当lastEvaluated != now时，说明数据已经有变化，缓存的结果不能用了
-            if (lastEvaluated == now && lastResult != null && !lastResult.isClosed() && limit == lastLimit
+            if (lastEvaluated == now && lastResult != null && !lastResult.isClosed()
+                    && limit == lastLimit
                     && select.accept(ExpressionVisitorFactory.getDeterministicVisitor())) {
                 if (sameResultAsLast(params)) {
                     lastResult = lastResult.createShallowCopy(session);
@@ -100,7 +101,8 @@ class QueryResultCache {
                 || !select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
             return false;
         }
-        if (db.getModificationDataId() > lastEvaluated && select.getMaxDataModificationId() > lastEvaluated) {
+        if (db.getModificationDataId() > lastEvaluated
+                && select.getMaxDataModificationId() > lastEvaluated) {
             return false;
         }
         return true;

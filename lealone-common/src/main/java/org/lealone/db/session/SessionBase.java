@@ -85,13 +85,15 @@ public abstract class SessionBase implements Session {
     @Override
     public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
         if (traceSystem != null)
-            return traceSystem.getTrace(traceModuleType, traceObjectType, TraceObject.getNextTraceId(traceObjectType));
+            return traceSystem.getTrace(traceModuleType, traceObjectType,
+                    TraceObject.getNextTraceId(traceObjectType));
         else
             return Trace.NO_TRACE;
     }
 
     @Override
-    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId) {
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType,
+            int traceObjectId) {
         if (traceSystem != null)
             return traceSystem.getTrace(traceModuleType, traceObjectType, traceObjectId);
         else
@@ -113,7 +115,8 @@ public abstract class SessionBase implements Session {
             try {
                 traceSystem.setLevelFile(level);
                 if (level > 0) {
-                    String file = FileUtils.createTempFile(filePrefix, Constants.SUFFIX_TRACE_FILE, false, false);
+                    String file = FileUtils.createTempFile(filePrefix, Constants.SUFFIX_TRACE_FILE,
+                            false, false);
                     traceSystem.setFileName(file);
                 }
             } catch (IOException e) {

@@ -155,7 +155,8 @@ public abstract class InsertBase extends ManipulationStatement {
         Result rows;
         YieldableBase<Result> yieldableQuery;
 
-        public YieldableInsertBase(InsertBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableInsertBase(InsertBase statement,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;

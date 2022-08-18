@@ -387,8 +387,8 @@ public class DataUtils {
                 size = -1;
             }
             throw newIllegalStateException(ERROR_READING_FAILED,
-                    "Reading from {0} failed; file length {1} " + "read length {2} at {3}", file, size, dst.remaining(),
-                    pos, e);
+                    "Reading from {0} failed; file length {1} " + "read length {2} at {3}", file, size,
+                    dst.remaining(), pos, e);
         }
     }
 
@@ -407,8 +407,8 @@ public class DataUtils {
                 off += len;
             } while (src.remaining() > 0);
         } catch (IOException e) {
-            throw newIllegalStateException(ERROR_WRITING_FAILED, "Writing to {0} failed; length {1} at {2}", file,
-                    src.remaining(), pos, e);
+            throw newIllegalStateException(ERROR_WRITING_FAILED,
+                    "Writing to {0} failed; length {1} at {2}", file, src.remaining(), pos, e);
         }
     }
 
@@ -490,7 +490,8 @@ public class DataUtils {
             int startKey = i;
             i = s.indexOf(':', i);
             if (i < 0) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}", s);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}",
+                        s);
             }
             String key = s.substring(startKey, i++);
             StringBuilder buff = new StringBuilder();
@@ -503,8 +504,8 @@ public class DataUtils {
                         c = s.charAt(i++);
                         if (c == '\\') {
                             if (i == size) {
-                                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}",
-                                        s);
+                                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                                        "Not a map: {0}", s);
                             }
                             c = s.charAt(i++);
                         } else if (c == '\"') {
@@ -577,7 +578,8 @@ public class DataUtils {
      * @param arguments the arguments
      * @return the exception
      */
-    public static IllegalArgumentException newIllegalArgumentException(String message, Object... arguments) {
+    public static IllegalArgumentException newIllegalArgumentException(String message,
+            Object... arguments) {
         return initCause(new IllegalArgumentException(formatMessage(0, message, arguments)), arguments);
     }
 
@@ -609,8 +611,10 @@ public class DataUtils {
      * @param arguments the arguments
      * @return the exception
      */
-    public static IllegalStateException newIllegalStateException(int errorCode, String message, Object... arguments) {
-        return initCause(new IllegalStateException(formatMessage(errorCode, message, arguments)), arguments);
+    public static IllegalStateException newIllegalStateException(int errorCode, String message,
+            Object... arguments) {
+        return initCause(new IllegalStateException(formatMessage(errorCode, message, arguments)),
+                arguments);
     }
 
     private static <T extends Exception> T initCause(T e, Object... arguments) {
@@ -644,8 +648,8 @@ public class DataUtils {
                 arguments[i] = s;
             }
         }
-        return MessageFormat.format(message, arguments) + " [" + Constants.VERSION_MAJOR + "." + Constants.VERSION_MINOR
-                + "." + Constants.BUILD_ID + "/" + errorCode + "]";
+        return MessageFormat.format(message, arguments) + " [" + Constants.VERSION_MAJOR + "."
+                + Constants.VERSION_MINOR + "." + Constants.BUILD_ID + "/" + errorCode + "]";
     }
 
     /**
@@ -756,7 +760,8 @@ public class DataUtils {
             if (x.length() == 16) {
                 // avoid problems with overflow
                 // in Java 8, this special case is not needed
-                return (Long.parseLong(x.substring(0, 8), 16) << 32) | Long.parseLong(x.substring(8, 16), 16);
+                return (Long.parseLong(x.substring(0, 8), 16) << 32)
+                        | Long.parseLong(x.substring(8, 16), 16);
             }
             return Long.parseLong(x, 16);
         } catch (NumberFormatException e) {

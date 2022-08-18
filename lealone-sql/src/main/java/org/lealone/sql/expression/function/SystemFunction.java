@@ -57,14 +57,16 @@ public class SystemFunction extends BuiltInFunction {
     public static void init() {
     }
 
-    public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153, SCOPE_IDENTITY = 154,
-            AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157, LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
+    public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153,
+            SCOPE_IDENTITY = 154, AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157,
+            LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
 
-    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205,
-            CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211, MEMORY_FREE = 212,
-            MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
-            LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, FILE_READ = 223,
-            TRANSACTION_ID = 224, TRUNCATE_VALUE = 225, NVL2 = 226, DECODE = 227, ARRAY_CONTAINS = 228;
+    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204,
+            NULLIF = 205, CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210,
+            CSVWRITE = 211, MEMORY_FREE = 212, MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214,
+            SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218, GREATEST = 219,
+            LEAST = 220, CANCEL_SESSION = 221, SET = 222, FILE_READ = 223, TRANSACTION_ID = 224,
+            TRUNCATE_VALUE = 225, NVL2 = 226, DECODE = 227, ARRAY_CONTAINS = 228;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -105,7 +107,8 @@ public class SystemFunction extends BuiltInFunction {
         addFunction("CSVWRITE", CSVWRITE, VAR_ARGS, Value.INT, false, false);
         addFunctionNotDeterministic("MEMORY_FREE", MEMORY_FREE, 0, Value.INT);
         addFunctionNotDeterministic("MEMORY_USED", MEMORY_USED, 0, Value.INT);
-        addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0, Value.INT);
+        addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0,
+                Value.INT);
         addFunctionNotDeterministic("SCHEMA", SCHEMA, 0, Value.STRING);
         addFunctionNotDeterministic("SESSION_ID", SESSION_ID, 0, Value.INT);
         addFunction("ARRAY_LENGTH", ARRAY_LENGTH, 1, Value.INT);
@@ -764,7 +767,8 @@ public class SystemFunction extends BuiltInFunction {
                 charset = csv.setOptions(options);
             } else {
                 charset = options;
-                String fieldSeparatorRead = args.length < 4 ? null : args[3].getValue(session).getString();
+                String fieldSeparatorRead = args.length < 4 ? null
+                        : args[3].getValue(session).getString();
                 String fieldDelimiter = args.length < 5 ? null : args[4].getValue(session).getString();
                 String escapeCharacter = args.length < 6 ? null : args[5].getValue(session).getString();
                 setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);

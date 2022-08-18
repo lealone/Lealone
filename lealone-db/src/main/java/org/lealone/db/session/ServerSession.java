@@ -799,7 +799,8 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler,
+            AsyncResult<T> asyncResult) {
         if (executingNestedStatement)
             return;
         closeTemporaryResults();
@@ -908,7 +909,8 @@ public class ServerSession extends SessionBase {
     public Connection createConnection(String user, String url) {
         try {
             Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
-            Connection conn = (Connection) jdbcConnectionClass.getConstructor(Session.class, String.class, String.class)
+            Connection conn = (Connection) jdbcConnectionClass
+                    .getConstructor(Session.class, String.class, String.class)
                     .newInstance(this, user, url);
             return conn;
         } catch (Exception e) {
@@ -1210,7 +1212,8 @@ public class ServerSession extends SessionBase {
         if (!database.isInitialized())
             database.init();
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
+        return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName,
+                getTransaction());
     }
 
     private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -1237,7 +1240,8 @@ public class ServerSession extends SessionBase {
         private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final int sessionId;
 
-        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable, int sessionId) {
+        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable,
+                int sessionId) {
             this.packetId = packetId;
             this.yieldable = yieldable;
             this.sessionId = sessionId;
@@ -1365,7 +1369,8 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
+            AckPacketHandler<R, P> ackPacketHandler) {
         throw DbException.getInternalError();
     }
 
@@ -1413,8 +1418,8 @@ public class ServerSession extends SessionBase {
 
     public SmallLRUCache<Long, InputStream> getLobCache() {
         if (lobCache == null) {
-            lobCache = SmallLRUCache.newInstance(
-                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+            lobCache = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
+                    SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
         }
         return lobCache;
     }
@@ -1440,7 +1445,8 @@ public class ServerSession extends SessionBase {
             this.transactionIsolationLevel = Connection.TRANSACTION_READ_UNCOMMITTED;
             break;
         default:
-            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+            throw DbException.getInvalidValueException("transaction isolation level",
+                    transactionIsolationLevel);
         }
     }
 
@@ -1452,7 +1458,8 @@ public class ServerSession extends SessionBase {
         case Connection.TRANSACTION_READ_UNCOMMITTED:
             break;
         default:
-            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+            throw DbException.getInvalidValueException("transaction isolation level",
+                    transactionIsolationLevel);
         }
         this.transactionIsolationLevel = transactionIsolationLevel;
     }

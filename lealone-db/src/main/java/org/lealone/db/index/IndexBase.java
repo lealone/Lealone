@@ -49,7 +49,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      * @param indexType the index type
      * @param indexColumns the columns that are indexed or null if this is not yet known
      */
-    protected IndexBase(Table table, int id, String name, IndexType indexType, IndexColumn[] indexColumns) {
+    protected IndexBase(Table table, int id, String name, IndexType indexType,
+            IndexColumn[] indexColumns) {
         super(table.getSchema(), id, name);
         this.table = table;
         this.indexType = indexType;
@@ -268,7 +269,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                     cost = 3;
                     break;
                 }
-                totalSelectivity = 100 - ((100 - totalSelectivity) * (100 - column.getSelectivity()) / 100);
+                totalSelectivity = 100
+                        - ((100 - totalSelectivity) * (100 - column.getSelectivity()) / 100);
                 long distinctRows = rowCount * totalSelectivity / 100; // totalSelectivity变大时distinctRows变大
                 if (distinctRows <= 0) {
                     distinctRows = 1;
@@ -398,7 +400,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         for (IndexColumn c : columns) {
             int type = c.column.getType();
             if (type == Value.CLOB || type == Value.BLOB) {
-                throw DbException.getUnsupportedException("Index on BLOB or CLOB column: " + c.column.getCreateSQL());
+                throw DbException.getUnsupportedException(
+                        "Index on BLOB or CLOB column: " + c.column.getCreateSQL());
             }
         }
     }

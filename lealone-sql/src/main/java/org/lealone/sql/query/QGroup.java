@@ -72,7 +72,8 @@ class QGroup extends QOperator {
         return keyValues;
     }
 
-    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups, Value key) {
+    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups,
+            Value key) {
         HashMap<Expression, Object> values = groups.get(key);
         if (values == null) {
             values = new HashMap<>();
@@ -81,8 +82,8 @@ class QGroup extends QOperator {
         return values;
     }
 
-    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select, int columnCount,
-            ResultTarget result) {
+    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select,
+            int columnCount, ResultTarget result) {
         for (Value v : groups.keys()) {
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);

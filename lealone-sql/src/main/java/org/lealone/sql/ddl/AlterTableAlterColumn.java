@@ -177,13 +177,15 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
         case SQLStatement.ALTER_TABLE_ADD_COLUMN: {
             // ifNotExists only supported for single column add
-            if (ifNotExists && columnsToAdd.size() == 1 && table.doesColumnExist(columnsToAdd.get(0).getName())) {
+            if (ifNotExists && columnsToAdd.size() == 1
+                    && table.doesColumnExist(columnsToAdd.get(0).getName())) {
                 break;
             }
             for (Column column : columnsToAdd) {
                 if (column.isAutoIncrement()) {
                     int objId = getObjectId();
-                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lock);
+                    column.convertAutoIncrementToSequence(session, getSchema(), objId,
+                            table.isTemporary(), lock);
                 }
             }
             addTableAlterHistoryRecords();
@@ -255,7 +257,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
     }
 
     private void checkNoNullValues() {
-        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
+        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL()
+                + " IS NULL";
         StatementBase command = (StatementBase) session.prepareStatement(sql);
         Result result = command.query(0);
         result.next();
@@ -316,7 +319,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, buff.toString());
+            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+                    buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);

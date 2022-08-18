@@ -182,7 +182,8 @@ class NioEventLoop implements NetEventLoop {
                 int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
 
                 if (attachment.state == 0) {
-                    boolean ok = read(attachment, channel, packetLengthByteBuffer, packetLengthByteBufferCapacity);
+                    boolean ok = read(attachment, channel, packetLengthByteBuffer,
+                            packetLengthByteBufferCapacity);
                     if (ok) {
                         attachment.state = 1;
                     } else {

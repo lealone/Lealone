@@ -83,7 +83,8 @@ public class IndexCursor implements Cursor {
             } else {
                 columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
-            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, null, columnIndexes);
+            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, null,
+                    columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);
         }
     }
@@ -175,7 +176,8 @@ public class IndexCursor implements Cursor {
         return idxCol == null || idxCol.column == column;
     }
 
-    private SearchRow getSearchRow(ServerSession session, Column column, SearchRow row, int id, Value v, boolean max) {
+    private SearchRow getSearchRow(ServerSession session, Column column, SearchRow row, int id, Value v,
+            boolean max) {
         if (row == null) {
             row = table.getTemplateRow();
         } else {

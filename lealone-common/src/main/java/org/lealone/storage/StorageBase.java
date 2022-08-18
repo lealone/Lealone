@@ -24,7 +24,8 @@ import org.lealone.storage.fs.FileUtils;
 //子类通常只需要实现openMap方法
 public abstract class StorageBase implements Storage {
 
-    protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp" + Constants.NAME_SEPARATOR;
+    protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp"
+            + Constants.NAME_SEPARATOR;
 
     protected final ConcurrentHashMap<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
@@ -175,7 +176,8 @@ public abstract class StorageBase implements Storage {
         }
     }
 
-    private static void backupFile(ZipOutputStream out, InputStream in, String entryName) throws IOException {
+    private static void backupFile(ZipOutputStream out, InputStream in, String entryName)
+            throws IOException {
         out.putNextEntry(new ZipEntry(entryName));
         IOUtils.copyAndCloseInput(in, out);
         out.closeEntry();

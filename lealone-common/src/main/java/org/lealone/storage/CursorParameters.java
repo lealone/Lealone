@@ -21,7 +21,8 @@ public class CursorParameters<K> {
         this(from, to, pageKeys, columnIndexes, false);
     }
 
-    public CursorParameters(K from, K to, List<PageKey> pageKeys, int[] columnIndexes, boolean allColumns) {
+    public CursorParameters(K from, K to, List<PageKey> pageKeys, int[] columnIndexes,
+            boolean allColumns) {
         this.from = from;
         this.to = to;
         this.pageKeys = pageKeys;
@@ -53,7 +54,8 @@ public class CursorParameters<K> {
         return new CursorParameters<>(from, null, null, columnIndexes);
     }
 
-    public static <K> CursorParameters<K> create(K from, K to, List<PageKey> pageKeys, int[] columnIndexes) {
+    public static <K> CursorParameters<K> create(K from, K to, List<PageKey> pageKeys,
+            int[] columnIndexes) {
         return new CursorParameters<>(from, to, pageKeys, columnIndexes);
     }
 }

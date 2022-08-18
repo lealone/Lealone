@@ -81,7 +81,8 @@ public class Utils {
     }
 
     private static int readInt(byte[] buff, int pos) {
-        return (buff[pos++] << 24) + ((buff[pos++] & 0xff) << 16) + ((buff[pos++] & 0xff) << 8) + (buff[pos] & 0xff);
+        return (buff[pos++] << 24) + ((buff[pos++] & 0xff) << 16) + ((buff[pos++] & 0xff) << 8)
+                + (buff[pos] & 0xff);
     }
 
     /**
@@ -331,7 +332,8 @@ public class Utils {
                 final ClassLoader loader = Thread.currentThread().getContextClassLoader();
                 is = new ObjectInputStream(in) {
                     @Override
-                    protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+                    protected Class<?> resolveClass(ObjectStreamClass desc)
+                            throws IOException, ClassNotFoundException {
                         try {
                             return Class.forName(desc.getName(), true, loader);
                         } catch (ClassNotFoundException e) {
@@ -474,8 +476,8 @@ public class Utils {
         partialQuickSort(array, 0, array.length - 1, comp, offset, offset + limit - 1);
     }
 
-    private static <X> void partialQuickSort(X[] array, int low, int high, Comparator<? super X> comp, int start,
-            int end) {
+    private static <X> void partialQuickSort(X[] array, int low, int high, Comparator<? super X> comp,
+            int start, int end) {
         if (low > end || high < start || (low > start && high < end)) {
             return;
         }
@@ -716,12 +718,13 @@ public class Utils {
      * @param params the method parameters
      * @return the return value from this call
      */
-    public static Object callMethod(Object instance, String methodName, Object... params) throws Exception {
+    public static Object callMethod(Object instance, String methodName, Object... params)
+            throws Exception {
         return callMethod(instance, instance.getClass(), methodName, params);
     }
 
-    private static Object callMethod(Object instance, Class<?> clazz, String methodName, Object... params)
-            throws Exception {
+    private static Object callMethod(Object instance, Class<?> clazz, String methodName,
+            Object... params) throws Exception {
         Method best = null;
         int bestMatch = 0;
         boolean isStatic = instance == null;
@@ -924,7 +927,8 @@ public class Utils {
         try {
             return (Class<T>) Class.forName(classname);
         } catch (ClassNotFoundException | NoClassDefFoundError e) {
-            throw new ConfigException(String.format("Unable to find %s class '%s'", readable, classname), e);
+            throw new ConfigException(String.format("Unable to find %s class '%s'", readable, classname),
+                    e);
         }
     }
 
@@ -939,20 +943,23 @@ public class Utils {
         return construct(cls, classname, readable);
     }
 
-    public static <T> T construct(Class<T> cls, String classname, String readable) throws ConfigException {
+    public static <T> T construct(Class<T> cls, String classname, String readable)
+            throws ConfigException {
         try {
             return cls.getDeclaredConstructor().newInstance();
         } catch (IllegalAccessException e) {
-            throw new ConfigException(
-                    String.format("Default constructor for %s class '%s' is inaccessible.", readable, classname));
+            throw new ConfigException(String.format(
+                    "Default constructor for %s class '%s' is inaccessible.", readable, classname));
         } catch (InstantiationException e) {
-            throw new ConfigException(String.format("Cannot use abstract class '%s' as %s.", classname, readable));
+            throw new ConfigException(
+                    String.format("Cannot use abstract class '%s' as %s.", classname, readable));
         } catch (Exception e) {
             // Catch-all because Class.newInstance()
             // "propagates any exception thrown by the nullary constructor, including a checked exception".
             if (e.getCause() instanceof ConfigException)
                 throw (ConfigException) e.getCause();
-            throw new ConfigException(String.format("Error instantiating %s class '%s'.", readable, classname), e);
+            throw new ConfigException(
+                    String.format("Error instantiating %s class '%s'.", readable, classname), e);
         }
     }
 
@@ -964,7 +971,8 @@ public class Utils {
             Properties props = getResourceAsProperties(Constants.RESOURCES_DIR + "version.properties");
             releaseVersion = props.getProperty("lealoneVersion");
             if (releaseVersion == null) {
-                releaseVersion = System.getProperty(Constants.PROJECT_NAME_PREFIX + "release.version", "Unknown");
+                releaseVersion = System.getProperty(Constants.PROJECT_NAME_PREFIX + "release.version",
+                        "Unknown");
             }
         } catch (Throwable e) {
             releaseVersion = "Unknown(error: " + e.getMessage() + ")";

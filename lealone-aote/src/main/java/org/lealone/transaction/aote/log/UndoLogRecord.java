@@ -26,7 +26,8 @@ public class UndoLogRecord {
     UndoLogRecord next;
     UndoLogRecord prev;
 
-    public UndoLogRecord(String mapName, Object key, Object oldValue, TransactionalValue newTV, boolean isForUpdate) {
+    public UndoLogRecord(String mapName, Object key, Object oldValue, TransactionalValue newTV,
+            boolean isForUpdate) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;

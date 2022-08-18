@@ -18,7 +18,8 @@ public class EmbeddedExample {
     public static void main(String[] args) throws Exception {
         SysProperties.setBaseDir(TestBase.TEST_DIR);
 
-        String url = "jdbc:lealone:embed:embedded_db?" + DbSetting.TRACE_LEVEL_FILE + "=" + TraceSystem.DEBUG;
+        String url = "jdbc:lealone:embed:embedded_db?" + DbSetting.TRACE_LEVEL_FILE + "="
+                + TraceSystem.DEBUG;
         Connection conn = DriverManager.getConnection(url, "root", "");
         CRUDExample.crud(conn);
 

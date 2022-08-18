@@ -159,7 +159,8 @@ public class CreateService extends SchemaStatement {
             }
         }
 
-        Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(), serviceMethods);
+        Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(),
+                serviceMethods);
         service.setLanguage(language);
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
@@ -204,7 +205,8 @@ public class CreateService extends SchemaStatement {
         int methodSize = serviceMethods.size();
         for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
             CreateTableData data = serviceMethods.get(methodIndex).data;
-            buff.append("    ").append(session.getDatabase().quoteIdentifier(data.tableName)).append("(");
+            buff.append("    ").append(session.getDatabase().quoteIdentifier(data.tableName))
+                    .append("(");
             // 最后一列是返回类型所以要减一
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 Column column = data.columns.get(i);
@@ -275,8 +277,8 @@ public class CreateService extends SchemaStatement {
 
             psBuff.append("        private final PreparedStatement ").append(psVarName).append(";\r\n");
             psInitBuff.append("            ").append(psVarName)
-                    .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ").append(serviceName)
-                    .append(" ").append(data.tableName).append("(");
+                    .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ")
+                    .append(serviceName).append(" ").append(data.tableName).append("(");
 
             // 最后一列是返回类型所以要减一
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
@@ -307,12 +309,13 @@ public class CreateService extends SchemaStatement {
                     proxyMethodBodyBuff.append("setString(").append(i + 1).append(", ").append(cName)
                             .append(".encode());\r\n");
                 } else {
-                    proxyMethodBodyBuff.append(getPreparedStatementSetterMethodName(cType)).append("(").append(i + 1)
-                            .append(", ");
+                    proxyMethodBodyBuff.append(getPreparedStatementSetterMethodName(cType)).append("(")
+                            .append(i + 1).append(", ");
                     if (cType.toUpperCase().equals("UUID")) {
                         importSet.add(UUID.class.getName());
                         importSet.add(ValueUuid.class.getName());
-                        proxyMethodBodyBuff.append("ValueUuid.get(").append(cName).append(").getBytes()");
+                        proxyMethodBodyBuff.append("ValueUuid.get(").append(cName)
+                                .append(").getBytes()");
                     } else {
                         proxyMethodBodyBuff.append(cName);
                     }
@@ -323,7 +326,8 @@ public class CreateService extends SchemaStatement {
             methodSignatureList.add(methodSignatureBuff);
 
             if (returnType.equals("void")) {
-                proxyMethodBodyBuff.append("                ").append(psVarName).append(".executeUpdate();\r\n");
+                proxyMethodBodyBuff.append("                ").append(psVarName)
+                        .append(".executeUpdate();\r\n");
             } else {
                 proxyMethodBodyBuff.append("                ResultSet rs = ").append(psVarName)
                         .append(".executeQuery();\r\n");
@@ -339,19 +343,20 @@ public class CreateService extends SchemaStatement {
                     if (returnType.toUpperCase().equals("UUID")) {
                         importSet.add(UUID.class.getName());
                         importSet.add(ValueUuid.class.getName());
-                        proxyMethodBodyBuff.append("ValueUuid.get(rs.").append(getResultSetReturnMethodName(returnType))
+                        proxyMethodBodyBuff.append("ValueUuid.get(rs.")
+                                .append(getResultSetReturnMethodName(returnType))
                                 .append("(1)).getUuid();\r\n");
                     } else {
-                        proxyMethodBodyBuff.append("rs.").append(getResultSetReturnMethodName(returnType))
-                                .append("(1);\r\n");
+                        proxyMethodBodyBuff.append("rs.")
+                                .append(getResultSetReturnMethodName(returnType)).append("(1);\r\n");
                     }
                     proxyMethodBodyBuff.append("                rs.close();\r\n");
                     proxyMethodBodyBuff.append("                return ret;\r\n");
                 }
             }
             proxyMethodBodyBuff.append("            } catch (Throwable e) {\r\n");
-            proxyMethodBodyBuff.append("                throw ClientServiceProxy.failed(\"").append(serviceName)
-                    .append('.').append(data.tableName).append("\", e);\r\n");
+            proxyMethodBodyBuff.append("                throw ClientServiceProxy.failed(\"")
+                    .append(serviceName).append('.').append(data.tableName).append("\", e);\r\n");
             proxyMethodBodyBuff.append("            }\r\n");
 
             proxyMethodBodyList.add(proxyMethodBodyBuff);
@@ -401,7 +406,8 @@ public class CreateService extends SchemaStatement {
 
         // 生成Service Proxy类
         buff.append("\r\n");
-        buff.append("    static class ServiceProxy implements ").append(serviceInterfaceName).append(" {\r\n");
+        buff.append("    static class ServiceProxy implements ").append(serviceInterfaceName)
+                .append(" {\r\n");
         buff.append("\r\n");
         buff.append(psBuff);
         buff.append("\r\n");
@@ -540,7 +546,8 @@ public class CreateService extends SchemaStatement {
                         String cType = getTypeName(c, importSet);
                         String cName = "p_" + toFieldName(c.getName()) + "_" + index;
 
-                        buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
+                        buff.append("            ").append(cType).append(" ").append(cName)
+                                .append(" = ");
                         genVarInitCode(buff, importSet, c, cType, i);
                         argsBuff.append(cName);
                     }
@@ -564,8 +571,8 @@ public class CreateService extends SchemaStatement {
             return buff;
         }
 
-        protected abstract void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
-                int cIndex);
+        protected abstract void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
+                String cType, int cIndex);
 
         protected void genReturnCode(StringBuilder buff, TreeSet<String> importSet, Column returnColumn,
                 String returnType, String resultVarName) {
@@ -587,8 +594,8 @@ public class CreateService extends SchemaStatement {
 
     private class ValueServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
         @Override
-        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
-                int cIndex) {
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
+                String cType, int cIndex) {
             if (c.getTable() != null) {
                 buff.append(cType).append(".decode(").append("methodArgs[").append(cIndex)
                         .append("].getString());\r\n");
@@ -604,7 +611,8 @@ public class CreateService extends SchemaStatement {
             buff.append("            if (").append(resultVarName).append(" == null)\r\n");
             buff.append("                return ValueNull.INSTANCE;\r\n");
             if (returnColumn.getTable() != null) {
-                buff.append("            return ValueString.get(").append(resultVarName).append(".encode());\r\n");
+                buff.append("            return ValueString.get(").append(resultVarName)
+                        .append(".encode());\r\n");
             } else {
                 buff.append("            return ").append(getReturnMethodName(returnType)).append("(")
                         .append(resultVarName).append(")").append(";\r\n");
@@ -619,29 +627,32 @@ public class CreateService extends SchemaStatement {
 
     private class MapServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
         @Override
-        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
-                int cIndex) {
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
+                String cType, int cIndex) {
             if (c.getTable() != null) {
-                buff.append(cType).append(".decode(").append("ServiceExecutor.toString(\"").append(c.getName())
-                        .append("\", methodArgs));\r\n");
+                buff.append(cType).append(".decode(").append("ServiceExecutor.toString(\"")
+                        .append(c.getName()).append("\", methodArgs));\r\n");
             } else {
                 switch (cType.toUpperCase()) {
                 case "STRING":
-                    buff.append("ServiceExecutor.toString(\"").append(c.getName()).append("\", methodArgs);\r\n");
+                    buff.append("ServiceExecutor.toString(\"").append(c.getName())
+                            .append("\", methodArgs);\r\n");
                     break;
                 case "BYTE[]":
-                    buff.append("ServiceExecutor.toBytes(\"").append(c.getName()).append("\", methodArgs);\r\n");
+                    buff.append("ServiceExecutor.toBytes(\"").append(c.getName())
+                            .append("\", methodArgs);\r\n");
                     break;
                 case "OBJECT":
                     buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
                     break;
                 case "ARRAY":
-                    buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"").append(c.getName())
-                            .append("\"));\r\n");
+                    buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"")
+                            .append(c.getName()).append("\"));\r\n");
                     break;
                 default:
-                    buff.append(getMapMethodName(cType)).append("(").append("ServiceExecutor.toString(\"")
-                            .append(c.getName()).append("\", methodArgs));\r\n");
+                    buff.append(getMapMethodName(cType)).append("(")
+                            .append("ServiceExecutor.toString(\"").append(c.getName())
+                            .append("\", methodArgs));\r\n");
                 }
             }
         }
@@ -649,8 +660,8 @@ public class CreateService extends SchemaStatement {
 
     private class JsonServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
         @Override
-        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
-                int cIndex) {
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
+                String cType, int cIndex) {
             buff.append(getJsonArrayMethodName(cType, cIndex)).append(";\r\n");
         }
     }
@@ -747,7 +758,8 @@ public class CreateService extends SchemaStatement {
         return toClassName(serviceName) + "Executor";
     }
 
-    public static void writeFile(String codePath, String packageName, String className, StringBuilder... buffArray) {
+    public static void writeFile(String codePath, String packageName, String className,
+            StringBuilder... buffArray) {
         String path = codePath;
         if (!path.endsWith(File.separator))
             path = path + File.separator;
@@ -758,7 +770,8 @@ public class CreateService extends SchemaStatement {
                 new File(path).mkdirs();
             }
             Charset utf8 = Charset.forName("UTF-8");
-            BufferedOutputStream file = new BufferedOutputStream(new FileOutputStream(path + className + ".java"));
+            BufferedOutputStream file = new BufferedOutputStream(
+                    new FileOutputStream(path + className + ".java"));
             for (StringBuilder buff : buffArray) {
                 file.write(buff.toString().getBytes(utf8));
             }

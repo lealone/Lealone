@@ -108,7 +108,8 @@ public class ClientSQLCommand implements SQLCommand {
             if (rowCount < 0)
                 result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount, fetch);
             else
-                result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount, fetch);
+                result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount,
+                        fetch);
         } catch (IOException e) {
             throw DbException.convert(e);
         }

@@ -24,7 +24,8 @@ public class IndexTest extends DbObjectTestBase {
         executeUpdate("DROP TABLE IF EXISTS CreateIndexTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS CreateIndexTest (f1 int NOT NULL, f2 int, f3 int)");
 
-        executeUpdate("CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TestTempTable1 (f1 int NOT NULL, f2 int, f3 int)");
+        executeUpdate(
+                "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TestTempTable1 (f1 int NOT NULL, f2 int, f3 int)");
         executeUpdate("CREATE INDEX IF NOT EXISTS TestTempTableIndex1 ON TestTempTable1(f1)");
 
         Table table = schema.findTableOrView(session, "TestTempTable1");

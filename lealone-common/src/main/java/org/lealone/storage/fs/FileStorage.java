@@ -39,7 +39,8 @@ public class FileStorage {
     /**
      * The magic file header.
      */
-    private static final String HEADER = "-- H2 0.5/B --      ".substring(0, Constants.FILE_BLOCK_SIZE - 1) + "\n";
+    private static final String HEADER = "-- H2 0.5/B --      ".substring(0,
+            Constants.FILE_BLOCK_SIZE - 1) + "\n";
 
     /**
      * The file name.
@@ -173,7 +174,8 @@ public class FileStorage {
      * @param key the encryption key
      * @return the created object
      */
-    public static FileStorage open(DataHandler handler, String name, String mode, String cipher, byte[] key) {
+    public static FileStorage open(DataHandler handler, String name, String mode, String cipher,
+            byte[] key) {
         return open(handler, name, mode, cipher, key, Constants.ENCRYPTION_KEY_HASH_ITERATIONS);
     }
 
@@ -188,8 +190,8 @@ public class FileStorage {
      * @param keyIterations the number of iterations the key should be hashed
      * @return the created object
      */
-    public static FileStorage open(DataHandler handler, String name, String mode, String cipher, byte[] key,
-            int keyIterations) {
+    public static FileStorage open(DataHandler handler, String name, String mode, String cipher,
+            byte[] key, int keyIterations) {
         FileStorage store;
         if (cipher == null) {
             store = new FileStorage(handler, name, mode);
@@ -431,7 +433,8 @@ public class FileStorage {
             if (SysProperties.CHECK2) {
                 len = file.size();
                 if (len != fileLength) {
-                    DbException.throwInternalError("file " + name + " length " + len + " expected " + fileLength);
+                    DbException.throwInternalError(
+                            "file " + name + " length " + len + " expected " + fileLength);
                 }
             }
             if (SysProperties.CHECK2 && len % Constants.FILE_BLOCK_SIZE != 0) {
@@ -642,17 +645,17 @@ public class FileStorage {
                     fileLock = file.tryLock();
                 }
             } catch (OverlappingFileLockException e) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_LOCKED, "The file is locked: {0}",
-                        fileName, e);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_LOCKED,
+                        "The file is locked: {0}", fileName, e);
             }
             if (fileLock == null) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_LOCKED, "The file is locked: {0}",
-                        fileName);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_LOCKED,
+                        "The file is locked: {0}", fileName);
             }
             fileSize = file.size();
         } catch (IOException e) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED, "Could not open file {0}",
-                    fileName, e);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
+                    "Could not open file {0}", fileName, e);
         }
     }
 
@@ -669,8 +672,8 @@ public class FileStorage {
             if (file != null)
                 file.close();
         } catch (Exception e) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "Closing failed for file {0}",
-                    fileName, e);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
+                    "Closing failed for file {0}", fileName, e);
         } finally {
             file = null;
         }
@@ -684,8 +687,8 @@ public class FileStorage {
             file.force(true);
         } catch (IOException e) {
             closeFileSilently();
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "Could not sync file {0}",
-                    fileName, e);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
+                    "Could not sync file {0}", fileName, e);
         }
     }
 

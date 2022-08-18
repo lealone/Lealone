@@ -41,8 +41,8 @@ public abstract class ClientResult implements Result {
     protected int rowId, rowOffset;
     protected ArrayList<Value[]> result;
 
-    public ClientResult(ClientSession session, TransferInputStream in, int resultId, int columnCount, int rowCount,
-            int fetchSize) throws IOException {
+    public ClientResult(ClientSession session, TransferInputStream in, int resultId, int columnCount,
+            int rowCount, int fetchSize) throws IOException {
         this.session = session;
         this.in = in;
         this.resultId = resultId;
@@ -171,7 +171,8 @@ public abstract class ClientResult implements Result {
     protected void sendFetch(int fetchSize) throws IOException {
         // 释放buffer
         in.closeInputStream();
-        ResultFetchRowsAck ack = session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).get();
+        ResultFetchRowsAck ack = session
+                .<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).get();
         in = (TransferInputStream) ack.in;
     }
 
@@ -186,7 +187,8 @@ public abstract class ClientResult implements Result {
             return;
         }
         try {
-            if (resultId > 0 && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
+            if (resultId > 0
+                    && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.send(new ResultChangeId(resultId, newId));

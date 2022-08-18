@@ -12,7 +12,8 @@ public class ConstraintUniqueTest extends ConstraintTestBase {
 
     private void init() {
         executeUpdate("DROP TABLE IF EXISTS mytable");
-        executeUpdate("CREATE TABLE IF NOT EXISTS mytable (f1 int not null, f2 int not null, f3 int null)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS mytable (f1 int not null, f2 int not null, f3 int null)");
     }
 
     @Test

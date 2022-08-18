@@ -165,5 +165,6 @@ public interface Session extends Closeable {
 
     <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler);
 
-    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId, AckPacketHandler<R, P> ackPacketHandler);
+    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler);
 }

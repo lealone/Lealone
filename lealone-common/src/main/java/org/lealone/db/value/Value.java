@@ -445,7 +445,8 @@ public abstract class Value implements Comparable<Value> {
     }
 
     public Clob getClob() {
-        return new ReadonlyClob(ValueLob.createSmallLob(Value.CLOB, getString().getBytes(Constants.UTF8)));
+        return new ReadonlyClob(
+                ValueLob.createSmallLob(Value.CLOB, getString().getBytes(Constants.UTF8)));
     }
 
     public Array getArray() {
@@ -754,20 +755,14 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes
-                            .getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16),
+                            (byte) (x >> 8), (byte) x });
                 }
                 case LONG: {
                     long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[] {
-                            (byte) (x >> 56),
-                            (byte) (x >> 48),
-                            (byte) (x >> 40),
-                            (byte) (x >> 32),
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 56), (byte) (x >> 48),
+                            (byte) (x >> 40), (byte) (x >> 32), (byte) (x >> 24), (byte) (x >> 16),
+                            (byte) (x >> 8), (byte) x });
                 }
                 }
                 break;
@@ -803,8 +798,8 @@ public abstract class Value implements Comparable<Value> {
                 if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes")
                         || s.equalsIgnoreCase("y")) {
                     return ValueBoolean.get(true);
-                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f") || s.equalsIgnoreCase("no")
-                        || s.equalsIgnoreCase("n")) {
+                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f")
+                        || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("n")) {
                     return ValueBoolean.get(false);
                 } else {
                     // convert to a number, and if it is not 0 then it is true
@@ -1088,8 +1083,8 @@ public abstract class Value implements Comparable<Value> {
 
     public ResultSet getResultSet() {
         SimpleResultSet rs = new SimpleResultSet();
-        rs.addColumn("X", DataType.convertTypeToSQLType(getType()), MathUtils.convertLongToInt(getPrecision()),
-                getScale());
+        rs.addColumn("X", DataType.convertTypeToSQLType(getType()),
+                MathUtils.convertLongToInt(getPrecision()), getScale());
         rs.addRow(getObject());
         return rs;
     }

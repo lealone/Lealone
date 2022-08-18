@@ -72,8 +72,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     private Page root;
 
-    public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
-            AOStorage aoStorage) {
+    public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Map<String, Object> config, AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
         // 只要包含就为true

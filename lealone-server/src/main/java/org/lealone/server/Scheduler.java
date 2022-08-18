@@ -40,8 +40,9 @@ import org.lealone.storage.page.PageOperationHandlerBase;
 import org.lealone.transaction.RedoLogSyncListener;
 import org.lealone.transaction.Transaction;
 
-public class Scheduler extends PageOperationHandlerBase implements Runnable, SQLStatementExecutor, AsyncTaskHandler,
-        Transaction.Listener, PageOperation.ListenerFactory<Object>, RedoLogSyncListener {
+public class Scheduler extends PageOperationHandlerBase
+        implements Runnable, SQLStatementExecutor, AsyncTaskHandler, Transaction.Listener,
+        PageOperation.ListenerFactory<Object>, RedoLogSyncListener {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -193,7 +194,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     }
 
     @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit) {
+    public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay,
+            TimeUnit unit) {
         return ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(task, initialDelay, delay, unit);
     }
 

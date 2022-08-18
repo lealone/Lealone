@@ -155,7 +155,8 @@ public abstract class LocalPage extends Page {
             int mem = memory;
             recalculateMemory();
             if (mem != memory) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Memory calculation error");
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
+                        "Memory calculation error");
             }
         }
         return memory;
@@ -261,5 +262,6 @@ public abstract class LocalPage extends Page {
         }
     }
 
-    protected abstract void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info);
+    protected abstract void getPrettyPageInfoRecursive(StringBuilder buff, String indent,
+            PrettyPageInfo info);
 }

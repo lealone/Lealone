@@ -72,12 +72,14 @@ public class TransferOutputStream implements NetOutputStream {
         return this;
     }
 
-    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType) throws IOException {
+    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType)
+            throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
         return this;
     }
 
-    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType) throws IOException {
+    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType)
+            throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
         return this;
     }
@@ -352,7 +354,8 @@ public class TransferOutputStream implements NetOutputStream {
             if (type == Value.BLOB) {
                 long written = IOUtils.copyAndCloseInput(v.getInputStream(), out);
                 if (written != length) {
-                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length:" + length + " written:" + written);
+                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                            "length:" + length + " written:" + written);
                 }
             } else {
                 Reader reader = v.getReader();

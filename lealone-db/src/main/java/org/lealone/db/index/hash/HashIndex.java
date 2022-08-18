@@ -23,7 +23,8 @@ public abstract class HashIndex extends IndexBase {
      */
     protected final int indexColumn;
 
-    protected HashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
+    protected HashIndex(Table table, int id, String indexName, IndexType indexType,
+            IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
         this.indexColumn = columns[0].column.getColumnId();
         reset();

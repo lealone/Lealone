@@ -102,8 +102,8 @@ public class CreateSequence extends SchemaStatement {
         Long cache = getLong(cacheSize);
         Long min = getLong(minValue);
         Long max = getLong(maxValue);
-        Sequence sequence = new Sequence(schema, id, sequenceName, startValue, inc, cache, min, max, cycle,
-                belongsToTable);
+        Sequence sequence = new Sequence(schema, id, sequenceName, startValue, inc, cache, min, max,
+                cycle, belongsToTable);
         schema.add(session, sequence, lock);
         return 0;
     }

@@ -28,7 +28,8 @@ public class UniqueHashIndex extends HashIndex {
 
     private ValueHashMap<Long> rows;
 
-    public UniqueHashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
+    public UniqueHashIndex(Table table, int id, String indexName, IndexType indexType,
+            IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
         reset();
     }

@@ -34,7 +34,8 @@ public class JdbcClobTest extends ClientTestBase {
         // 从1开始
         clob.setString(1, clobStr);
 
-        PreparedStatement ps = conn.prepareStatement("INSERT INTO JdbcClobTest(f1, f2, f3) VALUES(1, 2, ?)");
+        PreparedStatement ps = conn
+                .prepareStatement("INSERT INTO JdbcClobTest(f1, f2, f3) VALUES(1, 2, ?)");
         ps.setClob(1, clob);
         ps.executeUpdate();
 

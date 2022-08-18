@@ -136,8 +136,8 @@ public class LeafPage extends LocalPage {
         if (ASSERT) {
             long check = keys.length;
             if (check != totalCount) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check,
-                        totalCount);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
+                        "Expected: {0} got: {1}", check, totalCount);
             }
         }
         return totalCount;
@@ -201,7 +201,8 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         int mode = buff.get(buff.position() + 4);
         switch (PageStorageMode.values()[mode]) {
         case COLUMN_STORAGE:
@@ -453,7 +454,8 @@ public class LeafPage extends LocalPage {
         return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, 0, PageUtils.PAGE_MEMORY);
     }
 
-    static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
+    static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount,
+            int memory) {
         LeafPage p = new LeafPage(map);
         // the position is 0
         p.keys = keys;

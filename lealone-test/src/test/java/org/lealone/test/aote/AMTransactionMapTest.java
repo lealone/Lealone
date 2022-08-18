@@ -174,31 +174,36 @@ public class AMTransactionMapTest extends AoteTestBase {
         oldValue = map1.getTransactionalValue(key);
         columnIndex = 0;
         vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
+        ok = map1.tryUpdate(key, vv, new int[] { columnIndex },
+                oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map2.getTransactionalValue(key);
         columnIndex = 1;
         vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
+        ok = map2.tryUpdate(key, vv, new int[] { columnIndex },
+                oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map1.getTransactionalValue(key);
         columnIndex = 2;
         vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
+        ok = map1.tryUpdate(key, vv, new int[] { columnIndex },
+                oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map2.getTransactionalValue(key);
         columnIndex = 3;
         vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
+        ok = map2.tryUpdate(key, vv, new int[] { columnIndex },
+                oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map3.getTransactionalValue(key);
         columnIndex = 3;
         vv = createVersionedValue(map3, key, columnIndex, 1);
-        ok = map3.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) != Transaction.OPERATION_COMPLETE;
+        ok = map3.tryUpdate(key, vv, new int[] { columnIndex },
+                oldValue) != Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         t2.rollback();
@@ -213,8 +218,8 @@ public class AMTransactionMapTest extends AoteTestBase {
         return ValueArray.get(a);
     }
 
-    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key, int columnIndex,
-            int value) {
+    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key,
+            int columnIndex, int value) {
         VersionedValue vv = map.get(key);
         Value[] values = vv.value.getList().clone();
         values[columnIndex] = ValueInt.get(value);

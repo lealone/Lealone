@@ -68,12 +68,13 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
 
-    JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency) {
+    JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType,
+            int resultSetConcurrency) {
         this(conn, sql, id, resultSetType, resultSetConcurrency, false);
     }
 
-    JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency,
-            boolean closedByResultSet) {
+    JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType,
+            int resultSetConcurrency, boolean closedByResultSet) {
         super(conn, id, resultSetType, resultSetConcurrency, closedByResultSet);
         trace = conn.getTrace(TraceObjectType.PREPARED_STATEMENT, id);
         command = conn.prepareSQLCommand(sql, fetchSize);
@@ -123,7 +124,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private Future<ResultSet> executeQueryInternal(boolean sync) throws SQLException {
         int id = getNextTraceId(TraceObjectType.RESULT_SET);
         if (isDebugEnabled()) {
-            debugCodeAssign(TraceObjectType.RESULT_SET, id, sync ? "executeQuery()" : "executeQueryAsync()");
+            debugCodeAssign(TraceObjectType.RESULT_SET, id,
+                    sync ? "executeQuery()" : "executeQueryAsync()");
         }
         checkClosed();
         closeOldResultSet();
@@ -135,8 +137,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (ar.isSucceeded()) {
                 Result r = ar.getResult();
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id, closedByResultSet,
-                        scrollable, updatable, cachedColumnLabelMap);
+                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
+                        closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
                 // resultSet.setCommand(command); //不能这样做，command是被重用的
                 ac.setAsyncResult(resultSet);
             } else {
@@ -740,7 +742,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      * @throws SQLException if this object is closed
      */
     @Override
-    public void setObject(int parameterIndex, Object x, int targetSqlType, int scale) throws SQLException {
+    public void setObject(int parameterIndex, Object x, int targetSqlType, int scale)
+            throws SQLException {
         try {
             if (isDebugEnabled()) {
                 debugCode("setObject(" + parameterIndex + ", x, " + targetSqlType + ", " + scale + ");");
@@ -933,7 +936,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      * @throws SQLException if this object is closed
      */
     @Override
-    public void setTimestamp(int parameterIndex, java.sql.Timestamp x, Calendar calendar) throws SQLException {
+    public void setTimestamp(int parameterIndex, java.sql.Timestamp x, Calendar calendar)
+            throws SQLException {
         try {
             if (isDebugEnabled()) {
                 debugCode("setTimestamp(" + parameterIndex + ", " + quoteTimestamp(x) + ", calendar);");
@@ -1312,7 +1316,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 debugCodeAssign(TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
             }
             String catalog = conn.getCatalog();
-            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(conn, catalog, this, null, result, id);
+            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(conn, catalog, this, null, result,
+                    id);
             return meta;
         } catch (Exception e) {
             throw logAndConvert(e);

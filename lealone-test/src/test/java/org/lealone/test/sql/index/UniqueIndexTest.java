@@ -14,7 +14,8 @@ public class UniqueIndexTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         executeUpdate("DROP TABLE IF EXISTS UniqueIndexTest");
-        executeUpdate("CREATE TABLE IF NOT EXISTS UniqueIndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS UniqueIndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
 
         executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
         executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(200, 20, 'b')");

@@ -23,7 +23,8 @@ public class FileStorageOutputStream extends OutputStream {
     private final CompressTool compress;
     private final byte[] buffer = { 0 };
 
-    public FileStorageOutputStream(FileStorage fileStorage, DataHandler handler, String compressionAlgorithm) {
+    public FileStorageOutputStream(FileStorage fileStorage, DataHandler handler,
+            String compressionAlgorithm) {
         this.fileStorage = fileStorage;
         if (compressionAlgorithm != null) {
             this.compress = CompressTool.getInstance();

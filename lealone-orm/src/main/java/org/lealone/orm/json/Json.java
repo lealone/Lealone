@@ -186,8 +186,8 @@ public abstract class Json {
                     return true;
                 }
             }
-            if (thisValue instanceof Integer || thisValue instanceof Long || otherValue instanceof Integer
-                    || otherValue instanceof Long) {
+            if (thisValue instanceof Integer || thisValue instanceof Long
+                    || otherValue instanceof Integer || otherValue instanceof Long) {
                 // compare as integer long
                 if (n1.longValue() == n2.longValue()) {
                     // same value check the next entry

@@ -366,7 +366,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getAlias(int i) {
-        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[0] : expressions[i].getAlias();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[0]
+                : expressions[i].getAlias();
     }
 
     @Override
@@ -386,7 +387,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getColumnName(int i) {
-        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1] : expressions[i].getColumnName();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1]
+                : expressions[i].getColumnName();
     }
 
     @Override
@@ -449,7 +451,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String toString() {
-        return super.toString() + " columns: " + visibleColumnCount + " rows: " + rowCount + " pos: " + rowId;
+        return super.toString() + " columns: " + visibleColumnCount + " rows: " + rowCount + " pos: "
+                + rowId;
     }
 
     /**
@@ -479,7 +482,8 @@ public class LocalResult implements Result, ResultTarget {
      * @param maxRows the maximum number of rows to read (0 for no limit)
      * @return the local result set
      */
-    public static LocalResult read(ServerSession session, IExpression[] cols, ResultSet rs, int maxRows) {
+    public static LocalResult read(ServerSession session, IExpression[] cols, ResultSet rs,
+            int maxRows) {
         int columnCount = cols.length;
         LocalResult result = new LocalResult(session, cols, columnCount);
         try {

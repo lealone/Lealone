@@ -29,8 +29,9 @@ public abstract class YieldableConditionUpdateBase extends YieldableLoopUpdateBa
     protected boolean hasNext;
     protected Row oldRow;
 
-    public YieldableConditionUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler,
-            TableFilter tableFilter, Expression limitExpr, Expression condition) {
+    public YieldableConditionUpdateBase(StatementBase statement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler, TableFilter tableFilter,
+            Expression limitExpr, Expression condition) {
         super(statement, asyncHandler);
         this.tableFilter = tableFilter;
         table = tableFilter.getTable();

@@ -60,14 +60,17 @@ public class PacketDecoders {
 
         register(PacketType.PREPARED_STATEMENT_PREPARE, PreparedStatementPrepare.decoder);
         register(PacketType.PREPARED_STATEMENT_PREPARE_ACK, PreparedStatementPrepareAck.decoder);
-        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS, PreparedStatementPrepareReadParams.decoder);
-        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK, PreparedStatementPrepareReadParamsAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS,
+                PreparedStatementPrepareReadParams.decoder);
+        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK,
+                PreparedStatementPrepareReadParamsAck.decoder);
         register(PacketType.PREPARED_STATEMENT_QUERY, PreparedStatementQuery.decoder);
         // register(PacketType.PREPARED_STATEMENT_QUERY_ACK, PreparedStatementQueryAck.decoder);
         register(PacketType.PREPARED_STATEMENT_UPDATE, PreparedStatementUpdate.decoder);
         // register(PacketType.PREPARED_STATEMENT_UPDATE_ACK, PreparedStatementUpdateAck.decoder);
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
-        register(PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK,
+                PreparedStatementGetMetaDataAck.decoder);
         register(PacketType.PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
 
         register(PacketType.STATEMENT_QUERY, StatementQuery.decoder);

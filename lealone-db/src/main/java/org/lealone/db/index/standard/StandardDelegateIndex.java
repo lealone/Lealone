@@ -30,8 +30,8 @@ public class StandardDelegateIndex extends StandardIndex {
 
     private final StandardPrimaryIndex mainIndex;
 
-    public StandardDelegateIndex(StandardPrimaryIndex mainIndex, StandardTable table, int id, String name,
-            IndexType indexType) {
+    public StandardDelegateIndex(StandardPrimaryIndex mainIndex, StandardTable table, int id,
+            String name, IndexType indexType) {
         super(table, id, name, indexType,
                 IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) }));
         this.mainIndex = mainIndex;

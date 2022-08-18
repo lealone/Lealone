@@ -40,11 +40,12 @@ public class NumericFunction extends BuiltInFunction {
     public static void init() {
     }
 
-    public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6, BITXOR = 7,
-            CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14, LOG10 = 15, MOD = 16, PI = 17,
-            POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21, ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25, TAN = 26,
-            TRUNCATE = 27, SECURE_RAND = 28, HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32, EXPAND = 33,
-            ZERO = 34, RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
+    public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6,
+            BITXOR = 7, CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14,
+            LOG10 = 15, MOD = 16, PI = 17, POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21,
+            ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25, TAN = 26, TRUNCATE = 27, SECURE_RAND = 28,
+            HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32, EXPAND = 33, ZERO = 34,
+            RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
 
     static {
         addFunction("ABS", ABS, 1, Value.NULL);
@@ -317,17 +318,20 @@ public class NumericFunction extends BuiltInFunction {
             result = ValueBytes.getNoCopy(getHash(v0.getString(), v1.getBytesNoCopy(), v2.getInt()));
             break;
         case ENCRYPT:
-            result = ValueBytes.getNoCopy(encrypt(v0.getString(), v1.getBytesNoCopy(), v2.getBytesNoCopy()));
+            result = ValueBytes
+                    .getNoCopy(encrypt(v0.getString(), v1.getBytesNoCopy(), v2.getBytesNoCopy()));
             break;
         case DECRYPT:
-            result = ValueBytes.getNoCopy(decrypt(v0.getString(), v1.getBytesNoCopy(), v2.getBytesNoCopy()));
+            result = ValueBytes
+                    .getNoCopy(decrypt(v0.getString(), v1.getBytesNoCopy(), v2.getBytesNoCopy()));
             break;
         case COMPRESS: {
             String algorithm = null;
             if (v1 != null) {
                 algorithm = v1.getString();
             }
-            result = ValueBytes.getNoCopy(CompressTool.getInstance().compress(v0.getBytesNoCopy(), algorithm));
+            result = ValueBytes
+                    .getNoCopy(CompressTool.getInstance().compress(v0.getBytesNoCopy(), algorithm));
             break;
         }
         default:

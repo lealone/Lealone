@@ -68,8 +68,8 @@ public class FunctionAlias extends SchemaObjectBase {
      * @param bufferResultSetToLocalTemp whether the result should be buffered
      * @return the database object
      */
-    public static FunctionAlias newInstance(Schema schema, int id, String name, String javaClassMethod, boolean force,
-            boolean bufferResultSetToLocalTemp) {
+    public static FunctionAlias newInstance(Schema schema, int id, String name, String javaClassMethod,
+            boolean force, boolean bufferResultSetToLocalTemp) {
         FunctionAlias alias = new FunctionAlias(schema, id, name);
         int paren = javaClassMethod.indexOf('(');
         int lastDot = javaClassMethod.lastIndexOf('.', paren < 0 ? javaClassMethod.length() : paren);
@@ -94,8 +94,8 @@ public class FunctionAlias extends SchemaObjectBase {
      * @param bufferResultSetToLocalTemp whether the result should be buffered
      * @return the database object
      */
-    public static FunctionAlias newInstanceFromSource(Schema schema, int id, String name, String source, boolean force,
-            boolean bufferResultSetToLocalTemp) {
+    public static FunctionAlias newInstanceFromSource(Schema schema, int id, String name, String source,
+            boolean force, boolean bufferResultSetToLocalTemp) {
         FunctionAlias alias = new FunctionAlias(schema, id, name);
         alias.source = source;
         alias.bufferResultSetToLocalTemp = bufferResultSetToLocalTemp;
@@ -156,15 +156,16 @@ public class FunctionAlias extends SchemaObjectBase {
                 JavaMethod javaMethod = new JavaMethod(m, i);
                 for (JavaMethod old : list) {
                     if (old.getParameterCount() == javaMethod.getParameterCount()) {
-                        throw DbException.get(ErrorCode.METHODS_MUST_HAVE_DIFFERENT_PARAMETER_COUNTS_2, old.toString(),
-                                javaMethod.toString());
+                        throw DbException.get(ErrorCode.METHODS_MUST_HAVE_DIFFERENT_PARAMETER_COUNTS_2,
+                                old.toString(), javaMethod.toString());
                     }
                 }
                 list.add(javaMethod);
             }
         }
         if (list.isEmpty()) {
-            throw DbException.get(ErrorCode.PUBLIC_STATIC_JAVA_METHOD_NOT_FOUND_1, methodName + " (" + className + ")");
+            throw DbException.get(ErrorCode.PUBLIC_STATIC_JAVA_METHOD_NOT_FOUND_1,
+                    methodName + " (" + className + ")");
         }
         javaMethods = new JavaMethod[list.size()];
         list.toArray(javaMethods);
@@ -408,7 +409,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 } else if (v.getType() == Value.ARRAY && paramClass.isArray()
                         && paramClass.getComponentType() != Object.class) {
                     Value[] array = ((ValueArray) v).getList();
-                    Object[] objArray = (Object[]) Array.newInstance(paramClass.getComponentType(), array.length);
+                    Object[] objArray = (Object[]) Array.newInstance(paramClass.getComponentType(),
+                            array.length);
                     int componentType = DataType.getTypeFromClass(paramClass.getComponentType());
                     for (int i = 0; i < objArray.length; i++) {
                         objArray[i] = array[i].convertTo(componentType).getObject();
@@ -553,7 +555,8 @@ public class FunctionAlias extends SchemaObjectBase {
             throw DbException.convert(e);
         }
         if (v.getType() == Value.JAVA_OBJECT) {
-            Object o = SysProperties.SERIALIZE_JAVA_OBJECT ? Utils.deserialize(v.getBytes()) : v.getObject();
+            Object o = SysProperties.SERIALIZE_JAVA_OBJECT ? Utils.deserialize(v.getBytes())
+                    : v.getObject();
             if (paramClass.isAssignableFrom(o.getClass())) {
                 return o;
             }

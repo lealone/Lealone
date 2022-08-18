@@ -80,7 +80,8 @@ public class AllModelProperty extends Model<AllModelProperty> {
         f19 = new PClob<>("F19", this);
         f20 = new PUuid<>("F20", this);
         f21 = new PArray<>("F21", this);
-        super.setModelProperties(new ModelProperty[] { f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21 });
+        super.setModelProperties(new ModelProperty[] { f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
+                f13, f14, f15, f16, f17, f18, f19, f20, f21 });
     }
 
     @Override

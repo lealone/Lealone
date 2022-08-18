@@ -32,7 +32,8 @@ public class NonUniqueHashIndex extends HashIndex {
     private ValueHashMap<ArrayList<Long>> rows;
     private long rowCount;
 
-    public NonUniqueHashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
+    public NonUniqueHashIndex(Table table, int id, String indexName, IndexType indexType,
+            IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
         reset();
     }

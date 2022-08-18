@@ -64,7 +64,8 @@ public class ValueDecimal extends Value {
         if (value == null) {
             throw new IllegalArgumentException();
         } else if (!value.getClass().equals(BigDecimal.class)) {
-            throw DbException.get(ErrorCode.INVALID_CLASS_2, BigDecimal.class.getName(), value.getClass().getName());
+            throw DbException.get(ErrorCode.INVALID_CLASS_2, BigDecimal.class.getName(),
+                    value.getClass().getName());
         }
         this.value = value;
     }
@@ -98,7 +99,8 @@ public class ValueDecimal extends Value {
         if (dec.value.signum() == 0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        BigDecimal bd = value.divide(dec.value, value.scale() + DIVIDE_SCALE_ADD, RoundingMode.HALF_DOWN);
+        BigDecimal bd = value.divide(dec.value, value.scale() + DIVIDE_SCALE_ADD,
+                RoundingMode.HALF_DOWN);
         if (bd.signum() == 0) {
             bd = BigDecimal.ZERO;
         } else if (bd.scale() > 0) {

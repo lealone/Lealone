@@ -50,7 +50,8 @@ public class RangeTable extends Table {
         setColumns(cols);
     }
 
-    public RangeTable(Schema schema, IExpression min, IExpression max, IExpression step, boolean noColumns) {
+    public RangeTable(Schema schema, IExpression min, IExpression max, IExpression step,
+            boolean noColumns) {
         this(schema, min, max, noColumns);
         this.step = step;
     }

@@ -42,12 +42,14 @@ public class DateTimeUtils {
     private static final int SHIFT_YEAR = 9;
     private static final int SHIFT_MONTH = 5;
 
-    private static final int[] NORMAL_DAYS_PER_MONTH = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    private static final int[] NORMAL_DAYS_PER_MONTH = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30,
+            31 };
 
     /**
      * Offsets of month within a year, starting with March, April,...
      */
-    private static final int[] DAYS_OFFSET = { 0, 31, 61, 92, 122, 153, 184, 214, 245, 275, 306, 337, 366 };
+    private static final int[] DAYS_OFFSET = { 0, 31, 61, 92, 122, 153, 184, 214, 245, 275, 306, 337,
+            366 };
 
     private static int zoneOffset;
     private static Calendar cachedCalendar;
@@ -92,8 +94,8 @@ public class DateTimeUtils {
         cal.clear();
         cal.setLenient(true);
         long dateValue = d.getDateValue();
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue),
-                0, 0, 0, 0);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
+                dayFromDateValue(dateValue), 0, 0, 0, 0);
         long ms = cal.getTimeInMillis();
         return new Date(ms);
     }
@@ -152,8 +154,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue),
-                (int) h, (int) m, (int) s, (int) millis);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
+                dayFromDateValue(dateValue), (int) h, (int) m, (int) s, (int) millis);
         long ms = cal.getTimeInMillis();
         Timestamp x = new Timestamp(ms);
         x.setNanos((int) (nanos + millis * 1000000));
@@ -336,8 +338,8 @@ public class DateTimeUtils {
      * @param millis the number of milliseconds
      * @return the number of milliseconds (UTC)
      */
-    public static long getMillis(TimeZone tz, int year, int month, int day, int hour, int minute, int second,
-            int millis) {
+    public static long getMillis(TimeZone tz, int year, int month, int day, int hour, int minute,
+            int second, int millis) {
         try {
             return getTimeTry(false, tz, year, month, day, hour, minute, second, millis);
         } catch (IllegalArgumentException e) {
@@ -370,8 +372,8 @@ public class DateTimeUtils {
         }
     }
 
-    private static long getTimeTry(boolean lenient, TimeZone tz, int year, int month, int day, int hour, int minute,
-            int second, int millis) {
+    private static long getTimeTry(boolean lenient, TimeZone tz, int year, int month, int day, int hour,
+            int minute, int second, int millis) {
         Calendar c;
         if (tz == null) {
             c = getCalendar();
@@ -386,8 +388,8 @@ public class DateTimeUtils {
         }
     }
 
-    private static void setCalendarFields(Calendar cal, int year, int month, int day, int hour, int minute, int second,
-            int millis) {
+    private static void setCalendarFields(Calendar cal, int year, int month, int day, int hour,
+            int minute, int second, int millis) {
         if (year <= 0) {
             cal.set(Calendar.ERA, GregorianCalendar.BC);
             cal.set(Calendar.YEAR, 1 - year);
@@ -534,7 +536,8 @@ public class DateTimeUtils {
      * @param timeZone the timezone
      * @return the formatted date
      */
-    public static String formatDateTime(java.util.Date date, String format, String locale, String timeZone) {
+    public static String formatDateTime(java.util.Date date, String format, String locale,
+            String timeZone) {
         SimpleDateFormat dateFormat = getDateFormat(format, locale, timeZone);
         synchronized (dateFormat) {
             return dateFormat.format(date);
@@ -550,7 +553,8 @@ public class DateTimeUtils {
      * @param timeZone the timeZone
      * @return the parsed date
      */
-    public static java.util.Date parseDateTime(String date, String format, String locale, String timeZone) {
+    public static java.util.Date parseDateTime(String date, String format, String locale,
+            String timeZone) {
         SimpleDateFormat dateFormat = getDateFormat(format, locale, timeZone);
         try {
             synchronized (dateFormat) {
@@ -621,8 +625,8 @@ public class DateTimeUtils {
      * @return the date
      */
     public static Date convertDateValueToDate(long dateValue) {
-        long millis = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue), monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue), 0, 0, 0, 0);
+        long millis = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue),
+                monthFromDateValue(dateValue), dayFromDateValue(dateValue), 0, 0, 0, 0);
         return new Date(millis);
     }
 
@@ -643,8 +647,9 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        long ms = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue), monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue), (int) h, (int) m, (int) s, 0);
+        long ms = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue),
+                monthFromDateValue(dateValue), dayFromDateValue(dateValue), (int) h, (int) m, (int) s,
+                0);
         Timestamp ts = new Timestamp(ms);
         ts.setNanos((int) (nanos + millis * 1000000));
         return ts;
@@ -665,7 +670,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        long ms = getMillis(TimeZone.getDefault(), 1970, 1, 1, (int) (h % 24), (int) m, (int) s, (int) millis);
+        long ms = getMillis(TimeZone.getDefault(), 1970, 1, 1, (int) (h % 24), (int) m, (int) s,
+                (int) millis);
         return new Time(ms);
     }
 

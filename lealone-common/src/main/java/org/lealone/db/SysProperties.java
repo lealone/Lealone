@@ -64,7 +64,8 @@ public class SysProperties {
      * System property <code>java.specification.version</code>.<br />
      * It is set by the system. Examples: 1.4, 1.5, 1.6.
      */
-    public static final String JAVA_SPECIFICATION_VERSION = Utils.getProperty("java.specification.version", "1.4");
+    public static final String JAVA_SPECIFICATION_VERSION = Utils
+            .getProperty("java.specification.version", "1.4");
 
     /**
      * System property <code>line.separator</code> (default: \n).<br />
@@ -100,7 +101,8 @@ public class SysProperties {
      * System property <code>client.trace.directory</code> (default: trace.db/).<br />
      * Directory where the trace files of the JDBC client are stored (only for client / server).
      */
-    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory", "trace.db");
+    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory",
+            "trace.db");
 
     /**
      * System property <code>collator.cache.size</code> (default: 32000).<br />
@@ -113,7 +115,8 @@ public class SysProperties {
      * System property <code>datasource.trace.level</code> (default: 1).<br />
      * The trace level of the data source implementation. Default is 1 for error.
      */
-    public static final int DATASOURCE_TRACE_LEVEL = getProperty("datasource.trace.level", TraceSystem.ERROR);
+    public static final int DATASOURCE_TRACE_LEVEL = getProperty("datasource.trace.level",
+            TraceSystem.ERROR);
 
     /**
      * System property <code>delay.wrong.password.min</code> (default: 250).<br />
@@ -151,7 +154,8 @@ public class SysProperties {
      * The maximum size of a LOB object to keep in memory on the client side
      * when using the server mode.
      */
-    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = getProperty("lob.client.max.size.memory", 1024 * 1024);
+    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = getProperty("lob.client.max.size.memory",
+            1024 * 1024);
 
     /**
      * System property <code>max.file.retry</code> (default: 16).<br />
@@ -196,14 +200,16 @@ public class SysProperties {
      * System property <code>object.cache.max.per.element.size</code> (default: 4096).<br />
      * The maximum size (precision) of an object in the cache.
      */
-    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = getProperty("object.cache.max.per.element.size", 4096);
+    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = getProperty(
+            "object.cache.max.per.element.size", 4096);
 
     /**
      * System property <code>object.cache.size</code> (default: 1024).<br />
      * The maximum number of objects in the cache.
      * This value must be a power of 2.
      */
-    public static final int OBJECT_CACHE_SIZE = MathUtils.nextPowerOf2(getProperty("object.cache.size", 1024));
+    public static final int OBJECT_CACHE_SIZE = MathUtils
+            .nextPowerOf2(getProperty("object.cache.size", 1024));
 
     /**
      * System property <code>prefix.temp.file</code> (default: lealone.temp).<br />
@@ -223,7 +229,8 @@ public class SysProperties {
      * (default: 100).<br />
      * The default result set fetch size when using the server mode.
      */
-    public static final int SERVER_RESULT_SET_FETCH_SIZE = getProperty("server.resultset.fetch.size", 100);
+    public static final int SERVER_RESULT_SET_FETCH_SIZE = getProperty("server.resultset.fetch.size",
+            100);
 
     /**
      * System property <code>sort.nulls.high</code> (default: false).<br />
@@ -271,7 +278,8 @@ public class SysProperties {
      * Instead of using the default class loader when deserializing objects, the
      * current thread-context class loader will be used.
      */
-    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = getProperty("use.thread.context.classloader", false);
+    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = getProperty(
+            "use.thread.context.classloader", false);
 
     /**
      * System property <code>serialize.java.object</code> (default: true).<br />
@@ -337,7 +345,8 @@ public class SysProperties {
      * @return the current value
      */
     public static String getScriptDirectory() {
-        return getProperty(SCRIPT_DIRECTORY, FileUtils.getDirWithSeparator(getBaseDir()) + "script_directory");
+        return getProperty(SCRIPT_DIRECTORY,
+                FileUtils.getDirWithSeparator(getBaseDir()) + "script_directory");
     }
 
     /**

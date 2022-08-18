@@ -105,7 +105,8 @@ public class Service extends SchemaObjectBase {
         return executor;
     }
 
-    public static Service getService(ServerSession session, Database db, String schemaName, String serviceName) {
+    public static Service getService(ServerSession session, Database db, String schemaName,
+            String serviceName) {
         // 调用服务前数据库可能没有初始化
         if (!db.isInitialized())
             db.init();
@@ -122,8 +123,10 @@ public class Service extends SchemaObjectBase {
     }
 
     // 通过jdbc调用
-    public static Value execute(ServerSession session, String serviceName, String methodName, Value[] methodArgs) {
-        Service service = getService(session, session.getDatabase(), session.getCurrentSchemaName(), serviceName);
+    public static Value execute(ServerSession session, String serviceName, String methodName,
+            Value[] methodArgs) {
+        Service service = getService(session, session.getDatabase(), session.getCurrentSchemaName(),
+                serviceName);
         return service.getExecutor().executeService(methodName, methodArgs);
     }
 

@@ -106,7 +106,8 @@ public class Schema extends DbObjectBase {
             return null;
         }
         StatementBuilder sql = new StatementBuilder();
-        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
+        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ")
+                .append(owner.getSQL());
         return sql.toString();
     }
 
@@ -689,8 +690,8 @@ public class Schema extends DbObjectBase {
             StorageEngine engine = PluginManager.getPlugin(StorageEngine.class, data.storageEngineName);
             if (engine == null) {
                 try {
-                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).getDeclaredConstructor()
-                            .newInstance();
+                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName)
+                            .getDeclaredConstructor().newInstance();
                     PluginManager.register(engine);
                 } catch (Exception e) {
                     throw DbException.convert(e);

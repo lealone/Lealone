@@ -200,10 +200,12 @@ public class AlterTableAddConstraint extends SchemaStatement {
                 }
             } else {
                 IndexType indexType = IndexType.createPrimaryKey(primaryKeyHash);
-                String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
+                String indexName = table.getSchema().getUniqueIndexName(session, table,
+                        Constants.PREFIX_PRIMARY_KEY);
                 int id = getObjectId();
                 try {
-                    index = table.addIndex(session, indexName, id, indexColumns, indexType, true, null, lock);
+                    index = table.addIndex(session, indexName, id, indexColumns, indexType, true, null,
+                            lock);
                 } finally {
                     getSchema().freeUniqueName(indexName);
                 }
@@ -388,7 +390,8 @@ public class AlterTableAddConstraint extends SchemaStatement {
         return true;
     }
 
-    private static boolean canUseIndex(Index existingIndex, Table table, IndexColumn[] cols, boolean moreColumnsOk) {
+    private static boolean canUseIndex(Index existingIndex, Table table, IndexColumn[] cols,
+            boolean moreColumnsOk) {
         if (existingIndex.getTable() != table || existingIndex.getCreateSQL() == null) {
             // can't use the scan index or index of another table
             return false;

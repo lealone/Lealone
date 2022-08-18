@@ -35,7 +35,8 @@ public class TransactionalValue {
     public static final Object SIGHTLESS = new Object();
 
     private static final AtomicReferenceFieldUpdater<TransactionalValue, AMTransaction> //
-    tUpdater = AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AMTransaction.class, "t");
+    tUpdater = AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AMTransaction.class,
+            "t");
 
     private Object value;
     private volatile AMTransaction t;
@@ -264,14 +265,15 @@ public class TransactionalValue {
         }
     }
 
-    public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
-            int columnCount) {
+    public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType,
+            StorageDataType oldValueType, int columnCount) {
         long tid = DataUtils.readVarLong(buff);
         Object value = valueType.readMeta(buff, columnCount);
         return create(tid, value);
     }
 
-    public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType) {
+    public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType,
+            StorageDataType oldValueType) {
         long tid = DataUtils.readVarLong(buff);
         Object value = readValue(buff, valueType);
         return create(tid, value);

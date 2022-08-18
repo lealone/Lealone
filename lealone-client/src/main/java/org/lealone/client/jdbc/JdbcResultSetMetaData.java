@@ -25,8 +25,8 @@ public class JdbcResultSetMetaData extends JdbcWrapper implements ResultSetMetaD
     private final Result result;
     private final int columnCount;
 
-    JdbcResultSetMetaData(JdbcConnection conn, String catalog, JdbcPreparedStatement prep, JdbcResultSet rs,
-            Result result, int id) {
+    JdbcResultSetMetaData(JdbcConnection conn, String catalog, JdbcPreparedStatement prep,
+            JdbcResultSet rs, Result result, int id) {
         this.catalog = catalog;
         this.prep = prep;
         this.rs = rs;

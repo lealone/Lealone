@@ -99,7 +99,8 @@ public class CreateIndex extends SchemaStatement {
         int id = getObjectId();
         if (indexName == null) {
             if (primaryKey) {
-                indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
+                indexName = table.getSchema().getUniqueIndexName(session, table,
+                        Constants.PREFIX_PRIMARY_KEY);
             } else {
                 indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
             }

@@ -285,7 +285,8 @@ public class Page {
      * @param expectedPageLength the expected page length
      * @param disableCheck disable check
      */
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         throw ie();
     }
 
@@ -385,7 +386,8 @@ public class Page {
      * @param pageLength the page length
      * @return the page
      */
-    public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos, int pageLength) {
+    public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos,
+            int pageLength) {
         ByteBuffer buff = readPageBuff(fileStorage, filePos, pageLength);
         int type = PageUtils.getPageType(pos);
         Page p = create(map, type);
@@ -496,21 +498,25 @@ public class Page {
         return replicationHostIds;
     }
 
-    public static LeafPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
+    public static LeafPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values,
+            long totalCount, int memory) {
         return LeafPage.create(map, keys, values, totalCount, memory);
     }
 
-    public static NodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
+    public static NodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children,
+            int memory) {
         return NodePage.create(map, keys, children, memory);
     }
 
-    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength, boolean disableCheck) {
+    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength,
+            boolean disableCheck) {
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
         if (!disableCheck && check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
+                    "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest,
+                    check);
         }
     }
 
@@ -523,8 +529,8 @@ public class Page {
     static void checkPageLength(int chunkId, int pageLength, int expectedPageLength) {
         if (pageLength != expectedPageLength || pageLength < 4) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, expectedPageLength,
-                    pageLength);
+                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId,
+                    expectedPageLength, pageLength);
         }
     }
 
@@ -590,7 +596,8 @@ public class Page {
 
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
-                    "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE, chunk.sumOfPageLength);
+                    "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
+                    chunk.sumOfPageLength);
     }
 
     ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////

@@ -63,7 +63,8 @@ public class TcpClientConnection extends TransferConnection {
                 e = DbException.convert(pendingException);
                 pendingException = null;
             } else {
-                e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + Session.STATUS_CLOSED);
+                e = DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                        "unexpected status " + Session.STATUS_CLOSED);
             }
             for (AsyncCallback<?> callback : callbackMap.values()) {
                 callback.setDbException(e, true);

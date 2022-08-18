@@ -14,7 +14,8 @@ import org.lealone.orm.Model;
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseNumber<M extends Model<M>, T extends Comparable> extends PBaseComparable<M, T> {
+public abstract class PBaseNumber<M extends Model<M>, T extends Comparable>
+        extends PBaseComparable<M, T> {
 
     public PBaseNumber(String name, M model) {
         super(name, model);

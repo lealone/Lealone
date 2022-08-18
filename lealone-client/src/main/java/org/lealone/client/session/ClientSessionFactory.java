@@ -85,7 +85,8 @@ public class ClientSessionFactory implements SessionFactory {
         createClientSession(ci, server, ac);
     }
 
-    private static void createClientSession(ConnectionInfo ci, String server, AsyncCallback<ClientSession> ac) {
+    private static void createClientSession(ConnectionInfo ci, String server,
+            AsyncCallback<ClientSession> ac) {
         NetNode node = NetNode.createTCP(server);
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());

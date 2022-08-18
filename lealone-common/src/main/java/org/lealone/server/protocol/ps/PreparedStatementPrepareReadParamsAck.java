@@ -25,7 +25,8 @@ public class PreparedStatementPrepareReadParamsAck implements AckPacket {
     public final boolean isQuery;
     public final List<? extends CommandParameter> params;
 
-    public PreparedStatementPrepareReadParamsAck(boolean isQuery, List<? extends CommandParameter> params) {
+    public PreparedStatementPrepareReadParamsAck(boolean isQuery,
+            List<? extends CommandParameter> params) {
         this.isQuery = isQuery;
         this.params = params;
     }
@@ -49,7 +50,8 @@ public class PreparedStatementPrepareReadParamsAck implements AckPacket {
      *
      * @param p the parameter
      */
-    private static void writeParameterMetaData(NetOutputStream out, CommandParameter p) throws IOException {
+    private static void writeParameterMetaData(NetOutputStream out, CommandParameter p)
+            throws IOException {
         out.writeInt(p.getType());
         out.writeLong(p.getPrecision());
         out.writeInt(p.getScale());
@@ -60,7 +62,8 @@ public class PreparedStatementPrepareReadParamsAck implements AckPacket {
 
     private static class Decoder implements PacketDecoder<PreparedStatementPrepareReadParamsAck> {
         @Override
-        public PreparedStatementPrepareReadParamsAck decode(NetInputStream in, int version) throws IOException {
+        public PreparedStatementPrepareReadParamsAck decode(NetInputStream in, int version)
+                throws IOException {
             boolean isQuery = in.readBoolean();
             int paramCount = in.readInt();
             ArrayList<CommandParameter> params = new ArrayList<>(paramCount);

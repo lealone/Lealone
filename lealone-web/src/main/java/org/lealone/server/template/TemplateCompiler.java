@@ -94,7 +94,8 @@ public class TemplateCompiler {
             fileName = fileName.toLowerCase();
             File outFile = new File(targetDir, fileName);
             if (fileName.endsWith(".html")) {
-                logger.info("compile file: " + file.getCanonicalPath() + ", to: " + outFile.getCanonicalPath());
+                logger.info("compile file: " + file.getCanonicalPath() + ", to: "
+                        + outFile.getCanonicalPath());
                 try (OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile))) {
                     String str = te.process(file.getAbsolutePath());
                     out.write(str.getBytes(charsetName));

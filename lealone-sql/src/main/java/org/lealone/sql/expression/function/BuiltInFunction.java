@@ -111,7 +111,8 @@ public abstract class BuiltInFunction extends Function {
         return null;
     }
 
-    protected static Value getNullOrValue(ServerSession session, Expression[] args, Value[] values, int i) {
+    protected static Value getNullOrValue(ServerSession session, Expression[] args, Value[] values,
+            int i) {
         if (i >= args.length) {
             return null;
         }
@@ -123,7 +124,8 @@ public abstract class BuiltInFunction extends Function {
     }
 
     protected DbException getUnsupportedException() {
-        return DbException.getUnsupportedException("function name: " + info.name + ", type=" + info.type);
+        return DbException
+                .getUnsupportedException("function name: " + info.name + ", type=" + info.type);
     }
 
     @Override

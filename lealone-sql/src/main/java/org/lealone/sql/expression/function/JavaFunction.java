@@ -78,7 +78,8 @@ public class JavaFunction extends Function {
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
         if (!functionAlias.getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
-            buff.append(LealoneSQLParser.quoteIdentifier(functionAlias.getSchema().getName())).append('.');
+            buff.append(LealoneSQLParser.quoteIdentifier(functionAlias.getSchema().getName()))
+                    .append('.');
         }
         buff.append(LealoneSQLParser.quoteIdentifier(functionAlias.getName())).append('(');
         appendArgs(buff, isDistributed);

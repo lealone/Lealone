@@ -24,7 +24,8 @@ public class XTEA implements BlockCipher {
     public void setKey(byte[] b) {
         int[] key = new int[4];
         for (int i = 0; i < 16;) {
-            key[i / 4] = (b[i++] << 24) + ((b[i++] & 255) << 16) + ((b[i++] & 255) << 8) + (b[i++] & 255);
+            key[i / 4] = (b[i++] << 24) + ((b[i++] & 255) << 16) + ((b[i++] & 255) << 8)
+                    + (b[i++] & 255);
         }
         int[] r = new int[32];
         for (int i = 0, sum = 0; i < 32;) {
@@ -96,8 +97,10 @@ public class XTEA implements BlockCipher {
     }
 
     private void encryptBlock(byte[] in, byte[] out, int off) {
-        int y = (in[off] << 24) | ((in[off + 1] & 255) << 16) | ((in[off + 2] & 255) << 8) | (in[off + 3] & 255);
-        int z = (in[off + 4] << 24) | ((in[off + 5] & 255) << 16) | ((in[off + 6] & 255) << 8) | (in[off + 7] & 255);
+        int y = (in[off] << 24) | ((in[off + 1] & 255) << 16) | ((in[off + 2] & 255) << 8)
+                | (in[off + 3] & 255);
+        int z = (in[off + 4] << 24) | ((in[off + 5] & 255) << 16) | ((in[off + 6] & 255) << 8)
+                | (in[off + 7] & 255);
         y += (((z << 4) ^ (z >>> 5)) + z) ^ k0;
         z += (((y >>> 5) ^ (y << 4)) + y) ^ k1;
         y += (((z << 4) ^ (z >>> 5)) + z) ^ k2;
@@ -141,8 +144,10 @@ public class XTEA implements BlockCipher {
     }
 
     private void decryptBlock(byte[] in, byte[] out, int off) {
-        int y = (in[off] << 24) | ((in[off + 1] & 255) << 16) | ((in[off + 2] & 255) << 8) | (in[off + 3] & 255);
-        int z = (in[off + 4] << 24) | ((in[off + 5] & 255) << 16) | ((in[off + 6] & 255) << 8) | (in[off + 7] & 255);
+        int y = (in[off] << 24) | ((in[off + 1] & 255) << 16) | ((in[off + 2] & 255) << 8)
+                | (in[off + 3] & 255);
+        int z = (in[off + 4] << 24) | ((in[off + 5] & 255) << 16) | ((in[off + 6] & 255) << 8)
+                | (in[off + 7] & 255);
         z -= (((y >>> 5) ^ (y << 4)) + y) ^ k31;
         y -= (((z << 4) ^ (z >>> 5)) + z) ^ k30;
         z -= (((y >>> 5) ^ (y << 4)) + y) ^ k29;

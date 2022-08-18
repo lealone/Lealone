@@ -92,7 +92,8 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
         return tryUpdate(key, newValue, columnIndexes, oldTValue, false);
     }
 
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf);
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
+            boolean isLockedBySelf);
 
     public default int tryRemove(K key) {
         Object oldTValue = getTransactionalValue(key);

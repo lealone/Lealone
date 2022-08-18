@@ -18,8 +18,10 @@ public class ConditionInSelectTest extends SubQueryTest {
     public void run0() throws Exception {
         stmt.executeUpdate("set BATCH_JOINS true");
         stmt.executeUpdate("drop table IF EXISTS ConditionInSelectTest");
-        stmt.executeUpdate("create table IF NOT EXISTS ConditionInSelectTest(id int, name varchar(500))");
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS ConditionInSelectTestIndex ON ConditionInSelectTest(name)");
+        stmt.executeUpdate(
+                "create table IF NOT EXISTS ConditionInSelectTest(id int, name varchar(500))");
+        stmt.executeUpdate(
+                "CREATE INDEX IF NOT EXISTS ConditionInSelectTestIndex ON ConditionInSelectTest(name)");
 
         stmt.executeUpdate("insert into ConditionInSelectTest(id, name) values(1, 'a1')");
         stmt.executeUpdate("insert into ConditionInSelectTest(id, name) values(1, 'b1')");

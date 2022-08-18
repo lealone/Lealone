@@ -90,7 +90,8 @@ public class ServerSessionFactory implements SessionFactory {
             if (SessionSetting.contains(setting) || DbSetting.contains(setting)) {
                 String value = ci.getProperty(setting);
                 try {
-                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " '" + value + "'";
+                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " '" + value
+                            + "'";
                     session.prepareStatementLocal(sql).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {

@@ -37,12 +37,14 @@ import org.lealone.db.value.ValueUuid;
  */
 public class ObjectDataType implements StorageDataType {
 
-    static final Class<?>[] COMMON_CLASSES = { boolean.class, byte.class, short.class, char.class, int.class,
-            long.class, float.class, double.class, Object.class, Boolean.class, Byte.class, Short.class,
-            Character.class, Integer.class, Long.class, BigInteger.class, Float.class, Double.class, BigDecimal.class,
-            String.class, UUID.class, Date.class, Time.class, Timestamp.class };
+    static final Class<?>[] COMMON_CLASSES = { boolean.class, byte.class, short.class, char.class,
+            int.class, long.class, float.class, double.class, Object.class, Boolean.class, Byte.class,
+            Short.class, Character.class, Integer.class, Long.class, BigInteger.class, Float.class,
+            Double.class, BigDecimal.class, String.class, UUID.class, Date.class, Time.class,
+            Timestamp.class };
 
-    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = new HashMap<>(COMMON_CLASSES.length);
+    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = new HashMap<>(
+            COMMON_CLASSES.length);
 
     private StorageDataTypeBase last = ValueString.type;
 
@@ -114,7 +116,8 @@ public class ObjectDataType implements StorageDataType {
         case TYPE_SERIALIZED_OBJECT:
             return new SerializedObjectType();
         }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Unsupported type {0}", typeId);
+        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Unsupported type {0}",
+                typeId);
     }
 
     /**

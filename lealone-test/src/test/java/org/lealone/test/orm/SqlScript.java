@@ -29,7 +29,8 @@ public class SqlScript implements MainTest {
     }
 
     private static final String MODEL_PACKAGE_NAME = OrmTest.class.getPackage().getName() + ".generated";
-    private static final String SERVICE_PACKAGE_NAME = ExecuteServiceTest.class.getPackage().getName() + ".generated";
+    private static final String SERVICE_PACKAGE_NAME = ExecuteServiceTest.class.getPackage().getName()
+            + ".generated";
     private static String GENERATED_CODE_PATH = "./src/test/java";
 
     public static void setCodePath(String path) {
@@ -71,10 +72,11 @@ public class SqlScript implements MainTest {
         System.out.println("create table: customer_address");
 
         executor.execute("drop table if exists customer_address");
-        executor.execute("create table if not exists customer_address(customer_id long, city varchar, street varchar, "
-                + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'" //
+        executor.execute(
+                "create table if not exists customer_address(customer_id long, city varchar, street varchar, "
+                        + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'" //
         );
     }
 
@@ -82,10 +84,11 @@ public class SqlScript implements MainTest {
         System.out.println("create table: product");
 
         executor.execute("drop table if exists product");
-        executor.execute("create table if not exists product(product_id long primary key, product_name varchar, "
-                + " category varchar, unit_price double)" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        executor.execute(
+                "create table if not exists product(product_id long primary key, product_name varchar, "
+                        + " category varchar, unit_price double)" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
         );
     }
 
@@ -106,11 +109,12 @@ public class SqlScript implements MainTest {
         System.out.println("create table: order_item");
 
         executor.execute("drop table if exists order_item");
-        executor.execute("create table if not exists order_item(order_id int, product_id long, product_count int, "
-                + " FOREIGN KEY(order_id) REFERENCES `order`(order_id)," //
-                + " FOREIGN KEY(product_id) REFERENCES product(product_id))" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        executor.execute(
+                "create table if not exists order_item(order_id int, product_id long, product_count int, "
+                        + " FOREIGN KEY(order_id) REFERENCES `order`(order_id)," //
+                        + " FOREIGN KEY(product_id) REFERENCES product(product_id))" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
         );
     }
 

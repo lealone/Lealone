@@ -154,8 +154,8 @@ public class TransactionalValueTest extends AoteTestBase {
         return ValueArray.get(a);
     }
 
-    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key, int columnIndex,
-            int value) {
+    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key,
+            int columnIndex, int value) {
         VersionedValue vv = map.get(key);
         Value[] values = vv.value.getList().clone();
         values[columnIndex] = ValueInt.get(value);

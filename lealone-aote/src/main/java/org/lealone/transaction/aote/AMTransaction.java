@@ -153,15 +153,15 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Storage storage) {
+    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Storage storage) {
         return openMap(name, keyType, valueType, storage, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Storage storage, Map<String, String> parameters) {
+    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
             keyType = new ObjectDataType();
@@ -331,7 +331,8 @@ public class AMTransaction implements Transaction {
     void wakeUpWaitingTransaction(AMTransaction transaction) {
         while (true) {
             LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
-            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
+            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(
+                    waitingTransactions);
             WaitingTransaction target = null;
             for (WaitingTransaction wt : newWaitingTransactions) {
                 if (wt.getTransaction() == transaction) {
@@ -365,7 +366,8 @@ public class AMTransaction implements Transaction {
                 session.setStatus(oldSessionStatus);
                 return OPERATION_NEED_RETRY;
             }
-            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
+            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(
+                    waitingTransactions);
             newWaitingTransactions.add(wt);
             if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
                 return OPERATION_NEED_WAIT;
@@ -409,7 +411,8 @@ public class AMTransaction implements Transaction {
             }
             if (isDeadlock) {
                 String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
-                msg += "\r\n" + getMsg(lockedBy.transactionId, lockedBy.session, this, waitingTransaction);
+                msg += "\r\n"
+                        + getMsg(lockedBy.transactionId, lockedBy.session, this, waitingTransaction);
                 throw DbException.get(ErrorCode.DEADLOCK_1, msg);
             } else {
                 String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
@@ -420,8 +423,9 @@ public class AMTransaction implements Transaction {
 
     private static String getMsg(long tid, Session session, AMTransaction transaction,
             WaitingTransaction waitingTransaction) {
-        return "transaction #" + tid + " in session " + session + " wait for transaction #" + transaction.transactionId
-                + " in session " + transaction.session + ", key: " + waitingTransaction.getKey();
+        return "transaction #" + tid + " in session " + session + " wait for transaction #"
+                + transaction.transactionId + " in session " + transaction.session + ", key: "
+                + waitingTransaction.getKey();
     }
 
     @Override

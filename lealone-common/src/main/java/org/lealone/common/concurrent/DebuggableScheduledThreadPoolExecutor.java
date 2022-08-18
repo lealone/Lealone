@@ -36,13 +36,16 @@ public class DebuggableScheduledThreadPoolExecutor extends ScheduledThreadPoolEx
 
     // override scheduling to supress exceptions that would cancel future executions
     @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period,
+            TimeUnit unit) {
         return super.scheduleAtFixedRate(new UncomplainingRunnable(command), initialDelay, period, unit);
     }
 
     @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit) {
-        return super.scheduleWithFixedDelay(new UncomplainingRunnable(command), initialDelay, delay, unit);
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+            TimeUnit unit) {
+        return super.scheduleWithFixedDelay(new UncomplainingRunnable(command), initialDelay, delay,
+                unit);
     }
 
     private static class UncomplainingRunnable implements Runnable {

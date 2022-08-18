@@ -66,7 +66,8 @@ public class ChunkManager {
         } catch (IllegalStateException e) {
             throw btreeStorage.panic(e);
         } catch (Exception e) {
-            throw btreeStorage.panic(DataUtils.ERROR_READING_FAILED, "Failed to read last chunk: {0}", lastChunkId, e);
+            throw btreeStorage.panic(DataUtils.ERROR_READING_FAILED, "Failed to read last chunk: {0}",
+                    lastChunkId, e);
         }
     }
 
@@ -135,7 +136,8 @@ public class ChunkManager {
         if (c == null)
             c = readChunk(chunkId);
         if (c == null)
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} not found", chunkId);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} not found",
+                    chunkId);
         return c;
     }
 

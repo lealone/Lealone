@@ -14,7 +14,8 @@ public class CreateServiceTest extends SqlTestBase {
         executeUpdate("drop service if exists generated_service");
         String sql = "create service if not exists generated_service (" //
                 + " test(name varchar) int)" //
-                + " implement by '" + ExecuteServiceTest.class.getPackage().getName() + ".generated.GeneratedService'" //
+                + " implement by '" + ExecuteServiceTest.class.getPackage().getName()
+                + ".generated.GeneratedService'" //
                 + " code path './src/test/java'";
         executeUpdate(sql);
     }

@@ -50,8 +50,8 @@ public interface Trigger {
      * @param type the operation type: INSERT, UPDATE, DELETE, SELECT, or a
      *            combination (this parameter is a bit field)
      */
-    void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before, int type)
-            throws SQLException;
+    void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before,
+            int type) throws SQLException;
 
     /**
      * This method is called for each triggered action. The method is called

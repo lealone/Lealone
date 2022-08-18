@@ -74,8 +74,8 @@ public class StandardSecondaryIndex extends StandardIndex {
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
-        TransactionMap<ValueArray, Value> map = session.getTransaction().openMap(mapName, keyType, valueType, storage,
-                table.getParameters());
+        TransactionMap<ValueArray, Value> map = session.getTransaction().openMap(mapName, keyType,
+                valueType, storage, table.getParameters());
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.getInternalError("Incompatible key type");
         }
@@ -186,7 +186,8 @@ public class StandardSecondaryIndex extends StandardIndex {
         }
         ArrayList<ValueArray> list = new ArrayList<>(1);
         list.add(key);
-        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexRegularCursor(session, list.iterator(), null);
+        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexRegularCursor(session,
+                list.iterator(), null);
         cursor.next();
         return cursor;
     }

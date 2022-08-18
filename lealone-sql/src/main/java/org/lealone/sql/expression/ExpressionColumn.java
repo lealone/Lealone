@@ -53,7 +53,8 @@ public class ExpressionColumn extends Expression {
         this.columnName = columnName;
     }
 
-    public ExpressionColumn(String databaseName, String schemaName, String tableAlias, String columnName) {
+    public ExpressionColumn(String databaseName, String schemaName, String tableAlias,
+            String columnName) {
         this.database = null;
         this.databaseName = databaseName;
         this.schemaName = schemaName;
@@ -318,7 +319,8 @@ public class ExpressionColumn extends Expression {
 
     @Override
     public Expression getNotIfPossible(ServerSession session) {
-        return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
+        return new Comparison(session, Comparison.EQUAL, this,
+                ValueExpression.get(ValueBoolean.get(false)));
     }
 
     @Override

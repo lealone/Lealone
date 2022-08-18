@@ -14,7 +14,8 @@ public class UniqueHashIndexTest extends IndexTestBase {
         executeUpdate("DROP TABLE IF EXISTS UniqueHashIndexTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS UniqueHashIndexTest (f1 int NOT NULL, f2 int)");
 
-        executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS UniqueHashIndex1 ON UniqueHashIndexTest(f1)");
+        executeUpdate(
+                "CREATE UNIQUE HASH INDEX IF NOT EXISTS UniqueHashIndex1 ON UniqueHashIndexTest(f1)");
         assertFound("UniqueHashIndexTest", "UniqueHashIndex1");
 
         executeUpdate("insert into UniqueHashIndexTest(f1, f2) values(1, 2)");

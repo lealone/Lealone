@@ -120,7 +120,8 @@ public class TableFilter extends ColumnResolverBase {
      * @param rightsChecked true if rights are already checked
      * @param select the select statement
      */
-    public TableFilter(ServerSession session, Table table, String alias, boolean rightsChecked, Select select) {
+    public TableFilter(ServerSession session, Table table, String alias, boolean rightsChecked,
+            Select select) {
         this.session = session;
         this.table = table;
         this.alias = alias;

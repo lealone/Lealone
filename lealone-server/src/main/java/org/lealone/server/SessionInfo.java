@@ -94,7 +94,8 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         if (lastActiveTime + sessionTimeout < currentTime) {
             conn.closeSession(this);
             logger.warn("Client session timeout, session id: " + sessionId + ", host: "
-                    + conn.getWritableChannel().getHost() + ", port: " + conn.getWritableChannel().getPort());
+                    + conn.getWritableChannel().getHost() + ", port: "
+                    + conn.getWritableChannel().getPort());
         }
     }
 

@@ -222,8 +222,8 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment, DbObjectLock lock) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment, DbObjectLock lock) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -307,8 +307,8 @@ public class StandardTable extends Table {
     }
 
     // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
-    private AsyncHandler<AsyncResult<Integer>> createHandler(AsyncCallback<Integer> ac, AtomicInteger count,
-            AtomicBoolean isFailed) {
+    private AsyncHandler<AsyncResult<Integer>> createHandler(AsyncCallback<Integer> ac,
+            AtomicInteger count, AtomicBoolean isFailed) {
         return ar -> {
             if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
                 ac.setAsyncResult(ar);
@@ -381,7 +381,8 @@ public class StandardTable extends Table {
         try {
             for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.remove(session, row, isLockedBySelf).onComplete(createHandler(ac, count, isFailed));
+                index.remove(session, row, isLockedBySelf)
+                        .onComplete(createHandler(ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);

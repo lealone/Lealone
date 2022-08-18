@@ -200,7 +200,8 @@ public class Select extends Query {
             expressionSQL = null;
         }
         if (orderList != null) {
-            initOrder(session, expressions, expressionSQL, orderList, visibleColumnCount, distinct, filters);
+            initOrder(session, expressions, expressionSQL, orderList, visibleColumnCount, distinct,
+                    filters);
             // prepare阶段还用到orderList，所以先不置null
         }
         resultColumnCount = expressions.size();
@@ -370,7 +371,8 @@ public class Select extends Query {
         }
 
         // 对min、max、count三个聚合函数的特殊优化
-        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
+        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0
+                && filters.size() == 1) {
             Table t = filters.get(0).getTable();
             isQuickAggregateQuery = accept(ExpressionVisitorFactory.getOptimizableVisitor(t));
         }
@@ -379,8 +381,8 @@ public class Select extends Query {
 
         // 以下3个if为特殊的distinct、sort、group by选择更合适的索引
         // 1. distinct
-        if (distinct && session.getDatabase().getSettings().optimizeDistinct && !isGroupQuery && filters.size() == 1
-                && condition == null) {
+        if (distinct && session.getDatabase().getSettings().optimizeDistinct && !isGroupQuery
+                && filters.size() == 1 && condition == null) {
             optimizeDistinct();
         }
         // 2. sort
@@ -414,17 +416,19 @@ public class Select extends Query {
                 Column column = ((ExpressionColumn) expr).getColumn();
                 int selectivity = column.getSelectivity();
                 Index columnIndex = topTableFilter.getTable().getIndexForColumn(column);
-                if (columnIndex != null && selectivity != Constants.SELECTIVITY_DEFAULT && selectivity < 20) {
+                if (columnIndex != null && selectivity != Constants.SELECTIVITY_DEFAULT
+                        && selectivity < 20) {
                     // the first column must be ascending
                     boolean ascending = columnIndex.getIndexColumns()[0].sortType == SortOrder.ASCENDING;
                     Index current = topTableFilter.getIndex();
                     // if another index is faster
-                    if (columnIndex.supportsDistinctQuery() && ascending
-                            && (current == null || current.getIndexType().isScan() || columnIndex == current)) {
+                    if (columnIndex.supportsDistinctQuery() && ascending && (current == null
+                            || current.getIndexType().isScan() || columnIndex == current)) {
                         IndexType type = columnIndex.getIndexType();
                         // hash indexes don't work, and unique single column
                         // indexes don't work
-                        if (!type.isHash() && (!type.isUnique() || columnIndex.getColumns().length > 1)) {
+                        if (!type.isHash()
+                                && (!type.isUnique() || columnIndex.getColumns().length > 1)) {
                             topTableFilter.setIndex(columnIndex);
                             isDistinctQuery = true;
                         }
@@ -456,8 +460,8 @@ public class Select extends Query {
                             if (indexColumns.length == size) {
                                 boolean found = true;
                                 for (int i = 0; found && i < size; i++) {
-                                    found &= (indexColumns[i] == columns[i])
-                                            && index.getIndexColumns()[i].sortType == SortOrder.ASCENDING;
+                                    found &= (indexColumns[i] == columns[i]) && index
+                                            .getIndexColumns()[i].sortType == SortOrder.ASCENDING;
                                 }
                                 if (found) {
                                     topTableFilter.setIndex(index);
@@ -839,7 +843,8 @@ public class Select extends Query {
             } else {
                 buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL(isDistributed)));
                 if (offsetExpr != null) {
-                    buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
+                    buff.append(" OFFSET ")
+                            .append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
                 }
             }
         }

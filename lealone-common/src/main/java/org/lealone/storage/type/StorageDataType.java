@@ -216,7 +216,8 @@ public interface StorageDataType {
                 } else if (tag >= TAG_BYTE_ARRAY_0_15 && tag <= TAG_BYTE_ARRAY_0_15 + 15) {
                     typeId = TYPE_ARRAY;
                 } else {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Unknown tag {0}", tag);
+                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                            "Unknown tag {0}", tag);
                 }
             }
         }

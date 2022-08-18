@@ -87,7 +87,8 @@ public class ValueExpression extends Expression {
 
     @Override
     public Expression getNotIfPossible(ServerSession session) {
-        return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
+        return new Comparison(session, Comparison.EQUAL, this,
+                ValueExpression.get(ValueBoolean.get(false)));
     }
 
     @Override

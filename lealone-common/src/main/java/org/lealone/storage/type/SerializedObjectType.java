@@ -128,7 +128,8 @@ public class SerializedObjectType extends StorageDataTypeBase {
             ObjectInputStream is = new ObjectInputStream(in);
             return is.readObject();
         } catch (Throwable e) {
-            throw DataUtils.newIllegalArgumentException("Could not deserialize {0}", Arrays.toString(data), e);
+            throw DataUtils.newIllegalArgumentException("Could not deserialize {0}",
+                    Arrays.toString(data), e);
         }
     }
 

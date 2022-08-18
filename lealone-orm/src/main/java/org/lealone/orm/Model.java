@@ -314,11 +314,13 @@ public abstract class Model<T extends Model<T>> {
     }
 
     private static ExpressionColumn getExpressionColumn(Table table, String cName) {
-        return new ExpressionColumn(table.getDatabase(), table.getSchema().getName(), table.getName(), cName);
+        return new ExpressionColumn(table.getDatabase(), table.getSchema().getName(), table.getName(),
+                cName);
     }
 
     static ExpressionColumn getExpressionColumn(ModelProperty<?> p) {
-        return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
+        return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(),
+                p.getName());
     }
 
     static ExpressionColumn getExpressionColumn(TableFilter tableFilter, String propertyName) {
@@ -327,8 +329,8 @@ public abstract class Model<T extends Model<T>> {
     }
 
     ExpressionColumn getExpressionColumn(String propertyName) {
-        return new ExpressionColumn(modelTable.getDatabase(), modelTable.getSchemaName(), modelTable.getTableName(),
-                propertyName);
+        return new ExpressionColumn(modelTable.getDatabase(), modelTable.getSchemaName(),
+                modelTable.getTableName(), propertyName);
     }
 
     public T having() {
@@ -371,8 +373,9 @@ public abstract class Model<T extends Model<T>> {
 
     private void checkDao(String methodName) {
         if (!isDao()) {
-            throw new UnsupportedOperationException("The " + methodName + " operation is not allowed, please use "
-                    + this.getClass().getSimpleName() + ".dao." + methodName + "() instead.");
+            throw new UnsupportedOperationException(
+                    "The " + methodName + " operation is not allowed, please use "
+                            + this.getClass().getSimpleName() + ".dao." + methodName + "() instead.");
         }
     }
 
@@ -440,7 +443,8 @@ public abstract class Model<T extends Model<T>> {
     // 如果select字段列表中没有加上引用约束的字段，那么自动加上
     private HashMap<String, ExpressionColumn> getRefConstraintColumns(HashSet<Table> tables) {
         CaseInsensitiveMap<ExpressionColumn> columnMap = new CaseInsensitiveMap<>();
-        CaseInsensitiveMap<ExpressionColumn> selectMap = new CaseInsensitiveMap<>(selectExpressions.size());
+        CaseInsensitiveMap<ExpressionColumn> selectMap = new CaseInsensitiveMap<>(
+                selectExpressions.size());
         for (Expression e : selectExpressions) {
             if (e instanceof ExpressionColumn) {
                 ExpressionColumn c = (ExpressionColumn) e;
@@ -489,7 +493,8 @@ public abstract class Model<T extends Model<T>> {
             if (selectExpressions == null) {
                 tables = null;
                 selectExpressionsIsNull = true;
-                getSelectExpressions().add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+                getSelectExpressions()
+                        .add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
             } else {
                 tables = new HashSet<>();
                 tables.add(tableFilter.getTable());
@@ -499,7 +504,8 @@ public abstract class Model<T extends Model<T>> {
                 select.addTableFilter(tableFilter.getJoin(), false);
                 tableFilter = tableFilter.getJoin();
                 if (selectExpressionsIsNull)
-                    selectExpressions.add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+                    selectExpressions
+                            .add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
                 else
                     tables.add(tableFilter.getTable());
                 selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
@@ -658,7 +664,8 @@ public abstract class Model<T extends Model<T>> {
         int len = result.getVisibleColumnCount();
         String[] fieldNames = new String[len];
         for (int i = 0; i < len; i++) {
-            fieldNames[i] = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
+            fieldNames[i] = result.getSchemaName(i) + "." + result.getTableName(i) + "."
+                    + result.getColumnName(i);
         }
         return fieldNames;
     }

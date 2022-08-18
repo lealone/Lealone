@@ -150,8 +150,8 @@ class NioEventLoopClient extends NetClientBase {
     }
 
     @Override
-    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager, int maxSharedSize,
-            AsyncCallback<AsyncConnection> ac) {
+    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
+            int maxSharedSize, AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int socketRecvBuffer = 16 * 1024;
         int socketSendBuffer = 8 * 1024;

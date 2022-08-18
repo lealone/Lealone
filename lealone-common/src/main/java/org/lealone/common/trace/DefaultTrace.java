@@ -146,7 +146,8 @@ class DefaultTrace implements Trace {
         if (!space) {
             buff.append(' ');
         }
-        buff.append("*/").append(StringUtils.javaEncode(sql)).append(StringUtils.javaEncode(params)).append(';');
+        buff.append("*/").append(StringUtils.javaEncode(sql)).append(StringUtils.javaEncode(params))
+                .append(';');
         sql = buff.toString();
         traceWriter.write(TraceSystem.INFO, module, sql, null);
     }

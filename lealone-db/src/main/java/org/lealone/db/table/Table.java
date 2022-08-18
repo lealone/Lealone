@@ -203,8 +203,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param indexComment the comment
      * @return the index
      */
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment, DbObjectLock lock) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment, DbObjectLock lock) {
         throw newUnsupportedException();
     }
 
@@ -230,7 +230,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns) {
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow,
+            int[] updateColumns) {
         return updateRow(session, oldRow, newRow, updateColumns, false);
     }
 
@@ -528,7 +529,8 @@ public abstract class Table extends SchemaObjectBase {
      * @throws DbException if the column is referenced by multi-column
      *             constraints or indexes
      */
-    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col, DbObjectLock lock) {
+    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col,
+            DbObjectLock lock) {
         ArrayList<Constraint> constraintsToDrop = Utils.newSmallArrayList();
         if (constraints != null) {
             for (int i = 0, size = constraints.size(); i < size; i++) {
@@ -858,7 +860,8 @@ public abstract class Table extends SchemaObjectBase {
      *  @return if there are any triggers or rows defined
      */
     public boolean fireRow() {
-        return (constraints != null && !constraints.isEmpty()) || (triggers != null && !triggers.isEmpty());
+        return (constraints != null && !constraints.isEmpty())
+                || (triggers != null && !triggers.isEmpty());
     }
 
     /**
@@ -902,7 +905,8 @@ public abstract class Table extends SchemaObjectBase {
         }
     }
 
-    private boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
+    private boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction,
+            boolean rollback) {
         if (triggers != null) {
             for (TriggerObject trigger : triggers) {
                 boolean done = trigger.fireRow(session, oldRow, newRow, beforeAction, rollback);
@@ -934,7 +938,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param enabled true if checking should be enabled
      * @param checkExisting true if existing rows must be checked during this call
      */
-    public void setCheckForeignKeyConstraints(ServerSession session, boolean enabled, boolean checkExisting) {
+    public void setCheckForeignKeyConstraints(ServerSession session, boolean enabled,
+            boolean checkExisting) {
         if (enabled && checkExisting) {
             if (constraints != null) {
                 for (Constraint c : constraints) {

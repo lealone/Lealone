@@ -14,7 +14,8 @@ import org.lealone.orm.Model;
  * @param <T> the type of the scalar property
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseComparable<M extends Model<M>, T extends Comparable> extends PBaseValueEqual<M, T> {
+public abstract class PBaseComparable<M extends Model<M>, T extends Comparable>
+        extends PBaseValueEqual<M, T> {
 
     public PBaseComparable(String name, M model) {
         super(name, model);

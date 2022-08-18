@@ -109,7 +109,8 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableDelete(this, asyncHandler); // 处理单机模式、复制模式
     }
 
@@ -118,7 +119,8 @@ public class Delete extends ManipulationStatement {
         final Delete statement;
 
         public YieldableDelete(Delete statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr, statement.condition);
+            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
+                    statement.condition);
             this.statement = statement;
         }
 

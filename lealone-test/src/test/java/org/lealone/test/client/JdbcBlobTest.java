@@ -34,7 +34,8 @@ public class JdbcBlobTest extends ClientTestBase {
         // 从1开始
         blob.setBytes(1, blobStr.getBytes());
 
-        PreparedStatement ps = conn.prepareStatement("INSERT INTO JdbcBlobTest(f1, f2, f3) VALUES(1, 2, ?)");
+        PreparedStatement ps = conn
+                .prepareStatement("INSERT INTO JdbcBlobTest(f1, f2, f3) VALUES(1, 2, ?)");
         ps.setBlob(1, blob);
         ps.executeUpdate();
 

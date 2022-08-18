@@ -99,7 +99,8 @@ public class Operation extends Expression {
         } else {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = left.getSQL(isDistributed) + " " + getOperationToken() + " " + right.getSQL(isDistributed);
+            sql = left.getSQL(isDistributed) + " " + getOperationToken() + " "
+                    + right.getSQL(isDistributed);
         }
         return "(" + sql + ")";
     }
@@ -231,7 +232,8 @@ public class Operation extends Expression {
                         // Oracle date add
                         Function f = Function.getFunction(session.getDatabase(), "DATEADD");
                         f.setParameter(0, ValueExpression.get(ValueString.get("SECOND")));
-                        left = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)), left);
+                        left = new Operation(Operation.MULTIPLY,
+                                ValueExpression.get(ValueInt.get(60 * 60 * 24)), left);
                         f.setParameter(1, left);
                         f.setParameter(2, right);
                         f.doneWithParameters();
@@ -259,8 +261,8 @@ public class Operation extends Expression {
                         // Oracle date subtract
                         Function f = Function.getFunction(session.getDatabase(), "DATEADD");
                         f.setParameter(0, ValueExpression.get(ValueString.get("SECOND")));
-                        right = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)),
-                                right);
+                        right = new Operation(Operation.MULTIPLY,
+                                ValueExpression.get(ValueInt.get(60 * 60 * 24)), right);
                         right = new Operation(NEGATE, right, null);
                         right = right.optimize(session);
                         f.setParameter(1, right);
@@ -302,11 +304,12 @@ public class Operation extends Expression {
                         return this;
                     }
                 }
-                throw DbException.getUnsupportedException(
-                        DataType.getDataType(l).name + " " + getOperationToken() + " " + DataType.getDataType(r).name);
+                throw DbException.getUnsupportedException(DataType.getDataType(l).name + " "
+                        + getOperationToken() + " " + DataType.getDataType(r).name);
             } else {
                 dataType = Value.getHigherOrder(l, r);
-                if (DataType.isStringType(dataType) && session.getDatabase().getMode().allowPlusForStringConcat) {
+                if (DataType.isStringType(dataType)
+                        && session.getDatabase().getMode().allowPlusForStringConcat) {
                     opType = CONCAT;
                 }
             }
@@ -350,7 +353,8 @@ public class Operation extends Expression {
         if (right != null) {
             switch (opType) {
             case CONCAT:
-                return MathUtils.convertLongToInt((long) left.getDisplaySize() + (long) right.getDisplaySize());
+                return MathUtils
+                        .convertLongToInt((long) left.getDisplaySize() + (long) right.getDisplaySize());
             default:
                 return Math.max(left.getDisplaySize(), right.getDisplaySize());
             }

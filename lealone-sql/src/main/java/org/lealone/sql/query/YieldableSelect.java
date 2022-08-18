@@ -59,7 +59,8 @@ public class YieldableSelect extends YieldableQueryBase {
         if (olapOperatorFactoryName == null) {
             olapOperatorFactoryName = "olap";
         }
-        OperatorFactory operatorFactory = PluginManager.getPlugin(OperatorFactory.class, olapOperatorFactoryName);
+        OperatorFactory operatorFactory = PluginManager.getPlugin(OperatorFactory.class,
+                olapOperatorFactoryName);
         if (operatorFactory != null) {
             olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();

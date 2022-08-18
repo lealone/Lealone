@@ -277,8 +277,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         String mapName = getName();
         Storage storage = map.getStorage();
         String tmpMapName = storage.nextTemporaryMapName();
-        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(), new ObjectDataType(),
-                null);
+        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(),
+                new ObjectDataType(), null);
         try {
             for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
                 UndoLogRecord r = t.undoLog.getFirst();
@@ -593,7 +593,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf) {
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
+            boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
         return tryUpdateOrRemove(key, newValue, columnIndexes, oldTValue, isLockedBySelf);
     }
@@ -607,7 +608,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf) {
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue,
+            boolean isLockedBySelf) {
         DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;

@@ -137,15 +137,18 @@ public class ViewIndex extends IndexBase {
                 int mask = masks[idx];
                 int nextParamIndex = q.getParameters().size() + view.getParameterOffset();
                 if ((mask & IndexConditionType.EQUALITY) != 0) {
-                    CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
+                    CommandParameter param = session.getDatabase().getSQLEngine()
+                            .createParameter(nextParamIndex);
                     q.addGlobalCondition(param, idx, IndexConditionType.EQUALITY);
                 } else {
                     if ((mask & IndexConditionType.START) != 0) {
-                        CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
+                        CommandParameter param = session.getDatabase().getSQLEngine()
+                                .createParameter(nextParamIndex);
                         q.addGlobalCondition(param, idx, IndexConditionType.START);
                     }
                     if ((mask & IndexConditionType.END) != 0) {
-                        CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
+                        CommandParameter param = session.getDatabase().getSQLEngine()
+                                .createParameter(nextParamIndex);
                         q.addGlobalCondition(param, idx, IndexConditionType.END);
                     }
                 }
@@ -289,17 +292,20 @@ public class ViewIndex extends IndexBase {
             columnList.add(table.getColumn(idx));
             int mask = masks[idx];
             if ((mask & IndexConditionType.EQUALITY) == IndexConditionType.EQUALITY) {
-                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine()
+                        .createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, IndexConditionType.EQUALITY);
                 i++;
             }
             if ((mask & IndexConditionType.START) == IndexConditionType.START) {
-                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine()
+                        .createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, IndexConditionType.START);
                 i++;
             }
             if ((mask & IndexConditionType.END) == IndexConditionType.END) {
-                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine()
+                        .createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, IndexConditionType.END);
                 i++;
             }

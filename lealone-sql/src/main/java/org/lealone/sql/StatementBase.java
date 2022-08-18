@@ -186,7 +186,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         }
         // parser: currently, compiling every create/drop/... twice
         // because needRecompile return true even for the first execution
-        return prepareAlways || modificationMetaId < db.getModificationMetaId() || db.getSettings().recompileAlways;
+        return prepareAlways || modificationMetaId < db.getModificationMetaId()
+                || db.getSettings().recompileAlways;
     }
 
     /**
@@ -421,7 +422,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      */
     private void setProgress() {
         if ((currentRowNumber & 127) == 0) {
-            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql, currentRowNumber, 0);
+            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
+                    currentRowNumber, 0);
         }
     }
 
@@ -592,7 +594,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new DefaultYieldableLocalUpdate(this, asyncHandler);
     }
 

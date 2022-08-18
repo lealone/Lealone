@@ -67,7 +67,8 @@ public class PageStorageModeTest extends AoseTestBase {
     private void testStorage(ValueDataType keyType, TransactionalValueType tvType, PageStorageMode mode,
             String mapName) {
         AOStorage storage = AOStorageTest.openStorage(pageSplitSize, cacheSize);
-        BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType, null);
+        BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType,
+                null);
         map.setPageStorageMode(mode);
         putData(map);
 
@@ -96,7 +97,8 @@ public class PageStorageModeTest extends AoseTestBase {
 
         int rows = 0;
         ValueLong from = ValueLong.get(2000);
-        StorageMapCursor<ValueLong, TransactionalValue> cursor = map.cursor(CursorParameters.create(from, columnIndex));
+        StorageMapCursor<ValueLong, TransactionalValue> cursor = map
+                .cursor(CursorParameters.create(from, columnIndex));
         while (cursor.hasNext()) {
             cursor.next();
             rows++;

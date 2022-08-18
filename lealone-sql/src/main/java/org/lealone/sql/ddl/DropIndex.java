@@ -76,7 +76,8 @@ public class DropIndex extends SchemaStatement {
                     if (Constraint.PRIMARY_KEY.equals(cons.getConstraintType())) {
                         pkConstraint = cons;
                     } else {
-                        throw DbException.get(ErrorCode.INDEX_BELONGS_TO_CONSTRAINT_2, indexName, cons.getName());
+                        throw DbException.get(ErrorCode.INDEX_BELONGS_TO_CONSTRAINT_2, indexName,
+                                cons.getName());
                     }
                 }
             }

@@ -185,7 +185,8 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -320,7 +321,8 @@ public class NodePage extends LocalPage {
             PageReference ref = children[i];
             if (ref.page != null) {
                 if (ref.page.getPos() == 0) {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page not written");
+                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
+                            "Page not written");
                 }
                 ref.page.writeEnd();
                 children[i] = new PageReference(null, ref.pos);
@@ -407,7 +409,8 @@ public class NodePage extends LocalPage {
                     children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        map.getBTreeStorage().readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
+                        map.getBTreeStorage().readPage(children[i].pos)
+                                .getPrettyPageInfoRecursive(indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");
                         buff.append("*** off-line *** ").append(children[i]).append('\n');

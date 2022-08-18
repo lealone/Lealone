@@ -24,7 +24,8 @@ import org.lealone.transaction.aote.log.LogSyncService;
 public class AMTransactionEngineTest extends AoteTestBase {
 
     public static Storage getStorage() {
-        StorageEngine se = PluginManager.getPlugin(StorageEngine.class, Constants.DEFAULT_STORAGE_ENGINE_NAME);
+        StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
+                Constants.DEFAULT_STORAGE_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
@@ -45,7 +46,8 @@ public class AMTransactionEngineTest extends AoteTestBase {
         return getTransactionEngine(config, false);
     }
 
-    public static TransactionEngine getTransactionEngine(Map<String, String> config, boolean isDistributed) {
+    public static TransactionEngine getTransactionEngine(Map<String, String> config,
+            boolean isDistributed) {
         TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
                 Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());

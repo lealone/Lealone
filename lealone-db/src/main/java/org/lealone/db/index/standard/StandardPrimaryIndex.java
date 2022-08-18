@@ -189,8 +189,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (!isLockedBySelf && map.isLocked(oldRow.getTValue(), updateColumns))
-            return Future
-                    .succeededFuture(map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getTValue()));
+            return Future.succeededFuture(
+                    map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getTValue()));
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
@@ -210,7 +210,8 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
+        VersionedValue newValue = new VersionedValue(newRow.getVersion(),
+                ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
         int ret = map.tryUpdate(key, newValue, updateColumns, oldRow.getTValue(), isLockedBySelf);
         session.setLastRow(newRow);
@@ -253,7 +254,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         ValueLong from = getPK(parameters.from);
         ValueLong to = getPK(parameters.to);
         CursorParameters<Value> newParameters = parameters.copy(from, to);
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(newParameters), to);
+        return new StandardPrimaryIndexCursor(session, table, this,
+                getMap(session).entryIterator(newParameters), to);
     }
 
     @Override
@@ -266,7 +268,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         VersionedValue value = map.get(v);
         TransactionMapEntry<Value, VersionedValue> e = new TransactionMapEntry<>(v, value);
         List<TransactionMapEntry<Value, VersionedValue>> list = Arrays.asList(e);
-        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this, list.iterator(), v);
+        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this,
+                list.iterator(), v);
         c.next();
         return c;
     }
@@ -398,7 +401,8 @@ public class StandardPrimaryIndex extends StandardIndex {
      * @return the cursor
      */
     Cursor find(ServerSession session, ValueLong first, ValueLong last) {
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(first), last);
+        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(first),
+                last);
     }
 
     @Override
@@ -453,7 +457,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         private final ValueLong last;
         private Row row;
 
-        public StandardPrimaryIndexCursor(ServerSession session, StandardTable table, StandardPrimaryIndex index,
+        public StandardPrimaryIndexCursor(ServerSession session, StandardTable table,
+                StandardPrimaryIndex index,
                 Iterator<TransactionMapEntry<Value, VersionedValue>> iterator, ValueLong last) {
             this.session = session;
             this.table = table;
@@ -469,7 +474,8 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         @Override
         public boolean next() {
-            TransactionMapEntry<Value, VersionedValue> current = iterator.hasNext() ? iterator.next() : null;
+            TransactionMapEntry<Value, VersionedValue> current = iterator.hasNext() ? iterator.next()
+                    : null;
             if (last != null && current != null && current.getKey().getLong() > last.getLong()) {
                 current = null;
             }

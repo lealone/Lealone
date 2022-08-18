@@ -12,7 +12,8 @@ import org.lealone.sql.StatementBase;
 
 public class DefaultYieldableLocalUpdate extends YieldableUpdateBase {
 
-    public DefaultYieldableLocalUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public DefaultYieldableLocalUpdate(StatementBase statement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
     }
 

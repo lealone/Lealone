@@ -66,7 +66,8 @@ public class PageStorageModeSqlTest extends SqlTestBase {
 
     private void putData(String tableName) {
         for (int row = 1; row <= rowCount; row++) {
-            StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(").append(row);
+            StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(")
+                    .append(row);
             for (int col = 1; col <= columnCount; col++) {
                 sql.append(", 'value-row" + row + "-col" + col + "'");
             }

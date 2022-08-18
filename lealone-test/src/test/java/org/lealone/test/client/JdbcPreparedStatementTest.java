@@ -131,7 +131,8 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
         testAsyncExecuteQueryException(conn, "Select * FROM test", true);
     }
 
-    private void testAsyncExecuteQueryException(Connection conn, String sql, boolean closeConnection) throws Exception {
+    private void testAsyncExecuteQueryException(Connection conn, String sql, boolean closeConnection)
+            throws Exception {
         JdbcPreparedStatement ps = prepareStatement(conn, sql);
         if (closeConnection) {
             conn.close();

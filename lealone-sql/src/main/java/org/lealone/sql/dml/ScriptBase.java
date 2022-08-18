@@ -152,7 +152,8 @@ abstract class ScriptBase extends ManipulationStatement {
         }
         if (isEncrypted()) {
             initStore();
-            in = new FileStorageInputStream(fileStorage, session.getDatabase(), compressionAlgorithm != null, false);
+            in = new FileStorageInputStream(fileStorage, session.getDatabase(),
+                    compressionAlgorithm != null, false);
         } else {
             InputStream inStream;
             try {

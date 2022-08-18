@@ -147,7 +147,8 @@ public class Column {
         } catch (DbException e) {
             if (e.getErrorCode() == ErrorCode.DATA_CONVERSION_ERROR_1) {
                 String target = (table == null ? "" : table.getName() + ": ") + getCreateSQL();
-                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, v.getSQL() + " (" + target + ")");
+                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1,
+                        v.getSQL() + " (" + target + ")");
             }
             throw e;
         }
@@ -350,8 +351,8 @@ public class Column {
      * @param temporary true if the sequence is temporary and does not need to
      *            be stored
      */
-    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary,
-            DbObjectLock lock) {
+    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id,
+            boolean temporary, DbObjectLock lock) {
         if (!autoIncrement) {
             DbException.throwInternalError();
         }
@@ -538,7 +539,8 @@ public class Column {
      * @param session the session
      * @param expr the (additional) constraint
      */
-    public void addCheckConstraint(ServerSession session, IExpression expr, IExpression.Evaluator evaluator) {
+    public void addCheckConstraint(ServerSession session, IExpression expr,
+            IExpression.Evaluator evaluator) {
         if (expr == null) {
             return;
         }
@@ -558,7 +560,8 @@ public class Column {
             checkConstraint = expr;
             checkConstraintEvaluator = evaluator;
         } else {
-            checkConstraint = session.getDatabase().getSQLEngine().createConditionAndOr(true, checkConstraint, expr);
+            checkConstraint = session.getDatabase().getSQLEngine().createConditionAndOr(true,
+                    checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
 

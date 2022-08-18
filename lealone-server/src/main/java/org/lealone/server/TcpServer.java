@@ -21,7 +21,8 @@ public class TcpServer extends AsyncServer<TcpServerConnection> {
     }
 
     @Override
-    protected TcpServerConnection createConnection(WritableChannel writableChannel, Scheduler scheduler) {
+    protected TcpServerConnection createConnection(WritableChannel writableChannel,
+            Scheduler scheduler) {
         return new TcpServerConnection(this, writableChannel, scheduler);
     }
 }

@@ -82,7 +82,8 @@ public class IndexRebuilder implements Runnable {
         while (cursor.next()) {
             Row row = cursor.get();
             buffer.add(row);
-            database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n, MathUtils.convertLongToInt(i++), t);
+            database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n,
+                    MathUtils.convertLongToInt(i++), t);
             if (buffer.size() >= bufferSize) {
                 addRowsToIndex(session, buffer, index);
             }
@@ -117,7 +118,8 @@ public class IndexRebuilder implements Runnable {
         while (cursor.next()) {
             Row row = cursor.get();
             buffer.add(row);
-            database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n, MathUtils.convertLongToInt(i++), t);
+            database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n,
+                    MathUtils.convertLongToInt(i++), t);
             if (buffer.size() >= bufferSize) {
                 sortRows(buffer, index);
                 String mapName = storage.nextTemporaryMapName();

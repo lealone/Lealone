@@ -56,7 +56,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
-            PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId, sql);
+            PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId,
+                    sql);
             Future<PreparedStatementPrepareReadParamsAck> f = session.send(packet);
             PreparedStatementPrepareReadParamsAck ack = f.get();
             isQuery = ack.isQuery;
@@ -89,10 +90,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         prepareIfRequired();
         try {
-            Future<PreparedStatementGetMetaDataAck> f = session.send(new PreparedStatementGetMetaData(commandId));
+            Future<PreparedStatementGetMetaDataAck> f = session
+                    .send(new PreparedStatementGetMetaData(commandId));
             PreparedStatementGetMetaDataAck ack = f.get();
-            ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
-                    ack.columnCount, 0, 0);
+            ClientResult result = new RowCountDeterminedClientResult(session,
+                    (TransferInputStream) ack.in, -1, ack.columnCount, 0, 0);
             return result;
         } catch (IOException e) {
             session.handleException(e);
@@ -102,7 +104,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     @Override
     protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId) {
-        Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId, getValues());
+        Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId,
+                getValues());
         return session.<Result, StatementQueryAck> send(packet, ack -> {
             return getQueryResult(ack, fetch, resultId);
         });
@@ -169,8 +172,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
         try {
-            Future<BatchStatementUpdateAck> f = session
-                    .send(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
+            Future<BatchStatementUpdateAck> f = session.send(new BatchStatementPreparedUpdate(commandId,
+                    batchParameters.size(), batchParameters));
             BatchStatementUpdateAck ack = f.get();
             return ack.results;
         } catch (Exception e) {

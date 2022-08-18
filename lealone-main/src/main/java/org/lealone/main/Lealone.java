@@ -143,7 +143,8 @@ public class Lealone {
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
-            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime, t1, t2, t3);
+            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime,
+                    t1, t2, t3);
             logger.info("Exit with Ctrl+C");
 
             if (latch != null)
@@ -196,9 +197,11 @@ public class Lealone {
         if (baseDir != null)
             config.base_dir = baseDir;
         if (isClusterMode) {
-            if (baseDir == null && NetNode.createTCP(config.listen_address).geInetAddress().isLoopbackAddress()) {
+            if (baseDir == null
+                    && NetNode.createTCP(config.listen_address).geInetAddress().isLoopbackAddress()) {
                 String nodeId = config.listen_address.replace('.', '_');
-                config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_" + nodeId;
+                config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_"
+                        + nodeId;
             }
         }
         loader.applyConfig(config);
@@ -243,23 +246,26 @@ public class Lealone {
     }
 
     private void initTransactionEngineEngines() {
-        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
-            TransactionEngine te;
-            try {
-                te = PluginManager.getPlugin(TransactionEngine.class, def.name);
-                if (te == null) {
-                    te = Utils.newInstance(def.name);
-                    PluginManager.register(te);
-                }
-            } catch (Throwable e) {
-                te = PluginManager.getPlugin(TransactionEngine.class, Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-                if (te == null) {
-                    throw e;
-                }
-                logger.warn("Transaction engine " + def.name + " not found, use " + te.getName() + " instead");
-            }
-            return te;
-        });
+        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine",
+                def -> {
+                    TransactionEngine te;
+                    try {
+                        te = PluginManager.getPlugin(TransactionEngine.class, def.name);
+                        if (te == null) {
+                            te = Utils.newInstance(def.name);
+                            PluginManager.register(te);
+                        }
+                    } catch (Throwable e) {
+                        te = PluginManager.getPlugin(TransactionEngine.class,
+                                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                        if (te == null) {
+                            throw e;
+                        }
+                        logger.warn("Transaction engine " + def.name + " not found, use " + te.getName()
+                                + " instead");
+                    }
+                    return te;
+                });
     }
 
     private void initSQLEngines() {
@@ -291,8 +297,8 @@ public class Lealone {
         V call(PluggableEngineDef def) throws Exception;
     }
 
-    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name, String defaultEngineKey,
-            CallableTask<T> callableTask) {
+    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name,
+            String defaultEngineKey, CallableTask<T> callableTask) {
         long t1 = System.currentTimeMillis();
         if (engines != null) {
             name += " engine";
@@ -354,7 +360,8 @@ public class Lealone {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
-                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
+                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class,
+                            def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
                     if (protocolServer.isRunInMainThread()) {
                         // 默认是第一个

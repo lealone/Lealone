@@ -60,7 +60,8 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
         removeParameters(parameters);
 
-        Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings().keySet();
+        Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings()
+                .keySet();
         parameters.removeAll(recognizedSettingOptions);
         if (!parameters.isEmpty()) {
             throw new ConfigException(String.format("Unrecognized parameters: %s for database %s, " //

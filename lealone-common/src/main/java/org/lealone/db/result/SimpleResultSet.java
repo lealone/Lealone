@@ -183,7 +183,8 @@ public class SimpleResultSet implements ResultSet, ResultSetMetaData {
          * INTERNAL
          */
         @Override
-        public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map) throws SQLException {
+        public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map)
+                throws SQLException {
             throw getUnsupportedException();
         }
 

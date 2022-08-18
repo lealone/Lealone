@@ -9,7 +9,8 @@ import org.lealone.sql.SQLEngine;
 
 public class SQLEngineHolder {
 
-    private static SQLEngine sqlEngine = PluginManager.getPlugin(SQLEngine.class, Constants.DEFAULT_SQL_ENGINE_NAME);
+    private static SQLEngine sqlEngine = PluginManager.getPlugin(SQLEngine.class,
+            Constants.DEFAULT_SQL_ENGINE_NAME);
 
     static void setSQLEngine(SQLEngine sqlEngine) {
         SQLEngineHolder.sqlEngine = sqlEngine;

@@ -446,7 +446,8 @@ public class LobStreamMap {
     private byte[] getBlock(long key) {
         byte[] data = map.get(key);
         if (data == null) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block {0} not found", key);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND,
+                    "Block {0} not found", key);
         }
         return data;
     }
@@ -570,7 +571,8 @@ public class LobStreamMap {
                         continue;
                     }
                     byte[] k = lobStreamMap.getBlock(key);
-                    ByteBuffer newBuffer = ByteBuffer.allocate(k.length + idBuffer.limit() - idBuffer.position());
+                    ByteBuffer newBuffer = ByteBuffer
+                            .allocate(k.length + idBuffer.limit() - idBuffer.position());
                     newBuffer.put(k);
                     newBuffer.put(idBuffer);
                     newBuffer.flip();

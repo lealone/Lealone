@@ -55,7 +55,8 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
     private int tableId;
     private int hash;
 
-    private ValueLob(int type, DataHandler handler, int tableId, long lobId, byte[] hmac, long precision) {
+    private ValueLob(int type, DataHandler handler, int tableId, long lobId, byte[] hmac,
+            long precision) {
         this.type = type;
         this.handler = handler;
         this.tableId = tableId;
@@ -113,7 +114,8 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
     /**
      * Create a BLOB in a temporary file.
      */
-    private ValueLob(DataHandler handler, byte[] buff, int len, InputStream in, long remaining) throws IOException {
+    private ValueLob(DataHandler handler, byte[] buff, int len, InputStream in, long remaining)
+            throws IOException {
         this.type = Value.BLOB;
         this.handler = handler;
         this.small = null;
@@ -164,7 +166,8 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
      * @param precision the precision (number of bytes / characters)
      * @return the value
      */
-    public static ValueLob create(int type, DataHandler handler, int tableId, long id, byte[] hmac, long precision) {
+    public static ValueLob create(int type, DataHandler handler, int tableId, long id, byte[] hmac,
+            long precision) {
         return new ValueLob(type, handler, tableId, id, hmac, precision);
     }
 
@@ -376,7 +379,8 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
         } else if (fileName != null) {
             FileStorage fileStorage = handler.openFile(fileName, "r", true);
             boolean alwaysClose = SysProperties.LOB_CLOSE_BETWEEN_READS;
-            return new BufferedInputStream(new FileStorageInputStream(fileStorage, handler, false, alwaysClose),
+            return new BufferedInputStream(
+                    new FileStorageInputStream(fileStorage, handler, false, alwaysClose),
                     Constants.IO_BUFFER_SIZE);
         }
         long byteCount = (type == Value.BLOB) ? precision : -1;

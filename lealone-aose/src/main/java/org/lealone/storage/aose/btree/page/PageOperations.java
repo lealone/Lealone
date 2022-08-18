@@ -201,7 +201,8 @@ public abstract class PageOperations {
 
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
 
-        public PutIfAbsent(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<V>> resultHandler) {
+        public PutIfAbsent(BTreeMap<K, V> map, K key, V value,
+                AsyncHandler<AsyncResult<V>> resultHandler) {
             super(map, key, value, resultHandler);
         }
 

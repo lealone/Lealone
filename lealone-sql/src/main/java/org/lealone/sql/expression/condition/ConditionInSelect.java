@@ -34,7 +34,8 @@ public class ConditionInSelect extends Condition {
     private final boolean all;
     private final int compareType;
 
-    public ConditionInSelect(Database database, Expression left, Query query, boolean all, int compareType) {
+    public ConditionInSelect(Database database, Expression left, Query query, boolean all,
+            int compareType) {
         this.database = database;
         this.left = left;
         this.query = query;

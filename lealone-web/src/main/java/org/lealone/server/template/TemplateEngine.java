@@ -58,8 +58,9 @@ public class TemplateEngine {
                         }
                         continue;
                     }
-                } else if (chars[i] == 't' && chars[i + 1] == 'e' && chars[i + 2] == 'm' && chars[i + 3] == 'p'
-                        && chars[i + 4] == 'l' && chars[i + 5] == 'a' && chars[i + 6] == 't' && chars[i + 7] == 'e') {
+                } else if (chars[i] == 't' && chars[i + 1] == 'e' && chars[i + 2] == 'm'
+                        && chars[i + 3] == 'p' && chars[i + 4] == 'l' && chars[i + 5] == 'a'
+                        && chars[i + 6] == 't' && chars[i + 7] == 'e') {
                     i += 8;
                     boolean isTemplate = false;
                     int templateStart = i;
@@ -120,13 +121,15 @@ public class TemplateEngine {
             switch (c) {
             case 'v': {
                 if (chars[i] == '-') {
-                    if (chars[i + 1] == 'r' && chars[i + 2] == 'e' && chars[i + 3] == 'p' && chars[i + 4] == 'l'
-                            && chars[i + 5] == 'a' && chars[i + 6] == 'c' && chars[i + 7] == 'e') {
+                    if (chars[i + 1] == 'r' && chars[i + 2] == 'e' && chars[i + 3] == 'p'
+                            && chars[i + 4] == 'l' && chars[i + 5] == 'a' && chars[i + 6] == 'c'
+                            && chars[i + 7] == 'e') {
                         i += 8;
                         parseTemplateFile(chars, i, endIndex, buff2);
                         return buff2.toString();
-                    } else if (!isInsert && chars[i + 1] == 'i' && chars[i + 2] == 'n' && chars[i + 3] == 's'
-                            && chars[i + 4] == 'e' && chars[i + 5] == 'r' && chars[i + 6] == 't') {
+                    } else if (!isInsert && chars[i + 1] == 'i' && chars[i + 2] == 'n'
+                            && chars[i + 3] == 's' && chars[i + 4] == 'e' && chars[i + 5] == 'r'
+                            && chars[i + 6] == 't') {
                         i += 7;
                         isInsert = true;
                         i = parseTemplateFile(chars, i, endIndex, buff2);
@@ -153,7 +156,8 @@ public class TemplateEngine {
         return buff.toString();
     }
 
-    private int parseTemplateFile(char[] chars, int startIndex, int endIndex, StringBuilder buff) throws Exception {
+    private int parseTemplateFile(char[] chars, int startIndex, int endIndex, StringBuilder buff)
+            throws Exception {
         int i = startIndex;
         char c;
         while (i < endIndex) {
@@ -196,7 +200,8 @@ public class TemplateEngine {
             templatePath = null;
         }
         if (templatePath == null)
-            throw new RuntimeException("Invalid template file: " + templateFile + ", template root: " + templateRoot);
+            throw new RuntimeException(
+                    "Invalid template file: " + templateFile + ", template root: " + templateRoot);
         return templatePath;
     }
 }

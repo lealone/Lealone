@@ -35,12 +35,13 @@ public class StringFunction extends BuiltInFunction {
     public static void init() {
     }
 
-    public static final int ASCII = 50, BIT_LENGTH = 51, CHAR = 52, CHAR_LENGTH = 53, CONCAT = 54, DIFFERENCE = 55,
-            HEXTORAW = 56, INSERT = 57, INSTR = 58, LCASE = 59, LEFT = 60, LENGTH = 61, LOCATE = 62, LTRIM = 63,
-            OCTET_LENGTH = 64, RAWTOHEX = 65, REPEAT = 66, REPLACE = 67, RIGHT = 68, RTRIM = 69, SOUNDEX = 70,
-            SPACE = 71, SUBSTR = 72, SUBSTRING = 73, UCASE = 74, LOWER = 75, UPPER = 76, POSITION = 77, TRIM = 78,
-            STRINGENCODE = 79, STRINGDECODE = 80, STRINGTOUTF8 = 81, UTF8TOSTRING = 82, XMLATTR = 83, XMLNODE = 84,
-            XMLCOMMENT = 85, XMLCDATA = 86, XMLSTARTDOC = 87, XMLTEXT = 88, REGEXP_REPLACE = 89, RPAD = 90, LPAD = 91,
+    public static final int ASCII = 50, BIT_LENGTH = 51, CHAR = 52, CHAR_LENGTH = 53, CONCAT = 54,
+            DIFFERENCE = 55, HEXTORAW = 56, INSERT = 57, INSTR = 58, LCASE = 59, LEFT = 60, LENGTH = 61,
+            LOCATE = 62, LTRIM = 63, OCTET_LENGTH = 64, RAWTOHEX = 65, REPEAT = 66, REPLACE = 67,
+            RIGHT = 68, RTRIM = 69, SOUNDEX = 70, SPACE = 71, SUBSTR = 72, SUBSTRING = 73, UCASE = 74,
+            LOWER = 75, UPPER = 76, POSITION = 77, TRIM = 78, STRINGENCODE = 79, STRINGDECODE = 80,
+            STRINGTOUTF8 = 81, UTF8TOSTRING = 82, XMLATTR = 83, XMLNODE = 84, XMLCOMMENT = 85,
+            XMLCDATA = 86, XMLSTARTDOC = 87, XMLTEXT = 88, REGEXP_REPLACE = 89, RPAD = 90, LPAD = 91,
             CONCAT_WS = 92;
 
     private static final char[] SOUNDEX_INDEX = new char[128];
@@ -307,7 +308,8 @@ public class StringFunction extends BuiltInFunction {
             if (v1 == ValueNull.INSTANCE || v2 == ValueNull.INSTANCE) {
                 result = v1;
             } else {
-                result = ValueString.get(insert(v0.getString(), v1.getInt(), v2.getInt(), v3.getString()));
+                result = ValueString
+                        .get(insert(v0.getString(), v1.getInt(), v2.getInt(), v3.getString()));
             }
             break;
         }
@@ -340,13 +342,16 @@ public class StringFunction extends BuiltInFunction {
             result = ValueString.get(right(v0.getString(), v1.getInt()));
             break;
         case LTRIM:
-            result = ValueString.get(StringUtils.trim(v0.getString(), true, false, v1 == null ? " " : v1.getString()));
+            result = ValueString.get(
+                    StringUtils.trim(v0.getString(), true, false, v1 == null ? " " : v1.getString()));
             break;
         case TRIM:
-            result = ValueString.get(StringUtils.trim(v0.getString(), true, true, v1 == null ? " " : v1.getString()));
+            result = ValueString.get(
+                    StringUtils.trim(v0.getString(), true, true, v1 == null ? " " : v1.getString()));
             break;
         case RTRIM:
-            result = ValueString.get(StringUtils.trim(v0.getString(), false, true, v1 == null ? " " : v1.getString()));
+            result = ValueString.get(
+                    StringUtils.trim(v0.getString(), false, true, v1 == null ? " " : v1.getString()));
             break;
         case SUBSTR:
         case SUBSTRING: {
@@ -382,12 +387,12 @@ public class StringFunction extends BuiltInFunction {
             break;
         }
         case RPAD:
-            result = ValueString
-                    .get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), true));
+            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(),
+                    v2 == null ? null : v2.getString(), true));
             break;
         case LPAD:
-            result = ValueString
-                    .get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), false));
+            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(),
+                    v2 == null ? null : v2.getString(), false));
             break;
         case XMLTEXT:
             if (v1 == null) {

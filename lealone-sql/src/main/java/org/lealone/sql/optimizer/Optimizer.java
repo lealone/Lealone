@@ -259,7 +259,8 @@ public class Optimizer {
     * @param sortOrder the sort order
     * @return the plan item
     */
-    public static PlanItem getBestPlanItem(ServerSession session, int[] masks, Table table, SortOrder sortOrder) {
+    public static PlanItem getBestPlanItem(ServerSession session, int[] masks, Table table,
+            SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.setIndex(table.getScanIndex(session));
         item.cost = item.getIndex().getCost(session, null, null);

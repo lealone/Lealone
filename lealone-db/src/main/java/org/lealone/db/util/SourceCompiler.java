@@ -185,7 +185,8 @@ public class SourceCompiler {
                 out.println(source);
             } else {
                 int endImport = source.indexOf("@CODE");
-                String importCode = "import java.util.*;\n" + "import java.math.*;\n" + "import java.sql.*;\n";
+                String importCode = "import java.util.*;\n" + "import java.math.*;\n"
+                        + "import java.sql.*;\n";
                 if (endImport >= 0) {
                     importCode = source.substring(0, endImport);
                     source = source.substring("@CODE".length() + endImport);
@@ -194,7 +195,8 @@ public class SourceCompiler {
                     out.println("package " + packageName + ";");
                 }
                 out.println(importCode);
-                out.println("public class " + className + " {\n" + "    public static " + source + "\n" + "}\n");
+                out.println("public class " + className + " {\n" + "    public static " + source + "\n"
+                        + "}\n");
             }
             out.close();
             if (JAVAC_SUN != null) {
@@ -267,8 +269,8 @@ public class SourceCompiler {
             Method compile;
             compile = JAVAC_SUN.getMethod("compile", String[].class);
             Object javac = JAVAC_SUN.getDeclaredConstructor().newInstance();
-            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-cp", cp(), "-d", compileDir,
-                    "-encoding", "UTF-8", javaFile.getAbsolutePath() });
+            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-cp", cp(), "-d",
+                    compileDir, "-encoding", "UTF-8", javaFile.getAbsolutePath() });
             String err = new String(buff.toByteArray(), "UTF-8");
             throwSyntaxError(err);
         } catch (Exception e) {
@@ -293,8 +295,8 @@ public class SourceCompiler {
 
     public static byte[] compile(ClassLoader classLoader, String className, String sourceCode) {
         try {
-            return SCJavaCompiler.newInstance(classLoader, true).compile(className, sourceCode).entrySet().iterator()
-                    .next().getValue();
+            return SCJavaCompiler.newInstance(classLoader, true).compile(className, sourceCode)
+                    .entrySet().iterator().next().getValue();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -341,19 +343,20 @@ public class SourceCompiler {
         }
 
         @Override
-        public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse)
-                throws IOException {
+        public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds,
+                boolean recurse) throws IOException {
             return super.list(location, packageName, kinds, recurse);
         }
 
         @Override
-        public JavaFileObject getJavaFileForOutput(Location location, String className, Kind kind, FileObject sibling)
-                throws IOException {
+        public JavaFileObject getJavaFileForOutput(Location location, String className, Kind kind,
+                FileObject sibling) throws IOException {
             if (sibling != null && sibling instanceof SCJavaFileObject) {
                 return ((SCJavaFileObject) sibling).addOutputJavaFile(className);
             }
             throw new IOException(
-                    "The source file passed to getJavaFileForOutput() is not a SCJavaFileObject: " + sibling);
+                    "The source file passed to getJavaFileForOutput() is not a SCJavaFileObject: "
+                            + sibling);
         }
     }
 
@@ -416,7 +419,8 @@ public class SourceCompiler {
 
         private static URI makeURI(final String canonicalClassName) {
             int dotPos = canonicalClassName.lastIndexOf('.');
-            String simpleClassName = dotPos == -1 ? canonicalClassName : canonicalClassName.substring(dotPos + 1);
+            String simpleClassName = dotPos == -1 ? canonicalClassName
+                    : canonicalClassName.substring(dotPos + 1);
             try {
                 return new URI(simpleClassName + Kind.SOURCE.extension);
             } catch (URISyntaxException e) {
@@ -446,7 +450,8 @@ public class SourceCompiler {
             this.compiler = compiler;
             this.listener = new SCDiagnosticListener();
             this.fileManager = new SCJavaFileManager(
-                    compiler.getStandardFileManager(listener, null, Charset.forName("UTF-8")), classLoader);
+                    compiler.getStandardFileManager(listener, null, Charset.forName("UTF-8")),
+                    classLoader);
             ArrayList<String> list = new ArrayList<>();
             list.add(this.debug ? "-g:source,lines,vars" : "-g:none");
             this.compilerOptions = list;

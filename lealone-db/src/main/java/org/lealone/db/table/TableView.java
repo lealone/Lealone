@@ -55,8 +55,9 @@ public class TableView extends Table {
     private LocalResult recursiveResult;
     private boolean tableExpression;
 
-    public TableView(Schema schema, int id, String name, String querySQL, ArrayList<CommandParameter> params,
-            String[] columnNames, ServerSession session, boolean recursive) {
+    public TableView(Schema schema, int id, String name, String querySQL,
+            ArrayList<CommandParameter> params, String[] columnNames, ServerSession session,
+            boolean recursive) {
         super(schema, id, name, false, true);
         init(querySQL, params, columnNames, session, recursive);
     }
@@ -85,8 +86,8 @@ public class TableView extends Table {
         }
     }
 
-    private synchronized void init(String querySQL, ArrayList<CommandParameter> params, String[] columnNames,
-            ServerSession session, boolean recursive) {
+    private synchronized void init(String querySQL, ArrayList<CommandParameter> params,
+            String[] columnNames, ServerSession session, boolean recursive) {
         this.querySQL = querySQL;
         this.columnNames = columnNames;
         this.recursive = recursive;

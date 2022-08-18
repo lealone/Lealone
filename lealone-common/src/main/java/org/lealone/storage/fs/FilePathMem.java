@@ -48,7 +48,8 @@ public class FilePathMem extends FilePath {
     public void moveTo(FilePath newName, boolean atomicReplace) {
         synchronized (MEMORY_FILES) {
             if (!atomicReplace && !newName.name.equals(name) && MEMORY_FILES.containsKey(newName.name)) {
-                throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2, new String[] { name, newName + " (exists)" });
+                throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2,
+                        new String[] { name, newName + " (exists)" });
             }
             FileMemData f = getMemoryFile();
             f.setName(newName.name);
@@ -151,7 +152,8 @@ public class FilePathMem extends FilePath {
     @Override
     public void createDirectory() {
         if (exists()) {
-            throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a file with this name already exists)");
+            throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1,
+                    name + " (a file with this name already exists)");
         }
         synchronized (MEMORY_FILES) {
             MEMORY_FILES.put(name, DIRECTORY);

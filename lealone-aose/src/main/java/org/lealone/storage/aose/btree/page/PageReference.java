@@ -25,7 +25,8 @@ public class PageReference {
     }
 
     private static final AtomicReferenceFieldUpdater<PageReference, PageOperationHandler> //
-    lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageOperationHandler.class, "lockOwner");
+    lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageOperationHandler.class,
+            "lockOwner");
     protected volatile PageOperationHandler lockOwner;
     private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
 

@@ -90,8 +90,8 @@ public class TraceObject {
             if (className == null) {
                 className = newType.getClassName();
             }
-            trace.debugCode(className + " " + newType.getShortName() + newId + " = " + getTraceObjectName() + "."
-                    + value + ";");
+            trace.debugCode(className + " " + newType.getShortName() + newId + " = "
+                    + getTraceObjectName() + "." + value + ";");
         }
     }
 
@@ -262,7 +262,8 @@ public class TraceObject {
         if (x == null) {
             return "null";
         }
-        return "org.lealone.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x) + "\")";
+        return "org.lealone.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x)
+                + "\")";
     }
 
     /**

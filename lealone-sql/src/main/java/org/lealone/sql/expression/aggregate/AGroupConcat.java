@@ -182,7 +182,8 @@ public class AGroupConcat extends BuiltInAggregate {
                 });
             }
             StatementBuilder buff = new StatementBuilder();
-            String sep = groupConcatSeparator == null ? "," : groupConcatSeparator.getValue(session).getString();
+            String sep = groupConcatSeparator == null ? ","
+                    : groupConcatSeparator.getValue(session).getString();
             for (Value val : list) {
                 String s;
                 if (val.getType() == Value.ARRAY) {

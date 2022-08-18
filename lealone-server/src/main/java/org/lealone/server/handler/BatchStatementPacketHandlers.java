@@ -86,8 +86,8 @@ class BatchStatementPacketHandlers extends PacketHandlers {
         }
     }
 
-    private static void submitYieldableCommand(PacketDeliveryTask task, PreparedSQLStatement command, int[] results,
-            AtomicInteger count, int index) {
+    private static void submitYieldableCommand(PacketDeliveryTask task, PreparedSQLStatement command,
+            int[] results, AtomicInteger count, int index) {
         PreparedSQLStatement.Yieldable<?> yieldable = command.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();

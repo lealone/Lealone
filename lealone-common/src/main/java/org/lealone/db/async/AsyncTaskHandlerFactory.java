@@ -18,7 +18,8 @@ public class AsyncTaskHandlerFactory {
         }
 
         @Override
-        public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit) {
+        public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay,
+                TimeUnit unit) {
             task.run();
             return null;
         }

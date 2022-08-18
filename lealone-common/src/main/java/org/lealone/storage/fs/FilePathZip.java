@@ -247,7 +247,8 @@ public class FilePathZip extends FilePath {
     }
 
     @Override
-    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) throws IOException {
+    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir)
+            throws IOException {
         if (!inTempDir) {
             throw new IOException("File system is read-only");
         }

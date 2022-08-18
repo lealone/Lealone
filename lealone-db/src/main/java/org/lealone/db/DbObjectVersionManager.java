@@ -36,24 +36,29 @@ public class DbObjectVersionManager {
     public void initDbObjectVersionTable(Connection conn) {
         try {
             Statement stmt = conn.createStatement();
-            stmt.execute("CREATE TABLE IF NOT EXISTS db_object_version (id int PRIMARY KEY, version int)");
+            stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS db_object_version (id int PRIMARY KEY, version int)");
             stmt.execute("CREATE TABLE IF NOT EXISTS table_alter_history"
                     + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))");
             stmt.close();
             psGetVersion = conn.prepareStatement("select version from db_object_version where id = ?");
-            psUpdateVersion = conn.prepareStatement("update db_object_version set version = ? where id = ?");
+            psUpdateVersion = conn
+                    .prepareStatement("update db_object_version set version = ? where id = ?");
 
-            psAddTableAlterHistoryRecord = conn.prepareStatement("insert into table_alter_history values(?,?,?,?)");
+            psAddTableAlterHistoryRecord = conn
+                    .prepareStatement("insert into table_alter_history values(?,?,?,?)");
             psGetTableAlterHistoryRecord = conn
                     .prepareStatement("select id, version, alter_type, columns from table_alter_history "
                             + "where id = ? and version between ? and ?");
-            psDeleteTableAlterHistoryRecord = conn.prepareStatement("delete from table_alter_history where id = ?");
+            psDeleteTableAlterHistoryRecord = conn
+                    .prepareStatement("delete from table_alter_history where id = ?");
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
     }
 
-    public synchronized void addTableAlterHistoryRecord(int id, int version, int alterType, String columns) {
+    public synchronized void addTableAlterHistoryRecord(int id, int version, int alterType,
+            String columns) {
         if (psAddTableAlterHistoryRecord == null)
             return;
         try {
@@ -78,8 +83,8 @@ public class DbObjectVersionManager {
         }
     }
 
-    public synchronized ArrayList<TableAlterHistoryRecord> getTableAlterHistoryRecord(int id, int versionMin,
-            int versionMax) {
+    public synchronized ArrayList<TableAlterHistoryRecord> getTableAlterHistoryRecord(int id,
+            int versionMin, int versionMax) {
         ArrayList<TableAlterHistoryRecord> records = new ArrayList<>();
         if (psGetTableAlterHistoryRecord == null)
             return records;
@@ -89,7 +94,8 @@ public class DbObjectVersionManager {
             psGetTableAlterHistoryRecord.setInt(3, versionMax);
             ResultSet rs = psGetTableAlterHistoryRecord.executeQuery();
             while (rs.next()) {
-                records.add(new TableAlterHistoryRecord(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getString(4)));
+                records.add(new TableAlterHistoryRecord(rs.getInt(1), rs.getInt(2), rs.getInt(3),
+                        rs.getString(4)));
             }
             return records;
         } catch (SQLException e) {
@@ -130,6 +136,7 @@ public class DbObjectVersionManager {
     }
 
     public static boolean isDbObjectVersionTable(String tableName) {
-        return "db_object_version".equalsIgnoreCase(tableName) || "table_alter_history".equalsIgnoreCase(tableName);
+        return "db_object_version".equalsIgnoreCase(tableName)
+                || "table_alter_history".equalsIgnoreCase(tableName);
     }
 }

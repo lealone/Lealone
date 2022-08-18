@@ -43,7 +43,8 @@ public abstract class TransferConnection extends AsyncConnection {
         return new TransferOutputStream(session, writableChannel);
     }
 
-    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType)
+            throws IOException {
         throw DbException.getInternalError("handleRequest");
     }
 
@@ -63,7 +64,8 @@ public abstract class TransferConnection extends AsyncConnection {
             String sql = in.readString();
             int errorCode = in.readInt();
             String stackTrace = in.readString();
-            JdbcSQLException s = new JdbcSQLException(message, sql, sqlState, errorCode, null, stackTrace);
+            JdbcSQLException s = new JdbcSQLException(message, sql, sqlState, errorCode, null,
+                    stackTrace);
             t = s;
             if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
                 IOException e = new IOException(s.toString());
@@ -94,8 +96,8 @@ public abstract class TransferConnection extends AsyncConnection {
             }
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_ERROR);
-            out.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
-                    .writeString(trace).flush();
+            out.writeString(e.getSQLState()).writeString(message).writeString(sql)
+                    .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (session != null)
                 session.close();

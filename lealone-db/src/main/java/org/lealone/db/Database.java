@@ -228,20 +228,23 @@ public class Database implements DataHandler, DbObject {
                 sqlEngine = Utils.newInstance(engineName);
                 PluginManager.register(sqlEngine);
             } catch (Exception e) {
-                e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found", e);
+                e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found",
+                        e);
                 throw DbException.convert(e);
             }
         }
         this.sqlEngine = sqlEngine;
 
         engineName = dbSettings.defaultTransactionEngine;
-        TransactionEngine transactionEngine = PluginManager.getPlugin(TransactionEngine.class, engineName);
+        TransactionEngine transactionEngine = PluginManager.getPlugin(TransactionEngine.class,
+                engineName);
         if (transactionEngine == null) {
             try {
                 transactionEngine = Utils.newInstance(engineName);
                 PluginManager.register(transactionEngine);
             } catch (Exception e) {
-                e = new RuntimeException("Fatal error: the transaction engine '" + engineName + "' not found", e);
+                e = new RuntimeException(
+                        "Fatal error: the transaction engine '" + engineName + "' not found", e);
                 throw DbException.convert(e);
             }
         }
@@ -508,7 +511,8 @@ public class Database implements DataHandler, DbObject {
         // 这里也没有直接使用sys表的ScanIndex，因为id字段是主键
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
         IndexType indexType = IndexType.createDelegate();
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", sysTableId, pkCols, indexType, true, null, null);
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", sysTableId, pkCols, indexType, true, null,
+                null);
 
         // 把sys(meta)表所有的create语句取出来，然后执行它们，在内存中构建出完整的数据库对象
         ArrayList<MetaRecord> records = new ArrayList<>();
@@ -889,7 +893,8 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object
      * @param newName the new name
      */
-    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName, DbObjectLock lock) {
+    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName,
+            DbObjectLock lock) {
         checkWritingAllowed();
         DbObjectType type = obj.getType();
         TransactionalDbObjects dbObjects = dbObjectsArray[type.value];
@@ -1021,8 +1026,8 @@ public class Database implements DataHandler, DbObject {
         ServerSession session = new ServerSession(this, user, ++nextSessionId);
         session.setConnectionInfo(ci);
         userSessions.add(session);
-        session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}", session.getId(),
-                name);
+        session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}",
+                session.getId(), name);
         if (delayedCloser != null) {
             delayedCloser.reset();
             delayedCloser = null;
@@ -1047,7 +1052,8 @@ public class Database implements DataHandler, DbObject {
             }
             userSessions.remove(session);
             if (session != systemSession && session.getTrace().isInfoEnabled()) {
-                session.getTrace().setType(TraceModuleType.DATABASE).info("disconnected session #{0}", session.getId());
+                session.getTrace().setType(TraceModuleType.DATABASE).info("disconnected session #{0}",
+                        session.getId());
             }
         }
 
@@ -1533,11 +1539,12 @@ public class Database implements DataHandler, DbObject {
             eventListener = null;
         } else {
             try {
-                eventListener = (DatabaseEventListener) Utils.loadUserClass(className).getDeclaredConstructor()
-                        .newInstance();
+                eventListener = (DatabaseEventListener) Utils.loadUserClass(className)
+                        .getDeclaredConstructor().newInstance();
                 eventListener.init(name);
             } catch (Throwable e) {
-                throw DbException.get(ErrorCode.ERROR_SETTING_DATABASE_EVENT_LISTENER_2, e, className, e.toString());
+                throw DbException.get(ErrorCode.ERROR_SETTING_DATABASE_EVENT_LISTENER_2, e, className,
+                        e.toString());
             }
         }
     }
@@ -1978,7 +1985,8 @@ public class Database implements DataHandler, DbObject {
     }
 
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
-            Map<String, String> replicationProperties, Map<String, String> nodeAssignmentProperties, RunMode runMode) {
+            Map<String, String> replicationProperties, Map<String, String> nodeAssignmentProperties,
+            RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(quotedDbName);
         if (runMode != null) {
@@ -2015,8 +2023,8 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, replicationParameters, nodeAssignmentParameters,
-                runMode);
+        return getCreateSQL(quoteIdentifier(name), parameters, replicationParameters,
+                nodeAssignmentParameters, runMode);
     }
 
     @Override
@@ -2069,7 +2077,8 @@ public class Database implements DataHandler, DbObject {
         // 新建session，避免使用system session
         try (ServerSession session = createSession(systemUser)) {
             // executeUpdate()会自动提交，所以不需要再调用一次commit
-            session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+            session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN")
+                    .executeUpdate();
         }
     }
 

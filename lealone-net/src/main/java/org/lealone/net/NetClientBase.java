@@ -29,8 +29,9 @@ public abstract class NetClientBase implements NetClient {
 
     protected abstract void closeInternal();
 
-    protected abstract void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            int maxSharedSize, AsyncCallback<AsyncConnection> ac);
+    protected abstract void createConnectionInternal(NetNode node,
+            AsyncConnectionManager connectionManager, int maxSharedSize,
+            AsyncCallback<AsyncConnection> ac);
 
     @Override
     public Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node) {
@@ -58,7 +59,8 @@ public abstract class NetClientBase implements NetClient {
         AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
             AsyncCallback<AsyncConnection> ac = new AsyncCallback<>();
-            createConnectionInternal(node, connectionManager, AsyncConnectionPool.getMaxSharedSize(config), ac);
+            createConnectionInternal(node, connectionManager,
+                    AsyncConnectionPool.getMaxSharedSize(config), ac);
             return ac;
         } else {
             return Future.succeededFuture(asyncConnection);
@@ -78,7 +80,8 @@ public abstract class NetClientBase implements NetClient {
             conn.close();
     }
 
-    protected AsyncConnection getConnection(Map<String, String> config, InetSocketAddress inetSocketAddress) {
+    protected AsyncConnection getConnection(Map<String, String> config,
+            InetSocketAddress inetSocketAddress) {
         checkClosed();
         AsyncConnectionPool pool = asyncConnections.get(inetSocketAddress);
         return pool == null ? null : pool.getConnection(config);

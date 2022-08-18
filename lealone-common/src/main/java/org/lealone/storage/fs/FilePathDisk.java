@@ -97,7 +97,8 @@ public class FilePathDisk extends FilePath {
             throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2, new String[] { name, newName.name });
         }
         if (newFile.exists()) {
-            throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2, new String[] { name, newName + " (exists)" });
+            throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2,
+                    new String[] { name, newName + " (exists)" });
         }
         for (int i = 0; i < SysProperties.MAX_FILE_RETRY; i++) {
             IOUtils.trace("rename", name + " >" + newName, null);
@@ -357,7 +358,8 @@ public class FilePathDisk extends FilePath {
     }
 
     @Override
-    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) throws IOException {
+    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir)
+            throws IOException {
         String fileName = name + ".";
         String prefix = new File(fileName).getName();
         File dir;

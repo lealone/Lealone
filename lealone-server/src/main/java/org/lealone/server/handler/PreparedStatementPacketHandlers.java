@@ -84,7 +84,8 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
     private static class Close implements PacketHandler<PreparedStatementClose> {
         @Override
         public Packet handle(ServerSession session, PreparedStatementClose packet) {
-            PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(packet.commandId, true);
+            PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(packet.commandId,
+                    true);
             if (command != null) {
                 command.close();
             }

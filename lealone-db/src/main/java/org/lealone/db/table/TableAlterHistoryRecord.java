@@ -37,7 +37,8 @@ public class TableAlterHistoryRecord {
         } else if (alterType == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int index = columns.indexOf(',');
             int position = Integer.parseInt(columns.substring(0, index));
-            Column column = (Column) session.getParser().parseColumnForTable(columns.substring(index + 1));
+            Column column = (Column) session.getParser()
+                    .parseColumnForTable(columns.substring(index + 1));
             values[position] = column.convert(values[position]);
             return values;
         } else if (alterType == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
@@ -46,7 +47,8 @@ public class TableAlterHistoryRecord {
             int len = a.length - 1 + values.length;
             Value[] newValues = new Value[len];
             System.arraycopy(values, 0, newValues, 0, position);
-            System.arraycopy(values, position, newValues, position + a.length - 1, values.length - position);
+            System.arraycopy(values, position, newValues, position + a.length - 1,
+                    values.length - position);
             Row row = new Row(newValues, 0);
             for (int i = 1; i < a.length; i++) {
                 Column column = (Column) session.getParser().parseColumnForTable(a[i]);

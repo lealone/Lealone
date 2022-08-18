@@ -107,7 +107,8 @@ public class OrmCrudTest extends OrmTestBase {
 
         // 批量更新记录
         // update user set phone = 12345678, notes = 'Doing a batch update' where name like 'Rob%';
-        count = dao.phone.set(12345678).notes.set("Doing a batch update").where().name.like("Rob%").update();
+        count = dao.phone.set(12345678).notes.set("Doing a batch update").where().name.like("Rob%")
+                .update();
 
         assertEquals(2, count);
 

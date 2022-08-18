@@ -48,8 +48,8 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, String> parameters) {
+    public <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters) {
         String mapType = parameters == null ? null : parameters.get("mapType");
         return openMap(name, mapType, keyType, valueType, parameters);
     }
@@ -68,8 +68,8 @@ public class AOStorage extends StorageBase {
     }
 
     @SuppressWarnings("unchecked")
-    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, String> parameters) {
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters) {
         StorageMap<?, ?> map = maps.get(name);
         if (map == null) {
             synchronized (this) {

@@ -101,9 +101,11 @@ public class SetDatabase extends SetStatement {
             CompareMode currentMode = database.getCompareMode();
             CompareMode newMode;
             if (stringValue.equals(CompareMode.SIGNED)) {
-                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), false);
+                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(),
+                        false);
             } else if (stringValue.equals(CompareMode.UNSIGNED)) {
-                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), true);
+                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(),
+                        true);
             } else {
                 throw DbException.getInvalidValueException(name, stringValue);
             }

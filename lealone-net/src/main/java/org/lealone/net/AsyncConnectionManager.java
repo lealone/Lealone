@@ -11,7 +11,8 @@ public interface AsyncConnectionManager {
 
     AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer);
 
-    default AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer, Object scheduler) {
+    default AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer,
+            Object scheduler) {
         return null;
     }
 

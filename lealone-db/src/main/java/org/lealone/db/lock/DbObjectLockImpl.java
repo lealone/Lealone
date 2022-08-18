@@ -49,7 +49,8 @@ public class DbObjectLockImpl implements DbObjectLock {
         if (lockOwner != null) {
             Transaction transaction = lockOwner.getTransaction();
             if (transaction != null) {
-                transaction.addWaitingTransaction(this, session.getTransaction(), Transaction.getTransactionListener());
+                transaction.addWaitingTransaction(this, session.getTransaction(),
+                        Transaction.getTransactionListener());
             }
         }
     }

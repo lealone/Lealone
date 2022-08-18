@@ -38,7 +38,8 @@ public class Chunk {
     public static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
         if (filePos < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Negative position {0}", filePos);
         }
         return filePos;
     }
@@ -126,7 +127,8 @@ public class Chunk {
     private void readPagePositions() {
         if (!pagePositionToLengthMap.isEmpty())
             return;
-        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset), pageCount * 8 + pageCount * 4);
+        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset),
+                pageCount * 8 + pageCount * 4);
         for (int i = 0; i < pageCount; i++) {
             long position = buff.getLong();
             int length = buff.getInt();
@@ -195,8 +197,8 @@ public class Chunk {
             }
         }
         if (!ok) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk header is corrupt: {0}",
-                    fileStorage);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Chunk header is corrupt: {0}", fileStorage);
         }
     }
 
@@ -231,7 +233,8 @@ public class Chunk {
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
-                    "The chunk format {0} is larger than the supported format {1}", format, FORMAT_VERSION);
+                    "The chunk format {0} is larger than the supported format {1}", format,
+                    FORMAT_VERSION);
         }
 
         removedPageOffset = DataUtils.readHexInt(map, "removedPageOffset", 0);

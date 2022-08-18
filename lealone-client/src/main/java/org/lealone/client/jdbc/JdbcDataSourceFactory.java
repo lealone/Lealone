@@ -52,10 +52,11 @@ public class JdbcDataSourceFactory implements ObjectFactory {
      *         not JdbcDataSource.
      */
     @Override
-    public synchronized Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable<?, ?> environment) {
+    public synchronized Object getObjectInstance(Object obj, Name name, Context nameCtx,
+            Hashtable<?, ?> environment) {
         if (trace.isDebugEnabled()) {
-            trace.debug("getObjectInstance obj={0} name={1} nameCtx={2} environment={3}", obj, name, nameCtx,
-                    environment);
+            trace.debug("getObjectInstance obj={0} name={1} nameCtx={2} environment={3}", obj, name,
+                    nameCtx, environment);
         }
         if (obj instanceof Reference) {
             Reference ref = (Reference) obj;
@@ -79,8 +80,8 @@ public class JdbcDataSourceFactory implements ObjectFactory {
     public static TraceSystem getTraceSystem() {
         synchronized (JdbcDataSourceFactory.class) {
             if (cachedTraceSystem == null) {
-                cachedTraceSystem = new TraceSystem(SysProperties.CLIENT_TRACE_DIRECTORY + Constants.PROJECT_NAME
-                        + "datasource" + Constants.SUFFIX_TRACE_FILE);
+                cachedTraceSystem = new TraceSystem(SysProperties.CLIENT_TRACE_DIRECTORY
+                        + Constants.PROJECT_NAME + "datasource" + Constants.SUFFIX_TRACE_FILE);
                 cachedTraceSystem.setLevelFile(SysProperties.DATASOURCE_TRACE_LEVEL);
             }
             return cachedTraceSystem;

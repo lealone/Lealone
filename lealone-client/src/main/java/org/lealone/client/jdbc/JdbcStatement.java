@@ -52,7 +52,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         this(conn, id, resultSetType, resultSetConcurrency, false);
     }
 
-    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet) {
+    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency,
+            boolean closedByResultSet) {
         this.conn = conn;
         this.session = conn.getSession();
         this.resultSetType = resultSetType;
@@ -104,8 +105,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             if (ar.isSucceeded()) {
                 Result r = ar.getResult();
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
-                        scrollable, updatable);
+                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id,
+                        closedByResultSet, scrollable, updatable);
                 resultSet.setCommand(command); // 关闭结果集时再关闭
                 ac.setAsyncResult(resultSet);
             } else {

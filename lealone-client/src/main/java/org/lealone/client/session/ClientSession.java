@@ -214,7 +214,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
+    public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off,
+            int length) {
         try {
             LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
             if (ack.buff != null && ack.buff.length > 0) {
@@ -243,7 +244,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
+            AckPacketHandler<R, P> ackPacketHandler) {
         int packetId = getNextId();
         return send(packet, packetId, ackPacketHandler);
     }
@@ -258,7 +260,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             ac = new AsyncCallback<R>() {
                 @Override
                 public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                    PacketDecoder<? extends Packet> decoder = PacketDecoders
+                            .getDecoder(packet.getAckType());
                     Packet packet = decoder.decode(in, getProtocolVersion());
                     if (ackPacketHandler != null) {
                         try {

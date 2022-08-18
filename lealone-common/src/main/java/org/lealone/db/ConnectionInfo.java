@@ -31,7 +31,8 @@ import org.lealone.storage.fs.FilePathEncrypt;
  */
 public class ConnectionInfo implements Cloneable {
 
-    private static final boolean IGNORE_UNKNOWN_SETTINGS = Utils.getProperty("lealone.ignore.unknown.settings", false);
+    private static final boolean IGNORE_UNKNOWN_SETTINGS = Utils
+            .getProperty("lealone.ignore.unknown.settings", false);
     private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
 
     static {
@@ -130,8 +131,10 @@ public class ConnectionInfo implements Cloneable {
         convertPasswords();
         isServiceConnection = removeProperty(ConnectionSetting.IS_SERVICE_CONNECTION, false);
 
-        netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME, Constants.DEFAULT_NET_FACTORY_NAME);
-        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT, Constants.DEFAULT_NETWORK_TIMEOUT);
+        netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME,
+                Constants.DEFAULT_NET_FACTORY_NAME);
+        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT,
+                Constants.DEFAULT_NETWORK_TIMEOUT);
         initTraceProperty();
     }
 
@@ -629,7 +632,8 @@ public class ConnectionInfo implements Cloneable {
                 } else {
                     className = "org.lealone.db.session.ServerSessionFactory";
                 }
-                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance").invoke(null);
+                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance")
+                        .invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

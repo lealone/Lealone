@@ -158,7 +158,8 @@ public class Update extends ManipulationStatement {
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableUpdate(this, asyncHandler); // 处理单机模式、复制模式
     }
 
@@ -170,7 +171,8 @@ public class Update extends ManipulationStatement {
         final int columnCount;
 
         public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr, statement.condition);
+            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
+                    statement.condition);
             this.statement = statement;
             columns = table.getColumns();
             columnCount = columns.length;

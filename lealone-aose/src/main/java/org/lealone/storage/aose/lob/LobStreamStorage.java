@@ -174,8 +174,8 @@ public class LobStreamStorage implements LobStorage {
                 }
                 byte[] utf8 = new String(small, 0, len).getBytes(StandardCharsets.UTF_8);
                 if (utf8.length > dataHandler.getMaxLengthInplaceLob()) {
-                    throw new IllegalStateException(
-                            "len > maxinplace, " + utf8.length + " > " + dataHandler.getMaxLengthInplaceLob());
+                    throw new IllegalStateException("len > maxinplace, " + utf8.length + " > "
+                            + dataHandler.getMaxLengthInplaceLob());
                 }
                 return ValueLob.createSmallLob(type, utf8);
             }
@@ -185,7 +185,8 @@ public class LobStreamStorage implements LobStorage {
             CountingReaderInputStream in = new CountingReaderInputStream(reader, maxLength);
             ValueLob lob = createLob(in, type);
             // the length is not correct
-            lob = ValueLob.create(type, dataHandler, lob.getTableId(), lob.getLobId(), null, in.getLength());
+            lob = ValueLob.create(type, dataHandler, lob.getTableId(), lob.getLobId(), null,
+                    in.getLength());
             return lob;
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
@@ -340,7 +341,8 @@ public class LobStreamStorage implements LobStorage {
 
         private final CharBuffer charBuffer = CharBuffer.allocate(Constants.IO_BUFFER_SIZE);
 
-        private final CharsetEncoder encoder = Constants.UTF8.newEncoder().onMalformedInput(CodingErrorAction.REPLACE)
+        private final CharsetEncoder encoder = Constants.UTF8.newEncoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
                 .onUnmappableCharacter(CodingErrorAction.REPLACE);
 
         private ByteBuffer byteBuffer = ByteBuffer.allocate(0);

@@ -63,7 +63,8 @@ public class CompareModeIcu4J extends CompareMode {
                 }
             }
             if (result == null) {
-                for (Locale locale : (Locale[]) collatorClass.getMethod("getAvailableLocales").invoke(null)) {
+                for (Locale locale : (Locale[]) collatorClass.getMethod("getAvailableLocales")
+                        .invoke(null)) {
                     if (compareLocaleNames(locale, name)) {
                         result = (Comparator<String>) getInstanceMethod.invoke(null, locale);
                         break;

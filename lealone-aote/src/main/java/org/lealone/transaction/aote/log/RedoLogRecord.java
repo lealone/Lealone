@@ -46,7 +46,8 @@ public abstract class RedoLogRecord {
         return false;
     }
 
-    abstract long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId);
+    abstract long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog,
+            long lastTransactionId);
 
     abstract void write(DataBuffer buff);
 
@@ -76,8 +77,8 @@ public abstract class RedoLogRecord {
         return new LocalTransactionRedoLogRecord(transactionId, operations);
     }
 
-    public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
-            long transactionId, UndoLog undoLog) {
+    public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(
+            AMTransactionEngine transactionEngine, long transactionId, UndoLog undoLog) {
         return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
     }
 
@@ -95,11 +96,12 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog,
+                long lastTransactionId) {
             pendingRedoLog.clear();
             if (checkpointId < lastTransactionId) {
-                throw DbException
-                        .getInternalError("checkpointId=" + checkpointId + ", lastTransactionId=" + lastTransactionId);
+                throw DbException.getInternalError(
+                        "checkpointId=" + checkpointId + ", lastTransactionId=" + lastTransactionId);
             }
             return checkpointId;
         }
@@ -126,7 +128,8 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog,
+                long lastTransactionId) {
             List<ByteBuffer> logs = pendingRedoLog.get(mapName);
             if (logs != null) {
                 logs = new LinkedList<>();
@@ -158,7 +161,8 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog,
+                long lastTransactionId) {
             ByteBuffer buff = operations;
             while (buff.hasRemaining()) {
                 // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组

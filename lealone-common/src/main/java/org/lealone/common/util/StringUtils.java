@@ -424,7 +424,8 @@ public class StringUtils {
             } else {
                 if (SysProperties.CHECK) {
                     if (ch > 127 || ch < ' ') {
-                        throw new IllegalArgumentException("Unexpected char " + (int) ch + " decoding " + encoded);
+                        throw new IllegalArgumentException(
+                                "Unexpected char " + (int) ch + " decoding " + encoded);
                     }
                 }
                 buff[j++] = (byte) ch;

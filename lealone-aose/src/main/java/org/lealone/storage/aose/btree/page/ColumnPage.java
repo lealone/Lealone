@@ -46,7 +46,8 @@ class ColumnPage extends Page {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);

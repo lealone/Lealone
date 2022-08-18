@@ -53,7 +53,8 @@ public class AggregateFunctionTest extends SqlTestBase {
     // 不过应用层不需要关心是否是单个还是多个分区，用什么算法来统计对应用是透明的。
     int count1, count2, max1, max2, min1, min2, sum1, sum2;
     boolean bool_and1, bool_and2, bool_or1, bool_or2;
-    double avg1, avg2, stddev_pop1, stddev_pop2, stddev_samp1, stddev_samp2, var_pop1, var_pop2, var_samp1, var_samp2;
+    double avg1, avg2, stddev_pop1, stddev_pop2, stddev_samp1, stddev_samp2, var_pop1, var_pop2,
+            var_samp1, var_samp2;
 
     String select = "SELECT count(*), max(f3), min(f3), sum(f3), " //
 

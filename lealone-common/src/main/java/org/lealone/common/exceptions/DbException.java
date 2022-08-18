@@ -36,7 +36,8 @@ public class DbException extends RuntimeException {
 
     static {
         try {
-            InputStream messages = Utils.getResourceAsStream(Constants.RESOURCES_DIR + "_messages_en.prop");
+            InputStream messages = Utils
+                    .getResourceAsStream(Constants.RESOURCES_DIR + "_messages_en.prop");
             MESSAGES.load(messages);
             if (SysProperties.USE_TRANSLATION_MESSAGE) {
                 String language = Locale.getDefault().getLanguage();
@@ -334,7 +335,8 @@ public class DbException extends RuntimeException {
      * @param params the list of parameters of the message
      * @return the SQLException object
      */
-    private static JdbcSQLException getJdbcSQLException(int errorCode, Throwable cause, String... params) {
+    private static JdbcSQLException getJdbcSQLException(int errorCode, Throwable cause,
+            String... params) {
         String sqlState = ErrorCode.getState(errorCode);
         String message = translate(sqlState, params);
         return new JdbcSQLException(message, null, sqlState, errorCode, cause, null);

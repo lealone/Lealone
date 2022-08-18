@@ -20,7 +20,8 @@ public class AsyncConcurrentUpdateTest extends ClientTestBase {
         Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS AsyncConcurrentUpdateTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS AsyncConcurrentUpdateTest (f1 int primary key, f2 long)");
+        stmt.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS AsyncConcurrentUpdateTest (f1 int primary key, f2 long)");
         String sql = "INSERT INTO AsyncConcurrentUpdateTest(f1, f2) VALUES(1, 2)";
         stmt.executeUpdate(sql);
 

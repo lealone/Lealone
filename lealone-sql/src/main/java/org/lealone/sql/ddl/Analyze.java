@@ -77,7 +77,8 @@ public class Analyze extends DefinitionStatement {
                 return;
             }
         }
-        if (table.isTemporary() && !table.isGlobalTemporary() && session.findLocalTempTable(table.getName()) == null) {
+        if (table.isTemporary() && !table.isGlobalTemporary()
+                && session.findLocalTempTable(table.getName()) == null) {
             return;
         }
         if (table.isLockedExclusively() && !table.isLockedExclusivelyBy(session)) {

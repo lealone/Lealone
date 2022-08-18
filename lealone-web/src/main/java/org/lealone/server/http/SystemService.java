@@ -53,7 +53,8 @@ public class SystemService {
         }
     }
 
-    public static String execute(String dbName, String schemaName, String methodName, Map<String, Object> methodArgs) {
+    public static String execute(String dbName, String schemaName, String methodName,
+            Map<String, Object> methodArgs) {
         switch (methodName) {
         case "LOAD_SERVICES":
             Object serviceNames = methodArgs.get("serviceNames");
@@ -77,8 +78,8 @@ public class SystemService {
                     parameterNames.add(CamelCaseHelper.toCamelFromUnderscore(c.getName()));
                 }
                 JsonObject methodJson = new JsonObject();
-                methodJson.put("methodName",
-                        CamelCaseHelper.toCamelFromUnderscore(serviceMethod.getMethodName().toLowerCase()));
+                methodJson.put("methodName", CamelCaseHelper
+                        .toCamelFromUnderscore(serviceMethod.getMethodName().toLowerCase()));
                 if (parameterNames.isEmpty())
                     methodJson.put("parameterNames", new JsonArray());
                 else

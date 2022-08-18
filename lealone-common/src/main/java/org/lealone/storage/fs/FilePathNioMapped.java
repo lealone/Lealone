@@ -100,8 +100,8 @@ class FileNioMapped extends FileBase {
             long start = System.currentTimeMillis();
             while (bufferWeakRef.get() != null) {
                 if (System.currentTimeMillis() - start > GC_TIMEOUT_MS) {
-                    throw new IOException(
-                            "Timeout (" + GC_TIMEOUT_MS + " ms) reached while trying to GC mapped buffer");
+                    throw new IOException("Timeout (" + GC_TIMEOUT_MS
+                            + " ms) reached while trying to GC mapped buffer");
                 }
                 System.gc();
                 Thread.yield();
@@ -126,7 +126,8 @@ class FileNioMapped extends FileBase {
         int limit = mapped.limit();
         int capacity = mapped.capacity();
         if (limit < fileLength || capacity < fileLength) {
-            throw new IOException("Unable to map: length=" + limit + " capacity=" + capacity + " length=" + fileLength);
+            throw new IOException("Unable to map: length=" + limit + " capacity=" + capacity + " length="
+                    + fileLength);
         }
         if (SysProperties.NIO_LOAD_MAPPED) {
             mapped.load();

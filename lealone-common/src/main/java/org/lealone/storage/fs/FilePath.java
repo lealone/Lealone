@@ -71,8 +71,9 @@ public abstract class FilePath {
             // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
             String packageName = FilePath.class.getPackage().getName() + ".";
             Map<String, FilePath> map = Collections.synchronizedMap(new HashMap<>());
-            for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",
-                    "FilePathNioMemLZF", "FilePathSplit", "FilePathNio", "FilePathNioMapped", "FilePathZip" }) {
+            for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF",
+                    "FilePathNioMem", "FilePathNioMemLZF", "FilePathSplit", "FilePathNio",
+                    "FilePathNioMapped", "FilePathZip" }) {
                 try {
                     FilePath p = Utils.newInstance(packageName + c);
                     map.put(p.getScheme(), p);
@@ -247,7 +248,8 @@ public abstract class FilePath {
      * @param inTempDir if the file should be stored in the temporary directory
      * @return the name of the created file
      */
-    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) throws IOException {
+    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir)
+            throws IOException {
         while (true) {
             FilePath p = getPath(name + getNextTempFileNamePart(false) + suffix);
             if (p.exists() || !p.createFile()) {
