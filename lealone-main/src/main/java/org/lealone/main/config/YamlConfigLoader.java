@@ -32,11 +32,10 @@ public class YamlConfigLoader implements ConfigLoader {
 
     private final static String DEFAULT_CONFIGURATION = "lealone.yaml";
 
-    private URL getConfigURL() throws ConfigException {
+    private static URL getConfigURL() throws ConfigException {
         String configUrl = Config.getProperty("config");
         if (configUrl == null)
             configUrl = DEFAULT_CONFIGURATION;
-
         URL url;
         try {
             url = new URL(configUrl);
@@ -49,70 +48,71 @@ public class YamlConfigLoader implements ConfigLoader {
                 return url;
             } catch (Exception e2) {
             }
-            ClassLoader loader = YamlConfigLoader.class.getClassLoader();
-            url = loader.getResource(configUrl);
-            if (url == null) {
-                logger.info("Use default config");
-                return null;
-                // String required = "file:" + File.separator + File.separator;
-                // if (!configUrl.startsWith(required))
-                // throw new ConfigException(
-                // "Expecting URI in variable: [lealone.config]. Please prefix the file with " + required
-                // + File.separator + " for local files or " + required + "<server>" + File.separator
-                // + " for remote files. Aborting.");
-                // throw new ConfigException(
-                // "Cannot locate " + configUrl + ". If this is a local file, please confirm you've provided "
-                // + required + File.separator + " as a URI prefix.");
-            }
+            url = YamlConfigLoader.class.getClassLoader().getResource(configUrl);
         }
         return url;
-    }
-
-    @Override
-    public Config loadConfig() throws ConfigException {
-        URL url = getConfigURL();
-        if (url == null)
-            return null;
-        return loadConfig(url);
     }
 
     @Override
     public void applyConfig(Config config) throws ConfigException {
     }
 
-    public Config loadConfig(URL url) throws ConfigException {
-        try {
-            logger.info("Loading config from {}", url);
-            byte[] configBytes;
-            try (InputStream is = url.openStream()) {
-                configBytes = IOUtils.toByteArray(is);
-            } catch (IOException e) {
-                // getConfigURL should have ruled this out
-                throw new AssertionError(e);
-            }
-
-            Constructor configConstructor = new Constructor(getConfigClass());
-            addTypeDescription(configConstructor);
-
-            MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
-            configConstructor.setPropertyUtils(propertiesChecker);
-            Yaml yaml = new Yaml(configConstructor);
-            Config result = (Config) yaml.loadAs(new ByteArrayInputStream(configBytes), getConfigClass());
-            propertiesChecker.check();
-            return result;
-        } catch (YAMLException e) {
-            throw new ConfigException("Invalid yaml", e);
+    @Override
+    public Config loadConfig() throws ConfigException {
+        if (isYamlAvailable()) {
+            return YamlLoader.loadConfig();
+        } else {
+            logger.info("Use default config");
+            return null;
         }
     }
 
-    protected Class<?> getConfigClass() {
-        return Config.class;
+    private static boolean isYamlAvailable() {
+        try {
+            Class.forName("org.yaml.snakeyaml.Yaml");
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    protected void addTypeDescription(Constructor configConstructor) {
-        TypeDescription mapPropertyTypeDesc = new TypeDescription(MapPropertyTypeDef.class);
-        mapPropertyTypeDesc.addPropertyParameters("parameters", String.class, String.class);
-        configConstructor.addTypeDescription(mapPropertyTypeDesc);
+    // 避免对yaml的强依赖
+    private static class YamlLoader {
+        private static Config loadConfig() throws ConfigException {
+            URL url = getConfigURL();
+            if (url == null) {
+                logger.info("Use default config");
+                return null;
+            }
+            try {
+                logger.info("Loading config from {}", url);
+                byte[] configBytes;
+                try (InputStream is = url.openStream()) {
+                    configBytes = IOUtils.toByteArray(is);
+                } catch (IOException e) {
+                    // getConfigURL should have ruled this out
+                    throw new AssertionError(e);
+                }
+
+                Constructor configConstructor = new Constructor(Config.class);
+                addTypeDescription(configConstructor);
+
+                MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
+                configConstructor.setPropertyUtils(propertiesChecker);
+                Yaml yaml = new Yaml(configConstructor);
+                Config result = yaml.loadAs(new ByteArrayInputStream(configBytes), Config.class);
+                propertiesChecker.check();
+                return result;
+            } catch (YAMLException e) {
+                throw new ConfigException("Invalid yaml", e);
+            }
+        }
+
+        private static void addTypeDescription(Constructor configConstructor) {
+            TypeDescription mapPropertyTypeDesc = new TypeDescription(MapPropertyTypeDef.class);
+            mapPropertyTypeDesc.addPropertyParameters("parameters", String.class, String.class);
+            configConstructor.addTypeDescription(mapPropertyTypeDesc);
+        }
     }
 
     private static class MissingPropertiesChecker extends PropertyUtils {
@@ -133,8 +133,8 @@ public class YamlConfigLoader implements ConfigLoader {
 
         public void check() throws ConfigException {
             if (!missingProperties.isEmpty()) {
-                throw new ConfigException(
-                        "Invalid yaml. Please remove properties " + missingProperties + " from your lealone.yaml");
+                throw new ConfigException("Invalid yaml. " //
+                        + "Please remove properties " + missingProperties + " from your lealone.yaml");
             }
         }
     }

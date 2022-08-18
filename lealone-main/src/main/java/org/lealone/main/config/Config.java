@@ -19,10 +19,7 @@ import org.lealone.db.Constants;
 public class Config {
 
     public String base_dir = "." + File.separator + Constants.PROJECT_NAME + "_data";
-
     public String listen_address = "127.0.0.1";
-    public String listen_interface;
-    public Boolean listen_interface_prefer_ipv6 = false;
 
     public List<PluggableEngineDef> storage_engines;
     public List<PluggableEngineDef> transaction_engines;

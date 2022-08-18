@@ -174,7 +174,7 @@ public class Lealone {
     private void loadConfig() {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
-        if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
+        if (loaderClass != null) {
             loader = Utils.construct(loaderClass, "configuration loading");
         } else {
             loader = new YamlConfigLoader();
