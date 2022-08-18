@@ -56,7 +56,6 @@
         <module>lealone-db</module>
         <module>lealone-aote</module>
         <module>lealone-aose</module>
-        <module>lealone-p2p</module>
         <module>lealone-orm</module>
         <module>lealone-web</module>
         <module>lealone-main</module>
