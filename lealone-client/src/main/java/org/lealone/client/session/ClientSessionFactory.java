@@ -37,26 +37,26 @@ public class ClientSessionFactory implements SessionFactory {
     }
 
     @Override
-    public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
+    public Future<Session> createSession(ConnectionInfo ci) {
         if (!ci.isRemote()) {
             throw DbException.getInternalError();
         }
         AsyncCallback<Session> ac = new AsyncCallback<>();
-        createSession(ci, allowRedirect, ac);
+        createSession(ci, ac);
         return ac;
     }
 
-    private static void createSession(ConnectionInfo ci, boolean allowRedirect, AsyncCallback<Session> ac) {
+    private static void createSession(ConnectionInfo ci, AsyncCallback<Session> ac) {
         String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
         Random random = new Random(System.currentTimeMillis());
-        createSession(ci, servers, allowRedirect, random, ac);
+        createSession(ci, servers, random, ac);
     }
 
     // servers是接入节点，可以有多个，会随机选择一个进行连接，这个被选中的接入节点可能不是所要连接的数居库所在的节点，
     // 这时接入节点会返回数据库的真实所在节点，最后再根据数据库的运行模式打开合适的连接即可，
     // 复制模式需要打开所有节点，其他运行模式只需要打开一个。
     // 如果第一次从servers中随机选择的一个连接失败了，会尝试其他的，当所有尝试都失败了才会抛出异常。
-    private static void createSession(ConnectionInfo ci, String[] servers, boolean allowRedirect, Random random,
+    private static void createSession(ConnectionInfo ci, String[] servers, Random random,
             AsyncCallback<Session> topAc) {
         int randomIndex = random.nextInt(servers.length);
         String server = servers[randomIndex];
@@ -78,7 +78,7 @@ public class ClientSessionFactory implements SessionFactory {
                         if (j != randomIndex)
                             newServers[i++] = servers[j];
                     }
-                    createSession(ci, newServers, allowRedirect, random, topAc);
+                    createSession(ci, newServers, random, topAc);
                 }
             }
         });
@@ -111,9 +111,6 @@ public class ClientSessionFactory implements SessionFactory {
                 AckPacketHandler<ClientSession, SessionInitAck> ackPacketHandler = ack -> {
                     clientSession.setProtocolVersion(ack.clientVersion);
                     clientSession.setAutoCommit(ack.autoCommit);
-                    clientSession.setTargetNodes(ack.targetNodes);
-                    clientSession.setRunMode(ack.runMode);
-                    clientSession.setInvalid(ack.invalid);
                     return clientSession;
                 };
                 Future<ClientSession> f = clientSession.send(packet, ackPacketHandler);

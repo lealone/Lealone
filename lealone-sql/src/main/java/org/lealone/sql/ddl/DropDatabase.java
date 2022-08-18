@@ -61,18 +61,15 @@ public class DropDatabase extends DatabaseStatement {
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
         } else {
             lealoneDB.removeDatabaseObject(session, db, lock);
-            if (isTargetNode(db)) {
-                // Lealone不同于H2数据库，在H2的一个数据库中可以访问另一个数据库的对象，而Lealone不允许，
-                // 所以在H2中需要一个对象一个对象地删除，这样其他数据库中的对象对他们的引用才能解除，
-                // 而Lealone只要在LealoneDatabase中删除对当前数据库的引用然后删除底层的文件即可。
-                if (deleteFiles) {
-                    db.setDeleteFilesOnDisconnect(true);
-                }
-                if (db.getSessionCount() == 0) {
-                    db.drop();
-                }
+            // Lealone不同于H2数据库，在H2的一个数据库中可以访问另一个数据库的对象，而Lealone不允许，
+            // 所以在H2中需要一个对象一个对象地删除，这样其他数据库中的对象对他们的引用才能解除，
+            // 而Lealone只要在LealoneDatabase中删除对当前数据库的引用然后删除底层的文件即可。
+            if (deleteFiles) {
+                db.setDeleteFilesOnDisconnect(true);
             }
-            updateRemoteNodes(sql);
+            if (db.getSessionCount() == 0) {
+                db.drop();
+            }
         }
         return 0;
     }

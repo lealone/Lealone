@@ -63,9 +63,6 @@ import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
-import org.lealone.net.NetNode;
-import org.lealone.net.NetNodeManager;
-import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.Storage;
@@ -204,13 +201,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private Map<String, String> nodeAssignmentParameters;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
-    private ConnectionInfo lastConnectionInfo;
 
     private final DbObjectVersionManager dbObjectVersionManager = new DbObjectVersionManager();
-
-    private String[] hostIds;
-    private HashSet<NetNode> nodes;
-    private String targetNodes;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -382,7 +374,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         db.runMode = runMode;
         db.replicationParameters = replicationParameters;
         db.replicationParameters = nodeAssignmentParameters;
-        db.lastConnectionInfo = lastConnectionInfo;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
         for (ServerSession s : userSessions) {
@@ -2081,59 +2072,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return null;
     }
 
-    @Override
-    public String[] getHostIds() {
-        if (hostIds == null) {
-            synchronized (this) {
-                if (hostIds == null) {
-                    if (parameters != null && parameters.containsKey("hostIds")) {
-                        targetNodes = parameters.get("hostIds").trim();
-                        hostIds = StringUtils.arraySplit(targetNodes, ',');
-                    }
-                    if (hostIds == null) {
-                        hostIds = new String[0];
-                        nodes = null;
-                    } else {
-                        nodes = new HashSet<>(hostIds.length);
-                        for (String id : hostIds) {
-                            nodes.add(NetNode.createTCP(id));
-                        }
-                    }
-                    if (nodes != null && nodes.isEmpty()) {
-                        nodes = null;
-                    }
-                    if (targetNodes != null && targetNodes.isEmpty())
-                        targetNodes = null;
-                }
-            }
-        }
-        return hostIds;
-    }
-
-    @Override
-    public void setHostIds(String[] hostIds) {
-        this.hostIds = null;
-        if (hostIds != null && hostIds.length > 0)
-            parameters.put("hostIds", StringUtils.arrayCombine(hostIds, ','));
-        else
-            parameters.put("hostIds", "");
-        getHostIds();
-    }
-
-    public boolean isTargetNode(NetNode node) {
-        if (hostIds == null) {
-            getHostIds();
-        }
-        return nodes == null || nodes.contains(node);
-    }
-
-    public String getTargetNodes() {
-        if (hostIds == null) {
-            getHostIds();
-        }
-        return targetNodes;
-    }
-
     public void createRootUserIfNotExists() {
         // 如果已经存在一个Admin权限的用户，那就不再创建root用户了
         // 最常见的是对默认的root用户重命名后会出现这种情况
@@ -2171,38 +2109,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    public void setLastConnectionInfo(ConnectionInfo ci) {
-        lastConnectionInfo = ci;
-    }
-
-    @Override
-    public void notifyRunModeChanged() {
-        String hostIds = getParameters().get("hostIds");
-        for (ServerSession session : getSessions(false)) {
-            session.runModeChanged(hostIds);
-        }
-    }
-
-    @Override
-    public NetNode getNode(String hostId) {
-        return getNetNodeManager().getNode(hostId);
-    }
-
-    @Override
-    public String getHostId(NetNode node) {
-        return getNetNodeManager().getHostId(node);
-    }
-
-    @Override
-    public String getLocalHostId() {
-        return NetNode.getLocalTcpHostAndPort();
-    }
-
     public DbObjectVersionManager getVersionManager() {
         return dbObjectVersionManager;
-    }
-
-    private static NetNodeManager getNetNodeManager() {
-        return NetNodeManagerHolder.get();
     }
 }

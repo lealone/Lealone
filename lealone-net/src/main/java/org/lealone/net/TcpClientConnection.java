@@ -72,10 +72,6 @@ public class TcpClientConnection extends TransferConnection {
         super.close();
     }
 
-    private Session getSession(int sessionId) {
-        return sessions.get(sessionId);
-    }
-
     public void addSession(int sessionId, Session session) {
         sessions.put(sessionId, session);
     }
@@ -92,8 +88,6 @@ public class TcpClientConnection extends TransferConnection {
     @Override
     protected void handleResponse(TransferInputStream in, int packetId, int status) throws IOException {
         checkClosed();
-        String newTargetNodes = null;
-        Session session = null;
         DbException e = null;
         if (status == Session.STATUS_OK) {
             // ok
@@ -101,10 +95,6 @@ public class TcpClientConnection extends TransferConnection {
             e = parseError(in);
         } else if (status == Session.STATUS_CLOSED) {
             in = null;
-        } else if (status == Session.STATUS_RUN_MODE_CHANGED) {
-            int sessionId = in.readInt();
-            session = getSession(sessionId);
-            newTargetNodes = in.readString();
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
@@ -123,8 +113,6 @@ public class TcpClientConnection extends TransferConnection {
             ac.setAsyncResult(e);
         else
             ac.run(in);
-        if (newTargetNodes != null)
-            session.runModeChanged(newTargetNodes);
     }
 
     @Override

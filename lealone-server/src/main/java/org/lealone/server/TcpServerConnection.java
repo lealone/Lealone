@@ -115,41 +115,34 @@ public class TcpServerConnection extends TransferConnection {
 
     private ServerSession createSession(ConnectionInfo ci, int sessionId, Scheduler scheduler) {
         ServerSession session = (ServerSession) ci.createSession();
-
-        // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
-        // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
-        // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
-        if (session.isValid()) {
-            // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
-            // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
-            // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
-            // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
-            session.setTransactionListener(scheduler);
-            session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
-                    new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
-                        @Override
-                        public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
-                            try {
-                                pair.right.value.close();
-                            } catch (Exception e) {
-                                logger.warn(e.getMessage());
-                            }
-                            return null;
+        // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
+        // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
+        // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
+        // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
+        session.setTransactionListener(scheduler);
+        session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
+                new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
+                    @Override
+                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
+                        try {
+                            pair.right.value.close();
+                        } catch (Exception e) {
+                            logger.warn(e.getMessage());
                         }
-                    }));
-            SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
-            session.setSessionInfo(si);
-            scheduler.addSessionInfo(si);
-            sessions.put(sessionId, si);
-        }
+                        return null;
+                    }
+                }));
+        SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
+        session.setSessionInfo(si);
+        scheduler.addSessionInfo(si);
+        sessions.put(sessionId, si);
         return session;
     }
 
     private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session) throws Exception {
         TransferOutputStream out = createTransferOutputStream(session);
         out.writeResponseHeader(packetId, Session.STATUS_OK);
-        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(), session.getTargetNodes(),
-                session.getRunMode(), session.isInvalid());
+        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit());
         ack.encode(out, packet.clientVersion);
         out.flush();
     }
@@ -199,8 +192,6 @@ public class TcpServerConnection extends TransferConnection {
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
-        } else if (session.isRunModeChanged()) {
-            return Session.STATUS_RUN_MODE_CHANGED;
         } else {
             return Session.STATUS_OK;
         }
@@ -211,9 +202,6 @@ public class TcpServerConnection extends TransferConnection {
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(task.packetId, getStatus(session));
-            if (session.isRunModeChanged()) {
-                out.writeInt(task.sessionId).writeString(session.getNewTargetNodes());
-            }
             packet.encode(out, session.getProtocolVersion());
             out.flush();
         } catch (Exception e) {

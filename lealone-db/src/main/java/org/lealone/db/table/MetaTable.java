@@ -610,20 +610,12 @@ public class MetaTable extends Table {
         case SETTINGS: {
             // system properties
             if (admin) {
-                String[] settings = {
-                        "java.runtime.version",
-                        "java.vm.name",
-                        "java.vendor",
-                        "os.name",
-                        "os.arch",
-                        "os.version",
-                        "sun.os.patch.level",
+                String[] settings = { "java.runtime.version", "java.vm.name", "java.vendor", "os.name", "os.arch",
+                        "os.version", "sun.os.patch.level",
                         // "file.separator",
                         "path.separator",
                         // "line.separator",
-                        "user.country",
-                        "user.language",
-                        "user.variant",
+                        "user.country", "user.language", "user.variant",
                         // "file.encoding"
                 };
                 for (String s : settings) {
@@ -1414,7 +1406,7 @@ public class MetaTable extends Table {
                         // RUN_MODE
                         database.getRunMode().toString(),
                         // NODES
-                        database.getTargetNodes());
+                        "");
             }
             break;
         }

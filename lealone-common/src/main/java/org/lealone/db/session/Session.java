@@ -31,7 +31,6 @@ public interface Session extends Closeable {
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;
-    public static final int STATUS_RUN_MODE_CHANGED = 1003;
 
     int getId();
 
@@ -92,23 +91,9 @@ public interface Session extends Closeable {
 
     void checkClosed();
 
-    void setInvalid(boolean v);
-
-    boolean isInvalid();
-
-    boolean isValid();
-
-    void setTargetNodes(String targetNodes);
-
-    String getTargetNodes();
-
     void setRunMode(RunMode runMode);
 
     RunMode getRunMode();
-
-    boolean isRunModeChanged();
-
-    void runModeChanged(String newTargetNodes);
 
     /**
      * Get the trace object
@@ -135,10 +120,6 @@ public interface Session extends Closeable {
      * @return the data handler
      */
     DataHandler getDataHandler();
-
-    String getLocalHostAndPort();
-
-    String getURL();
 
     void setNetworkTimeout(int milliseconds);
 
@@ -180,18 +161,6 @@ public interface Session extends Closeable {
         return send(packet, packetId, p -> {
             return (P) p;
         });
-    }
-
-    @SuppressWarnings("unchecked")
-    default <P extends AckPacket> Future<P> send(Packet packet, String hostAndPort) {
-        return send(packet, hostAndPort, p -> {
-            return (P) p;
-        });
-    }
-
-    default <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
-            AckPacketHandler<R, P> ackPacketHandler) {
-        return send(packet, ackPacketHandler);
     }
 
     <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler);

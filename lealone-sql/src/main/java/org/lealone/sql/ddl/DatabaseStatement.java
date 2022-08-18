@@ -11,13 +11,11 @@ import java.util.HashSet;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.db.Database;
 import org.lealone.db.DbSettings;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
-import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManagerHolder;
 
 //CREATE/ALTER/DROP DATABASE语句在所有节点上都会执行一次，
@@ -54,15 +52,6 @@ public abstract class DatabaseStatement extends DefinitionStatement {
                 throw DbException.get(ErrorCode.GENERAL_ERROR_1,
                         "create/alter/drop database only allowed for the super user");
         }
-    }
-
-    protected boolean isTargetNode(Database db) {
-        NetNode localNode = NetNode.getLocalTcpNode();
-        return db.isTargetNode(localNode);
-    }
-
-    protected void updateRemoteNodes(String sql) {
-        return;
     }
 
     protected void validateParameters() {

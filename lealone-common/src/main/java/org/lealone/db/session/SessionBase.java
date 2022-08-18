@@ -26,12 +26,7 @@ public abstract class SessionBase implements Session {
 
     protected boolean autoCommit = true;
     protected boolean closed;
-
-    protected boolean invalid;
-    protected String targetNodes;
     protected RunMode runMode;
-    protected String newTargetNodes;
-
     protected TraceSystem traceSystem;
 
     @Override
@@ -71,31 +66,6 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void setInvalid(boolean v) {
-        invalid = v;
-    }
-
-    @Override
-    public boolean isInvalid() {
-        return invalid;
-    }
-
-    @Override
-    public boolean isValid() {
-        return !invalid;
-    }
-
-    @Override
-    public void setTargetNodes(String targetNodes) {
-        this.targetNodes = targetNodes;
-    }
-
-    @Override
-    public String getTargetNodes() {
-        return targetNodes;
-    }
-
-    @Override
     public void setRunMode(RunMode runMode) {
         this.runMode = runMode;
     }
@@ -103,22 +73,6 @@ public abstract class SessionBase implements Session {
     @Override
     public RunMode getRunMode() {
         return runMode;
-    }
-
-    @Override
-    public boolean isRunModeChanged() {
-        return newTargetNodes != null;
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        this.newTargetNodes = newTargetNodes;
-    }
-
-    public String getNewTargetNodes() {
-        String nodes = newTargetNodes;
-        newTargetNodes = null;
-        return nodes;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {
@@ -194,5 +148,4 @@ public abstract class SessionBase implements Session {
         }
         return buff.toString();
     }
-
 }

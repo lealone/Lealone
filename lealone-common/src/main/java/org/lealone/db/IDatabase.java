@@ -8,7 +8,6 @@ package org.lealone.db;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.net.NetNode;
 import org.lealone.storage.Storage;
 
 public interface IDatabase {
@@ -18,18 +17,6 @@ public interface IDatabase {
     String getShortName();
 
     String getSysMapName();
-
-    void notifyRunModeChanged();
-
-    String[] getHostIds();
-
-    void setHostIds(String[] hostIds);
-
-    NetNode getNode(String hostId);
-
-    String getHostId(NetNode node);
-
-    String getLocalHostId();
 
     Map<String, String> getParameters();
 

@@ -44,7 +44,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.net.NetNode;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
@@ -1201,11 +1200,6 @@ public class ServerSession extends SessionBase {
         return database.createParser(this);
     }
 
-    @Override
-    public String getURL() {
-        return connectionInfo == null ? null : connectionInfo.getURL();
-    }
-
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         return getTransactionMap(mapName);
     }
@@ -1368,17 +1362,6 @@ public class ServerSession extends SessionBase {
     public void cancelStatement(int statementId) {
         if (currentCommand != null && currentCommand.getId() == statementId)
             currentCommand.cancel();
-    }
-
-    @Override
-    public String getLocalHostAndPort() {
-        return NetNode.getLocalTcpHostAndPort();
-    }
-
-    @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
-            AckPacketHandler<R, P> ackPacketHandler) {
-        throw DbException.getInternalError();
     }
 
     @Override

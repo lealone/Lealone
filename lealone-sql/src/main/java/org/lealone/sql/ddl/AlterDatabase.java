@@ -58,10 +58,8 @@ public class AlterDatabase extends DatabaseStatement {
         if (runMode == null) {
             runMode = oldRunMode;
         }
-        if (oldRunMode == RunMode.CLIENT_SERVER) {
-            if (runMode == RunMode.CLIENT_SERVER)
-                clientServer2ClientServer();
-        }
+        alterDatabase();
+        updateLocalMeta();
         return 0;
     }
 
@@ -78,21 +76,5 @@ public class AlterDatabase extends DatabaseStatement {
 
     private void updateLocalMeta() {
         LealoneDatabase.getInstance().updateMeta(session, db);
-    }
-
-    private void updateRemoteNodes() {
-        updateRemoteNodes(sql);
-    }
-    // ----------------------同级操作----------------------
-
-    // 只在所有节点上执行原始的ALTER DATABASE语句，不需要加减节点
-    private void updateAllNodes() {
-        alterDatabase();
-        updateLocalMeta();
-        updateRemoteNodes();
-    }
-
-    private void clientServer2ClientServer() {
-        updateAllNodes();
     }
 }

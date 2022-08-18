@@ -22,17 +22,13 @@ public interface SessionFactory {
      * @param ci the connection parameters
      * @return the new session
      */
-    default Future<Session> createSession(ConnectionInfo ci) {
-        return createSession(ci, true);
-    }
+    Future<Session> createSession(ConnectionInfo ci);
 
     default Future<Session> createSession(String url) {
         try {
-            return createSession(new ConnectionInfo(url), true);
+            return createSession(new ConnectionInfo(url));
         } catch (Throwable t) {
             return Future.failedFuture(t);
         }
     }
-
-    Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect);
 }

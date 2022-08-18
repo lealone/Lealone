@@ -14,7 +14,6 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
-import org.lealone.net.NetNode;
 
 /**
  * This class is responsible for creating new sessions.
@@ -35,7 +34,7 @@ public class ServerSessionFactory implements SessionFactory {
     }
 
     @Override
-    public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
+    public Future<Session> createSession(ConnectionInfo ci) {
         return Future.succeededFuture(createServerSession(ci));
     }
 
@@ -46,33 +45,12 @@ public class ServerSessionFactory implements SessionFactory {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
         ServerSession session = createServerSession(dbName, ci);
-        if (session.isInvalid()) { // 无效session，不需要进行后续的操作
-            return session;
-        }
         initSession(session, ci);
         return session;
     }
 
     private ServerSession createServerSession(String dbName, ConnectionInfo ci) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-        String targetNodes;
-        if (ci.isEmbedded()) {
-            targetNodes = null;
-        } else {
-            NetNode localNode = NetNode.getLocalTcpNode();
-            targetNodes = database.getTargetNodes();
-            // 为null时总是认为当前节点就是数据库所在的节点
-            if (targetNodes == null) {
-                targetNodes = localNode.getHostAndPort();
-            } else if (!database.isTargetNode(localNode)) {
-                ServerSession session = new ServerSession(database,
-                        LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
-                session.setTargetNodes(targetNodes);
-                session.setRunMode(database.getRunMode());
-                session.setInvalid(true);
-                return session;
-            }
-        }
 
         // 如果数据库正在关闭过程中，不等待重试了，直接抛异常
         // 如果数据库已经关闭了，那么在接下来的init中会重新打开
@@ -90,8 +68,6 @@ public class ServerSessionFactory implements SessionFactory {
             if (user != null) {
                 if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
                     user = null;
-                } else {
-                    database.setLastConnectionInfo(ci);
                 }
             }
         }
@@ -100,7 +76,6 @@ public class ServerSessionFactory implements SessionFactory {
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
         ServerSession session = database.createSession(user, ci);
-        session.setTargetNodes(targetNodes);
         session.setRunMode(database.getRunMode());
         return session;
     }

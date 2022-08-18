@@ -5,9 +5,7 @@
  */
 package org.lealone.client.session;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
@@ -176,11 +174,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             RuntimeException closeError = null;
             synchronized (this) {
                 try {
-                    // 只有当前Session有效时服务器端才持有对应的session
-                    if (isValid()) {
-                        send(new SessionClose());
-                        tcpConnection.removeSession(id);
-                    }
+                    send(new SessionClose());
+                    tcpConnection.removeSession(id);
                 } catch (RuntimeException e) {
                     trace.error(e, "close");
                     closeError = e;
@@ -233,15 +228,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public void runModeChanged(String newTargetNodes) {
-    }
-
-    @Override
-    public String getURL() {
-        return ci.getURL();
-    }
-
-    @Override
     public ConnectionInfo getConnectionInfo() {
         return ci;
     }
@@ -254,26 +240,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
-    }
-
-    @Override
-    public String getLocalHostAndPort() {
-        try {
-            SocketAddress sa = tcpConnection.getWritableChannel().getSocketChannel().getLocalAddress();
-            String host;
-            int port;
-            if (sa instanceof InetSocketAddress) {
-                InetSocketAddress address = (InetSocketAddress) sa;
-                host = address.getHostString();
-                port = address.getPort();
-            } else {
-                host = InetAddress.getLocalHost().getHostAddress();
-                port = 0;
-            }
-            return host + ":" + port;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Override
