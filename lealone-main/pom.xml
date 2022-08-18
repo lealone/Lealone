@@ -51,13 +51,14 @@
         </dependency>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-p2p</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
             <artifactId>lealone-orm</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.28</version>
         </dependency>
     </dependencies>
 </project>

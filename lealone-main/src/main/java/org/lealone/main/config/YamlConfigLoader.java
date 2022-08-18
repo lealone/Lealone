@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.p2p.config;
+package org.lealone.main.config;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -17,7 +17,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.IOUtils;
-import org.lealone.p2p.config.Config.MapPropertyTypeDef;
+import org.lealone.main.config.Config.MapPropertyTypeDef;
 import org.yaml.snakeyaml.TypeDescription;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -78,7 +78,6 @@ public class YamlConfigLoader implements ConfigLoader {
 
     @Override
     public void applyConfig(Config config) throws ConfigException {
-        ConfigDescriptor.applyConfig(config);
     }
 
     public Config loadConfig(URL url) throws ConfigException {

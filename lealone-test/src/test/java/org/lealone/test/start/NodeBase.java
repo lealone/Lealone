@@ -9,8 +9,8 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.main.Lealone;
-import org.lealone.p2p.config.Config;
-import org.lealone.p2p.config.YamlConfigLoader;
+import org.lealone.main.config.Config;
+import org.lealone.main.config.YamlConfigLoader;
 
 public class NodeBase extends YamlConfigLoader {
 
@@ -27,12 +27,6 @@ public class NodeBase extends YamlConfigLoader {
     private static void init(Class<?> loader) {
         System.setProperty("lealone.config.loader", loader.getName());
         System.setProperty("lealone.config", "lealone-test.yaml");
-
-        System.setProperty("lealone.load.persisted.node.info", "false"); // 不从nodes表加载ring状态信息
-
-        // 见P2pServer.getRingDelay()
-        // 默认30秒，等太久了
-        System.setProperty("lealone.ring.delay.ms", "5000");
 
         // System.setProperty("DATABASE_TO_UPPER", "false");
         System.setProperty("lealone.lobInDatabase", "false");
@@ -58,9 +52,6 @@ public class NodeBase extends YamlConfigLoader {
 
         if (listen_address != null)
             config.listen_address = listen_address;
-
-        if (node_snitch != null)
-            config.cluster_config.node_snitch = node_snitch;
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);

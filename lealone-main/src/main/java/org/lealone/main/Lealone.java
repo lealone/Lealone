@@ -21,13 +21,11 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
+import org.lealone.main.config.Config;
+import org.lealone.main.config.Config.PluggableEngineDef;
+import org.lealone.main.config.ConfigLoader;
+import org.lealone.main.config.YamlConfigLoader;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.config.Config;
-import org.lealone.p2p.config.Config.PluggableEngineDef;
-import org.lealone.p2p.config.ConfigLoader;
-import org.lealone.p2p.config.YamlConfigLoader;
-import org.lealone.p2p.server.ClusterMetaData;
-import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.TcpServerEngine;
@@ -57,9 +55,6 @@ public class Lealone {
     private boolean isClusterMode;
     private String host;
     private String port;
-    private String p2pHost;
-    private String p2pPort;
-    private String seeds;
 
     public void start(String[] args) {
         for (int i = 0; args != null && i < args.length; i++) {
@@ -77,14 +72,8 @@ public class Lealone {
                 host = args[++i];
             } else if (arg.equals("-port")) {
                 port = args[++i];
-            } else if (arg.equals("-p2pHost")) {
-                p2pHost = args[++i];
-            } else if (arg.equals("-p2pPort")) {
-                p2pPort = args[++i];
             } else if (arg.equals("-baseDir")) {
                 baseDir = args[++i];
-            } else if (arg.equals("-seeds")) {
-                seeds = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -211,18 +200,6 @@ public class Lealone {
                 String nodeId = config.listen_address.replace('.', '_');
                 config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_" + nodeId;
             }
-            for (PluggableEngineDef e : config.protocol_server_engines) {
-                if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
-                    e.enabled = true;
-                    if (p2pHost != null)
-                        e.parameters.put("host", p2pHost);
-                    if (p2pPort != null)
-                        e.parameters.put("port", p2pPort);
-                }
-            }
-        }
-        if (seeds != null) {
-            config.cluster_config.seed_provider.parameters.put("seeds", seeds);
         }
         loader.applyConfig(config);
         this.config = config;
@@ -236,16 +213,6 @@ public class Lealone {
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         long t2 = System.currentTimeMillis();
         logger.info("Init lealone database: " + (t2 - t1) + " ms");
-
-        // 如果启用了集群，集群的元数据表通过嵌入式的方式访问
-        if (config.protocol_server_engines != null) {
-            for (PluggableEngineDef def : config.protocol_server_engines) {
-                if (def.enabled && P2pServerEngine.NAME.equalsIgnoreCase(def.name)) {
-                    ClusterMetaData.init(LealoneDatabase.getInstance().getInternalConnection());
-                    break;
-                }
-            }
-        }
     }
 
     private void initBaseDir() {

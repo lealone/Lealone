@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.p2p.config;
+package org.lealone.main.config;
 
 import org.lealone.common.exceptions.ConfigException;
 
