@@ -49,29 +49,22 @@ public class ClientSessionFactory implements SessionFactory {
     private static void createSession(ConnectionInfo ci, boolean allowRedirect, AsyncCallback<Session> ac) {
         String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
         Random random = new Random(System.currentTimeMillis());
-        AutoReconnectSession parent = new AutoReconnectSession(ci);
-        createSession(parent, ci, servers, allowRedirect, random, ac);
+        createSession(ci, servers, allowRedirect, random, ac);
     }
 
     // servers是接入节点，可以有多个，会随机选择一个进行连接，这个被选中的接入节点可能不是所要连接的数居库所在的节点，
     // 这时接入节点会返回数据库的真实所在节点，最后再根据数据库的运行模式打开合适的连接即可，
     // 复制模式需要打开所有节点，其他运行模式只需要打开一个。
     // 如果第一次从servers中随机选择的一个连接失败了，会尝试其他的，当所有尝试都失败了才会抛出异常。
-    private static void createSession(AutoReconnectSession parent, ConnectionInfo ci, String[] servers,
-            boolean allowRedirect, Random random, AsyncCallback<Session> topAc) {
+    private static void createSession(ConnectionInfo ci, String[] servers, boolean allowRedirect, Random random,
+            AsyncCallback<Session> topAc) {
         int randomIndex = random.nextInt(servers.length);
         String server = servers[randomIndex];
         AsyncCallback<ClientSession> ac = new AsyncCallback<>();
         ac.onComplete(ar -> {
             if (ar.isSucceeded()) {
                 ClientSession clientSession = ar.getResult();
-                // 看看是否需要根据运行模式从当前接入节点转到数据库所在的节点
-                if (allowRedirect) {
-                    redirectIfNeeded(parent, clientSession, ci, topAc);
-                } else {
-                    parent.setSession(clientSession);
-                    topAc.setAsyncResult(parent);
-                }
+                topAc.setAsyncResult(clientSession);
             } else {
                 // 如果已经是最后一个了那就可以直接抛异常了，否则再选其他的
                 if (servers.length == 1) {
@@ -85,15 +78,14 @@ public class ClientSessionFactory implements SessionFactory {
                         if (j != randomIndex)
                             newServers[i++] = servers[j];
                     }
-                    createSession(parent, ci, newServers, allowRedirect, random, topAc);
+                    createSession(ci, newServers, allowRedirect, random, topAc);
                 }
             }
         });
-        createClientSession(parent, ci, server, ac);
+        createClientSession(ci, server, ac);
     }
 
-    private static void createClientSession(AutoReconnectSession parent, ConnectionInfo ci, String server,
-            AsyncCallback<ClientSession> ac) {
+    private static void createClientSession(ConnectionInfo ci, String server, AsyncCallback<ClientSession> ac) {
         NetNode node = NetNode.createTCP(server);
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
@@ -112,7 +104,7 @@ public class ClientSessionFactory implements SessionFactory {
                 // 每一个通过网络传输的协议包都会带上sessionId，
                 // 这样就能在同一条TCP连接中区分不同的客户端session了
                 int sessionId = tcpConnection.getNextId();
-                ClientSession clientSession = new ClientSession(tcpConnection, ci, server, parent, sessionId);
+                ClientSession clientSession = new ClientSession(tcpConnection, ci, server, sessionId);
                 tcpConnection.addSession(sessionId, clientSession);
 
                 SessionInit packet = new SessionInit(ci);
@@ -132,25 +124,5 @@ public class ClientSessionFactory implements SessionFactory {
                 ac.setAsyncResult(ar.getCause());
             }
         });
-    }
-
-    private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, ConnectionInfo ci,
-            AsyncCallback<Session> topAc) {
-        if (clientSession.isInvalid()) {
-            switch (clientSession.getRunMode()) {
-            case CLIENT_SERVER: {
-                ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
-                // 关闭当前session,因为连到的节点不是所要的
-                clientSession.close();
-                createSession(ci2, false, topAc);
-                break;
-            }
-            default:
-                topAc.setAsyncResult(DbException.getInternalError());
-            }
-        } else {
-            parent.setSession(clientSession);
-            topAc.setAsyncResult(parent);
-        }
     }
 }

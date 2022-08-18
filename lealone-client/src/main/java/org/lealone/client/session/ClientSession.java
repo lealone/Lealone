@@ -21,7 +21,6 @@ import org.lealone.db.LocalDataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
-import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionBase;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TcpClientConnection;
@@ -56,16 +55,14 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
     private final String server;
-    private final Session parent;
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
 
-    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int id) {
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, int id) {
         this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
-        this.parent = parent;
         this.id = id;
 
         String cipher = ci.getProperty(DbSetting.CIPHER.getName());
@@ -237,7 +234,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public void runModeChanged(String newTargetNodes) {
-        parent.runModeChanged(newTargetNodes);
     }
 
     @Override
