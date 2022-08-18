@@ -6,17 +6,12 @@
 package org.lealone.transaction;
 
 import java.sql.Connection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
-import org.lealone.db.session.SessionStatus;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
 import org.lealone.storage.Storage;
-import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.storage.type.StorageDataType;
 
 public interface Transaction {
@@ -73,15 +68,9 @@ public interface Transaction {
 
     boolean isLocal();
 
-    String getGlobalReplicationName();
-
-    void setGlobalReplicationName(String globalReplicationName);
-
     void setSession(Session session);
 
     Session getSession();
-
-    void addParticipant(Participant participant);
 
     void checkTimeout();
 
@@ -138,27 +127,6 @@ public interface Transaction {
     void wakeUpWaitingTransaction(Transaction transaction);
 
     int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
-
-    Transaction getLockedBy();
-
-    void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId);
-
-    void replicaPrepareCommit(String sql, int updateCount, long first, String uncommittedReplicationName,
-            String currentReplicationName, ReplicationConflictType replicationConflictType);
-
-    void replicaCommit(String currentReplicationName);
-
-    interface Participant {
-        void addSavepoint(String name);
-
-        void rollbackToSavepoint(String name);
-
-        Future<DTransactionCommitAck> commitTransaction(String globalTransactionName);
-
-        void commitFinal();
-
-        void rollbackTransaction();
-    }
 
     interface Listener {
         default void beforeOperation() {
@@ -245,7 +213,6 @@ public interface Transaction {
             // 避免重复调用
             if (transaction.getStatus() == STATUS_WAITING) {
                 transaction.setStatus(STATUS_OPEN);
-                transaction.getSession().setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                 if (listener != null)
                     listener.wakeUp();
             }

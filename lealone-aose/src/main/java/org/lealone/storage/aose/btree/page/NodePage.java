@@ -6,20 +6,13 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Callable;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.RunMode;
-import org.lealone.net.NetNode;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
-import org.lealone.storage.aose.btree.page.PageOperations.CallableOperation;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
-import org.lealone.storage.page.PageKey;
 
 public class NodePage extends LocalPage {
 
@@ -206,25 +199,17 @@ public class NodePage extends LocalPage {
         for (int i = 0; i <= keyLength; i++) {
             p[i] = buff.getLong();
         }
-        List<String> defaultReplicationHostIds = map.getDatabase() == null ? null
-                : Arrays.asList(map.getDatabase().getHostIds());
         for (int i = 0; i <= keyLength; i++) {
             int pageType = buff.get();
             boolean isRemotePage = pageType == 2;
             if (isRemotePage) {
                 children[i] = PageReference.createRemotePageReference();
                 List<String> replicationHostIds = readReplicationHostIds(buff);
-                if (replicationHostIds == null) {
-                    replicationHostIds = defaultReplicationHostIds;
-                }
                 children[i].replicationHostIds = replicationHostIds;
             } else {
                 List<String> replicationHostIds = null;
                 if (pageType == 0) {
                     replicationHostIds = readReplicationHostIds(buff);
-                    if (replicationHostIds == null) {
-                        replicationHostIds = defaultReplicationHostIds;
-                    }
                 }
                 children[i] = new PageReference(null, p[i]);
                 children[i].replicationHostIds = replicationHostIds; // node page的replicationHostIds为null
@@ -410,66 +395,6 @@ public class NodePage extends LocalPage {
             p.addMemory(memory);
         }
         return p;
-    }
-
-    @Override
-    public void readRemotePages() {
-        for (int i = 0, len = children.length; i < len; i++) {
-            final int index = i;
-            Callable<Page> task = new Callable<Page>() {
-                @Override
-                public Page call() throws Exception {
-                    Page p = getChildPage(index);
-                    return p;
-                }
-            };
-            map.getPohFactory().addPageOperation(new CallableOperation(task));
-        }
-    }
-
-    @Override
-    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
-        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.getDatabase(), newNodes);
-        for (int i = 0, len = keys.length; i <= len; i++) {
-            if (!children[i].isRemotePage()) {
-                Page p = getChildPage(i);
-                if (p.isNode()) {
-                    p.moveAllLocalLeafPages(oldNodes, newNodes, newRunMode);
-                } else {
-                    List<String> replicationHostIds = p.getReplicationHostIds();
-                    Object key = i == len ? keys[i - 1] : keys[i];
-                    if (replicationHostIds == null) {
-                        oldNodes = new String[0];
-                    } else {
-                        oldNodes = new String[replicationHostIds.size()];
-                        replicationHostIds.toArray(oldNodes);
-                    }
-                    PageKey pk = new PageKey(key, i == 0);
-                    map.replicateOrMovePage(pk, p, this, i, oldNodes, false, candidateNodes, newRunMode);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void replicatePage(DataBuffer buff) {
-        NodePage p = copy(false);
-        // 这里不需要为PageReference生成PageKey，
-        // 生成PageReference只是为了调用write时把子Page当成RemotePage
-        int len = children.length;
-        p.children = new PageReference[len];
-        for (int i = 0; i < len; i++) {
-            PageReference r = PageReference.createRemotePageReference();
-            p.children[i] = r;
-        }
-
-        Chunk chunk = new Chunk(0);
-        buff.put((byte) PageUtils.PAGE_TYPE_NODE);
-        int start = buff.position();
-        buff.putInt(0); // 回填pageLength
-        p.write(chunk, buff, true);
-        int pageLength = chunk.pagePositionToLengthMap.get(0L);
-        buff.putInt(start, pageLength);
     }
 
     @Override

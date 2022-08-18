@@ -9,12 +9,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -22,8 +19,6 @@ import org.lealone.db.index.Cursor;
 import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
-import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -37,8 +32,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
-import org.lealone.storage.page.PageKey;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -449,71 +442,6 @@ public class StandardPrimaryIndex extends StandardIndex {
             }
         }
         return pk;
-    }
-
-    @Override
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
-            SearchRow last) {
-        ValueLong from = getPK(first);
-        ValueLong to = getPK(last);
-        StorageMap<Value, VersionedValue> map = getMap(session);
-        return map.getNodeToPageKeyMap(from, to);
-    }
-
-    @Override
-    public long getAndAddKey(long delta) {
-        return dataMap.getAndAddKey(delta);
-    }
-
-    @Override
-    public void setMaxKey(long maxKey) {
-        dataMap.setMaxKey(ValueLong.get(maxKey));
-    }
-
-    @Override
-    public boolean isAppendMode() {
-        return mainIndexColumn == -1;
-    }
-
-    private final DbObjectLock dbObjectLock = new DbObjectLockImpl(DbObjectType.INDEX);
-    private final ConcurrentHashMap<String, Long> replicationNameToStartKeyMap = new ConcurrentHashMap<>();
-
-    @Override
-    public boolean tryExclusiveAppendLock(ServerSession session) {
-        if (replicationNameToStartKeyMap.containsKey(session.getReplicationName())) {
-            return true;
-        }
-        return dbObjectLock.tryExclusiveLock(session);
-    }
-
-    @Override
-    public void unlockAppend(ServerSession session) {
-        dbObjectLock.unlock(session);
-    }
-
-    @Override
-    public void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
-        this.replicationNameToStartKeyMap.putAll(replicationNameToStartKeyMap);
-    }
-
-    @Override
-    public void removeReplicationName(String replicationName) {
-        if (replicationName != null)
-            replicationNameToStartKeyMap.remove(replicationName);
-    }
-
-    @Override
-    public boolean containsReplicationName(String replicationName) {
-        return replicationNameToStartKeyMap.containsKey(replicationName);
-    }
-
-    @Override
-    public long getStartKey(String replicationName) {
-        Long startKey = replicationNameToStartKeyMap.get(replicationName);
-        if (startKey != null)
-            return startKey.longValue();
-        else
-            return -1;
     }
 
     private static class StandardPrimaryIndexCursor implements Cursor {

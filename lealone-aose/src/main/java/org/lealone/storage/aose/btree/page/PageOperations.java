@@ -89,12 +89,6 @@ public abstract class PageOperations {
                 pRef = p.getRef();
             }
 
-            // 处理分布式场景
-            if (p.isRemote() || p.getLeafPageMovePlan() != null) {
-                writeRemote();
-                return PageOperationResult.REMOTE_WRITTING;
-            }
-
             // 页面发生了结构性变动，重新从root定位leaf page
             if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
                 p = null;
@@ -155,9 +149,6 @@ public abstract class PageOperations {
         // 可能是新增的key所要插入的index，也可能是将要修改或删除的index
         protected abstract Object writeLocal(int index);
 
-        // 在分布式场景，当前leaf page已经被移到其他节点了
-        protected abstract void writeRemote();
-
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
             p = p.copyLeaf(index, key, value); // copy之后Ref还是一样的
@@ -206,11 +197,6 @@ public abstract class PageOperations {
                 return p.setValue(index, value);
             }
         }
-
-        @Override
-        protected void writeRemote() {
-            map.putRemote(p, key, value, false, resultHandler);
-        }
     }
 
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
@@ -232,11 +218,6 @@ public abstract class PageOperations {
                 return null;
             }
             return p.getValue(index);
-        }
-
-        @Override
-        protected void writeRemote() {
-            map.putRemote(p, key, value, true, resultHandler);
         }
     }
 
@@ -274,11 +255,6 @@ public abstract class PageOperations {
             insertLeaf(index, value);
             return key;
         }
-
-        @Override
-        protected void writeRemote() {
-            map.appendRemote(p, value, resultHandler);
-        }
     }
 
     public static class Replace<K, V> extends Put<K, V, Boolean> {
@@ -309,11 +285,6 @@ public abstract class PageOperations {
             }
             return Boolean.FALSE;
         }
-
-        @Override
-        protected void writeRemote() {
-            map.replaceRemote(p, key, oldValue, value, resultHandler);
-        }
     }
 
     public static class Remove<K, V> extends SingleWrite<K, V, V> {
@@ -342,11 +313,6 @@ public abstract class PageOperations {
                 childOperation = new RemoveChild(p, key);
             }
             return oldValue;
-        }
-
-        @Override
-        protected void writeRemote() {
-            map.removeRemote(p, key, resultHandler);
         }
     }
 
@@ -461,9 +427,6 @@ public abstract class PageOperations {
                 count++;
                 p = p.copy();
                 p.remove(index);
-                if (c.isLeaf()) {
-                    old.map.fireLeafPageRemove(c.getRef().pageKey, c);
-                }
                 ref.replacePage(p);
                 count--;
                 ref.unlock();
@@ -507,10 +470,6 @@ public abstract class PageOperations {
         tmp.right.page.setParentRef(p.getParentRef());
 
         // 第三步:
-        // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动
-        p.map.fireLeafPageSplit(tmp.key);
-
-        // 第四步:
         // 创建新任务，准备放入父节点中
         return new AddChild(tmp);
     }

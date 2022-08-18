@@ -8,8 +8,6 @@ package org.lealone.sql.optimizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -34,7 +32,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.query.Select;
-import org.lealone.storage.page.PageKey;
 
 /**
  * A table filter represents a table that is used in a query. There is one such
@@ -1009,22 +1006,6 @@ public class TableFilter extends ColumnResolverBase {
             cursor.parseIndexConditions(session, indexConditions);
         }
         return cursor.getEndSearchRow();
-    }
-
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getNodeToPageKeyMap(session);
-    }
-
-    public void setPageKeys(List<PageKey> pageKeys) {
-        cursor.setPageKeys(pageKeys);
-    }
-
-    public List<PageKey> getPageKeys() {
-        return cursor.getPageKeys();
     }
 
     @Override

@@ -5,18 +5,10 @@
  */
 package org.lealone.storage;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.async.Future;
-import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
-import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 
@@ -106,59 +98,5 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return 0;
-    }
-
-    ////////////////////// 以下是分布式API， 默认直接抛出异常 ////////////////////////////////
-
-    @Override
-    public Future<Object> get(Session session, Object key) {
-        throw DbException.getUnsupportedException("get");
-    }
-
-    @Override
-    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
-            boolean addIfAbsent) {
-        throw DbException.getUnsupportedException("put");
-    }
-
-    @Override
-    public Future<Object> append(Session session, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("append");
-    }
-
-    @Override
-    public Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue,
-            StorageDataType valueType) {
-        throw DbException.getUnsupportedException("replace");
-    }
-
-    @Override
-    public Future<Object> remove(Session session, Object key) {
-        throw DbException.getUnsupportedException("remove");
-    }
-
-    @Override
-    public void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
-        throw DbException.getUnsupportedException("addLeafPage");
-    }
-
-    @Override
-    public void removeLeafPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("removeLeafPage");
-    }
-
-    @Override
-    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
-        throw DbException.getUnsupportedException("prepareMoveLeafPage");
-    }
-
-    @Override
-    public ByteBuffer readPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("readPage");
-    }
-
-    @Override
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
-        throw DbException.getUnsupportedException("getNodeToPageKeyMap");
     }
 }

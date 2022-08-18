@@ -5,16 +5,12 @@
  */
 package org.lealone.sql;
 
-import java.util.List;
-
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
-import org.lealone.storage.page.PageKey;
-import org.lealone.storage.replication.ReplicaSQLCommand;
 
-public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
+public interface PreparedSQLStatement extends SQLStatement {
 
     public final static int MIN_PRIORITY = 1;
     public final static int NORM_PRIORITY = 5;
@@ -58,10 +54,6 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
         return false;
     }
 
-    default boolean isReplicationStatement() {
-        return false;
-    }
-
     Result query(int maxRows);
 
     int update();
@@ -84,7 +76,5 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
         T getResult();
 
         int getPriority();
-
-        void setPageKeys(List<PageKey> pageKeys);
     }
 }

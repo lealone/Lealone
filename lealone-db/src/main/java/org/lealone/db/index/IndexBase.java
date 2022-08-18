@@ -6,7 +6,6 @@
 package org.lealone.db.index;
 
 import java.util.List;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -26,7 +25,6 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * Most index implementations extend the base index.
@@ -448,12 +446,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public void addBufferedRows(ServerSession session, List<String> bufferNames) {
         throw DbException.getUnsupportedException("addBufferedRows");
-    }
-
-    @Override
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
-            SearchRow last) {
-        return null;
     }
 
     // 以下是DbObject和SchemaObject接口的api实现

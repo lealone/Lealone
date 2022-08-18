@@ -8,26 +8,6 @@ package org.lealone.server.protocol;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
-import org.lealone.server.protocol.dt.DTransactionCommit;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.server.protocol.dt.DTransactionCommitFinal;
-import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
-import org.lealone.server.protocol.dt.DTransactionPreparedQueryAck;
-import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
-import org.lealone.server.protocol.dt.DTransactionPreparedUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionQuery;
-import org.lealone.server.protocol.dt.DTransactionQueryAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdate;
-import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationUpdate;
-import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionRollback;
-import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
-import org.lealone.server.protocol.dt.DTransactionUpdate;
-import org.lealone.server.protocol.dt.DTransactionUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionValidate;
-import org.lealone.server.protocol.dt.DTransactionValidateAck;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
@@ -39,14 +19,6 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
-import org.lealone.server.protocol.replication.ReplicationCheckConflict;
-import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
-import org.lealone.server.protocol.replication.ReplicationHandleConflict;
-import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationUpdate;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.result.ResultChangeId;
 import org.lealone.server.protocol.result.ResultClose;
 import org.lealone.server.protocol.result.ResultFetchRows;
@@ -61,23 +33,6 @@ import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
-import org.lealone.server.protocol.storage.StorageAppend;
-import org.lealone.server.protocol.storage.StorageAppendAck;
-import org.lealone.server.protocol.storage.StorageGet;
-import org.lealone.server.protocol.storage.StorageGetAck;
-import org.lealone.server.protocol.storage.StorageMoveLeafPage;
-import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPage;
-import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPageAck;
-import org.lealone.server.protocol.storage.StoragePut;
-import org.lealone.server.protocol.storage.StoragePutAck;
-import org.lealone.server.protocol.storage.StorageReadPage;
-import org.lealone.server.protocol.storage.StorageReadPageAck;
-import org.lealone.server.protocol.storage.StorageRemove;
-import org.lealone.server.protocol.storage.StorageRemoveAck;
-import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
-import org.lealone.server.protocol.storage.StorageReplace;
-import org.lealone.server.protocol.storage.StorageReplaceAck;
-import org.lealone.server.protocol.storage.StorageReplicatePages;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class PacketDecoders {
@@ -132,58 +87,5 @@ public class PacketDecoders {
 
         register(PacketType.LOB_READ, LobRead.decoder);
         register(PacketType.LOB_READ_ACK, LobReadAck.decoder);
-
-        register(PacketType.REPLICATION_UPDATE, ReplicationUpdate.decoder);
-        register(PacketType.REPLICATION_UPDATE_ACK, ReplicationUpdateAck.decoder);
-        register(PacketType.REPLICATION_PREPARED_UPDATE, ReplicationPreparedUpdate.decoder);
-        register(PacketType.REPLICATION_PREPARED_UPDATE_ACK, ReplicationPreparedUpdateAck.decoder);
-        register(PacketType.REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);
-        register(PacketType.REPLICATION_CHECK_CONFLICT_ACK, ReplicationCheckConflictAck.decoder);
-        register(PacketType.REPLICATION_HANDLE_CONFLICT, ReplicationHandleConflict.decoder);
-        register(PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT, ReplicationHandleReplicaConflict.decoder);
-
-        register(PacketType.DISTRIBUTED_TRANSACTION_QUERY, DTransactionQuery.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK, DTransactionQueryAck.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY, DTransactionPreparedQuery.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY_ACK, DTransactionPreparedQueryAck.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE, DTransactionUpdate.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK, DTransactionUpdateAck.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE, DTransactionPreparedUpdate.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK, DTransactionPreparedUpdateAck.decoder);
-
-        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, DTransactionCommit.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT_ACK, DTransactionCommitAck.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT_FINAL, DTransactionCommitFinal.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, DTransactionRollback.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, DTransactionAddSavepoint.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, DTransactionRollbackSavepoint.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, DTransactionValidate.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK, DTransactionValidateAck.decoder);
-
-        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_UPDATE, DTransactionReplicationUpdate.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_UPDATE_ACK, DTransactionReplicationUpdateAck.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_PREPARED_UPDATE,
-                DTransactionReplicationPreparedUpdate.decoder);
-        register(PacketType.DISTRIBUTED_TRANSACTION_REPLICATION_PREPARED_UPDATE_ACK,
-                DTransactionReplicationPreparedUpdateAck.decoder);
-
-        register(PacketType.STORAGE_GET, StorageGet.decoder);
-        register(PacketType.STORAGE_GET_ACK, StorageGetAck.decoder);
-        register(PacketType.STORAGE_PUT, StoragePut.decoder);
-        register(PacketType.STORAGE_PUT_ACK, StoragePutAck.decoder);
-        register(PacketType.STORAGE_APPEND, StorageAppend.decoder);
-        register(PacketType.STORAGE_APPEND_ACK, StorageAppendAck.decoder);
-        register(PacketType.STORAGE_REPLACE, StorageReplace.decoder);
-        register(PacketType.STORAGE_REPLACE_ACK, StorageReplaceAck.decoder);
-        register(PacketType.STORAGE_REMOVE, StorageRemove.decoder);
-        register(PacketType.STORAGE_REMOVE_ACK, StorageRemoveAck.decoder);
-
-        register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, StoragePrepareMoveLeafPage.decoder);
-        register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK, StoragePrepareMoveLeafPageAck.decoder);
-        register(PacketType.STORAGE_MOVE_LEAF_PAGE, StorageMoveLeafPage.decoder);
-        register(PacketType.STORAGE_REPLICATE_PAGES, StorageReplicatePages.decoder);
-        register(PacketType.STORAGE_READ_PAGE, StorageReadPage.decoder);
-        register(PacketType.STORAGE_READ_PAGE_ACK, StorageReadPageAck.decoder);
-        register(PacketType.STORAGE_REMOVE_LEAF_PAGE, StorageRemoveLeafPage.decoder);
     }
 }

@@ -6,7 +6,6 @@
 package org.lealone.db.index;
 
 import java.util.List;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncCallback;
@@ -19,7 +18,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -288,38 +286,4 @@ public interface Index extends SchemaObject {
      * @param bufferNames the names of the temporary storage
      */
     void addBufferedRows(ServerSession session, List<String> bufferNames);
-
-    Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
-
-    default long getAndAddKey(long delta) {
-        return 0;
-    }
-
-    default void setMaxKey(long maxKey) {
-    }
-
-    default boolean isAppendMode() {
-        return false;
-    }
-
-    default boolean tryExclusiveAppendLock(ServerSession session) {
-        return true;
-    }
-
-    default void unlockAppend(ServerSession session) {
-    }
-
-    default void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
-    }
-
-    default void removeReplicationName(String replicationName) {
-    }
-
-    default boolean containsReplicationName(String replicationName) {
-        return false;
-    }
-
-    default long getStartKey(String replicationName) {
-        return -1;
-    }
 }

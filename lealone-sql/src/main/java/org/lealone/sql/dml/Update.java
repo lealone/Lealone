@@ -24,7 +24,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.executor.YieldableConditionUpdateBase;
 import org.lealone.sql.expression.Expression;
@@ -160,10 +159,7 @@ public class Update extends ManipulationStatement {
 
     @Override
     public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        if (isShardingMode())
-            return new DefaultYieldableShardingUpdate(this, asyncHandler); // 处理sharding模式
-        else
-            return new YieldableUpdate(this, asyncHandler); // 处理单机模式、复制模式
+        return new YieldableUpdate(this, asyncHandler); // 处理单机模式、复制模式
     }
 
     private static class YieldableUpdate extends YieldableConditionUpdateBase {

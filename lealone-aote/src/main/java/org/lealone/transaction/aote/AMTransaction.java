@@ -8,7 +8,6 @@ package org.lealone.transaction.aote;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,7 +21,6 @@ import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
@@ -44,7 +42,6 @@ public class AMTransaction implements Transaction {
 
     UndoLog undoLog = new UndoLog();
     RunMode runMode;
-    String globalReplicationName;
     Runnable asyncTask;
 
     private HashMap<String, Integer> savepoints;
@@ -85,16 +82,6 @@ public class AMTransaction implements Transaction {
     @Override
     public String getTransactionName() {
         return transactionName;
-    }
-
-    @Override
-    public String getGlobalReplicationName() {
-        return globalReplicationName;
-    }
-
-    @Override
-    public void setGlobalReplicationName(String globalReplicationName) {
-        this.globalReplicationName = globalReplicationName;
     }
 
     @Override
@@ -161,10 +148,6 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public void addParticipant(Participant participant) {
-    }
-
-    @Override
     public <K, V> AMTransactionMap<K, V> openMap(String name, Storage storage) {
         return openMap(name, null, null, storage);
     }
@@ -188,10 +171,6 @@ public class AMTransaction implements Transaction {
 
         if (parameters == null)
             parameters = new HashMap<>(1);
-        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
-            parameters.put("isDistributed", "true");
-        if (runMode == RunMode.SHARDING)
-            parameters.put("isShardingMode", "true");
 
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
@@ -337,30 +316,6 @@ public class AMTransaction implements Transaction {
             waitingTransactions = waitingTransactionsRef.get();
         }
         lockedBy = null;
-    }
-
-    @Override
-    public Transaction getLockedBy() {
-        return lockedBy;
-    }
-
-    @Override
-    public void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId) {
-        undoLog.setRetryReplicationNames(retryReplicationNames, savepointId);
-    }
-
-    @Override
-    public void replicaPrepareCommit(String sql, int updateCount, long first, String uncommittedReplicationName,
-            String currentReplicationName, ReplicationConflictType replicationConflictType) {
-        RedoLogRecord r = RedoLogRecord.createReplicaPrepareCommitRedoLogRecord(sql, updateCount, first,
-                uncommittedReplicationName, currentReplicationName, replicationConflictType);
-        logSyncService.addAndMaybeWaitForSync(r);
-    }
-
-    @Override
-    public void replicaCommit(String currentReplicationName) {
-        RedoLogRecord r = RedoLogRecord.createReplicaCommitRedoLogRecord(currentReplicationName);
-        logSyncService.addRedoLogRecord(r); // 不需要等待
     }
 
     @Override

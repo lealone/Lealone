@@ -174,7 +174,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
-        long tid = getTransactionId(runMode == RunMode.SHARDING);
+        long tid = getTransactionId(false);
         AMTransaction t = createTransaction(tid, runMode);
         t.setAutoCommit(autoCommit);
         t.setRunMode(runMode);
@@ -225,11 +225,6 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     protected AMTransaction createTransaction(long tid, RunMode runMode) {
         return new AMTransaction(this, tid);
-    }
-
-    @Override
-    public boolean validateTransaction(String globalTransactionName) {
-        return false;
     }
 
     @Override

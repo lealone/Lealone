@@ -11,7 +11,6 @@ import java.net.SocketAddress;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
-import org.lealone.client.command.ClientStorageCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
@@ -33,23 +32,13 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
-import org.lealone.server.protocol.dt.DTransactionCommit;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.server.protocol.dt.DTransactionCommitFinal;
-import org.lealone.server.protocol.dt.DTransactionRollback;
-import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
 import org.lealone.storage.lob.LobLocalStorage;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
 
 /**
  * The client side part of a session when using the server mode. 
@@ -177,37 +166,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        checkClosed();
-        return new ClientStorageCommand(this);
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        checkClosed();
-        return new ClientStorageCommand(this);
-    }
-
-    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientPreparedSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         checkClosed();
         return new ClientPreparedSQLCommand(this, sql, fetchSize);
     }
@@ -274,54 +233,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             handleException(e);
         }
         return -1;
-    }
-
-    @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        checkClosed();
-        try {
-            return send(new DTransactionCommit(globalTransactionName));
-        } catch (Exception e) {
-            handleException(e);
-        }
-        return null;
-    }
-
-    @Override
-    public void commitFinal() {
-        checkClosed();
-        try {
-            send(new DTransactionCommitFinal());
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void rollbackTransaction() {
-        try {
-            send(new DTransactionRollback());
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void addSavepoint(String name) {
-        try {
-            send(new DTransactionAddSavepoint(name));
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void rollbackToSavepoint(String name) {
-        try {
-            send(new DTransactionRollbackSavepoint(name));
-        } catch (Exception e) {
-            handleException(e);
-        }
     }
 
     @Override

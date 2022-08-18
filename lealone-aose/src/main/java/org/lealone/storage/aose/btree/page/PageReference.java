@@ -5,15 +5,9 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.lealone.db.IDatabase;
-import org.lealone.db.async.Future;
-import org.lealone.db.session.Session;
-import org.lealone.net.NetNode;
-import org.lealone.storage.StorageCommand;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.page.PageKey;
 import org.lealone.storage.page.PageOperationHandler;
@@ -163,24 +157,6 @@ public class PageReference {
     }
 
     public synchronized Page readRemotePage(BTreeMap<?, ?> map) {
-        if (page != null) {
-            return page;
-        }
-        IDatabase db = map.getDatabase();
-        // TODO 支持多节点容错
-        String remoteHostId = replicationHostIds.get(0);
-        List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, new String[] { remoteHostId });
-        Session s = db.createSession(replicationNodes);
-        try (StorageCommand c = s.createStorageCommand()) {
-            Future<ByteBuffer> f = c.readRemotePage(map.getName(), pageKey);
-            ByteBuffer pageBuffer = f.get();
-            page = Page.readReplicatedPage(map, pageBuffer);
-        }
-
-        if (!map.isShardingMode() || (page.getReplicationHostIds() != null
-                && page.getReplicationHostIds().contains(NetNode.getLocalTcpHostAndPort()))) {
-            pos = 0;
-        }
-        return page;
+        return null;
     }
 }

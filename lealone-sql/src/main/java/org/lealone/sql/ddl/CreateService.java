@@ -64,11 +64,6 @@ public class CreateService extends SchemaStatement {
         return SQLStatement.CREATE_SERVICE;
     }
 
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
     }

@@ -5,16 +5,12 @@
  */
 package org.lealone.client.session;
 
-import java.net.InetSocketAddress;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -28,7 +24,6 @@ import org.lealone.net.TcpClientConnection;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
-import org.lealone.storage.replication.ReplicationSession;
 
 public class ClientSessionFactory implements SessionFactory {
 
@@ -141,81 +136,21 @@ public class ClientSessionFactory implements SessionFactory {
 
     private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, ConnectionInfo ci,
             AsyncCallback<Session> topAc) {
-        if (clientSession.getRunMode() == RunMode.REPLICATION) {
-            if (ci.isServiceConnection()) {
-                createServiceSession(parent, clientSession, ci, topAc);
-                return;
+        if (clientSession.isInvalid()) {
+            switch (clientSession.getRunMode()) {
+            case CLIENT_SERVER: {
+                ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
+                // 关闭当前session,因为连到的节点不是所要的
+                clientSession.close();
+                createSession(ci2, false, topAc);
+                break;
             }
-            String[] replicationServers = StringUtils.arraySplit(clientSession.getTargetNodes(), ',', true);
-            int size = replicationServers.length;
-            AtomicInteger count = new AtomicInteger();
-            CopyOnWriteArrayList<Session> sessions = new CopyOnWriteArrayList<>();
-
-            InetSocketAddress inetSocketAddress = clientSession.getInetSocketAddress();
-            for (int i = 0; i < size; i++) {
-                // 如果首次连接的节点就是复制节点之一，则复用它
-                if (clientSession.isValid()) {
-                    NetNode node = NetNode.createTCP(replicationServers[i]);
-                    if (node.getInetSocketAddress().equals(inetSocketAddress)) {
-                        addSessionForReplication(parent, clientSession, sessions, size, count, topAc);
-                        continue;
-                    }
-                }
-                // 每个节点使用独立的AsyncCallback，因为AsyncCallback调用一次处理器后就自动置null了
-                AsyncCallback<ClientSession> replicationAc = new AsyncCallback<>();
-                replicationAc.onComplete(ar -> {
-                    if (ar.isSucceeded()) {
-                        addSessionForReplication(parent, ar.getResult(), sessions, size, count, topAc);
-                    } else {
-                        if (count.incrementAndGet() == size) {
-                            topAc.setAsyncResult(ar.getCause());
-                        }
-                    }
-                });
-                ConnectionInfo ci2 = ci.copy(replicationServers[i]);
-                createClientSession(parent, ci2, replicationServers[i], replicationAc);
+            default:
+                topAc.setAsyncResult(DbException.getInternalError());
             }
         } else {
-            if (clientSession.isInvalid()) {
-                switch (clientSession.getRunMode()) {
-                case CLIENT_SERVER:
-                case SHARDING: {
-                    ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
-                    // 关闭当前session,因为连到的节点不是所要的
-                    clientSession.close();
-                    createSession(ci2, false, topAc);
-                    break;
-                }
-                default:
-                    topAc.setAsyncResult(DbException.getInternalError());
-                }
-            } else {
-                parent.setSession(clientSession);
-                topAc.setAsyncResult(parent);
-            }
-        }
-    }
-
-    private static void addSessionForReplication(AutoReconnectSession parent, ClientSession clientSession,
-            CopyOnWriteArrayList<Session> sessions, int size, AtomicInteger count, AsyncCallback<Session> topAc) {
-        sessions.add(clientSession);
-        if (count.incrementAndGet() == size) {
-            ReplicationSession rs = new ReplicationSession(sessions.toArray(new Session[0]));
-            rs.setAutoCommit(clientSession.isAutoCommit());
-            parent.setSession(rs);
-            topAc.setAsyncResult(parent);
-        }
-    }
-
-    // 在复制模式场景下调用微服务不需要创建ReplicationSession，只需随机选择一个节点即可
-    private static void createServiceSession(AutoReconnectSession parent, ClientSession clientSession,
-            ConnectionInfo ci, AsyncCallback<Session> topAc) {
-        if (clientSession.isValid()) {
             parent.setSession(clientSession);
             topAc.setAsyncResult(parent);
-        } else {
-            ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
-            createSession(ci2, false, topAc);
         }
     }
 }

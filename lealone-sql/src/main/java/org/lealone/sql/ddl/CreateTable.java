@@ -309,11 +309,6 @@ public class CreateTable extends SchemaStatement {
         data.storageEngineParams = storageEngineParams;
     }
 
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
     public String getPackageName() {
         return packageName;
     }

@@ -15,7 +15,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
-import org.lealone.server.protocol.PacketType;
 import org.lealone.sql.PreparedSQLStatement;
 
 public class SessionInfo implements ServerSession.TimeoutListener {
@@ -32,8 +31,6 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private final int sessionTimeout;
 
     private long lastActiveTime;
-
-    private PacketDeliveryTask conflictTask;
 
     SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
             int sessionTimeout) {
@@ -70,11 +67,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
 
     public void submitTask(PacketDeliveryTask task) {
         updateLastActiveTime();
-        if (task.packetType == PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT.value) {
-            conflictTask = task;
-        } else {
-            taskQueue.add(task);
-        }
+        taskQueue.add(task);
         if (!scheduler.useNetEventLoop())
             scheduler.wakeUp();
     }
@@ -114,14 +107,9 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     }
 
     void runSessionTasks() {
-        // 在复制模式下，除了冲突处理命令，只有当前语句执行完了才能执行下一条命令
-        if (session.getYieldableCommand() != null || session.isStorageReplicationMode()) {
-            if (conflictTask != null) {
-                runTask(conflictTask);
-                conflictTask = null;
-            } else {
-                return;
-            }
+        // 只有当前语句执行完了才能执行下一条命令
+        if (session.getYieldableCommand() != null) {
+            return;
         }
         if (session.canExecuteNextCommand()) {
             AsyncTask task = taskQueue.poll();

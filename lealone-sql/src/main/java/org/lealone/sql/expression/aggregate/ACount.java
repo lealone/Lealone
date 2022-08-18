@@ -12,7 +12,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 // COUNT(x)
 public class ACount extends BuiltInAggregate {
@@ -57,21 +56,6 @@ public class ACount extends BuiltInAggregate {
                     distinctValues = ValueHashMap.newInstance();
                 }
                 distinctValues.put(v, this);
-            }
-        }
-
-        @Override
-        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            if (bvv == null)
-                count += vv.size();
-            else
-                count += bvv.trueCount();
-            if (distinct) {
-                if (distinctValues == null) {
-                    distinctValues = ValueHashMap.newInstance();
-                }
-                for (Value v : vv.getValues(bvv))
-                    distinctValues.put(v, this);
             }
         }
 

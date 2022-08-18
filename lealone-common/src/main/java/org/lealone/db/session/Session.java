@@ -18,12 +18,7 @@ import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.transaction.Transaction;
 
 /**
  * A client or server session. A session represents a database connection.
@@ -31,25 +26,16 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public interface Session extends Closeable, Transaction.Participant {
+public interface Session extends Closeable {
 
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;
     public static final int STATUS_RUN_MODE_CHANGED = 1003;
-    public static final int STATUS_REPLICATING = 1004;
 
     int getId();
 
     SQLCommand createSQLCommand(String sql, int fetchSize);
-
-    DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize);
-
-    ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize);
-
-    StorageCommand createStorageCommand();
-
-    ReplicaStorageCommand createReplicaStorageCommand();
 
     /**
      * Parse a command and prepare it for execution.
@@ -60,24 +46,11 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     SQLCommand prepareSQLCommand(String sql, int fetchSize);
 
-    ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize);
-
-    String getReplicationName();
-
-    void setReplicationName(String replicationName);
-
-    default boolean isReplicationMode() {
-        return getReplicationName() != null;
-    }
-
     public default SessionStatus getStatus() {
         return SessionStatus.TRANSACTION_NOT_START;
     }
 
     public default void setStatus(SessionStatus sessionStatus) {
-    }
-
-    public default void setFinalResult(boolean isFinalResult) {
     }
 
     /**
@@ -94,10 +67,6 @@ public interface Session extends Closeable, Transaction.Participant {
      * @param autoCommit the new value
      */
     void setAutoCommit(boolean autoCommit);
-
-    Transaction getParentTransaction();
-
-    void setParentTransaction(Transaction transaction);
 
     void asyncCommitComplete();
 

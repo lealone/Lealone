@@ -105,18 +105,11 @@ public class TcpClientConnection extends TransferConnection {
             int sessionId = in.readInt();
             session = getSession(sessionId);
             newTargetNodes = in.readString();
-        } else if (status == Session.STATUS_REPLICATING) {
-            // ok
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac;
-        if (status == Session.STATUS_REPLICATING) {
-            ac = callbackMap.get(packetId);
-        } else {
-            ac = callbackMap.remove(packetId);
-        }
+        AsyncCallback<?> ac = callbackMap.remove(packetId);
         if (ac == null) {
             String msg = "Async callback is null, may be a bug! packetId = " + packetId;
             if (e != null) {

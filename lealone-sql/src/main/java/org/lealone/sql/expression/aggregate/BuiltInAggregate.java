@@ -27,7 +27,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.
@@ -129,16 +128,6 @@ public abstract class BuiltInAggregate extends Aggregate {
         }
         Value v = on == null ? null : on.getValue(session);
         data.add(session, v);
-    }
-
-    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv,
-            ExpressionVisitor<ValueVector> visitor) {
-        AggregateData data = getAggregateData();
-        if (data == null) {
-            return;
-        }
-        ValueVector vv = on == null ? null : on.accept(visitor);
-        data.add(session, bvv, vv);
     }
 
     @Override

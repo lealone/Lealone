@@ -13,14 +13,12 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.RunMode;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.page.LeafPageMovePlan;
 
 public class Page {
 
@@ -452,28 +450,6 @@ public class Page {
         return p;
     }
 
-    public void readRemotePages() {
-        throw ie();
-    }
-
-    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
-        throw ie();
-    }
-
-    public void replicatePage(DataBuffer buff) {
-        throw ie();
-    }
-
-    public static Page readReplicatedPage(BTreeMap<?, ?> map, ByteBuffer buff) {
-        int type = buff.get();
-        Page p = create(map, type);
-        int chunkId = 0;
-        int offset = buff.position();
-        int pageLength = buff.getInt();
-        p.read(buff, chunkId, offset, pageLength, true);
-        return p;
-    }
-
     public boolean isRemoteChildPage(int index) {
         return false;
     }
@@ -488,13 +464,6 @@ public class Page {
 
     public PageReference[] getChildren() {
         throw ie();
-    }
-
-    public LeafPageMovePlan getLeafPageMovePlan() {
-        return null;
-    }
-
-    public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
     }
 
     public List<String> getReplicationHostIds() {

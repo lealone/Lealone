@@ -17,7 +17,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 public class ADefault extends BuiltInAggregate {
 
@@ -256,121 +255,6 @@ public class ADefault extends BuiltInAggregate {
                 break;
             default:
                 DbException.throwInternalError("type=" + type);
-            }
-        }
-
-        @Override
-        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            if (bvv == null)
-                count += vv.size();
-            else
-                count += bvv.trueCount();
-            if (distinct) {
-                if (distinctValues == null) {
-                    distinctValues = ValueHashMap.newInstance();
-                }
-                for (Value v0 : vv.getValues(bvv))
-                    distinctValues.put(v0, this);
-                return;
-            }
-            switch (type) {
-            case Aggregate.SUM:
-                if (value == null) {
-                    value = vv.sum(bvv);
-                } else {
-                    value = value.add(vv.sum().convertTo(dataType));
-                }
-                // if (this.vv == null) {
-                // // value = v.convertTo(dataType);
-                // this.vv = vv;
-                // this.bvv = bvv;
-                // } else {
-                // // v = v.convertTo(value.getType());
-                // this.vv = this.vv.add(this.bvv, vv, bvv);
-                // }
-                return;
-            case Aggregate.AVG:
-                if (value == null) {
-                    value = vv.sum(bvv);
-                } else {
-                    value = value.add(vv.sum(bvv));
-                }
-                return;
-            case Aggregate.MIN:
-                if (value == null) {
-                    value = vv.min(bvv);
-                } else {
-                    Value min = vv.min(bvv);
-                    if (session.getDatabase().compare(min, value) < 0)
-                        value = min;
-                }
-                return;
-            case Aggregate.MAX:
-                if (value == null) {
-                    value = vv.max(bvv);
-                } else {
-                    Value max = vv.max(bvv);
-                    if (session.getDatabase().compare(max, value) > 0)
-                        value = max;
-                }
-                return;
-            }
-            for (Value v : vv.getValues(bvv)) {
-                if (v == ValueNull.INSTANCE) {
-                    continue;
-                }
-                switch (type) {
-                case Aggregate.STDDEV_POP:
-                case Aggregate.STDDEV_SAMP:
-                case Aggregate.VAR_POP:
-                case Aggregate.VAR_SAMP: {
-                    // Using Welford's method, see also
-                    // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-                    // http://www.johndcook.com/standard_deviation.html
-                    double x = v.getDouble();
-                    if (count == 1) {
-                        mean = x;
-                        m2 = 0;
-                    } else {
-                        double delta = x - mean;
-                        mean += delta / count;
-                        m2 += delta * (x - mean);
-                    }
-                    break;
-                }
-                case Aggregate.BOOL_AND:
-                    v = v.convertTo(Value.BOOLEAN);
-                    if (value == null) {
-                        value = v;
-                    } else {
-                        value = ValueBoolean.get(value.getBoolean() && v.getBoolean());
-                    }
-                    break;
-                case Aggregate.BOOL_OR:
-                    v = v.convertTo(Value.BOOLEAN);
-                    if (value == null) {
-                        value = v;
-                    } else {
-                        value = ValueBoolean.get(value.getBoolean() || v.getBoolean());
-                    }
-                    break;
-                case Aggregate.BIT_AND:
-                    if (value == null) {
-                        value = v.convertTo(dataType);
-                    } else {
-                        value = ValueLong.get(value.getLong() & v.getLong()).convertTo(dataType);
-                    }
-                    break;
-                case Aggregate.BIT_OR:
-                    if (value == null) {
-                        value = v.convertTo(dataType);
-                    } else {
-                        value = ValueLong.get(value.getLong() | v.getLong()).convertTo(dataType);
-                    }
-                    break;
-                default:
-                    DbException.throwInternalError("type=" + type);
-                }
             }
         }
 

@@ -18,7 +18,6 @@ import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.replication.ReplicationConflictType;
 
 //用于执行update和delete语句
 public abstract class YieldableConditionUpdateBase extends YieldableLoopUpdateBase {
@@ -62,9 +61,6 @@ public abstract class YieldableConditionUpdateBase extends YieldableLoopUpdateBa
         int savepointId = session.getTransaction().getSavepointId();
         if (!table.tryLockRow(session, row, lockColumns, false)) {
             oldRow = row;
-            session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
-            // 在try lock过程中已经修改了状态，并且只有在try lock过程中由锁的拥有者确定状态才是准确的
-            // session.setStatus(SessionStatus.WAITING);
             return false;
         }
         session.setCurrentLockedRow(row, savepointId);

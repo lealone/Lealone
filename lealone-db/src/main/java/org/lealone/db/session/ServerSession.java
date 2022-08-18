@@ -6,16 +6,13 @@
 package org.lealone.db.session;
 
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -30,10 +27,8 @@ import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
 import org.lealone.db.RunMode;
-import org.lealone.db.ServerStorageCommand;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
@@ -50,29 +45,15 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
-import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationCheckConflict;
-import org.lealone.server.protocol.replication.ReplicationHandleConflict;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.Storage;
-import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.lob.LobStorage;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -401,7 +382,7 @@ public class ServerSession extends SessionBase {
     }
 
     public boolean isLocal() {
-        return !database.isShardingMode() || connectionInfo == null || connectionInfo.isEmbedded();
+        return connectionInfo == null || connectionInfo.isEmbedded();
     }
 
     public ParsedSQLStatement parseStatement(String sql) {
@@ -445,26 +426,6 @@ public class ServerSession extends SessionBase {
         return prepareStatement(sql, fetchSize);
     }
 
-    @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        return new ServerStorageCommand(this);
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        return new ServerStorageCommand(this);
-    }
-
     /**
      * Parse and prepare the given SQL statement.
      * This method also checks if the connection has been closed.
@@ -474,11 +435,6 @@ public class ServerSession extends SessionBase {
      */
     @Override
     public synchronized SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public synchronized ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 
@@ -552,15 +508,6 @@ public class ServerSession extends SessionBase {
             return;
         checkCommitRollback();
         transactionStart = 0;
-        if (globalTransactionName == null && isRoot() && !transaction.isLocal() && !isAutoCommit()) {
-            StringBuilder buff = new StringBuilder(transaction.getTransactionName());
-            if (nestedHostAndPortSet != null) {
-                for (String hostAndPort : nestedHostAndPortSet) {
-                    buff.append(',').append(hostAndPort);
-                }
-            }
-            globalTransactionName = buff.toString();
-        }
         // 避免重复commit
         Transaction transaction = this.transaction;
         if (transaction.isLocal())
@@ -574,8 +521,7 @@ public class ServerSession extends SessionBase {
         else
             transaction.commit(globalTransactionName);
 
-        // 客户端连续执行commit时nestedHostAndPortSet为null
-        if (transaction.isLocal() || nestedHostAndPortSet == null || isAutoCommit()) {
+        if (transaction.isLocal() || isAutoCommit()) {
             commitFinal();
         }
     }
@@ -594,7 +540,6 @@ public class ServerSession extends SessionBase {
         containsDatabaseStatement = false;
     }
 
-    @Override
     public void commitFinal() {
         endTransaction();
         if (transaction != null && !transaction.isLocal()) {
@@ -622,8 +567,6 @@ public class ServerSession extends SessionBase {
             unlinkLobMap = null;
         }
         unlockAll(true);
-        clean();
-        releaseNestedSessions();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
@@ -657,8 +600,6 @@ public class ServerSession extends SessionBase {
             containsDDL = false;
         }
 
-        clean();
-        releaseNestedSessions();
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -679,7 +620,6 @@ public class ServerSession extends SessionBase {
      *
      * @param name the savepoint name
      */
-    @Override
     public void addSavepoint(String name) {
         getTransaction().addSavepoint(name);
     }
@@ -689,7 +629,6 @@ public class ServerSession extends SessionBase {
      *
      * @param name the savepoint name
      */
-    @Override
     public void rollbackToSavepoint(String name) {
         if (transaction != null) {
             checkCommitRollback();
@@ -864,43 +803,24 @@ public class ServerSession extends SessionBase {
     public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
         if (executingNestedStatement)
             return;
-        if (lastReplicationName != null && isAutoCommit()) {
-            getTransaction().replicaCommit(lastReplicationName);
-            lastReplicationName = null;
-        }
         closeTemporaryResults();
         closeCurrentCommand();
-        // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
-        if (getStatus() == SessionStatus.RETRYING) {
-            setStatus(SessionStatus.STATEMENT_COMPLETED);
+        if (asyncResult != null && asyncHandler != null) {
             if (isAutoCommit()) {
-                if (asyncResult != null)
-                    asyncCommit(() -> {
-                    });
-                else
-                    commit();
+                // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
+                asyncCommit(() -> asyncHandler.handle(asyncResult));
+            } else {
+                // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
+                asyncHandler.handle(asyncResult);
             }
         } else {
-            if (asyncResult != null && asyncHandler != null) {
-                // 在复制模式下不能自动提交
-                if (isAutoCommit() && getReplicationName() == null) {
-                    // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
-                    asyncCommit(() -> asyncHandler.handle(asyncResult));
-                } else {
-                    // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
-                    asyncHandler.handle(asyncResult);
-                }
-            } else {
-                if (isAutoCommit() && getReplicationName() == null) {
-                    // 阻塞当前线程，可能需要等事务日志写完为止
-                    commit();
-                }
+            if (isAutoCommit()) {
+                // 阻塞当前线程，可能需要等事务日志写完为止
+                commit();
             }
         }
         // 可经执行下一条命令了
-        if (getReplicationName() == null) {
-            setYieldableCommand(null);
-        }
+        setYieldableCommand(null);
     }
 
     public void rollbackCurrentCommand() {
@@ -915,12 +835,6 @@ public class ServerSession extends SessionBase {
                 locks.remove(lock);
             }
         }
-    }
-
-    private void rollbackCurrentCommand(ServerSession newLockOwner) {
-        rollbackTo(currentCommandSavepointId);
-        unlockAll(false, newLockOwner);
-        sessionStatus = SessionStatus.WAITING;
     }
 
     /**
@@ -1268,78 +1182,11 @@ public class ServerSession extends SessionBase {
         RunMode runMode = getRunMode();
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode);
         transaction.setSession(this);
-        transaction.setGlobalReplicationName(replicationName);
         transaction.setIsolationLevel(transactionIsolationLevel);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;
         return transaction;
-    }
-
-    // 参与本次事务的其他Session，只有分布式场景才用得到，所以延迟初始化
-    private Map<String, Session> nestedSessions;
-    private Set<String> nestedHostAndPortSet;
-
-    public Session getNestedSession(String hostAndPort) {
-        return getNestedSession(hostAndPort, !NetNode.isLocalTcpNode(hostAndPort));
-    }
-
-    // 得到的嵌套session会参与当前事务
-    public Session getNestedSession(String hostAndPort, boolean remote) {
-        // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
-        String url = getURL(hostAndPort);
-        Session s;
-        if (nestedSessions == null) {
-            nestedSessions = new HashMap<>();
-            nestedHostAndPortSet = new HashSet<>();
-            s = null;
-        } else {
-            s = nestedSessions.get(url);
-        }
-        if (s == null) {
-            nestedHostAndPortSet.add(hostAndPort);
-            s = SessionPool.getSessionSync(this, url, remote);
-            if (transaction != null)
-                transaction.addParticipant(s);
-            nestedSessions.put(url, s);
-        }
-        if (s instanceof ServerSession) {
-            ((ServerSession) s).setTransactionListener(transactionListener);
-            ((ServerSession) s).setSessionInfo(sessionInfo);
-        }
-        // 集群内部节点之间通信用服务器端配置的超时时间
-        s.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
-        return s;
-    }
-
-    private void releaseNestedSessions() {
-        if (nestedSessions != null) {
-            for (Session s : nestedSessions.values()) {
-                s.setParentTransaction(null);
-                SessionPool.release(s);
-            }
-            nestedSessions = null;
-            nestedHostAndPortSet = null;
-        }
-    }
-
-    public boolean validateTransaction(String globalTransactionName) {
-        return database.getTransactionEngine().validateTransaction(globalTransactionName);
-    }
-
-    public String checkReplicationConflict(ReplicationCheckConflict packet) {
-        TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
-        return map.checkReplicationConflict(packet.key, packet.replicationName);
-    }
-
-    public void handleReplicationConflict(ReplicationHandleConflict packet) {
-        if (!transaction.getGlobalReplicationName().equals(packet.replicationName)) {
-            transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
-            TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
-            if (map.tryLock(map.getKeyType().read(packet.key))) {
-                transaction.setGlobalReplicationName(packet.replicationName);
-            }
-        }
     }
 
     private static String createURL(String dbName, String hostAndPort) {
@@ -1359,21 +1206,6 @@ public class ServerSession extends SessionBase {
         return connectionInfo == null ? null : connectionInfo.getURL();
     }
 
-    @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        commit(globalTransactionName);
-        return Future.succeededFuture(new DTransactionCommitAck());
-    }
-
-    @Override
-    public void rollbackTransaction() {
-        rollback();
-    }
-
-    public boolean isShardingMode() {
-        return database.isShardingMode();
-    }
-
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         return getTransactionMap(mapName);
     }
@@ -1387,15 +1219,6 @@ public class ServerSession extends SessionBase {
         return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
-    public void replicatePages(String dbName, String storageName, ByteBuffer data) {
-        Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-        if (!database.isInitialized()) {
-            database.init();
-        }
-        Storage storage = database.getStorage(storageName);
-        storage.replicateFrom(data);
-    }
-
     private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
     @Override
@@ -1407,70 +1230,11 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void setStatus(SessionStatus sessionStatus) {
-        if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT) {
-            // 在复制模式下对无主键的表执行insert时，会当成append处理，
-            // 如果客户端至少抢到了一个append锁，只需发送一次结果即可
-            if (appendReplicationName != null && replicationConflictType == ReplicationConflictType.APPEND) {
-                return;
-            }
-            // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
-            if (currentCommand != null && currentCommand.isIfDDL() && ackVersion > 0) {
-                sessionStatus = SessionStatus.RETRYING;
-            }
-        }
         this.sessionStatus = sessionStatus;
-    }
-
-    private ServerSession lockedExclusivelyBy;
-    private ReplicationConflictType replicationConflictType;
-    private long startKey;
-    private int appendCount;
-    private Index appendIndex;
-    private String appendReplicationName;
-
-    private Row currentLockedRow;
-    private int currentLockedRowSavepointId;
-
-    public Row getCurrentLockedRow() {
-        return currentLockedRow;
-    }
-
-    public void setCurrentLockedRow(Row currentLockedRow, int savepointId) {
-        this.currentLockedRow = currentLockedRow;
-        currentLockedRowSavepointId = savepointId;
-    }
-
-    public void setStartKey(long startKey) {
-        this.startKey = startKey;
-    }
-
-    public void setAppendCount(int appendCount) {
-        this.appendCount = appendCount;
-    }
-
-    public void setAppendIndex(Index appendIndex) {
-        this.appendIndex = appendIndex;
     }
 
     public void setLastRow(Row r) {
         setLastIdentity(ValueLong.get(r.getKey()));
-    }
-
-    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy) {
-        this.lockedExclusivelyBy = lockedExclusivelyBy;
-    }
-
-    public void setReplicationConflictType(ReplicationConflictType replicationConflictType) {
-        this.replicationConflictType = replicationConflictType;
-    }
-
-    public boolean needsHandleReplicationConflict() {
-        if (lockedExclusivelyBy == null && getTransaction().getLockedBy() != null)
-            lockedExclusivelyBy = (ServerSession) getTransaction().getLockedBy().getSession();
-        if (getReplicationName() != null && replicationConflictType != ReplicationConflictType.NONE) {
-            return true;
-        }
-        return false;
     }
 
     public static class YieldableCommand {
@@ -1527,8 +1291,7 @@ public class ServerSession extends SessionBase {
         // session处于以下状态时不会被当成候选的对象
         switch (getStatus()) {
         case WAITING:
-            // 复制模式下不主动检查超时
-            if (checkTimeout && getReplicationName() == null) {
+            if (checkTimeout) {
                 checkTransactionTimeout(timeoutListener);
             }
         case TRANSACTION_COMMITTING:
@@ -1555,25 +1318,12 @@ public class ServerSession extends SessionBase {
     }
 
     public boolean canExecuteNextCommand() {
-        if (sessionStatus == SessionStatus.RETRYING || sessionStatus == SessionStatus.RETRYING_RETURN_RESULT)
-            return false;
         // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-        // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
-        return yieldableCommand == null || getReplicationName() != null;
+        return yieldableCommand == null;
     }
 
-    private int ackVersion;
     private Transaction.Listener transactionListener;
-    private boolean isFinalResult;
-    private String lastReplicationName;
     private Object sessionInfo;
-
-    @Override
-    public void setReplicationName(String replicationName) {
-        super.setReplicationName(replicationName);
-        if (replicationName != null)
-            this.lastReplicationName = replicationName;
-    }
 
     public Transaction.Listener getTransactionListener() {
         return transactionListener;
@@ -1583,185 +1333,12 @@ public class ServerSession extends SessionBase {
         this.transactionListener = transactionListener;
     }
 
-    public boolean isFinalResult() {
-        return isFinalResult;
-    }
-
-    @Override
-    public void setFinalResult(boolean isFinalResult) {
-        this.isFinalResult = isFinalResult;
-    }
-
     public Object getSessionInfo() {
         return sessionInfo;
     }
 
     public void setSessionInfo(Object sessionInfo) {
         this.sessionInfo = sessionInfo;
-    }
-
-    public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
-        if (replicationConflictType == null)
-            replicationConflictType = ReplicationConflictType.NONE;
-        long first = -1;
-        String uncommittedReplicationName = null;
-        switch (replicationConflictType) {
-        case ROW_LOCK: // 两种锁的的响应格式一样
-        case DB_OBJECT_LOCK:
-            uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
-            break;
-        case APPEND:
-            if (startKey >= 0) { // 第一次返回-1，第二次重试成功后需要把第一次的lockedExclusivelyBy变为null
-                lockedExclusivelyBy = null;
-            }
-            if (lockedExclusivelyBy != null) {
-                uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
-            }
-            first = startKey;
-            updateCount = appendCount;
-            break;
-        }
-        Packet ack;
-        boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
-
-        // 在分布式事务中做复制
-        if (!isRoot() && !isAutoCommit()) {
-            if (prepared)
-                ack = new DTransactionReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-            else
-                ack = new DTransactionReplicationUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-        } else {
-            if (prepared)
-                ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-            else
-                ack = new ReplicationUpdateAck(updateCount, first, uncommittedReplicationName, replicationConflictType,
-                        ++ackVersion, isIfDDL, isFinalResult);
-        }
-
-        if (isAutoCommit()) {
-            // 写入一条redo log，用于恢复
-            getTransaction().replicaPrepareCommit(currentCommand.getSQL(), updateCount, first,
-                    uncommittedReplicationName, getReplicationName(), replicationConflictType);
-        }
-        return ack;
-    }
-
-    private void setRetryReplicationNames(List<String> retryReplicationNames) {
-        // if (!isAutoCommit())
-        // return;
-        if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
-            if (!locks.isEmpty()) {
-                for (int i = 0, size = locks.size(); i < size; i++) {
-                    DbObjectLock lock = locks.get(i);
-                    lock.setRetryReplicationNames(retryReplicationNames);
-                }
-            }
-            transaction.setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
-        }
-    }
-
-    private void replicaRollback(List<String> retryReplicationNames, Transaction owner) {
-        getTransaction().setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
-        rollbackTo(currentLockedRowSavepointId);
-        owner.addWaitingTransaction(ValueLong.get(getCurrentLockedRow().getKey()), getTransaction(),
-                getTransactionListener());
-        yieldableCommand.yieldable.back();
-        setStatus(SessionStatus.WAITING);
-    }
-
-    public void handleReplicaConflict(List<String> retryReplicationNames) {
-        if (isStorageReplicationMode()) {
-            commit();
-            return;
-        }
-        ackVersion = 0;
-        if (replicationConflictType == null) {
-            replicationConflictType = ReplicationConflictType.NONE;
-        }
-        if (replicationConflictType == ReplicationConflictType.ROW_LOCK
-                || replicationConflictType == ReplicationConflictType.DB_OBJECT_LOCK) {
-            setRetryReplicationNames(retryReplicationNames);
-        }
-        switch (replicationConflictType) {
-        case ROW_LOCK: { // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            retryReplicationNames.add(0, getReplicationName());
-            lockedExclusivelyBy.replicaRollback(retryReplicationNames, transaction);
-            lockedExclusivelyBy = null;
-            replicationConflictType = null;
-            sessionStatus = SessionStatus.RETRYING;
-            return;
-        }
-        case DB_OBJECT_LOCK: {
-            // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            if (lockedExclusivelyBy != null) {
-                // 重试复制名里也包含lockedExclusivelyBy
-                lockedExclusivelyBy.setRetryReplicationNames(retryReplicationNames);
-                lockedExclusivelyBy.rollbackCurrentCommand(this);
-                replicationConflictType = null;
-                lockedExclusivelyBy = null;
-                sessionStatus = SessionStatus.RETRYING;
-                return;
-            }
-            break;
-        }
-        case APPEND: {
-            int size = retryReplicationNames.size();
-            HashMap<String, Long> replicationNameToStartKeyMap = new HashMap<>(size);
-            long minKey = Long.MAX_VALUE;
-            long delta = 0;
-            for (int i = 0; i < size; i++) {
-                String name = retryReplicationNames.get(i);
-                int colonIndex = name.indexOf(':');
-                String[] keys = name.substring(0, colonIndex).split(",");
-                long first = Long.parseLong(keys[0]);
-                int appendCount = Integer.parseInt(keys[1]);
-                delta += appendCount;
-                if (first < minKey)
-                    minKey = first;
-                String replicationName = name.substring(colonIndex + 1);
-                replicationNameToStartKeyMap.put(replicationName, first);
-            }
-            long maxKey = minKey + delta;
-            appendIndex.setMaxKey(maxKey);
-            appendIndex.setReplicationNameToStartKeyMap(replicationNameToStartKeyMap);
-            appendReplicationName = getReplicationName(); // 用于最后从ReplicationNameToStartKeyMap中删除
-            appendIndex.unlockAppend(this);
-            if (lockedExclusivelyBy != null) {
-                appendIndex.unlockAppend(lockedExclusivelyBy);
-                lockedExclusivelyBy.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
-                lockedExclusivelyBy = null;
-            }
-            sessionStatus = SessionStatus.RETRYING;
-            return;
-        }
-        default:
-            // nothing to do
-            break;
-        }
-        clean();
-        if (yieldableCommand != null) {
-            yieldableCommand.stop();
-            yieldableCommand = null;
-        }
-        if (!isAutoCommit()) {
-            setStatus(SessionStatus.STATEMENT_COMPLETED);
-        }
-    }
-
-    private void clean() {
-        if (appendIndex != null) {
-            appendIndex.removeReplicationName(appendReplicationName);
-            appendIndex = null;
-            appendReplicationName = null;
-        }
-        setReplicationName(null);
-        setStorageReplicationMode(false);
-        lockedExclusivelyBy = null;
-        replicationConflictType = null;
-        isFinalResult = false;
     }
 
     private byte[] lobMacSalt;
@@ -1801,22 +1378,7 @@ public class ServerSession extends SessionBase {
     @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
             AckPacketHandler<R, P> ackPacketHandler) {
-        String dbName = getDatabase().getShortName();
-        String url = createURL(dbName, hostAndPort);
-
-        AsyncCallback<R> ac = new AsyncCallback<>();
-        // 不参与当前事务，所以不用当成当前session的嵌套session
-        SessionPool.getSessionAsync(this, url, true).onComplete(ar -> {
-            if (ar.isSucceeded()) {
-                Session s = ar.getResult();
-                s.send(packet, hostAndPort, ackPacketHandler).onComplete(ar2 -> {
-                    ac.setAsyncResult(ar2);
-                });
-            } else {
-                ac.setAsyncResult(ar.getCause());
-            }
-        });
-        return ac;
+        throw DbException.getInternalError();
     }
 
     @Override
@@ -1912,16 +1474,6 @@ public class ServerSession extends SessionBase {
         this.transactionIsolationLevel = transactionIsolationLevel;
     }
 
-    private boolean isStorageReplicationMode;
-
-    public boolean isStorageReplicationMode() {
-        return isStorageReplicationMode;
-    }
-
-    public void setStorageReplicationMode(boolean isStorageReplicationMode) {
-        this.isStorageReplicationMode = isStorageReplicationMode;
-    }
-
     private String valueVectorFactoryName;
 
     public String getValueVectorFactoryName() {
@@ -2013,5 +1565,15 @@ public class ServerSession extends SessionBase {
 
     public void endNestedStatement() {
         executingNestedStatement = false;
+    }
+
+    private Row currentLockedRow;
+
+    public Row getCurrentLockedRow() {
+        return currentLockedRow;
+    }
+
+    public void setCurrentLockedRow(Row currentLockedRow, int savepointId) {
+        this.currentLockedRow = currentLockedRow;
     }
 }

@@ -7,15 +7,11 @@ package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Set;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.RunMode;
-import org.lealone.net.NetNode;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
-import org.lealone.storage.page.LeafPageMovePlan;
 import org.lealone.storage.type.StorageDataType;
 
 public class LeafPage extends LocalPage {
@@ -23,7 +19,6 @@ public class LeafPage extends LocalPage {
     private Object[] values;
 
     private List<String> replicationHostIds;
-    private LeafPageMovePlan leafPageMovePlan;
     private ColumnPageReference[] columnPages;
     private volatile long totalCount;
 
@@ -63,16 +58,6 @@ public class LeafPage extends LocalPage {
     @Override
     public void setReplicationHostIds(List<String> replicationHostIds) {
         this.replicationHostIds = replicationHostIds;
-    }
-
-    @Override
-    public LeafPageMovePlan getLeafPageMovePlan() {
-        return leafPageMovePlan;
-    }
-
-    @Override
-    public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
-        this.leafPageMovePlan = leafPageMovePlan;
     }
 
     @Override
@@ -190,7 +175,6 @@ public class LeafPage extends LocalPage {
         LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
-        newPage.leafPageMovePlan = leafPageMovePlan;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         // mark the old as deleted
@@ -450,7 +434,6 @@ public class LeafPage extends LocalPage {
         LeafPage newPage = create(map, keys, values, totalCount, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
-        newPage.leafPageMovePlan = leafPageMovePlan;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         if (removePage) {
@@ -482,24 +465,6 @@ public class LeafPage extends LocalPage {
             p.addMemory(memory);
         }
         return p;
-    }
-
-    @Override
-    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
-        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.getDatabase(), newNodes);
-        map.replicateOrMovePage(null, this, null, 0, oldNodes, false, candidateNodes, newRunMode);
-    }
-
-    @Override
-    public void replicatePage(DataBuffer buff) {
-        LeafPage p = copy(false);
-        Chunk chunk = new Chunk(0);
-        buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
-        int start = buff.position();
-        buff.putInt(0); // 回填pageLength
-        p.write(chunk, buff, true);
-        int pageLength = chunk.pagePositionToLengthMap.get(0L);
-        buff.putInt(start, pageLength);
     }
 
     @Override

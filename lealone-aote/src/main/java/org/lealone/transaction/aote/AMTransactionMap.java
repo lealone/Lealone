@@ -5,10 +5,7 @@
  */
 package org.lealone.transaction.aote;
 
-import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,13 +16,10 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
-import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
@@ -441,60 +435,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         return map.getMemorySpaceUsed();
     }
 
-    ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
-
-    @Override
-    public Future<Object> get(Session session, Object key) {
-        return map.get(session, key);
-    }
-
-    @Override
-    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
-            boolean addIfAbsent) {
-        return map.put(session, key, value, valueType, false);
-    }
-
-    @Override
-    public Future<Object> append(Session session, Object value, StorageDataType valueType) {
-        return map.append(session, value, valueType);
-    }
-
-    @Override
-    public Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue,
-            StorageDataType valueType) {
-        return map.replace(session, key, oldValue, newValue, valueType);
-    }
-
-    @Override
-    public Future<Object> remove(Session session, Object key) {
-        return map.remove(session, key);
-    }
-
-    @Override
-    public void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
-        map.addLeafPage(pageKey, page, addPage);
-    }
-
-    @Override
-    public void removeLeafPage(PageKey pageKey) {
-        map.removeLeafPage(pageKey);
-    }
-
-    @Override
-    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
-        return map.prepareMoveLeafPage(leafPageMovePlan);
-    }
-
-    @Override
-    public ByteBuffer readPage(PageKey pageKey) {
-        return map.readPage(pageKey);
-    }
-
-    @Override
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to) {
-        return map.getNodeToPageKeyMap(from, to);
-    }
-
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
 
     @Override
@@ -711,19 +651,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
 
-        List<String> retryReplicationNames = tv.getRetryReplicationNames();
-        if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
-            String name = retryReplicationNames.get(0);
-            if (name.equals(transaction.getSession().getReplicationName())) {
-                if (tv.tryLock(transaction, columnIndexes)) {
-                    transaction.getSession().setFinalResult(true);
-                    retryReplicationNames.remove(0);
-                    return true;
-                }
-            }
-            return false;
-        }
-
         if (tv.tryLock(transaction, columnIndexes)) {
             if (isForUpdate) {
                 // select for update，在提交阶段解锁
@@ -741,9 +668,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public boolean isLocked(Object oldTValue, int[] columnIndexes) {
         TransactionalValue tv = (TransactionalValue) oldTValue;
-        if (transaction.globalReplicationName != null
-                && transaction.globalReplicationName.equals(tv.getGlobalReplicationName()))
-            return false;
         return tv.isLocked(transaction.transactionId, columnIndexes);
     }
 
@@ -761,20 +685,5 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Object getTransactionalValue(K key) {
         return map.get(key);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public String checkReplicationConflict(ByteBuffer key, String replicationName) {
-        String ret;
-        K k = (K) getKeyType().read(key);
-        TransactionalValue tv = (TransactionalValue) getTransactionalValue(k);
-        transaction.setGlobalReplicationName(replicationName);
-        if (tryLock(k, tv)) {
-            ret = replicationName;
-        } else {
-            ret = tv.getGlobalReplicationName();
-        }
-        return ret;
     }
 }

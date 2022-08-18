@@ -111,16 +111,4 @@ public class RemotePage extends Page {
     public void removePage() {
         map.getBTreeStorage().removePage(pos, 0);
     }
-
-    @Override
-    public void replicatePage(DataBuffer buff) {
-        RemotePage p = copy(false);
-        Chunk chunk = new Chunk(0);
-        buff.put((byte) PageUtils.PAGE_TYPE_REMOTE);
-        int start = buff.position();
-        buff.putInt(0); // 回填pageLength
-        p.write(chunk, buff, true);
-        int pageLength = chunk.pagePositionToLengthMap.get(0L);
-        buff.putInt(start, pageLength);
-    }
 }

@@ -11,7 +11,6 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -75,7 +74,6 @@ import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.lob.LobStorage;
-import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.transaction.TransactionEngine;
 
 /**
@@ -374,11 +372,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public RunMode getRunMode() {
         return runMode;
-    }
-
-    @Override
-    public boolean isShardingMode() {
-        return runMode == RunMode.SHARDING;
     }
 
     @Override
@@ -2190,70 +2183,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    private ServerSession createInternalSession() {
-        // User admin = null;
-        // for (User user : getAllUsers()) {
-        // if (user.isAdmin()) {
-        // admin = user;
-        // break;
-        // }
-        // }
-        // if (admin == null) {
-        // DbException.throwInternalError("no admin");
-        // }
-        if (lastConnectionInfo == null)
-            throw DbException.getInternalError("lastConnectionInfo is null");
-        User user = getUser(null, lastConnectionInfo.getUserName());
-        ServerSession session = createSession(user);
-        session.setConnectionInfo(lastConnectionInfo);
-        return session;
-    }
-
-    @Override
-    public Session createSession(Collection<NetNode> replicationNodes) {
-        return createSession(null, replicationNodes, null, null);
-    }
-
-    @Override
-    public Session createSession(Collection<NetNode> replicationNodes, Boolean remote) {
-        return createSession(null, replicationNodes, remote, null);
-    }
-
-    @Override
-    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes) {
-        return createSession(currentSession, replicationNodes, null, null);
-    }
-
-    @Override
-    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes, Boolean remote) {
-        return createSession(currentSession, replicationNodes, remote, null);
-    }
-
-    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes, Boolean remote,
-            List<String> initReplicationNodes) {
-        if (currentSession == null)
-            currentSession = createInternalSession();
-        ServerSession serverSession = (ServerSession) currentSession;
-        int size = replicationNodes.size();
-        Session[] sessions = new Session[size];
-        int i = 0;
-        for (NetNode n : replicationNodes) {
-            String id = getNetNodeManager().getHostId(n);
-            boolean isRemote = remote != null ? remote.booleanValue() : !NetNode.isLocalP2pNode(n);
-            sessions[i++] = serverSession.getNestedSession(id, isRemote);
-        }
-        Session newSession;
-        if (size == 1) {
-            newSession = sessions[0]; // 如果复制节点只有一个，可以不用ReplicationSession
-        } else {
-            newSession = new ReplicationSession(sessions, initReplicationNodes);
-        }
-        newSession.setNetworkTimeout(getNetNodeManager().getRpcTimeout());
-        newSession.setAutoCommit(serverSession.isAutoCommit());
-        newSession.setParentTransaction(serverSession.getTransaction());
-        return newSession;
-    }
-
     @Override
     public NetNode getNode(String hostId) {
         return getNetNodeManager().getNode(hostId);
@@ -2267,11 +2196,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public String getLocalHostId() {
         return NetNode.getLocalTcpHostAndPort();
-    }
-
-    @Override
-    public List<NetNode> getReplicationNodes(Set<NetNode> oldReplicationNodes, Set<NetNode> candidateNodes) {
-        return getNetNodeManager().getReplicationNodes(this, oldReplicationNodes, candidateNodes);
     }
 
     public DbObjectVersionManager getVersionManager() {

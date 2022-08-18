@@ -21,14 +21,10 @@ import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.transaction.Transaction;
 
 public abstract class SessionBase implements Session {
 
-    protected String replicationName;
-
     protected boolean autoCommit = true;
-    protected Transaction parentTransaction;
     protected boolean closed;
 
     protected boolean invalid;
@@ -39,16 +35,6 @@ public abstract class SessionBase implements Session {
     protected TraceSystem traceSystem;
 
     @Override
-    public String getReplicationName() {
-        return replicationName;
-    }
-
-    @Override
-    public void setReplicationName(String replicationName) {
-        this.replicationName = replicationName;
-    }
-
-    @Override
     public boolean isAutoCommit() {
         return autoCommit;
     }
@@ -56,17 +42,6 @@ public abstract class SessionBase implements Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         this.autoCommit = autoCommit;
-    }
-
-    @Override
-    public Transaction getParentTransaction() {
-        return parentTransaction;
-    }
-
-    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
-    @Override
-    public synchronized void setParentTransaction(Transaction parentTransaction) {
-        this.parentTransaction = parentTransaction;
     }
 
     @Override

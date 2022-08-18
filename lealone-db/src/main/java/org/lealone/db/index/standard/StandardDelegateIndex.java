@@ -6,7 +6,6 @@
 package org.lealone.db.index.standard;
 
 import java.util.List;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.index.Cursor;
@@ -20,7 +19,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * An index that delegates indexing to another index.
@@ -122,11 +120,5 @@ public class StandardDelegateIndex extends StandardIndex {
     @Override
     public void addBufferedRows(ServerSession session, List<String> bufferNames) {
         throw DbException.getInternalError();
-    }
-
-    @Override
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first,
-            SearchRow last) {
-        return mainIndex.getNodeToPageKeyMap(session, first, last);
     }
 }

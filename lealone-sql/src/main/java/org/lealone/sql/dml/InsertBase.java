@@ -12,11 +12,9 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -26,7 +24,6 @@ import org.lealone.sql.executor.YieldableLoopUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.query.Query;
-import org.lealone.storage.replication.ReplicationConflictType;
 
 public abstract class InsertBase extends ManipulationStatement {
 
@@ -157,28 +154,12 @@ public abstract class InsertBase extends ManipulationStatement {
         int index;
         Result rows;
         YieldableBase<Result> yieldableQuery;
-        boolean isReplicationAppendMode;
-        long startKey = -1;
 
         public YieldableInsertBase(InsertBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
             listSize = statement.list.size();
-        }
-
-        protected void handleReplicationAppend() {
-            Index index = table.getScanIndex(session);
-            if (index.tryExclusiveAppendLock(session)) {
-                long startKey = index.getAndAddKey(listSize) + 1;
-                session.setStartKey(startKey);
-            } else {
-                session.setStartKey(-1);
-            }
-            session.setAppendCount(listSize);
-            session.setAppendIndex(index);
-            session.setReplicationConflictType(ReplicationConflictType.APPEND);
-            session.setStatus(SessionStatus.WAITING);
         }
 
         protected Row createNewRow() {
@@ -200,9 +181,6 @@ public abstract class InsertBase extends ManipulationStatement {
                     }
                 }
             }
-            if (isReplicationAppendMode) {
-                newRow.setKey(startKey + index);
-            }
             return newRow;
         }
 
@@ -217,9 +195,6 @@ public abstract class InsertBase extends ManipulationStatement {
                 } catch (DbException ex) {
                     throw statement.setRow(ex, updateCount.get() + 1, getSQL(values));
                 }
-            }
-            if (isReplicationAppendMode) {
-                newRow.setKey(startKey + index);
             }
             return newRow;
         }

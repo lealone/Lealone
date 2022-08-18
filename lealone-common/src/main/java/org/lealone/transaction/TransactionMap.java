@@ -5,7 +5,6 @@
  */
 package org.lealone.transaction;
 
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 import org.lealone.db.async.Future;
@@ -126,8 +125,4 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public Object getTransactionalValue(K key);
 
     public int addWaitingTransaction(Object key, Object oldTValue);
-
-    public default String checkReplicationConflict(ByteBuffer key, String replicationName) {
-        return null;
-    }
 }

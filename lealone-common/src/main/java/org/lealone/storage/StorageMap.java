@@ -5,16 +5,8 @@
  */
 package org.lealone.storage;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
-
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.Future;
-import org.lealone.db.session.Session;
-import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageMap<K, V> {
@@ -271,26 +263,4 @@ public interface StorageMap<K, V> {
         ar.setResult(result);
         handler.handle(ar);
     }
-
-    ////////////////////// 以下是分布式API ////////////////////////////////
-
-    Future<Object> get(Session session, Object key);
-
-    Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent);
-
-    Future<Object> append(Session session, Object value, StorageDataType valueType);
-
-    Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue, StorageDataType valueType);
-
-    Future<Object> remove(Session session, Object key);
-
-    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
-
-    void removeLeafPage(PageKey pageKey);
-
-    LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
-
-    ByteBuffer readPage(PageKey pageKey);
-
-    Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to);
 }

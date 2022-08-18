@@ -7,7 +7,6 @@ package org.lealone.sql.expression.aggregate;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * Abstract class for the computation of an aggregate.
@@ -24,12 +23,6 @@ abstract class AggregateData {
      * @param v the value
      */
     abstract void add(ServerSession session, Value v);
-
-    void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-        for (Value v : vv.getValues(bvv)) {
-            add(session, v);
-        }
-    }
 
     /**
      * Get the aggregate result.

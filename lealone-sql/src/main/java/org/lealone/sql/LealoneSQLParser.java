@@ -4300,12 +4300,12 @@ public class LealoneSQLParser implements SQLParser {
             if (readIf("CLIENT_SERVER"))
                 return RunMode.CLIENT_SERVER;
             else if (readIf("REPLICATION"))
-                return RunMode.REPLICATION;
+                return RunMode.CLIENT_SERVER;
             else if (readIf("EMBEDDED"))
                 return RunMode.EMBEDDED;
             else {
                 read("SHARDING");
-                return RunMode.SHARDING;
+                return RunMode.CLIENT_SERVER;
             }
         }
         return null;

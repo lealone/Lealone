@@ -18,7 +18,6 @@ public class TransactionalDbObjects {
     private HashMap<String, DbObject> dbObjects;
     private TransactionalDbObjects old;
     private long version;
-    private long parentVersion;
 
     public TransactionalDbObjects() {
         this.dbObjects = new CaseInsensitiveMap<>();
@@ -45,7 +44,7 @@ public class TransactionalDbObjects {
 
         Transaction transaction = session.getTransaction();
         long tid = transaction.getTransactionId();
-        if (tid == version || tid == parentVersion) {
+        if (tid == version) {
             return dbObjects.get(dbObjectName);
         }
         switch (transaction.getIsolationLevel()) {
@@ -95,21 +94,14 @@ public class TransactionalDbObjects {
             old.old = this.old;
             this.old = old;
             version = tid;
-            // 在sharding模式下，如果接入节点也是数据库的目标节点之一，那么允许接入节点的事务访问子事务未提交的对象，
-            // 因为sql在准备阶段是在接入节点的事务中执行的，会访问到模式中的表，但是update/query是在子事务中执行的，
-            // 由子事务把对象加入dbObjects，用的是子事务的事务ID当version.
-            if (session.getParentTransaction() != null)
-                parentVersion = session.getParentTransaction().getTransactionId();
         }
     }
 
     public void commit() {
         if (old != null) {
             old.version = version;
-            old.parentVersion = parentVersion;
         }
         version = 0;
-        parentVersion = 0;
     }
 
     public void rollback() {
@@ -118,6 +110,5 @@ public class TransactionalDbObjects {
             old = old.old;
         }
         version = 0;
-        parentVersion = 0;
     }
 }

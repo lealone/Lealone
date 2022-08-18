@@ -11,7 +11,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 // COUNT(*)
 public class ACountAll extends BuiltInAggregate {
@@ -51,14 +50,6 @@ public class ACountAll extends BuiltInAggregate {
         @Override
         void add(ServerSession session, Value v) {
             count++;
-        }
-
-        @Override
-        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            if (bvv == null)
-                count += select.getTopTableFilter().getBatchSize();
-            else
-                count += bvv.trueCount();
         }
 
         @Override

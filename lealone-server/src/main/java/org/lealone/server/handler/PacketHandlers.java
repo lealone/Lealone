@@ -47,9 +47,6 @@ public class PacketHandlers {
         BatchStatementPacketHandlers.register();
         ResultPacketHandlers.register();
         LobPacketHandlers.register();
-        ReplicationPacketHandlers.register();
-        DistributedTransactionPacketHandlers.register();
-        StoragePacketHandlers.register();
     }
 
     private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
@@ -64,7 +61,6 @@ public class PacketHandlers {
                     task.conn.sendError(task.session, task.packetId, ar.getCause());
                 }
             });
-            yieldable.setPageKeys(pageKeys);
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
@@ -113,7 +109,6 @@ public class PacketHandlers {
                             task.conn.sendError(task.session, task.packetId, ar.getCause());
                         }
                     });
-            yieldable.setPageKeys(pageKeys);
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 

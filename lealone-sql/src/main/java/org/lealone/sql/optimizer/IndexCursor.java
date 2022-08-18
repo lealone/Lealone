@@ -7,8 +7,6 @@ package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -25,7 +23,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * The filter used to walk through an index. This class supports IN(..)
@@ -86,7 +83,7 @@ public class IndexCursor implements Cursor {
             } else {
                 columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
-            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, pageKeys, columnIndexes);
+            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, null, columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);
         }
     }
@@ -310,19 +307,5 @@ public class IndexCursor implements Cursor {
 
     public SearchRow getEndSearchRow() {
         return end;
-    }
-
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
-        return index.getNodeToPageKeyMap(session, start, end);
-    }
-
-    private List<PageKey> pageKeys;
-
-    public void setPageKeys(List<PageKey> pageKeys) {
-        this.pageKeys = pageKeys;
-    }
-
-    public List<PageKey> getPageKeys() {
-        return pageKeys;
     }
 }

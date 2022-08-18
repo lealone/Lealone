@@ -43,11 +43,6 @@ public class CreateIndex extends SchemaStatement {
         return SQLStatement.CREATE_INDEX;
     }
 
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
     public void setTableName(String tableName) {
         this.tableName = tableName;
     }

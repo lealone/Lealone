@@ -18,7 +18,6 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
@@ -75,22 +74,8 @@ public class StandardTable extends Table {
         }
         globalTemporary = data.globalTemporary;
 
-        String initReplicationNodes = null;
-        String replicationName = data.session.getReplicationName();
-        if (replicationName != null) {
-            int pos = replicationName.indexOf('@');
-            if (pos != -1) {
-                initReplicationNodes = replicationName.substring(0, pos);
-                parameters.put("initReplicationNodes", initReplicationNodes);
-            }
-        }
         if (data.isMemoryTable())
             parameters.put("inMemory", "1");
-        parameters.put("isShardingMode", data.session.isShardingMode() + "");
-        RunMode runMode = data.session.getRunMode();
-        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
-            parameters.put("isDistributed", "true");
-
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
 
@@ -583,10 +568,5 @@ public class StandardTable extends Table {
     @Override
     public Column[] getOldColumns() {
         return oldColumns;
-    }
-
-    @Override
-    public long getAndAddKey(long delta) {
-        return getScanIndex(null).getAndAddKey(delta);
     }
 }

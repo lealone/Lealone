@@ -5,7 +5,6 @@
  */
 package org.lealone.p2p.server;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,11 +15,9 @@ import java.util.Set;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.IDatabase;
-import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.gossip.FailureDetector;
 import org.lealone.p2p.gossip.Gossiper;
 import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
@@ -66,14 +63,8 @@ public class P2pNetNodeManager implements NetNodeManager {
             }
         }
 
-        // 复制模式只使用ReplicationStrategy来分配所需的节点，其他模式用NodeAssignmentStrategy
-        if (db.getRunMode() == RunMode.REPLICATION) {
-            removeReplicationStrategy(db); // 避免使用旧的
-            newNodes = getLiveReplicationNodes(db, oldNodes, Gossiper.instance.getLiveMembers(), true);
-        } else {
-            removeNodeAssignmentStrategy(db); // 避免使用旧的
-            newNodes = getNodeAssignmentStrategy(db).assignNodes(oldNodes, Gossiper.instance.getLiveMembers(), false);
-        }
+        removeNodeAssignmentStrategy(db); // 避免使用旧的
+        newNodes = getNodeAssignmentStrategy(db).assignNodes(oldNodes, Gossiper.instance.getLiveMembers(), false);
 
         int size = newNodes.size();
         String[] hostIds = new String[size];
@@ -122,21 +113,6 @@ public class P2pNetNodeManager implements NetNodeManager {
             Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
         return getReplicationStrategy(db).getReplicationNodes(P2pServer.instance.getTopologyMetaData(),
                 oldReplicationNodes, candidateNodes, includeOldReplicationNodes);
-    }
-
-    private static List<NetNode> getLiveReplicationNodes(IDatabase db, Set<NetNode> oldReplicationNodes,
-            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
-        List<NetNode> nodes = getReplicationNodes(db, oldReplicationNodes, candidateNodes, includeOldReplicationNodes);
-        List<NetNode> liveEps = new ArrayList<>(nodes.size());
-        for (NetNode node : nodes) {
-            if (FailureDetector.instance.isAlive(node))
-                liveEps.add(node);
-        }
-        return liveEps;
-    }
-
-    private static void removeReplicationStrategy(IDatabase db) {
-        replicationStrategies.remove(db);
     }
 
     private static AbstractReplicationStrategy getReplicationStrategy(IDatabase db) {

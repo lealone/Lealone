@@ -25,32 +25,14 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
     @Override
     protected void executeInternal() {
-        SessionStatus oldStatus = session.getStatus();
         if (!loopEnd) {
             executeLoopUpdate();
             if (session.getStatus() == SessionStatus.WAITING) {
-                if (asyncHandler != null && session.needsHandleReplicationConflict()) {
-                    asyncHandler.handle(new AsyncResult<>(-1));
-                }
                 return;
             }
         }
         if (isCompleted()) {
             setResult(updateCount.get());
-            if (session.getReplicationName() != null) {
-                if (oldStatus != SessionStatus.RETRYING) {
-                    session.setStatus(SessionStatus.STATEMENT_RUNNING);
-                    AsyncResult<Integer> ar = asyncResult;
-                    asyncHandler.handle(ar);
-                } else {
-                    session.setReplicationName(null);
-                }
-                asyncResult = null; // 避免发送第二次
-                if (session.isFinalResult() && session.isAutoCommit()) {
-                    session.setReplicationName(null);
-                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                }
-            }
         }
     }
 

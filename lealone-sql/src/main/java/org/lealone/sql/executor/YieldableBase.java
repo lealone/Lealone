@@ -7,7 +7,6 @@ package org.lealone.sql.executor;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -24,8 +23,6 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.page.PageKey;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
 
@@ -83,15 +80,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     @Override
     public int getPriority() {
         return statement.getPriority();
-    }
-
-    @Override
-    public void setPageKeys(List<PageKey> pageKeys) {
-        if (pageKeys != null) {
-            TableFilter tf = statement.getTableFilter();
-            if (tf != null)
-                tf.setPageKeys(pageKeys);
-        }
     }
 
     @Override

@@ -47,7 +47,6 @@ import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.query.sharding.YieldableShardingQuery;
 
 /**
  * This class represents a simple SELECT statement.
@@ -371,8 +370,7 @@ public class Select extends Query {
         }
 
         // 对min、max、count三个聚合函数的特殊优化
-        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1
-                && filters.get(0).getPageKeys() == null) {
+        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
             Table t = filters.get(0).getTable();
             isQuickAggregateQuery = accept(ExpressionVisitorFactory.getOptimizableVisitor(t));
         }
@@ -1029,10 +1027,6 @@ public class Select extends Query {
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
-        // 查询语句的单机模式和复制模式一样
-        if (isShardingMode())
-            return new YieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
-        else
-            return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
+        return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }
 }

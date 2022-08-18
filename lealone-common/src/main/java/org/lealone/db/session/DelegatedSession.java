@@ -15,13 +15,7 @@ import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.transaction.Transaction;
 
 public class DelegatedSession implements Session {
 
@@ -49,43 +43,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        return session.createDistributedSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        return session.createReplicaSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        return session.createStorageCommand();
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        return session.createReplicaStorageCommand();
-    }
-
-    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
         return session.prepareSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
-        return session.prepareReplicaSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public String getReplicationName() {
-        return session.getReplicationName();
-    }
-
-    @Override
-    public void setReplicationName(String replicationName) {
-        session.setReplicationName(replicationName);
     }
 
     @Override
@@ -99,11 +58,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setFinalResult(boolean isFinalResult) {
-        session.setFinalResult(isFinalResult);
-    }
-
-    @Override
     public boolean isAutoCommit() {
         return session.isAutoCommit();
     }
@@ -111,16 +65,6 @@ public class DelegatedSession implements Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         session.setAutoCommit(autoCommit);
-    }
-
-    @Override
-    public Transaction getParentTransaction() {
-        return session.getParentTransaction();
-    }
-
-    @Override
-    public void setParentTransaction(Transaction transaction) {
-        session.setParentTransaction(transaction);
     }
 
     @Override
@@ -262,32 +206,5 @@ public class DelegatedSession implements Session {
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         return session.send(packet, packetId, ackPacketHandler);
-    }
-
-    // 以下是Transaction.Participant的API
-
-    @Override
-    public void addSavepoint(String name) {
-        session.addSavepoint(name);
-    }
-
-    @Override
-    public void rollbackToSavepoint(String name) {
-        session.rollbackToSavepoint(name);
-    }
-
-    @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        return session.commitTransaction(globalTransactionName);
-    }
-
-    @Override
-    public void commitFinal() {
-        session.commitFinal();
-    }
-
-    @Override
-    public void rollbackTransaction() {
-        session.rollbackTransaction();
     }
 }

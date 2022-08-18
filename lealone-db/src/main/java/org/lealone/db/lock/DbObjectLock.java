@@ -5,8 +5,6 @@
  */
 package org.lealone.db.lock;
 
-import java.util.List;
-
 import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -33,7 +31,4 @@ public interface DbObjectLock {
     boolean isLockedExclusively();
 
     boolean isLockedExclusivelyBy(ServerSession session);
-
-    default void setRetryReplicationNames(List<String> retryReplicationNames) {
-    }
 }
