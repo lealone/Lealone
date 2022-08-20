@@ -85,9 +85,7 @@
 
 ### Lealone Plugins
 
-* 支持可插拨的网络应用框架 (Apache MINA、Netty、Vert.x)
-
-* 支持可插拨的存储引擎 (WiredTiger、MVStore、RocksDB)
+* 支持可插拨的存储引擎 (MemoryStore、MVStore)
 
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
 
