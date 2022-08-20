@@ -10,9 +10,9 @@ import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ThreadUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetServerBase;
@@ -45,7 +45,7 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
                     if (t.getName().equals("main"))
                         t.setName(name);
                 } else {
-                    ConcurrentUtils.submitTask(name, isDaemon(), () -> {
+                    ThreadUtils.submitTask(name, isDaemon(), () -> {
                         TcpServerAccepter.this.run();
                     });
                 }

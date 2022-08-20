@@ -3,9 +3,9 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.common.concurrent;
+package org.lealone.common.util;
 
-public class ConcurrentUtils {
+public class ThreadUtils {
 
     public static void submitTask(String name, Runnable target) {
         Thread t = new Thread(target, name);

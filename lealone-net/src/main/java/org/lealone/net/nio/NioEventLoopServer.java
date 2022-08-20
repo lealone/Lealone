@@ -11,9 +11,9 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ThreadUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
@@ -43,7 +43,7 @@ class NioEventLoopServer extends NetServerBase implements Runnable {
                 if (t.getName().equals("main"))
                     t.setName(name);
             } else {
-                ConcurrentUtils.submitTask(name, () -> {
+                ThreadUtils.submitTask(name, () -> {
                     NioEventLoopServer.this.run();
                 });
             }

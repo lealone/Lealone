@@ -14,12 +14,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
@@ -191,12 +189,6 @@ public class Scheduler extends PageOperationHandlerBase
     public void handleSessionInitTask(AsyncTask task) {
         sessionInitTaskQueue.add(task);
         wakeUp();
-    }
-
-    @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay,
-            TimeUnit unit) {
-        return ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(task, initialDelay, delay, unit);
     }
 
     @Override

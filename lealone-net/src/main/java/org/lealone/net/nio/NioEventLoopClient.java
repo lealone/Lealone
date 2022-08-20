@@ -13,9 +13,9 @@ import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
@@ -42,7 +42,7 @@ class NioEventLoopClient extends NetClientBase {
             try {
                 nioEventLoop = new NioEventLoop(config, "client_nio_event_loop_interval", 1000); // 默认1秒
                 nioEventLoop.setOwner(this);
-                ConcurrentUtils.submitTask("ClientNioEventLoopService", () -> {
+                ThreadUtils.submitTask("ClientNioEventLoopService", () -> {
                     NioEventLoopClient.this.run();
                 });
             } catch (IOException e) {

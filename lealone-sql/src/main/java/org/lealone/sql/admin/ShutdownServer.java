@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.admin;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
+import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.PluginManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.ProtocolServer;
@@ -33,7 +33,7 @@ public class ShutdownServer extends AdminStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        ConcurrentUtils.submitTask("ShutdownServerThread", () -> {
+        ThreadUtils.submitTask("ShutdownServerThread", () -> {
             try {
                 Thread.sleep(1000); // 返回结果给客户端需要一点时间，如果立刻关闭网络连接就不能发送结果了
             } catch (InterruptedException e) {
