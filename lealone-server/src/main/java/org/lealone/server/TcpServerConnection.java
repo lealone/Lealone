@@ -101,12 +101,12 @@ public class TcpServerConnection extends TransferConnection {
 
         try {
             ServerSession session = createSession(packet.ci, sessionId, scheduler);
-            scheduler.validateUserAndPassword(true);
+            scheduler.validateSession(true);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
         } catch (Throwable e) {
             if (DbException.convert(e).getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
-                scheduler.validateUserAndPassword(false);
+                scheduler.validateSession(false);
             }
             SessionInfo si = sessions.get(sessionId);
             if (si != null) {

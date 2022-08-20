@@ -51,7 +51,7 @@ public class Scheduler extends PageOperationHandlerBase
     private final ConcurrentLinkedQueue<AsyncTask> maxPriorityQueue = new ConcurrentLinkedQueue<>();
 
     private final ConcurrentLinkedQueue<AsyncTask> sessionInitTaskQueue = new ConcurrentLinkedQueue<>();
-    private final UserAndPasswordValidator userAndPasswordValidator = new UserAndPasswordValidator();
+    private final SessionValidator sessionValidator = new SessionValidator();
 
     // 这个只增不删所以用CopyOnWriteArrayList
     private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
@@ -134,12 +134,12 @@ public class Scheduler extends PageOperationHandlerBase
     }
 
     private void runSessionInitTasks() {
-        if (userAndPasswordValidator.canHandleNextSessionInitTask()) {
+        if (sessionValidator.canHandleNextSessionInitTask()) {
             AsyncTask task = sessionInitTaskQueue.poll();
             while (task != null) {
                 try {
                     task.run();
-                    if (!userAndPasswordValidator.canHandleNextSessionInitTask()) {
+                    if (!sessionValidator.canHandleNextSessionInitTask()) {
                         break;
                     }
                 } catch (Throwable e) {
@@ -150,8 +150,8 @@ public class Scheduler extends PageOperationHandlerBase
         }
     }
 
-    public void validateUserAndPassword(boolean correct) {
-        userAndPasswordValidator.validateUserAndPassword(correct);
+    public void validateSession(boolean isUserAndPasswordCorrect) {
+        sessionValidator.validate(isUserAndPasswordCorrect);
     }
 
     void end() {
