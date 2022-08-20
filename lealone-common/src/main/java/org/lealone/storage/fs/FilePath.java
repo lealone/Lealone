@@ -71,9 +71,7 @@ public abstract class FilePath {
             // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
             String packageName = FilePath.class.getPackage().getName() + ".";
             Map<String, FilePath> map = Collections.synchronizedMap(new HashMap<>());
-            for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF",
-                    "FilePathNioMem", "FilePathNioMemLZF", "FilePathSplit", "FilePathNio",
-                    "FilePathNioMapped", "FilePathZip" }) {
+            for (String c : new String[] { "FilePathDisk", "FilePathNio", "FilePathZip" }) {
                 try {
                     FilePath p = Utils.newInstance(packageName + c);
                     map.put(p.getScheme(), p);
