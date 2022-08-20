@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.api.Trigger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -15,9 +15,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.YieldableConditionUpdateBase;
-import org.lealone.sql.expression.Expression;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents the statement
@@ -26,15 +23,7 @@ import org.lealone.sql.optimizer.TableFilter;
  * @author H2 Group
  * @author zhh
  */
-public class Delete extends ManipulationStatement {
-
-    private TableFilter tableFilter;
-    private Expression condition;
-
-    /**
-     * The limit expression as specified in the LIMIT or TOP clause.
-     */
-    private Expression limitExpr;
+public class Delete extends ConditionUpdate {
 
     public Delete(ServerSession session) {
         super(session);
@@ -46,47 +35,11 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public boolean isCacheable() {
-        return true;
-    }
-
-    public void setTableFilter(TableFilter tableFilter) {
-        this.tableFilter = tableFilter;
-    }
-
-    @Override
-    public TableFilter getTableFilter() {
-        return tableFilter;
-    }
-
-    public void setCondition(Expression condition) {
-        this.condition = condition;
-    }
-
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
-    @Override
-    public int getPriority() {
-        if (getCurrentRowNumber() > 0)
-            return priority;
-
-        priority = NORM_PRIORITY - 1;
-        return priority;
-    }
-
-    @Override
     public String getPlanSQL() {
-        StringBuilder buff = new StringBuilder();
+        StatementBuilder buff = new StatementBuilder();
         buff.append("DELETE ");
         buff.append("FROM ").append(tableFilter.getPlanSQL(false));
-        if (condition != null) {
-            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
-        }
-        if (limitExpr != null) {
-            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
-        }
+        appendPlanSQL(buff);
         return buff.toString();
     }
 
@@ -114,7 +67,7 @@ public class Delete extends ManipulationStatement {
         return new YieldableDelete(this, asyncHandler); // 处理单机模式、复制模式
     }
 
-    private static class YieldableDelete extends YieldableConditionUpdateBase {
+    private static class YieldableDelete extends YieldableConditionUpdate {
 
         final Delete statement;
 
