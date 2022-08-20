@@ -32,7 +32,7 @@ import org.lealone.sql.expression.Parameter;
  * @author H2 Group
  * @author zhh
  */
-public class Merge extends InsertBase {
+public class Merge extends MerSert {
 
     private Column[] keys;
     private StatementBase update;

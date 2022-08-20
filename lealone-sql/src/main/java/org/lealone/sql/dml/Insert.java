@@ -23,7 +23,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class Insert extends InsertBase {
+public class Insert extends MerSert {
 
     public Insert(ServerSession session) {
         super(session);

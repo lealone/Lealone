@@ -25,7 +25,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.query.Query;
 
-public abstract class InsertBase extends ManipulationStatement {
+public abstract class MerSert extends ManipulationStatement {
 
     protected Table table;
     protected Column[] columns;
@@ -33,7 +33,7 @@ public abstract class InsertBase extends ManipulationStatement {
     protected boolean insertFromSelect;
     protected final ArrayList<Expression[]> list = new ArrayList<>();
 
-    public InsertBase(ServerSession session) {
+    public MerSert(ServerSession session) {
         super(session);
     }
 
@@ -147,7 +147,7 @@ public abstract class InsertBase extends ManipulationStatement {
 
     protected static abstract class YieldableInsertBase extends YieldableLoopUpdateBase {
 
-        final InsertBase statement;
+        final MerSert statement;
         final Table table;
         final int listSize;
 
@@ -155,7 +155,7 @@ public abstract class InsertBase extends ManipulationStatement {
         Result rows;
         YieldableBase<Result> yieldableQuery;
 
-        public YieldableInsertBase(InsertBase statement,
+        public YieldableInsertBase(MerSert statement,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
