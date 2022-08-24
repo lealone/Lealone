@@ -66,7 +66,7 @@ public class ServerSessionFactory implements SessionFactory {
                 ci.getFilePasswordHash())) {
             user = database.findUser(null, ci.getUserName());
             if (user != null) {
-                if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
+                if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt())) {
                     user = null;
                 }
             }

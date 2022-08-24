@@ -7,5 +7,7 @@ package org.lealone.db;
 
 public enum RunMode {
     EMBEDDED,
-    CLIENT_SERVER
+    CLIENT_SERVER,
+    REPLICATION,
+    SHARDING
 }

@@ -64,6 +64,7 @@ public class ConnectionInfo implements Cloneable {
     private byte[] filePasswordHash;
     private byte[] fileEncryptionKey;
     private byte[] userPasswordHash;
+    private byte[] salt;
 
     /**
      * The database name
@@ -389,6 +390,14 @@ public class ConnectionInfo implements Cloneable {
      */
     public byte[] getUserPasswordHash() {
         return userPasswordHash;
+    }
+
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    public void setSalt(byte[] salt) {
+        this.salt = salt;
     }
 
     /**

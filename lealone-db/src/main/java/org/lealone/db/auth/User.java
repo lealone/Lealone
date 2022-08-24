@@ -90,6 +90,10 @@ public class User extends RightOwner {
         return userPasswordHash;
     }
 
+    public byte[] getPasswordHash() {
+        return passwordHash;
+    }
+
     /**
      * Checks that this user has the given rights for this database object.
      *
@@ -157,13 +161,15 @@ public class User extends RightOwner {
      * @param userPasswordHash the password data (the user password hash)
      * @return true if the user password hash is correct
      */
-    public boolean validateUserPasswordHash(byte[] userPasswordHash) {
+    public boolean validateUserPasswordHash(byte[] userPasswordHash, byte[] salt) {
         if (userPasswordHash.length == 0 && passwordHash.length == 0) {
             return true;
         }
         if (userPasswordHash.length == 0) {
             userPasswordHash = SHA256.getKeyPasswordHash(getName(), new char[0]);
         }
+        if (salt == null)
+            salt = this.salt;
         byte[] hash = SHA256.getHashWithSalt(userPasswordHash, salt);
         return Utils.compareSecure(hash, passwordHash);
     }
