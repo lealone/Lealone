@@ -41,12 +41,14 @@ public class Config {
         PluggableEngineDef se = new PluggableEngineDef();
         se.name = Constants.DEFAULT_STORAGE_ENGINE_NAME;
         se.enabled = true;
+        se.is_default = true;
         storage_engines.add(se);
 
         transaction_engines = new ArrayList<>(1);
         PluggableEngineDef te = new PluggableEngineDef();
         te.name = Constants.DEFAULT_TRANSACTION_ENGINE_NAME;
         te.enabled = true;
+        te.is_default = true;
         te.parameters.put("redo_log_dir", "redo_log");
         transaction_engines.add(te);
 
@@ -54,12 +56,14 @@ public class Config {
         PluggableEngineDef sql = new PluggableEngineDef();
         sql.name = Constants.DEFAULT_SQL_ENGINE_NAME;
         sql.enabled = true;
+        sql.is_default = true;
         sql_engines.add(sql);
 
         protocol_server_engines = new ArrayList<>(2);
         PluggableEngineDef tcp = new PluggableEngineDef();
         tcp.name = "TCP";
         tcp.enabled = true;
+        tcp.is_default = true;
         tcp.parameters.put("port", Constants.DEFAULT_TCP_PORT + "");
         tcp.parameters.put("trace", "false");
         tcp.parameters.put("allow_others", "true");
@@ -170,5 +174,6 @@ public class Config {
 
     public static class PluggableEngineDef extends MapPropertyTypeDef {
         public Boolean enabled = true;
+        public Boolean is_default = false;
     }
 }

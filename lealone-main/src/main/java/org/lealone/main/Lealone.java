@@ -318,7 +318,8 @@ public class Lealone {
                     return;
                 }
                 PluggableEngine pe = (PluggableEngine) result;
-                if (defaultEngineKey != null && Config.getProperty(defaultEngineKey) == null)
+                if (def.is_default && defaultEngineKey != null
+                        && Config.getProperty(defaultEngineKey) == null)
                     Config.setProperty(defaultEngineKey, pe.getName());
                 try {
                     initPluggableEngine(pe, def);
