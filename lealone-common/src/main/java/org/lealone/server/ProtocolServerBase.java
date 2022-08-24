@@ -29,7 +29,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     protected boolean isDaemon;
     protected boolean stopped;
     protected boolean started;
-    protected boolean runInMainThread;
 
     // 如果allowOthers为false，那么可以指定具体的白名单，只有在白名单中的客户端才可以连进来
     protected HashSet<String> whiteList;
@@ -57,7 +56,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
-        runInMainThread = Boolean.parseBoolean(config.get("run_in_main_thread"));
 
         if (config.containsKey("white_list")) {
             String[] hosts = config.get("white_list").split(",");
@@ -160,16 +158,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     @Override
     public boolean isStopped() {
         return stopped;
-    }
-
-    @Override
-    public boolean isRunInMainThread() {
-        return runInMainThread;
-    }
-
-    @Override
-    public void setRunInMainThread(boolean runInMainThread) {
-        this.runInMainThread = runInMainThread;
     }
 
     @Override

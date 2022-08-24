@@ -117,21 +117,7 @@ public interface ProtocolServer {
      */
     boolean allow(String testHost);
 
-    default boolean isRunInMainThread() {
-        return false;
-    }
-
-    default void setRunInMainThread(boolean runInMainThread) {
-    }
-
-    default Runnable getRunnable() {
-        return null;
-    }
-
     default int getSessionTimeout() {
         return -1;
-    }
-
-    default void accept(Object scheduler) {
     }
 }

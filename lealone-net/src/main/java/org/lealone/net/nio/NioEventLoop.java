@@ -326,7 +326,7 @@ class NioEventLoop implements NetEventLoop {
         }
         channels.remove(channel);
         keys.remove(channel);
-        TcpServerAccepter.closeChannel(channel);
+        ServerAccepter.closeChannel(channel);
     }
 
     @Override

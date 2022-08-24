@@ -6,16 +6,12 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.ServerSocketChannel;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.logging.Logger;
@@ -56,28 +52,17 @@ public class Scheduler extends PageOperationHandlerBase
     // 这个只增不删所以用CopyOnWriteArrayList
     private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
 
-    private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
     private volatile boolean end;
-    private volatile boolean waiting;
     private YieldableCommand nextBestCommand;
     private NetEventLoop netEventLoop;
 
     public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
         super(id, "ScheduleService-" + id, waitingQueueSize);
-        String key = "scheduler_loop_interval";
-        /// 是否在调度器里负责网络IO
-        if (NetEventLoop.isRunInScheduler(config)) {
-            // 如果返回null，就不在调度器里处理网络IO
-            netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, 0);
-        }
-        if (netEventLoop == null) {
-            // 默认100毫秒
-            loopInterval = MapUtils.getLong(config, key, 100);
-        } else {
-            loopInterval = 0;
-            netEventLoop.setOwner(this);
-        }
+        String key = "scheduler_loop_interval";// 默认100毫秒
+        loopInterval = MapUtils.getLong(config, key, 100);
+        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval);
+        netEventLoop.setOwner(this);
     }
 
     @Override
@@ -281,10 +266,7 @@ public class Scheduler extends PageOperationHandlerBase
 
     @Override
     public void wakeUp() {
-        if (netEventLoop != null)
-            netEventLoop.wakeup();
-        else if (waiting)
-            haveWork.release(1);
+        netEventLoop.wakeup();
     }
 
     @Override
@@ -376,26 +358,14 @@ public class Scheduler extends PageOperationHandlerBase
     }
 
     private void doAwait() {
-        if (netEventLoop != null) {
-            try {
-                netEventLoop.select();
-            } catch (IOException e1) {
-                logger.warn("Failed to select", e);
-                return;
-            }
-            netEventLoop.write();
-            handleSelectedKeys();
-        } else {
-            waiting = true;
-            try {
-                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                haveWork.drainPermits();
-            } catch (InterruptedException e) {
-                handleInterruptedException(e);
-            } finally {
-                waiting = false;
-            }
+        try {
+            netEventLoop.select();
+        } catch (IOException e1) {
+            logger.warn("Failed to select", e);
+            return;
         }
+        netEventLoop.write();
+        handleSelectedKeys();
     }
 
     private void handleSelectedKeys() {
@@ -409,8 +379,6 @@ public class Scheduler extends PageOperationHandlerBase
                             netEventLoop.read(key);
                         } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                             netEventLoop.write(key);
-                        } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
-                            accept(key);
                         } else {
                             key.cancel();
                         }
@@ -424,11 +392,6 @@ public class Scheduler extends PageOperationHandlerBase
         }
     }
 
-    private void handleInterruptedException(InterruptedException e) {
-        logger.warn(getName() + " is interrupted");
-        end();
-    }
-
     public boolean useNetEventLoop() {
         return netEventLoop != null;
     }
@@ -437,42 +400,10 @@ public class Scheduler extends PageOperationHandlerBase
         // 如果Scheduler线程在执行select，
         // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
         // jdk16不存在这个问题
-        if (netEventLoop != null) {
-            if (asyncServer != null) {
-                conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
-                netEventLoop.register(conn);
-            } else {
-                handle(() -> {
-                    conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
-                    netEventLoop.register(conn);
-                });
-            }
-        }
-    }
-
-    private AsyncServer<?> asyncServer;
-    private ServerSocketChannel serverChannel;
-
-    public void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
-        if (netEventLoop != null) {
-            this.asyncServer = asyncServer;
-            this.serverChannel = serverChannel;
-            handle(() -> {
-                try {
-                    serverChannel.register(netEventLoop.getSelector(), SelectionKey.OP_ACCEPT);
-                } catch (ClosedChannelException e) {
-                    logger.warn("Failed to register server channel: " + serverChannel);
-                }
-            });
-        }
-    }
-
-    private void accept(SelectionKey key) {
-        key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
-        asyncServer.getProtocolServer().accept(this);
-        asyncServer.registerAccepter(serverChannel);
-        asyncServer = null;
-        serverChannel = null;
+        handle(() -> {
+            conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
+            netEventLoop.register(conn);
+        });
     }
 
     @Override

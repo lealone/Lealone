@@ -38,7 +38,6 @@ protocol_server_engines:
         trace: false,
         allow_others: true,
         max_packet_count_per_loop: 10, # 每次循环最多读取多少个数据包，默认20
-        # net_event_loop_run_in_scheduler: true, # 默认在调度器中处理网络IO
         # white_list: "127.0.0.4,127.0.0.2",
         daemon: false,
         # scheduler_count: 1,

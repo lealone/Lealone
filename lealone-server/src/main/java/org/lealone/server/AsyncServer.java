@@ -5,7 +5,6 @@
  */
 package org.lealone.server;
 
-import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -28,8 +27,6 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     public void init(Map<String, String> config) {
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(getDefaultPort()));
-        if (!config.containsKey("run_in_main_thread"))
-            config.put("run_in_main_thread", "true");
         if (!config.containsKey("name"))
             config.put("name", getName());
 
@@ -80,17 +77,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public T createConnection(WritableChannel writableChannel, boolean isServer) {
-        return createConnection(writableChannel, isServer, null);
-    }
-
-    @Override
-    public T createConnection(WritableChannel writableChannel, boolean isServer, Object schedulerObj) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            Scheduler scheduler;
-            if (schedulerObj instanceof Scheduler)
-                scheduler = (Scheduler) schedulerObj;
-            else
-                scheduler = SchedulerFactory.getScheduler();
+            Scheduler scheduler = SchedulerFactory.getScheduler();
             T conn = createConnection(writableChannel, scheduler);
             connections.add(conn);
             beforeRegister(conn, scheduler);
@@ -107,11 +95,5 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     public void removeConnection(AsyncConnection conn) {
         connections.remove(conn);
         conn.close();
-    }
-
-    @Override
-    public void registerAccepter(ServerSocketChannel serverChannel) {
-        Scheduler scheduler = SchedulerFactory.getScheduler();
-        scheduler.registerAccepter(this, serverChannel);
     }
 }

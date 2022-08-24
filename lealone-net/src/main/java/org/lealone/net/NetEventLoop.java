@@ -10,9 +10,6 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Map;
-
-import org.lealone.common.util.MapUtils;
 
 public interface NetEventLoop {
 
@@ -45,12 +42,4 @@ public interface NetEventLoop {
     void closeChannel(SocketChannel channel);
 
     void close();
-
-    public static boolean isRunInScheduler(Map<String, String> config) {
-        return MapUtils.getBoolean(config, "net_event_loop_run_in_scheduler", true);
-    }
-
-    public static boolean isAccepterRunInScheduler(Map<String, String> config) {
-        return MapUtils.getBoolean(config, "accepter_run_in_scheduler", true);
-    }
 }

@@ -31,11 +31,6 @@ public abstract class NetServerBase extends ProtocolServerBase implements NetSer
 
     }
 
-    public AsyncConnection createConnection(WritableChannel writableChannel, Object scheduler) {
-        check();
-        return connectionManager.createConnection(writableChannel, true, scheduler);
-    }
-
     public void removeConnection(AsyncConnection conn) {
         check();
         connectionManager.removeConnection(conn);

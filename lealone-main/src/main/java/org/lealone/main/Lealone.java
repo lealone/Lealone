@@ -137,8 +137,6 @@ public class Lealone {
                 return;
             }
 
-            // ProtocolServer mainProtocolServer = startProtocolServers();
-
             startProtocolServers();
 
             long t3 = (System.currentTimeMillis() - t);
@@ -355,26 +353,17 @@ public class Lealone {
         pe.init(parameters);
     }
 
-    private ProtocolServer startProtocolServers() throws Exception {
-        ProtocolServer mainProtocolServer = null;
+    private void startProtocolServers() throws Exception {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
                     ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class,
                             def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
-                    if (protocolServer.isRunInMainThread()) {
-                        // 默认是第一个
-                        if (mainProtocolServer == null)
-                            mainProtocolServer = protocolServer;
-                        else
-                            protocolServer.setRunInMainThread(false);
-                    }
                     startProtocolServer(protocolServer);
                 }
             }
         }
-        return mainProtocolServer;
     }
 
     private void startProtocolServer(final ProtocolServer server) throws Exception {

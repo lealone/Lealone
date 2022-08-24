@@ -9,7 +9,6 @@ import java.io.IOException;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryBase;
 import org.lealone.net.NetServer;
 
@@ -23,11 +22,7 @@ public class NioNetFactory extends NetFactoryBase {
 
     @Override
     public NetServer createNetServer() {
-        // 如果在调度器里负责网络IO，只需要启动接收器即可
-        if (NetEventLoop.isRunInScheduler(config))
-            return new TcpServerAccepter();
-        else
-            return new NioEventLoopServer();
+        return new ServerAccepter();
     }
 
     @Override

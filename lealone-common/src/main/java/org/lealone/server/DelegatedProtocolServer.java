@@ -119,21 +119,6 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean isRunInMainThread() {
-        return protocolServer.isRunInMainThread();
-    }
-
-    @Override
-    public void setRunInMainThread(boolean runInMainThread) {
-        protocolServer.setRunInMainThread(runInMainThread);
-    }
-
-    @Override
-    public Runnable getRunnable() {
-        return protocolServer.getRunnable();
-    }
-
-    @Override
     public int getSessionTimeout() {
         return protocolServer.getSessionTimeout();
     }

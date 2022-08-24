@@ -5,19 +5,9 @@
  */
 package org.lealone.net;
 
-import java.nio.channels.ServerSocketChannel;
-
 public interface AsyncConnectionManager {
 
     AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer);
 
-    default AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer,
-            Object scheduler) {
-        return null;
-    }
-
     void removeConnection(AsyncConnection conn);
-
-    default void registerAccepter(ServerSocketChannel serverChannel) {
-    }
 }

@@ -14,14 +14,13 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ThreadUtils;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetServerBase;
 
-//只负责接收新的TCP连接
+//只负责接收新的TCP/MySQL/PostgreSQL连接
 //TODO 1.支持SSL 2.支持配置参数
-class TcpServerAccepter extends NetServerBase implements Runnable {
+class ServerAccepter extends NetServerBase implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(TcpServerAccepter.class);
+    private static final Logger logger = LoggerFactory.getLogger(ServerAccepter.class);
     private ServerSocketChannel serverChannel;
 
     @Override
@@ -32,26 +31,15 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
 
-            if (NetEventLoop.isAccepterRunInScheduler(config)) {
-                serverChannel.configureBlocking(false);
-                connectionManager.registerAccepter(serverChannel);
-            } else {
-                logger.info("Starting tcp server accepter");
-                serverChannel.configureBlocking(true);
-                super.start();
-                String name = getName() + "Accepter-" + getPort();
-                if (isRunInMainThread()) {
-                    Thread t = Thread.currentThread();
-                    if (t.getName().equals("main"))
-                        t.setName(name);
-                } else {
-                    ThreadUtils.submitTask(name, isDaemon(), () -> {
-                        TcpServerAccepter.this.run();
-                    });
-                }
-            }
+            logger.info("Starting " + getName() + " accepter");
+            serverChannel.configureBlocking(true);
+            super.start();
+            String name = getName() + "Accepter-" + getPort();
+            ThreadUtils.submitTask(name, isDaemon(), () -> {
+                ServerAccepter.this.run();
+            });
         } catch (Exception e) {
-            checkBindException(e, "Failed to start tcp server accepter");
+            checkBindException(e, "Failed to start " + getName() + " accepter");
         }
     }
 
@@ -59,7 +47,7 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
     public synchronized void stop() {
         if (isStopped())
             return;
-        logger.info("Stopping tcp server accepter");
+        logger.info("Stopping " + getName() + " accepter");
         super.stop();
         if (serverChannel != null) {
             try {
@@ -71,33 +59,20 @@ class TcpServerAccepter extends NetServerBase implements Runnable {
     }
 
     @Override
-    public Runnable getRunnable() {
-        return this;
-    }
-
-    @Override
     public void run() {
-        if (NetEventLoop.isAccepterRunInScheduler(config)) {
-            return;
-        }
         while (!isStopped()) {
             accept();
         }
     }
 
     private void accept() {
-        accept(null);
-    }
-
-    @Override
-    public void accept(Object scheduler) {
         SocketChannel channel = null;
         AsyncConnection conn = null;
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
             NioWritableChannel writableChannel = new NioWritableChannel(channel, null);
-            conn = createConnection(writableChannel, scheduler);
+            conn = createConnection(writableChannel);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);
