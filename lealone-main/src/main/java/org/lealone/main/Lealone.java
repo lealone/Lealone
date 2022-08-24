@@ -114,7 +114,7 @@ public class Lealone {
     }
 
     private void run(boolean embedded, CountDownLatch latch) {
-        logger.info("Lealone version: {}", Utils.getReleaseVersionString());
+        logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
 
         try {
             long t = System.currentTimeMillis();

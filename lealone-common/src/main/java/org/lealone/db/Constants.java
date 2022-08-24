@@ -8,6 +8,10 @@ package org.lealone.db;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.sql.ResultSet;
+import java.util.Properties;
+
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.Utils;
 
 /**
  * Constants are fixed values that are used in the whole database code.
@@ -44,26 +48,6 @@ public class Constants {
     public static final char NAME_SEPARATOR = '_';
 
     public static final String RESOURCES_DIR = "/org/lealone/common/resources/";
-
-    /**
-     * The major version of this database.
-     */
-    public static final int VERSION_MAJOR = 5;
-
-    /**
-     * The minor version of this database.
-     */
-    public static final int VERSION_MINOR = 0;
-
-    /**
-     * The build date is updated for each public release.
-     */
-    public static final String BUILD_DATE = "2021-12-12";
-
-    /**
-     * The build id is incremented for each public release.
-     */
-    public static final int BUILD_ID = 0;
 
     /**
      * The TCP protocol version number 1.
@@ -366,14 +350,34 @@ public class Constants {
     }
 
     /**
-     * Get the version of this product, consisting of major version, minor version,
-     * and build id.
+     * The major version of this database.
+     */
+    public static final int VERSION_MAJOR;
+
+    /**
+     * The minor version of this database.
+     */
+    public static final int VERSION_MINOR;
+
+    /**
+     * The build id is incremented for each public release.
+     */
+    public static final int BUILD_ID;
+
+    /**
+     * The build date is updated for each public release.
+     */
+    public static final String BUILD_DATE;
+
+    public static final String RELEASE_VERSION;
+
+    /**
+     * Get the version of this product, consisting of major version, minor version, and build id.
      *
      * @return the version number
      */
     public static String getVersion() {
-        String version = VERSION_MAJOR + "." + VERSION_MINOR + "." + BUILD_ID;
-        return version;
+        return VERSION_MAJOR + "." + VERSION_MINOR + "." + BUILD_ID;
     }
 
     /**
@@ -384,5 +388,33 @@ public class Constants {
      */
     public static String getFullVersion() {
         return getVersion() + " (" + BUILD_DATE + ")";
+    }
+
+    private static String getProperty(Properties props, String key1, String key2) {
+        String v = props.getProperty(key1);
+        if (v == null && key2 != null) {
+            v = System.getProperty(PROJECT_NAME_PREFIX + key2, "Unknown");
+        }
+        return v;
+    }
+
+    static {
+        try {
+            Properties props = Utils.getResourceAsProperties(RESOURCES_DIR + "version.properties");
+            String releaseVersion = getProperty(props, "lealoneVersion", "lealone.version");
+            BUILD_DATE = getProperty(props, "buildDate", "build.date");
+
+            String v = releaseVersion;
+            int pos = v.indexOf('-');
+            if (pos > 0)
+                v = v.substring(0, pos);
+            String[] a = v.split("\\.");
+            VERSION_MAJOR = Integer.parseInt(a[0]);
+            VERSION_MINOR = Integer.parseInt(a[1]);
+            BUILD_ID = Integer.parseInt(a[2]);
+            RELEASE_VERSION = releaseVersion;
+        } catch (Throwable e) {
+            throw DbException.convert(e);
+        }
     }
 }

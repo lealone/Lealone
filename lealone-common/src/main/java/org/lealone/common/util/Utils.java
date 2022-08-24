@@ -67,8 +67,6 @@ public class Utils {
     private static boolean allowAllClasses;
     private static HashSet<String> allowedClassNames;
     private static String[] allowedClassNamePrefixes;
-    private static volatile String releaseVersion;
-
     static {
         String clazz = SysProperties.JAVA_OBJECT_SERIALIZER;
         if (clazz != null) {
@@ -961,23 +959,6 @@ public class Utils {
             throw new ConfigException(
                     String.format("Error instantiating %s class '%s'.", readable, classname), e);
         }
-    }
-
-    public static String getReleaseVersionString() {
-        if (releaseVersion != null)
-            return releaseVersion;
-
-        try {
-            Properties props = getResourceAsProperties(Constants.RESOURCES_DIR + "version.properties");
-            releaseVersion = props.getProperty("lealoneVersion");
-            if (releaseVersion == null) {
-                releaseVersion = System.getProperty(Constants.PROJECT_NAME_PREFIX + "release.version",
-                        "Unknown");
-            }
-        } catch (Throwable e) {
-            releaseVersion = "Unknown(error: " + e.getMessage() + ")";
-        }
-        return releaseVersion;
     }
 
     public static int toInt(String value, int def) {
