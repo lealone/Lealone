@@ -29,6 +29,8 @@ public class Config {
     public ServerEncryptionOptions server_encryption_options;
     public ClientEncryptionOptions client_encryption_options;
 
+    public SchedulerDef scheduler;
+
     public Config() {
     }
 
@@ -65,6 +67,10 @@ public class Config {
         tcp.parameters.put("ssl", "false");
 
         protocol_server_engines.add(tcp);
+
+        scheduler = new SchedulerDef();
+        // scheduler.name = "ScheduleService";
+        scheduler.parameters.put("scheduler_count", Runtime.getRuntime().availableProcessors() + "");
     }
 
     public Map<String, String> getProtocolServerParameters(String name) {
@@ -102,7 +108,23 @@ public class Config {
         c.transaction_engines = mergeEngines(c.transaction_engines, d.transaction_engines);
         c.sql_engines = mergeEngines(c.sql_engines, d.sql_engines);
         c.protocol_server_engines = mergeEngines(c.protocol_server_engines, d.protocol_server_engines);
+        c.scheduler = mergeMap(d.scheduler, c.scheduler);
+
+        // 合并scheduler的参数到以下两种引擎，会用到
+        for (PluggableEngineDef e : c.protocol_server_engines) {
+            if (e.enabled)
+                e.parameters.putAll(c.scheduler.parameters);
+        }
         return c;
+    }
+
+    private static <T extends MapPropertyTypeDef> T mergeMap(T defaultMap, T newMap) {
+        if (defaultMap == null)
+            return newMap;
+        if (newMap == null)
+            return defaultMap;
+        defaultMap.parameters.putAll(newMap.parameters);
+        return defaultMap;
     }
 
     private static List<PluggableEngineDef> mergeEngines(List<PluggableEngineDef> newList,
@@ -141,6 +163,9 @@ public class Config {
         public void setParameters(Map<String, String> parameters) {
             this.parameters = parameters;
         }
+    }
+
+    public static class SchedulerDef extends MapPropertyTypeDef {
     }
 
     public static class PluggableEngineDef extends MapPropertyTypeDef {

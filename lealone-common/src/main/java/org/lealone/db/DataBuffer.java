@@ -12,8 +12,6 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -76,7 +74,7 @@ public class DataBuffer implements AutoCloseable {
      */
     public static final int LENGTH_INT = 4;
 
-    private static final int MAX_REUSE_CAPACITY = 4 * 1024 * 1024;
+    public static final int MAX_REUSE_CAPACITY = 4 * 1024 * 1024;
 
     /**
      * The minimum number of bytes to grow a buffer at a time.
@@ -820,60 +818,24 @@ public class DataBuffer implements AutoCloseable {
 
     @Override
     public void close() {
-        DataBufferPool.offer(this);
+        if (factory != null) {
+            factory.recycle(this);
+        } else {
+            DataBufferFactory.getConcurrentFactory().recycle(this);
+        }
+    }
+
+    private DataBufferFactory factory;
+
+    public void setFactory(DataBufferFactory factory) {
+        this.factory = factory;
     }
 
     public static DataBuffer create() {
-        return DataBufferPool.poll();
+        return DataBufferFactory.getConcurrentFactory().create();
     }
 
     public static DataBuffer getOrCreate(int capacity) {
-        return DataBufferPool.poll(capacity);
-    }
-
-    private static class DataBufferPool {
-
-        private static final int maxPoolSize = 20;
-        private static final AtomicInteger poolSize = new AtomicInteger();
-        private static final ConcurrentLinkedQueue<DataBuffer> dataBufferPool = new ConcurrentLinkedQueue<>();
-
-        private static DataBuffer poll() {
-            DataBuffer buffer = dataBufferPool.poll();
-            if (buffer == null)
-                buffer = new DataBuffer();
-            else {
-                buffer.clear();
-                poolSize.decrementAndGet();
-            }
-            return buffer;
-        }
-
-        private static DataBuffer poll(int capacity) {
-            DataBuffer buffer = null;
-            for (int i = 0, size = poolSize.get(); i < size; i++) {
-                buffer = dataBufferPool.poll();
-                if (buffer == null) {
-                    break;
-                }
-                if (buffer.capacity() < capacity) {
-                    dataBufferPool.offer(buffer); // 放到队列末尾
-                } else {
-                    buffer.clear();
-                    poolSize.decrementAndGet();
-                    return buffer;
-                }
-            }
-            return DataBuffer.create(capacity);
-        }
-
-        private static void offer(DataBuffer buffer) {
-            if (buffer.capacity() <= MAX_REUSE_CAPACITY) {
-                if (poolSize.incrementAndGet() <= maxPoolSize) {
-                    dataBufferPool.offer(buffer);
-                } else {
-                    poolSize.decrementAndGet();
-                }
-            }
-        }
+        return DataBufferFactory.getConcurrentFactory().create(capacity);
     }
 }

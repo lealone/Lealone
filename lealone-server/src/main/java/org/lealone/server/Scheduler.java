@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
@@ -458,5 +459,9 @@ public class Scheduler extends PageOperationHandlerBase
             }
         }
         wakeUp();
+    }
+
+    public DataBufferFactory getDataBufferFactory() {
+        return DataBufferFactory.getConcurrentFactory();
     }
 }

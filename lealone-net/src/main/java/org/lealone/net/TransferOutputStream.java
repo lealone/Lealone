@@ -19,6 +19,7 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.DataType;
@@ -53,9 +54,11 @@ public class TransferOutputStream implements NetOutputStream {
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public TransferOutputStream(Session session, WritableChannel writableChannel) {
+    public TransferOutputStream(Session session, WritableChannel writableChannel,
+            DataBufferFactory dataBufferFactory) {
         this.session = session;
-        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE);
+        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE,
+                dataBufferFactory);
         out = new DataOutputStream(resettableOutputStream);
     }
 
@@ -447,8 +450,9 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static class ResettableBufferOutputStream extends NetBufferOutputStream {
 
-        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
-            super(writableChannel, initialSizeHint);
+        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
+                DataBufferFactory dataBufferFactory) {
+            super(writableChannel, initialSizeHint, dataBufferFactory);
         }
 
         @Override
