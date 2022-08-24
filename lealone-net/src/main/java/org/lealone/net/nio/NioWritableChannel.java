@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
+import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferFactory;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.WritableChannel;
@@ -36,7 +37,7 @@ class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void write(Object data) {
+    public void write(NetBuffer data) {
         if (data instanceof NioBuffer) {
             eventLoop.addNetBuffer(channel, (NioBuffer) data);
         }

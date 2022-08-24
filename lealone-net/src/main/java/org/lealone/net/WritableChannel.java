@@ -9,7 +9,7 @@ import java.nio.channels.SocketChannel;
 
 public interface WritableChannel {
 
-    void write(Object data);
+    void write(NetBuffer data);
 
     void close();
 
