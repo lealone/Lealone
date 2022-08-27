@@ -78,6 +78,13 @@
 * [更多细节...](https://github.com/lealone/Lealone-xSQL)
 
 
+### Lealone Bats
+
+* 数据湖仓 OLTP 一体化平台
+
+* [更多细节...](https://github.com/lealone/Bats)
+
+
 ### Lealone Web 客户端
 
 * [Ops Center](https://github.com/lealone/Lealone-OpsCenter)
