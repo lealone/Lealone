@@ -6,6 +6,12 @@ base_dir: target/test-data
 
 listen_address: 127.0.0.1
 
+scheduler:
+    parameters: {
+        scheduler_count: 4,
+        max_packet_count_per_loop: 10, # 每次循环最多读取多少个数据包，默认20
+    }
+    
 storage_engines:
   - name: AOSE
     enabled: true
@@ -37,10 +43,8 @@ protocol_server_engines:
         port: 9210,
         trace: false,
         allow_others: true,
-        max_packet_count_per_loop: 10, # 每次循环最多读取多少个数据包，默认20
         # white_list: "127.0.0.4,127.0.0.2",
         daemon: false,
-        # scheduler_count: 1,
         net_factory_name: nio, # 网络层默认用nio来实现
         ssl: false,
         session_timeout: -1
