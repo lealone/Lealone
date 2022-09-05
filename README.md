@@ -78,11 +78,11 @@
 * [更多细节...](https://github.com/lealone/Lealone-xSQL)
 
 
-### Lealone Bats
+### Lealone QinSQL
 
 * 数据湖仓 OLTP 一体化平台
 
-* [更多细节...](https://github.com/lealone/Bats)
+* [更多细节...](https://github.com/lealone/QinSQL)
 
 
 ### Lealone Web 客户端
