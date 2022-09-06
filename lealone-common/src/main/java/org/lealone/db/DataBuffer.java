@@ -779,6 +779,7 @@ public class DataBuffer implements AutoCloseable {
      * @param source the reader
      * @param target the output stream
      */
+    @SuppressWarnings("resource")
     public static void copyString(Reader source, OutputStream target) throws IOException {
         char[] buff = new char[Constants.IO_BUFFER_SIZE];
         DataBuffer d = new DataBuffer(null, 3 * Constants.IO_BUFFER_SIZE, false);

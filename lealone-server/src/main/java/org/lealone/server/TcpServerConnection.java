@@ -15,6 +15,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -125,9 +126,9 @@ public class TcpServerConnection extends TransferConnection {
         // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
         session.setTransactionListener(scheduler);
         session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
-                new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
+                new Function<Pair<Integer, ExpiringMap.CacheableObject<ManualCloseable>>, Void>() {
                     @Override
-                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
+                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<ManualCloseable>> pair) {
                         try {
                             pair.right.value.close();
                         } catch (Exception e) {

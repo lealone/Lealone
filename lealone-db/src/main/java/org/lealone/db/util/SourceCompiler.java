@@ -222,6 +222,7 @@ public class SourceCompiler {
                 javaFile.getAbsolutePath());
     }
 
+    @SuppressWarnings("resource")
     private String cp() {
         StringBuilder cp = new StringBuilder();
         ClassLoader cl = this.getClass().getClassLoader();

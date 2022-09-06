@@ -25,6 +25,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.Procedure;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
@@ -1380,7 +1381,7 @@ public class ServerSession extends SessionBase {
         throw DbException.getInternalError();
     }
 
-    private ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集
+    private ExpiringMap<Integer, ManualCloseable> cache; // 缓存PreparedStatement和结果集
     private SmallLRUCache<Long, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     private void closeAllCache() {
@@ -1400,19 +1401,19 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public void setCache(ExpiringMap<Integer, AutoCloseable> cache) {
+    public void setCache(ExpiringMap<Integer, ManualCloseable> cache) {
         this.cache = cache;
     }
 
-    public void addCache(Integer k, AutoCloseable v) {
+    public void addCache(Integer k, ManualCloseable v) {
         cache.put(k, v);
     }
 
-    public AutoCloseable getCache(Integer k) {
+    public ManualCloseable getCache(Integer k) {
         return cache.get(k);
     }
 
-    public AutoCloseable removeCache(Integer k, boolean ifAvailable) {
+    public ManualCloseable removeCache(Integer k, boolean ifAvailable) {
         return cache.remove(k, ifAvailable);
     }
 

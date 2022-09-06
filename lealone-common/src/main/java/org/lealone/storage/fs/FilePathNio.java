@@ -36,16 +36,18 @@ public class FilePathNio extends FilePathWrapper {
 class FileNio extends FileBase {
 
     private final String name;
+    private final RandomAccessFile file;
     private final FileChannel channel;
 
     FileNio(String fileName, String mode) throws IOException {
         this.name = fileName;
-        channel = new RandomAccessFile(fileName, mode).getChannel();
+        file = new RandomAccessFile(fileName, mode);
+        channel = file.getChannel();
     }
 
     @Override
     public void implCloseChannel() throws IOException {
-        channel.close();
+        file.close(); // 内部会调用channel.close()
     }
 
     @Override

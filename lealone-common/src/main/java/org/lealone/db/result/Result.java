@@ -5,13 +5,14 @@
  */
 package org.lealone.db.result;
 
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.value.Value;
 
 /**
  * The result interface is used by the LocalResult and ClientResult class.
  * A result may contain rows, or just an update count.
  */
-public interface Result extends AutoCloseable {
+public interface Result extends ManualCloseable {
 
     /**
      * Go to the beginning of the result, that means

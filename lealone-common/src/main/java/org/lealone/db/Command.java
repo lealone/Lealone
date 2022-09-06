@@ -9,7 +9,7 @@ package org.lealone.db;
  * Represents a command.
  *
  */
-public interface Command extends AutoCloseable {
+public interface Command {
 
     int CLIENT_SQL_COMMAND = -1;
     int CLIENT_PREPARED_SQL_COMMAND = -2;
@@ -36,7 +36,5 @@ public interface Command extends AutoCloseable {
     /**
      * Close the command.
      */
-    @Override
-    default void close() {
-    }
+    void close();
 }
