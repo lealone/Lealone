@@ -22,8 +22,8 @@ public class YieldableSelect extends YieldableQueryBase {
     private final Select select;
     private final ResultTarget target;
     private final int olapThreshold;
-    private Operator queryOperator;
     private boolean olapDisabled;
+    private Operator queryOperator;
 
     public YieldableSelect(Select select, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
@@ -95,8 +95,9 @@ public class YieldableSelect extends YieldableQueryBase {
             if (target != null) {
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             } else if (queryOperator.getLocalResult() != null) {
-                setResult(queryOperator.getLocalResult(), queryOperator.getLocalResult().getRowCount());
-                select.resultCache.setResult(queryOperator.getLocalResult());
+                LocalResult r = queryOperator.getLocalResult();
+                setResult(r, r.getRowCount());
+                select.resultCache.setResult(r);
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             }
         }

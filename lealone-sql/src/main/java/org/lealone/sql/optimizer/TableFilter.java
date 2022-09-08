@@ -290,7 +290,7 @@ public class TableFilter extends ColumnResolverBase {
      * @param s the session
      */
     public void startQuery(ServerSession s) {
-        this.session = s;
+        session = s;
         scanCount = 0;
         if (nestedJoin != null) {
             nestedJoin.startQuery(s);

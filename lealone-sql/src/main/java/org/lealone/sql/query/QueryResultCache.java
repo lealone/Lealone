@@ -71,7 +71,7 @@ class QueryResultCache {
     private Value[] getParameterValues() {
         ArrayList<Parameter> list = select.getParameters();
         if (list == null || list.isEmpty()) {
-            return new Value[0];
+            return null;
         }
         int size = list.size();
         Value[] params = new Value[size];
@@ -91,14 +91,9 @@ class QueryResultCache {
             return false;
         }
         Database db = session.getDatabase();
-        for (int i = 0; i < params.length; i++) {
-            Value a = lastParameters[i], b = params[i];
-            if (a.getType() != b.getType() || !db.areEqual(a, b)) {
-                return false;
-            }
-        }
-        if (!select.accept(ExpressionVisitorFactory.getDeterministicVisitor())
-                || !select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
+        if (!sameParamsAsLast(db, params))
+            return false;
+        if (!select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
             return false;
         }
         if (db.getModificationDataId() > lastEvaluated
@@ -106,5 +101,22 @@ class QueryResultCache {
             return false;
         }
         return true;
+    }
+
+    private boolean sameParamsAsLast(Database db, Value[] params) {
+        if (params == null && lastParameters == null)
+            return true;
+        if (params != null && lastParameters != null) {
+            if (params.length != lastParameters.length)
+                return false;
+            for (int i = 0; i < params.length; i++) {
+                Value a = lastParameters[i], b = params[i];
+                if (a.getType() != b.getType() || !db.areEqual(a, b)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 }
