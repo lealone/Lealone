@@ -197,7 +197,6 @@ public class Operation extends Expression {
         case MULTIPLY:
         case DIVIDE:
         case MODULUS:
-            dataType = Value.DECIMAL; // 我加上的
             right = right.optimize(session);
             int l = left.getType();
             int r = right.getType();
@@ -313,7 +312,6 @@ public class Operation extends Expression {
                     opType = CONCAT;
                 }
             }
-            dataType = Value.DECIMAL; // 我加上的
             break;
         default:
             DbException.throwInternalError("type=" + opType);
