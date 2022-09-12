@@ -43,7 +43,7 @@ public class Operation extends Expression {
     public static final int MULTIPLY = 3;
 
     /**
-     * This operation represents a division as in 4 * 2.
+     * This operation represents a division as in 4 / 2.
      */
     public static final int DIVIDE = 4;
 
