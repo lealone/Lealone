@@ -110,25 +110,16 @@ public abstract class Table extends SchemaObjectBase {
     public int getVersion() {
         if (version == -1) {
             synchronized (this) {
-                version = getDatabase().getVersionManager().getVersion(getId());
+                version = getDatabase().getTableAlterHistory().getVersion(getId());
             }
         }
         return version;
     }
 
-    public void incrementVersion() {
+    public int incrementAndGetVersion() {
+        getVersion();
         synchronized (this) {
-            version++;
-            getDatabase().getVersionManager().updateVersion(getId(), version);
-        }
-    }
-
-    public void decrementVersion() {
-        if (version == -1)
-            return;
-        synchronized (this) {
-            version--;
-            getDatabase().getVersionManager().updateVersion(getId(), version);
+            return ++version;
         }
     }
 

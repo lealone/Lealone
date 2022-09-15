@@ -499,8 +499,8 @@ public class StandardPrimaryIndex extends StandardIndex {
             row.setTValue(tv);
 
             if (table.getVersion() != version) {
-                ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
-                        .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
+                ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
+                        .getRecords(table.getId(), version, table.getVersion());
                 Value[] newValues = data;
                 for (TableAlterHistoryRecord record : records) {
                     newValues = record.redo(session, newValues);

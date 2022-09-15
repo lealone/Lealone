@@ -126,7 +126,7 @@ public class DropTable extends SchemaStatement {
             table.setModified();
             schema.remove(session, table, lock);
             Database db = session.getDatabase();
-            db.getVersionManager().deleteTableAlterHistoryRecord(id);
+            db.getTableAlterHistory().deleteRecords(id);
         }
         if (next != null) {
             next.executeDrop(lock);

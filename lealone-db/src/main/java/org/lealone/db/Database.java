@@ -58,6 +58,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableAlterHistory;
 import org.lealone.db.table.TableView;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CompareMode;
@@ -100,7 +101,8 @@ public class Database implements DataHandler, DbObject {
 
     private volatile State state = State.CONSTRUCTOR_CALLED;
 
-    private final TransactionalDbObjects[] dbObjectsArray = new TransactionalDbObjects[DbObjectType.TYPES.length];
+    private final TransactionalDbObjects[] dbObjectsArray //
+            = new TransactionalDbObjects[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
     private final DbObjectLock authLock = new DbObjectLockImpl(DbObjectType.USER);
@@ -202,7 +204,7 @@ public class Database implements DataHandler, DbObject {
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
 
-    private final DbObjectVersionManager dbObjectVersionManager = new DbObjectVersionManager();
+    private final TableAlterHistory tableAlterHistory = new TableAlterHistory();
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -396,7 +398,7 @@ public class Database implements DataHandler, DbObject {
 
         // LealoneDatabase中的表结构是固定的，所以不需要记录表结构修改历史
         if (!isLealoneDatabase()) {
-            dbObjectVersionManager.initDbObjectVersionTable(getInternalConnection());
+            tableAlterHistory.init(getInternalConnection());
         }
 
         opened();
@@ -503,7 +505,7 @@ public class Database implements DataHandler, DbObject {
         data.isHidden = true;
         data.session = systemSession;
         data.storageEngineName = metaStorageEngineName = getDefaultStorageEngineName();
-        meta = mainSchema.createTable(data);
+        meta = infoSchema.createTable(data);
         objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
 
         // 创建Delegate索引， 委派给原有的primary index(也就是ScanIndex)
@@ -1792,7 +1794,7 @@ public class Database implements DataHandler, DbObject {
      */
     public Table getFirstUserTable() {
         for (Table table : getAllTablesAndViews(false)) {
-            if (DbObjectVersionManager.isDbObjectVersionTable(table.getName()))
+            if (TableAlterHistory.getName().equalsIgnoreCase(table.getName()))
                 continue;
             if (table.getCreateSQL() != null) {
                 if (table.isHidden()) {
@@ -2105,7 +2107,7 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    public DbObjectVersionManager getVersionManager() {
-        return dbObjectVersionManager;
+    public TableAlterHistory getTableAlterHistory() {
+        return tableAlterHistory;
     }
 }

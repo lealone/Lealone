@@ -280,14 +280,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             table.setNewColumns(table.getOldColumns());
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, e, getSQL(), e.getMessage());
         }
-
-        try {
-            table.incrementVersion();
-        } catch (DbException e) {
-            table.setNewColumns(table.getOldColumns());
-            throw e;
-        }
-
+        table.getDatabase().updateMeta(session, table);
         // 通知元数据改变了，原有的结果集缓存要废弃了
         table.setModified();
     }
@@ -302,7 +295,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
                     Integer.toString(position));
         } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
@@ -319,13 +312,13 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
                     buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
                     position + "," + newColumn.getCreateSQL());
         }
 
