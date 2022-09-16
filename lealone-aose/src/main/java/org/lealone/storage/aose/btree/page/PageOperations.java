@@ -5,8 +5,6 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import java.util.concurrent.Callable;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -17,36 +15,6 @@ import org.lealone.storage.page.PageOperationHandler;
 public abstract class PageOperations {
 
     private PageOperations() {
-    }
-
-    public static class CallableOperation implements PageOperation {
-        private final Callable<?> callable;
-
-        public CallableOperation(Callable<?> task) {
-            callable = task;
-        }
-
-        @Override
-        public void run() {
-            try {
-                callable.call();
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-        }
-    }
-
-    public static class RunnableOperation implements PageOperation {
-        private final Runnable runnable;
-
-        public RunnableOperation(Runnable task) {
-            runnable = task;
-        }
-
-        @Override
-        public void run() {
-            runnable.run();
-        }
     }
 
     // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove、Append
