@@ -987,28 +987,6 @@ public class TableFilter extends ColumnResolverBase {
         void accept(TableFilter f);
     }
 
-    private boolean indexConditionsParsed = false;
-
-    public void setIndexConditionsParsed(boolean parsed) {
-        this.indexConditionsParsed = parsed;
-    }
-
-    public SearchRow getStartSearchRow() {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getStartSearchRow();
-    }
-
-    public SearchRow getEndSearchRow() {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getEndSearchRow();
-    }
-
     @Override
     public Value getExpressionValue(Session session, IExpression e, Object data) {
         setSession((ServerSession) session);
@@ -1018,10 +996,6 @@ public class TableFilter extends ColumnResolverBase {
 
     public int[] getColumnIndexes() {
         return columnIndexes;
-    }
-
-    public void setColumnIndexes(int[] columnIndexes) {
-        this.columnIndexes = columnIndexes;
     }
 
     public int[] createColumnIndexes(Expression... expressionArray) {

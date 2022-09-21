@@ -302,12 +302,4 @@ public class IndexCursor implements Cursor {
         start.setValue(id, v);
         cursor = index.find(tableFilter.getSession(), start, start);
     }
-
-    public SearchRow getStartSearchRow() {
-        return start;
-    }
-
-    public SearchRow getEndSearchRow() {
-        return end;
-    }
 }
