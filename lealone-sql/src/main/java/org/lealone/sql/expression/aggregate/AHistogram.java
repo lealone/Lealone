@@ -8,7 +8,6 @@ package org.lealone.sql.expression.aggregate;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
@@ -88,16 +87,6 @@ public class AHistogram extends BuiltInAggregate {
             });
             Value v = ValueArray.get(values);
             return v.convertTo(dataType);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            throw DbException.getUnsupportedException("merge");
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            throw DbException.getUnsupportedException("getMergedValue");
         }
     }
 }

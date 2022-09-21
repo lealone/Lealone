@@ -22,7 +22,7 @@ public class UpdateTest extends SqlTestBase {
         testUpdatePrimaryKey();
         testUpdateIndex();
         testRowLock();
-        testColumnLock();
+        // testColumnLock();
     }
 
     void testUpdatePrimaryKey() {

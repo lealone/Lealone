@@ -70,15 +70,5 @@ public class ACount extends BuiltInAggregate {
             }
             return ValueLong.get(count);
         }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            count += v.getLong();
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            return ValueLong.get(count);
-        }
     }
 }

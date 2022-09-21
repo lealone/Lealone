@@ -210,18 +210,5 @@ public class AGroupConcat extends BuiltInAggregate {
                 add(session, v, false);
             }
         }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            list.add(v);
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            return null;
-        }
     }
 }

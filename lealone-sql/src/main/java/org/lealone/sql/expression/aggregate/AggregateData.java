@@ -32,7 +32,4 @@ abstract class AggregateData {
      */
     abstract Value getValue(ServerSession session);
 
-    abstract void merge(ServerSession session, Value v);
-
-    abstract Value getMergedValue(ServerSession session);
 }

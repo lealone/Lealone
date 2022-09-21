@@ -10,7 +10,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.IntIntHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
 
@@ -47,7 +46,6 @@ public class ASelectivity extends BuiltInAggregate {
         private long count;
         private IntIntHashMap distinctHashes;
         private double m2;
-        private Value value;
 
         @Override
         void add(ServerSession session, Value v) {
@@ -77,26 +75,6 @@ public class ASelectivity extends BuiltInAggregate {
             s = s <= 0 ? 1 : s > 100 ? 100 : s;
             Value v = ValueInt.get(s);
             return v.convertTo(dataType);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            count++;
-            if (value == null) {
-                value = v.convertTo(dataType);
-            } else {
-                v = v.convertTo(value.getType());
-                value = value.add(v);
-            }
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            Value v = null;
-            if (value != null) {
-                v = BuiltInAggregate.divide(value, count);
-            }
-            return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
     }
 }

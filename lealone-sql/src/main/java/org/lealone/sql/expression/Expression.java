@@ -20,11 +20,9 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.sql.expression.visitor.CalculateVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.MapColumnsVisitor;
-import org.lealone.sql.expression.visitor.MergeAggregateVisitor;
 import org.lealone.sql.expression.visitor.UpdateAggregateVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -363,18 +361,6 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
-    }
-
-    public void mergeAggregate(ServerSession session, Value v) {
-        accept(new MergeAggregateVisitor(session, v));
-    }
-
-    public void calculate(Calculator calculator) {
-        accept(new CalculateVisitor(calculator));
-    }
-
-    public Value getMergedValue(ServerSession session) {
-        return getValue(session);
     }
 
     @SuppressWarnings("unchecked")

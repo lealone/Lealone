@@ -18,10 +18,8 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
@@ -131,15 +129,6 @@ public abstract class BuiltInAggregate extends Aggregate {
     }
 
     @Override
-    public void mergeAggregate(ServerSession session, Value v) {
-        AggregateData data = getAggregateData();
-        if (data == null) {
-            return;
-        }
-        data.merge(session, v);
-    }
-
-    @Override
     public Value getValue(ServerSession session) {
         if (select.isQuickAggregateQuery()) {
             switch (type) {
@@ -181,80 +170,6 @@ public abstract class BuiltInAggregate extends Aggregate {
             data = createAggregateData();
         }
         return data;
-    }
-
-    @Override
-    public Value getMergedValue(ServerSession session) {
-        return getFinalAggregateData().getMergedValue(session);
-    }
-
-    @Override
-    public void calculate(Calculator calculator) {
-        switch (type) {
-        case BuiltInAggregate.COUNT_ALL:
-        case BuiltInAggregate.COUNT:
-        case BuiltInAggregate.MIN:
-        case BuiltInAggregate.MAX:
-        case BuiltInAggregate.SUM:
-        case BuiltInAggregate.BOOL_AND:
-        case BuiltInAggregate.BOOL_OR:
-        case BuiltInAggregate.BIT_AND:
-        case BuiltInAggregate.BIT_OR:
-            break;
-        case BuiltInAggregate.AVG: {
-            int i = calculator.getIndex();
-            Value v = divide(calculator.getValue(i + 1), calculator.getValue(i).getLong());
-            calculator.addResultValue(v);
-            calculator.addIndex(2);
-            break;
-        }
-        case BuiltInAggregate.STDDEV_POP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = Math.sqrt(sum2 / count - (sum1 / count) * (sum1 / count));
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.STDDEV_SAMP: { // 见:http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = Math.sqrt((sum2 - (sum1 * sum1 / count)) / (count - 1));
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.VAR_POP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = sum2 / count - (sum1 / count) * (sum1 / count);
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.VAR_SAMP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = (sum2 - (sum1 * sum1 / count)) / (count - 1);
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.HISTOGRAM:
-        case BuiltInAggregate.SELECTIVITY:
-        case BuiltInAggregate.GROUP_CONCAT:
-            break;
-        default:
-            DbException.throwInternalError("type=" + type);
-        }
     }
 
     private Index getColumnIndex() {

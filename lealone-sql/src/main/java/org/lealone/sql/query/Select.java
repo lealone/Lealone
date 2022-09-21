@@ -692,14 +692,6 @@ public class Select extends Query {
         return true;
     }
 
-    public Result queryGroupMerge() {
-        return new QMerge(this).queryGroupMerge();
-    }
-
-    public Result calculate(Result result, Select newSelect) {
-        return new QMerge(this).calculate(result, newSelect);
-    }
-
     @Override
     public Result getMetaData() {
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
