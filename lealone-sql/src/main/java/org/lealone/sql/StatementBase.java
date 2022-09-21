@@ -24,11 +24,10 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
-import org.lealone.sql.executor.YieldableLocalUpdate;
 import org.lealone.sql.executor.YieldableBase;
+import org.lealone.sql.executor.YieldableLocalUpdate;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.YieldableLocalQuery;
 
 /**
@@ -597,16 +596,5 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public YieldableBase<Integer> createYieldableUpdate(
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableLocalUpdate(this, asyncHandler);
-    }
-
-    public TableFilter getTableFilter() {
-        return null;
-    }
-
-    public String getIndexName() {
-        TableFilter tf = getTableFilter();
-        if (tf != null)
-            return tf.getIndex().getName();
-        return null;
     }
 }

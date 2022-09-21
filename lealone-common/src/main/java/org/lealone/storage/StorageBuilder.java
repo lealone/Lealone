@@ -151,10 +151,6 @@ public abstract class StorageBuilder {
         return set("minFillRate", minFillRate);
     }
 
-    public StorageBuilder db(Object db) {
-        return set("db", db);
-    }
-
     @Override
     public String toString() {
         return DataUtils.appendMap(new StringBuilder(), config).toString();

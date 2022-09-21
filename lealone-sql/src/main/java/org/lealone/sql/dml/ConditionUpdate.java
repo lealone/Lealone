@@ -46,11 +46,6 @@ public abstract class ConditionUpdate extends ManipulationStatement {
         this.tableFilter = tableFilter;
     }
 
-    @Override
-    public TableFilter getTableFilter() {
-        return tableFilter;
-    }
-
     public void setCondition(Expression condition) {
         this.condition = condition;
     }

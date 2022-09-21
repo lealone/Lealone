@@ -83,8 +83,7 @@ public class IndexCursor implements Cursor {
             } else {
                 columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
-            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, null,
-                    columnIndexes);
+            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);
         }
     }

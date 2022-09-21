@@ -6,14 +6,11 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.ValueString;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
@@ -63,10 +60,6 @@ public class Page {
         return DbException.throwInternalError();
     }
 
-    public Object[] getKeys() {
-        throw ie();
-    }
-
     /**
     * Get the key at the given index.
     * 
@@ -86,14 +79,6 @@ public class Page {
         throw ie();
     }
 
-    public Object getLastKey() {
-        throw ie();
-    }
-
-    public Object[] getValues() {
-        throw ie();
-    }
-
     /**
      * Get the value at the given index.
      * 
@@ -101,10 +86,6 @@ public class Page {
      * @return the value
      */
     public Object getValue(int index) {
-        throw ie();
-    }
-
-    public Object getValue(int index, int columnIndex) {
         throw ie();
     }
 
@@ -143,10 +124,6 @@ public class Page {
         throw ie();
     }
 
-    public PageReference getChildPageReference(int index) {
-        throw ie();
-    }
-
     /**
      * Check whether this is a leaf page.
      * 
@@ -162,15 +139,6 @@ public class Page {
      * @return true if it is a node page
      */
     public boolean isNode() {
-        return false;
-    }
-
-    /**
-     * Check whether this is a remote page.
-     * 
-     * @return true if it is a remote page
-     */
-    public boolean isRemote() {
         return false;
     }
 
@@ -223,47 +191,11 @@ public class Page {
         throw ie();
     }
 
-    /**
-     * Replace the child page.
-     * 
-     * @param index the index
-     * @param c the new child page
-     */
-    public void setChild(int index, Page c) {
-        throw ie();
-    }
-
-    public void setChild(int index, PageReference ref) {
-        throw ie();
-    }
-
     void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
         throw ie();
     }
 
-    /**
-     * Insert a key-value pair into this leaf.
-     * 
-     * @param index the index
-     * @param key the key
-     * @param value the value
-     */
-    public void insertLeaf(int index, Object key, Object value) {
-        throw ie();
-    }
-
     public Page copyLeaf(int index, Object key, Object value) {
-        throw ie();
-    }
-
-    /**
-     * Insert a child page into this node.
-     * 
-     * @param index the index
-     * @param key the key
-     * @param childPage the child page
-     */
-    public void insertNode(int index, Object key, Page childPage) {
         throw ie();
     }
 
@@ -288,20 +220,6 @@ public class Page {
     public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         throw ie();
-    }
-
-    public void writeLeaf(DataBuffer buff, boolean remote) {
-        throw ie();
-    }
-
-    public static Page readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
-        int type = page.get();
-        if (type == PageUtils.PAGE_TYPE_LEAF)
-            return LeafPage.readLeafPage(map, page);
-        else if (type == PageUtils.PAGE_TYPE_REMOTE)
-            return RemotePage.readLeafPage(map, page);
-        else
-            throw DbException.getInternalError("type: " + type);
     }
 
     /**
@@ -414,8 +332,6 @@ public class Page {
             p = new NodePage(map);
         else if (type == PageUtils.PAGE_TYPE_COLUMN)
             p = new ColumnPage(map);
-        else if (type == PageUtils.PAGE_TYPE_REMOTE)
-            p = new RemotePage(map);
         else
             throw DbException.getInternalError("type: " + type);
         return p;
@@ -452,60 +368,8 @@ public class Page {
         return p;
     }
 
-    public boolean isRemoteChildPage(int index) {
-        return false;
-    }
-
-    public boolean isNodeChildPage(int index) {
-        return false;
-    }
-
-    public boolean isLeafChildPage(int index) {
-        return false;
-    }
-
     public PageReference[] getChildren() {
         throw ie();
-    }
-
-    public List<String> getReplicationHostIds() {
-        return null;
-    }
-
-    public void setReplicationHostIds(List<String> replicationHostIds) {
-    }
-
-    static void writeReplicationHostIds(List<String> replicationHostIds, DataBuffer buff) {
-        if (replicationHostIds == null || replicationHostIds.isEmpty())
-            buff.putInt(0);
-        else {
-            buff.putInt(replicationHostIds.size());
-            for (String id : replicationHostIds) {
-                ValueString.type.write(buff, id);
-            }
-        }
-    }
-
-    static List<String> readReplicationHostIds(ByteBuffer buff) {
-        int length = buff.getInt();
-        List<String> replicationHostIds = new ArrayList<>(length);
-        for (int i = 0; i < length; i++)
-            replicationHostIds.add(ValueString.type.read(buff));
-
-        if (replicationHostIds.isEmpty())
-            replicationHostIds = null;
-
-        return replicationHostIds;
-    }
-
-    public static LeafPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values,
-            long totalCount, int memory) {
-        return LeafPage.create(map, keys, values, totalCount, memory);
-    }
-
-    public static NodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children,
-            int memory) {
-        return NodePage.create(map, keys, children, memory);
     }
 
     static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength,

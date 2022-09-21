@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -29,21 +28,6 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public boolean isRemoteChildPage(int index) {
-        return getChildPageReference(index).isRemotePage();
-    }
-
-    @Override
-    public boolean isNodeChildPage(int index) {
-        return getChildPageReference(index).isNodePage();
-    }
-
-    @Override
-    public boolean isLeafChildPage(int index) {
-        return getChildPageReference(index).isLeafPage();
-    }
-
-    @Override
     public boolean isEmpty() {
         return children == null || children.length == 0;
     }
@@ -54,17 +38,12 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public PageReference getChildPageReference(int index) {
-        return children[index];
-    }
-
-    @Override
     public Page getChildPage(int index) {
         PageReference ref = children[index];
         if (ref.page != null) {
             return ref.page;
         } else {
-            Page p = map.getBTreeStorage().readPage(ref, ref.pos);
+            Page p = map.getBTreeStorage().readPage(ref.pos);
             ref.replacePage(p);
             p.setRef(ref);
             p.setParentRef(getRef());
@@ -104,39 +83,6 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void setChild(int index, Page c) {
-        Object key;
-        boolean first;
-        if (keys.length > 0) {
-            int keyIndex = index > 0 ? index - 1 : 0;
-            key = keys[keyIndex];
-            first = index == 0;
-        } else {
-            key = children[index].pageKey.key;
-            first = true;
-        }
-        if (c == null) {
-            // this is slightly slower:
-            // children = Arrays.copyOf(children, children.length);
-            children = children.clone();
-            PageReference ref = new PageReference(null, 0, key, first);
-            children[index] = ref;
-        } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            children = children.clone();
-            PageReference ref = new PageReference(c, key, first);
-            children[index] = ref;
-        } else {
-            PageReference ref = new PageReference(c, key, first);
-            children[index] = ref;
-        }
-    }
-
-    @Override
-    public void setChild(int index, PageReference ref) {
-        children[index] = ref;
-    }
-
-    @Override
     void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
         children = children.clone(); // 必须弄一份新的，否则影响其他线程
         children[index] = tmpNodePage.right;
@@ -154,23 +100,6 @@ public class NodePage extends LocalPage {
         tmpNodePage.left.page.setParentRef(getRef());
         tmpNodePage.right.page.setParentRef(getRef());
         addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
-    }
-
-    @Override
-    public void insertNode(int index, Object key, Page childPage) {
-        Object[] newKeys = new Object[keys.length + 1];
-        DataUtils.copyWithGap(keys, newKeys, keys.length, index);
-        newKeys[index] = key;
-        keys = newKeys;
-
-        int childCount = children.length;
-        PageReference[] newChildren = new PageReference[childCount + 1];
-        DataUtils.copyWithGap(children, newChildren, childCount, index);
-        newChildren[index] = new PageReference(childPage, key, index == 0);
-        children = newChildren;
-
-        childPage.setParentRef(getRef());
-        addMemory(map.getKeyType().getMemory(key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
     @Override
@@ -201,36 +130,14 @@ public class NodePage extends LocalPage {
             p[i] = buff.getLong();
         }
         for (int i = 0; i <= keyLength; i++) {
-            int pageType = buff.get();
-            boolean isRemotePage = pageType == 2;
-            if (isRemotePage) {
-                children[i] = PageReference.createRemotePageReference();
-                List<String> replicationHostIds = readReplicationHostIds(buff);
-                children[i].replicationHostIds = replicationHostIds;
-            } else {
-                List<String> replicationHostIds = null;
-                if (pageType == 0) {
-                    replicationHostIds = readReplicationHostIds(buff);
-                }
-                children[i] = new PageReference(null, p[i]);
-                children[i].replicationHostIds = replicationHostIds; // node page的replicationHostIds为null
-            }
+            buff.get(); // pageType
+            buff.getInt(); // replicationHostIds
+            children[i] = new PageReference(null, p[i]);
         }
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
-        setChildrenPageKeys();
         recalculateMemory();
-    }
-
-    private void setChildrenPageKeys() {
-        if (children != null && keys != null && keys.length > 0) {
-            int keyLength = keys.length;
-            children[0].setPageKey(keys[0], true);
-            for (int i = 0; i < keyLength; i++) {
-                children[i + 1].setPageKey(keys[i], false);
-            }
-        }
     }
 
     /**
@@ -240,7 +147,7 @@ public class NodePage extends LocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private int write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    private int write(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -251,16 +158,11 @@ public class NodePage extends LocalPage {
         buff.put((byte) type);
         writeChildrenPositions(buff);
         for (int i = 0; i <= keyLength; i++) {
-            if (children[i].isRemotePage()) {
-                buff.put((byte) 2);
-                writeReplicationHostIds(children[i].replicationHostIds, buff);
+            if (children[i].isLeafPage()) {
+                buff.put((byte) 0);
+                buff.putInt(0); // replicationHostIds
             } else {
-                if (children[i].isLeafPage()) {
-                    buff.put((byte) 0);
-                    writeReplicationHostIds(children[i].replicationHostIds, buff);
-                } else {
-                    buff.put((byte) 1);
-                }
+                buff.put((byte) 1);
             }
         }
         int compressStart = buff.position();
@@ -274,17 +176,13 @@ public class NodePage extends LocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            chunk.pagePositionToLengthMap.put(0L, pageLength);
-        } else {
-            updateChunkAndCachePage(chunk, start, pageLength, type);
+        updateChunkAndCachePage(chunk, start, pageLength, type);
 
-            // cache again - this will make sure nodes stays in the cache
-            // for a longer time
-            map.getBTreeStorage().cachePage(pos, this, getMemory());
+        // cache again - this will make sure nodes stays in the cache
+        // for a longer time
+        map.getBTreeStorage().cachePage(pos, this, getMemory());
 
-            removeIfInMemory();
-        }
+        removeIfInMemory();
         return typePos + 1;
     }
 
@@ -300,7 +198,7 @@ public class NodePage extends LocalPage {
             // already stored before
             return;
         }
-        int patch = write(chunk, buff, false);
+        int patch = write(chunk, buff);
         for (int i = 0, len = children.length; i < len; i++) {
             Page p = children[i].page;
             if (p != null) {
@@ -308,7 +206,6 @@ public class NodePage extends LocalPage {
                 children[i] = new PageReference(p);
             }
         }
-        setChildrenPageKeys();
         int old = buff.position();
         buff.position(patch);
         writeChildrenPositions(buff);
@@ -326,10 +223,8 @@ public class NodePage extends LocalPage {
                 }
                 ref.page.writeEnd();
                 children[i] = new PageReference(null, ref.pos);
-                children[i].replicationHostIds = ref.page.getReplicationHostIds();
             }
         }
-        setChildrenPageKeys();
     }
 
     @Override

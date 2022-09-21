@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.value.Value;
-import org.lealone.storage.page.PageKey;
 
 public interface NetOutputStream {
 
@@ -22,8 +21,6 @@ public interface NetOutputStream {
     NetOutputStream writeString(String s) throws IOException;
 
     NetOutputStream writeByteBuffer(ByteBuffer data) throws IOException;
-
-    NetOutputStream writePageKey(PageKey pk) throws IOException;
 
     NetOutputStream writeBytes(byte[] data) throws IOException;
 

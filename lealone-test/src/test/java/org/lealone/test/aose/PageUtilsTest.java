@@ -25,10 +25,6 @@ public class PageUtilsTest extends AoseTestBase {
         pos = PageUtils.getPagePos(chunkId, offset, type);
         assertEquals(type, PageUtils.getPageType(pos));
 
-        type = PageUtils.PAGE_TYPE_REMOTE;
-        pos = PageUtils.getPagePos(chunkId, offset, type);
-        assertEquals(type, PageUtils.getPageType(pos));
-
         chunkId = 2;
         offset = 10;
         type = 1;

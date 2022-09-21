@@ -43,7 +43,6 @@ import org.lealone.db.value.ValueStringIgnoreCase;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
-import org.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to receive Value objects.
@@ -202,13 +201,6 @@ public class TransferInputStream implements NetInputStream {
     @Override
     public void readBytes(byte[] buff, int off, int len) throws IOException {
         in.readFully(buff, off, len);
-    }
-
-    @Override
-    public PageKey readPageKey() throws IOException {
-        Object value = readValue();
-        boolean first = readBoolean();
-        return new PageKey(value, first);
     }
 
     /**

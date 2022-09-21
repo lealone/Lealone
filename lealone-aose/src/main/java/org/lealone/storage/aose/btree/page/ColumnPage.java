@@ -41,10 +41,6 @@ class ColumnPage extends Page {
         return memory;
     }
 
-    protected void recalculateMemory() {
-        getMemory();
-    }
-
     @Override
     public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
@@ -71,7 +67,7 @@ class ColumnPage extends Page {
         buff = null;
     }
 
-    long write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    long write(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_COLUMN;
         buff.putInt(0); // 回填pageLength
@@ -93,10 +89,7 @@ class ColumnPage extends Page {
         int chunkId = chunk.id;
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
-
-        if (!replicatePage) {
-            updateChunkAndCachePage(chunk, start, pageLength, type);
-        }
+        updateChunkAndCachePage(chunk, start, pageLength, type);
         return pos;
     }
 }

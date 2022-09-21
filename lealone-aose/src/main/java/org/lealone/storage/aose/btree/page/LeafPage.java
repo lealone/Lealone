@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -18,7 +17,6 @@ public class LeafPage extends LocalPage {
 
     private Object[] values;
 
-    private List<String> replicationHostIds;
     private ColumnPageReference[] columnPages;
     private volatile long totalCount;
 
@@ -41,35 +39,12 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public Object[] getValues() {
-        return values;
-    }
-
-    @Override
     public boolean isEmpty() {
         return totalCount < 1;
     }
 
     @Override
-    public List<String> getReplicationHostIds() {
-        return replicationHostIds;
-    }
-
-    @Override
-    public void setReplicationHostIds(List<String> replicationHostIds) {
-        this.replicationHostIds = replicationHostIds;
-    }
-
-    @Override
     public Object getValue(int index) {
-        return values[index];
-    }
-
-    @Override
-    public Object getValue(int index, int columnIndex) {
-        if (columnPages != null && columnPages[columnIndex].page == null) {
-            readColumnPage(columnIndex);
-        }
         return values[index];
     }
 
@@ -126,7 +101,6 @@ public class LeafPage extends LocalPage {
 
         totalCount = a;
         LeafPage newPage = create(map, bKeys, bValues, bKeys.length, 0);
-        newPage.replicationHostIds = replicationHostIds;
         recalculateMemory();
         return newPage;
     }
@@ -143,24 +117,6 @@ public class LeafPage extends LocalPage {
         return totalCount;
     }
 
-    // 这里的实现虽然会copy数组，但并不是影响性能的地方，因为数组通常较小，System.arraycopy的性能较快，
-    // 给数组预分配额外的空间能提升的性能并不大，已经测过
-    @Override
-    public void insertLeaf(int index, Object key, Object value) {
-        int len = keys.length + 1;
-        Object[] newKeys = new Object[len];
-        DataUtils.copyWithGap(keys, newKeys, len - 1, index);
-        keys = newKeys;
-        Object[] newValues = new Object[len];
-        DataUtils.copyWithGap(values, newValues, len - 1, index);
-        values = newValues;
-        keys[index] = key;
-        values[index] = value;
-        totalCount++;
-        map.incrementSize();// 累加全局计数器
-        addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-    }
-
     @Override
     public Page copyLeaf(int index, Object key, Object value) {
         int len = keys.length + 1;
@@ -174,7 +130,6 @@ public class LeafPage extends LocalPage {
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
         LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory());
         newPage.cachedCompare = cachedCompare;
-        newPage.replicationHostIds = replicationHostIds;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         // mark the old as deleted
@@ -230,7 +185,7 @@ public class LeafPage extends LocalPage {
         values = new Object[keyLength];
         map.getValueType().read(buff, values, keyLength);
         totalCount = keyLength;
-        replicationHostIds = readReplicationHostIds(buff);
+        buff.getInt(); // replicationHostIds
         recalculateMemory();
     }
 
@@ -259,7 +214,7 @@ public class LeafPage extends LocalPage {
         for (int row = 0; row < keyLength; row++) {
             values[row] = valueType.readMeta(buff, columnCount);
         }
-        replicationHostIds = readReplicationHostIds(buff);
+        buff.getInt(); // replicationHostIds
         // 延迟加载列
         totalCount = keyLength;
         recalculateMemory();
@@ -277,66 +232,27 @@ public class LeafPage extends LocalPage {
         }
     }
 
-    public static Page readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
-        List<String> replicationHostIds = readReplicationHostIds(page);
-        boolean remote = page.get() == 1;
-        Page p;
-
-        if (remote) {
-            p = new RemotePage(map); // 这里并没有使用空的LeafPage
-        } else {
-            StorageDataType kt = map.getKeyType();
-            StorageDataType vt = map.getValueType();
-            int length = page.getInt();
-            Object[] keys = new Object[length];
-            Object[] values = new Object[length];
-            for (int i = 0; i < length; i++) {
-                keys[i] = kt.read(page);
-                values[i] = vt.read(page);
-            }
-            p = LeafPage.create(map, keys, values, length, 0);
-        }
-        p.setReplicationHostIds(replicationHostIds);
-        return p;
-    }
-
-    @Override
-    public void writeLeaf(DataBuffer buff, boolean remote) {
-        buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
-        writeReplicationHostIds(replicationHostIds, buff);
-        buff.put((byte) (remote ? 1 : 0));
-        if (!remote) {
-            StorageDataType kt = map.getKeyType();
-            StorageDataType vt = map.getValueType();
-            buff.putInt(keys.length);
-            for (int i = 0, len = keys.length; i < len; i++) {
-                kt.write(buff, keys[i]);
-                vt.write(buff, values[i]);
-            }
-        }
-    }
-
     @Override
     public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
         }
-        write(chunk, buff, false);
+        write(chunk, buff);
     }
 
-    private void write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void write(Chunk chunk, DataBuffer buff) {
         switch (map.getPageStorageMode()) {
         case COLUMN_STORAGE:
-            writeColumnStorage(chunk, buff, replicatePage);
+            writeColumnStorage(chunk, buff);
             return;
         default:
-            writeRowStorage(chunk, buff, replicatePage);
+            writeRowStorage(chunk, buff);
             return;
         }
     }
 
-    private void writeRowStorage(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeRowStorage(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -349,7 +265,7 @@ public class LeafPage extends LocalPage {
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength);
         map.getValueType().write(buff, values, keyLength);
-        writeReplicationHostIds(replicationHostIds, buff);
+        buff.putInt(0); // replicationHostIds
 
         compressPage(buff, compressStart, type, typePos);
         int pageLength = buff.position() - start;
@@ -358,15 +274,11 @@ public class LeafPage extends LocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            chunk.pagePositionToLengthMap.put(0L, pageLength);
-        } else {
-            updateChunkAndCachePage(chunk, start, pageLength, type);
-            removeIfInMemory();
-        }
+        updateChunkAndCachePage(chunk, start, pageLength, type);
+        removeIfInMemory();
     }
 
-    private void writeColumnStorage(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeColumnStorage(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -387,7 +299,7 @@ public class LeafPage extends LocalPage {
         for (int row = 0; row < keyLength; row++) {
             valueType.writeMeta(buff, values[row]);
         }
-        writeReplicationHostIds(replicationHostIds, buff);
+        buff.putInt(0); // replicationHostIds
         compressPage(buff, compressStart, type, typePos);
 
         int pageLength = buff.position() - start;
@@ -399,7 +311,7 @@ public class LeafPage extends LocalPage {
         long[] posArray = new long[columnCount];
         for (int col = 0; col < columnCount; col++) {
             ColumnPage page = new ColumnPage(map, values, col);
-            posArray[col] = page.write(chunk, buff, replicatePage);
+            posArray[col] = page.write(chunk, buff);
         }
         int oldPos = buff.position();
         buff.position(columnPageStartPos);
@@ -408,12 +320,8 @@ public class LeafPage extends LocalPage {
         }
         buff.position(oldPos);
 
-        if (replicatePage) {
-            chunk.pagePositionToLengthMap.put(0L, pageLength);
-        } else {
-            updateChunkAndCachePage(chunk, start, pageLength, type);
-            removeIfInMemory();
-        }
+        updateChunkAndCachePage(chunk, start, pageLength, type);
+        removeIfInMemory();
     }
 
     @Override
@@ -434,7 +342,6 @@ public class LeafPage extends LocalPage {
     private LeafPage copy(boolean removePage) {
         LeafPage newPage = create(map, keys, values, totalCount, getMemory());
         newPage.cachedCompare = cachedCompare;
-        newPage.replicationHostIds = replicationHostIds;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         if (removePage) {

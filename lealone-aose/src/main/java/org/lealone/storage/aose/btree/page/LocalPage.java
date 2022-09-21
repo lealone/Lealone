@@ -46,11 +46,6 @@ public abstract class LocalPage extends Page {
     }
 
     @Override
-    public Object[] getKeys() {
-        return keys;
-    }
-
-    @Override
     public Object getKey(int index) {
         return keys[index];
     }
@@ -58,14 +53,6 @@ public abstract class LocalPage extends Page {
     @Override
     public int getKeyCount() {
         return keys.length;
-    }
-
-    @Override
-    public Object getLastKey() {
-        if (keys == null || keys.length == 0)
-            return null;
-        else
-            return keys[keys.length - 1];
     }
 
     /**

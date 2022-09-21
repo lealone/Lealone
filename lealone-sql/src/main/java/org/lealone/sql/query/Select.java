@@ -989,7 +989,6 @@ public class Select extends Query {
         return priority;
     }
 
-    @Override
     public TableFilter getTableFilter() {
         return topTableFilter;
     }

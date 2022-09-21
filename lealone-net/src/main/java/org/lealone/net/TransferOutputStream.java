@@ -32,7 +32,6 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to send Value objects.
@@ -263,13 +262,6 @@ public class TransferOutputStream implements NetOutputStream {
     public TransferOutputStream writeBytes(byte[] buff, int off, int len) throws IOException {
         writeInt(len);
         out.write(buff, off, len);
-        return this;
-    }
-
-    @Override
-    public TransferOutputStream writePageKey(PageKey pk) throws IOException {
-        writeValue((Value) pk.key);
-        writeBoolean(pk.first);
         return this;
     }
 

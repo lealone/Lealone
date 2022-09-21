@@ -21,7 +21,6 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.page.PageKey;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {
@@ -51,8 +50,7 @@ public class PacketHandlers {
 
     private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
 
-        protected void createYieldableUpdate(PacketDeliveryTask task, PreparedSQLStatement stmt,
-                List<PageKey> pageKeys) {
+        protected void createYieldableUpdate(PacketDeliveryTask task, PreparedSQLStatement stmt) {
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     int updateCount = ar.getResult();
@@ -72,13 +70,8 @@ public class PacketHandlers {
     static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet,
-                List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, -1);
-            createYieldableUpdate(task, stmt, pageKeys);
+            createYieldableUpdate(task, stmt);
             return null;
         }
     }
@@ -87,14 +80,9 @@ public class PacketHandlers {
             extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet,
-                List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
                     packet.parameters);
-            createYieldableUpdate(task, stmt, pageKeys);
+            createYieldableUpdate(task, stmt);
             return null;
         }
     }
@@ -102,7 +90,7 @@ public class PacketHandlers {
     private static abstract class QueryBase<P extends QueryPacket> implements PacketHandler<P> {
 
         protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt,
-                QueryPacket packet, List<PageKey> pageKeys) {
+                QueryPacket packet) {
 
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows,
                     packet.scrollable, ar -> {
@@ -138,13 +126,8 @@ public class PacketHandlers {
     static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet,
-                List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, packet.fetchSize);
-            createYieldableQuery(task, stmt, packet, pageKeys);
+            createYieldableQuery(task, stmt, packet);
             return null;
         }
     }
@@ -153,14 +136,9 @@ public class PacketHandlers {
             extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet,
-                List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
                     packet.parameters);
-            createYieldableQuery(task, stmt, packet, pageKeys);
+            createYieldableQuery(task, stmt, packet);
             return null;
         }
     }

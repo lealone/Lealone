@@ -1977,7 +1977,6 @@ public class Database implements DataHandler, DbObject {
                 setBackgroundException(DbException.convert(e));
             }
         });
-        storageBuilder.db(this);
         return storageBuilder;
     }
 

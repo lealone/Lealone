@@ -453,11 +453,11 @@ public abstract class PageOperations {
         // 对页面进行切割后，会返回右边的新页面，而copy后的当前被切割页面变成左边的新页面
         Page rightChildPage = p.split(at);
         Page leftChildPage = p;
-        PageReference leftRef = new PageReference(leftChildPage, k, true);
-        PageReference rightRef = new PageReference(rightChildPage, k, false);
+        PageReference leftRef = new PageReference(leftChildPage);
+        PageReference rightRef = new PageReference(rightChildPage);
         Object[] keys = { k };
         PageReference[] children = { leftRef, rightRef };
-        Page parent = Page.createNode(p.map, keys, children, 0);
+        Page parent = NodePage.create(p.map, keys, children, 0);
         PageReference parentRef = new PageReference(parent);
         parent.setRef(parentRef);
         // 它俩的ParentRef不在这里设置，调用者根据自己的情况设置

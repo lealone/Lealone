@@ -5,7 +5,6 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -21,7 +20,6 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.LeafPage;
 import org.lealone.storage.aose.btree.page.Page;
-import org.lealone.storage.aose.btree.page.PageKeyCursor;
 import org.lealone.storage.aose.btree.page.PageOperations.Append;
 import org.lealone.storage.aose.btree.page.PageOperations.Put;
 import org.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
@@ -350,10 +348,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
-        if (parameters.pageKeys == null)
-            return new BTreeCursor<>(this, parameters);
-        else
-            return new PageKeyCursor<>(this, parameters);
+        return new BTreeCursor<>(this, parameters);
     }
 
     @Override
@@ -362,12 +357,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         try {
             acquireExclusiveLock();
 
-            List<String> replicationHostIds = root.getReplicationHostIds();
             root.removeAllRecursive();
             size.set(0);
             maxKey.set(0);
             newRoot(LeafPage.createEmpty(this));
-            root.setReplicationHostIds(replicationHostIds);
         } finally {
             releaseExclusiveLock();
         }

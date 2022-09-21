@@ -17,7 +17,6 @@ import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
-import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
 import org.lealone.storage.fs.FileStorage;
@@ -148,14 +147,8 @@ public class BTreeStorage {
      * @return the page
      */
     public Page readPage(long pos) {
-        return readPage(null, pos);
-    }
-
-    public Page readPage(PageReference ref, long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
-        } else if (ref != null && pos < 0) {
-            return ref.readRemotePage(map);
         }
         return readLocalPage(pos);
     }
