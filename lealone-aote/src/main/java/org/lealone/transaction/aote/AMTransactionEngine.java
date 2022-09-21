@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,9 +50,11 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     // key: mapName
     private final ConcurrentHashMap<String, MapInfo> maps = new ConcurrentHashMap<>();
     // key: transactionId
-    private final ConcurrentSkipListMap<Long, AMTransaction> currentTransactions = new ConcurrentSkipListMap<>();
+    private final ConcurrentSkipListMap<Long, AMTransaction> currentTransactions //
+            = new ConcurrentSkipListMap<>();
     private final AtomicLong lastTransactionId = new AtomicLong();
-    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.OldValue> tValues = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.OldValue> tValues //
+            = new ConcurrentHashMap<>();
 
     private LogSyncService logSyncService;
     private CheckpointService checkpointService;
@@ -134,6 +137,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     public synchronized void init(Map<String, String> config) {
         if (logSyncService != null)
             return;
+        super.init(config);
         checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
 
@@ -156,7 +160,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
         try {
             checkpointService.close();
-            // checkpointService.join();
+            checkpointService.latch.await();
         } catch (Exception e) {
         }
         try {
@@ -174,7 +178,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
-        long tid = getTransactionId(false);
+        long tid = getTransactionId(runMode == RunMode.SHARDING);
         AMTransaction t = createTransaction(tid, runMode);
         t.setAutoCommit(autoCommit);
         t.setRunMode(runMode);
@@ -283,9 +287,8 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     private class CheckpointService implements Runnable {
-
-        private static final int DEFAULT_COMMITTED_DATA_CACHE_SIZE = 32 * 1024 * 1024; // 32M
-        private static final int DEFAULT_CHECKPOINT_PERIOD = 1 * 60 * 60 * 1000; // 1小时
+        // 关闭CheckpointService时等待它结束
+        private final CountDownLatch latch = new CountDownLatch(1);
         private final Semaphore semaphore = new Semaphore(1);
         private final int committedDataCacheSize;
         private final long checkpointPeriod;
@@ -295,13 +298,11 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         private volatile boolean isClosed;
 
         CheckpointService(Map<String, String> config) {
-            // setName(getClass().getSimpleName());
-            // setDaemon(true);
-
+            // 默认32M
             committedDataCacheSize = MapUtils.getIntMB(config, "committed_data_cache_size_in_mb",
-                    DEFAULT_COMMITTED_DATA_CACHE_SIZE);
-            checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", DEFAULT_CHECKPOINT_PERIOD);
-
+                    32 * 1024 * 1024);
+            // 默认1小时
+            checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", 1 * 60 * 60 * 1000);
             // 默认1分钟
             long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval",
                     1 * 60 * 1000);
@@ -372,6 +373,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
                     logger.error("Failed to execute checkpoint", e);
                 }
             }
+            latch.countDown();
         }
     }
 }
