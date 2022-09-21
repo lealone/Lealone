@@ -24,7 +24,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
-import org.lealone.sql.executor.DefaultYieldableLocalUpdate;
+import org.lealone.sql.executor.YieldableLocalUpdate;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -596,7 +596,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public YieldableBase<Integer> createYieldableUpdate(
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new DefaultYieldableLocalUpdate(this, asyncHandler);
+        return new YieldableLocalUpdate(this, asyncHandler);
     }
 
     public TableFilter getTableFilter() {
