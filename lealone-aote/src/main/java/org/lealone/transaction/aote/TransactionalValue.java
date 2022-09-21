@@ -34,30 +34,30 @@ public class TransactionalValue {
     // 对于一个已经提交的值，如果当前事务因为隔离级别的原因读不到这个值，那么就返回SIGHTLESS
     public static final Object SIGHTLESS = new Object();
 
-    private static final AtomicReferenceFieldUpdater<TransactionalValue, AMTransaction> //
-    tUpdater = AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AMTransaction.class,
+    private static final AtomicReferenceFieldUpdater<TransactionalValue, AOTransaction> //
+    tUpdater = AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AOTransaction.class,
             "t");
 
     private Object value;
-    private volatile AMTransaction t;
+    private volatile AOTransaction t;
 
     public TransactionalValue(Object value) {
         this.value = value;
     }
 
-    public TransactionalValue(Object value, AMTransaction t) {
+    public TransactionalValue(Object value, AOTransaction t) {
         this.value = value;
         this.t = t;
     }
 
-    private void addLockOwner(AMTransaction t) {
+    private void addLockOwner(AOTransaction t) {
         LockOwner owner = new LockOwner();
         owner.logId = t.getUndoLog().getLogId();
         owner.oldValue = value;
         t.addTransactionalValue(this, owner);
     }
 
-    public void setTransaction(AMTransaction t) {
+    public void setTransaction(AOTransaction t) {
         if (this.t == null) {
             addLockOwner(t);
             this.t = t;
@@ -72,8 +72,8 @@ public class TransactionalValue {
         return value;
     }
 
-    public Object getValue(AMTransaction transaction) {
-        AMTransaction t = this.t;
+    public Object getValue(AOTransaction transaction) {
+        AOTransaction t = this.t;
         if (t == transaction)
             return value;
         switch (transaction.getIsolationLevel()) {
@@ -128,12 +128,12 @@ public class TransactionalValue {
     // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
     // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
     public long getTid() {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         return t == null ? 0 : t.transactionId;
     }
 
     public int getLogId() {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         if (t != null) {
             LockOwner owner = t.getLockOwner(this);
             if (owner != null)
@@ -146,7 +146,7 @@ public class TransactionalValue {
         return false;
     }
 
-    public boolean tryLock(AMTransaction t, int[] columnIndexes) {
+    public boolean tryLock(AOTransaction t, int[] columnIndexes) {
         if (t == this.t)
             return true;
         boolean ok = tUpdater.compareAndSet(this, null, t);
@@ -157,7 +157,7 @@ public class TransactionalValue {
     }
 
     public void unlock() {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         if (t == null)
             return;
         if (t.transactionEngine.containsRepeatableReadTransactions()) {
@@ -178,11 +178,11 @@ public class TransactionalValue {
     }
 
     public boolean isLocked(long tid, int[] columnIndexes) {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         return t == null ? false : t.transactionId == tid;
     }
 
-    public AMTransaction getLockOwner(int[] columnIndexes) {
+    public AOTransaction getLockOwner(int[] columnIndexes) {
         return t;
     }
 
@@ -213,7 +213,7 @@ public class TransactionalValue {
     }
 
     public boolean isCommitted() {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         return t == null || t.isCommitted();
     }
 
@@ -222,7 +222,7 @@ public class TransactionalValue {
     }
 
     public List<String> getRetryReplicationNames() {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         if (t != null) {
             LockOwner owner = t.getLockOwner(this);
             return owner != null ? owner.retryReplicationNames : null;
@@ -231,7 +231,7 @@ public class TransactionalValue {
     }
 
     public void setRetryReplicationNames(List<String> retryReplicationNames) {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         if (t != null) {
             LockOwner owner = t.getLockOwner(this);
             if (owner != null)
@@ -239,7 +239,7 @@ public class TransactionalValue {
         }
     }
 
-    public void gc(AMTransaction transaction) {
+    public void gc(AOTransaction transaction) {
     }
 
     public void write(DataBuffer buff, StorageDataType valueType) {
@@ -248,7 +248,7 @@ public class TransactionalValue {
     }
 
     public void writeMeta(DataBuffer buff) {
-        AMTransaction t = this.t;
+        AOTransaction t = this.t;
         if (t == null) {
             buff.putVarLong(0);
         } else {

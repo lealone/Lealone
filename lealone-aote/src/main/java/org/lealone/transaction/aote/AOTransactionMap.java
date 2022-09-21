@@ -27,13 +27,12 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapEntry;
 import org.lealone.transaction.aote.log.UndoLogRecord;
 
-//只支持单机场景
-public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
+public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
-    private final AMTransaction transaction;
-    protected final StorageMap<K, TransactionalValue> map;
+    private final AOTransaction transaction;
+    private final StorageMap<K, TransactionalValue> map;
 
-    public AMTransactionMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
+    public AOTransactionMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
         this.transaction = transaction;
         this.map = map;
     }
@@ -249,7 +248,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     public long size() {
         long sizeRaw = map.size();
         long undoLogSize = 0;
-        for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
+        for (AOTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
             undoLogSize += t.undoLog.size();
         }
         if (undoLogSize == 0) {
@@ -280,7 +279,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(),
                 new ObjectDataType(), null);
         try {
-            for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
+            for (AOTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
                 UndoLogRecord r = t.undoLog.getFirst();
                 while (r != null) {
                     String m = r.getMapName();
@@ -448,8 +447,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public AMTransactionMap<K, V> getInstance(Transaction transaction) {
-        return new AMTransactionMap<>((AMTransaction) transaction, map);
+    public AOTransactionMap<K, V> getInstance(Transaction transaction) {
+        return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 
     @Override
@@ -546,11 +545,13 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 if (old != null) {
                     r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                    if (old.getValue() == null) {// || old.getValue() == ValueNull.INSTANCE) { //唯一索引加上这个条件会出错
-                                                 // 辅助索引的值是ValueNull.INSTANCE
+                    if (old.getValue() == null) {
+                        // 唯一索引加上这个条件会出错
+                        // 辅助索引的值是ValueNull.INSTANCE
+                        // || old.getValue() == ValueNull.INSTANCE) {
+
                         if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
                             ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                            afterAddComplete();
                         } else {
                             ac.setAsyncResult((Throwable) null);
                         }
@@ -562,7 +563,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                 } else {
                     ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                    afterAddComplete();
                 }
             } else {
                 r.setUndone(true);
@@ -571,9 +571,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         };
         map.putIfAbsent(key, newTV, handler);
         return ac;
-    }
-
-    protected void afterAddComplete() {
     }
 
     @Override
@@ -639,7 +636,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         if (!(object instanceof Transaction.Listener)) {
             return Transaction.OPERATION_NEED_WAIT;
         }
-        AMTransaction t = oldTValue.getLockOwner(columnIndexes);
+        AOTransaction t = oldTValue.getLockOwner(columnIndexes);
         // 有可能在这一步事务提交了
         if (t == null)
             return Transaction.OPERATION_NEED_RETRY;

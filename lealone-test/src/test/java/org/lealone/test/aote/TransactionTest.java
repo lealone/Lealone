@@ -12,10 +12,10 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.TransactionalValue;
 
-public class AMTransactionTest extends AoteTestBase {
+public class TransactionTest extends AoteTestBase {
     @Test
     public void run() {
-        String mapName = AMTransactionTest.class.getSimpleName();
+        String mapName = TransactionTest.class.getSimpleName();
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map1 = t.openMap(mapName + "1", storage);
         map1.clear();

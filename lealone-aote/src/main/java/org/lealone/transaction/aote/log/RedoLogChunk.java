@@ -15,11 +15,6 @@ import org.lealone.db.DataBuffer;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 
-/**
- * A queue-based redo log chunk
- *  
- * @author zhh
- */
 class RedoLogChunk implements Comparable<RedoLogChunk> {
 
     static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + RedoLog.NAME_ID_SEPARATOR;

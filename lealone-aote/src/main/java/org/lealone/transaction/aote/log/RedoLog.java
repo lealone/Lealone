@@ -22,11 +22,6 @@ import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
-/**
- * A redo log
- *
- * @author zhh
- */
 public class RedoLog {
 
     private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;

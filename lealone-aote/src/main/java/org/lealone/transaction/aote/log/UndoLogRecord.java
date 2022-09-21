@@ -10,7 +10,7 @@ import java.util.List;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
@@ -65,7 +65,7 @@ public class UndoLogRecord {
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public void commit(AMTransactionEngine transactionEngine, long tid) {
+    public void commit(AOTransactionEngine transactionEngine, long tid) {
         if (undone || isForUpdate)
             return;
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
@@ -102,7 +102,7 @@ public class UndoLogRecord {
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
-    public void rollback(AMTransactionEngine transactionEngine) {
+    public void rollback(AOTransactionEngine transactionEngine) {
         if (undone || isForUpdate)
             return;
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
@@ -117,7 +117,7 @@ public class UndoLogRecord {
     }
 
     // 用于redo时，不关心oldValue
-    public void writeForRedo(DataBuffer writeBuffer, AMTransactionEngine transactionEngine) {
+    public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine transactionEngine) {
         if (undone || isForUpdate)
             return;
         StorageMap<?, ?> map = transactionEngine.getStorageMap(mapName);

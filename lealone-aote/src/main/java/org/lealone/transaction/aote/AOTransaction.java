@@ -28,13 +28,13 @@ import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 import org.lealone.transaction.aote.log.UndoLog;
 
-public class AMTransaction implements Transaction {
+public class AOTransaction implements Transaction {
 
     private static final LinkedList<WaitingTransaction> EMPTY_LINKED_LIST = new LinkedList<>();
 
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
-    final AMTransactionEngine transactionEngine;
+    final AOTransactionEngine transactionEngine;
     final long transactionId;
     final String transactionName;
     final LogSyncService logSyncService;
@@ -51,19 +51,20 @@ public class AMTransaction implements Transaction {
     private boolean autoCommit;
 
     // 被哪个事务锁住记录了
-    private volatile AMTransaction lockedBy;
+    private volatile AOTransaction lockedBy;
     private long lockStartTime;
     // 有哪些事务在等待我释放锁
-    private final AtomicReference<LinkedList<WaitingTransaction>> waitingTransactionsRef = new AtomicReference<>(
-            EMPTY_LINKED_LIST);
+    private final AtomicReference<LinkedList<WaitingTransaction>> waitingTransactionsRef //
+            = new AtomicReference<>(EMPTY_LINKED_LIST);
 
-    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.LockOwner> tValues = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.LockOwner> tValues //
+            = new ConcurrentHashMap<>();
 
-    public AMTransaction(AMTransactionEngine engine, long tid) {
+    public AOTransaction(AOTransactionEngine engine, long tid) {
         this(engine, tid, null);
     }
 
-    public AMTransaction(AMTransactionEngine engine, long tid, String hostAndPort) {
+    public AOTransaction(AOTransactionEngine engine, long tid, String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(hostAndPort, tid);
@@ -71,7 +72,7 @@ public class AMTransaction implements Transaction {
         status = Transaction.STATUS_OPEN;
     }
 
-    public AMTransactionEngine getTransactionEngine() {
+    public AOTransactionEngine getTransactionEngine() {
         return transactionEngine;
     }
 
@@ -148,19 +149,19 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> AMTransactionMap<K, V> openMap(String name, Storage storage) {
+    public <K, V> AOTransactionMap<K, V> openMap(String name, Storage storage) {
         return openMap(name, null, null, storage);
     }
 
     @Override
-    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType,
+    public <K, V> AOTransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage) {
         return openMap(name, keyType, valueType, storage, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType,
+    public <K, V> AOTransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
@@ -180,9 +181,9 @@ public class AMTransaction implements Transaction {
         return createTransactionMap(map, parameters);
     }
 
-    protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
+    protected <K, V> AOTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
             Map<String, String> parameters) {
-        return new AMTransactionMap<>(this, map);
+        return new AOTransactionMap<>(this, map);
     }
 
     @Override
@@ -231,8 +232,8 @@ public class AMTransaction implements Transaction {
             } else {
                 // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
                 // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
-                // RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
-                // undoLog);
+                // RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine,
+                // transactionId, undoLog);
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
                 logSyncService.addRedoLogRecord(r);
                 return true;
@@ -282,7 +283,7 @@ public class AMTransaction implements Transaction {
     // tid在分布式场景下可能是其他事务的tid
     protected void commitFinal(long tid) {
         // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
-        AMTransaction t = transactionEngine.removeTransaction(tid);
+        AOTransaction t = transactionEngine.removeTransaction(tid);
         if (t == null)
             return;
         t.commitTimestamp = t.transactionEngine.nextEvenTransactionId(); // 生成新的
@@ -320,15 +321,15 @@ public class AMTransaction implements Transaction {
 
     @Override
     public void wakeUpWaitingTransaction(Transaction transaction) {
-        wakeUpWaitingTransaction((AMTransaction) transaction);
+        wakeUpWaitingTransaction((AOTransaction) transaction);
     }
 
     @Override
     public int addWaitingTransaction(Object key, Transaction transaction, Listener listener) {
-        return addWaitingTransaction(key, (AMTransaction) transaction, listener);
+        return addWaitingTransaction(key, (AOTransaction) transaction, listener);
     }
 
-    void wakeUpWaitingTransaction(AMTransaction transaction) {
+    void wakeUpWaitingTransaction(AOTransaction transaction) {
         while (true) {
             LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
             LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(
@@ -350,7 +351,7 @@ public class AMTransaction implements Transaction {
         }
     }
 
-    int addWaitingTransaction(Object key, AMTransaction transaction, Listener listener) {
+    int addWaitingTransaction(Object key, AOTransaction transaction, Listener listener) {
         Session session = transaction.getSession();
         SessionStatus oldSessionStatus = session.getStatus();
         session.setStatus(SessionStatus.WAITING);
@@ -376,7 +377,7 @@ public class AMTransaction implements Transaction {
         }
     }
 
-    private void waitFor(AMTransaction transaction) {
+    private void waitFor(AOTransaction transaction) {
         lockedBy = transaction;
         lockStartTime = System.currentTimeMillis();
     }
@@ -421,7 +422,7 @@ public class AMTransaction implements Transaction {
         }
     }
 
-    private static String getMsg(long tid, Session session, AMTransaction transaction,
+    private static String getMsg(long tid, Session session, AOTransaction transaction,
             WaitingTransaction waitingTransaction) {
         return "transaction #" + tid + " in session " + session + " wait for transaction #"
                 + transaction.transactionId + " in session " + transaction.session + ", key: "

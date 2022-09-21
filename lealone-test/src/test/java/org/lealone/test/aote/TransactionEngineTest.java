@@ -18,10 +18,10 @@ import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.log.LogSyncService;
 
-public class AMTransactionEngineTest extends AoteTestBase {
+public class TransactionEngineTest extends AoteTestBase {
 
     public static Storage getStorage() {
         StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
@@ -79,7 +79,7 @@ public class AMTransactionEngineTest extends AoteTestBase {
 
     @Test
     public void testEngine() {
-        te = new AMTransactionEngine();
+        te = new AOTransactionEngine();
         te.init(getDefaultConfig());
         storage = getStorage();
 

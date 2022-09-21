@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
 import org.lealone.transaction.RedoLogSyncListener;
-import org.lealone.transaction.aote.AMTransaction;
+import org.lealone.transaction.aote.AOTransaction;
 
 public abstract class LogSyncService extends Thread {
 
@@ -110,7 +110,7 @@ public abstract class LogSyncService extends Thread {
         return true;
     }
 
-    public void asyncCommit(RedoLogRecord r, AMTransaction t, RedoLogSyncListener listener) {
+    public void asyncCommit(RedoLogRecord r, AOTransaction t, RedoLogSyncListener listener) {
         // 可能为null
         if (r == null)
             return;

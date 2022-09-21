@@ -17,7 +17,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
-public class AMTransactionMapTest extends AoteTestBase {
+public class TransactionMapTest extends AoteTestBase {
     @Test
     public void run() {
         testSyncOperations();
@@ -26,7 +26,7 @@ public class AMTransactionMapTest extends AoteTestBase {
     }
 
     private String createMapName(String name) {
-        return AMTransactionMapTest.class.getSimpleName() + "-" + name;
+        return TransactionMapTest.class.getSimpleName() + "-" + name;
     }
 
     void testSyncOperations() {
@@ -45,7 +45,8 @@ public class AMTransactionMapTest extends AoteTestBase {
         t.rollback();
         assertEquals(0, map.size());
         try {
-            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            map.put("1", "a");
             fail();
         } catch (IllegalStateException e) {
         }
@@ -62,7 +63,8 @@ public class AMTransactionMapTest extends AoteTestBase {
         map.get("1"); // 虽然事务commit后就自动关闭了，但是读操作还是允许的
 
         try {
-            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            map.put("1", "a");
             fail();
         } catch (IllegalStateException e) {
         }

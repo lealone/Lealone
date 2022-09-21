@@ -9,7 +9,7 @@ import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
 import org.lealone.transaction.RedoLogSyncListener;
-import org.lealone.transaction.aote.AMTransaction;
+import org.lealone.transaction.aote.AOTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
 
@@ -38,7 +38,7 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void asyncCommit(RedoLogRecord r, AMTransaction t, RedoLogSyncListener listener) {
+    public void asyncCommit(RedoLogRecord r, AOTransaction t, RedoLogSyncListener listener) {
         // 如果在同步周期内，可以提前提交事务
         if (!waitForSyncToCatchUp()) {
             t.asyncCommitComplete();

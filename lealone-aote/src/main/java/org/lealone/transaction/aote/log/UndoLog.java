@@ -8,7 +8,7 @@ package org.lealone.transaction.aote.log;
 import java.util.List;
 
 import org.lealone.db.DataBuffer;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.TransactionalValue;
 
 // 只有一个线程访问
@@ -70,7 +70,7 @@ public class UndoLog {
         removeLast();
     }
 
-    public void commit(AMTransactionEngine transactionEngine, long tid) {
+    public void commit(AOTransactionEngine transactionEngine, long tid) {
         UndoLogRecord r = first;
         while (r != null) {
             r.commit(transactionEngine, tid);
@@ -89,7 +89,7 @@ public class UndoLog {
     public void gc() { // TODO
     }
 
-    public void rollbackTo(AMTransactionEngine transactionEngine, int toLogId) {
+    public void rollbackTo(AOTransactionEngine transactionEngine, int toLogId) {
         while (logId > toLogId) {
             UndoLogRecord r = removeLast();
             r.rollback(transactionEngine);
@@ -108,7 +108,7 @@ public class UndoLog {
     }
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public DataBuffer toRedoLogRecordBuffer(AMTransactionEngine transactionEngine) {
+    public DataBuffer toRedoLogRecordBuffer(AOTransactionEngine transactionEngine) {
         if (isEmpty())
             return null;
         DataBuffer buffer = DataBuffer.create();

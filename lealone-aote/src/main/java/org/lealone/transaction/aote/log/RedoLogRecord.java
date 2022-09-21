@@ -15,7 +15,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.AOTransactionEngine;
 
 public abstract class RedoLogRecord {
 
@@ -78,7 +78,7 @@ public abstract class RedoLogRecord {
     }
 
     public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(
-            AMTransactionEngine transactionEngine, long transactionId, UndoLog undoLog) {
+            AOTransactionEngine transactionEngine, long transactionId, UndoLog undoLog) {
         return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
     }
 
@@ -237,11 +237,11 @@ public abstract class RedoLogRecord {
 
     static class LazyTransactionRedoLogRecord extends RedoLogRecord {
 
-        final AMTransactionEngine transactionEngine;
+        final AOTransactionEngine transactionEngine;
         final long transactionId;
         final UndoLog undoLog;
 
-        public LazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine, long transactionId,
+        public LazyTransactionRedoLogRecord(AOTransactionEngine transactionEngine, long transactionId,
                 UndoLog undoLog) {
             this.transactionEngine = transactionEngine;
             this.transactionId = transactionId;

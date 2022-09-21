@@ -18,8 +18,8 @@ public abstract class AoteTestBase extends TestBase {
 
     @Before
     public void before() {
-        te = AMTransactionEngineTest.getTransactionEngine();
-        storage = AMTransactionEngineTest.getStorage();
+        te = TransactionEngineTest.getTransactionEngine();
+        storage = TransactionEngineTest.getStorage();
     }
 
     @After
