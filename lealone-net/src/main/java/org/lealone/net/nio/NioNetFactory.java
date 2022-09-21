@@ -15,6 +15,7 @@ import org.lealone.net.NetServer;
 public class NioNetFactory extends NetFactoryBase {
 
     public static final String NAME = Constants.DEFAULT_NET_FACTORY_NAME;
+    public static final NioNetFactory INSTANCE = new NioNetFactory();
 
     public NioNetFactory() {
         super(NAME, NioEventLoopClient.getInstance());

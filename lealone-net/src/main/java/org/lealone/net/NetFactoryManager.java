@@ -10,6 +10,7 @@ import java.util.Map;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
+import org.lealone.net.nio.NioNetFactory;
 
 public class NetFactoryManager extends PluginManager<NetFactory> {
 
@@ -24,7 +25,12 @@ public class NetFactoryManager extends PluginManager<NetFactory> {
     }
 
     public static NetFactory getFactory(String name) {
-        return instance.getPlugin(name);
+        NetFactory factory;
+        if (NioNetFactory.NAME.equalsIgnoreCase(name))
+            factory = NioNetFactory.INSTANCE;
+        else
+            factory = instance.getPlugin(name);
+        return factory;
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
