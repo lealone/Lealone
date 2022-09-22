@@ -159,7 +159,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
         try {
             checkpointService.close();
-            checkpointService.latch.await();
+            if (checkpointService.isRunning)
+                checkpointService.latch.await();
         } catch (Exception e) {
         }
         try {
@@ -294,6 +295,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
+        private volatile boolean isRunning;
 
         CheckpointService(Map<String, String> config) {
             // 默认32M
@@ -358,6 +360,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         @Override
         public void run() {
+            isRunning = true;
             while (!isClosed) {
                 try {
                     semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
@@ -371,6 +374,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     logger.error("Failed to execute checkpoint", e);
                 }
             }
+            isRunning = false;
             latch.countDown();
         }
     }

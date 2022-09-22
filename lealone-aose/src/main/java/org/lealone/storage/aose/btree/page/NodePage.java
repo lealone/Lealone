@@ -130,8 +130,9 @@ public class NodePage extends LocalPage {
             p[i] = buff.getLong();
         }
         for (int i = 0; i <= keyLength; i++) {
-            buff.get(); // pageType
-            buff.getInt(); // replicationHostIds
+            int pageType = buff.get();
+            if (pageType == 0)
+                buff.getInt(); // replicationHostIds
             children[i] = new PageReference(null, p[i]);
         }
         buff = expandPage(buff, type, start, pageLength);
