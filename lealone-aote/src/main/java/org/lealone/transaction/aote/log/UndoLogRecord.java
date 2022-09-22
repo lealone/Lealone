@@ -114,6 +114,7 @@ public class UndoLogRecord {
                 newTV.rollback(oldValue);
             }
         }
+        unlock();
     }
 
     // 用于redo时，不关心oldValue
