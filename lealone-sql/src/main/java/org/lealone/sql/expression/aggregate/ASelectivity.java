@@ -35,8 +35,8 @@ public class ASelectivity extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("SELECTIVITY", isDistributed);
+    public String getSQL() {
+        return getSQL("SELECTIVITY");
     }
 
     // 会忽略distinct

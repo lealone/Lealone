@@ -221,10 +221,10 @@ public abstract class BuiltInFunction extends Function {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         buff.append('(');
-        appendArgs(buff, isDistributed);
+        appendArgs(buff);
         return buff.append(')').toString();
     }
 

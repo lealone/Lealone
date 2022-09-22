@@ -723,18 +723,6 @@ public class Select extends Query {
 
     @Override
     public String getPlanSQL() {
-        return getPlanSQL(false, false);
-    }
-
-    @Override
-    public String getPlanSQL(boolean isDistributed) {
-        if (isGroupQuery() || getLimit() != null || getOffset() != null)
-            return getPlanSQL(isDistributed, false);
-        else
-            return getSQL();
-    }
-
-    public String getPlanSQL(boolean isDistributed, boolean isMerged) {
         // can not use the field sqlStatement because the parameter
         // indexes may be incorrect: ? may be in fact ?2 for a subquery
         // but indexes may be set manually as well
@@ -745,14 +733,10 @@ public class Select extends Query {
         }
 
         int columnCount = visibleColumnCount;
-        if (isDistributed)
-            columnCount = expressions.size();
         for (int i = 0; i < columnCount; i++) {
-            if (isDistributed && havingIndex >= 0 && i == havingIndex)
-                continue;
             buff.appendExceptFirst(",");
             buff.append('\n');
-            buff.append(StringUtils.indent(exprList[i].getSQL(isDistributed), 4, false));
+            buff.append(StringUtils.indent(exprList[i].getSQL(), 4, false));
         }
         buff.append("\nFROM ");
         TableFilter filter = topTableFilter;
@@ -775,11 +759,8 @@ public class Select extends Query {
                 } while (f != null);
             }
         }
-        // 合并时可以忽略WHERE子句
-        if (!isMerged) {
-            if (condition != null) {
-                buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
-            }
+        if (condition != null) {
+            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
         }
         if (groupIndex != null) {
             buff.append("\nGROUP BY ");
@@ -788,7 +769,7 @@ public class Select extends Query {
                 Expression g = exprList[gi];
                 g = g.getNonAliasExpression();
                 buff.appendExceptFirst(", ");
-                buff.append(StringUtils.unEnclose(g.getSQL(isDistributed)));
+                buff.append(StringUtils.unEnclose(g.getSQL()));
             }
         }
         if (group != null) {
@@ -796,23 +777,19 @@ public class Select extends Query {
             buff.resetCount();
             for (Expression g : group) {
                 buff.appendExceptFirst(", ");
-                buff.append(StringUtils.unEnclose(g.getSQL(isDistributed)));
+                buff.append(StringUtils.unEnclose(g.getSQL()));
             }
         }
-
-        // 合并时可以忽略HAVING、ORDER BY等等子句
-        if (isMerged)
-            return buff.toString();
 
         if (having != null) {
             // could be set in addGlobalCondition
             // in this case the query is not run directly, just getPlanSQL is
             // called
             Expression h = having;
-            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL(isDistributed)));
+            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL()));
         } else if (havingIndex >= 0) {
             Expression h = exprList[havingIndex];
-            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL(isDistributed)));
+            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL()));
         }
         if (sort != null) {
             buff.append("\nORDER BY ").append(sort.getSQL(exprList, visibleColumnCount));
@@ -826,18 +803,9 @@ public class Select extends Query {
             }
         }
         if (limitExpr != null) {
-            if (isDistributed) {
-                int limit = limitExpr.getValue(session).getInt();
-                if (offsetExpr != null)
-                    limit += offsetExpr.getValue(session).getInt();
-
-                buff.append("\nLIMIT ").append(limit);
-            } else {
-                buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL(isDistributed)));
-                if (offsetExpr != null) {
-                    buff.append(" OFFSET ")
-                            .append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
-                }
+            buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL()));
+            if (offsetExpr != null) {
+                buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL()));
             }
         }
         if (sampleSizeExpr != null) {

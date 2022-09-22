@@ -60,7 +60,7 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "(NEXT VALUE FOR " + sequence.getSQL() + ")";
     }
 

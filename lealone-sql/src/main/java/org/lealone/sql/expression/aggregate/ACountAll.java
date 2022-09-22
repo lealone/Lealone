@@ -39,7 +39,7 @@ public class ACountAll extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "COUNT(*)";
     }
 

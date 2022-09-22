@@ -130,18 +130,17 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         switch (compareType) {
         case IS_NULL:
-            sql = left.getSQL(isDistributed) + " IS NULL";
+            sql = left.getSQL() + " IS NULL";
             break;
         case IS_NOT_NULL:
-            sql = left.getSQL(isDistributed) + " IS NOT NULL";
+            sql = left.getSQL() + " IS NOT NULL";
             break;
         default:
-            sql = left.getSQL(isDistributed) + " " + getCompareOperator(compareType) + " "
-                    + right.getSQL(isDistributed);
+            sql = left.getSQL() + " " + getCompareOperator(compareType) + " " + right.getSQL();
         }
         return "(" + sql + ")";
     }

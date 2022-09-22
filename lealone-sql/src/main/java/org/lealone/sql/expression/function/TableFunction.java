@@ -65,13 +65,13 @@ public class TableFunction extends BuiltInFunction {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(getName());
         buff.append('(');
         int i = 0;
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(columnList[i++].getCreateSQL()).append('=').append(e.getSQL(isDistributed));
+            buff.append(columnList[i++].getCreateSQL()).append('=').append(e.getSQL());
         }
         return buff.append(')').toString();
     }

@@ -16,8 +16,8 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.subquery.SubQueryResult;
-import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.NotFromResolverVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -123,9 +123,9 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StringBuilder buff = new StringBuilder();
-        buff.append('(').append(left.getSQL(isDistributed)).append(' ');
+        buff.append('(').append(left.getSQL()).append(' ');
         if (all) {
             buff.append(Comparison.getCompareOperator(compareType)).append(" ALL");
         } else {

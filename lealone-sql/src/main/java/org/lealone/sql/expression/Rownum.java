@@ -53,7 +53,7 @@ public class Rownum extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "ROWNUM()";
     }
 

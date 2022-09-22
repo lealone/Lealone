@@ -80,7 +80,7 @@ public class ADefault extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String text;
         switch (type) {
         case SUM:
@@ -93,35 +93,18 @@ public class ADefault extends BuiltInAggregate {
             text = "MAX";
             break;
         case AVG:
-            if (isDistributed) {
-                if (distinct) {
-                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT "
-                            + on.getSQL(isDistributed) + ")";
-                } else {
-                    return "COUNT(" + on.getSQL(isDistributed) + "), SUM(" + on.getSQL(isDistributed)
-                            + ")";
-                }
-            }
             text = "AVG";
             break;
         case STDDEV_POP:
-            if (isDistributed)
-                return getSQL_STDDEV_VAR();
             text = "STDDEV_POP";
             break;
         case STDDEV_SAMP:
-            if (isDistributed)
-                return getSQL_STDDEV_VAR();
             text = "STDDEV_SAMP";
             break;
         case VAR_POP:
-            if (isDistributed)
-                return getSQL_STDDEV_VAR();
             text = "VAR_POP";
             break;
         case VAR_SAMP:
-            if (isDistributed)
-                return getSQL_STDDEV_VAR();
             text = "VAR_SAMP";
             break;
         case BOOL_AND:
@@ -139,17 +122,7 @@ public class ADefault extends BuiltInAggregate {
         default:
             throw DbException.getInternalError("type=" + type);
         }
-        return getSQL(text, isDistributed);
-    }
-
-    private String getSQL_STDDEV_VAR() {
-        String onSQL = on.getSQL(true);
-        if (distinct) {
-            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL
-                    + " * " + onSQL + ")";
-        } else {
-            return "COUNT(" + onSQL + "), SUM(" + onSQL + "), SUM(" + onSQL + " * " + onSQL + ")";
-        }
+        return getSQL(text);
     }
 
     private class AggregateDataDefault extends AggregateData {

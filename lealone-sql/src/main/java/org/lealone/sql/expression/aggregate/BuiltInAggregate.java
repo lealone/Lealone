@@ -214,11 +214,11 @@ public abstract class BuiltInAggregate extends Aggregate {
         return a;
     }
 
-    protected String getSQL(String text, boolean isDistributed) {
+    protected String getSQL(String text) {
         if (distinct) {
-            return text + "(DISTINCT " + on.getSQL(isDistributed) + ")";
+            return text + "(DISTINCT " + on.getSQL() + ")";
         }
-        return text + StringUtils.enclose(on.getSQL(isDistributed));
+        return text + StringUtils.enclose(on.getSQL());
     }
 
     @Override

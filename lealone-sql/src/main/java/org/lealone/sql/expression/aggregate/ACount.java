@@ -36,8 +36,8 @@ public class ACount extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("COUNT", isDistributed);
+    public String getSQL() {
+        return getSQL("COUNT");
     }
 
     private class AggregateDataCount extends AggregateData {

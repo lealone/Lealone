@@ -301,10 +301,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return getSQL();
     }
 
-    public String getPlanSQL(boolean isDistributed) {
-        return getSQL();
-    }
-
     /**
      * Get the SQL snippet of the value list.
      *

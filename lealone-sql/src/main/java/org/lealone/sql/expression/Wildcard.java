@@ -78,7 +78,7 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         if (table == null) {
             return "*";
         }

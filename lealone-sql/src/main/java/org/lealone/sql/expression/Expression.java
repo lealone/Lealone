@@ -114,12 +114,7 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      * @return the SQL statement
      */
     @Override
-    public abstract String getSQL(boolean isDistributed);
-
-    @Override
-    public String getSQL() {
-        return getSQL(false);
-    }
+    public abstract String getSQL();
 
     /**
      * Update an aggregate value.

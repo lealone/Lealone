@@ -84,14 +84,14 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         if (regexp) {
-            sql = left.getSQL(isDistributed) + " REGEXP " + right.getSQL(isDistributed);
+            sql = left.getSQL() + " REGEXP " + right.getSQL();
         } else {
-            sql = left.getSQL(isDistributed) + " LIKE " + right.getSQL(isDistributed);
+            sql = left.getSQL() + " LIKE " + right.getSQL();
             if (escape != null) {
-                sql += " ESCAPE " + escape.getSQL(isDistributed);
+                sql += " ESCAPE " + escape.getSQL();
             }
         }
         return "(" + sql + ")";

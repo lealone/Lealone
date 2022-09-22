@@ -122,7 +122,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         if (this == DEFAULT) {
             return "DEFAULT";
         }

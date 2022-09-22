@@ -67,8 +67,8 @@ public class Alias extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return expr.getSQL(isDistributed) + " AS " + LealoneSQLParser.quoteIdentifier(alias);
+    public String getSQL() {
+        return expr.getSQL() + " AS " + LealoneSQLParser.quoteIdentifier(alias);
     }
 
     @Override

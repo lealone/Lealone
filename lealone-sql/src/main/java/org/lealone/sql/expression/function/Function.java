@@ -127,10 +127,10 @@ public abstract class Function extends Expression {
         return allConst;
     }
 
-    protected void appendArgs(StatementBuilder buff, boolean isDistributed) {
+    protected void appendArgs(StatementBuilder buff) {
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
+            buff.append(e.getSQL());
         }
     }
 
@@ -173,9 +173,7 @@ public abstract class Function extends Expression {
      * @return the SQL snippet.
      */
     @Override
-    public String getSQL() {
-        return super.getSQL();
-    }
+    public abstract String getSQL();
 
     public void setParameter(int index, Expression param) {
     }

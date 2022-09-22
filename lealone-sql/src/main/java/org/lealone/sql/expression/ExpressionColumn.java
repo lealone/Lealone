@@ -78,7 +78,7 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         boolean quote = getDatabase().getSettings().databaseToUpper;
         if (column != null) {

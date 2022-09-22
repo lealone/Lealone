@@ -90,17 +90,16 @@ public class Operation extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         if (opType == NEGATE) {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = "- " + left.getSQL(isDistributed);
+            sql = "- " + left.getSQL();
         } else {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = left.getSQL(isDistributed) + " " + getOperationToken() + " "
-                    + right.getSQL(isDistributed);
+            sql = left.getSQL() + " " + getOperationToken() + " " + right.getSQL();
         }
         return "(" + sql + ")";
     }

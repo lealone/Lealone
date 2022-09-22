@@ -95,24 +95,24 @@ public class AGroupConcat extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder("GROUP_CONCAT(");
         if (distinct) {
             buff.append("DISTINCT ");
         }
-        buff.append(on.getSQL(isDistributed));
+        buff.append(on.getSQL());
         if (groupConcatOrderList != null) {
             buff.append(" ORDER BY ");
             for (SelectOrderBy o : groupConcatOrderList) {
                 buff.appendExceptFirst(", ");
-                buff.append(o.expression.getSQL(isDistributed));
+                buff.append(o.expression.getSQL());
                 if (o.descending) {
                     buff.append(" DESC");
                 }
             }
         }
         if (groupConcatSeparator != null) {
-            buff.append(" SEPARATOR ").append(groupConcatSeparator.getSQL(isDistributed));
+            buff.append(" SEPARATOR ").append(groupConcatSeparator.getSQL());
         }
         return buff.append(')').toString();
     }

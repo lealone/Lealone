@@ -30,7 +30,7 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "?" + (index + 1);
     }
 

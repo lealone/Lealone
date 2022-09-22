@@ -39,8 +39,8 @@ public class AHistogram extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("HISTOGRAM", isDistributed);
+    public String getSQL() {
+        return getSQL("HISTOGRAM");
     }
 
     // 会忽略distinct

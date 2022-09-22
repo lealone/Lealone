@@ -29,27 +29,25 @@ public interface IExpression {
 
     String getAlias();
 
-    String getTableName();
-
     String getSchemaName();
 
-    int getDisplaySize();
+    String getTableName();
 
     String getColumnName();
 
+    int getDisplaySize();
+
     long getPrecision();
+
+    int getScale();
 
     int getNullable();
 
     boolean isAutoIncrement();
 
-    int getScale();
-
-    String getSQL(boolean isDistributed);
+    boolean isConstant();
 
     IExpression getNonAliasExpression();
-
-    boolean isConstant();
 
     void getDependencies(Set<?> dependencies);
 

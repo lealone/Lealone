@@ -417,17 +417,17 @@ public class DateTimeFunction extends BuiltInFunction {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         buff.append('(');
         switch (info.type) {
         case EXTRACT: {
             ValueString v = (ValueString) ((ValueExpression) args[0]).getValue(null);
-            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL(isDistributed));
+            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL());
             break;
         }
         default:
-            appendArgs(buff, isDistributed);
+            appendArgs(buff);
         }
         return buff.append(')').toString();
     }

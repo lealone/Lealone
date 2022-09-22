@@ -101,7 +101,7 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder("(");
         buff.append(left.getSQL()).append(" IN(");
         for (Expression e : valueList) {

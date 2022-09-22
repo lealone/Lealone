@@ -791,7 +791,7 @@ public class SystemFunction extends BuiltInFunction {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         if (info.type == CASE) {
             if (args[0] != null) {
@@ -809,17 +809,17 @@ public class SystemFunction extends BuiltInFunction {
         buff.append('(');
         switch (info.type) {
         case CAST: {
-            buff.append(args[0].getSQL(isDistributed)).append(" AS ")
+            buff.append(args[0].getSQL()).append(" AS ")
                     .append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         case CONVERT: {
-            buff.append(args[0].getSQL(isDistributed)).append(',')
+            buff.append(args[0].getSQL()).append(',')
                     .append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         default:
-            appendArgs(buff, isDistributed);
+            appendArgs(buff);
         }
         return buff.append(')').toString();
     }

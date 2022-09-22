@@ -74,11 +74,11 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder("(");
         for (Expression e : list) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
+            buff.append(e.getSQL());
         }
         if (list.length == 1) {
             buff.append(',');
