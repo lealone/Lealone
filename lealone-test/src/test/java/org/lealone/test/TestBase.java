@@ -31,6 +31,14 @@ public class TestBase extends Assert {
         void execute(String sql);
     }
 
+    // 一个标记接口，在Embedded模式下运行的测试类
+    public static interface EmbeddedTest {
+    }
+
+    // 一个标记接口，在Client-Server模式下运行的测试类
+    public static interface ClientServerTest {
+    }
+
     // 一个标记接口，指示那些通过main方式运行的测试类
     public static interface MainTest {
     }

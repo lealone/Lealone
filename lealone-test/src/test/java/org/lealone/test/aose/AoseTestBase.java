@@ -12,7 +12,7 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
-public abstract class AoseTestBase extends TestBase {
+public abstract class AoseTestBase extends TestBase implements TestBase.EmbeddedTest {
 
     protected AOStorage storage;
     protected BTreeMap<Integer, String> map;

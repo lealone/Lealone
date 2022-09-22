@@ -11,7 +11,7 @@ import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.TransactionEngine;
 
-public abstract class AoteTestBase extends TestBase {
+public abstract class AoteTestBase extends TestBase implements TestBase.EmbeddedTest {
 
     protected TransactionEngine te;
     protected Storage storage;

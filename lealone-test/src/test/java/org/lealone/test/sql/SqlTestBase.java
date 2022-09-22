@@ -20,7 +20,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.test.TestBase;
 import org.lealone.test.start.TcpServerStart;
 
-public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
+public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestBase.ClientServerTest {
 
     protected Connection conn;
     protected Statement stmt;
