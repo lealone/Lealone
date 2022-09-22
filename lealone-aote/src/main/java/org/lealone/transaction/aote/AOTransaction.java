@@ -320,43 +320,21 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public void wakeUpWaitingTransaction(Transaction transaction) {
-        wakeUpWaitingTransaction((AOTransaction) transaction);
-    }
-
-    @Override
     public int addWaitingTransaction(Object key, Transaction transaction, Listener listener) {
         return addWaitingTransaction(key, (AOTransaction) transaction, listener);
     }
 
-    void wakeUpWaitingTransaction(AOTransaction transaction) {
-        while (true) {
-            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
-            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(
-                    waitingTransactions);
-            WaitingTransaction target = null;
-            for (WaitingTransaction wt : newWaitingTransactions) {
-                if (wt.getTransaction() == transaction) {
-                    target = wt;
-                    break;
-                }
-            }
-            if (target == null)
-                return;
-            newWaitingTransactions.remove(target);
-            if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
-                target.wakeUp();
-                return;
-            }
-        }
-    }
-
     int addWaitingTransaction(Object key, AOTransaction transaction, Listener listener) {
+        // 如果已经提交了，通知重试
+        if (status == STATUS_CLOSED)
+            return OPERATION_NEED_RETRY;
+
         Session session = transaction.getSession();
         SessionStatus oldSessionStatus = session.getStatus();
         session.setStatus(SessionStatus.WAITING);
         transaction.setStatus(STATUS_WAITING);
         transaction.waitFor(this);
+
         WaitingTransaction wt = new WaitingTransaction(key, transaction, listener);
         LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
         while (true) {

@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
 
@@ -124,8 +125,6 @@ public interface Transaction {
 
     void rollbackToSavepoint(int savepointId);
 
-    void wakeUpWaitingTransaction(Transaction transaction);
-
     int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
 
     interface Listener {
@@ -213,6 +212,7 @@ public interface Transaction {
             // 避免重复调用
             if (transaction.getStatus() == STATUS_WAITING) {
                 transaction.setStatus(STATUS_OPEN);
+                transaction.getSession().setStatus(SessionStatus.RETRYING);
                 if (listener != null)
                     listener.wakeUp();
             }

@@ -12,6 +12,7 @@ public enum SessionStatus {
     TRANSACTION_COMMITTING,
 
     WAITING,
+    RETRYING,
     STATEMENT_RUNNING,
     STATEMENT_COMPLETED,
 
