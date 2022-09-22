@@ -384,8 +384,6 @@ public class AOTransaction implements Transaction {
 
     @Override
     public void checkTimeout() {
-        if (lockedBy != null)
-            return;
         if (lockedBy != null && lockStartTime != 0
                 && System.currentTimeMillis() - lockStartTime > session.getLockTimeout()) {
             boolean isDeadlock = false;

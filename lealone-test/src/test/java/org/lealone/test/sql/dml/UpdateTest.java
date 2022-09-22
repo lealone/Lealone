@@ -22,7 +22,6 @@ public class UpdateTest extends SqlTestBase {
         testUpdatePrimaryKey();
         testUpdateIndex();
         testRowLock();
-        // testColumnLock();
     }
 
     void testUpdatePrimaryKey() {
@@ -120,64 +119,6 @@ public class UpdateTest extends SqlTestBase {
 
             sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '02'";
             assertEquals("a2", getStringValue(1, true));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    void testColumnLock() {
-        try {
-            conn.setAutoCommit(false);
-            sql = "UPDATE UpdateTest SET f1 = 'a2' WHERE pk = '02'";
-            assertEquals(1, executeUpdate(sql));
-
-            // 因为支持列锁，所以两个事务更新同一行的不同字段不会产生冲突
-            try {
-                Connection conn2 = getConnection();
-                conn2.setAutoCommit(false);
-                Statement stmt2 = conn2.createStatement();
-                String sql2 = "UPDATE UpdateTest SET f2 = 'c' WHERE pk = '02'";
-                stmt2.executeUpdate(sql2);
-                conn2.commit();
-                stmt2.close();
-                conn2.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            // 第三个事务不能进行，因为第一个事务锁住f1字段了
-            Connection conn3 = null;
-            try {
-                conn3 = getConnection();
-                conn3.setAutoCommit(false);
-                Statement stmt3 = conn3.createStatement();
-                stmt3.executeUpdate("SET LOCK_TIMEOUT = 300");
-                String sql3 = "UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'";
-                stmt3.executeUpdate(sql3);
-                fail();
-            } catch (Exception e) {
-                assertLockTimeout(conn3, e);
-            }
-
-            Connection conn4 = getConnection();
-            conn4.setAutoCommit(false);
-            Statement stmt4 = conn4.createStatement();
-            String sql4 = "UPDATE UpdateTest SET f3 = 4 WHERE pk = '02'";
-            stmt4.executeUpdate(sql4);
-
-            // 可以不按顺序提交事务
-
-            conn4.commit();
-            stmt4.close();
-            conn4.close();
-
-            conn.commit();
-            conn.setAutoCommit(true);
-
-            sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '02'";
-            assertEquals("a2", getStringValue(1));
-            assertEquals("c", getStringValue(2));
-            assertEquals(4, getIntValue(3, true));
         } catch (Exception e) {
             e.printStackTrace();
         }
