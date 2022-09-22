@@ -6,13 +6,6 @@
 package org.lealone.test.aote;
 
 import org.junit.Test;
-import org.lealone.db.index.standard.ValueDataType;
-import org.lealone.db.index.standard.VersionedValue;
-import org.lealone.db.index.standard.VersionedValueType;
-import org.lealone.db.result.SortOrder;
-import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
-import org.lealone.db.value.ValueInt;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
@@ -22,7 +15,6 @@ public class TransactionMapTest extends AoteTestBase {
     public void run() {
         testSyncOperations();
         testTryOperations();
-        // testColumnLock();
     }
 
     private String createMapName(String name) {
@@ -133,100 +125,5 @@ public class TransactionMapTest extends AoteTestBase {
         t4.commit();
         t5.rollback();
         assertNull(map.get("1"));
-    }
-
-    void testColumnLock() {
-        String mapName = createMapName("testColumnLock");
-        int columns = 4;
-        int[] sortTypes = new int[columns];
-        for (int i = 0; i < columns; i++) {
-            sortTypes[i] = SortOrder.ASCENDING;
-        }
-        ValueDataType valueType = new ValueDataType(null, null, sortTypes);
-        VersionedValueType vvType = new VersionedValueType(valueType, columns);
-
-        Transaction t = te.beginTransaction(false);
-        TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
-        map.clear();
-
-        String key = "1";
-
-        Object oldValue = map.get(key);
-        ValueArray valueArray = createValueArray(0, 0, 0, 0);
-        VersionedValue vv = new VersionedValue(1, valueArray);
-        map.addIfAbsent(key, vv).get();
-        t.commit();
-
-        // int[] columnIndexes1 = { 0 };
-        Transaction t1 = te.beginTransaction(false);
-        TransactionMap<String, VersionedValue> map1 = t1.openMap(mapName, storage);
-        // int[] columnIndexes2 = { 1 };
-        Transaction t2 = te.beginTransaction(false);
-        TransactionMap<String, VersionedValue> map2 = t2.openMap(mapName, storage);
-
-        Transaction t3 = te.beginTransaction(false);
-        TransactionMap<String, VersionedValue> map3 = t3.openMap(mapName, storage);
-
-        // vv = map1.get(key);
-        // valueArray = vv.value;
-        // valueArray.getList()[0] = ValueInt.get(11);
-
-        int columnIndex;
-        boolean ok;
-        oldValue = map1.getTransactionalValue(key);
-        columnIndex = 0;
-        vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex },
-                oldValue) == Transaction.OPERATION_COMPLETE;
-        assertTrue(ok);
-
-        oldValue = map2.getTransactionalValue(key);
-        columnIndex = 1;
-        vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex },
-                oldValue) == Transaction.OPERATION_COMPLETE;
-        assertTrue(ok);
-
-        oldValue = map1.getTransactionalValue(key);
-        columnIndex = 2;
-        vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex },
-                oldValue) == Transaction.OPERATION_COMPLETE;
-        assertTrue(ok);
-
-        oldValue = map2.getTransactionalValue(key);
-        columnIndex = 3;
-        vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex },
-                oldValue) == Transaction.OPERATION_COMPLETE;
-        assertTrue(ok);
-
-        oldValue = map3.getTransactionalValue(key);
-        columnIndex = 3;
-        vv = createVersionedValue(map3, key, columnIndex, 1);
-        ok = map3.tryUpdate(key, vv, new int[] { columnIndex },
-                oldValue) != Transaction.OPERATION_COMPLETE;
-        assertTrue(ok);
-
-        t2.rollback();
-        // t2.commit();
-        t1.commit();
-    }
-
-    private ValueArray createValueArray(int... values) {
-        ValueInt[] a = new ValueInt[values.length];
-        for (int i = 0; i < a.length; i++)
-            a[i] = ValueInt.get(values[i]);
-        return ValueArray.get(a);
-    }
-
-    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key,
-            int columnIndex, int value) {
-        VersionedValue vv = map.get(key);
-        Value[] values = vv.value.getList().clone();
-        values[columnIndex] = ValueInt.get(value);
-        ValueArray valueArray = ValueArray.get(values);
-        vv = new VersionedValue(1, valueArray);
-        return vv;
     }
 }

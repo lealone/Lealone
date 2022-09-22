@@ -21,7 +21,7 @@ public class RangeTableTest extends DbObjectTestBase {
 
         rs = executeQuery("select count(*) from " + name + "(1,10,2)");
         assertTrue(rs.next());
-        assertEquals(5, getInt(rs, 1));
+        assertEquals(10, getInt(rs, 1));
         rs.close();
 
         rs = executeQuery("select * from " + name + "(1,10,2)");

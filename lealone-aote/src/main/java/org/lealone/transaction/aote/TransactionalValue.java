@@ -179,7 +179,7 @@ public class TransactionalValue {
 
     public boolean isLocked(long tid, int[] columnIndexes) {
         AOTransaction t = this.t;
-        return t == null ? false : t.transactionId == tid;
+        return t == null ? false : t.transactionId != tid;
     }
 
     public AOTransaction getLockOwner(int[] columnIndexes) {

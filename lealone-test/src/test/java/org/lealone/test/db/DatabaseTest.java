@@ -60,22 +60,5 @@ public class DatabaseTest extends DbObjectTestBase {
             assertTrue(e instanceof DbException);
             assertEquals(ErrorCode.DATABASE_ALREADY_EXISTS_1, ((DbException) e).getErrorCode());
         }
-
-        String dbName = "CreateDatabaseTest4";
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName //
-                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1)");
-        Database db = LealoneDatabase.getInstance().findDatabase(dbName);
-        assertNotNull(db);
-        assertNotNull(db.getReplicationParameters());
-        assertTrue(db.getReplicationParameters().containsKey("class"));
-
-        executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:2)");
-
-        db = LealoneDatabase.getInstance().findDatabase(dbName);
-        assertNotNull(db);
-        assertNotNull(db.getReplicationParameters());
-        assertEquals("2", db.getReplicationParameters().get("replication_factor"));
-        // executeUpdate("DROP DATABASE IF EXISTS " + dbName);
     }
 }

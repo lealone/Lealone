@@ -97,6 +97,7 @@ public class TransactionEngineTest extends AoteTestBase {
         config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
         te = getTransactionEngine(config);
+        new Thread(te.getRunnable()).start();
         storage = getStorage();
 
         Transaction t1 = te.beginTransaction(false);

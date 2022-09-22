@@ -19,7 +19,7 @@ public class MetaTableTest extends DbObjectTestBase {
         String infoSchemaName = "INFORMATION_SCHEMA";
         Schema infoSchema = db.findSchema(session, infoSchemaName);
         ArrayList<Table> tables = infoSchema.getAllTablesAndViews();
-        assertEquals(MetaTable.getMetaTableTypeCount(), tables.size());
+        assertEquals(MetaTable.getMetaTableTypeCount() + 1, tables.size()); // 多了table_alter_history表
 
         for (Table table : tables) {
             p("table name: " + table.getName());

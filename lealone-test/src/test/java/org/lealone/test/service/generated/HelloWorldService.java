@@ -44,16 +44,11 @@ public interface HelloWorldService {
         private final PreparedStatement ps5;
 
         private ServiceProxy(String url) {
-            ps1 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE HELLO_WORLD_SERVICE SAY_HELLO()");
-            ps2 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_DATE()");
-            ps3 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_INT()");
-            ps4 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_TWO(?, ?)");
-            ps5 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE HELLO_WORLD_SERVICE SAY_GOODBYE_TO(?)");
+            ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE SAY_HELLO()");
+            ps2 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_DATE()");
+            ps3 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_INT()");
+            ps4 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_TWO(?, ?)");
+            ps5 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE SAY_GOODBYE_TO(?)");
         }
 
         @Override

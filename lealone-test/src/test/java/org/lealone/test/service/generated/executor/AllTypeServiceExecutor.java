@@ -49,9 +49,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Clob p_f19_1 = methodArgs[18].getClob();
             UUID p_f20_1 = methodArgs[19].getUuid();
             Array p_f21_1 = methodArgs[20].getArray();
-            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1,
-                    p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1,
-                    p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
+            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return ValueNull.INSTANCE;
             return ValueString.get(result1.encode());
@@ -87,15 +85,11 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             String p_f15_1 = ServiceExecutor.toString("F15", methodArgs);
             String p_f16_1 = ServiceExecutor.toString("F16", methodArgs);
             String p_f17_1 = ServiceExecutor.toString("F17", methodArgs);
-            Blob p_f18_1 = new org.lealone.db.value.ReadonlyBlob(
-                    ServiceExecutor.toString("F18", methodArgs));
-            Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(
-                    ServiceExecutor.toString("F19", methodArgs));
+            Blob p_f18_1 = new org.lealone.db.value.ReadonlyBlob(ServiceExecutor.toString("F18", methodArgs));
+            Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(ServiceExecutor.toString("F19", methodArgs));
             UUID p_f20_1 = java.util.UUID.fromString(ServiceExecutor.toString("F20", methodArgs));
             Array p_f21_1 = new org.lealone.db.value.ReadonlyArray(methodArgs.get("F21"));
-            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1,
-                    p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1,
-                    p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
+            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return null;
             return result1.encode();
@@ -137,9 +131,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(ja.getString(18));
             UUID p_f20_1 = java.util.UUID.fromString(ja.getValue(19).toString());
             Array p_f21_1 = new org.lealone.db.value.ReadonlyArray(ja.getString(20));
-            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1,
-                    p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1,
-                    p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
+            User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return null;
             return result1.encode();

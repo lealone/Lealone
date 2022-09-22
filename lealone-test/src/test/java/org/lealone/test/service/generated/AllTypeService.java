@@ -20,9 +20,7 @@ import org.lealone.test.orm.generated.User;
  */
 public interface AllTypeService {
 
-    User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8,
-            Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16,
-            String f17, Blob f18, Clob f19, UUID f20, Array f21);
+    User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21);
 
     UUID testUuid(UUID f1);
 
@@ -46,16 +44,12 @@ public interface AllTypeService {
         private final PreparedStatement ps2;
 
         private ServiceProxy(String url) {
-            ps1 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE ALL_TYPE_SERVICE TEST_TYPE(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            ps2 = ClientServiceProxy.prepareStatement(url,
-                    "EXECUTE SERVICE ALL_TYPE_SERVICE TEST_UUID(?)");
+            ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE ALL_TYPE_SERVICE TEST_TYPE(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            ps2 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE ALL_TYPE_SERVICE TEST_UUID(?)");
         }
 
         @Override
-        public User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7,
-                Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14,
-                String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
+        public User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
             try {
                 ps1.setInt(1, f1);
                 ps1.setBoolean(2, f2);
