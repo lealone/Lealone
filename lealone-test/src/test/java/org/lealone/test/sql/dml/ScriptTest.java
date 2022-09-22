@@ -9,6 +9,11 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class ScriptTest extends SqlTestBase {
+
+    // public ScriptTest() {
+    // super("ScriptTestDB");
+    // }
+
     @Test
     public void run() {
         executeUpdate("create table IF NOT EXISTS ScriptTest(id int)");

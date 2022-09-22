@@ -27,7 +27,7 @@ public class UniqueIndexTest extends SqlTestBase {
             executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(400, 20, 'b')");
             fail("insert duplicate key: 20");
         } catch (Exception e) {
-            assertException(e, ErrorCode.DUPLICATE_KEY_1);
+            assertErrorCode(e, ErrorCode.DUPLICATE_KEY_1);
         }
     }
 

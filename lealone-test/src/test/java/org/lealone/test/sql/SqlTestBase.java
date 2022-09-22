@@ -301,12 +301,6 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
         }
     }
 
-    public static void assertErrorCode(Exception e, int errorCode) {
-        Throwable cause = e instanceof SQLException ? e : e.getCause();
-        assertTrue(cause instanceof SQLException);
-        assertEquals(errorCode, ((SQLException) cause).getErrorCode());
-    }
-
     public void executeUpdateThanAssertErrorCode(String sql, int errorCode) {
         try {
             stmt.executeUpdate(sql);

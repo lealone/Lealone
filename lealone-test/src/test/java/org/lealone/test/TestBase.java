@@ -274,6 +274,12 @@ public class TestBase extends Assert {
         // p(e.getMessage());
     }
 
+    public static void assertErrorCode(Exception e, int errorCode) {
+        Throwable cause = e instanceof SQLException ? e : e.getCause();
+        assertTrue(cause instanceof SQLException);
+        assertEquals(errorCode, ((SQLException) cause).getErrorCode());
+    }
+
     public static void p(Object o) {
         System.out.println(o);
     }

@@ -13,6 +13,11 @@ import org.lealone.db.session.SessionSetting;
 import org.lealone.test.sql.SqlTestBase;
 
 public class SetTest extends SqlTestBase {
+
+    public SetTest() {
+        super("SetTestDB");
+    }
+
     @Test
     public void run() throws Exception {
         System.out.println("DbSetting size: " + DbSetting.values().length);
