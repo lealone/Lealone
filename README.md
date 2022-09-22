@@ -110,8 +110,6 @@
 
 * 2012年从 [H2 数据库 ](http://www.h2database.com/html/main.html)的代码开始
 
-* 为了支持 lealone-p2p 集群改编了 [Cassandra](https://cassandra.apache.org/) 的一些代码
-
 * [Lealone 的过去现在将来](https://github.com/codefollower/My-Blog/issues/16)
 
 
