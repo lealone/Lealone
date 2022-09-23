@@ -86,11 +86,6 @@
 * [更多细节...](https://github.com/lealone/QinSQL)
 
 
-### Lealone Web 客户端
-
-* [Ops Center](https://github.com/lealone/Lealone-OpsCenter)
-
-
 ### Lealone Plugins
 
 * 支持可插拨的存储引擎 (MemoryStore、MVStore)
