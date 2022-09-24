@@ -104,6 +104,10 @@ abstract class QOperator implements Operator {
         if (maxRows >= 0) {
             localResult.setLimit(maxRows);
         }
+        handleLocalResult();
+    }
+
+    void handleLocalResult() {
         if (localResult != null) {
             localResult.done();
             if (target != null) {

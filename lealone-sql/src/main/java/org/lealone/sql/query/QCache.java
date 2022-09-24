@@ -20,4 +20,10 @@ class QCache extends QOperator {
     public void run() {
         loopEnd = true;
     }
+
+    @Override
+    public void stop() {
+        // 忽略limit和offset
+        handleLocalResult();
+    }
 }
