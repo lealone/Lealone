@@ -87,7 +87,7 @@ public class MetaTable extends Table {
     private static final int ROLES = 10;
     private static final int RIGHTS = 11;
     private static final int FUNCTION_ALIASES = 12;
-    private static final int SCHEMATA = 13;
+    private static final int SCHEMAS = 13;
     private static final int TABLE_PRIVILEGES = 14;
     private static final int COLUMN_PRIVILEGES = 15;
     private static final int COLLATIONS = 16;
@@ -210,8 +210,8 @@ public class MetaTable extends Table {
                     "TYPE_NAME", "PRECISION INT", "SCALE SMALLINT", "RADIX SMALLINT",
                     "NULLABLE SMALLINT", "COLUMN_TYPE SMALLINT", "REMARKS", "COLUMN_DEFAULT");
             break;
-        case SCHEMATA:
-            setObjectName("SCHEMATA");
+        case SCHEMAS:
+            setObjectName("SCHEMAS");
             cols = createColumns("CATALOG_NAME", "SCHEMA_NAME", "SCHEMA_OWNER",
                     "DEFAULT_CHARACTER_SET_NAME", "DEFAULT_COLLATION_NAME", "IS_DEFAULT BIT", "REMARKS",
                     "ID INT");
@@ -974,7 +974,7 @@ public class MetaTable extends Table {
             }
             break;
         }
-        case SCHEMATA: {
+        case SCHEMAS: {
             String collation = database.getCompareMode().getName();
             for (Schema schema : database.getAllSchemas()) {
                 add(rows,

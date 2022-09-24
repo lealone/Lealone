@@ -651,7 +651,7 @@ public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaDat
             checkClosed();
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT "
                     + "SCHEMA_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_CATALOG, " + " IS_DEFAULT "
-                    + "FROM INFORMATION_SCHEMA.SCHEMATA " + "ORDER BY SCHEMA_NAME");
+                    + "FROM INFORMATION_SCHEMA.SCHEMAS " + "ORDER BY SCHEMA_NAME");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -2829,7 +2829,7 @@ public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaDat
             checkClosed();
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT "
                     + "SCHEMA_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_CATALOG, " + " IS_DEFAULT "
-                    + "FROM INFORMATION_SCHEMA.SCHEMATA " + "WHERE CATALOG_NAME LIKE ? ESCAPE ? "
+                    + "FROM INFORMATION_SCHEMA.SCHEMAS " + "WHERE CATALOG_NAME LIKE ? ESCAPE ? "
                     + "AND SCHEMA_NAME LIKE ? ESCAPE ? " + "ORDER BY SCHEMA_NAME");
             prep.setString(1, getCatalogPattern(catalogPattern));
             prep.setString(2, "\\");
