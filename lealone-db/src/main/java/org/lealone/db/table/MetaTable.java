@@ -104,8 +104,8 @@ public class MetaTable extends Table {
     private static final int SESSION_STATE = 27;
     private static final int QUERY_STATISTICS = 28;
     private static final int DATABASES = 29;
-    private static final int SYS_TABLE = 30;
-    private static final int META_TABLE_TYPE_COUNT = SYS_TABLE + 1;
+    private static final int DB_OBJECTS = 30; // 对应SYS表
+    private static final int META_TABLE_TYPE_COUNT = DB_OBJECTS + 1;
 
     private final int type;
     private final int indexColumn;
@@ -302,8 +302,8 @@ public class MetaTable extends Table {
             setObjectName("DATABASES");
             cols = createColumns("ID", "DATABASE_NAME", "RUN_MODE", "NODES");
             break;
-        case SYS_TABLE:
-            setObjectName("SYS_TABLE");
+        case DB_OBJECTS:
+            setObjectName("DB_OBJECTS");
             cols = createColumns("ID", "TYPE", "SQL");
             break;
         default:
@@ -1426,7 +1426,7 @@ public class MetaTable extends Table {
             }
             break;
         }
-        case SYS_TABLE: {
+        case DB_OBJECTS: {
             Cursor cursor = session.getDatabase().getMetaCursor(session);
             while (cursor.next()) {
                 Row row = cursor.get();
