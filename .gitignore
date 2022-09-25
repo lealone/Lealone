@@ -5,3 +5,5 @@
 .classpath
 .project
 target
+.idea
+.dbeaver
