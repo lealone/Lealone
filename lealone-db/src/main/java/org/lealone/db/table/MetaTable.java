@@ -53,6 +53,7 @@ import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.schema.UserDataType;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.Csv;
 import org.lealone.db.value.CompareMode;
@@ -105,7 +106,8 @@ public class MetaTable extends Table {
     private static final int QUERY_STATISTICS = 28;
     private static final int DATABASES = 29;
     private static final int DB_OBJECTS = 30; // 对应SYS表
-    private static final int META_TABLE_TYPE_COUNT = DB_OBJECTS + 1;
+    private static final int SERVICES = 31;
+    private static final int META_TABLE_TYPE_COUNT = SERVICES + 1;
 
     private final int type;
     private final int indexColumn;
@@ -305,6 +307,10 @@ public class MetaTable extends Table {
         case DB_OBJECTS:
             setObjectName("DB_OBJECTS");
             cols = createColumns("ID", "TYPE", "SQL");
+            break;
+        case SERVICES:
+            setObjectName("SERVICES");
+            cols = createColumns("SERVICE_CATALOG", "SERVICE_SCHEMA", "SERVICET_NAME", "SQL", "ID INT");
             break;
         default:
             throw DbException.getInternalError("type=" + type);
@@ -1437,6 +1443,18 @@ public class MetaTable extends Table {
                         DbObjectType.TYPES[row.getValue(1).getInt()].name(),
                         // SQL
                         row.getValue(2).getString());
+            }
+            break;
+        }
+        case SERVICES: {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.SERVICE)) {
+                Service service = (Service) obj;
+                add(rows, catalog, identifier(service.getSchema().getName()),
+                        identifier(service.getName()),
+                        // SQL
+                        service.getCreateSQL(),
+                        // ID
+                        "" + service.getId());
             }
             break;
         }
