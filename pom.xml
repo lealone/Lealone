@@ -179,6 +179,60 @@
             </dependencyManagement>
         </profile>
         <profile>
+            <id>client</id>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.lealone</groupId>
+                        <artifactId>lealone-main</artifactId>
+                        <version>${project.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-aose</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-aote</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-db</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-sql</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-server</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-orm</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-web</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.apache.logging.log4j</groupId>
+                                <artifactId>log4j-api</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.apache.logging.log4j</groupId>
+                                <artifactId>log4j-core</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.yaml</groupId>
+                                <artifactId>snakeyaml</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+        <profile>
             <id>release</id>
             <build>
                 <plugins>
