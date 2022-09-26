@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.chunk;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageUtils;
+import org.lealone.storage.fs.FilePath;
 
 public class ChunkManager {
 
@@ -132,6 +134,10 @@ public class ChunkManager {
 
     public Chunk getChunk(long pos) {
         int chunkId = PageUtils.getPageChunkId(pos);
+        return getChunk(chunkId);
+    }
+
+    public Chunk getChunk(int chunkId) {
         Chunk c = chunks.get(chunkId);
         if (c == null)
             c = readChunk(chunkId);
@@ -173,5 +179,17 @@ public class ChunkManager {
             list.add(chunks.get(id));
         }
         return list;
+    }
+
+    public InputStream getChunkInputStream(FilePath file) {
+        String name = file.getName();
+        if (name.endsWith(AOStorage.SUFFIX_AO_FILE)) {
+            // chunk文件名格式: c_[chunkId]_[sequence]
+            String str = name.substring(2, name.length() - AOStorage.SUFFIX_AO_FILE_LENGTH);
+            int pos = str.indexOf('_');
+            int chunkId = Integer.parseInt(str.substring(0, pos));
+            return getChunk(chunkId).fileStorage.getInputStream();
+        }
+        return null;
     }
 }

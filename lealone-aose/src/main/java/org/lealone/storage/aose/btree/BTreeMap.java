@@ -5,6 +5,7 @@
  */
 package org.lealone.storage.aose.btree;
 
+import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -28,6 +29,7 @@ import org.lealone.storage.aose.btree.page.PageOperations.Replace;
 import org.lealone.storage.aose.btree.page.PageOperations.SingleWrite;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
+import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -606,5 +608,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             listener = new PageOperation.SyncListener<R>();
         listener.startListen();
         return listener;
+    }
+
+    public InputStream getInputStream(FilePath file) {
+        return btreeStorage.getInputStream(file);
     }
 }

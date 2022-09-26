@@ -1891,9 +1891,10 @@ public class Database implements DataHandler, DbObject {
         return false;
     }
 
-    public void backupTo(String fileName) {
+    public void backupTo(String fileName, Long lastDate) {
+        checkpoint();
         for (Storage s : getStorages()) {
-            s.backupTo(fileName);
+            s.backupTo(fileName, lastDate);
         }
     }
 

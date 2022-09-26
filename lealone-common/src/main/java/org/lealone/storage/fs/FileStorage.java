@@ -5,7 +5,9 @@
  */
 package org.lealone.storage.fs;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.Reference;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -794,5 +796,19 @@ public class FileStorage {
 
     public void delete() {
         FileUtils.delete(fileName);
+    }
+
+    public InputStream getInputStream() {
+        checkPowerOff();
+        int len = (int) fileSize;
+        byte[] bytes = new byte[len];
+        try {
+            file.position(0);
+            FileUtils.readFully(file, ByteBuffer.wrap(bytes, 0, len));
+            file.position(filePos);
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, name);
+        }
+        return new ByteArrayInputStream(bytes);
     }
 }

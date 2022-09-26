@@ -42,7 +42,11 @@ public interface Storage {
 
     void drop();
 
-    void backupTo(String fileName);
+    default void backupTo(String fileName) {
+        backupTo(fileName, null);
+    }
+
+    void backupTo(String fileName, Long lastDate);
 
     void close();
 

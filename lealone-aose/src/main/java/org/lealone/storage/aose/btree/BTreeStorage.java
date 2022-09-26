@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree;
 
 import java.io.File;
+import java.io.InputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 
 import org.lealone.common.compress.CompressDeflate;
@@ -19,6 +20,7 @@ import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
+import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 
@@ -396,5 +398,9 @@ public class BTreeStorage {
         FileStorage fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, map.getConfig());
         return fileStorage;
+    }
+
+    InputStream getInputStream(FilePath file) {
+        return chunkManager.getChunkInputStream(file);
     }
 }

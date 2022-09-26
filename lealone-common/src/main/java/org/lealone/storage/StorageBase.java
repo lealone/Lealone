@@ -27,8 +27,8 @@ public abstract class StorageBase implements Storage {
     protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp"
             + Constants.NAME_SEPARATOR;
 
-    protected final ConcurrentHashMap<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
-    protected final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    protected final Map<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
+    protected final Map<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     protected final Map<String, Object> config;
     protected boolean closed;
 
@@ -109,15 +109,11 @@ public abstract class StorageBase implements Storage {
     }
 
     @Override
-    public void backupTo(String fileName) {
+    public void backupTo(String fileName, Long lastDate) {
         if (isInMemory())
             return;
         save();
-        // TODO 如何在不关闭存储的情况下备份，可能相关的文件在打开时就用排它锁锁住了，所以读不了
-        close();
-
-        String path = getStoragePath(); // 可能是一个文件或目录
-        backupFiles(path, fileName);
+        backupFiles(fileName, lastDate);
     }
 
     @Override
@@ -154,7 +150,14 @@ public abstract class StorageBase implements Storage {
         listeners.remove(listener);
     }
 
-    private static void backupFiles(String path, String toFile) {
+    protected InputStream getInputStream(String mapName, FilePath file) throws IOException {
+        return file.newInputStream();
+    }
+
+    private void backupFiles(String toFile, Long lastDate) {
+        String path = getStoragePath(); // 可能是一个文件或目录
+        if (!toFile.toLowerCase().endsWith(".zip"))
+            toFile += ".zip";
         try (OutputStream zip = FileUtils.newOutputStream(toFile, false);
                 ZipOutputStream out = new ZipOutputStream(zip)) {
             FilePath p = FilePath.get(path);
@@ -163,9 +166,12 @@ public abstract class StorageBase implements Storage {
                 pathShortName = pathShortName.substring(pathShortName.lastIndexOf('/') + 1);
                 FilePath dir = FilePath.get(path);
                 for (FilePath map : dir.newDirectoryStream()) {
-                    String entryNameBase = pathShortName + "/" + map.getName();
+                    String mapName = map.getName();
+                    String entryNameBase = pathShortName + "/" + mapName;
                     for (FilePath file : map.newDirectoryStream()) {
-                        backupFile(out, file.newInputStream(), entryNameBase + "/" + file.getName());
+                        if (lastDate == null || file.lastModified() > lastDate.longValue())
+                            backupFile(out, getInputStream(mapName, file),
+                                    entryNameBase + "/" + file.getName());
                     }
                 }
             } else {
@@ -178,6 +184,8 @@ public abstract class StorageBase implements Storage {
 
     private static void backupFile(ZipOutputStream out, InputStream in, String entryName)
             throws IOException {
+        if (in == null)
+            return;
         out.putNextEntry(new ZipEntry(entryName));
         IOUtils.copyAndCloseInput(in, out);
         out.closeEntry();

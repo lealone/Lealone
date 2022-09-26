@@ -5,6 +5,7 @@
  */
 package org.lealone.storage.aose;
 
+import java.io.InputStream;
 import java.util.Map;
 
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -84,5 +85,10 @@ public class AOStorage extends StorageBase {
             }
         }
         return (BTreeMap<K, V>) map;
+    }
+
+    @Override
+    protected InputStream getInputStream(String mapName, FilePath file) {
+        return openBTreeMap(mapName).getInputStream(file);
     }
 }

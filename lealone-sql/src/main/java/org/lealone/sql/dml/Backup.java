@@ -5,9 +5,13 @@
  */
 package org.lealone.sql.dml;
 
+import java.sql.Date;
+
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Database;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
@@ -15,7 +19,8 @@ import org.lealone.sql.expression.Expression;
  */
 public class Backup extends ManipulationStatement {
 
-    private Expression fileNameExpr;
+    private String fileName;
+    private String lastDate;
 
     public Backup(ServerSession session) {
         super(session);
@@ -31,16 +36,23 @@ public class Backup extends ManipulationStatement {
         return false;
     }
 
-    public void setFileName(Expression fileName) {
-        this.fileNameExpr = fileName;
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public void setLastDate(String lastDate) {
+        this.lastDate = lastDate;
     }
 
     @Override
     public int update() {
-        String fileName = fileNameExpr.getValue(session).getString();
         session.getUser().checkAdmin();
-        session.getDatabase().backupTo(fileName);
+        Database db = session.getDatabase();
+        if (!db.isPersistent()) {
+            throw DbException.get(ErrorCode.DATABASE_IS_NOT_PERSISTENT);
+        }
+        Long ld = lastDate != null ? Date.valueOf(lastDate).getTime() : null;
+        db.backupTo(fileName, ld);
         return 0;
     }
-
 }
