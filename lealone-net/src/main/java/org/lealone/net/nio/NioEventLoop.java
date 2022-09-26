@@ -236,7 +236,7 @@ class NioEventLoop implements NetEventLoop {
             if (readBytes < 0) {
                 attachment.endOfStreamCount++;
                 if (attachment.endOfStreamCount > 3) {
-                    closeChannel(channel);
+                    throw new IOException("socket channel closed: " + channel.getRemoteAddress());
                 }
             }
         }
