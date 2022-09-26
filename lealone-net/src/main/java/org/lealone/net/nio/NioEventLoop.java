@@ -31,20 +31,22 @@ class NioEventLoop implements NetEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoop.class);
 
-    private final ConcurrentHashMap<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> channels = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<SocketChannel, SelectionKey> keys = new ConcurrentHashMap<>();
+    private final Map<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> channels = new ConcurrentHashMap<>();
+    private final Map<SocketChannel, SelectionKey> keys = new ConcurrentHashMap<>();
 
     private final AtomicInteger writeQueueSize = new AtomicInteger();
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private final long loopInterval;
     private int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
+    private int maxPacketSize;
     private Object owner;
 
     public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval)
             throws IOException {
         loopInterval = MapUtils.getLong(config, loopIntervalKey, defaultLoopInterval);
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 20);
+        maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
         selector = Selector.open();
     }
 
@@ -192,9 +194,13 @@ class NioEventLoop implements NetEventLoop {
                 }
                 if (attachment.state == 1) {
                     int packetLength = conn.getPacketLength();
+                    if (packetLength > maxPacketSize)
+                        throw new IOException("packet too large, maxPacketSize: " + maxPacketSize
+                                + ", receive: " + packetLength);
                     if (dataBuffer == null) {
                         dataBuffer = DataBuffer.getOrCreate(packetLength);
-                        dataBuffer.limit(packetLength); // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
+                        // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
+                        dataBuffer.limit(packetLength);
                     }
                     ByteBuffer buffer = dataBuffer.getBuffer();
                     boolean ok = read(attachment, channel, buffer, packetLength);
@@ -215,6 +221,7 @@ class NioEventLoop implements NetEventLoop {
                 }
             }
         } catch (Exception e) {
+            logger.warn("failed to read", e);
             conn.handleException(e);
             closeChannel(channel);
         }
