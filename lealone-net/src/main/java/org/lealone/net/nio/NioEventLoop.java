@@ -5,6 +5,7 @@
  */
 package org.lealone.net.nio;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
@@ -169,6 +170,8 @@ class NioEventLoop implements NetEventLoop {
     private long totalReadBytes;
     private long totalWrittenBytes;
     private final boolean isDebugEnabled = logger.isDebugEnabled();
+    private final EOFException endException = new EOFException();
+    private String endExceptionMsg;
 
     @Override
     public void read(SelectionKey key) {
@@ -221,7 +224,10 @@ class NioEventLoop implements NetEventLoop {
                 }
             }
         } catch (Exception e) {
-            logger.warn("failed to read", e);
+            if (endException == e)
+                logger.info((conn.isServer() ? "Client " : "\r\nServer ") + endExceptionMsg);
+            else
+                logger.warn("Failed to read", e);
             conn.handleException(e);
             closeChannel(channel);
         }
@@ -243,7 +249,8 @@ class NioEventLoop implements NetEventLoop {
             if (readBytes < 0) {
                 attachment.endOfStreamCount++;
                 if (attachment.endOfStreamCount > 3) {
-                    throw new IOException("socket channel closed: " + channel.getRemoteAddress());
+                    endExceptionMsg = "socket channel closed: " + channel.getRemoteAddress();
+                    throw endException;
                 }
             }
         }

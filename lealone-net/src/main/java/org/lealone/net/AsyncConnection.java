@@ -79,4 +79,8 @@ public abstract class AsyncConnection {
     public int getMaxSharedSize() {
         return 0;
     }
+
+    public boolean isServer() {
+        return isServer;
+    }
 }
