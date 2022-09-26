@@ -160,10 +160,12 @@ public class Shell {
 
     private Connection getConnection() throws SQLException {
         Properties info = new Properties();
-        if (user != null) {
+        String u = url.toLowerCase();
+        // 优先使用jdbc url中指定的user和password
+        if (user != null && !u.contains("user")) {
             info.put("user", user);
         }
-        if (password != null) {
+        if (password != null && !u.contains("password")) {
             info.put("password", password);
         }
         info.put(ConnectionSetting.NETWORK_TIMEOUT.name(), "-1");
