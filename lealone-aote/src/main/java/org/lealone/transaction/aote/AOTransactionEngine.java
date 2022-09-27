@@ -145,7 +145,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         // 调用完initPendingRedoLog后再启动logSyncService
         logSyncService.start();
-        // checkpointService.start();
+
+        if (RunMode.isEmbedded(config)) {
+            Thread t = new Thread(checkpointService, "CheckpointService");
+            t.setDaemon(true);
+            t.start();
+        }
 
         ShutdownHookUtils.addShutdownHook(this, () -> {
             close();

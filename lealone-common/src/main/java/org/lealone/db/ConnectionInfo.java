@@ -137,6 +137,9 @@ public class ConnectionInfo implements Cloneable {
         networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT,
                 Constants.DEFAULT_NETWORK_TIMEOUT);
         initTraceProperty();
+        if (isEmbedded()) {
+            System.setProperty("lealone.embedded", "true");
+        }
     }
 
     private void checkURL() {

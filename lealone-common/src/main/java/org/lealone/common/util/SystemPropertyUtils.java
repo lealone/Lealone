@@ -15,4 +15,9 @@ public class SystemPropertyUtils {
         String value = System.getProperty(key);
         return Utils.toInt(value, def);
     }
+
+    public static boolean getBoolean(String key, boolean def) {
+        String value = System.getProperty(key);
+        return Utils.toBoolean(value, def);
+    }
 }

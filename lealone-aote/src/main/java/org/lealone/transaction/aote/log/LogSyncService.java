@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
+import org.lealone.db.RunMode;
 import org.lealone.transaction.RedoLogSyncListener;
 import org.lealone.transaction.aote.AOTransaction;
 
@@ -40,7 +41,7 @@ public abstract class LogSyncService extends Thread {
 
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
-        // setDaemon(true);
+        setDaemon(RunMode.isEmbedded(config));
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config);
 
