@@ -40,6 +40,9 @@ public interface LobStorage {
      */
     void init();
 
+    default void save() {
+    }
+
     /**
      * Whether the storage is read-only
      *

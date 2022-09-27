@@ -95,6 +95,7 @@ public class ServerSession extends SessionBase {
     private String[] schemaSearchPath;
     private Trace trace;
     private HashMap<String, Value> unlinkLobMap;
+    private boolean containsLargeObject;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
     private boolean autoCommitAtTransactionEnd;
@@ -556,10 +557,12 @@ public class ServerSession extends SessionBase {
                 autoCommitAtTransactionEnd = false;
             }
         }
+        if (containsLargeObject) {
+            if (database.getLobStorage() != null)
+                database.getLobStorage().save();
+            containsLargeObject = false;
+        }
         if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
-            // need to flush the transaction log, because we can't unlink lobs
-            // if the commit record is not written
-            database.flush();
             for (Value v : unlinkLobMap.values()) {
                 v.unlink(database);
                 v.close();
@@ -938,6 +941,7 @@ public class ServerSession extends SessionBase {
             unlinkLobMap = new HashMap<>();
         }
         unlinkLobMap.put(v.toString(), v);
+        containsLargeObject = true;
     }
 
     /**
@@ -949,6 +953,7 @@ public class ServerSession extends SessionBase {
         if (unlinkLobMap != null) {
             unlinkLobMap.remove(v.toString());
         }
+        containsLargeObject = true;
     }
 
     /**

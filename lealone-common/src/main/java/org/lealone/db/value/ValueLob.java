@@ -42,7 +42,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
     private final long lobId;
     private final byte[] hmac;
     private final byte[] small;
-    private final DataHandler handler;
+    private DataHandler handler;
 
     /**
      * For a BLOB, precision is length in bytes.
@@ -169,6 +169,10 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
     public static ValueLob create(int type, DataHandler handler, int tableId, long id, byte[] hmac,
             long precision) {
         return new ValueLob(type, handler, tableId, id, hmac, precision);
+    }
+
+    public void setHandler(DataHandler handler) {
+        this.handler = handler;
     }
 
     /**

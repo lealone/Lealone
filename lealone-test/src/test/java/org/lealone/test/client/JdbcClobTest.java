@@ -19,18 +19,36 @@ public class JdbcClobTest extends ClientTestBase {
         // setEmbedded(true).enableTrace(TraceSystem.DEBUG);
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
+        String clobStr = getClobStr();
+
+        init(stmt);
+        insert(conn, clobStr);
+        query(stmt, clobStr);
+
+        // stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
+
+        stmt.close();
+        conn.close();
+    }
+
+    static void init(Statement stmt) throws Exception {
         // stmt.executeUpdate("set DB_CLOSE_DELAY 0");
         stmt.executeUpdate("DROP TABLE IF EXISTS JdbcClobTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JdbcClobTest (f1 int, f2 long, f3 clob)");
+    }
 
-        JdbcClob clob = (JdbcClob) conn.createClob();
-
+    static String getClobStr() {
         String clobStr = "clob-test";
         StringBuilder buff = new StringBuilder(1000 * clobStr.length());
         for (int i = 0; i < 1000; i++)
             buff.append(clobStr);
 
         clobStr = buff.toString();
+        return clobStr;
+    }
+
+    static void insert(Connection conn, String clobStr) throws Exception {
+        JdbcClob clob = (JdbcClob) conn.createClob();
         // 从1开始
         clob.setString(1, clobStr);
 
@@ -38,22 +56,19 @@ public class JdbcClobTest extends ClientTestBase {
                 .prepareStatement("INSERT INTO JdbcClobTest(f1, f2, f3) VALUES(1, 2, ?)");
         ps.setClob(1, clob);
         ps.executeUpdate();
+        ps.close();
+    }
 
+    static void query(Statement stmt, String clobStr) throws Exception {
         ResultSet rs = stmt.executeQuery("SELECT f1, f2, f3 FROM JdbcClobTest");
         assertTrue(rs.next());
         assertEquals(1, rs.getInt(1));
         assertEquals(2, rs.getLong(2));
 
-        clob = (JdbcClob) rs.getClob(3);
+        JdbcClob clob = (JdbcClob) rs.getClob(3);
         assertNotNull(clob);
         String clobStr2 = clob.getSubString(1, clobStr.length());
         assertEquals(clobStr2, clobStr);
         // System.out.println("f3=" + clobStr);
-
-        stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
-
-        ps.close();
-        stmt.close();
-        conn.close();
     }
 }

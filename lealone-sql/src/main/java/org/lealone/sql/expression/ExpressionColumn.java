@@ -18,6 +18,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueLob;
 import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
@@ -216,6 +217,9 @@ public class ExpressionColumn extends Expression {
         Value value = columnResolver.getValue(column);
         if (value == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
+        }
+        if (value instanceof ValueLob) {
+            ((ValueLob) value).setHandler(database);
         }
         return value;
     }

@@ -84,6 +84,15 @@ public class LobStreamStorage implements LobStorage {
             lazyInit();
     }
 
+    @Override
+    public void save() {
+        if (lobMap == null)
+            return;
+        lobMap.save();
+        refMap.save();
+        storage.openBTreeMap("lobData").save();
+    }
+
     // 不是每个数据库都用到大对象字段的，所以只有实际用到时才创建相应的BTreeMap
     private synchronized void lazyInit() {
         if (lobMap != null)

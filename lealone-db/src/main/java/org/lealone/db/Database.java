@@ -1515,23 +1515,6 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    /**
-     * Flush all pending changes to the transaction log.
-     */
-    public synchronized void flush() {
-        if (readOnly) {
-            return;
-        }
-        try {
-            for (Storage s : getStorages()) {
-                s.save();
-            }
-        } catch (RuntimeException e) {
-            backgroundException = DbException.convert(e);
-            throw e;
-        }
-    }
-
     public void setEventListener(DatabaseEventListener eventListener) {
         this.eventListener = eventListener;
     }
