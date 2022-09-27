@@ -204,7 +204,9 @@ public class NodePage extends LocalPage {
             Page p = children[i].page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff);
-                children[i] = new PageReference(p);
+                // 不能 children[i] = new PageReference(p);
+                // 要保证 children[i] 等于 p.ref
+                children[i].pos = p.pos;
             }
         }
         int old = buff.position();
