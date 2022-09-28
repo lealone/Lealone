@@ -52,14 +52,15 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
 
         String result = null;
         try {
-            logger.info("execute service: " + serviceName);
+            logger.info("execute service: {}.{}", serviceName, methodName);
             if (serviceName.toUpperCase().contains("LEALONE_SYSTEM_SERVICE")) {
                 result = SystemService.execute(serviceName, methodName, methodArgs);
             } else {
                 result = Service.execute(serviceName, methodName, methodArgs);
             }
         } catch (Exception e) {
-            result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
+            result = "failed to execute service: " + serviceName + "." + methodName + ", cause: "
+                    + e.getMessage();
             logger.error(result, e);
             // 这种异常还是得抛给调用者
             if (e instanceof RuntimeException)
