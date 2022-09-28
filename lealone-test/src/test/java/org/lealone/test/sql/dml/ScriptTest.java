@@ -10,9 +10,9 @@ import org.lealone.test.sql.SqlTestBase;
 
 public class ScriptTest extends SqlTestBase {
 
-    // public ScriptTest() {
-    // super("ScriptTestDB");
-    // }
+    public ScriptTest() {
+        super("ScriptTestDB"); // 连接到不同的数据库测试，避免受其他测试影响
+    }
 
     @Test
     public void run() {
