@@ -1436,11 +1436,14 @@ public class MetaTable extends Table {
             Cursor cursor = session.getDatabase().getMetaCursor(session);
             while (cursor.next()) {
                 Row row = cursor.get();
+                DbObjectType type = DbObjectType.TYPES[row.getValue(1).getInt()];
+                if (type == DbObjectType.USER)
+                    continue;
                 add(rows,
                         // ID
                         row.getValue(0).getString(),
                         // TYPE
-                        DbObjectType.TYPES[row.getValue(1).getInt()].name(),
+                        type.name(),
                         // SQL
                         row.getValue(2).getString());
             }
