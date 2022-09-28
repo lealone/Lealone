@@ -5,12 +5,12 @@
  */
 package org.lealone.sql.ddl;
 
-import java.util.Collection;
+import java.util.HashSet;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.db.DbSettings;
+import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
@@ -60,8 +60,10 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
         removeParameters(parameters);
 
-        Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings()
-                .keySet();
+        HashSet<String> recognizedSettingOptions = new HashSet<>(DbSetting.values().length);
+        for (DbSetting s : DbSetting.values())
+            recognizedSettingOptions.add(s.name());
+
         parameters.removeAll(recognizedSettingOptions);
         if (!parameters.isEmpty()) {
             throw new ConfigException(String.format("Unrecognized parameters: %s for database %s, " //
