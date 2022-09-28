@@ -396,17 +396,11 @@ public class Database implements DataHandler, DbObject {
         openDatabase();
         addShutdownHook();
 
-        // LealoneDatabase中的表结构是固定的，所以不需要记录表结构修改历史
-        if (!isLealoneDatabase()) {
-            tableAlterHistory.init(getInternalConnection());
-        }
+        // 用户也可以在LealoneDatabase的public模式中建表修改表结构
+        tableAlterHistory.init(getInternalConnection());
 
         opened();
         state = State.OPENED;
-    }
-
-    private boolean isLealoneDatabase() {
-        return LealoneDatabase.ID == id;
     }
 
     private void initTraceSystem() {

@@ -25,6 +25,8 @@ public class JdbcClobTest extends ClientTestBase {
         insert(conn, clobStr);
         query(stmt, clobStr);
 
+        addClob(stmt, clobStr);
+
         // stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
 
         stmt.close();
@@ -70,5 +72,19 @@ public class JdbcClobTest extends ClientTestBase {
         String clobStr2 = clob.getSubString(1, clobStr.length());
         assertEquals(clobStr2, clobStr);
         // System.out.println("f3=" + clobStr);
+    }
+
+    static void addClob(Statement stmt, String clobStr) throws Exception {
+        stmt.executeUpdate("DROP TABLE IF EXISTS AddClobTest");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS AddClobTest (f1 int, f2 long)");
+        stmt.executeUpdate("INSERT INTO AddClobTest(f1, f2) VALUES(1, 2)");
+        stmt.executeUpdate("ALTER TABLE AddClobTest ADD f3 clob");
+        ResultSet rs = stmt.executeQuery("SELECT f1, f2, f3 FROM AddClobTest");
+        assertTrue(rs.next());
+        assertEquals(1, rs.getInt(1));
+        assertEquals(2, rs.getLong(2));
+
+        JdbcClob clob = (JdbcClob) rs.getClob(3);
+        assertNull(clob);
     }
 }
