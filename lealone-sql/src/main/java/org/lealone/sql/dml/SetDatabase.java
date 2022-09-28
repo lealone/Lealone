@@ -119,8 +119,9 @@ public class SetDatabase extends SetStatement {
             break;
         }
         case DATABASE_EVENT_LISTENER: {
-            setDbSetting(stringValue);
+            // 先在setEventListenerClass中检查类是否存在，然后现构建DbSetting
             database.setEventListenerClass(stringValue);
+            setDbSetting(stringValue);
             break;
         }
         case DB_CLOSE_DELAY: {
