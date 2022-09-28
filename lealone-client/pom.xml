@@ -25,7 +25,7 @@
         </dependency>
     </dependencies>
 
-    <!--<build>
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -45,13 +45,31 @@
                                 </excludes>
                             </artifactSet>
                             <transformers>
+                                <!-- 合并多个服务接口文件，就是在META-INF/services目录下的那些文件，可能有多个 -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer
+                                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Main-Class>org.lealone.client.LealoneClient</Main-Class>
+                                         <!-- 让log4j2选择合适的jdk，避免启动时出现WARNING: sun.reflect.Reflection.getCallerClass is not supported -->
+                                        <Multi-Release>true</Multi-Release>
+                                        <Built-By>Lealone Database Group</Built-By>
+                                    </manifestEntries>
+                                </transformer>
                             </transformers>
-                            <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-all.jar</outputFile>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/maven/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <outputFile>../lealone-dist/target/lealone-client-${project.version}.jar</outputFile>
                         </configuration>
                     </execution>
                 </executions>
             </plugin> 
         </plugins>
-    </build>-->
+    </build>
 </project>
