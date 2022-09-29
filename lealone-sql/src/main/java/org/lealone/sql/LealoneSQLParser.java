@@ -921,13 +921,12 @@ public class LealoneSQLParser implements SQLParser {
             // for PostgreSQL compatibility
             buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
         } else if (readIf("TABLES")) {
-            // for MySQL compatibility
-            String schema = Constants.SCHEMA_MAIN;
+            String schema = session.getCurrentSchemaName();
             if (readIf("FROM")) {
                 schema = readUniqueIdentifier();
             }
-            buff.append(
-                    "TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
+            buff.append("TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES "
+                    + "WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
             paramValues.add(ValueString.get(schema));
         } else if (readIf("COLUMNS")) {
             // for MySQL compatibility
