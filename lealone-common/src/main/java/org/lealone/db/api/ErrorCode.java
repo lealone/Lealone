@@ -1923,6 +1923,8 @@ public class ErrorCode {
 
     public static final int NETWORK_TIMEOUT_1 = 90147;
 
+    public static final int ACCESS_DENIED_TO_SCHEMA_1 = 90148;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {

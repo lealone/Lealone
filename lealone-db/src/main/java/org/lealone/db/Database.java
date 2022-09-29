@@ -973,10 +973,14 @@ public class Database implements DataHandler, DbObject {
      */
     public Schema findSchema(ServerSession session, String schemaName) {
         Schema schema = find(DbObjectType.SCHEMA, session, schemaName);
-        if (schema == infoSchema || schema == perfSchema) {
+        if (isSystemSchema(schema)) {
             initInfoSchemaMetaTables();
         }
         return schema;
+    }
+
+    public boolean isSystemSchema(Schema schema) {
+        return schema == infoSchema || schema == perfSchema;
     }
 
     /**

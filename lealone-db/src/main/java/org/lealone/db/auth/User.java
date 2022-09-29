@@ -212,6 +212,12 @@ public class User extends RightOwner {
         }
     }
 
+    public void checkSystemSchema(ServerSession session, Schema schema) {
+        Database db = session.getDatabase();
+        if (db.getSystemSession() != session && db.isSystemSchema(schema))
+            throw DbException.get(ErrorCode.ACCESS_DENIED_TO_SCHEMA_1, schema.getName());
+    }
+
     /**
      * Get the CREATE SQL statement for this object.
      *
