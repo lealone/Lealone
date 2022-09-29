@@ -2906,7 +2906,8 @@ public class LealoneSQLParser implements SQLParser {
             read();
         }
         if (equalsToken(".", currentToken)) {
-            if (equalsToken(schemaName, database.getShortName())) {
+            String dbName = database.getShortName();
+            if (equalsToken(schemaName, dbName) || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
                 read(".");
                 schemaName = s;
                 if (currentTokenType != IDENTIFIER) {

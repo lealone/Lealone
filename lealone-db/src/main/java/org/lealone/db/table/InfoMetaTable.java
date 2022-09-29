@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,6 +29,8 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.Plugin;
+import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
@@ -59,6 +62,10 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringIgnoreCase;
+import org.lealone.server.ProtocolServerEngine;
+import org.lealone.sql.SQLEngine;
+import org.lealone.storage.StorageEngine;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * This class is responsible to build the database information meta data pseudo tables.
@@ -639,6 +646,11 @@ public class InfoMetaTable extends MetaTable {
             for (Entry<String, String> e : session.getSettings().entrySet()) {
                 add(rows, e.getKey(), "session", e.getValue());
             }
+
+            addPlugin(StorageEngine.class, rows);
+            addPlugin(TransactionEngine.class, rows);
+            addPlugin(SQLEngine.class, rows);
+            addPlugin(ProtocolServerEngine.class, rows);
             break;
         }
         case TYPE_INFO: {
@@ -1485,5 +1497,16 @@ public class InfoMetaTable extends MetaTable {
             return Long.MAX_VALUE;
         }
         return database.getModificationDataId();
+    }
+
+    private void addPlugin(Class<? extends Plugin> clz, ArrayList<Row> rows) {
+        HashSet<String> names = new HashSet<>();
+        for (Plugin p : PluginManager.getPlugins(clz)) {
+            if (names.add(p.getName()) && p.getConfig() != null) {
+                for (Entry<String, String> e : p.getConfig().entrySet()) {
+                    add(rows, e.getKey(), clz.getSimpleName() + "(" + p.getName() + ")", e.getValue());
+                }
+            }
+        }
     }
 }
