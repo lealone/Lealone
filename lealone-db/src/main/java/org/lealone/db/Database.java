@@ -56,7 +56,9 @@ import org.lealone.db.session.SessionStatus;
 import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.InfoMetaTable;
 import org.lealone.db.table.MetaTable;
+import org.lealone.db.table.PerfMetaTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableAlterHistory;
 import org.lealone.db.table.TableView;
@@ -149,6 +151,7 @@ public class Database implements DataHandler, DbObject {
     private User systemUser;
     private Schema mainSchema;
     private Schema infoSchema;
+    private Schema perfSchema;
     private volatile boolean infoSchemaMetaTablesInitialized;
     private Role publicRole;
 
@@ -450,8 +453,10 @@ public class Database implements DataHandler, DbObject {
 
             mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
             infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
+            perfSchema = new Schema(this, -2, "PERFORMANCE_SCHEMA", systemUser, true);
             addDatabaseObject(null, mainSchema, null);
             addDatabaseObject(null, infoSchema, null);
+            addDatabaseObject(null, perfSchema, null);
 
             systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
@@ -663,9 +668,13 @@ public class Database implements DataHandler, DbObject {
         }
         synchronized (infoSchema) {
             if (!infoSchemaMetaTablesInitialized) {
-                for (int type = 0, count = MetaTable.getMetaTableTypeCount(); type < count; type++) {
-                    MetaTable m = new MetaTable(infoSchema, -1 - type, type);
+                for (int type = 0, count = InfoMetaTable.getMetaTableTypeCount(); type < count; type++) {
+                    InfoMetaTable m = new InfoMetaTable(infoSchema, -1 - type, type);
                     infoSchema.add(null, m, null);
+                }
+                for (int type = 0, count = PerfMetaTable.getMetaTableTypeCount(); type < count; type++) {
+                    PerfMetaTable m = new PerfMetaTable(perfSchema, -1 - type, type);
+                    perfSchema.add(null, m, null);
                 }
                 infoSchemaMetaTablesInitialized = true;
             }
@@ -964,7 +973,7 @@ public class Database implements DataHandler, DbObject {
      */
     public Schema findSchema(ServerSession session, String schemaName) {
         Schema schema = find(DbObjectType.SCHEMA, session, schemaName);
-        if (schema == infoSchema) {
+        if (schema == infoSchema || schema == perfSchema) {
             initInfoSchemaMetaTables();
         }
         return schema;
