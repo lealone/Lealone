@@ -177,7 +177,7 @@ public class InfoMetaTable extends MetaTable {
             break;
         case HELP:
             setObjectName("HELP");
-            cols = createColumns("ID INT", "SECTION", "TOPIC", "SYNTAX", "TEXT");
+            cols = createColumns("ID INT", "SECTION", "TOPIC", "SYNTAX", "TEXT", "EXAMPLE");
             break;
         case SEQUENCES:
             setObjectName("SEQUENCES");
@@ -703,7 +703,9 @@ public class InfoMetaTable extends MetaTable {
                             // SYNTAX
                             rs.getString(3).trim(),
                             // TEXT
-                            rs.getString(4).trim());
+                            rs.getString(4).trim(),
+                            // EXAMPLE
+                            rs.getString(5).trim());
                 }
             } catch (Exception e) {
                 throw DbException.convert(e);
