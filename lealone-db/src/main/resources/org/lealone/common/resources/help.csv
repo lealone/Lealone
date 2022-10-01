@@ -1,7 +1,8 @@
 # Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
 # Version 1.0, and under the Eclipse Public License, Version 1.0
 # (http://h2database.com/html/license.html).
-# Initial Developer: H2 Group
+# Initial Developer: H2 Group,ZHH
+
 "SECTION","TOPIC","SYNTAX","TEXT","EXAMPLE"
 "Commands (DML)","SELECT","
 SELECT [ TOP term ] [ DISTINCT | ALL ] selectExpression [,...]
@@ -23,7 +24,7 @@ SAMPLE_SIZE limits the number of rows read for aggregate queries.
 
 Multiple set operators (UNION, INTERSECT, MINUS, EXPECT) are evaluated
 from left to right. For compatibility with other databases and future versions
-of H2 please use parentheses.
+of lealone please use parentheses.
 
 If FOR UPDATE is specified, the tables are locked for writing. When using
 MVCC, only the selected rows are locked as in an UPDATE statement.
@@ -1049,7 +1050,7 @@ See also CREATE CONSTANT.
 Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:h2:test;ALLOW_LITERALS=NONE""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;ALLOW_LITERALS=NONE""
 ","
 SET ALLOW_LITERALS NONE
 "
@@ -1058,7 +1059,7 @@ SET ALLOW_LITERALS NONE
 SET AUTOCOMMIT { TRUE | ON | FALSE | OFF }
 ","
 Switches auto commit on or off.
-This setting can be appended to the database URL: ""jdbc:h2:test;AUTOCOMMIT=OFF"" -
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;AUTOCOMMIT=OFF"" -
 however this will not work as expected when using a connection pool
 (the connection pool manager will re-enable autocommit when returning
 the connection to the pool, so autocommit will only be disabled the first
@@ -1082,7 +1083,7 @@ It has no effect for in-memory databases.
 Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:h2:test;CACHE_SIZE=8192""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;CACHE_SIZE=8192""
 ","
 SET CACHE_SIZE 8192
 "
@@ -1146,7 +1147,7 @@ used. This setting is not persistent.
 
 Admin rights are required to execute this command, except if it is set when
 opening the database (in this case it is reset just after opening the database).
-This setting can be appended to the database URL: ""jdbc:h2:test;DATABASE_EVENT_LISTENER='sample.MyListener'""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;DATABASE_EVENT_LISTENER='sample.MyListener'""
 ","
 SET DATABASE_EVENT_LISTENER 'sample.MyListener'
 "
@@ -1164,7 +1165,7 @@ If the application exits normally or System.exit is called, the database is clos
 Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:h2:test;DB_CLOSE_DELAY=-1""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;DB_CLOSE_DELAY=-1""
 ","
 SET DB_CLOSE_DELAY -1
 "
@@ -1230,7 +1231,7 @@ String literals and parameters are however still considered case sensitive even 
 Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:h2:test;IGNORECASE=TRUE""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;IGNORECASE=TRUE""
 ","
 SET IGNORECASE TRUE
 "
@@ -1249,7 +1250,7 @@ This command can only be executed if there are no tables defined.
 Admin rights are required to execute this command.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:h2:test;JAVA_OBJECT_SERIALIZER='com.acme.SerializerClassName'""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;JAVA_OBJECT_SERIALIZER='com.acme.SerializerClassName'""
 ","
 SET JAVA_OBJECT_SERIALIZER 'com.acme.SerializerClassName'
 "
@@ -1262,7 +1263,7 @@ Sets the lock timeout (in milliseconds) for the current session. The default
 value for this setting is 1000 (one second).
 
 This command does not commit a transaction, and rollback does not affect it.
-This setting can be appended to the database URL: ""jdbc:h2:test;LOCK_TIMEOUT=10000""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;LOCK_TIMEOUT=10000""
 ","
 SET LOCK_TIMEOUT 1000
 "
@@ -1325,7 +1326,7 @@ operation. The default max size is 100000. 0 means no limit.
 This setting is not persistent.
 Admin rights are required to execute this command, as it affects all connections.
 It has no effect for in-memory databases.
-This setting can be appended to the database URL: ""jdbc:h2:test;MAX_OPERATION_MEMORY=10000""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;MAX_OPERATION_MEMORY=10000""
 ","
 SET MAX_OPERATION_MEMORY 0
 "
@@ -1339,7 +1340,7 @@ Modes in the feature section.
 This setting is not persistent.
 Admin rights are required to execute this command, as it affects all connections.
 
-This setting can be appended to the database URL: ""jdbc:h2:test;MODE=MYSQL""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;MODE=MYSQL""
 ","
 SET MODE HSQLDB
 "
@@ -1353,7 +1354,7 @@ the tables was changed. This option is enabled by default.
 
 Admin rights are required to execute this command, as it affects all connections.
 
-This setting can be appended to the database URL: ""jdbc:h2:test;OPTIMIZE_REUSE_RESULTS=0""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;OPTIMIZE_REUSE_RESULTS=0""
 ","
 SET OPTIMIZE_REUSE_RESULTS 0
 "
@@ -1428,7 +1429,7 @@ in statements where no schema is set explicitly. The default schema for new
 connections is PUBLIC.
 
 This command does not commit a transaction, and rollback does not affect it.
-This setting can be appended to the database URL: ""jdbc:h2:test;SCHEMA=ABC""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;SCHEMA=ABC""
 ","
 SET SCHEMA INFORMATION_SCHEMA
 "
@@ -1441,7 +1442,7 @@ used in statements where no schema is set explicitly. The default schema for new
 connections is PUBLIC.
 
 This command does not commit a transaction, and rollback does not affect it.
-This setting can be appended to the database URL: ""jdbc:h2:test;SCHEMA_SEARCH_PATH=ABC,DEF""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;SCHEMA_SEARCH_PATH=ABC,DEF""
 ","
 SET SCHEMA_SEARCH_PATH INFORMATION_SCHEMA, PUBLIC
 "
@@ -1454,7 +1455,7 @@ milliseconds delay after each 50 ms. The default value is 0 (throttling
 disabled).
 
 This command does not commit a transaction, and rollback does not affect it.
-This setting can be appended to the database URL: ""jdbc:h2:test;THROTTLE=50""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;THROTTLE=50""
 ","
 SET THROTTLE 200
 "
@@ -1469,7 +1470,7 @@ To use SLF4J, append "";TRACE_LEVEL_FILE=4"" to the database URL when opening th
 This setting is not persistent.
 Admin rights are required to execute this command, as it affects all connections.
 This command does not commit a transaction, and rollback does not affect it.
-This setting can be appended to the database URL: ""jdbc:h2:test;TRACE_LEVEL_SYSTEM_OUT=3""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;TRACE_LEVEL_SYSTEM_OUT=3""
 ","
 SET TRACE_LEVEL_SYSTEM_OUT 3
 "
@@ -1484,7 +1485,7 @@ deleted. The default max size is 16 MB.
 This setting is persistent.
 Admin rights are required to execute this command, as it affects all connections.
 
-This setting can be appended to the database URL: ""jdbc:h2:test;TRACE_MAX_FILE_SIZE=3""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;TRACE_MAX_FILE_SIZE=3""
 ","
 SET TRACE_MAX_FILE_SIZE 10
 "
@@ -1497,7 +1498,7 @@ This setting is persistent. The default is 500 ms.
 
 Admin rights are required to execute this command, as it affects all connections.
 
-This setting can be appended to the database URL: ""jdbc:h2:test;WRITE_DELAY=0""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;WRITE_DELAY=0""
 ","
 SET WRITE_DELAY 2000
 "
@@ -1514,7 +1515,7 @@ All connections are closed, open transactions are rolled back.
 
 SHUTDOWN COMPACT fully compacts the database (re-creating the database may further reduce the database size).
 If the database is closed normally (using SHUTDOWN or by closing all connections), then the database is also compacted,
-but only for at most the time defined by the database setting ""h2.maxCompactTime"" in milliseconds (see there).
+but only for at most the time defined by the database setting ""lealone.maxCompactTime"" in milliseconds (see there).
 
 SHUTDOWN IMMEDIATELY closes the database files without any cleanup and without compacting.
 
@@ -3169,7 +3170,7 @@ Creates an XML attribute element of the form ""name=value"".
 The value is encoded as XML text.
 This method returns a string.
 ","
-CALL XMLNODE('a', XMLATTR('href', 'http://h2database.com'))
+CALL XMLNODE('a', XMLATTR('href', 'http://lealone.com'))
 "
 
 "Functions (String)","XMLNODE","
@@ -3181,7 +3182,7 @@ An empty or null content string means the node is empty.
 The content is indented by default if it contains a newline.
 This method returns a string.
 ","
-CALL XMLNODE('a', XMLATTR('href', 'http://h2database.com'), 'H2')
+CALL XMLNODE('a', XMLATTR('href', 'http://lealone.com'), 'lealone')
 "
 
 "Functions (String)","XMLCOMMENT","
@@ -3638,7 +3639,7 @@ To read a stream from the classpath, use the prefix ""classpath:"".
 
 Admin rights are required to execute this command.
 ","
-SELECT LENGTH(FILE_READ('~/.h2.server.properties')) LEN;
+SELECT LENGTH(FILE_READ('~/.lealone.server.properties')) LEN;
 SELECT FILE_READ('http://localhost:8182/stylesheet.css', NULL) CSS;
 "
 
@@ -3692,20 +3693,6 @@ LOCK_TIMEOUT()
 Returns the lock timeout of the current session (in milliseconds).
 ","
 LOCK_TIMEOUT()
-"
-
-"Functions (System)","LINK_SCHEMA","
-LINK_SCHEMA(targetSchemaString, driverString, urlString,
-userString, passwordString, sourceSchemaString)
-","
-Creates table links for all tables in a schema.
-If tables with the same name already exist, they are dropped first.
-The target schema is created automatically if it does not yet exist.
-The driver name may be empty if the driver is already loaded.
-The list of tables linked is returned in the form of a result set.
-Admin rights are required to execute this command.
-","
-CALL LINK_SCHEMA('TEST2', '', 'jdbc:h2:test2', 'sa', 'sa', 'PUBLIC');
 "
 
 "Functions (System)","MEMORY_FREE","
@@ -3863,12 +3850,12 @@ Returns the name of the current user of this session.
 CURRENT_USER()
 "
 
-"Functions (System)","H2VERSION","
-H2VERSION()
+"Functions (System)","LEALONE_VERSION","
+LEALONE_VERSION()
 ","
-Returns the H2 version as a String.
+Returns the lealone version as a String.
 ","
-H2VERSION()
+LEALONE_VERSION()
 "
 
 "System Tables","Information Schema","
