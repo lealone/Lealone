@@ -95,19 +95,18 @@ public class InfoMetaTable extends MetaTable {
     private static final int COLUMN_PRIVILEGES = 15;
     private static final int COLLATIONS = 16;
     private static final int VIEWS = 17;
-    private static final int IN_DOUBT = 18;
-    private static final int CROSS_REFERENCES = 19;
-    private static final int CONSTRAINTS = 20;
-    private static final int FUNCTION_COLUMNS = 21;
-    private static final int CONSTANTS = 22;
-    private static final int DOMAINS = 23;
-    private static final int TRIGGERS = 24;
-    private static final int SESSIONS = 25;
-    private static final int LOCKS = 26;
-    private static final int SESSION_STATE = 27;
-    private static final int DATABASES = 28;
-    private static final int DB_OBJECTS = 29; // 对应SYS表
-    private static final int SERVICES = 30;
+    private static final int CROSS_REFERENCES = 18;
+    private static final int CONSTRAINTS = 19;
+    private static final int FUNCTION_COLUMNS = 20;
+    private static final int CONSTANTS = 21;
+    private static final int DOMAINS = 22;
+    private static final int TRIGGERS = 23;
+    private static final int SESSIONS = 24;
+    private static final int LOCKS = 25;
+    private static final int SESSION_STATE = 26;
+    private static final int DATABASES = 27;
+    private static final int DB_OBJECTS = 28; // 对应SYS表
+    private static final int SERVICES = 29;
 
     /**
      * Get the number of meta table types. Supported meta table
@@ -240,10 +239,6 @@ public class InfoMetaTable extends MetaTable {
             cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "VIEW_DEFINITION",
                     "CHECK_OPTION", "IS_UPDATABLE", "STATUS", "REMARKS", "ID INT");
             indexColumnName = "TABLE_NAME";
-            break;
-        case IN_DOUBT:
-            setObjectName("IN_DOUBT");
-            cols = createColumns("TRANSACTION", "STATE");
             break;
         case CROSS_REFERENCES:
             setObjectName("CROSS_REFERENCES");
@@ -1059,10 +1054,6 @@ public class InfoMetaTable extends MetaTable {
             }
             break;
         }
-        case IN_DOUBT: {
-            // 2PC语句已经废弃
-            break;
-        }
         case CROSS_REFERENCES: {
             for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.CONSTRAINT)) {
                 Constraint constraint = (Constraint) obj;
@@ -1490,7 +1481,6 @@ public class InfoMetaTable extends MetaTable {
     public long getMaxDataModificationId() {
         switch (type) {
         case SETTINGS:
-        case IN_DOUBT:
         case SESSIONS:
         case LOCKS:
         case SESSION_STATE:

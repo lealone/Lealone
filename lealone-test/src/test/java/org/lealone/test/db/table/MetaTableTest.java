@@ -31,7 +31,6 @@ public class MetaTableTest extends DbObjectTestBase {
         String[] tableNames = { "TABLE_TYPES" };
         tableNames[0] = "CATALOGS";
         tableNames[0] = "SETTINGS";
-        tableNames[0] = "IN_DOUBT";
         tableNames[0] = "TABLES";
         tableNames[0] = "HELP";
         for (String tableName : tableNames) {
