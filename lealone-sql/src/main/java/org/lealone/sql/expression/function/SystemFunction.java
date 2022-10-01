@@ -64,9 +64,9 @@ public class SystemFunction extends BuiltInFunction {
     public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204,
             NULLIF = 205, CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210,
             CSVWRITE = 211, MEMORY_FREE = 212, MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214,
-            SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218, GREATEST = 219,
-            LEAST = 220, CANCEL_SESSION = 221, SET = 222, FILE_READ = 223, TRANSACTION_ID = 224,
-            TRUNCATE_VALUE = 225, NVL2 = 226, DECODE = 227, ARRAY_CONTAINS = 228;
+            SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, GREATEST = 218, LEAST = 219,
+            CANCEL_SESSION = 220, SET = 221, FILE_READ = 222, TRANSACTION_ID = 223, TRUNCATE_VALUE = 224,
+            NVL2 = 225, DECODE = 226, ARRAY_CONTAINS = 227;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -112,7 +112,6 @@ public class SystemFunction extends BuiltInFunction {
         addFunctionNotDeterministic("SCHEMA", SCHEMA, 0, Value.STRING);
         addFunctionNotDeterministic("SESSION_ID", SESSION_ID, 0, Value.INT);
         addFunction("ARRAY_LENGTH", ARRAY_LENGTH, 1, Value.INT);
-        addFunctionNotDeterministic("LINK_SCHEMA", LINK_SCHEMA, 6, Value.RESULT_SET);
         addFunctionWithNull("LEAST", LEAST, VAR_ARGS, Value.NULL);
         addFunctionWithNull("GREATEST", GREATEST, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("CANCEL_SESSION", CANCEL_SESSION, 1, Value.BOOLEAN);
@@ -302,15 +301,6 @@ public class SystemFunction extends BuiltInFunction {
                 throw DbException.convert(e);
             }
             break;
-        }
-        case LINK_SCHEMA: {
-            // session.getUser().checkAdmin();
-            // Connection conn = session.createConnection(false);
-            // ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(),
-            // v3.getString(),
-            // v4.getString(), v5.getString());
-            // result = ValueResultSet.get(rs);
-            throw DbException.getUnsupportedException("LINK_SCHEMA");
         }
         case CSVWRITE: {
             session.getUser().checkAdmin();
