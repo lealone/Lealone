@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -27,7 +26,7 @@ public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaDat
     private final JdbcConnection conn;
     private String mode;
 
-    JdbcDatabaseMetaData(JdbcConnection conn, Trace trace, int id) {
+    JdbcDatabaseMetaData(JdbcConnection conn, int id) {
         this.conn = conn;
         this.trace = conn.getTrace(TraceObjectType.DATABASE_META_DATA, id);
     }

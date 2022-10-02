@@ -396,7 +396,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 debugCodeAssign(TraceObjectType.DATABASE_META_DATA, id, "getMetaData()");
             }
             checkClosed();
-            return new JdbcDatabaseMetaData(this, trace, id);
+            return new JdbcDatabaseMetaData(this, id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
