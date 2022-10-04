@@ -616,7 +616,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             return addWaitingTransaction(key, tv);
         }
         Object oldValue = tv.getValue();
-        tv.setTransaction(transaction);
+        tv.setTransaction(transaction); // 二级索引需要设置
         tv.setValue(value);
         transaction.undoLog.add(getName(), key, oldValue, tv, false);
         return Transaction.OPERATION_COMPLETE;

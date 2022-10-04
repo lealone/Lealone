@@ -5,12 +5,7 @@
  */
 package org.lealone.test.sql.dml;
 
-import java.sql.Connection;
-import java.sql.Statement;
-
 import org.junit.Test;
-import org.lealone.common.util.JdbcUtils;
-import org.lealone.db.api.ErrorCode;
 import org.lealone.test.sql.SqlTestBase;
 
 public class UpdateTest extends SqlTestBase {
@@ -21,7 +16,6 @@ public class UpdateTest extends SqlTestBase {
         testUpdate();
         testUpdatePrimaryKey();
         testUpdateIndex();
-        testRowLock();
     }
 
     void testUpdatePrimaryKey() {
@@ -94,40 +88,5 @@ public class UpdateTest extends SqlTestBase {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    void testRowLock() {
-        try {
-            conn.setAutoCommit(false);
-            sql = "UPDATE UpdateTest SET f1 = 'a2' WHERE pk = '02'";
-            executeUpdate(sql);
-
-            Connection conn2 = null;
-            try {
-                conn2 = getConnection();
-                conn2.setAutoCommit(false);
-                Statement stmt2 = conn2.createStatement();
-                stmt2.executeUpdate("SET LOCK_TIMEOUT = 300");
-                stmt2.executeUpdate("UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'");
-                fail();
-            } catch (Exception e) {
-                assertLockTimeout(conn2, e);
-            }
-
-            conn.commit();
-            conn.setAutoCommit(true);
-
-            sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '02'";
-            assertEquals("a2", getStringValue(1, true));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    static void assertLockTimeout(Connection conn, Exception e) {
-        assertErrorCode(e, ErrorCode.LOCK_TIMEOUT_1);
-        if (conn != null)
-            JdbcUtils.closeSilently(conn);
-        System.out.println(e.getMessage());
     }
 }

@@ -5,8 +5,6 @@
  */
 package org.lealone.transaction.aote.log;
 
-import java.util.List;
-
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
@@ -57,11 +55,6 @@ public class UndoLogRecord {
 
     public void setUndone(boolean undone) {
         this.undone = undone;
-    }
-
-    public void setRetryReplicationNames(List<String> retryReplicationNames) {
-        if (newTV != null)
-            newTV.setRetryReplicationNames(retryReplicationNames);
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值

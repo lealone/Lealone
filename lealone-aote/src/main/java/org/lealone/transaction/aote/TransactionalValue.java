@@ -6,7 +6,6 @@
 package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
@@ -22,7 +21,6 @@ public class TransactionalValue {
     public static class LockOwner {
         int logId;
         Object oldValue;
-        List<String> retryReplicationNames;
     }
 
     public static class OldValue {
@@ -57,6 +55,7 @@ public class TransactionalValue {
         t.addTransactionalValue(this, owner);
     }
 
+    // 二级索引需要设置
     public void setTransaction(AOTransaction t) {
         if (this.t == null) {
             addLockOwner(t);
@@ -84,7 +83,7 @@ public class TransactionalValue {
                 } else {
                     LockOwner owner = t.getLockOwner(this);
                     if (owner == null)
-                        return SIGHTLESS;
+                        return SIGHTLESS; // 刚刚insert但是还没有提交的记录
                     else
                         return owner.oldValue;
                 }
@@ -149,9 +148,10 @@ public class TransactionalValue {
     public boolean tryLock(AOTransaction t, int[] columnIndexes) {
         if (t == this.t)
             return true;
+        addLockOwner(t);
         boolean ok = tUpdater.compareAndSet(this, null, t);
-        if (ok) {
-            addLockOwner(t);
+        if (!ok) {
+            t.removeTransactionalValue(this);
         }
         return ok;
     }
@@ -219,24 +219,6 @@ public class TransactionalValue {
 
     public void rollback(Object oldValue) {
         this.value = oldValue;
-    }
-
-    public List<String> getRetryReplicationNames() {
-        AOTransaction t = this.t;
-        if (t != null) {
-            LockOwner owner = t.getLockOwner(this);
-            return owner != null ? owner.retryReplicationNames : null;
-        }
-        return null;
-    }
-
-    public void setRetryReplicationNames(List<String> retryReplicationNames) {
-        AOTransaction t = this.t;
-        if (t != null) {
-            LockOwner owner = t.getLockOwner(this);
-            if (owner != null)
-                owner.retryReplicationNames = retryReplicationNames;
-        }
     }
 
     public void gc(AOTransaction transaction) {

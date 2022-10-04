@@ -5,8 +5,6 @@
  */
 package org.lealone.transaction.aote.log;
 
-import java.util.List;
-
 import org.lealone.db.DataBuffer;
 import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.TransactionalValue;
@@ -93,17 +91,6 @@ public class UndoLog {
         while (logId > toLogId) {
             UndoLogRecord r = removeLast();
             r.rollback(transactionEngine);
-        }
-    }
-
-    public void setRetryReplicationNames(List<String> retryReplicationNames, int toLogId) {
-        int index = logId - 1;
-        UndoLogRecord r = first;
-        while (r != null) {
-            if (index-- < toLogId)
-                break;
-            r.setRetryReplicationNames(retryReplicationNames);
-            r = r.next;
         }
     }
 
