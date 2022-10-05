@@ -60,7 +60,7 @@ public class PageStorageModeSqlTest extends SqlTestBase {
             sql.append(", f").append(col).append(" varchar");
         }
         sql.append(") Engine ").append(AOStorageEngine.NAME).append(" PARAMETERS(pageStorageMode='")
-                .append(pageStorageMode).append("')");
+                .append(pageStorageMode).append("', pageSplitSize='512k')");
         executeUpdate(sql.toString());
     }
 

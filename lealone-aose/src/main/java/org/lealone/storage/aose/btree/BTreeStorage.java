@@ -69,7 +69,7 @@ public class BTreeStorage {
         if (minFillRate > 50) // 超过50没有实际意义
             minFillRate = 50;
         this.minFillRate = minFillRate;
-        compressionLevel = getIntValue("compress", 0);
+        compressionLevel = parseCompressionLevel();
         backgroundExceptionHandler = (UncaughtExceptionHandler) map
                 .getConfig("backgroundExceptionHandler");
 
@@ -78,15 +78,15 @@ public class BTreeStorage {
             cache = null;
             mapBaseDir = null;
             return;
+        }
+
+        int cacheSize = getIntValue("cacheSize", 16 * 1024 * 1024);
+        if (cacheSize > 0) {
+            CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
+            cc.maxMemory = cacheSize;
+            cache = new CacheLongKeyLIRS<>(cc);
         } else {
-            int mb = getIntValue("cacheSize", 16);
-            if (mb > 0) {
-                CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
-                cc.maxMemory = mb * 1024L * 1024L;
-                cache = new CacheLongKeyLIRS<>(cc);
-            } else {
-                cache = null; // 当 cacheSize <= 0 时禁用缓存
-            }
+            cache = null; // 当 cacheSize <= 0 时禁用缓存
         }
 
         mapBaseDir = map.getStorage().getStoragePath() + File.separator + map.getName();
@@ -99,7 +99,39 @@ public class BTreeStorage {
 
     private int getIntValue(String key, int defaultValue) {
         Object value = map.getConfig(key);
-        return value != null ? (Integer) value : defaultValue;
+        if (value instanceof Integer) {
+            return (Integer) value;
+        } else if (value != null) {
+            String str = value.toString().trim().toLowerCase();
+            if (str.endsWith("k")) {
+                str = str.substring(0, str.length() - 1).trim();
+                return Integer.parseInt(str) * 1024;
+            } else if (str.endsWith("m")) {
+                str = str.substring(0, str.length() - 1).trim();
+                return Integer.parseInt(str) * 1024 * 1024;
+            } else {
+                return Integer.parseInt(str);
+            }
+        } else {
+            return defaultValue;
+        }
+    }
+
+    private int parseCompressionLevel() {
+        Object value = map.getConfig("compress");
+        if (value == null)
+            return Compressor.NO;
+        else {
+            String str = value.toString().trim().toUpperCase();
+            if (str.equals("NO"))
+                return Compressor.NO;
+            else if (str.equals("LZF"))
+                return Compressor.LZF;
+            else if (str.equals("DEFLATE"))
+                return Compressor.DEFLATE;
+            else
+                return Integer.parseInt(str);
+        }
     }
 
     public IllegalStateException panic(int errorCode, String message, Object... arguments) {

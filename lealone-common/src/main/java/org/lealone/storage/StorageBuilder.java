@@ -89,7 +89,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder cacheSize(int mb) {
-        return set("cacheSize", mb);
+        return set("cacheSize", mb * 1024 * 1024);
     }
 
     /**

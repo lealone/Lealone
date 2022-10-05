@@ -16,8 +16,9 @@ storage_engines:
   - name: AOSE
     enabled: true
     parameters: {
-        # key1: v1,
-        # key2: v2,
+        pageSplitSize: 16k,
+        cacheSize: 16m, # 每个 btree 的缓存大小
+        compress: no, # no、lzf、deflate 或 0、1、2
     }
 
 transaction_engines:

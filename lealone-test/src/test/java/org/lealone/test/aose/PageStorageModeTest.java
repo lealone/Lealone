@@ -27,7 +27,7 @@ public class PageStorageModeTest extends AoseTestBase {
     private final int rowCount = 6000;
     private final int columnCount = 10;
     private final int pageSplitSize = 1024 * 1024;
-    private final int cacheSize = 100 * 1024 * 1024; // 100M
+    private final int cacheSize = 100; // 100M
 
     @Test
     public void run() {
