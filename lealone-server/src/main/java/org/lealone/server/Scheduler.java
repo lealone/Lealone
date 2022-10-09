@@ -120,12 +120,12 @@ public class Scheduler extends PageOperationHandlerBase
     }
 
     private void runSessionInitTasks() {
-        if (sessionValidator.canHandleNextSessionInitTask()) {
+        if (canHandleNextSessionInitTask()) {
             AsyncTask task = sessionInitTaskQueue.poll();
             while (task != null) {
                 try {
                     task.run();
-                    if (!sessionValidator.canHandleNextSessionInitTask()) {
+                    if (!canHandleNextSessionInitTask()) {
                         break;
                     }
                 } catch (Throwable e) {
@@ -172,9 +172,12 @@ public class Scheduler extends PageOperationHandlerBase
         wakeUp();
     }
 
-    public void handleSessionInitTask(AsyncTask task) {
+    boolean canHandleNextSessionInitTask() {
+        return sessionValidator.canHandleNextSessionInitTask();
+    }
+
+    public void addSessionInitTask(AsyncTask task) {
         sessionInitTaskQueue.add(task);
-        wakeUp();
     }
 
     @Override
@@ -235,8 +238,16 @@ public class Scheduler extends PageOperationHandlerBase
 
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
-        // 如果有新的session需要创建，那么先接入新的session
+        try {
+            netEventLoop.getSelector().selectNow();
+        } catch (IOException e) {
+            logger.warn("Failed to selectNow", e);
+        }
+        handleSelectedKeys();
+        netEventLoop.write();
         runSessionInitTasks();
+        runSessionTasks();
+        netEventLoop.write();
 
         // 如果来了更高优化级的命令，那么当前正在执行的语句就让出当前线程，
         // 当前线程转去执行高优先级的命令
@@ -391,10 +402,6 @@ public class Scheduler extends PageOperationHandlerBase
                 keys.clear();
             }
         }
-    }
-
-    public boolean useNetEventLoop() {
-        return netEventLoop != null;
     }
 
     public void register(AsyncConnection conn) {

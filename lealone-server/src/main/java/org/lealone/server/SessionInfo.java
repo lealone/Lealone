@@ -8,7 +8,6 @@ package org.lealone.server;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -22,7 +21,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
     // taskQueue中的命令统一由scheduler调度执行
-    private final Queue<AsyncTask> taskQueue;
+    private final Queue<AsyncTask> taskQueue = new LinkedList<>();
     private final Scheduler scheduler;
     private final TcpServerConnection conn;
 
@@ -39,13 +38,6 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         this.session = session;
         this.sessionId = sessionId;
         this.sessionTimeout = sessionTimeout;
-
-        // 如果scheduler也负责网络IO，往taskQueue中增加和删除元素都由scheduler完成，用普通链表即可
-        if (scheduler.useNetEventLoop()) {
-            taskQueue = new LinkedList<>();
-        } else {
-            taskQueue = new ConcurrentLinkedQueue<>();
-        }
         updateLastActiveTime();
     }
 
@@ -68,14 +60,11 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     public void submitTask(PacketDeliveryTask task) {
         updateLastActiveTime();
         taskQueue.add(task);
-        if (!scheduler.useNetEventLoop())
-            scheduler.wakeUp();
     }
 
     public void submitTasks(AsyncTask... tasks) {
         updateLastActiveTime();
         taskQueue.addAll(Arrays.asList(tasks));
-        scheduler.wakeUp();
     }
 
     public void submitYieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable) {

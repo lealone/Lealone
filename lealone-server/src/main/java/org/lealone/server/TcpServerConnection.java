@@ -58,7 +58,6 @@ public class TcpServerConnection extends TransferConnection {
         tcpServer.removeConnection(this);
     }
 
-    // 这个方法是由网络事件循环线程执行的
     @Override
     protected void handleRequest(TransferInputStream in, int packetId, int packetType)
             throws IOException {
@@ -67,14 +66,11 @@ public class TcpServerConnection extends TransferConnection {
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
-                // 当前共享的TCP连接对应的Scheduler不负责网络IO时，需要为每个新session重新分配Scheduler
-                if (this.scheduler.useNetEventLoop()) {
+                if (scheduler.canHandleNextSessionInitTask()) {
                     // 直接处理，不需要加入Scheduler的队列
-                    readInitPacket(in, packetId, sessionId, this.scheduler);
+                    readInitPacket(in, packetId, sessionId);
                 } else {
-                    // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                    Scheduler scheduler = SchedulerFactory.getScheduler();
-                    scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
+                    scheduler.addSessionInitTask(() -> readInitPacket(in, packetId, sessionId));
                 }
             } else {
                 sessionNotFound(packetId, sessionId);
@@ -86,8 +82,7 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId,
-            Scheduler scheduler) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
         SessionInit packet;
         try {
             packet = SessionInit.decoder.decode(in, 0);
@@ -101,7 +96,7 @@ public class TcpServerConnection extends TransferConnection {
         }
 
         try {
-            ServerSession session = createSession(packet.ci, sessionId, scheduler);
+            ServerSession session = createSession(packet.ci, sessionId);
             scheduler.validateSession(true);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
@@ -118,7 +113,7 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private ServerSession createSession(ConnectionInfo ci, int sessionId, Scheduler scheduler) {
+    private ServerSession createSession(ConnectionInfo ci, int sessionId) {
         ServerSession session = (ServerSession) ci.createSession();
         // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
         // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
