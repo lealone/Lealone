@@ -38,6 +38,7 @@ public class TransactionalValue {
 
     private Object value;
     private volatile AOTransaction t;
+    private long commitTimestamp;
 
     public TransactionalValue(Object value) {
         this.value = value;
@@ -112,7 +113,8 @@ public class TransactionalValue {
                 if (owner != null)
                     return owner.oldValue;
             } else {
-                return value;
+                if (tid >= commitTimestamp)
+                    return value;
             }
             return SIGHTLESS; // 刚刚insert但是还没有提交的记录
         }
@@ -156,25 +158,13 @@ public class TransactionalValue {
         return ok;
     }
 
-    public void unlock() {
+    public void unlock(boolean isInsert) {
         AOTransaction t = this.t;
         if (t == null)
             return;
-        if (t.transactionEngine.containsRepeatableReadTransactions()) {
-            OldValue v = new OldValue();
-            if (value == null) { // 删除操作
-                LockOwner owner = t.getLockOwner(this);
-                v.value = owner.oldValue;
-                v.tid = 0;
-            } else {
-                v.value = value;
-                v.tid = t.commitTimestamp;
-            }
-            v.next = t.transactionEngine.getOldValue(this);
-            t.transactionEngine.addTransactionalValue(this, v);
-        }
         this.t = null;
-        t.removeTransactionalValue(this);
+        if (!isInsert)
+            t.removeTransactionalValue(this);
     }
 
     public boolean isLocked(long tid, int[] columnIndexes) {
@@ -186,30 +176,26 @@ public class TransactionalValue {
         return t;
     }
 
-    public String getHostAndPort() {
-        return null;
-    }
-
-    public String getGlobalReplicationName() {
-        return null;
-    }
-
-    public boolean isReplicated() {
-        return false;
-    }
-
-    public void setReplicated(boolean replicated) {
-    }
-
-    public void incrementVersion() {
-    }
-
     public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
         return this;
     }
 
-    public TransactionalValue commit(long tid) {
-        return this;
+    public void commit(boolean isInsert) {
+        AOTransaction t = this.t;
+        if (t == null)
+            return;
+        if (!isInsert && t.transactionEngine.containsRepeatableReadTransactions()) {
+            synchronized (this) {
+                LockOwner owner = t.getLockOwner(this);
+                OldValue v = new OldValue();
+                v.value = owner.oldValue;
+                v.tid = commitTimestamp;
+                v.next = t.transactionEngine.getOldValue(this);
+                t.transactionEngine.addTransactionalValue(this, v);
+            }
+        }
+        commitTimestamp = t.commitTimestamp;
+        return;
     }
 
     public boolean isCommitted() {
@@ -219,9 +205,6 @@ public class TransactionalValue {
 
     public void rollback(Object oldValue) {
         this.value = oldValue;
-    }
-
-    public void gc(AOTransaction transaction) {
     }
 
     public void write(DataBuffer buff, StorageDataType valueType) {

@@ -58,7 +58,7 @@ public class UndoLogRecord {
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public void commit(AOTransactionEngine transactionEngine, long tid) {
+    public void commit(AOTransactionEngine transactionEngine) {
         if (undone || isForUpdate)
             return;
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
@@ -66,17 +66,17 @@ public class UndoLogRecord {
             return; // map was later removed
         }
         if (oldValue == null) { // insert
-            newTV.commit(tid);
+            newTV.commit(true);
         } else if (newTV != null && newTV.getValue() == null) { // delete
             if (!transactionEngine.containsRepeatableReadTransactions()) {
                 map.remove(key);
             } else {
-                newTV.commit(tid);
+                newTV.commit(false);
                 map.put(key, newTV, ar -> {
                 });
             }
         } else { // update
-            newTV.commit(tid);
+            newTV.commit(false);
             // TODO 如果不put回去存储引擎不知道数据发生变化了，会丢失更新的数据
             // 是否可以考虑在TransactionalValue中增加page ref，然后调用markDirty方法，但是这种方案会增加内存开销
             map.put(key, newTV, ar -> {
@@ -91,7 +91,7 @@ public class UndoLogRecord {
 
     public void unlock() {
         if (newTV != null)
-            newTV.unlock();
+            newTV.unlock(oldValue == null);
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新

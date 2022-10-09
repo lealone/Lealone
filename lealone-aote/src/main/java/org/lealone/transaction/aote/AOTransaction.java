@@ -289,11 +289,10 @@ public class AOTransaction implements Transaction {
         t.commitTimestamp = t.transactionEngine.nextEvenTransactionId(); // 生成新的
         // 先提交，事务变成结束状态再解锁
         UndoLog undoLog = t.undoLog;
-        undoLog.commit(transactionEngine, tid);
+        undoLog.commit(transactionEngine);
         t.endTransaction(false);
         undoLog.unlock();
         wakeUpWaitingTransactions();
-        undoLog.gc();
     }
 
     private void endTransaction(boolean remove) {

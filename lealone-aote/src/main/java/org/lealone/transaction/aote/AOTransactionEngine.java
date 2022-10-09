@@ -8,6 +8,7 @@ package org.lealone.transaction.aote;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
@@ -28,6 +29,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.aote.TransactionalValue.OldValue;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 
@@ -277,12 +279,42 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         tValues.put(tv, ov);
     }
 
-    void removeTransactionalValue(TransactionalValue tv) {
-        tValues.remove(tv);
-    }
-
     TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
         return tValues.get(tv);
+    }
+
+    private void gc() {
+        if (tValues.isEmpty())
+            return;
+        long minTid = Long.MAX_VALUE;
+        for (AOTransaction t : currentTransactions.values()) {
+            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ && t.getTransactionId() < minTid)
+                minTid = t.getTransactionId();
+        }
+        if (minTid != Long.MAX_VALUE) {
+            for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
+                synchronized (e.getKey()) {
+                    OldValue oldValue = e.getValue();
+                    if (oldValue != null && oldValue.tid < minTid) {
+                        tValues.remove(e.getKey());
+                        continue;
+                    }
+                    while (oldValue != null) {
+                        if (oldValue.tid < minTid) {
+                            oldValue.next = null;
+                            break;
+                        }
+                        oldValue = oldValue.next;
+                    }
+                }
+            }
+        } else {
+            for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
+                synchronized (e.getKey()) {
+                    tValues.remove(e.getKey());
+                }
+            }
+        }
     }
 
     @Override
@@ -374,6 +406,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     throw new AssertionError();
                 }
                 try {
+                    gc();
                     checkpoint(false);
                 } catch (Exception e) {
                     logger.error("Failed to execute checkpoint", e);

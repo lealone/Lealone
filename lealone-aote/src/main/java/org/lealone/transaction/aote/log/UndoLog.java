@@ -68,10 +68,10 @@ public class UndoLog {
         removeLast();
     }
 
-    public void commit(AOTransactionEngine transactionEngine, long tid) {
+    public void commit(AOTransactionEngine transactionEngine) {
         UndoLogRecord r = first;
         while (r != null) {
-            r.commit(transactionEngine, tid);
+            r.commit(transactionEngine);
             r = r.next;
         }
     }
@@ -82,9 +82,6 @@ public class UndoLog {
             r.unlock();
             r = r.next;
         }
-    }
-
-    public void gc() { // TODO
     }
 
     public void rollbackTo(AOTransactionEngine transactionEngine, int toLogId) {
