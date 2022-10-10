@@ -37,8 +37,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private static final Logger logger = LoggerFactory.getLogger(AOTransactionEngine.class);
 
-    private static final String NAME = "AOTE";
-
     private static final class MapInfo {
         final StorageMap<Object, TransactionalValue> map;
         final AtomicInteger estimatedMemory = new AtomicInteger(0);
@@ -61,14 +59,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private CheckpointService checkpointService;
 
     public AOTransactionEngine() {
-        super(NAME);
+        super("AOTE");
     }
 
-    public AOTransactionEngine(String name) {
-        super(name);
-    }
-
-    public LogSyncService getLogSyncService() {
+    LogSyncService getLogSyncService() {
         return logSyncService;
     }
 
@@ -78,10 +72,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     boolean containsTransaction(long tid) {
         return currentTransactions.containsKey(tid);
-    }
-
-    AOTransaction getTransaction(long tid) {
-        return currentTransactions.get(tid);
     }
 
     Collection<AOTransaction> getCurrentTransactions() {
@@ -100,6 +90,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         maps.remove(mapName);
         RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
         logSyncService.addAndMaybeWaitForSync(r);
+    }
+
+    void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
+        tValues.put(tv, ov);
+    }
+
+    TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
+        return tValues.get(tv);
     }
 
     ///////////////////// 以下方法在UndoLogRecord中有用途 /////////////////////
@@ -186,7 +184,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             init(getDefaultConfig());
         }
         long tid = getTransactionId(runMode == RunMode.SHARDING);
-        AOTransaction t = createTransaction(tid, runMode);
+        AOTransaction t = new AOTransaction(this, tid);
         t.setAutoCommit(autoCommit);
         t.setRunMode(runMode);
         currentTransactions.put(tid, t);
@@ -234,10 +232,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return last;
     }
 
-    protected AOTransaction createTransaction(long tid, RunMode runMode) {
-        return new AOTransaction(this, tid);
-    }
-
     @Override
     public boolean supportsMVCC() {
         return true;
@@ -252,14 +246,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             return new AOTransactionMap<>((AOTransaction) transaction, mapInfo.map);
     }
 
-    protected TransactionMap<?, ?> getTransactionMap(Transaction transaction,
-            StorageMap<Object, TransactionalValue> map) {
-        return new AOTransactionMap<>((AOTransaction) transaction, map);
-    }
-
     @Override
     public synchronized void checkpoint() {
         checkpointService.checkpoint();
+    }
+
+    @Override
+    public Runnable getRunnable() {
+        return checkpointService;
     }
 
     ///////////////////// 实现StorageEventListener接口 /////////////////////
@@ -273,14 +267,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         for (String mapName : storage.getMapNames()) {
             maps.remove(mapName);
         }
-    }
-
-    void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
-        tValues.put(tv, ov);
-    }
-
-    TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
-        return tValues.get(tv);
     }
 
     private void gc() {
@@ -315,11 +301,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 }
             }
         }
-    }
-
-    @Override
-    public Runnable getRunnable() {
-        return checkpointService;
     }
 
     private class CheckpointService implements Runnable {

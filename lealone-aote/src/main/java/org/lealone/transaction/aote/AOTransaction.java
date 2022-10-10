@@ -178,11 +178,6 @@ public class AOTransaction implements Transaction {
             logSyncService.getRedoLog().redo(map);
         }
         transactionEngine.addStorageMap((StorageMap<Object, TransactionalValue>) map);
-        return createTransactionMap(map, parameters);
-    }
-
-    protected <K, V> AOTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
-            Map<String, String> parameters) {
         return new AOTransactionMap<>(this, map);
     }
 
