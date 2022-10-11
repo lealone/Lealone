@@ -2907,7 +2907,7 @@ public class LealoneSQLParser implements SQLParser {
         }
         if (equalsToken(".", currentToken)) {
             String dbName = database.getShortName();
-            if (equalsToken(schemaName, dbName) || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+            if (dbName.equalsIgnoreCase(schemaName)) {
                 read(".");
                 schemaName = s;
                 if (currentTokenType != IDENTIFIER) {
@@ -2915,6 +2915,10 @@ public class LealoneSQLParser implements SQLParser {
                 }
                 s = currentToken;
                 read();
+            } else {
+                // 不允许跨库访问
+                throw DbException.get(ErrorCode.GENERAL_ERROR_1,
+                        "access the " + schemaName + " database is not allowed");
             }
         }
         return s;
