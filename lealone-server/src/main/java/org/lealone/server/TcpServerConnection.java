@@ -7,15 +7,12 @@ package org.lealone.server;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
-import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.ManualCloseable;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -120,18 +117,14 @@ public class TcpServerConnection extends TransferConnection {
         // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
         // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
         session.setTransactionListener(scheduler);
-        session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
-                new Function<Pair<Integer, ExpiringMap.CacheableObject<ManualCloseable>>, Void>() {
-                    @Override
-                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<ManualCloseable>> pair) {
-                        try {
-                            pair.right.value.close();
-                        } catch (Exception e) {
-                            logger.warn(e.getMessage());
-                        }
-                        return null;
-                    }
-                }));
+        session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), cObject -> {
+            try {
+                cObject.value.close();
+            } catch (Exception e) {
+                logger.warn(e.getMessage());
+            }
+            return null;
+        }));
         SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
                 tcpServer.getSessionTimeout());
         session.setSessionInfo(si);

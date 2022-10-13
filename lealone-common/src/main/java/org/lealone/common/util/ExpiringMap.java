@@ -51,7 +51,7 @@ public class ExpiringMap<K, V> {
      * @param defaultExpiration the TTL for objects in the cache in milliseconds
      */
     public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration,
-            final Function<Pair<K, CacheableObject<V>>, ?> postExpireHook) {
+            final Function<ExpiringMap.CacheableObject<V>, ?> postExpireHook) {
         // if (defaultExpiration <= 0) {
         // throw new IllegalArgumentException("Argument specified must be a positive number");
         // }
@@ -67,7 +67,7 @@ public class ExpiringMap<K, V> {
                         if (cache.remove(entry.getKey()) != null) {
                             n++;
                             if (postExpireHook != null)
-                                postExpireHook.apply(Pair.create(entry.getKey(), entry.getValue()));
+                                postExpireHook.apply(entry.getValue());
                         }
                     }
                 }
