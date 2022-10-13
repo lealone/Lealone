@@ -103,6 +103,5 @@
 * [Lealone 的过去现在将来](https://github.com/codefollower/My-Blog/issues/16)
 
 
-### Lealone License
+### [Lealone License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
 
-* [License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
