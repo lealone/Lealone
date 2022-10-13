@@ -5,7 +5,6 @@
  */
 package org.lealone.main;
 
-import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -25,7 +24,6 @@ import org.lealone.main.config.Config;
 import org.lealone.main.config.Config.PluggableEngineDef;
 import org.lealone.main.config.ConfigLoader;
 import org.lealone.main.config.YamlConfigLoader;
-import org.lealone.net.NetNode;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.TcpServerEngine;
@@ -52,7 +50,6 @@ public class Lealone {
 
     private Config config;
     private String baseDir;
-    private boolean isClusterMode;
     private String host;
     private String port;
 
@@ -66,8 +63,6 @@ public class Lealone {
                 return;
             } else if (arg.equals("-config")) {
                 Config.setProperty("config", args[++i]);
-            } else if (arg.equals("-cluster")) {
-                isClusterMode = true;
             } else if (arg.equals("-host")) {
                 host = args[++i];
             } else if (arg.equals("-port")) {
@@ -93,10 +88,6 @@ public class Lealone {
         println("[-config <file>]        The config file");
         println("[-host <host>]          Tcp server host");
         println("[-port <port>]          Tcp server port");
-        println("[-p2pHost <host>]       P2p server host");
-        println("[-p2pPort <port>]       P2p server port");
-        println("[-seeds <nodes>]        The seed node list");
-        println("[-cluster]              Cluster mode");
         println("[-embed]                Embedded mode");
         println("[-client]               Client mode");
         println();
@@ -148,33 +139,22 @@ public class Lealone {
             if (latch != null)
                 latch.countDown();
 
-            Thread thread = Thread.currentThread();
-            if (thread.getName().equals("main"))
-                thread.setName("CheckpointService");
+            // 在主线程中运行，避免出现DestroyJavaVM线程
+            Thread.currentThread().setName("CheckpointService");
             TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
                     Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
             te.getRunnable().run();
-
-            // 在主线程中运行，避免出现DestroyJavaVM线程
-            // if (mainProtocolServer != null)
-            // mainProtocolServer.getRunnable().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
     }
 
-    protected void beforeInit() {
-    }
-
-    protected void afterInit(Config config) {
-    }
-
     private void loadConfig() {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
         if (loaderClass != null) {
-            loader = Utils.construct(loaderClass, "configuration loading");
+            loader = Utils.construct(loaderClass, "config loading");
         } else {
             loader = new YamlConfigLoader();
         }
@@ -184,26 +164,25 @@ public class Lealone {
             if (host != null)
                 config.listen_address = host;
             for (PluggableEngineDef e : config.protocol_server_engines) {
-                if (TcpServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                if (e.enabled && TcpServerEngine.NAME.equalsIgnoreCase(e.name)) {
                     if (host != null)
                         e.parameters.put("host", host);
                     if (port != null)
                         e.parameters.put("port", port);
+                    break;
                 }
             }
         }
         if (baseDir != null)
             config.base_dir = baseDir;
-        if (isClusterMode) {
-            if (baseDir == null
-                    && NetNode.createTCP(config.listen_address).geInetAddress().isLoopbackAddress()) {
-                String nodeId = config.listen_address.replace('.', '_');
-                config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_"
-                        + nodeId;
-            }
-        }
         loader.applyConfig(config);
         this.config = config;
+    }
+
+    protected void beforeInit() {
+    }
+
+    protected void afterInit(Config config) {
     }
 
     private void init() {
