@@ -6,7 +6,6 @@
 package org.lealone.net.nio;
 
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -77,26 +76,10 @@ class ServerAccepter extends NetServerBase implements Runnable {
             if (conn != null) {
                 removeConnection(conn);
             }
-            closeChannel(channel);
+            NioEventLoop.closeChannelSilently(channel);
             // 按Ctrl+C退出时accept可能抛出异常，此时就不需要记录日志了
             if (!isStopped()) {
                 logger.warn(getName() + " failed to accept connection", e);
-            }
-        }
-    }
-
-    static void closeChannel(SocketChannel channel) {
-        if (channel != null) {
-            Socket socket = channel.socket();
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (Throwable e) {
-                }
-            }
-            try {
-                channel.close();
-            } catch (Throwable e) {
             }
         }
     }

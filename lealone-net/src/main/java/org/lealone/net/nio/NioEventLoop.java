@@ -7,6 +7,7 @@ package org.lealone.net.nio;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
@@ -340,7 +341,7 @@ class NioEventLoop implements NetEventLoop {
         }
         channels.remove(channel);
         keys.remove(channel);
-        ServerAccepter.closeChannel(channel);
+        closeChannelSilently(channel);
     }
 
     @Override
@@ -351,6 +352,25 @@ class NioEventLoop implements NetEventLoop {
             selector.wakeup();
             selector.close();
         } catch (Exception e) {
+        }
+    }
+
+    // 这个方法没有放在ServerAccepter类，避免退出客户端时触发
+    // NioEventLoopClient-ShutdownHook-0 WARN Unable to register Log4j shutdown hook
+    // because JVM is shutting down. Using SimpleLogger
+    static void closeChannelSilently(SocketChannel channel) {
+        if (channel != null) {
+            Socket socket = channel.socket();
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (Throwable e) {
+                }
+            }
+            try {
+                channel.close();
+            } catch (Throwable e) {
+            }
         }
     }
 }
