@@ -97,19 +97,16 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     }
 
     void runSessionTasks() {
-        // 只有当前语句执行完了才能执行下一条命令
-        if (session.getYieldableCommand() != null) {
+        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+        if (session.getYieldableCommand() != null)
             return;
-        }
-        if (session.canExecuteNextCommand()) {
-            AsyncTask task = taskQueue.poll();
-            while (task != null) {
-                runTask(task);
-                // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
-                if (session.getYieldableCommand() != null)
-                    break;
-                task = taskQueue.poll();
-            }
+        AsyncTask task = taskQueue.poll();
+        while (task != null) {
+            runTask(task);
+            // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
+            if (session.getYieldableCommand() != null)
+                break;
+            task = taskQueue.poll();
         }
     }
 

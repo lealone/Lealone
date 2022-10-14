@@ -1321,11 +1321,6 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public boolean canExecuteNextCommand() {
-        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-        return yieldableCommand == null;
-    }
-
     private Transaction.Listener transactionListener;
     private Object sessionInfo;
 
