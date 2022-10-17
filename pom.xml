@@ -56,8 +56,6 @@
         <module>lealone-db</module>
         <module>lealone-aote</module>
         <module>lealone-aose</module>
-        <module>lealone-orm</module>
-        <module>lealone-web</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
@@ -153,14 +151,6 @@
                         <artifactId>lealone-main</artifactId>
                         <version>${project.version}</version>
                         <exclusions>
-                            <exclusion>
-                                <groupId>org.lealone</groupId>
-                                <artifactId>lealone-web</artifactId>
-                            </exclusion>
-                            <exclusion>
-                                <groupId>org.lealone</groupId>
-                                <artifactId>lealone-orm</artifactId>
-                            </exclusion>
                             <exclusion>
                                 <groupId>org.apache.logging.log4j</groupId>
                                 <artifactId>log4j-api</artifactId>
