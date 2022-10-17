@@ -7,11 +7,6 @@ package org.lealone.server.http;
 
 import java.util.Map;
 
-import io.vertx.core.Vertx;
-import io.vertx.ext.web.Router;
-
-public interface RouterFactory {
-
-    Router createRouter(Map<String, String> config, Vertx vertx);
-
+public interface HttpRouter {
+    void init(HttpServer server, Map<String, String> config);
 }

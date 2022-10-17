@@ -66,6 +66,10 @@ public class Scheduler extends PageOperationHandlerBase
         netEventLoop.setOwner(this);
     }
 
+    public NetEventLoop getNetEventLoop() {
+        return netEventLoop;
+    }
+
     @Override
     protected Logger getLogger() {
         return logger;

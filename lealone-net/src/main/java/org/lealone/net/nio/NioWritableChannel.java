@@ -39,13 +39,14 @@ class NioWritableChannel implements WritableChannel {
     @Override
     public void write(NetBuffer data) {
         if (data instanceof NioBuffer) {
-            eventLoop.addNetBuffer(channel, (NioBuffer) data);
+            eventLoop.addNetBuffer(channel, data);
         }
     }
 
     @Override
     public void close() {
-        eventLoop.closeChannel(channel);
+        if (eventLoop != null)
+            eventLoop.closeChannel(channel);
     }
 
     @Override

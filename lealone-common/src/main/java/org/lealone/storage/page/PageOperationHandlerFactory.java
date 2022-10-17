@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
+import org.lealone.storage.StorageEngine;
+
 public abstract class PageOperationHandlerFactory {
 
     protected PageOperationHandler[] pageOperationHandlers;
@@ -17,6 +21,10 @@ public abstract class PageOperationHandlerFactory {
     protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
         if (handlers != null) {
             setPageOperationHandlers(handlers);
+            StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
+                    Constants.DEFAULT_STORAGE_ENGINE_NAME);
+            if (se != null)
+                se.setPageOperationHandlerFactory(this);
             return;
         }
         // 如果未指定处理器集，那么使用默认的

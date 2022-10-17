@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.server.http;
+package org.lealone.server.vertx;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +11,8 @@ import java.util.Map;
 
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
+import org.lealone.server.http.HttpRouter;
+import org.lealone.server.http.HttpServer;
 import org.lealone.server.template.TemplateEngine;
 
 import io.vertx.core.Vertx;
@@ -26,11 +28,15 @@ import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
 
-public class HttpRouterFactory implements RouterFactory {
+public class VertxRouter implements HttpRouter {
+
+    protected Router router;
 
     @Override
-    public Router createRouter(Map<String, String> config, Vertx vertx) {
-        Router router = Router.router(vertx);
+    public void init(HttpServer server, Map<String, String> config) {
+        VertxServer vertxServer = (VertxServer) server;
+        Vertx vertx = vertxServer.getVertx();
+        router = Router.router(vertx);
         // CorsHandler放在前面
         setCorsHandler(config, vertx, router);
         initRouter(config, vertx, router);
@@ -38,7 +44,6 @@ public class HttpRouterFactory implements RouterFactory {
         setSockJSHandler(router, config, vertx);
         // 放在最后
         setStaticHandler(router, config);
-        return router;
     }
 
     protected void initRouter(Map<String, String> config, Vertx vertx, Router router) {
@@ -58,7 +63,7 @@ public class HttpRouterFactory implements RouterFactory {
         // 当请求头包含content-type: application/json时，客户端发送的是一个json类型的数据，
         // BodyHandler只能处理表单类的数据，所以在这里需要从json中取出参数
         if (parseJson && routingContext.request().method() == HttpMethod.POST) {
-            JsonObject json = routingContext.getBodyAsJson();
+            JsonObject json = routingContext.body().asJsonObject();
             if (json != null) {
                 for (Map.Entry<String, Object> e : json.getMap().entrySet()) {
                     addMethodArgs(methodArgs, e.getKey(), e.getValue().toString());
@@ -96,7 +101,7 @@ public class HttpRouterFactory implements RouterFactory {
     }
 
     protected void setHttpServiceHandler(Map<String, String> config, Vertx vertx, Router router) {
-        final HttpServiceHandler serviceHandler = new HttpServiceHandler(config);
+        final VertxServiceHandler serviceHandler = new VertxServiceHandler(config);
         String servicePath = getServicePath(config);
         // 默认不处理FileUpload
         router.route(servicePath).handler(BodyHandler.create(false));
@@ -105,18 +110,18 @@ public class HttpRouterFactory implements RouterFactory {
         });
     }
 
-    protected void handleHttpServiceRequest(final HttpServiceHandler serviceHandler,
+    protected void handleHttpServiceRequest(final VertxServiceHandler serviceHandler,
             RoutingContext routingContext) {
         String serviceName = routingContext.request().params().get("serviceName");
         String methodName = routingContext.request().params().get("methodName");
         CaseInsensitiveMap<Object> methodArgs = getMethodArgs(routingContext);
-        Buffer result;
+        String result;
         if (methodArgs.containsKey("methodArgs"))
             result = serviceHandler.executeService(serviceName, methodName,
                     methodArgs.get("methodArgs").toString());
         else
             result = serviceHandler.executeService(serviceName, methodName, methodArgs);
-        sendHttpServiceResponse(routingContext, serviceName, methodName, result);
+        sendHttpServiceResponse(routingContext, serviceName, methodName, Buffer.buffer(result));
     }
 
     protected void sendHttpServiceResponse(RoutingContext routingContext, String serviceName,
@@ -129,7 +134,7 @@ public class HttpRouterFactory implements RouterFactory {
     protected void setSockJSHandler(Router router, Map<String, String> config, Vertx vertx) {
         SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
-        sockJSHandler.socketHandler(new HttpServiceHandler(config));
+        sockJSHandler.socketHandler(new VertxServiceHandler(config));
         String apiPath = config.get("api_path");
         router.route(apiPath).handler(sockJSHandler);
     }

@@ -5,33 +5,15 @@
  */
 package org.lealone.server.http;
 
-import java.util.Map;
-
-import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
+import org.lealone.server.vertx.VertxServerEngine;
 
-public class HttpServerEngine extends ProtocolServerEngineBase {
+public abstract class HttpServerEngine extends ProtocolServerEngineBase {
 
-    public static final String NAME = "HTTP";
-    private final HttpServer httpServer = new HttpServer();
+    public static final String NAME = VertxServerEngine.NAME;
 
-    public HttpServerEngine() {
-        super(NAME);
+    public HttpServerEngine(String name) {
+        super(name);
     }
 
-    @Override
-    public ProtocolServer getProtocolServer() {
-        return httpServer;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        super.init(config);
-        httpServer.init(config);
-    }
-
-    @Override
-    public void close() {
-        httpServer.stop();
-    }
 }

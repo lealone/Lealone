@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 
 public abstract class ProtocolServerBase implements ProtocolServer {
@@ -54,7 +55,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         name = config.get("name");
 
         ssl = Boolean.parseBoolean(config.get("ssl"));
-        allowOthers = Boolean.parseBoolean(config.get("allow_others"));
+        allowOthers = MapUtils.getBoolean(config, "allow_others", true);
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
 
         if (config.containsKey("white_list")) {

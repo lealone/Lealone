@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.server.http;
+package org.lealone.server.service;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -15,9 +15,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceMethod;
 import org.lealone.db.table.Column;
-
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
+import org.lealone.orm.json.JsonArray;
+import org.lealone.orm.json.JsonObject;
 
 public class SystemService {
 

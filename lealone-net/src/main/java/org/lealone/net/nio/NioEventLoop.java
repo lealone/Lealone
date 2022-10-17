@@ -185,6 +185,10 @@ class NioEventLoop implements NetEventLoop {
             while (true) {
                 // 每次循环重新取一次，一些实现会返回不同的Buffer
                 ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
+                if (packetLengthByteBuffer == null) { // http server自己读取数据
+                    conn.handle(null);
+                    return;
+                }
                 int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
 
                 if (attachment.state == 0) {

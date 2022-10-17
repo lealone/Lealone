@@ -50,11 +50,19 @@ protocol_server_engines:
         ssl: false,
         session_timeout: -1
     }
-  - name: HTTP
+  - name: TOMCAT
     enabled: false
     parameters: {
         port: 9000,
         environment: prod,
-        web_root: ../web,
-        jdbc_url: "jdbc:lealone:embed:test"
+        web_root: ./target/web_root,
+        jdbc_url: "jdbc:lealone:embed:lealone"
+    }
+  - name: VERTX
+    enabled: false
+    parameters: {
+        port: 9001,
+        environment: prod,
+        web_root: ./target/web_root,
+        jdbc_url: "jdbc:lealone:embed:lealone"
     }
