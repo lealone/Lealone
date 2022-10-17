@@ -352,9 +352,9 @@ public class CreateTable extends SchemaStatement {
 
         // 收集需要导入的类
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add("org.lealone.orm.Model");
-        importSet.add("org.lealone.orm.ModelTable");
-        importSet.add("org.lealone.orm.ModelProperty");
+        importSet.add("org.lealone.plugins.orm.Model");
+        importSet.add("org.lealone.plugins.orm.ModelTable");
+        importSet.add("org.lealone.plugins.orm.ModelProperty");
 
         for (ConstraintReferential ref : table.getReferentialConstraints()) {
             Table refTable = ref.getRefTable();
@@ -657,7 +657,7 @@ public class CreateTable extends SchemaStatement {
             name = name.substring(pos + 1);
         }
         name = "P" + name;
-        importSet.add("org.lealone.orm.property." + name);
+        importSet.add("org.lealone.plugins.orm.property." + name);
         return name;
     }
 }

@@ -685,7 +685,7 @@ public class CreateService extends SchemaStatement {
         String varInit = "";
         for (CreateTable m : serviceMethods) {
             if (m.data.columns.size() - 1 > 0) {
-                importSet.add("org.lealone.orm.json.JsonArray");
+                importSet.add("org.lealone.plugins.orm.json.JsonArray");
                 varInit = "        JsonArray ja = null;\r\n";
                 break;
             }

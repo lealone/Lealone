@@ -12,7 +12,7 @@ public interface JsonArrayGetter {
 
     public static JsonArrayGetter create(String json) {
         try {
-            String className = "org.lealone.orm.json.JsonArray$Getter";
+            String className = "org.lealone.plugins.orm.json.JsonArray$Getter";
             JsonArrayGetter getter = Utils.newInstance(className);
             getter.init(json);
             return getter;
