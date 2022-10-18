@@ -25,7 +25,7 @@
 
     <files>
         <file>
-            <source>lealone-dist/target/lealone-${project.version}.jar</source>
+            <source>target/lealone-${project.version}.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
     </files>

@@ -51,7 +51,7 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <outputFile>${project.build.directory}/lealone-${project.version}.jar</outputFile>
+                            <outputFile>../target/lealone-${project.version}.jar</outputFile>
                         </configuration>
                     </execution>
                 </executions>

@@ -65,7 +65,7 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <outputFile>../lealone-dist/target/lealone-client-${project.version}.jar</outputFile>
+                            <outputFile>../target/lealone-client-${project.version}.jar</outputFile>
                         </configuration>
                     </execution>
                 </executions>
