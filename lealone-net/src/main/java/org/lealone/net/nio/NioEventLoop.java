@@ -183,6 +183,9 @@ class NioEventLoop implements NetEventLoop {
         int packetCount = 1;
         try {
             while (true) {
+                // 如果客户端关闭连接，服务器再次循环读数据检测到连接已经关闭就不再读取数据，避免抛出异常
+                if (conn.isClosed())
+                    return;
                 // 每次循环重新取一次，一些实现会返回不同的Buffer
                 ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
                 if (packetLengthByteBuffer == null) { // http server自己读取数据
