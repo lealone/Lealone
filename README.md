@@ -60,7 +60,7 @@
 
 * [使用 Lealone 开发单机和分布式微服务应用](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E4%BD%BF%E7%94%A8Lealone%E5%BC%80%E5%8F%91%E5%8D%95%E6%9C%BA%E5%92%8C%E5%88%86%E5%B8%83%E5%BC%8F%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%BA%94%E7%94%A8.md)
 
-* [使用 JavaScript 和 Python 语言开发微服务应用](https://github.com/lealone/Lealone-Plugins/tree/master/polyglot)
+* [使用 JavaScript 和 Python 语言开发微服务应用](https://github.com/lealone/Lealone-Plugins/tree/master/service)
 
 * [文档与演示例子](https://github.com/lealone/Lealone-Examples)
 
