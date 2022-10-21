@@ -9,7 +9,6 @@ import org.junit.Test;
 import org.lealone.db.result.Result;
 import org.lealone.test.db.DbObjectTestBase;
 
-//Ubuntu环境下运行这个测试，如果出现错误找不到javac，需要在~/.profile文件中把$JAVA_HOME/bin加到$PATH中
 public class FunctionAliasTest extends DbObjectTestBase {
 
     @Test
