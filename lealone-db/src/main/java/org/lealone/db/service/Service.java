@@ -89,9 +89,18 @@ public class Service extends SchemaObjectBase {
 
     // 延迟创建executor的实例，因为执行create service语句时，依赖的服务实现类还不存在
     public ServiceExecutor getExecutor() {
+        return getExecutor(false);
+    }
+
+    public ServiceExecutor getExecutor(boolean disableDynamicCompile) {
         if (executor == null) {
             synchronized (this) {
                 if (executor == null) {
+                    // 跟spring boot集成时不支持动态编译
+                    if (disableDynamicCompile) {
+                        executor = new JavaServiceExecutor(this);
+                        return executor;
+                    }
                     if (executorCode != null) {
                         String code = executorCode.toString();
                         executorCode = null;
@@ -132,6 +141,11 @@ public class Service extends SchemaObjectBase {
 
     // 通过http调用
     public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
+        return execute(serviceName, methodName, methodArgs, false);
+    }
+
+    public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs,
+            boolean disableDynamicCompile) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 3) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
@@ -140,7 +154,7 @@ public class Service extends SchemaObjectBase {
                 methodName = methodName.toUpperCase();
             }
             Service service = getService(null, db, a[1], a[2]);
-            return service.getExecutor().executeService(methodName, methodArgs);
+            return service.getExecutor(disableDynamicCompile).executeService(methodName, methodArgs);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
         }
