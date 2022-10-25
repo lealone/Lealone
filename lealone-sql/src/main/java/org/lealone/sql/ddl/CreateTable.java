@@ -633,7 +633,11 @@ public class CreateTable extends SchemaStatement {
 
         // static decode方法
         buff.append("    public static ").append(className).append(" decode(String str) {\r\n");
-        buff.append("        return new ").append(className).append("().decode0(str);\r\n");
+        buff.append("        return decode(str, null);\r\n");
+        buff.append("    }\r\n\r\n");
+        buff.append("    public static ").append(className)
+                .append(" decode(String str, CaseFormat format) {\r\n");
+        buff.append("        return new ").append(className).append("().decode0(str, format);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");
 

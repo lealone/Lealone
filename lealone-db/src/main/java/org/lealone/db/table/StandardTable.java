@@ -99,8 +99,14 @@ public class StandardTable extends Table {
         return storageEngine;
     }
 
+    @Override
     public Map<String, String> getParameters() {
         return parameters;
+    }
+
+    @Override
+    public String getParameter(String name) {
+        return parameters.get(name);
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -1099,6 +1100,14 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+        return null;
+    }
+
+    public Map<String, String> getParameters() {
+        return null;
+    }
+
+    public String getParameter(String name) {
         return null;
     }
 }
