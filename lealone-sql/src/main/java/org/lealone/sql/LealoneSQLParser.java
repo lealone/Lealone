@@ -5198,6 +5198,18 @@ public class LealoneSQLParser implements SQLParser {
             }
             return command;
         } else if (readIf("RENAME")) {
+            if (readIf("COLUMN")) {
+                // PostgreSQL syntax
+                String columnName = readColumnIdentifier();
+                read("TO");
+                AlterTableRenameColumn command = new AlterTableRenameColumn(session, table.getSchema());
+                command.setTable(table);
+                Column column = table.getColumn(columnName);
+                command.setColumn(column);
+                String newName = readColumnIdentifier();
+                command.setNewColumnName(newName);
+                return command;
+            }
             read("TO");
             String newName = readIdentifierWithSchema(table.getSchema().getName());
             checkSchema(table.getSchema());
