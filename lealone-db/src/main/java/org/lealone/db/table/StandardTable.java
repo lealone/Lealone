@@ -43,6 +43,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageSetting;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -75,7 +76,7 @@ public class StandardTable extends Table {
         globalTemporary = data.globalTemporary;
 
         if (data.isMemoryTable())
-            parameters.put("inMemory", "1");
+            parameters.put(StorageSetting.IN_MEMORY.name(), "1");
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
 

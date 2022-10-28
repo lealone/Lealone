@@ -6,9 +6,11 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -24,6 +26,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableSetting;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
@@ -31,6 +34,7 @@ import org.lealone.sql.dml.Insert;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
+import org.lealone.storage.StorageSetting;
 
 /**
  * This class represents the statement
@@ -118,8 +122,31 @@ public class CreateTable extends SchemaStatement {
         return ifNotExists;
     }
 
+    private void validateParameters() {
+        CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
+        if (data.storageEngineParams != null)
+            parameters.putAll(data.storageEngineParams);
+        if (parameters.isEmpty())
+            return;
+
+        HashSet<String> recognizedSettingOptions = new HashSet<>(
+                StorageSetting.values().length + TableSetting.values().length);
+        for (StorageSetting s : StorageSetting.values())
+            recognizedSettingOptions.add(s.name());
+        for (TableSetting s : TableSetting.values())
+            recognizedSettingOptions.add(s.name());
+
+        parameters.removeAll(recognizedSettingOptions);
+        if (!parameters.isEmpty()) {
+            throw new ConfigException(String.format("Unrecognized parameters: %s for table %s, " //
+                    + "available setting options: %s", //
+                    parameters.keySet(), data.tableName, recognizedSettingOptions));
+        }
+    }
+
     @Override
     public int update() {
+        validateParameters();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
         if (lock == null)
             return -1;

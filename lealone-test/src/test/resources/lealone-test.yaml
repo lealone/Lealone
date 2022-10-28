@@ -16,8 +16,8 @@ storage_engines:
   - name: AOSE
     enabled: true
     parameters: {
-        pageSplitSize: 16k,
-        cacheSize: 16m, # 每个 btree 的缓存大小
+        page_split_size: 16k,
+        cache_size: 16m, # 每个 btree 的缓存大小
         compress: no, # no、lzf、deflate 或 0、1、2
     }
 

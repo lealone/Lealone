@@ -12,6 +12,7 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
@@ -29,7 +30,7 @@ public class AOStorage extends StorageBase {
 
     AOStorage(Map<String, Object> config) {
         super(config);
-        if (config.containsKey("inMemory"))
+        if (config.containsKey(StorageSetting.IN_MEMORY.name()))
             return;
         String storagePath = getStoragePath();
         DataUtils.checkNotNull(storagePath, "storage path");
@@ -45,13 +46,13 @@ public class AOStorage extends StorageBase {
     }
 
     public boolean isReadOnly() {
-        return config.containsKey("readOnly");
+        return config.containsKey(StorageSetting.READ_ONLY.name());
     }
 
     @Override
     public <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
-        String mapType = parameters == null ? null : parameters.get("mapType");
+        String mapType = parameters == null ? null : parameters.get(StorageSetting.MAP_TYPE.name());
         return openMap(name, mapType, keyType, valueType, parameters);
     }
 

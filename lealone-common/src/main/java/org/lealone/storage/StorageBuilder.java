@@ -39,7 +39,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder storagePath(String storagePath) {
-        return set("storagePath", storagePath);
+        return set(StorageSetting.STORAGE_PATH.name(), storagePath);
     }
 
     /**
@@ -54,7 +54,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder encryptionKey(char[] password) {
-        return set("encryptionKey", password);
+        return set(StorageSetting.ENCRYPTION_KEY.name(), password);
     }
 
     /**
@@ -70,7 +70,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder readOnly() {
-        return set("readOnly", 1);
+        return set(StorageSetting.READ_ONLY.name(), 1);
     }
 
     /**
@@ -79,7 +79,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder inMemory() {
-        return set("inMemory", 1);
+        return set(StorageSetting.IN_MEMORY.name(), 1);
     }
 
     /**
@@ -89,7 +89,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder cacheSize(int mb) {
-        return set("cacheSize", mb * 1024 * 1024);
+        return set(StorageSetting.CACHE_SIZE.name(), mb * 1024 * 1024);
     }
 
     /**
@@ -104,7 +104,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder compress() {
-        return set("compress", 1);
+        return set(StorageSetting.COMPRESS.name(), 1);
     }
 
     /**
@@ -119,7 +119,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder compressHigh() {
-        return set("compress", 2);
+        return set(StorageSetting.COMPRESS.name(), 2);
     }
 
     /**
@@ -133,7 +133,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder pageSplitSize(int pageSplitSize) {
-        return set("pageSplitSize", pageSplitSize);
+        return set(StorageSetting.PAGE_SPLIT_SIZE.name(), pageSplitSize);
     }
 
     /**
@@ -144,11 +144,11 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder backgroundExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-        return set("backgroundExceptionHandler", exceptionHandler);
+        return set(StorageSetting.BACKGROUND_EXCEPTION_HANDLER.name(), exceptionHandler);
     }
 
     public StorageBuilder minFillRate(int minFillRate) {
-        return set("minFillRate", minFillRate);
+        return set(StorageSetting.MIN_FILL_RATE.name(), minFillRate);
     }
 
     @Override

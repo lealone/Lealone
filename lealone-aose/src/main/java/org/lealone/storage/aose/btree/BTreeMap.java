@@ -17,6 +17,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.LeafPage;
@@ -77,12 +78,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
         // 只要包含就为true
-        readOnly = config.containsKey("readOnly");
-        inMemory = config.containsKey("inMemory");
+        readOnly = config.containsKey(StorageSetting.READ_ONLY.name());
+        inMemory = config.containsKey(StorageSetting.IN_MEMORY.name());
 
         this.config = config;
-        this.pohFactory = (PageOperationHandlerFactory) config.get("pohFactory");
-        Object mode = config.get("pageStorageMode");
+        this.pohFactory = (PageOperationHandlerFactory) config.get(StorageSetting.POH_FACTORY.name());
+        Object mode = config.get(StorageSetting.PAGE_STORAGE_MODE.name());
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());
         }

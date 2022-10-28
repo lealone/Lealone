@@ -16,6 +16,7 @@ import java.util.Map;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
@@ -42,7 +43,7 @@ public class RedoLog {
         String baseDir = config.get("base_dir");
         String logDir = config.get("redo_log_dir");
         String storagePath = baseDir + File.separator + logDir;
-        config.put("storagePath", storagePath);
+        config.put(StorageSetting.STORAGE_PATH.name(), storagePath);
 
         if (!FileUtils.exists(storagePath))
             FileUtils.createDirectories(storagePath);
@@ -51,7 +52,7 @@ public class RedoLog {
     private List<Integer> getAllChunkIds() {
         ArrayList<Integer> ids = new ArrayList<>();
         int prefixLength = RedoLogChunk.CHUNK_FILE_NAME_PREFIX.length();
-        FilePath dir = FilePath.get(config.get("storagePath"));
+        FilePath dir = FilePath.get(config.get(StorageSetting.STORAGE_PATH.name()));
         for (FilePath fp : dir.newDirectoryStream()) {
             String fullName = fp.getName();
             if (fullName.startsWith(RedoLogChunk.CHUNK_FILE_NAME_PREFIX)) {

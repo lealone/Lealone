@@ -14,6 +14,7 @@ import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
@@ -64,14 +65,14 @@ public class BTreeStorage {
      */
     BTreeStorage(BTreeMap<?, ?> map) {
         this.map = map;
-        pageSplitSize = getIntValue("pageSplitSize", 16 * 1024);
-        int minFillRate = getIntValue("minFillRate", 30);
+        pageSplitSize = getIntValue(StorageSetting.PAGE_SPLIT_SIZE.name(), 16 * 1024);
+        int minFillRate = getIntValue(StorageSetting.MIN_FILL_RATE.name(), 30);
         if (minFillRate > 50) // 超过50没有实际意义
             minFillRate = 50;
         this.minFillRate = minFillRate;
         compressionLevel = parseCompressionLevel();
         backgroundExceptionHandler = (UncaughtExceptionHandler) map
-                .getConfig("backgroundExceptionHandler");
+                .getConfig(StorageSetting.BACKGROUND_EXCEPTION_HANDLER.name());
 
         chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
@@ -80,7 +81,7 @@ public class BTreeStorage {
             return;
         }
 
-        int cacheSize = getIntValue("cacheSize", 16 * 1024 * 1024);
+        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
         if (cacheSize > 0) {
             CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
             cc.maxMemory = cacheSize;
@@ -118,7 +119,7 @@ public class BTreeStorage {
     }
 
     private int parseCompressionLevel() {
-        Object value = map.getConfig("compress");
+        Object value = map.getConfig(StorageSetting.COMPRESS.name());
         if (value == null)
             return Compressor.NO;
         else {

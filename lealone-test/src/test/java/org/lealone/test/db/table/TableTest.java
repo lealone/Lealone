@@ -349,4 +349,15 @@ public class TableTest extends DbObjectTestBase {
         sql = "ALTER TABLE mytable DROP COLUMN f3";
         executeUpdate();
     }
+
+    @Test
+    public void validateParameters() throws Exception {
+        try {
+            executeUpdate("CREATE TABLE mytable(f int) PARAMETERS(aaa=1,bbb=2,IN_MEMORY=1)");
+            fail("not throw SQLException");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().toLowerCase().contains("aaa"));
+            // System.out.println(e.getMessage());
+        }
+    }
 }

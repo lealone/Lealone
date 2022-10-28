@@ -12,6 +12,7 @@ import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 
@@ -20,7 +21,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + RedoLog.NAME_ID_SEPARATOR;
 
     private static String getChunkFileName(Map<String, String> config, int id) {
-        String storagePath = config.get("storagePath");
+        String storagePath = config.get(StorageSetting.STORAGE_PATH.name());
         return storagePath + File.separator + CHUNK_FILE_NAME_PREFIX + id;
     }
 

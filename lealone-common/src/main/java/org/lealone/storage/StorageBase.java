@@ -71,7 +71,7 @@ public abstract class StorageBase implements Storage {
 
     @Override
     public String getStoragePath() {
-        return (String) config.get("storagePath");
+        return (String) config.get(StorageSetting.STORAGE_PATH.name());
     }
 
     @Override
