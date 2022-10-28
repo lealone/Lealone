@@ -140,6 +140,7 @@ public abstract class Value implements Comparable<Value> {
      * The value type for RESULT_SET values.
      */
     public static final int RESULT_SET = 18;
+
     /**
      * The value type for JAVA_OBJECT values.
      */
@@ -755,14 +756,23 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16),
-                            (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] {
+                            (byte) (x >> 24),
+                            (byte) (x >> 16),
+                            (byte) (x >> 8),
+                            (byte) x });
                 }
                 case LONG: {
                     long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 56), (byte) (x >> 48),
-                            (byte) (x >> 40), (byte) (x >> 32), (byte) (x >> 24), (byte) (x >> 16),
-                            (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] {
+                            (byte) (x >> 56),
+                            (byte) (x >> 48),
+                            (byte) (x >> 40),
+                            (byte) (x >> 32),
+                            (byte) (x >> 24),
+                            (byte) (x >> 16),
+                            (byte) (x >> 8),
+                            (byte) x });
                 }
                 }
                 break;

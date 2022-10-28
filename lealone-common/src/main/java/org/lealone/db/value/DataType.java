@@ -17,11 +17,11 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
@@ -42,15 +42,17 @@ public class DataType {
      * equivalent java.sql.Types value, but Oracle uses it to represent a
      * ResultSet (OracleTypes.CURSOR = -10).
      */
-    public static final int TYPE_RESULT_SET = -10;
+    private static final int TYPE_RESULT_SET = -10;
 
     /**
-     * The list of types. An ArrayList so that Tomcat doesn't set it to null
-     * when clearing references.
+     * The map of types.
      */
-    private static final ArrayList<DataType> TYPES = new ArrayList<>(96);
     private static final HashMap<String, DataType> TYPES_BY_NAME = new HashMap<>(128);
-    private static final ArrayList<DataType> TYPES_BY_VALUE_TYPE = new ArrayList<>(64);
+
+    /**
+     * Mapping from Value type numbers to DataType.
+     */
+    private static final DataType[] TYPES_BY_VALUE_TYPE = new DataType[Value.TYPE_COUNT];
 
     /**
      * The value type of this data type.
@@ -113,7 +115,7 @@ public class DataType {
     public String params;
 
     /**
-     * If this is an autoincrement type.
+     * If this is an auto increment type.
      */
     public boolean autoIncrement;
 
@@ -158,15 +160,18 @@ public class DataType {
     public int memory;
 
     static {
-        for (int i = 0; i < Value.TYPE_COUNT; i++) {
-            TYPES_BY_VALUE_TYPE.add(null);
-        }
         add(Value.NULL, Types.NULL, "Null", new DataType(), new String[] { "NULL" },
                 // the value is always in the cache
                 0);
         add(Value.STRING, Types.VARCHAR, "String", createString(true),
-                new String[] { "VARCHAR", "VARCHAR2", "NVARCHAR", "NVARCHAR2", "VARCHAR_CASESENSITIVE",
-                        "CHARACTER VARYING", "TID" },
+                new String[] {
+                        "VARCHAR",
+                        "VARCHAR2",
+                        "NVARCHAR",
+                        "NVARCHAR2",
+                        "VARCHAR_CASESENSITIVE",
+                        "CHARACTER VARYING",
+                        "TID" },
                 // 24 for ValueString, 24 for String
                 48);
         add(Value.STRING, Types.LONGVARCHAR, "String", createString(true),
@@ -263,8 +268,10 @@ public class DataType {
         dataType = new DataType();
         add(Value.RESULT_SET, DataType.TYPE_RESULT_SET, "ResultSet", dataType,
                 new String[] { "RESULT_SET" }, 400);
-        for (int i = 0, size = TYPES_BY_VALUE_TYPE.size(); i < size; i++) {
-            DataType dt = TYPES_BY_VALUE_TYPE.get(i);
+
+        // 验证一下是否有遗漏
+        for (int i = 0, size = Value.TYPE_COUNT; i < size; i++) {
+            DataType dt = TYPES_BY_VALUE_TYPE[i];
             if (dt == null) {
                 DbException.throwInternalError("unmapped type " + i);
             }
@@ -296,16 +303,15 @@ public class DataType {
             dt.caseSensitive = dataType.caseSensitive;
             dt.hidden = i > 0;
             dt.memory = memory;
-            for (DataType t2 : TYPES) {
-                if (t2.sqlType == dt.sqlType) {
+            for (DataType t2 : TYPES_BY_VALUE_TYPE) {
+                if (t2 != null && t2.sqlType == dt.sqlType) {
                     dt.sqlTypePos++;
                 }
             }
             TYPES_BY_NAME.put(dt.name, dt);
-            if (TYPES_BY_VALUE_TYPE.get(type) == null) {
-                TYPES_BY_VALUE_TYPE.set(type, dt);
+            if (TYPES_BY_VALUE_TYPE[type] == null) {
+                TYPES_BY_VALUE_TYPE[type] = dt;
             }
-            TYPES.add(dt);
         }
     }
 
@@ -364,8 +370,8 @@ public class DataType {
      *
      * @return the list
      */
-    public static ArrayList<DataType> getTypes() {
-        return TYPES;
+    public static DataType[] getTypes() {
+        return TYPES_BY_VALUE_TYPE;
     }
 
     /**
@@ -615,11 +621,10 @@ public class DataType {
         if (type == Value.UNKNOWN) {
             throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, "?");
         }
-        DataType dt = TYPES_BY_VALUE_TYPE.get(type);
-        if (dt == null) {
-            dt = TYPES_BY_VALUE_TYPE.get(Value.NULL);
+        if (type >= Value.NULL && type < Value.TYPE_COUNT) {
+            return TYPES_BY_VALUE_TYPE[type];
         }
-        return dt;
+        return TYPES_BY_VALUE_TYPE[Value.NULL];
     }
 
     /**
@@ -642,11 +647,17 @@ public class DataType {
      */
     private static int convertSQLTypeToValueType(int sqlType, String sqlTypeName) {
         switch (sqlType) {
+        case Types.BINARY:
+            if (sqlTypeName.equalsIgnoreCase("UUID")) {
+                return Value.UUID;
+            }
+            break;
         case Types.OTHER:
         case Types.JAVA_OBJECT:
-            // if (sqlTypeName.equalsIgnoreCase("geometry")) {
-            // return Value.GEOMETRY;
-            // }
+            DataType type = TYPES_BY_NAME.get(StringUtils.toUpperEnglish(sqlTypeName));
+            if (type != null) {
+                return type.type;
+            }
         }
         return convertSQLTypeToValueType(sqlType);
     }
@@ -736,7 +747,6 @@ public class DataType {
      * @return the value type
      */
     public static int getTypeFromClass(Class<?> x) {
-        // TODO refactor: too many if/else in functions, can reduce!
         if (x == null || Void.TYPE == x) {
             return Value.NULL;
         }
@@ -960,16 +970,14 @@ public class DataType {
      */
     public static int getAddProofType(int type) {
         switch (type) {
+        case Value.INT:
+        case Value.SHORT:
         case Value.BYTE:
             return Value.LONG;
         case Value.FLOAT:
             return Value.DOUBLE;
-        case Value.INT:
-            return Value.LONG;
         case Value.LONG:
             return Value.DECIMAL;
-        case Value.SHORT:
-            return Value.LONG;
         default:
             return type;
         }
