@@ -60,9 +60,10 @@ public class AsyncConnectionPool {
     }
 
     public static int getMaxSharedSize(Map<String, String> config) {
-        if (!isShared(config))
-            return 1; // 独享受模式
-        return MapUtils.getInt(config, ConnectionSetting.MAX_SHARED_SIZE.name(), -1);
+        if (isShared(config))
+            return MapUtils.getInt(config, ConnectionSetting.MAX_SHARED_SIZE.name(), 3);
+        else
+            return 1; // 独享模式
     }
 
     public static boolean isShared(Map<String, String> config) {
