@@ -17,8 +17,10 @@ import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
@@ -29,6 +31,7 @@ import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.service.ServiceExecutorFactory;
 import org.lealone.db.service.ServiceMethod;
+import org.lealone.db.service.ServiceSetting;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -54,6 +57,7 @@ public class CreateService extends SchemaStatement {
     private String implementBy;
     private boolean genCode;
     private String codePath;
+    private CaseInsensitiveMap<String> serviceParameters;
 
     public CreateService(ServerSession session, Schema schema) {
         super(session, schema);
@@ -103,6 +107,10 @@ public class CreateService extends SchemaStatement {
 
     public void setCodePath(String codePath) {
         this.codePath = codePath;
+    }
+
+    public void setServiceParameters(CaseInsensitiveMap<String> serviceParameters) {
+        this.serviceParameters = serviceParameters;
     }
 
     @Override
@@ -237,6 +245,10 @@ public class CreateService extends SchemaStatement {
         }
         if (codePath != null) {
             buff.append("CODE PATH '").append(codePath).append("'\n");
+        }
+        if (serviceParameters != null && !serviceParameters.isEmpty()) {
+            buff.append(" PARAMETERS");
+            Database.appendMap(buff, serviceParameters);
         }
         return buff.toString();
     }
@@ -389,12 +401,19 @@ public class CreateService extends SchemaStatement {
             buff.append("\r\n");
         }
 
+        String createMethodName = serviceParameters == null ? null
+                : serviceParameters.get(ServiceSetting.CREATE_METHOD_NAME.name());
+        if (createMethodName == null)
+            createMethodName = "create";
+
         // 生成两个static create方法
-        buff.append("    static ").append(serviceInterfaceName).append(" create() {\r\n");
-        buff.append("        return create(null);\r\n");
+        buff.append("    static ").append(serviceInterfaceName).append(" ").append(createMethodName)
+                .append("() {\r\n");
+        buff.append("        return ").append(createMethodName).append("(null);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    static ").append(serviceInterfaceName).append(" create(String url) {\r\n");
+        buff.append("    static ").append(serviceInterfaceName).append(" ").append(createMethodName)
+                .append("(String url) {\r\n");
         buff.append("        if (url == null)\r\n");
         buff.append("            url = ClientServiceProxy.getUrl();\r\n");
         buff.append("\r\n");

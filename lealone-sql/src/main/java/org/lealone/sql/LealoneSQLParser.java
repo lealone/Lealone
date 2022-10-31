@@ -4269,6 +4269,7 @@ public class LealoneSQLParser implements SQLParser {
                 command.addServiceMethod(serviceMethod);
             } while (readIfMore());
         }
+        CaseInsensitiveMap<String> parameters = parseParameters();
         if (readIf("LANGUAGE")) {
             String language = readExpression().getValue(session).getString();
             command.setLanguage(language);
@@ -4293,6 +4294,9 @@ public class LealoneSQLParser implements SQLParser {
             String codePath = readExpression().getValue(session).getString();
             command.setCodePath(codePath);
         }
+        if (parameters == null)
+            parameters = parseParameters();
+        command.setServiceParameters(parameters);
         return command;
     }
 
