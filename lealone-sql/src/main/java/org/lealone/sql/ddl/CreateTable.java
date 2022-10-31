@@ -622,11 +622,14 @@ public class CreateTable extends SchemaStatement {
         if (databaseToUpper) {
             tableFullName = tableFullName.toUpperCase();
         }
+        String jsonFormatName = table.getParameter(TableSetting.JSON_FORMAT.name());
         // 内部构造函数
         buff.append("    private ").append(className).append("(ModelTable t, short modelType) {\r\n");
         buff.append("        super(t == null ? new ModelTable(").append(tableFullName)
                 .append(") : t, modelType);\r\n");
         buff.append(initFields);
+        if (jsonFormatName != null)
+            buff.append("        super.setJsonFormat(\"").append(jsonFormatName).append("\");\r\n");
         buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames)
                 .append(" });\r\n");
         if (setterInitBuff.length() > 0) {

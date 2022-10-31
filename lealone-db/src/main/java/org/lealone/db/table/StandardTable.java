@@ -107,7 +107,10 @@ public class StandardTable extends Table {
 
     @Override
     public String getParameter(String name) {
-        return parameters.get(name);
+        String v = parameters.get(name);
+        if (v == null)
+            v = database.getParameters().get(name);
+        return v;
     }
 
     @Override
