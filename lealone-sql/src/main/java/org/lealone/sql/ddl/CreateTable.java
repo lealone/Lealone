@@ -382,6 +382,7 @@ public class CreateTable extends SchemaStatement {
         importSet.add("org.lealone.plugins.orm.Model");
         importSet.add("org.lealone.plugins.orm.ModelTable");
         importSet.add("org.lealone.plugins.orm.ModelProperty");
+        importSet.add("org.lealone.plugins.orm.format.JsonFormat");
 
         for (ConstraintReferential ref : table.getReferentialConstraints()) {
             Table refTable = ref.getRefTable();
@@ -663,7 +664,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("        return decode(str, null);\r\n");
         buff.append("    }\r\n\r\n");
         buff.append("    public static ").append(className)
-                .append(" decode(String str, CaseFormat format) {\r\n");
+                .append(" decode(String str, JsonFormat format) {\r\n");
         buff.append("        return new ").append(className).append("().decode0(str, format);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");

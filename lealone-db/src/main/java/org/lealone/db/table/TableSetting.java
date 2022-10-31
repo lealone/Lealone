@@ -7,6 +7,6 @@ package org.lealone.db.table;
 
 public enum TableSetting {
 
-    CASE_FORMAT
+    JSON_FORMAT
 
 }

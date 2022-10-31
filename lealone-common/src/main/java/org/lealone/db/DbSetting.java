@@ -68,7 +68,9 @@ public enum DbSetting {
     TRACE_LEVEL_SYSTEM_OUT,
     TRACE_LEVEL_FILE,
     TRACE_MAX_FILE_SIZE,
-    WRITE_DELAY;
+    WRITE_DELAY,
+
+    JSON_FORMAT;
 
     public String getName() {
         return name();
