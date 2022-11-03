@@ -85,7 +85,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.pohFactory = (PageOperationHandlerFactory) config.get(StorageSetting.POH_FACTORY.name());
         Object mode = config.get(StorageSetting.PAGE_STORAGE_MODE.name());
         if (mode != null) {
-            pageStorageMode = PageStorageMode.valueOf(mode.toString());
+            pageStorageMode = PageStorageMode.valueOf(mode.toString().toUpperCase());
         }
 
         btreeStorage = new BTreeStorage(this);
