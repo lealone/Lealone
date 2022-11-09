@@ -32,10 +32,13 @@ import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueShort;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringFixed;
@@ -305,6 +308,39 @@ public class TransferInputStream implements NetInputStream {
                 rs.addRow(o);
             }
             return ValueResultSet.get(rs);
+        }
+        case Value.SET:
+        case Value.LIST: {
+            int size = readInt();
+            Class<?> componentType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                componentType = Utils.loadUserClass(readString());
+            }
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = readValue();
+            }
+            if (type == Value.LIST)
+                return ValueList.get(componentType, values);
+            else
+                return ValueSet.get(componentType, values);
+        }
+        case Value.MAP: {
+            int size = readInt();
+            Class<?> kType = Object.class, vType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                kType = Utils.loadUserClass(readString());
+                vType = Utils.loadUserClass(readString());
+            }
+            size = size * 2;
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i += 2) {
+                values[i] = readValue();
+                values[i + 1] = readValue();
+            }
+            return ValueMap.get(kType, vType, values);
         }
         default:
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);

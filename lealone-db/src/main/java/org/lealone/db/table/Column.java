@@ -725,4 +725,39 @@ public class Column {
         selectivity = source.selectivity;
         primaryKey = source.primaryKey;
     }
+
+    public boolean isCollectionType() {
+        return type == Value.LIST || type == Value.SET || type == Value.MAP;
+    }
+
+    public static class ListColumn extends Column {
+
+        public final Column element;
+
+        public ListColumn(String name, Column element) {
+            super(name, Value.LIST);
+            this.element = element;
+        }
+    }
+
+    public static class SetColumn extends Column {
+
+        public final Column element;
+
+        public SetColumn(String name, Column element) {
+            super(name, Value.SET);
+            this.element = element;
+        }
+    }
+
+    public static class MapColumn extends Column {
+        public final Column key;
+        public final Column value;
+
+        public MapColumn(String name, Column key, Column value) {
+            super(name, Value.MAP);
+            this.key = key;
+            this.value = value;
+        }
+    }
 }

@@ -12,6 +12,10 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
@@ -26,8 +30,11 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLob;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
@@ -400,6 +407,57 @@ public class TransferOutputStream implements NetOutputStream {
                 rs.beforeFirst();
             } catch (SQLException e) {
                 throw DbException.convertToIOException(e);
+            }
+            break;
+        }
+        case Value.SET: {
+            ValueSet vs = (ValueSet) v;
+            Set<Value> set = vs.getSet();
+            int size = set.size();
+            Class<?> componentType = vs.getComponentType();
+            if (componentType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(componentType.getName());
+            }
+            for (Value value : set) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.LIST: {
+            ValueList vl = (ValueList) v;
+            List<Value> list = vl.getList();
+            int size = list.size();
+            Class<?> componentType = vl.getComponentType();
+            if (componentType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(componentType.getName());
+            }
+            for (Value value : list) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.MAP: {
+            ValueMap vm = (ValueMap) v;
+            Map<Value, Value> map = vm.getMap();
+            int size = map.size();
+            Class<?> kType = vm.getKeyType();
+            Class<?> vType = vm.getValueType();
+            if (kType == Object.class && vType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(kType.getName());
+                writeString(vType.getName());
+            }
+            for (Entry<Value, Value> e : map.entrySet()) {
+                writeValue(e.getKey());
+                writeValue(e.getValue());
             }
             break;
         }

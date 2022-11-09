@@ -44,6 +44,9 @@ import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.ListColumn;
+import org.lealone.db.table.Column.MapColumn;
+import org.lealone.db.table.Column.SetColumn;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.DummyTable;
 import org.lealone.db.table.RangeTable;
@@ -189,6 +192,7 @@ public class LealoneSQLParser implements SQLParser {
 
     private final Database database;
     private final ServerSession session;
+
     /**
      * @see DbSettings#databaseToUpper
      */
@@ -1600,7 +1604,7 @@ public class LealoneSQLParser implements SQLParser {
                         readIdentifierWithSchema();
                     } while (readIf(","));
                 } else if (readIf("NOWAIT")) {
-                    // TODO parser: select for update nowait: should not wait
+                    // 忽略
                 }
                 command.setForUpdate(true);
             } else if (readIf("READ") || readIf("FETCH")) {
@@ -2676,6 +2680,25 @@ public class LealoneSQLParser implements SQLParser {
                     Expression[] array = new Expression[list.size()];
                     list.toArray(array);
                     r = new ExpressionList(array);
+                } else if (readIf(":")) {
+                    ArrayList<Expression> list = Utils.newSmallArrayList();
+                    list.add(r);
+                    r = readExpression();
+                    list.add(r);
+                    while (!readIf(")")) {
+                        if (!readIf(",")) {
+                            read(")");
+                            break;
+                        }
+                        r = readExpression();
+                        list.add(r);
+                        read(":");
+                        r = readExpression();
+                        list.add(r);
+                    }
+                    Expression[] array = new Expression[list.size()];
+                    list.toArray(array);
+                    r = new ExpressionList(array);
                 } else {
                     read(")");
                 }
@@ -3052,6 +3075,13 @@ public class LealoneSQLParser implements SQLParser {
         }
         case CHAR_SPECIAL_2:
             if (types[i] == CHAR_SPECIAL_2) {
+                // 例如: f1 list<list<int>>
+                if (sqlCommand.charAt(i - 1) == '>' && sqlCommand.charAt(i) == '>') {
+                    currentToken = ">";
+                    currentTokenType = BIGGER;
+                    parseIndex = i;
+                    return;
+                }
                 i++;
             }
             currentToken = sqlCommand.substring(start, i);
@@ -3847,6 +3877,40 @@ public class LealoneSQLParser implements SQLParser {
             scale = templateColumn.getScale();
         } else {
             dataType = DataType.getTypeByName(original);
+            if (original.equals("LIST")) {
+                read();
+                Column element;
+                if (readIf("<")) {
+                    element = parseColumnWithType("E");
+                    read(">");
+                } else {
+                    element = new Column("E", Value.JAVA_OBJECT);
+                }
+                return new ListColumn(columnName, element);
+            } else if (original.equals("SET")) {
+                read();
+                Column element;
+                if (readIf("<")) {
+                    element = parseColumnWithType("E");
+                    read(">");
+                } else {
+                    element = new Column("E", Value.JAVA_OBJECT);
+                }
+                return new SetColumn(columnName, element);
+            } else if (original.equals("MAP")) {
+                read();
+                Column key, value;
+                if (readIf("<")) {
+                    key = parseColumnWithType("K");
+                    read(",");
+                    value = parseColumnWithType("V");
+                    read(">");
+                } else {
+                    key = new Column("K", Value.JAVA_OBJECT);
+                    value = new Column("V", Value.JAVA_OBJECT);
+                }
+                return new MapColumn(columnName, key, value);
+            }
             if (dataType == null) {
                 Table table = null;
                 if (original.equalsIgnoreCase("void")) {
@@ -5482,7 +5546,8 @@ public class LealoneSQLParser implements SQLParser {
             command.setTableName(tableName);
             if (!readIf("(")) {
                 // 指定索引名，例如:
-                // CREATE TABLE IF NOT EXISTS t (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
+                // CREATE TABLE IF NOT EXISTS t (
+                // f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
                 command.setIndexName(readUniqueIdentifier());
                 read("(");
             }

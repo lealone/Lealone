@@ -5,7 +5,11 @@
  */
 package org.lealone.db.service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -41,6 +45,46 @@ public interface ServiceExecutor {
             return null;
         else {
             return v.toString().trim().getBytes();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> toList(String key, Map<String, Object> methodArgs) {
+        Object v = methodArgs.get(key);
+        if (v == null)
+            return null;
+        else {
+            if (v instanceof List)
+                return (List<T>) v;
+            ArrayList<T> list = new ArrayList<>(1);
+            list.add((T) v);
+            return list;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Set<T> toSet(String key, Map<String, Object> methodArgs) {
+        Object v = methodArgs.get(key);
+        if (v == null)
+            return null;
+        else {
+            if (v instanceof Set)
+                return (Set<T>) v;
+            HashSet<T> set = new HashSet<>(1);
+            set.add((T) v);
+            return set;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> toMap(String key, Map<String, Object> methodArgs) {
+        Object v = methodArgs.get(key);
+        if (v == null)
+            return null;
+        else {
+            if (v instanceof Map)
+                return (Map<K, V>) v;
+            return (Map<K, V>) methodArgs;
         }
     }
 }

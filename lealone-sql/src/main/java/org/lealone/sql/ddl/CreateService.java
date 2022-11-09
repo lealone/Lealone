@@ -34,6 +34,9 @@ import org.lealone.db.service.ServiceMethod;
 import org.lealone.db.service.ServiceSetting;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.ListColumn;
+import org.lealone.db.table.Column.MapColumn;
+import org.lealone.db.table.Column.SetColumn;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -345,7 +348,13 @@ public class CreateService extends SchemaStatement {
                         .append(".executeQuery();\r\n");
                 proxyMethodBodyBuff.append("                rs.next();\r\n");
 
-                if (returnColumn.getTable() != null) {
+                if (returnColumn.isCollectionType()) {
+                    proxyMethodBodyBuff.append("                @SuppressWarnings(\"unchecked\")\r\n");
+                    proxyMethodBodyBuff.append("                ").append(returnType).append(" ret = (")
+                            .append(returnType).append(")rs.getObject(1);\r\n");
+                    proxyMethodBodyBuff.append("                rs.close();\r\n");
+                    proxyMethodBodyBuff.append("                return ret;\r\n");
+                } else if (returnColumn.getTable() != null) {
                     proxyMethodBodyBuff.append("                String ret = rs.getString(1);\r\n");
                     proxyMethodBodyBuff.append("                rs.close();\r\n");
                     proxyMethodBodyBuff.append("                return ").append(returnType)
@@ -615,7 +624,9 @@ public class CreateService extends SchemaStatement {
         @Override
         protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
                 String cType, int cIndex) {
-            if (c.getTable() != null) {
+            if (c.isCollectionType()) {
+                buff.append("methodArgs[").append(cIndex).append("].getCollection();\r\n");
+            } else if (c.getTable() != null) {
                 buff.append(cType).append(".decode(").append("methodArgs[").append(cIndex)
                         .append("].getString());\r\n");
             } else {
@@ -633,8 +644,27 @@ public class CreateService extends SchemaStatement {
                 buff.append("            return ValueString.get(").append(resultVarName)
                         .append(".encode());\r\n");
             } else {
-                buff.append("            return ").append(getReturnMethodName(returnType)).append("(")
-                        .append(resultVarName).append(")").append(";\r\n");
+                Column c = returnColumn;
+                if (c instanceof ListColumn) {
+                    ListColumn lc = (ListColumn) c;
+                    buff.append("            return ValueList.get(")
+                            .append(getTypeName(lc.element, importSet)).append(".class, ")
+                            .append(resultVarName).append(");\r\n");
+                } else if (c instanceof SetColumn) {
+                    SetColumn sc = (SetColumn) c;
+                    buff.append("            return ValueSet.get(")
+                            .append(getTypeName(sc.element, importSet)).append(".class, ")
+                            .append(resultVarName).append(");\r\n");
+                } else if (c instanceof MapColumn) {
+                    MapColumn mc = (MapColumn) c;
+                    buff.append("            return ValueMap.get(")
+                            .append(getTypeName(mc.key, importSet)).append(".class, ")
+                            .append(getTypeName(mc.value, importSet)).append(".class, ")
+                            .append(resultVarName).append(");\r\n");
+                } else {
+                    buff.append("            return ").append(getReturnMethodName(returnType))
+                            .append("(").append(resultVarName).append(")").append(";\r\n");
+                }
             }
         }
 
@@ -652,6 +682,19 @@ public class CreateService extends SchemaStatement {
                 buff.append(cType).append(".decode(").append("ServiceExecutor.toString(\"")
                         .append(c.getName()).append("\", methodArgs));\r\n");
             } else {
+                if (c instanceof ListColumn) {
+                    buff.append("ServiceExecutor.toList(\"").append(c.getName())
+                            .append("\", methodArgs);\r\n");
+                    return;
+                } else if (c instanceof SetColumn) {
+                    buff.append("ServiceExecutor.toSet(\"").append(c.getName())
+                            .append("\", methodArgs);\r\n");
+                    return;
+                } else if (c instanceof MapColumn) {
+                    buff.append("ServiceExecutor.toMap(\"").append(c.getName())
+                            .append("\", methodArgs);\r\n");
+                    return;
+                }
                 switch (cType.toUpperCase()) {
                 case "STRING":
                     buff.append("ServiceExecutor.toString(\"").append(c.getName())
@@ -681,7 +724,7 @@ public class CreateService extends SchemaStatement {
         @Override
         protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
                 String cType, int cIndex) {
-            buff.append(getJsonArrayMethodName(cType, cIndex)).append(";\r\n");
+            buff.append(getJsonArrayMethodName(c, cType, cIndex, importSet)).append(";\r\n");
         }
     }
 
@@ -802,6 +845,23 @@ public class CreateService extends SchemaStatement {
 
     private static String getTypeName(Column c, TreeSet<String> importSet) {
         String cType;
+        if (c instanceof ListColumn) {
+            importSet.add("java.util.List");
+            ListColumn lc = (ListColumn) c;
+            cType = "List<" + getTypeName(lc.element, importSet) + ">";
+            return cType;
+        } else if (c instanceof SetColumn) {
+            importSet.add("java.util.Set");
+            SetColumn sc = (SetColumn) c;
+            cType = "Set<" + getTypeName(sc.element, importSet) + ">";
+            return cType;
+        } else if (c instanceof MapColumn) {
+            importSet.add("java.util.Map");
+            MapColumn mc = (MapColumn) c;
+            cType = "Map<" + getTypeName(mc.key, importSet) + ", " + getTypeName(mc.value, importSet)
+                    + ">";
+            return cType;
+        }
         if (c.getTable() != null) {
             cType = c.getTable().getName();
             cType = toClassName(cType);
@@ -883,7 +943,7 @@ public class CreateService extends SchemaStatement {
         case "RESULT_SET":
             return "ValueResultSet.get";
         }
-        return "ValueShort.get";
+        return "ValueString.get";
     }
 
     private static String m(String str, int i) {
@@ -891,7 +951,8 @@ public class CreateService extends SchemaStatement {
     }
 
     // 根据具体类型调用合适的JsonArray方法
-    private static String getJsonArrayMethodName(String type0, int i) {
+    private static String getJsonArrayMethodName(Column c, String type0, int i,
+            TreeSet<String> importSet) {
         String type = type0.toUpperCase();
         switch (type) {
         case "BOOLEAN":
@@ -937,6 +998,14 @@ public class CreateService extends SchemaStatement {
             return "new org.lealone.db.value.ReadonlyArray(ja.getString(" + i + "))";
         case "RESULT_SET":
             return "ja.getValue(" + i + ")";
+        }
+        if (c instanceof ListColumn)
+            return "ja.getList(" + i + ")";
+        if (c instanceof SetColumn)
+            return "ja.getSet(" + i + ")";
+        if (c instanceof MapColumn) {
+            MapColumn mc = (MapColumn) c;
+            return "ja.getMap(" + i + ", " + getTypeName(mc.key, importSet) + ".class)";
         }
         return type0 + ".decode(ja.getString(" + i + "))";
     }

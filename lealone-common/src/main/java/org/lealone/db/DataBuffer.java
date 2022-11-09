@@ -12,6 +12,10 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -31,10 +35,13 @@ import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueShort;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringFixed;
@@ -656,12 +663,60 @@ public class DataBuffer implements AutoCloseable {
             }
             break;
         }
-        // case Value.GEOMETRY: {
-        // byte[] b = v.getBytes();
-        // int len = b.length;
-        // buff.put((byte) type).putVarInt(len).put(b);
-        // break;
-        // }
+        case Value.SET: {
+            buff.put((byte) type);
+            ValueSet vs = (ValueSet) v;
+            Set<Value> set = vs.getSet();
+            int size = set.size();
+            Class<?> componentType = vs.getComponentType();
+            if (componentType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, componentType.getName());
+            }
+            for (Value value : set) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.LIST: {
+            buff.put((byte) type);
+            ValueList vl = (ValueList) v;
+            List<Value> list = vl.getList();
+            int size = list.size();
+            Class<?> componentType = vl.getComponentType();
+            if (componentType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, componentType.getName());
+            }
+            for (Value value : list) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.MAP: {
+            buff.put((byte) type);
+            ValueMap vm = (ValueMap) v;
+            Map<Value, Value> map = vm.getMap();
+            int size = map.size();
+            Class<?> kType = vm.getKeyType();
+            Class<?> vType = vm.getValueType();
+            if (kType == Object.class && vType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, kType.getName());
+                writeString(buff, vType.getName());
+            }
+            for (Entry<Value, Value> e : map.entrySet()) {
+                writeValue(e.getKey());
+                writeValue(e.getValue());
+            }
+            break;
+        }
         default:
             type = StorageDataType.getTypeId(type);
             TYPES[type].writeValue(buff, v);
@@ -751,6 +806,39 @@ public class DataBuffer implements AutoCloseable {
                 rs.addRow(o);
             }
             return ValueResultSet.get(rs);
+        }
+        case Value.SET:
+        case Value.LIST: {
+            int size = readVarInt(buff);
+            Class<?> componentType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                componentType = Utils.loadUserClass(readString(buff));
+            }
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = readValue(buff);
+            }
+            if (type == Value.LIST)
+                return ValueList.get(componentType, values);
+            else
+                return ValueSet.get(componentType, values);
+        }
+        case Value.MAP: {
+            int size = readVarInt(buff);
+            Class<?> kType = Object.class, vType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                kType = Utils.loadUserClass(readString(buff));
+                vType = Utils.loadUserClass(readString(buff));
+            }
+            size = size * 2;
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i += 2) {
+                values[i] = readValue(buff);
+                values[i + 1] = readValue(buff);
+            }
+            return ValueMap.get(kType, vType, values);
         }
         default:
             int type2 = StorageDataType.getTypeId(type);

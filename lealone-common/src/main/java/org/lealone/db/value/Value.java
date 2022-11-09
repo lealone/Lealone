@@ -156,10 +156,16 @@ public abstract class Value implements Comparable<Value> {
      */
     public static final int STRING_FIXED = 21;
 
+    public static final int ENUM = 22;
+    public static final int SET = 23;
+    public static final int LIST = 24;
+    public static final int MAP = 25;
+    public static final int JSON = 26;
+
     /**
      * The number of value types.
      */
-    public static final int TYPE_COUNT = STRING_FIXED + 1;
+    public static final int TYPE_COUNT = JSON + 1;
 
     private static SoftReference<Value[]> softCache = new SoftReference<Value[]>(null);
     private static final BigDecimal MAX_LONG_DECIMAL = BigDecimal.valueOf(Long.MAX_VALUE);
@@ -303,6 +309,16 @@ public abstract class Value implements Comparable<Value> {
             return 50;
         case RESULT_SET:
             return 51;
+        case ENUM:
+            return 52;
+        case SET:
+            return 53;
+        case LIST:
+            return 54;
+        case MAP:
+            return 55;
+        case JSON:
+            return 56;
         default:
             throw DbException.getInternalError("type:" + type);
         }
@@ -798,6 +814,27 @@ public abstract class Value implements Comparable<Value> {
                     return ValueUuid.get(getBytesNoCopy());
                 }
             }
+            case LIST: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueList.get(((ValueArray) this).getList());
+                }
+                break;
+            }
+            case SET: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueSet.get(((ValueArray) this).getList());
+                }
+                break;
+            }
+            case MAP: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueMap.get(((ValueArray) this).getList());
+                }
+                break;
+            }
             }
             // conversion by parsing the string value
             String s = getString();
@@ -1122,5 +1159,10 @@ public abstract class Value implements Comparable<Value> {
 
     public final boolean isFalse() {
         return this != ValueNull.INSTANCE && !getBoolean();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getCollection() {
+        return (T) getObject();
     }
 }

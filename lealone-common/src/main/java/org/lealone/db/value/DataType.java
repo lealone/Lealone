@@ -269,6 +269,31 @@ public class DataType {
         add(Value.RESULT_SET, DataType.TYPE_RESULT_SET, "ResultSet", dataType,
                 new String[] { "RESULT_SET" }, 400);
 
+        DataType enumType = new DataType();
+        enumType.prefix = "(";
+        enumType.suffix = "')";
+        add(Value.ENUM, Types.OTHER, "Object", enumType, new String[] { "ENUM" }, 32);
+
+        DataType setType = new DataType();
+        setType.prefix = "(";
+        setType.suffix = "')";
+        add(Value.SET, Types.OTHER, "Object", setType, new String[] { "SET" }, 32);
+
+        DataType listType = new DataType();
+        listType.prefix = "(";
+        listType.suffix = "')";
+        add(Value.LIST, Types.OTHER, "Object", listType, new String[] { "LIST" }, 32);
+
+        DataType mapType = new DataType();
+        mapType.prefix = "(";
+        mapType.suffix = "')";
+        add(Value.MAP, Types.OTHER, "Object", mapType, new String[] { "MAP" }, 32);
+
+        DataType jsonType = new DataType();
+        jsonType.prefix = "(";
+        jsonType.suffix = "')";
+        add(Value.JSON, Types.OTHER, "Object", jsonType, new String[] { "JSON" }, 32);
+
         // 验证一下是否有遗漏
         for (int i = 0, size = Value.TYPE_COUNT; i < size; i++) {
             DataType dt = TYPES_BY_VALUE_TYPE[i];
