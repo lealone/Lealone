@@ -583,17 +583,21 @@ public class CreateService extends SchemaStatement {
                 boolean isVoid = returnType.equals("void");
                 buff.append("            ");
                 if (!isVoid) {
-                    buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+                    if (createResultVar())
+                        buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+                    else
+                        buff.append("return ");
                 }
-                buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
+                buff.append("si.").append(methodName).append("(").append(argsBuff).append(");\r\n");
                 if (!isVoid) {
-                    genReturnCode(buff, importSet, returnColumn, returnType, resultVarName);
+                    if (createResultVar())
+                        genReturnCode(buff, importSet, returnColumn, returnType, resultVarName);
                 } else {
                     buff.append("            return ").append(getReturnType()).append(";\r\n");
                 }
             }
             buff.append("        default:\r\n");
-            buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
+            buff.append("            throw noMethodException(methodName);\r\n");
             buff.append("        }\r\n");
             buff.append("    }\r\n");
             return buff;
@@ -604,19 +608,15 @@ public class CreateService extends SchemaStatement {
 
         protected void genReturnCode(StringBuilder buff, TreeSet<String> importSet, Column returnColumn,
                 String returnType, String resultVarName) {
-            buff.append("            if (").append(resultVarName).append(" == null)\r\n");
-            buff.append("                return null;\r\n");
-            if (returnColumn.getTable() != null) {
-                buff.append("            return ").append(resultVarName).append(".encode();\r\n");
-            } else if (!returnType.equalsIgnoreCase("string")) {
-                buff.append("            return ").append(resultVarName).append(".toString();\r\n");
-            } else {
-                buff.append("            return ").append(resultVarName).append(";\r\n");
-            }
+            buff.append("            return ").append(resultVarName).append(";\r\n");
         }
 
         protected String getReturnType() {
             return "NO_RETURN_VALUE";
+        }
+
+        protected boolean createResultVar() {
+            return false;
         }
     }
 
@@ -672,50 +672,33 @@ public class CreateService extends SchemaStatement {
         protected String getReturnType() {
             return "ValueNull.INSTANCE";
         }
+
+        @Override
+        protected boolean createResultVar() {
+            return true;
+        }
     }
 
     private class MapServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
         @Override
         protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c,
                 String cType, int cIndex) {
+            String cName = c.getName();
+            String methodName;
             if (c.getTable() != null) {
-                buff.append(cType).append(".decode(").append("ServiceExecutor.toString(\"")
-                        .append(c.getName()).append("\", methodArgs));\r\n");
+                buff.append(cType).append(".decode(").append("toString(\"").append(cName)
+                        .append("\", methodArgs));\r\n");
             } else {
                 if (c instanceof ListColumn) {
-                    buff.append("ServiceExecutor.toList(\"").append(c.getName())
-                            .append("\", methodArgs);\r\n");
-                    return;
+                    methodName = "toList";
                 } else if (c instanceof SetColumn) {
-                    buff.append("ServiceExecutor.toSet(\"").append(c.getName())
-                            .append("\", methodArgs);\r\n");
-                    return;
+                    methodName = "toSet";
                 } else if (c instanceof MapColumn) {
-                    buff.append("ServiceExecutor.toMap(\"").append(c.getName())
-                            .append("\", methodArgs);\r\n");
-                    return;
+                    methodName = "toMap";
+                } else {
+                    methodName = getMapMethodName(cType);
                 }
-                switch (cType.toUpperCase()) {
-                case "STRING":
-                    buff.append("ServiceExecutor.toString(\"").append(c.getName())
-                            .append("\", methodArgs);\r\n");
-                    break;
-                case "BYTE[]":
-                    buff.append("ServiceExecutor.toBytes(\"").append(c.getName())
-                            .append("\", methodArgs);\r\n");
-                    break;
-                case "OBJECT":
-                    buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
-                    break;
-                case "ARRAY":
-                    buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"")
-                            .append(c.getName()).append("\"));\r\n");
-                    break;
-                default:
-                    buff.append(getMapMethodName(cType)).append("(")
-                            .append("ServiceExecutor.toString(\"").append(c.getName())
-                            .append("\", methodArgs));\r\n");
-                }
+                buff.append(methodName).append("(\"").append(cName).append("\", methodArgs);\r\n");
             }
         }
     }
@@ -740,7 +723,7 @@ public class CreateService extends SchemaStatement {
         // 生成public String executeService(String methodName, Map<String, Object> methodArgs)方法
         importSet.add(Map.class.getName());
         StringBuilder buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
-                "String executeService(String methodName, Map<String, Object> methodArgs)");
+                "Object executeService(String methodName, Map<String, Object> methodArgs)");
 
         // 生成public String executeService(String methodName, String json)方法
         // 提前看一下是否用到JsonArray
@@ -753,7 +736,7 @@ public class CreateService extends SchemaStatement {
             }
         }
         StringBuilder buffJsonMethod = new JsonServiceExecutorMethodGenerator().genCode(importSet,
-                "String executeService(String methodName, String json)", varInit);
+                "Object executeService(String methodName, String json)", varInit);
 
         String executorPackageName = getExecutorPackageName();
 
@@ -789,7 +772,7 @@ public class CreateService extends SchemaStatement {
         String className = getExecutorSimpleName();
         buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
         buff.append("\r\n");
-        buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
+        buff.append("    private final ").append(serviceImplementClassName).append(" si = new ")
                 .append(serviceImplementClassName).append("();\r\n");
 
         // 生成默认构造函数
@@ -1015,51 +998,49 @@ public class CreateService extends SchemaStatement {
         String type = type0.toUpperCase();
         switch (type) {
         case "BOOLEAN":
-            return "Boolean.valueOf";
+            return "toBoolean";
         case "BYTE":
-            return "Byte.valueOf";
+            return "toByte";
         case "SHORT":
-            return "Short.valueOf";
+            return "toShort";
         case "INTEGER":
-            return "Integer.valueOf";
+            return "toInt";
         case "LONG":
-            return "Long.valueOf";
+            return "toLong";
         case "BIGDECIMAL":
-            return "new java.math.BigDecimal";
+            return "toBigDecimal";
         case "TIME":
-            return "java.sql.Time.valueOf";
+            return "toTime";
         case "DATE":
-            return "java.sql.Date.valueOf";
+            return "toDate";
         case "TIMESTAMP":
-            return "java.sql.Timestamp.valueOf";
+            return "toTimestamp";
         case "BYTE[]":
-            return "s.getBytes()";
+            return "toBytes";
         case "UUID":
-            return "java.util.UUID.fromString";
+            return "toUUID";
         case "STRING":
         case "STRING_IGNORECASE":
         case "STRING_FIXED":
-            return "";
+            return "toString";
         case "DOUBLE":
-            return "Double.valueOf";
+            return "toDouble";
         case "FLOAT":
-            return "Float.valueOf";
+            return "toFloat";
+        case "BLOB":
+            return "toBlob";
+        case "CLOB":
+            return "toClob";
+        case "ARRAY":
+            return "toArray";
         case "NULL":
-            return null;
         case "UNKNOWN": // anything
         case "OBJECT":
-            return "";
-        case "BLOB":
-            return "new org.lealone.db.value.ReadonlyBlob";
-        case "CLOB":
-            return "new org.lealone.db.value.ReadonlyClob";
-        case "ARRAY":
-            return "new org.lealone.db.value.ReadonlyArray";
+            return "toObject";
         case "RESULT_SET":
-            type0 = "java.sql.ResultSet";
-            break;
+            return "(java.sql.ResultSet) toObject";
         }
-        return "";
+        return "toObject";
     }
 
     // 根据具体类型调用合适的Value方法

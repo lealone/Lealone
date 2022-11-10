@@ -751,6 +751,7 @@ public class Column {
     }
 
     public static class MapColumn extends Column {
+
         public final Column key;
         public final Column value;
 

@@ -140,11 +140,11 @@ public class Service extends SchemaObjectBase {
     }
 
     // 通过http调用
-    public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
+    public static Object execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
         return execute(serviceName, methodName, methodArgs, false);
     }
 
-    public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs,
+    public static Object execute(String serviceName, String methodName, Map<String, Object> methodArgs,
             boolean disableDynamicCompile) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 3) {
@@ -161,7 +161,7 @@ public class Service extends SchemaObjectBase {
     }
 
     // 通过sockjs调用
-    public static String execute(String serviceName, String json) {
+    public static Object execute(String serviceName, String json) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);

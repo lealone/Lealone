@@ -69,6 +69,9 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
             case Value.CLOB:
                 arg = v.getClob();
                 break;
+            case Value.ARRAY:
+                arg = v.getArray();
+                break;
             case Value.DOUBLE:
                 arg = v.getDouble();
                 break;
@@ -76,16 +79,8 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
                 arg = v.getFloat();
                 break;
             case Value.NULL:
-                return null;
             case Value.JAVA_OBJECT:
-                arg = v.getObject();
-                break;
             case Value.UNKNOWN:
-                arg = v.getObject();
-                break;
-            case Value.ARRAY:
-                arg = v.getArray();
-                break;
             case Value.RESULT_SET:
                 arg = v.getObject();
                 break;
@@ -107,68 +102,63 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
             Object arg = null;
             switch (c.getType()) {
             case Value.BOOLEAN:
-                arg = Boolean.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toBoolean(cName, methodArgs);
                 break;
             case Value.BYTE:
-                arg = Byte.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toByte(cName, methodArgs);
                 break;
             case Value.SHORT:
-                arg = Short.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toShort(cName, methodArgs);
                 break;
             case Value.INT:
-                arg = Integer.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toInt(cName, methodArgs);
                 break;
             case Value.LONG:
-                arg = Long.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toLong(cName, methodArgs);
                 break;
             case Value.DECIMAL:
-                arg = new java.math.BigDecimal(ServiceExecutor.toString(cName, methodArgs));
+                arg = toBigDecimal(cName, methodArgs);
                 break;
             case Value.TIME:
-                arg = java.sql.Time.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toTime(cName, methodArgs);
                 break;
             case Value.DATE:
-                arg = java.sql.Date.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toDate(cName, methodArgs);
                 break;
             case Value.TIMESTAMP:
-                arg = java.sql.Timestamp.valueOf(ServiceExecutor.toString(cName, methodArgs));
+                arg = toTimestamp(cName, methodArgs);
                 break;
             case Value.BYTES:
-                arg = ServiceExecutor.toBytes(cName, methodArgs);
+                arg = toBytes(cName, methodArgs);
                 break;
             case Value.UUID:
-                arg = java.util.UUID.fromString(ServiceExecutor.toString(cName, methodArgs));
+                arg = toUUID(cName, methodArgs);
                 break;
             case Value.STRING:
             case Value.STRING_IGNORECASE:
             case Value.STRING_FIXED:
-                arg = ServiceExecutor.toString(cName, methodArgs);
+                arg = toString(cName, methodArgs);
                 break;
             case Value.BLOB:
-                arg = new org.lealone.db.value.ReadonlyBlob(ServiceExecutor.toString(cName, methodArgs));
+                arg = toBlob(cName, methodArgs);
                 break;
             case Value.CLOB:
-                arg = new org.lealone.db.value.ReadonlyClob(ServiceExecutor.toString(cName, methodArgs));
-                break;
-            case Value.DOUBLE:
-                arg = Double.valueOf(ServiceExecutor.toString(cName, methodArgs));
-                break;
-            case Value.FLOAT:
-                arg = Float.valueOf(ServiceExecutor.toString(cName, methodArgs));
-                break;
-            case Value.NULL:
-                return null;
-            case Value.JAVA_OBJECT:
-                arg = methodArgs.get(cName);
-                break;
-            case Value.UNKNOWN:
-                arg = methodArgs.get(cName);
+                arg = toClob(cName, methodArgs);
                 break;
             case Value.ARRAY:
-                arg = new org.lealone.db.value.ReadonlyArray(methodArgs.get(cName));
+                arg = toArray(cName, methodArgs);
                 break;
+            case Value.DOUBLE:
+                arg = toDouble(cName, methodArgs);
+                break;
+            case Value.FLOAT:
+                arg = toFloat(cName, methodArgs);
+                break;
+            case Value.NULL:
+            case Value.JAVA_OBJECT:
+            case Value.UNKNOWN:
             case Value.RESULT_SET:
-                arg = methodArgs.get(cName);
+                arg = toObject(cName, methodArgs);
                 break;
             default:
                 throw DbException.getInternalError("type=" + c.getType());

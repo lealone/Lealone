@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.db.value;
 
@@ -28,8 +28,8 @@ public class ValueMap extends Value {
         this.kType = kType;
         this.vType = vType;
         this.map = new HashMap<>(map.size());
-        int kt = DataType.getTypeFromClass(kType);
-        int vt = DataType.getTypeFromClass(vType);
+        int kt = getCollectionComponentTypeFromClass(kType);
+        int vt = getCollectionComponentTypeFromClass(vType);
         for (Entry<?, ?> e : map.entrySet()) {
             this.map.put(DataType.convertToValue(e.getKey(), kt),
                     DataType.convertToValue(e.getValue(), vt));

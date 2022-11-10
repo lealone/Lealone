@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.db.value;
 
@@ -26,7 +26,7 @@ public class ValueSet extends Value {
     private ValueSet(Class<?> componentType, Set<?> set) {
         this.componentType = componentType;
         this.values = new HashSet<>(set.size());
-        int type = DataType.getTypeFromClass(componentType);
+        int type = getCollectionComponentTypeFromClass(componentType);
         for (Object v : set) {
             values.add(DataType.convertToValue(v, type));
         }

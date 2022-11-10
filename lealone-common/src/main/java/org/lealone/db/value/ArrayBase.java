@@ -9,8 +9,6 @@ import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
@@ -274,10 +272,5 @@ public abstract class ArrayBase extends TraceObject implements Array {
     @Override
     public String toString() {
         return getTraceObjectName() + ": " + value.getTraceSQL();
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> List<T> getList() {
-        return (List<T>) Arrays.asList(get());
     }
 }

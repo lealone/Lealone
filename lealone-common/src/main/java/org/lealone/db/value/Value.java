@@ -1165,4 +1165,11 @@ public abstract class Value implements Comparable<Value> {
     public <T> T getCollection() {
         return (T) getObject();
     }
+
+    static int getCollectionComponentTypeFromClass(Class<?> clz) {
+        if (clz == null || clz == Object.class)
+            return Value.UNKNOWN; // 集合类型会自动根据元素构建相应的ValueXxx，所以不能用Value.JAVA_OBJECT
+        else
+            return DataType.getTypeFromClass(clz);
+    }
 }
