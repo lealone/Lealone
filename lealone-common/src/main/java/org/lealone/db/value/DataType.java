@@ -18,6 +18,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
@@ -631,6 +634,12 @@ public class DataType {
             return Array.class.getName();
         case Value.RESULT_SET:
             return ResultSet.class.getName();
+        case Value.LIST:
+            return List.class.getName();
+        case Value.SET:
+            return Set.class.getName();
+        case Value.MAP:
+            return Map.class.getName();
         default:
             throw DbException.getInternalError("type=" + type);
         }

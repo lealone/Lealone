@@ -24,6 +24,9 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.ListColumn;
+import org.lealone.db.table.Column.MapColumn;
+import org.lealone.db.table.Column.SetColumn;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableSetting;
@@ -411,14 +414,34 @@ public class CreateTable extends SchemaStatement {
             String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
 
             fields.append("    public final ").append(modelPropertyClassName).append('<')
-                    .append(className).append("> ").append(columnName).append(";\r\n");
+                    .append(className);
+            if (c instanceof ListColumn) {
+                fields.append(", ");
+                ListColumn lc = (ListColumn) c;
+                fields.append(getTypeName(lc.element, importSet));
+            } else if (c instanceof SetColumn) {
+                fields.append(", ");
+                SetColumn sc = (SetColumn) c;
+                fields.append(getTypeName(sc.element, importSet));
+            } else if (c instanceof MapColumn) {
+                fields.append(", ");
+                MapColumn mc = (MapColumn) c;
+                fields.append(getTypeName(mc.key, importSet));
+                fields.append(", ");
+                fields.append(getTypeName(mc.value, importSet));
+            }
+            fields.append("> ").append(columnName).append(";\r\n");
 
             // 例如: id = new PLong<>("id", this);
             initFields.append("        ").append(columnName).append(" = new ")
                     .append(modelPropertyClassName).append("<>(\"")
                     .append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
-                    .append("\", this);\r\n");
-
+                    .append("\", this");
+            if (c instanceof MapColumn) {
+                MapColumn mc = (MapColumn) c;
+                initFields.append(", ").append(getTypeName(mc.key, importSet)).append(".class");
+            }
+            initFields.append(");\r\n");
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");
             }
@@ -693,6 +716,13 @@ public class CreateTable extends SchemaStatement {
         }
         name = "P" + name;
         importSet.add("org.lealone.plugins.orm.property." + name);
+        return name;
+    }
+
+    private static String getTypeName(Column c, TreeSet<String> importSet) {
+        String name = CreateService.getTypeName(c, importSet);
+        // if (name.equals("Object"))
+        // name = "?";
         return name;
     }
 }

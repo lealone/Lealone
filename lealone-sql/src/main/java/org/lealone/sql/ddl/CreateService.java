@@ -826,7 +826,7 @@ public class CreateService extends SchemaStatement {
         }
     }
 
-    private static String getTypeName(Column c, TreeSet<String> importSet) {
+    static String getTypeName(Column c, TreeSet<String> importSet) {
         String cType;
         if (c instanceof ListColumn) {
             importSet.add("java.util.List");
