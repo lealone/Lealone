@@ -81,13 +81,6 @@
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
 
 
-### Lealone QinSQL
-
-* 数据湖仓 OLTP 一体化平台
-
-* [更多细节...](https://github.com/lealone/QinSQL)
-
-
 ### Lealone 名字的由来
 
 * Lealone 发音 ['li:ləʊn] 这是我新造的英文单词， <br>
