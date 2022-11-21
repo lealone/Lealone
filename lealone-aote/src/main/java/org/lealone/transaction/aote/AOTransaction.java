@@ -311,6 +311,13 @@ public class AOTransaction implements Transaction {
             waitingTransactions = waitingTransactionsRef.get();
         }
         lockedBy = null;
+
+        // 加行锁后还没走到创建redo log那一步，中间就出错了，此时需要解锁
+        if (!tValues.isEmpty()) {
+            for (TransactionalValue tv : tValues.keySet()) {
+                tv.unlock(false);
+            }
+        }
     }
 
     @Override
