@@ -410,10 +410,7 @@ public class CreateService extends SchemaStatement {
             buff.append("\r\n");
         }
 
-        String createMethodName = serviceParameters == null ? null
-                : serviceParameters.get(ServiceSetting.CREATE_METHOD_NAME.name());
-        if (createMethodName == null)
-            createMethodName = "create";
+        String createMethodName = getParameterValue(ServiceSetting.CREATE_METHOD_NAME, "create");
 
         // 生成两个static create方法
         buff.append("    static ").append(serviceInterfaceName).append(" ").append(createMethodName)
@@ -462,6 +459,11 @@ public class CreateService extends SchemaStatement {
             path = path + File.separator;
         String srcFile = path + implementBy.replace('.', File.separatorChar) + ".java";
         return new File(srcFile).exists();
+    }
+
+    private String getParameterValue(ServiceSetting key, String defaultValue) {
+        String v = serviceParameters == null ? null : serviceParameters.get(key.name());
+        return v == null ? defaultValue : v.trim();
     }
 
     private void genServiceImplementClassCode() {
@@ -720,23 +722,34 @@ public class CreateService extends SchemaStatement {
         StringBuilder buffValueMethod = new ValueServiceExecutorMethodGenerator().genCode(importSet,
                 "Value executeService(String methodName, Value[] methodArgs)");
 
+        boolean generateHttpExecutorMethod = Boolean
+                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_HTTP_EXECUTOR_METHOD, "true"));
+        boolean generateSockjsExecutorMethod = Boolean.parseBoolean(
+                getParameterValue(ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD, "false"));
+        StringBuilder buffMapMethod = null;
+        StringBuilder buffJsonMethod = null;
+
         // 生成public String executeService(String methodName, Map<String, Object> methodArgs)方法
-        importSet.add(Map.class.getName());
-        StringBuilder buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
-                "Object executeService(String methodName, Map<String, Object> methodArgs)");
+        if (generateHttpExecutorMethod) {
+            importSet.add(Map.class.getName());
+            buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
+                    "Object executeService(String methodName, Map<String, Object> methodArgs)");
+        }
 
         // 生成public String executeService(String methodName, String json)方法
-        // 提前看一下是否用到JsonArray
-        String varInit = "";
-        for (CreateTable m : serviceMethods) {
-            if (m.data.columns.size() - 1 > 0) {
-                importSet.add("org.lealone.plugins.orm.json.JsonArray");
-                varInit = "        JsonArray ja = null;\r\n";
-                break;
+        if (generateSockjsExecutorMethod) {
+            // 提前看一下是否用到JsonArray
+            String varInit = "";
+            for (CreateTable m : serviceMethods) {
+                if (m.data.columns.size() - 1 > 0) {
+                    importSet.add("org.lealone.plugins.orm.json.JsonArray");
+                    varInit = "        JsonArray ja = null;\r\n";
+                    break;
+                }
             }
+            buffJsonMethod = new JsonServiceExecutorMethodGenerator().genCode(importSet,
+                    "Object executeService(String methodName, String json)", varInit);
         }
-        StringBuilder buffJsonMethod = new JsonServiceExecutorMethodGenerator().genCode(importSet,
-                "Object executeService(String methodName, String json)", varInit);
 
         String executorPackageName = getExecutorPackageName();
 
@@ -782,8 +795,10 @@ public class CreateService extends SchemaStatement {
         // buff.append("\r\n");
 
         buff.append(buffValueMethod);
-        buff.append(buffMapMethod);
-        buff.append(buffJsonMethod);
+        if (generateHttpExecutorMethod)
+            buff.append(buffMapMethod);
+        if (generateSockjsExecutorMethod)
+            buff.append(buffJsonMethod);
 
         buff.append("}\r\n");
         if (writeFile)

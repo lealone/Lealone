@@ -7,6 +7,8 @@ package org.lealone.db.service;
 
 public enum ServiceSetting {
 
-    CREATE_METHOD_NAME
+    CREATE_METHOD_NAME,
+    GENERATE_HTTP_EXECUTOR_METHOD,
+    GENERATE_SOCKJS_EXECUTOR_METHOD
 
 }
