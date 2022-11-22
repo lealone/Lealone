@@ -231,4 +231,22 @@ public class ValueList extends Value {
     public Value getValue(int i) {
         return values.get(i);
     }
+
+    @Override
+    public Value add(Value v) {
+        ValueList vl = (ValueList) v;
+        List<Value> newValues = new ArrayList<>(values.size() + vl.values.size());
+        newValues.addAll(values);
+        newValues.addAll(vl.values);
+        return ValueList.get(componentType, newValues);
+    }
+
+    @Override
+    public Value subtract(Value v) {
+        ValueList vl = (ValueList) v;
+        List<Value> newValues = new ArrayList<>(Math.abs(values.size() - vl.values.size()));
+        newValues.addAll(values);
+        newValues.removeAll(vl.values);
+        return ValueList.get(componentType, newValues);
+    }
 }

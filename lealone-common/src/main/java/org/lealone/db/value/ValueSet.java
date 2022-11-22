@@ -219,4 +219,22 @@ public class ValueSet extends Value {
         }
         return modified ? get(componentType, new HashSet<>(Arrays.asList(newValues))) : this;
     }
+
+    @Override
+    public Value add(Value v) {
+        ValueSet vs = (ValueSet) v;
+        Set<Value> newValues = new HashSet<>(values.size() + vs.values.size());
+        newValues.addAll(values);
+        newValues.addAll(vs.values);
+        return ValueSet.get(componentType, newValues);
+    }
+
+    @Override
+    public Value subtract(Value v) {
+        ValueSet vs = (ValueSet) v;
+        Set<Value> newValues = new HashSet<>(Math.abs(values.size() - vs.values.size()));
+        newValues.addAll(values);
+        newValues.removeAll(vs.values);
+        return ValueSet.get(componentType, newValues);
+    }
 }

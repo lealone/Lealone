@@ -814,26 +814,36 @@ public abstract class Value implements Comparable<Value> {
                     return ValueUuid.get(getBytesNoCopy());
                 }
             }
+            case ARRAY: {
+                Value[] values = { this };
+                return ValueArray.get(values);
+            }
             case LIST: {
                 switch (getType()) {
                 case ARRAY:
                     return ValueList.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueList.get(values);
                 }
-                break;
             }
             case SET: {
                 switch (getType()) {
                 case ARRAY:
                     return ValueSet.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueSet.get(values);
                 }
-                break;
             }
             case MAP: {
                 switch (getType()) {
                 case ARRAY:
                     return ValueMap.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueSet.get(values);
                 }
-                break;
             }
             }
             // conversion by parsing the string value

@@ -8,7 +8,9 @@ package org.lealone.db.value;
 import java.lang.reflect.Array;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
@@ -244,5 +246,23 @@ public class ValueArray extends Value {
 
     public Value getValue(int i) {
         return values[i];
+    }
+
+    @Override
+    public Value add(Value v) {
+        ValueArray va = (ValueArray) v;
+        List<Value> newValues = new ArrayList<>(values.length + va.values.length);
+        newValues.addAll(Arrays.asList(values));
+        newValues.addAll(Arrays.asList(va.values));
+        return ValueArray.get(componentType, newValues.toArray(new Value[0]));
+    }
+
+    @Override
+    public Value subtract(Value v) {
+        ValueArray va = (ValueArray) v;
+        List<Value> newValues = new ArrayList<>(Math.abs(values.length - va.values.length));
+        newValues.addAll(Arrays.asList(values));
+        newValues.removeAll(Arrays.asList(va.values));
+        return ValueArray.get(componentType, newValues.toArray(new Value[0]));
     }
 }

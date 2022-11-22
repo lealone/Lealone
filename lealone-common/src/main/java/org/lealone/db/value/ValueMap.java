@@ -7,6 +7,7 @@ package org.lealone.db.value;
 
 import java.sql.PreparedStatement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -210,5 +211,32 @@ public class ValueMap extends Value {
                     e.getValue().convertPrecision(precision, true));
         }
         return get(kType, vType, newMap);
+    }
+
+    @Override
+    public Value add(Value v) {
+        ValueMap vm = (ValueMap) v;
+        Map<Value, Value> newMap = new HashMap<>(map.size() + vm.map.size());
+        newMap.putAll(map);
+        newMap.putAll(vm.map);
+        return ValueMap.get(kType, vType, newMap);
+    }
+
+    @Override
+    public Value subtract(Value v) {
+        HashSet<Value> set = new HashSet<>();
+        if (v instanceof ValueSet) {
+            ValueSet vs = (ValueSet) v;
+            set.addAll(vs.getSet());
+        } else {
+            ValueMap vm = (ValueMap) v;
+            set.addAll(vm.map.keySet());
+        }
+        Map<Value, Value> newMap = new HashMap<>(Math.abs(map.size() - set.size()));
+        newMap.putAll(map);
+        for (Value key : set) {
+            newMap.remove(key);
+        }
+        return ValueMap.get(kType, vType, newMap);
     }
 }
