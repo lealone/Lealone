@@ -249,4 +249,10 @@ public class ValueList extends Value {
         newValues.removeAll(vl.values);
         return ValueList.get(componentType, newValues);
     }
+
+    public void convertComponent(int type) {
+        for (int i = 0, size = values.size(); i < size; i++) {
+            values.set(i, values.get(i).convertTo(type));
+        }
+    }
 }

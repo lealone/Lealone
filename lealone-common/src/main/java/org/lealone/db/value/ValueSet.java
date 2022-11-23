@@ -237,4 +237,13 @@ public class ValueSet extends Value {
         newValues.removeAll(vs.values);
         return ValueSet.get(componentType, newValues);
     }
+
+    public void convertComponent(int type) {
+        Set<Value> newValues = new HashSet<>(values.size());
+        for (Value v : values) {
+            newValues.add(v.convertTo(type));
+        }
+        values.clear();
+        values.addAll(newValues);
+    }
 }

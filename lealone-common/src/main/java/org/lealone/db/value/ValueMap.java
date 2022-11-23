@@ -239,4 +239,13 @@ public class ValueMap extends Value {
         }
         return ValueMap.get(kType, vType, newMap);
     }
+
+    public void convertComponent(int kType, int vType) {
+        Map<Value, Value> newMap = new HashMap<>(map.size());
+        for (Entry<Value, Value> e : map.entrySet()) {
+            newMap.put(e.getKey().convertTo(kType), e.getValue().convertTo(vType));
+        }
+        map.clear();
+        map.putAll(newMap);
+    }
 }

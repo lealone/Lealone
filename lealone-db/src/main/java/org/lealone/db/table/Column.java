@@ -28,8 +28,11 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
@@ -738,6 +741,13 @@ public class Column {
             super(name, Value.LIST);
             this.element = element;
         }
+
+        @Override
+        public Value convert(Value v) {
+            ValueList vl = (ValueList) super.convert(v);
+            vl.convertComponent(element.type);
+            return vl;
+        }
     }
 
     public static class SetColumn extends Column {
@@ -747,6 +757,13 @@ public class Column {
         public SetColumn(String name, Column element) {
             super(name, Value.SET);
             this.element = element;
+        }
+
+        @Override
+        public Value convert(Value v) {
+            ValueSet vs = (ValueSet) super.convert(v);
+            vs.convertComponent(element.type);
+            return vs;
         }
     }
 
@@ -759,6 +776,13 @@ public class Column {
             super(name, Value.MAP);
             this.key = key;
             this.value = value;
+        }
+
+        @Override
+        public Value convert(Value v) {
+            ValueMap vm = (ValueMap) super.convert(v);
+            vm.convertComponent(key.type, value.type);
+            return vm;
         }
     }
 }
