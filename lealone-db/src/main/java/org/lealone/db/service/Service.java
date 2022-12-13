@@ -123,12 +123,7 @@ public class Service extends SchemaObjectBase {
         if (schema == null) {
             throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
         }
-        Service service = schema.findService(session, serviceName);
-        if (service != null) {
-            return service;
-        } else {
-            throw new RuntimeException("service " + serviceName + " not found");
-        }
+        return schema.getService(session, serviceName);
     }
 
     // 通过jdbc调用

@@ -90,7 +90,7 @@ public class TestBase extends Assert {
     protected String password = DEFAULT_PASSWORD;
 
     private final Map<String, String> connectionParameters = new HashMap<>();
-    private String storageEngineName = getDefaultStorageEngineName();
+    // private String storageEngineName = getDefaultStorageEngineName();
     private boolean embedded = false;
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;
@@ -144,7 +144,7 @@ public class TestBase extends Assert {
     }
 
     public TestBase setStorageEngineName(String name) {
-        storageEngineName = name;
+        // storageEngineName = name;
         return this;
     }
 
@@ -219,6 +219,7 @@ public class TestBase extends Assert {
         // addConnectionParameter(DbSetting.DATABASE_TO_UPPER, "false");
         // addConnectionParameter(DbSetting.ALIAS_COLUMN_NAME, "true");
         // addConnectionParameter(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, "true");
+        // addConnectionParameter(DbSetting.DEFAULT_STORAGE_ENGINE, storageEngineName);
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", user);
@@ -253,9 +254,7 @@ public class TestBase extends Assert {
             separatorChar = '&';
         }
 
-        url.append(dbName).append(firstSeparatorChar).append(DbSetting.DEFAULT_STORAGE_ENGINE)
-                .append("=").append(storageEngineName);
-        url.append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=")
+        url.append(dbName).append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=")
                 .append(netFactoryName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())

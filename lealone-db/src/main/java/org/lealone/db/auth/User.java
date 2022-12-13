@@ -20,6 +20,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;
@@ -150,6 +151,31 @@ public class User extends RightOwner {
             }
         }
         if (isRightGrantedRecursive(table, rightMask)) {
+            return true;
+        }
+        return false;
+    }
+
+    public void checkRight(Service service, int rightMask) {
+        if (!hasServiceRight(service, rightMask)) {
+            throw DbException.get(ErrorCode.NOT_ENOUGH_RIGHTS_FOR_1, service.getSQL());
+        }
+    }
+
+    private boolean hasServiceRight(Service service, int rightMask) {
+        if (admin) {
+            return true;
+        }
+        Role publicRole = database.getPublicRole();
+        if (publicRole.isRightGrantedRecursive(service, rightMask)) {
+            return true;
+        }
+        if (service != null) {
+            if (hasRight(null, Right.ALTER_ANY_SCHEMA)) {
+                return true;
+            }
+        }
+        if (isRightGrantedRecursive(service, rightMask)) {
             return true;
         }
         return false;

@@ -16,6 +16,7 @@ import org.lealone.db.auth.RightOwner;
 import org.lealone.db.auth.Role;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
@@ -32,7 +33,7 @@ import org.lealone.sql.SQLStatement;
  */
 public class GrantRevoke extends DefinitionStatement implements AuthStatement {
 
-    private final ArrayList<Table> tables = new ArrayList<>();
+    private final ArrayList<DbObject> dbObjects = new ArrayList<>();
     private int operationType;
     private int rightMask;
     private ArrayList<String> roleNames;
@@ -90,7 +91,11 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
      * @param table the table
      */
     public void addTable(Table table) {
-        tables.add(table);
+        dbObjects.add(table);
+    }
+
+    public void addService(Service service) {
+        dbObjects.add(service);
     }
 
     /**
@@ -154,8 +159,8 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         if (schema != null) {
             grantRight(schema, lock);
         }
-        for (Table table : tables) {
-            grantRight(table, lock);
+        for (DbObject object : dbObjects) {
+            grantRight(object, lock);
         }
     }
 
@@ -195,8 +200,8 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         if (schema != null) {
             revokeRight(schema, lock);
         }
-        for (Table table : tables) {
-            revokeRight(table, lock);
+        for (DbObject object : dbObjects) {
+            revokeRight(object, lock);
         }
     }
 

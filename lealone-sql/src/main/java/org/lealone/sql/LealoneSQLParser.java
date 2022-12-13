@@ -41,6 +41,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.schema.UserDataType;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.db.table.Column;
@@ -4166,6 +4167,9 @@ public class LealoneSQLParser implements SQLParser {
         } else if (readIf("RESOURCE")) {
             // ignore this right
             return true;
+        } else if (readIf("EXECUTE")) {
+            command.addRight(Right.EXECUTE);
+            return true;
         } else {
             command.addRoleName(readUniqueIdentifier());
             return false;
@@ -4187,6 +4191,11 @@ public class LealoneSQLParser implements SQLParser {
                 if (readIf("SCHEMA")) {
                     Schema schema = database.getSchema(session, readAliasIdentifier());
                     command.setSchema(schema);
+                } else if (readIf("SERVICE")) {
+                    do {
+                        Service service = readService();
+                        command.addService(service);
+                    } while (readIf(","));
                 } else {
                     do {
                         Table table = readTableOrView();
@@ -5196,6 +5205,33 @@ public class LealoneSQLParser implements SQLParser {
             }
         }
         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
+    }
+
+    private Service readService() {
+        return readService(readIdentifierWithSchema(null));
+    }
+
+    private Service readService(String serviceName) {
+        // same algorithm than readSequence
+        if (schemaName != null) {
+            return getSchema().getService(session, serviceName);
+        }
+        Service service = database.getSchema(session, session.getCurrentSchemaName()).getService(session,
+                serviceName);
+        if (service != null) {
+            return service;
+        }
+        String[] schemaNames = session.getSchemaSearchPath();
+        if (schemaNames != null) {
+            for (String name : schemaNames) {
+                Schema s = database.getSchema(session, name);
+                service = s.findService(session, serviceName);
+                if (service != null) {
+                    return service;
+                }
+            }
+        }
+        throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {

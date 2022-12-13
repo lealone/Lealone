@@ -463,6 +463,14 @@ public class Schema extends DbObjectBase {
         return find(DbObjectType.SERVICE, session, name);
     }
 
+    public Service getService(ServerSession session, String name) {
+        Service service = findService(session, name);
+        if (service == null) {
+            throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, name);
+        }
+        return service;
+    }
+
     /**
      * Release a unique object name.
      *
