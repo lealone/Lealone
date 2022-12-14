@@ -793,7 +793,7 @@ public abstract class Value implements Comparable<Value> {
                 case BLOB:
                     return ValueJavaObject.getNoCopy(null, getBytesNoCopy());
                 }
-                break;
+                return this; // 其他类型直接返回
             }
             case BLOB: {
                 switch (getType()) {
