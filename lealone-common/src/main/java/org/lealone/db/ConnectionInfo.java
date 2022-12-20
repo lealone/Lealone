@@ -128,7 +128,12 @@ public class ConnectionInfo implements Cloneable {
         readAndRemoveSettingsFromURL();
         parseURL();
 
-        setUserName(removeProperty(ConnectionSetting.USER, ""));
+        // 如果url中未指定用户名，默认是root
+        String userName = removeProperty(ConnectionSetting.USER, "");
+        if (userName.isEmpty() && isEmbedded())
+            userName = "ROOT";
+        setUserName(userName);
+
         convertPasswords();
         isServiceConnection = removeProperty(ConnectionSetting.IS_SERVICE_CONNECTION, false);
 
