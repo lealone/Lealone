@@ -21,7 +21,7 @@ public class ServiceTest extends SqlTestBase {
         sql = "create service if not exists test_service (" //
                 + " test(name varchar) varchar)" //
                 + " implement by '" + ServiceTest.class.getName() + "'" //
-                + " parameters(" + ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD + "=false)";
+                + " parameters(" + ServiceSetting.GENERATE_JSON_EXECUTOR_METHOD + "=false)";
         executeUpdate(sql);
 
         sql = "EXECUTE SERVICE test_service test('zhh')";

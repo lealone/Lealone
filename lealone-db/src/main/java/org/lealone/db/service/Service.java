@@ -163,7 +163,7 @@ public class Service extends SchemaObjectBase {
         }
     }
 
-    // 通过sockjs调用
+    // 通过json调用
     public static Object execute(ServerSession session, String serviceName, String json) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {

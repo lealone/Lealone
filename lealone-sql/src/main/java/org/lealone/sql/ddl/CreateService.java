@@ -722,22 +722,22 @@ public class CreateService extends SchemaStatement {
         StringBuilder buffValueMethod = new ValueServiceExecutorMethodGenerator().genCode(importSet,
                 "Value executeService(String methodName, Value[] methodArgs)");
 
-        boolean generateHttpExecutorMethod = Boolean
-                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_HTTP_EXECUTOR_METHOD, "true"));
-        boolean generateSockjsExecutorMethod = Boolean
-                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD, "true"));
+        boolean generateMapExecutorMethod = Boolean
+                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_MAP_EXECUTOR_METHOD, "true"));
+        boolean generateJsonExecutorMethod = Boolean
+                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_JSON_EXECUTOR_METHOD, "true"));
         StringBuilder buffMapMethod = null;
         StringBuilder buffJsonMethod = null;
 
         // 生成public String executeService(String methodName, Map<String, Object> methodArgs)方法
-        if (generateHttpExecutorMethod) {
+        if (generateMapExecutorMethod) {
             importSet.add(Map.class.getName());
             buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
                     "Object executeService(String methodName, Map<String, Object> methodArgs)");
         }
 
         // 生成public String executeService(String methodName, String json)方法
-        if (generateSockjsExecutorMethod) {
+        if (generateJsonExecutorMethod) {
             // 提前看一下是否用到JsonArray
             String varInit = "";
             for (CreateTable m : serviceMethods) {
@@ -795,9 +795,9 @@ public class CreateService extends SchemaStatement {
         // buff.append("\r\n");
 
         buff.append(buffValueMethod);
-        if (generateHttpExecutorMethod)
+        if (generateMapExecutorMethod)
             buff.append(buffMapMethod);
-        if (generateSockjsExecutorMethod)
+        if (generateJsonExecutorMethod)
             buff.append(buffJsonMethod);
 
         buff.append("}\r\n");
