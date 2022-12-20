@@ -11,6 +11,7 @@ import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.service.ServiceSetting;
 import org.lealone.test.sql.SqlTestBase;
 
 public class ServiceTest extends SqlTestBase {
@@ -19,7 +20,8 @@ public class ServiceTest extends SqlTestBase {
         executeUpdate("drop service if exists test_service");
         sql = "create service if not exists test_service (" //
                 + " test(name varchar) varchar)" //
-                + " implement by '" + ServiceTest.class.getName() + "'";
+                + " implement by '" + ServiceTest.class.getName() + "'" //
+                + " parameters(" + ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD + "=false)";
         executeUpdate(sql);
 
         sql = "EXECUTE SERVICE test_service test('zhh')";

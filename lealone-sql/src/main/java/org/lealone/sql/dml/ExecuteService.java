@@ -5,7 +5,6 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.auth.Right;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.service.Service;
@@ -78,9 +77,6 @@ public class ExecuteService extends ExecuteStatement {
     }
 
     private Value execute() {
-        Service service = Service.getService(session, session.getDatabase(),
-                session.getCurrentSchemaName(), serviceName);
-        session.getUser().checkRight(service, Right.EXECUTE);
         int size = expressions.size();
         Value[] methodArgs = new Value[size];
         for (int i = 0; i < size; i++) {

@@ -724,8 +724,8 @@ public class CreateService extends SchemaStatement {
 
         boolean generateHttpExecutorMethod = Boolean
                 .parseBoolean(getParameterValue(ServiceSetting.GENERATE_HTTP_EXECUTOR_METHOD, "true"));
-        boolean generateSockjsExecutorMethod = Boolean.parseBoolean(
-                getParameterValue(ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD, "false"));
+        boolean generateSockjsExecutorMethod = Boolean
+                .parseBoolean(getParameterValue(ServiceSetting.GENERATE_SOCKJS_EXECUTOR_METHOD, "true"));
         StringBuilder buffMapMethod = null;
         StringBuilder buffJsonMethod = null;
 

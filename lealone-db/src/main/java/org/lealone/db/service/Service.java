@@ -15,6 +15,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.session.ServerSession;
@@ -126,21 +127,27 @@ public class Service extends SchemaObjectBase {
         return schema.getService(session, serviceName);
     }
 
+    private static void checkRight(ServerSession session, Service service) {
+        session.getUser().checkRight(service, Right.EXECUTE);
+    }
+
     // 通过jdbc调用
     public static Value execute(ServerSession session, String serviceName, String methodName,
             Value[] methodArgs) {
         Service service = getService(session, session.getDatabase(), session.getCurrentSchemaName(),
                 serviceName);
+        checkRight(session, service);
         return service.getExecutor().executeService(methodName, methodArgs);
     }
 
     // 通过http调用
-    public static Object execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
-        return execute(serviceName, methodName, methodArgs, false);
+    public static Object execute(ServerSession session, String serviceName, String methodName,
+            Map<String, Object> methodArgs) {
+        return execute(session, serviceName, methodName, methodArgs, false);
     }
 
-    public static Object execute(String serviceName, String methodName, Map<String, Object> methodArgs,
-            boolean disableDynamicCompile) {
+    public static Object execute(ServerSession session, String serviceName, String methodName,
+            Map<String, Object> methodArgs, boolean disableDynamicCompile) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 3) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
@@ -148,7 +155,8 @@ public class Service extends SchemaObjectBase {
                 serviceName = serviceName.toUpperCase();
                 methodName = methodName.toUpperCase();
             }
-            Service service = getService(null, db, a[1], a[2]);
+            Service service = getService(session, db, a[1], a[2]);
+            checkRight(session, service);
             return service.getExecutor(disableDynamicCompile).executeService(methodName, methodArgs);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
@@ -156,7 +164,7 @@ public class Service extends SchemaObjectBase {
     }
 
     // 通过sockjs调用
-    public static Object execute(String serviceName, String json) {
+    public static Object execute(ServerSession session, String serviceName, String json) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
@@ -164,7 +172,8 @@ public class Service extends SchemaObjectBase {
             if (db.getSettings().databaseToUpper) {
                 methodName = methodName.toUpperCase();
             }
-            Service service = getService(null, db, a[1], a[2]);
+            Service service = getService(session, db, a[1], a[2]);
+            checkRight(session, service);
             return service.getExecutor().executeService(methodName, json);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
