@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.ConfigException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -46,6 +47,20 @@ public class Lealone {
     // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
     public static void run(String[] args, boolean embedded, CountDownLatch latch) {
         new Lealone().run(embedded, latch);
+    }
+
+    public static void run(String[] args, Runnable runnable) {
+        // 在一个新线程中启动 Lealone
+        CountDownLatch latch = new CountDownLatch(1);
+        new Thread(() -> {
+            Lealone.run(args, false, latch);
+        }).start();
+        try {
+            latch.await();
+            runnable.run();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     private Config config;
