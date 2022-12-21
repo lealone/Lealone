@@ -24,9 +24,17 @@ public class CRUDExample {
     }
 
     public static void crud(Connection conn) throws Exception {
+        crud(conn, null);
+    }
+
+    public static void crud(Connection conn, String storageEngineName) throws Exception {
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        String sql = "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)";
+        if (storageEngineName != null)
+            sql += " ENGINE = " + storageEngineName;
+        stmt.executeUpdate(sql);
+
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
