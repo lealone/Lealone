@@ -7,6 +7,7 @@ package org.lealone.db.table;
 
 public enum TableSetting {
 
-    JSON_FORMAT
+    JSON_FORMAT,
+    DAO_NAME
 
 }

@@ -626,8 +626,11 @@ public class CreateTable extends SchemaStatement {
         // buff.append("\r\n");
 
         // static dao字段
-        buff.append("    public static final ").append(className).append(" dao = new ").append(className)
-                .append("(null, ROOT_DAO);\r\n");
+        String daoName = table.getParameter(TableSetting.DAO_NAME.name());
+        if (daoName == null)
+            daoName = "dao";
+        buff.append("    public static final ").append(className).append(" ").append(daoName)
+                .append(" = new ").append(className).append("(null, ROOT_DAO);\r\n");
         buff.append("\r\n");
 
         // 字段
