@@ -5,6 +5,9 @@
  */
 package org.lealone.main;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -58,6 +61,18 @@ public class Lealone {
         try {
             latch.await();
             runnable.run();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public static void runScript(String url, String... sqlScripts) {
+        try (Connection conn = DriverManager.getConnection(url);
+                Statement stmt = conn.createStatement()) {
+            for (String script : sqlScripts) {
+                logger.info("Run script: " + script);
+                stmt.executeUpdate("RUNSCRIPT FROM '" + script + "'");
+            }
         } catch (Exception e) {
             throw DbException.convert(e);
         }
