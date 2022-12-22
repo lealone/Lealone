@@ -43,20 +43,11 @@ public class Lealone {
         new Lealone().start(args);
     }
 
-    public static void embed(String[] args) {
-        run(args, true, null);
-    }
-
-    // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
-    public static void run(String[] args, boolean embedded, CountDownLatch latch) {
-        new Lealone().run(embedded, latch);
-    }
-
-    public static void run(String[] args, Runnable runnable) {
+    public static void main(String[] args, Runnable runnable) {
         // 在一个新线程中启动 Lealone
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(() -> {
-            Lealone.run(args, false, latch);
+            new Lealone().start(args, latch);
         }).start();
         try {
             latch.await();
@@ -64,6 +55,15 @@ public class Lealone {
         } catch (Exception e) {
             throw DbException.convert(e);
         }
+    }
+
+    public static void embed(String[] args) {
+        run(args, true, null);
+    }
+
+    // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
+    public static void run(String[] args, boolean embedded, CountDownLatch latch) {
+        new Lealone().run(embedded, latch);
     }
 
     public static void runScript(String url, String... sqlScripts) {
@@ -84,6 +84,10 @@ public class Lealone {
     private String port;
 
     public void start(String[] args) {
+        start(args, null);
+    }
+
+    public void start(String[] args, CountDownLatch latch) {
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
             if (arg.isEmpty())
@@ -106,7 +110,7 @@ public class Lealone {
                 continue;
             }
         }
-        run(false, null);
+        run(false, latch);
     }
 
     private void showUsage() {
