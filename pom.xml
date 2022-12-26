@@ -11,7 +11,7 @@
     <groupId>org.lealone</groupId>
     <artifactId>lealone</artifactId>
     <packaging>pom</packaging>
-    <version>5.1.0</version>
+    <version>5.1.1-SNAPSHOT</version>
     <url>https://github.com/lealone/Lealone</url>
     <description>lealone database project</description>
 
