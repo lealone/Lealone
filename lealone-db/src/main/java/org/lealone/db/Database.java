@@ -2087,6 +2087,10 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
+    User getSystemUser() {
+        return systemUser;
+    }
+
     public void drop() {
         if (getSessionCount() > 0) {
             setDeleteFilesOnDisconnect(true);
