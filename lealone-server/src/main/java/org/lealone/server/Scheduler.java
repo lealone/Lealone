@@ -94,6 +94,7 @@ public class Scheduler extends PageOperationHandlerBase
             runPageOperationTasks();
             runSessionTasks();
             executeNextStatement();
+            runEventLoop();
         }
         if (netEventLoop != null) {
             netEventLoop.close();
@@ -215,7 +216,6 @@ public class Scheduler extends PageOperationHandlerBase
                 runQueueTasks(normPriorityQueue);
                 c = getNextBestCommand(priority, true);
                 if (c == null) {
-                    doAwait();
                     break;
                 }
             }
@@ -367,13 +367,13 @@ public class Scheduler extends PageOperationHandlerBase
             runPageOperationTasks();
             if (counter.get() < 1)
                 break;
-            doAwait();
+            runEventLoop();
         }
         if (e != null)
             throw e;
     }
 
-    private void doAwait() {
+    private void runEventLoop() {
         try {
             netEventLoop.select();
         } catch (IOException e1) {
