@@ -33,7 +33,7 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
     void setLocal(boolean local);
 
-    void setObjectId(int i);
+    void setObjectId(int objectId);
 
     boolean canReuse();
 

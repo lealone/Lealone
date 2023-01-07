@@ -55,8 +55,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     /**
      * If the query should be prepared before each execution. This is set for
-     * queries with LIKE ?, because the query plan depends on the parameter
-     * value.
+     * queries with LIKE ?, because the query plan depends on the parameter value.
      */
     protected boolean prepareAlways;
 
@@ -244,11 +243,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     /**
      * Set the object id for this statement.
      *
-     * @param i the object id
+     * @param objectId the object id
      */
     @Override
-    public void setObjectId(int i) {
-        this.objectId = i;
+    public void setObjectId(int objectId) {
+        this.objectId = objectId;
     }
 
     /**
