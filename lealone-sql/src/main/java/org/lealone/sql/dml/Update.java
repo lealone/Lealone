@@ -177,7 +177,6 @@ public class Update extends ConditionUpdate {
                         done = table.fireBeforeRow(session, oldRow, newRow);
                     }
                     if (!done) {
-                        pendingOperationCount.incrementAndGet();
                         updateRow(oldRow, newRow);
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
                             onLoopEnd();
@@ -210,11 +209,12 @@ public class Update extends ConditionUpdate {
         }
 
         private void updateRow(Row oldRow, Row newRow) {
+            onPendingOperationStart();
             table.updateRow(session, oldRow, newRow, updateColumnIndexes, true).onComplete(ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, oldRow, newRow, false);
                 }
-                onComplete(ar);
+                onPendingOperationComplete(ar);
             });
         }
     }

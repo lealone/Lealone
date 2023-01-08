@@ -155,8 +155,7 @@ public abstract class MerSert extends ManipulationStatement {
         Result rows;
         YieldableBase<Result> yieldableQuery;
 
-        public YieldableInsertBase(MerSert statement,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableInsertBase(MerSert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
@@ -204,7 +203,7 @@ public abstract class MerSert extends ManipulationStatement {
             table.validateConvertUpdateSequence(session, newRow);
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
-                pendingOperationCount.incrementAndGet();
+                onPendingOperationStart();
                 table.addRow(session, newRow).onComplete(ar -> {
                     if (ar.isSucceeded()) {
                         try {
@@ -214,7 +213,7 @@ public abstract class MerSert extends ManipulationStatement {
                             setPendingException(e);
                         }
                     }
-                    onComplete(ar);
+                    onPendingOperationComplete(ar);
                 });
             }
         }

@@ -114,7 +114,6 @@ public class Delete extends ConditionUpdate {
                         done = table.fireBeforeRow(session, row, null);
                     }
                     if (!done) {
-                        pendingOperationCount.incrementAndGet();
                         removeRow(row);
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
                             onLoopEnd();
@@ -128,11 +127,12 @@ public class Delete extends ConditionUpdate {
         }
 
         private void removeRow(Row row) {
+            onPendingOperationStart();
             table.removeRow(session, row, true).onComplete(ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, row, null, false);
                 }
-                onComplete(ar);
+                onPendingOperationComplete(ar);
             });
         }
     }
