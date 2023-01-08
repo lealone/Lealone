@@ -603,6 +603,7 @@ public class ServerSession extends SessionBase {
             containsDDL = false;
         }
 
+        yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -1312,11 +1313,9 @@ public class ServerSession extends SessionBase {
             try {
                 t.checkTimeout();
             } catch (Throwable e) {
-                t.rollback();
                 if (timeoutListener != null)
                     timeoutListener.onTimeout(yieldableCommand, e);
-                transaction = null;
-                yieldableCommand = null; // 移除当前命令
+                rollback();
             }
         }
     }
