@@ -72,8 +72,6 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
         boolean isStopped();
 
-        void back();
-
         T getResult();
 
         int getPriority();

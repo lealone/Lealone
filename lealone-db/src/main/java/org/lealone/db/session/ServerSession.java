@@ -1556,14 +1556,4 @@ public class ServerSession extends SessionBase {
     public void endNestedStatement() {
         executingNestedStatement = false;
     }
-
-    private Row currentLockedRow;
-
-    public Row getCurrentLockedRow() {
-        return currentLockedRow;
-    }
-
-    public void setCurrentLockedRow(Row currentLockedRow, int savepointId) {
-        this.currentLockedRow = currentLockedRow;
-    }
 }

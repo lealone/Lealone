@@ -14,9 +14,9 @@ import org.lealone.sql.StatementBase;
 
 public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
-    protected volatile boolean loopEnd;
-    protected int loopCount;
     protected final AtomicInteger updateCount = new AtomicInteger();
+    protected int loopCount;
+    private boolean loopEnd;
     private int pendingOperationCount;
 
     public YieldableLoopUpdateBase(StatementBase statement,

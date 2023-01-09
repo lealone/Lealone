@@ -194,11 +194,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         return stopped;
     }
 
-    @Override
-    public void back() {
-        // do nothing
-    }
-
     public void disableYield() {
         yieldEnabled = false;
     }

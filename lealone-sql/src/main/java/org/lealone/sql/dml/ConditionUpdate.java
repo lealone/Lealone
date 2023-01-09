@@ -94,13 +94,6 @@ public abstract class ConditionUpdate extends ManipulationStatement {
                 conditionEvaluator = new ExpressionInterpreter(session, condition);
         }
 
-        @Override
-        public void back() {
-            oldRow = session.getCurrentLockedRow();
-            loopEnd = false;
-            hasNext = true;
-        }
-
         protected void rebuildSearchRowIfNeeded() {
             if (oldRow != null) {
                 // 如果oldRow已经删除了那么移到下一行
@@ -111,12 +104,10 @@ public abstract class ConditionUpdate extends ManipulationStatement {
         }
 
         protected boolean tryLockRow(Row row, int[] lockColumns) {
-            int savepointId = session.getTransaction().getSavepointId();
             if (!table.tryLockRow(session, row, lockColumns, false)) {
                 oldRow = row;
                 return false;
             }
-            session.setCurrentLockedRow(row, savepointId);
             return true;
         }
 
