@@ -63,7 +63,7 @@ public class TransactionStatement extends ManipulationStatement {
             session.begin();
             break;
         case SQLStatement.COMMIT:
-            session.commit();
+            session.asyncCommit(null);
             break;
         case SQLStatement.ROLLBACK:
             session.rollback();
