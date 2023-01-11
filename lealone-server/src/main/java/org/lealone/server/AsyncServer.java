@@ -14,7 +14,6 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
-import org.lealone.net.NetNode;
 import org.lealone.net.NetServer;
 import org.lealone.net.WritableChannel;
 
@@ -35,8 +34,6 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         netServer.setConnectionManager(this);
         setProtocolServer(netServer);
         netServer.init(config);
-
-        NetNode.setLocalTcpNode(getHost(), getPort());
         SchedulerFactory.init(config);
     }
 

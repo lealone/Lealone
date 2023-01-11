@@ -5,7 +5,10 @@
  */
 package org.lealone.server;
 
+import java.util.Map;
+
 import org.lealone.db.Constants;
+import org.lealone.net.NetNode;
 import org.lealone.net.WritableChannel;
 
 public class TcpServer extends AsyncServer<TcpServerConnection> {
@@ -18,6 +21,12 @@ public class TcpServer extends AsyncServer<TcpServerConnection> {
     @Override
     protected int getDefaultPort() {
         return Constants.DEFAULT_TCP_PORT;
+    }
+
+    @Override
+    public void init(Map<String, String> config) {
+        super.init(config);
+        NetNode.setLocalTcpNode(getHost(), getPort());
     }
 
     @Override
