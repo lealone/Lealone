@@ -114,7 +114,7 @@ public class Update extends ConditionUpdate {
     @Override
     public YieldableBase<Integer> createYieldableUpdate(
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableUpdate(this, asyncHandler); // 处理单机模式、复制模式
+        return new YieldableUpdate(this, asyncHandler);
     }
 
     private static class YieldableUpdate extends YieldableConditionUpdate {

@@ -58,7 +58,7 @@ public class Insert extends MerSert {
 
     @Override
     public YieldableInsert createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableInsert(this, asyncHandler); // 统一处理单机模式、复制模式、sharding模式
+        return new YieldableInsert(this, asyncHandler);
     }
 
     private static class YieldableInsert extends YieldableInsertBase implements ResultTarget {
