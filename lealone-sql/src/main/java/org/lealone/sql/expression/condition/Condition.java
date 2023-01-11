@@ -33,5 +33,4 @@ abstract class Condition extends Expression {
     public int getDisplaySize() {
         return ValueBoolean.DISPLAY_SIZE;
     }
-
 }

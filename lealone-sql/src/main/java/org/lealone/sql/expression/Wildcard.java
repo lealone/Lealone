@@ -19,6 +19,7 @@ import org.lealone.sql.optimizer.ColumnResolver;
  * replaced by column expressions.
  */
 public class Wildcard extends Expression {
+
     private final String schema;
     private final String table;
 

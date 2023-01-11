@@ -19,6 +19,7 @@ import org.lealone.sql.optimizer.TableFilter;
  * An expression representing a constant value.
  */
 public class ValueExpression extends Expression {
+
     /**
      * The expression represents ValueNull.INSTANCE.
      */
