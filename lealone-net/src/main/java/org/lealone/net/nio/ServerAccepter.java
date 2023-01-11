@@ -34,7 +34,7 @@ class ServerAccepter extends NetServerBase implements Runnable {
             serverChannel.configureBlocking(true);
             super.start();
             String name = getName() + "Accepter-" + getPort();
-            ThreadUtils.submitTask(name, isDaemon(), () -> {
+            ThreadUtils.start(name, isDaemon(), () -> {
                 ServerAccepter.this.run();
             });
         } catch (Exception e) {

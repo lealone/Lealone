@@ -42,7 +42,7 @@ class NioEventLoopClient extends NetClientBase {
             try {
                 nioEventLoop = new NioEventLoop(config, "client_nio_event_loop_interval", 1000); // 默认1秒
                 nioEventLoop.setOwner(this);
-                ThreadUtils.submitTask("ClientNioEventLoopService", () -> {
+                ThreadUtils.start("ClientNioEventLoopService", () -> {
                     NioEventLoopClient.this.run();
                 });
             } catch (IOException e) {

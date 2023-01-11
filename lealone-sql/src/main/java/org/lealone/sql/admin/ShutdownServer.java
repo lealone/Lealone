@@ -33,7 +33,7 @@ public class ShutdownServer extends AdminStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        ThreadUtils.submitTask("ShutdownServerThread", () -> {
+        ThreadUtils.start("ShutdownServerThread", () -> {
             try {
                 Thread.sleep(1000); // 返回结果给客户端需要一点时间，如果立刻关闭网络连接就不能发送结果了
             } catch (InterruptedException e) {
