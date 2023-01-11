@@ -13,7 +13,7 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
@@ -31,7 +31,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
 
     private static class Update implements PacketHandler<BatchStatementUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, BatchStatementUpdate packet) {
+        public Packet handle(PacketHandleTask task, BatchStatementUpdate packet) {
             ServerSession session = task.session;
             int size = packet.size;
             int[] results = new int[size];
@@ -56,7 +56,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
 
     private static class PreparedUpdate implements PacketHandler<BatchStatementPreparedUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, BatchStatementPreparedUpdate packet) {
+        public Packet handle(PacketHandleTask task, BatchStatementPreparedUpdate packet) {
             ServerSession session = task.session;
             int commandId = packet.commandId;
             int size = packet.size;
@@ -86,7 +86,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
         }
     }
 
-    private static void submitYieldableCommand(PacketDeliveryTask task, PreparedSQLStatement command,
+    private static void submitYieldableCommand(PacketHandleTask task, PreparedSQLStatement command,
             int[] results, AtomicInteger count, int index) {
         PreparedSQLStatement.Yieldable<?> yieldable = command.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {

@@ -57,7 +57,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         return sessionId;
     }
 
-    public void submitTask(PacketDeliveryTask task) {
+    public void submitTask(PacketHandleTask task) {
         updateLastActiveTime();
         taskQueue.add(task);
     }

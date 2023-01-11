@@ -16,9 +16,9 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 
-public class PacketDeliveryTask implements AsyncTask {
+public class PacketHandleTask implements AsyncTask {
 
-    private static final Logger logger = LoggerFactory.getLogger(PacketDeliveryTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(PacketHandleTask.class);
 
     public final TcpServerConnection conn;
     public final TransferInputStream in;
@@ -28,7 +28,7 @@ public class PacketDeliveryTask implements AsyncTask {
     public final int sessionId;
     public final SessionInfo si;
 
-    public PacketDeliveryTask(TcpServerConnection conn, TransferInputStream in, int packetId,
+    public PacketHandleTask(TcpServerConnection conn, TransferInputStream in, int packetId,
             int packetType, SessionInfo si) {
         this.conn = conn;
         this.in = in;

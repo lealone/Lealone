@@ -74,7 +74,7 @@ public class TcpServerConnection extends TransferConnection {
             }
         } else {
             in.setSession(si.getSession());
-            PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
+            PacketHandleTask task = new PacketHandleTask(this, in, packetId, packetType, si);
             si.submitTask(task);
         }
     }
@@ -193,7 +193,7 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    public void sendResponse(PacketDeliveryTask task, Packet packet) {
+    public void sendResponse(PacketHandleTask task, Packet packet) {
         ServerSession session = task.session;
         try {
             TransferOutputStream out = createTransferOutputStream(session);

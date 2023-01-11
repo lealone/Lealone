@@ -10,7 +10,7 @@ import java.util.List;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.QueryPacket;
@@ -50,7 +50,7 @@ public class PacketHandlers {
 
     private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
 
-        protected void createYieldableUpdate(PacketDeliveryTask task, PreparedSQLStatement stmt) {
+        protected void createYieldableUpdate(PacketHandleTask task, PreparedSQLStatement stmt) {
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     int updateCount = ar.getResult();
@@ -62,14 +62,14 @@ public class PacketHandlers {
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
-        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+        protected Packet createAckPacket(PacketHandleTask task, int updateCount) {
             return new StatementUpdateAck(updateCount);
         }
     }
 
     static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
+        protected Packet handlePacket(PacketHandleTask task, StatementUpdate packet) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, -1);
             createYieldableUpdate(task, stmt);
             return null;
@@ -79,7 +79,7 @@ public class PacketHandlers {
     static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate>
             extends UpdateBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
+        protected Packet handlePacket(PacketHandleTask task, PreparedStatementUpdate packet) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
                     packet.parameters);
             createYieldableUpdate(task, stmt);
@@ -89,7 +89,7 @@ public class PacketHandlers {
 
     private static abstract class QueryBase<P extends QueryPacket> implements PacketHandler<P> {
 
-        protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt,
+        protected void createYieldableQuery(PacketHandleTask task, PreparedSQLStatement stmt,
                 QueryPacket packet) {
 
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows,
@@ -104,7 +104,7 @@ public class PacketHandlers {
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
-        protected void sendResult(PacketDeliveryTask task, QueryPacket packet, Result result) {
+        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result) {
             task.session.addCache(packet.resultId, result);
             try {
                 int rowCount = result.getRowCount();
@@ -117,15 +117,14 @@ public class PacketHandlers {
             }
         }
 
-        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount,
-                int fetch) {
+        protected Packet createAckPacket(PacketHandleTask task, Result result, int rowCount, int fetch) {
             return new StatementQueryAck(result, rowCount, fetch);
         }
     }
 
     static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
+        protected Packet handlePacket(PacketHandleTask task, StatementQuery packet) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, packet.fetchSize);
             createYieldableQuery(task, stmt, packet);
             return null;
@@ -135,7 +134,7 @@ public class PacketHandlers {
     static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery>
             extends QueryBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
+        protected Packet handlePacket(PacketHandleTask task, PreparedStatementQuery packet) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
                     packet.parameters);
             createYieldableQuery(task, stmt, packet);
@@ -143,7 +142,7 @@ public class PacketHandlers {
         }
     }
 
-    private static PreparedSQLStatement prepareStatement(PacketDeliveryTask task, String sql,
+    private static PreparedSQLStatement prepareStatement(PacketHandleTask task, String sql,
             int fetchSize) {
         PreparedSQLStatement stmt = task.session.prepareStatement(sql, fetchSize);
         // 客户端的非Prepared语句不需要缓存，非Prepared语句执行一次就结束
@@ -152,7 +151,7 @@ public class PacketHandlers {
         return stmt;
     }
 
-    private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketDeliveryTask task,
+    private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketHandleTask task,
             int commandId, Value[] parameters) {
         PreparedSQLStatement stmt = (PreparedSQLStatement) task.session.getCache(commandId);
         List<? extends CommandParameter> params = stmt.getParameters();

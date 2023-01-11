@@ -10,7 +10,7 @@ import java.util.List;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
@@ -60,14 +60,14 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
 
     private static class PreparedQuery extends PreparedQueryPacketHandler<PreparedStatementQuery> {
         @Override
-        public Packet handle(PacketDeliveryTask task, PreparedStatementQuery packet) {
+        public Packet handle(PacketHandleTask task, PreparedStatementQuery packet) {
             return handlePacket(task, packet);
         }
     }
 
     private static class PreparedUpdate extends PreparedUpdatePacketHandler<PreparedStatementUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, PreparedStatementUpdate packet) {
+        public Packet handle(PacketHandleTask task, PreparedStatementUpdate packet) {
             return handlePacket(task, packet);
         }
     }
