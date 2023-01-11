@@ -29,7 +29,7 @@ import org.lealone.storage.fs.FileUtils;
 /**
  * This class is the base for RunScript and GenScript.
  */
-abstract class ScriptBase extends ManipulationStatement {
+public abstract class ScriptBase extends ManipulationStatement {
 
     /**
      * The default name of the script file if .zip compression is used.
@@ -59,7 +59,7 @@ abstract class ScriptBase extends ManipulationStatement {
     private FileStorage fileStorage;
     private String compressionAlgorithm;
 
-    ScriptBase(ServerSession session) {
+    public ScriptBase(ServerSession session) {
         super(session);
     }
 
