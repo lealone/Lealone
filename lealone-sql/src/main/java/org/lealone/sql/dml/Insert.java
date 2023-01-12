@@ -61,7 +61,7 @@ public class Insert extends MerSert {
         return new YieldableInsert(this, asyncHandler);
     }
 
-    private static class YieldableInsert extends YieldableInsertBase implements ResultTarget {
+    private static class YieldableInsert extends YieldableMerSert implements ResultTarget {
         public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
         }

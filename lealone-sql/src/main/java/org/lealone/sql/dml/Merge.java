@@ -116,7 +116,7 @@ public class Merge extends MerSert {
         return new YieldableMerge(this, asyncHandler);
     }
 
-    private static class YieldableMerge extends YieldableInsertBase {
+    private static class YieldableMerge extends YieldableMerSert {
 
         final Merge mergeStatement;
 

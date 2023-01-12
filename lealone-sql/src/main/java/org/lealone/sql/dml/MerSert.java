@@ -145,7 +145,7 @@ public abstract class MerSert extends ManipulationStatement {
         return this;
     }
 
-    protected static abstract class YieldableInsertBase extends YieldableLoopUpdateBase {
+    protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase {
 
         final MerSert statement;
         final Table table;
@@ -155,7 +155,7 @@ public abstract class MerSert extends ManipulationStatement {
         Result rows;
         YieldableBase<Result> yieldableQuery;
 
-        public YieldableInsertBase(MerSert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableMerSert(MerSert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
