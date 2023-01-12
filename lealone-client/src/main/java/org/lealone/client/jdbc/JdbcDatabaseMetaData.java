@@ -1310,7 +1310,7 @@ public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaDat
             StatementBuilder buff = new StatementBuilder();
             while (rs.next()) {
                 String s = rs.getString(1).trim();
-                String[] array = StringUtils.arraySplit(s, ',', true);
+                String[] array = StringUtils.arraySplit(s, ',');
                 for (String a : array) {
                     buff.appendExceptFirst(",");
                     String f = a.trim();

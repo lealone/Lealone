@@ -212,7 +212,7 @@ public class ConnectionInfo implements Cloneable {
         if (idx >= 0) {
             String settings = url.substring(idx + 1);
             url = url.substring(0, idx); // 去掉后面的参数
-            String[] list = StringUtils.arraySplit(settings, splitChar, false);
+            String[] list = StringUtils.arraySplit(settings, splitChar);
             for (String setting : list) {
                 if (setting.isEmpty()) {
                     continue;

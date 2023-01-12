@@ -293,7 +293,7 @@ public class SystemFunction extends BuiltInFunction {
                 csv.setNullString(nullString);
             }
             char fieldSeparator = csv.getFieldSeparatorRead();
-            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
+            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator);
             try {
                 ValueResultSet vr = ValueResultSet.get(csv.read(fileName, columns, charset));
                 result = vr;
@@ -764,7 +764,7 @@ public class SystemFunction extends BuiltInFunction {
                 setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);
             }
             char fieldSeparator = csv.getFieldSeparatorRead();
-            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
+            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator);
             ResultSet rs = null;
             ValueResultSet x;
             try {

@@ -553,7 +553,7 @@ public class Utils {
             ArrayList<String> prefixes = new ArrayList<>();
             boolean allowAll = false;
             HashSet<String> classNames = new HashSet<>();
-            for (String p : StringUtils.arraySplit(s, ',', true)) {
+            for (String p : StringUtils.arraySplit(s, ',')) {
                 if (p.equals("*")) {
                     allowAll = true;
                 } else if (p.endsWith("*")) {

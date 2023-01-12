@@ -47,7 +47,7 @@ public class ClientSessionFactory implements SessionFactory {
     }
 
     private static void createSession(ConnectionInfo ci, AsyncCallback<Session> ac) {
-        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
+        String[] servers = StringUtils.arraySplit(ci.getServers(), ',');
         Random random = new Random(System.currentTimeMillis());
         createSession(ci, servers, random, ac);
     }

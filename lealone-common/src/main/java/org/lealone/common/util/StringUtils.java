@@ -479,7 +479,7 @@ public class StringUtils {
     }
 
     public static int[] arraySplitAsInt(String s, char separatorChar) {
-        String[] array = arraySplit(s, separatorChar, true);
+        String[] array = arraySplit(s, separatorChar);
         if (array == null)
             return null;
 

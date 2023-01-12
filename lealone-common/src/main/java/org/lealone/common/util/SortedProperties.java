@@ -116,7 +116,7 @@ public class SortedProperties extends Properties {
      */
     public static SortedProperties fromLines(String s) {
         SortedProperties p = new SortedProperties();
-        for (String line : StringUtils.arraySplit(s, '\n', true)) {
+        for (String line : StringUtils.arraySplit(s, '\n')) {
             int idx = line.indexOf('=');
             if (idx > 0) {
                 p.put(line.substring(0, idx), line.substring(idx + 1));
@@ -124,5 +124,4 @@ public class SortedProperties extends Properties {
         }
         return p;
     }
-
 }
