@@ -47,7 +47,7 @@
 
 ### Lealone 文档
 
-* [快速入门](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3.md)
+* [快速入门](https://github.com/lealone/Lealone-Docs/blob/master/应用文档/Lealone数据库快速入门.md)
 
 * [文档首页](https://github.com/lealone/Lealone-Docs)
 
