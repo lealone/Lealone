@@ -22,11 +22,7 @@ public interface DbObjectLock {
 
     boolean tryExclusiveLock(ServerSession session);
 
-    void unlock(ServerSession session);
-
     void unlock(ServerSession session, boolean succeeded);
-
-    void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession);
 
     boolean isLockedExclusively();
 

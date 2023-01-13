@@ -17,7 +17,7 @@ import org.lealone.transaction.Transaction;
 //数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
 public class DbObjectLockImpl implements DbObjectLock {
 
-    private final AtomicReference<ServerSession> ref = new AtomicReference<>();
+    private final AtomicReference<Transaction> ref = new AtomicReference<>();
     private final DbObjectType type;
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
 
@@ -45,16 +45,6 @@ public class DbObjectLockImpl implements DbObjectLock {
             return trySharedLock(session);
     }
 
-    private void addWaitingTransaction(ServerSession lockOwner, ServerSession session) {
-        if (lockOwner != null) {
-            Transaction transaction = lockOwner.getTransaction();
-            if (transaction != null) {
-                transaction.addWaitingTransaction(this, session.getTransaction(),
-                        Transaction.getTransactionListener());
-            }
-        }
-    }
-
     @Override
     public boolean trySharedLock(ServerSession session) {
         return true;
@@ -62,45 +52,35 @@ public class DbObjectLockImpl implements DbObjectLock {
 
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
-        if (ref.get() == session)
-            return true;
-        if (ref.compareAndSet(null, session)) {
-            session.addLock(this);
-            return true;
-        } else {
-            ServerSession oldSession = ref.get();
-            if (oldSession != session) {
-                addWaitingTransaction(oldSession, session);
-                return false;
-            } else {
+        while (true) {
+            if (ref.get() == session.getTransaction())
                 return true;
+            if (ref.compareAndSet(null, session.getTransaction())) {
+                session.addLock(this);
+                return true;
+            } else {
+                if (addWaitingTransaction(ref.get(), session) == Transaction.OPERATION_NEED_WAIT)
+                    return false;
             }
         }
     }
 
-    @Override
-    public void unlock(ServerSession session) {
-        unlock(session, true, null);
+    private int addWaitingTransaction(Transaction oldTransaction, ServerSession session) {
+        if (oldTransaction != null)
+            return oldTransaction.addWaitingTransaction(this, session.getTransaction(),
+                    session.getTransactionListener());
+        else
+            return Transaction.OPERATION_NEED_RETRY;
     }
 
     @Override
     public void unlock(ServerSession session, boolean succeeded) {
-        unlock(session, succeeded, null);
-    }
-
-    @Override
-    public void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession) {
-        if (ref.compareAndSet(oldSession, newSession)) {
+        if (ref.compareAndSet(session.getTransaction(), null)) {
             if (handlers != null) {
                 handlers.forEach(h -> {
                     h.handle(new AsyncResult<>(succeeded));
                 });
                 handlers = null;
-            }
-
-            if (newSession != null) {
-                newSession.addLock(this);
-                addWaitingTransaction(newSession, oldSession);
             }
         }
     }
@@ -112,6 +92,6 @@ public class DbObjectLockImpl implements DbObjectLock {
 
     @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
-        return ref.get() == session;
+        return ref.get() == session.getTransaction();
     }
 }

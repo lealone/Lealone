@@ -266,7 +266,7 @@ public class AOTransaction implements Transaction {
         undoLog.commit(transactionEngine);
         t.endTransaction(false);
         undoLog.unlock();
-        wakeUpWaitingTransactions();
+        // wakeUpWaitingTransactions(); //在session级调用
     }
 
     private void endTransaction(boolean remove) {
@@ -277,7 +277,8 @@ public class AOTransaction implements Transaction {
             transactionEngine.removeTransaction(transactionId);
     }
 
-    private void wakeUpWaitingTransactions() {
+    @Override
+    public void wakeUpWaitingTransactions() {
         LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
         while (true) {
             if (waitingTransactions != null && waitingTransactions != EMPTY_LINKED_LIST) {
@@ -394,7 +395,7 @@ public class AOTransaction implements Transaction {
             UndoLog undoLog = this.undoLog;
             endTransaction(true);
             undoLog.unlock();
-            wakeUpWaitingTransactions();
+            // wakeUpWaitingTransactions(); //在session级调用
         }
     }
 

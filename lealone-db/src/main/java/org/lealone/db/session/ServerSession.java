@@ -526,6 +526,7 @@ public class ServerSession extends SessionBase {
             setAutoCommit(true);
         containsDDL = false;
         containsDatabaseStatement = false;
+        transaction.wakeUpWaitingTransactions();
         transactionStart = 0;
         transaction = null;
     }
@@ -565,25 +566,23 @@ public class ServerSession extends SessionBase {
             return;
         checkCommitRollback();
         transaction.rollback();
-        endTransaction();
         cleanTempTables(false);
         unlockAll(false);
+        endTransaction();
+
         if (autoCommitAtTransactionEnd) {
             autoCommit = true;
             autoCommitAtTransactionEnd = false;
         }
-
         if (containsDatabaseStatement) {
             LealoneDatabase.getInstance().copy();
             containsDatabaseStatement = false;
         }
-
         if (containsDDL) {
             Database db = this.database;
             db.copy();
             containsDDL = false;
         }
-
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
@@ -657,15 +656,11 @@ public class ServerSession extends SessionBase {
     }
 
     private void unlockAll(boolean succeeded) {
-        unlockAll(succeeded, null);
-    }
-
-    private void unlockAll(boolean succeeded, ServerSession newLockOwner) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
                 DbObjectLock lock = locks.get(i);
-                lock.unlock(this, succeeded, newLockOwner);
+                lock.unlock(this, succeeded);
             }
             locks.clear();
         }
@@ -817,7 +812,7 @@ public class ServerSession extends SessionBase {
             ArrayList<DbObjectLock> list = new ArrayList<>(locks);
             for (int i = currentCommandLockIndex; i < size; i++) {
                 DbObjectLock lock = list.get(i);
-                lock.unlock(this, false, null);
+                lock.unlock(this, false);
                 locks.remove(lock);
             }
         }

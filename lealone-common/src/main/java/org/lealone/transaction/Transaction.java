@@ -121,7 +121,10 @@ public interface Transaction {
 
     int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
 
+    void wakeUpWaitingTransactions();
+
     interface Listener {
+
         default void beforeOperation() {
         }
 
@@ -155,6 +158,7 @@ public interface Transaction {
     }
 
     class SyncListener implements Listener {
+
         private final CountDownLatch latch = new CountDownLatch(1);
         private volatile RuntimeException e;
 
