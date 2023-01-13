@@ -34,9 +34,10 @@ import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandlerBase;
 import org.lealone.transaction.RedoLogSyncListener;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionListener;
 
 public class Scheduler extends PageOperationHandlerBase
-        implements Runnable, SQLStatementExecutor, AsyncTaskHandler, Transaction.Listener,
+        implements Runnable, SQLStatementExecutor, AsyncTaskHandler, TransactionListener,
         PageOperation.ListenerFactory<Object>, RedoLogSyncListener {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);

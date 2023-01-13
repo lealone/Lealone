@@ -24,6 +24,8 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionListener;
+import org.lealone.transaction.WaitingTransaction;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 import org.lealone.transaction.aote.log.UndoLog;
@@ -301,11 +303,11 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public int addWaitingTransaction(Object key, Transaction transaction, Listener listener) {
+    public int addWaitingTransaction(Object key, Transaction transaction, TransactionListener listener) {
         return addWaitingTransaction(key, (AOTransaction) transaction, listener);
     }
 
-    int addWaitingTransaction(Object key, AOTransaction transaction, Listener listener) {
+    int addWaitingTransaction(Object key, AOTransaction transaction, TransactionListener listener) {
         // 如果已经提交了，通知重试
         if (status == STATUS_CLOSED)
             return OPERATION_NEED_RETRY;

@@ -56,6 +56,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.TransactionMap;
 
 /**
@@ -1296,14 +1297,14 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private Transaction.Listener transactionListener;
+    private TransactionListener transactionListener;
     private Object sessionInfo;
 
-    public Transaction.Listener getTransactionListener() {
+    public TransactionListener getTransactionListener() {
         return transactionListener;
     }
 
-    public void setTransactionListener(Transaction.Listener transactionListener) {
+    public void setTransactionListener(TransactionListener transactionListener) {
         this.transactionListener = transactionListener;
     }
 

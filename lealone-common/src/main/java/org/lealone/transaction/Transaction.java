@@ -7,11 +7,8 @@ package org.lealone.transaction;
 
 import java.sql.Connection;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
 
@@ -119,124 +116,7 @@ public interface Transaction {
 
     void rollbackToSavepoint(int savepointId);
 
-    int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
+    int addWaitingTransaction(Object key, Transaction transaction, TransactionListener listener);
 
     void wakeUpWaitingTransactions();
-
-    interface Listener {
-
-        default void beforeOperation() {
-        }
-
-        void operationUndo();
-
-        void operationComplete();
-
-        default void setException(RuntimeException e) {
-        }
-
-        default void setException(Throwable t) {
-            setException(new RuntimeException(t));
-        }
-
-        default RuntimeException getException() {
-            return null;
-        }
-
-        default void await() {
-        }
-
-        default void wakeUp() {
-        }
-
-        default Object addSession(Session session, Object parentSessionInfo) {
-            return null;
-        }
-
-        default void removeSession(Object sessionInfo) {
-        }
-    }
-
-    class SyncListener implements Listener {
-
-        private final CountDownLatch latch = new CountDownLatch(1);
-        private volatile RuntimeException e;
-
-        @Override
-        public void operationUndo() {
-            latch.countDown();
-        }
-
-        @Override
-        public void operationComplete() {
-            latch.countDown();
-        }
-
-        @Override
-        public void setException(RuntimeException e) {
-            this.e = e;
-        }
-
-        @Override
-        public RuntimeException getException() {
-            return e;
-        }
-
-        @Override
-        public void await() {
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                setException(DbException.convert(e));
-            }
-            if (e != null)
-                throw e;
-        }
-    }
-
-    public static class WaitingTransaction {
-
-        private final Object key;
-        private final Transaction transaction;
-        private final Listener listener;
-
-        public WaitingTransaction(Object key, Transaction transaction, Listener listener) {
-            this.key = key;
-            this.transaction = transaction;
-            this.listener = listener;
-        }
-
-        public void wakeUp() {
-            // 避免重复调用
-            if (transaction.getStatus() == STATUS_WAITING) {
-                transaction.setStatus(STATUS_OPEN);
-                transaction.getSession().setStatus(SessionStatus.RETRYING);
-                if (listener != null)
-                    listener.wakeUp();
-            }
-        }
-
-        public Object getKey() {
-            return key;
-        }
-
-        public Transaction getTransaction() {
-            return transaction;
-        }
-
-        public Listener getListener() {
-            return listener;
-        }
-    }
-
-    public static Transaction.Listener getTransactionListener() {
-        Object object = Thread.currentThread();
-        Transaction.Listener listener;
-        if (object instanceof Transaction.Listener)
-            listener = (Transaction.Listener) object;
-        else
-            listener = new Transaction.SyncListener();
-        listener.beforeOperation();
-        return listener;
-    }
 }

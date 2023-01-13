@@ -23,6 +23,7 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapEntry;
 import org.lealone.transaction.aote.log.UndoLogRecord;
@@ -135,7 +136,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     private V setSync(K key, V value) {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean result = new AtomicBoolean();
-        Transaction.Listener listener = new Transaction.Listener() {
+        TransactionListener listener = new TransactionListener() {
             @Override
             public void operationUndo() {
                 result.set(false);
@@ -633,7 +634,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private int addWaitingTransaction(Object key, TransactionalValue oldTValue, int[] columnIndexes) {
         Object object = Thread.currentThread();
-        if (!(object instanceof Transaction.Listener)) {
+        if (!(object instanceof TransactionListener)) {
             return Transaction.OPERATION_NEED_WAIT;
         }
         AOTransaction t = oldTValue.getLockOwner(columnIndexes);
@@ -641,7 +642,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (t == null)
             return Transaction.OPERATION_NEED_RETRY;
         else
-            return t.addWaitingTransaction(key, transaction, (Transaction.Listener) object);
+            return t.addWaitingTransaction(key, transaction, (TransactionListener) object);
     }
 
     @Override
