@@ -144,11 +144,6 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public boolean isLocal() {
-        return true;
-    }
-
-    @Override
     public <K, V> AOTransactionMap<K, V> openMap(String name, Storage storage) {
         return openMap(name, null, null, storage);
     }
@@ -256,29 +251,13 @@ public class AOTransaction implements Transaction {
 
     @Override
     public void commit() {
-        commitLocal();
-    }
-
-    @Override
-    public void commit(String globalTransactionName) {
-        commitLocal();
-    }
-
-    private void commitLocal() {
         checkNotClosed();
         writeRedoLog(false);
         commitFinal();
     }
 
-    @Override
-    public void commitFinal() {
-        commitFinal(transactionId);
-    }
-
-    // tid在分布式场景下可能是其他事务的tid
-    protected void commitFinal(long tid) {
-        // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
-        AOTransaction t = transactionEngine.removeTransaction(tid);
+    private void commitFinal() {
+        AOTransaction t = transactionEngine.removeTransaction(transactionId);
         if (t == null)
             return;
         t.commitTimestamp = t.transactionEngine.nextEvenTransactionId(); // 生成新的

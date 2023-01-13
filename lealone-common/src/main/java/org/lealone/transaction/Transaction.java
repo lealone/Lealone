@@ -67,8 +67,6 @@ public interface Transaction {
 
     void setAutoCommit(boolean autoCommit);
 
-    boolean isLocal();
-
     void setSession(Session session);
 
     Session getSession();
@@ -114,10 +112,6 @@ public interface Transaction {
     void asyncCommitComplete();
 
     void commit();
-
-    void commit(String globalTransactionName);
-
-    void commitFinal();
 
     void rollback();
 

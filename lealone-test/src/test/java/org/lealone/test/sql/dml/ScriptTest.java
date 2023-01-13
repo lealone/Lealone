@@ -25,7 +25,7 @@ public class ScriptTest extends SqlTestBase {
         executeUpdate("RUNSCRIPT FROM 'my_script_test.sql'");
 
         executeUpdate("drop table ScriptTest");
-        String fileName = "./target/test-data/client-server/script_directory/my_script_test.sql";
+        String fileName = "./target/test-data/script_directory/my_script_test.sql";
         executeUpdate("RUNSCRIPT FROM '" + fileName + "'");
     }
 }

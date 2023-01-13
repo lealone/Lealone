@@ -477,6 +477,8 @@ public class ServerSession extends SessionBase {
 
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
+            checkCommitRollback();
+            checkDataModification();
             transaction.setStatus(Transaction.STATUS_COMMITTING);
             sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
             transaction.asyncCommit(asyncTask);
@@ -490,13 +492,7 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void asyncCommitComplete() {
-        transactionStart = 0;
         commitFinal();
-        transaction = null;
-    }
-
-    public void commit() {
-        commit(null);
     }
 
     /**
@@ -504,27 +500,19 @@ public class ServerSession extends SessionBase {
      * definition statement, and if there are temporary tables that should be
      * dropped or truncated at commit, this is done as well.
      */
-    public void commit(String globalTransactionName) {
+    public void commit() {
         if (transaction == null)
             return;
         checkCommitRollback();
-        transactionStart = 0;
-        // 避免重复commit
-        Transaction transaction = this.transaction;
-        if (transaction.isLocal())
-            this.transaction = null;
+        checkDataModification();
+        transaction.commit();
+        commitFinal();
+    }
+
+    private void checkDataModification() {
         // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
         if (!isAutoCommit() && transaction.getSavepointId() > 0)
             database.getNextModificationDataId();
-
-        if (globalTransactionName == null)
-            transaction.commit();
-        else
-            transaction.commit(globalTransactionName);
-
-        if (transaction.isLocal() || isAutoCommit()) {
-            commitFinal();
-        }
     }
 
     private void checkCommitRollback() {
@@ -536,21 +524,15 @@ public class ServerSession extends SessionBase {
     private void endTransaction() {
         if (!isRoot)
             setAutoCommit(true);
-
         containsDDL = false;
         containsDatabaseStatement = false;
+        transactionStart = 0;
+        transaction = null;
     }
 
-    public void commitFinal() {
-        endTransaction();
-        if (transaction != null && !transaction.isLocal()) {
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            transaction.commitFinal();
-        }
+    private void commitFinal() {
         if (!containsDDL) {
-            // do not clean the temp tables if the last command was a
-            // create/drop
+            // do not clean the temp tables if the last command was a create/drop
             cleanTempTables(false);
             if (autoCommitAtTransactionEnd) {
                 autoCommit = true;
@@ -570,6 +552,7 @@ public class ServerSession extends SessionBase {
             unlinkLobMap = null;
         }
         unlockAll(true);
+        endTransaction();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
@@ -578,13 +561,11 @@ public class ServerSession extends SessionBase {
      * Fully roll back the current transaction.
      */
     public void rollback() {
+        if (transaction == null)
+            return;
         checkCommitRollback();
-        if (transaction != null) {
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            transaction.rollback();
-            endTransaction();
-        }
+        transaction.rollback();
+        endTransaction();
         cleanTempTables(false);
         unlockAll(false);
         if (autoCommitAtTransactionEnd) {
