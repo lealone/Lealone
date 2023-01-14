@@ -186,7 +186,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         long tid = getTransactionId(runMode == RunMode.SHARDING);
         AOTransaction t = new AOTransaction(this, tid);
         t.setAutoCommit(autoCommit);
-        t.setRunMode(runMode);
         currentTransactions.put(tid, t);
         return t;
     }

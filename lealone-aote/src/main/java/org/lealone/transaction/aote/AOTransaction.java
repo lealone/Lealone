@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
@@ -38,12 +37,10 @@ public class AOTransaction implements Transaction {
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
     final AOTransactionEngine transactionEngine;
     final long transactionId;
-    final String transactionName;
     final LogSyncService logSyncService;
     long commitTimestamp;
 
     UndoLog undoLog = new UndoLog();
-    RunMode runMode;
     Runnable asyncTask;
 
     private HashMap<String, Integer> savepoints;
@@ -63,28 +60,14 @@ public class AOTransaction implements Transaction {
             = new ConcurrentHashMap<>();
 
     public AOTransaction(AOTransactionEngine engine, long tid) {
-        this(engine, tid, null);
-    }
-
-    public AOTransaction(AOTransactionEngine engine, long tid, String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
-        transactionName = getTransactionName(hostAndPort, tid);
         logSyncService = engine.getLogSyncService();
         status = Transaction.STATUS_OPEN;
     }
 
-    public AOTransactionEngine getTransactionEngine() {
-        return transactionEngine;
-    }
-
     public UndoLog getUndoLog() {
         return undoLog;
-    }
-
-    @Override
-    public String getTransactionName() {
-        return transactionName;
     }
 
     @Override
@@ -95,10 +78,6 @@ public class AOTransaction implements Transaction {
     @Override
     public Session getSession() {
         return session;
-    }
-
-    public void setRunMode(RunMode runMode) {
-        this.runMode = runMode;
     }
 
     public boolean isCommitted() {
@@ -191,13 +170,6 @@ public class AOTransaction implements Transaction {
         return undoLog.getLogId();
     }
 
-    private RedoLogRecord createLocalTransactionRedoLogRecord() {
-        DataBuffer operations = undoLog.toRedoLogRecordBuffer(transactionEngine);
-        if (operations == null || operations.limit() == 0)
-            return null;
-        return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
-    }
-
     @Override
     public void asyncCommit(Runnable asyncTask) {
         checkNotClosed();
@@ -205,6 +177,13 @@ public class AOTransaction implements Transaction {
         if (writeRedoLog(true)) {
             asyncCommitComplete();
         }
+    }
+
+    private RedoLogRecord createLocalTransactionRedoLogRecord() {
+        DataBuffer operations = undoLog.toRedoLogRecordBuffer(transactionEngine);
+        if (operations == null || operations.limit() == 0)
+            return null;
+        return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
     }
 
     // 如果不需要事务日志同步或者不需要立即做事务日志同步那么返回true，这时可以直接提交事务了。
@@ -300,15 +279,12 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public int addWaitingTransaction(Object key, Transaction transaction, TransactionListener listener) {
-        return addWaitingTransaction(key, (AOTransaction) transaction, listener);
-    }
-
-    int addWaitingTransaction(Object key, AOTransaction transaction, TransactionListener listener) {
+    public int addWaitingTransaction(Object key, Transaction t, TransactionListener listener) {
         // 如果已经提交了，通知重试
         if (status == STATUS_CLOSED)
             return OPERATION_NEED_RETRY;
 
+        AOTransaction transaction = (AOTransaction) t;
         Session session = transaction.getSession();
         SessionStatus oldSessionStatus = session.getStatus();
         session.setStatus(SessionStatus.WAITING);
@@ -441,16 +417,7 @@ public class AOTransaction implements Transaction {
 
     @Override
     public String toString() {
-        return "t[" + transactionName + ", " + autoCommit + "]";
-    }
-
-    public static String getTransactionName(String hostAndPort, long tid) {
-        if (hostAndPort == null)
-            hostAndPort = "0:0";
-        StringBuilder buff = new StringBuilder(hostAndPort);
-        buff.append(':');
-        buff.append(tid);
-        return buff.toString();
+        return "t[" + transactionId + ", " + autoCommit + "]";
     }
 
     void addTransactionalValue(TransactionalValue tv, TransactionalValue.LockOwner lo) {
