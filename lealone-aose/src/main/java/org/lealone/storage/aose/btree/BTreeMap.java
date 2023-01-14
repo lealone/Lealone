@@ -321,6 +321,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         size.incrementAndGet();
     }
 
+    @Override
     public void decrementSize() {
         size.decrementAndGet();
     }

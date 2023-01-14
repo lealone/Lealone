@@ -186,9 +186,10 @@ public class TransactionalValue {
             return;
         if (!isInsert && t.transactionEngine.containsRepeatableReadTransactions()) {
             synchronized (this) {
-                LockOwner owner = t.getLockOwner(this);
                 OldValue v = new OldValue();
-                v.value = owner.oldValue;
+                LockOwner owner = t.getLockOwner(this);
+                if (owner != null)
+                    v.value = owner.oldValue;
                 v.tid = commitTimestamp;
                 v.next = t.transactionEngine.getOldValue(this);
                 t.transactionEngine.addTransactionalValue(this, v);
