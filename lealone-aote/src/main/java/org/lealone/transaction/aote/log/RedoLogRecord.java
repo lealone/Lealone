@@ -15,7 +15,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.transaction.aote.AOTransactionEngine;
 
 public abstract class RedoLogRecord {
 
@@ -75,11 +74,6 @@ public abstract class RedoLogRecord {
     public static LocalTransactionRedoLogRecord createLocalTransactionRedoLogRecord(long transactionId,
             DataBuffer operations) {
         return new LocalTransactionRedoLogRecord(transactionId, operations);
-    }
-
-    public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(
-            AOTransactionEngine transactionEngine, long transactionId, UndoLog undoLog) {
-        return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
     }
 
     static class Checkpoint extends RedoLogRecord {
@@ -232,42 +226,6 @@ public abstract class RedoLogRecord {
             long transactionId = DataUtils.readVarLong(buff);
             ByteBuffer operations = readOperations(buff);
             return new LocalTransactionRedoLogRecord(transactionId, operations);
-        }
-    }
-
-    static class LazyTransactionRedoLogRecord extends RedoLogRecord {
-
-        final AOTransactionEngine transactionEngine;
-        final long transactionId;
-        final UndoLog undoLog;
-
-        public LazyTransactionRedoLogRecord(AOTransactionEngine transactionEngine, long transactionId,
-                UndoLog undoLog) {
-            this.transactionEngine = transactionEngine;
-            this.transactionId = transactionId;
-            this.undoLog = undoLog;
-        }
-
-        @Override
-        void write(DataBuffer buffer) {
-            if (undoLog.isEmpty())
-                return;
-            buffer.put(TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-            buffer.putVarLong(transactionId);
-            int pos = buffer.position();
-            buffer.putInt(0);
-            UndoLogRecord r = undoLog.getFirst();
-            while (r != null) {
-                r.writeForRedo(buffer, transactionEngine);
-                r = r.next;
-            }
-            int length = buffer.position() - pos - 4;
-            buffer.putInt(pos, length);
-        }
-
-        @Override
-        long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
-            throw DbException.getInternalError();
         }
     }
 }

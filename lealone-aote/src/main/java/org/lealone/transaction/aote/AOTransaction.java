@@ -223,9 +223,6 @@ public class AOTransaction implements Transaction {
                 }
             } else {
                 // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
-                // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
-                // RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine,
-                // transactionId, undoLog);
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
                 logSyncService.addRedoLogRecord(r);
                 return true;
