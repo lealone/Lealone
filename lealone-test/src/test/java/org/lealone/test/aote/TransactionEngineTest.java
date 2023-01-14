@@ -112,9 +112,16 @@ public class TransactionEngineTest extends AoteTestBase {
         }
         t1.commit();
         assertEquals(50000, map.size());
-        try {
-            Thread.sleep(2000); // 等待后端检查点线程完成数据保存
-        } catch (InterruptedException e) {
+
+        // 在进行集成测试时可能在其他地方已经初始化TransactionEngine了
+        String v = te.getConfig().get("committed_data_cache_size_in_mb");
+        if (v != null && v.equals("1")) {
+            try {
+                Thread.sleep(2000); // 等待后端检查点线程完成数据保存
+            } catch (InterruptedException e) {
+            }
+        } else {
+            te.checkpoint();
         }
         assertTrue(map.getDiskSpaceUsed() > 0);
 
