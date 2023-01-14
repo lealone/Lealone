@@ -807,6 +807,7 @@ public abstract class Value implements Comparable<Value> {
                 case BYTES:
                     return ValueUuid.get(getBytesNoCopy());
                 }
+                break;
             }
             case ARRAY: {
                 Value[] values = { this };
