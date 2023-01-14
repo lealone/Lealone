@@ -154,7 +154,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             map.append(value, ar -> {
                 if (ar.isSucceeded()) {
                     row.setKey(ar.getResult().getLong());
-                    session.setLastRow(row);
+                    session.setLastIdentity(ar.getResult());
                 }
                 ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
             });
@@ -214,7 +214,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
         int ret = map.tryUpdate(key, newValue, updateColumns, oldRow.getTValue(), isLockedBySelf);
-        session.setLastRow(newRow);
+        session.setLastIdentity(key);
         return Future.succeededFuture(ret);
     }
 

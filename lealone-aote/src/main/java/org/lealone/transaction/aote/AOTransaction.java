@@ -5,7 +5,6 @@
  */
 package org.lealone.transaction.aote;
 
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class AOTransaction implements Transaction {
     private HashMap<String, Integer> savepoints;
     private Session session;
     private volatile int status;
-    private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
+    private int isolationLevel = IL_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
 
     // 被哪个事务锁住记录了

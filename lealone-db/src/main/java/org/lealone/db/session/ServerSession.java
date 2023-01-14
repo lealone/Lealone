@@ -38,7 +38,6 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -52,12 +51,9 @@ import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionListener;
-import org.lealone.transaction.TransactionMap;
 
 /**
  * A session represents an embedded database connection. When using the server
@@ -1141,25 +1137,6 @@ public class ServerSession extends SessionBase {
         this.isRoot = isRoot;
     }
 
-    public String getURL(String hostId) {
-        if (connectionInfo == null) {
-            String dbName = database.getShortName();
-            String url = createURL(dbName, hostId);
-            connectionInfo = new ConnectionInfo(url, dbName);
-            connectionInfo.setUserName(user.getName());
-            connectionInfo.setUserPasswordHash(user.getUserPasswordHash());
-            return url;
-        }
-        StringBuilder buff = new StringBuilder();
-        String url = connectionInfo.getURL();
-        int pos1 = url.indexOf("//") + 2;
-        buff.append(url.substring(0, pos1)).append(hostId);
-
-        int pos2 = url.indexOf('/', pos1);
-        buff.append(url.substring(pos2));
-        return buff.toString();
-    }
-
     public Transaction getTransaction() {
         if (transaction != null)
             return transaction;
@@ -1174,30 +1151,8 @@ public class ServerSession extends SessionBase {
         return transaction;
     }
 
-    private static String createURL(String dbName, String hostAndPort) {
-        StringBuilder url = new StringBuilder(100);
-        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
-        url.append(hostAndPort);
-        url.append("/").append(dbName);
-        return url.toString();
-    }
-
     public SQLParser getParser() {
         return database.createParser(this);
-    }
-
-    public StorageMap<Object, Object> getStorageMap(String mapName) {
-        return getTransactionMap(mapName);
-    }
-
-    @SuppressWarnings("unchecked")
-    public TransactionMap<Object, Object> getTransactionMap(String mapName) {
-        // 数据库可能还没有初始化，这时事务引擎中就找不到对应的Map
-        if (!database.isInitialized())
-            database.init();
-        TransactionEngine transactionEngine = database.getTransactionEngine();
-        return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName,
-                getTransaction());
     }
 
     private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -1212,10 +1167,6 @@ public class ServerSession extends SessionBase {
     @Override
     public void setStatus(SessionStatus sessionStatus) {
         this.sessionStatus = sessionStatus;
-    }
-
-    public void setLastRow(Row r) {
-        setLastIdentity(ValueLong.get(r.getKey()));
     }
 
     public static class YieldableCommand {
