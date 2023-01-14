@@ -33,7 +33,7 @@ echo    -p            mvn package assembly:assembly -Dmaven.test.skip=true
 echo    -pc           mvn clean package assembly:assembly -Dmaven.test.skip=true
 echo    -pd           mvn package -Dmaven.test.skip=true -P database
 echo    -pad          mvn package assembly:assembly -Dmaven.test.skip=true -P database
-echo    -i            mvn install -Dmaven.test.skip=true
+echo    -i            mvn install -DskipTests
 echo    -c            mvn clean
 echo    -dt           mvn dependency:tree
 echo    -vu version   pom.xml version update
@@ -72,7 +72,7 @@ call mvn clean
 goto end
 
 :i
-call mvn install -Dmaven.test.skip=true
+call mvn install -DskipTests
 goto end
 
 :dt
