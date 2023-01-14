@@ -84,11 +84,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (tv.isCommitted() && tv.getValue() == null)
             return null;
 
-        // 复制和分布式事务的场景
-        v = getDistributedValue(key, tv);
-        if (v != null)
-            return v;
-
         // 有些底层存储引擎可能会在事务提交前就把脏数据存盘了，
         // 然后还没等事务提交，数据库又崩溃了，那么在这里需要撤销才能得到正确的值，
         // 这一过程被称为: 读时撤销
@@ -96,11 +91,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             return tv.undo(map, key);
         }
         // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了
-        return null;
-    }
-
-    // AMTE是单机版的事务引擎，不支持这个功能
-    protected Object getDistributedValue(K key, TransactionalValue tv) {
         return null;
     }
 
