@@ -155,6 +155,9 @@ public interface StorageMap<K, V> {
      */
     long size();
 
+    default void decrementSize() {
+    }
+
     /**
      * Whether the map contains the key.
      *

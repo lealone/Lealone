@@ -299,6 +299,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
+    public void decrementSize() {
+        map.decrementSize();
+    }
+
+    @Override
     public boolean containsKey(K key) {
         return get(key) != null;
     }

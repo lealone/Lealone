@@ -71,6 +71,7 @@ public class UndoLogRecord {
             if (!transactionEngine.containsRepeatableReadTransactions()) {
                 map.remove(key);
             } else {
+                map.decrementSize(); // 要减去1
                 newTV.commit(false);
                 map.put(key, newTV, ar -> {
                 });
