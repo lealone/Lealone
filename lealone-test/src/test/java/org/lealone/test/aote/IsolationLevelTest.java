@@ -21,7 +21,7 @@ public class IsolationLevelTest extends AoteTestBase {
 
     private void test1() {
         Transaction t1 = te.beginTransaction(false);
-        TransactionMap<String, String> map = t1.openMap(mapName, storage);
+        TransactionMap<String, String> map = t1.openMap(mapName + "_test1", storage);
         map.clear();
         map.put("1", "a");
         map.put("2", "b");
@@ -46,12 +46,19 @@ public class IsolationLevelTest extends AoteTestBase {
         t5.setIsolationLevel(Transaction.IL_SERIALIZABLE);
         map = map.getInstance(t5);
         assertNull(map.get("1"));
+
+        // 全rollback，避免在集成测试时影响其他测试用例
+        t1.rollback();
+        t2.rollback();
+        t3.rollback();
+        t4.rollback();
+        t5.rollback();
     }
 
     private void test2() {
         Transaction t1 = te.beginTransaction(false);
         t1.setIsolationLevel(Transaction.IL_READ_COMMITTED);
-        TransactionMap<String, String> map1 = t1.openMap(mapName, storage);
+        TransactionMap<String, String> map1 = t1.openMap(mapName + "_test2", storage);
         map1.clear();
         assertNull(map1.get("1"));
         map1.put("2", "b-old");
@@ -94,5 +101,9 @@ public class IsolationLevelTest extends AoteTestBase {
         // t2和t3还能看到旧值
         assertEquals("c", map2.get("3"));
         assertEquals("c", map3.get("3"));
+
+        // 全rollback，避免在集成测试时影响其他测试用例
+        t2.rollback();
+        t3.rollback();
     }
 }
