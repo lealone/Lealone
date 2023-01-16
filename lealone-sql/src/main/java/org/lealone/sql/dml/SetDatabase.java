@@ -48,6 +48,9 @@ public class SetDatabase extends SetStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
+        // 需要加锁，不允许多个事务同时修改数据库的参数
+        if (database.tryExclusiveDatabaseLock(session) == null)
+            return -1;
         String name = setting.name();
         switch (setting) {
         case ALLOW_LITERALS: {
