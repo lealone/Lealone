@@ -22,23 +22,13 @@ public interface Transaction {
 
     public static final int IL_SERIALIZABLE = Connection.TRANSACTION_SERIALIZABLE;
 
-    /**
-     * The status of a closed transaction (committed or rolled back).
-     */
-    public static final int STATUS_CLOSED = 0;
-
-    /**
-     * The status of an open transaction.
-     */
-    public static final int STATUS_OPEN = 1;
-
     public static final int OPERATION_COMPLETE = 1;
 
     public static final int OPERATION_NEED_RETRY = 2;
 
     public static final int OPERATION_NEED_WAIT = 3;
 
-    int getStatus();
+    boolean isClosed();
 
     void setIsolationLevel(int level);
 

@@ -89,7 +89,7 @@ public class TransactionMapTest extends AoteTestBase {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
         }
-        assertEquals(Transaction.STATUS_CLOSED, t5.getStatus());
+        assertTrue(t5.isClosed());
     }
 
     void testTryOperations() {

@@ -44,7 +44,6 @@ public class AOTransaction implements Transaction {
 
     private HashMap<String, Integer> savepoints;
     private Session session;
-    private volatile int status;
     private int isolationLevel = IL_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
 
@@ -62,7 +61,6 @@ public class AOTransaction implements Transaction {
         transactionEngine = engine;
         transactionId = tid;
         logSyncService = engine.getLogSyncService();
-        status = Transaction.STATUS_OPEN;
     }
 
     public UndoLog getUndoLog() {
@@ -80,12 +78,13 @@ public class AOTransaction implements Transaction {
     }
 
     public boolean isCommitted() {
-        return status == Transaction.STATUS_CLOSED;
+        return isClosed();
     }
 
     @Override
-    public int getStatus() {
-        return status;
+    public boolean isClosed() {
+        return undoLog == null;
+
     }
 
     @Override
@@ -239,7 +238,6 @@ public class AOTransaction implements Transaction {
     private void endTransaction(boolean remove) {
         savepoints = null;
         undoLog = null;
-        status = STATUS_CLOSED;
         if (remove)
             transactionEngine.removeTransaction(transactionId);
     }
@@ -270,7 +268,7 @@ public class AOTransaction implements Transaction {
     @Override
     public int addWaitingTransaction(Object key, Transaction t, TransactionListener listener) {
         // 如果已经提交了，通知重试
-        if (status == STATUS_CLOSED)
+        if (isClosed())
             return OPERATION_NEED_RETRY;
 
         AOTransaction transaction = (AOTransaction) t;
@@ -283,7 +281,7 @@ public class AOTransaction implements Transaction {
         LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
         while (true) {
             // 如果已经提交了，通知重试
-            if (status == STATUS_CLOSED) {
+            if (isClosed()) {
                 transaction.waitFor(null);
                 session.setStatus(oldSessionStatus);
                 return OPERATION_NEED_RETRY;
@@ -397,7 +395,7 @@ public class AOTransaction implements Transaction {
     }
 
     protected void checkNotClosed() {
-        if (status == STATUS_CLOSED) {
+        if (isClosed()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "Transaction is closed");
         }
     }
