@@ -89,16 +89,6 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public void setStatus(int status) {
-        this.status = status;
-        // setStatus这个方法会被lockedBy对应的事务调用，所以不能把lockedBy置null，必须由这个被阻塞的事务结束时自己置null
-        // if (lockedBy != null && status == STATUS_OPEN) {
-        // lockedBy = null;
-        // lockStartTime = 0;
-        // }
-    }
-
-    @Override
     public void setIsolationLevel(int level) {
         isolationLevel = level;
     }
@@ -287,7 +277,6 @@ public class AOTransaction implements Transaction {
         Session session = transaction.getSession();
         SessionStatus oldSessionStatus = session.getStatus();
         session.setStatus(SessionStatus.WAITING);
-        transaction.setStatus(STATUS_WAITING);
         transaction.waitFor(this);
 
         WaitingTransaction wt = new WaitingTransaction(key, transaction, listener);
@@ -295,7 +284,6 @@ public class AOTransaction implements Transaction {
         while (true) {
             // 如果已经提交了，通知重试
             if (status == STATUS_CLOSED) {
-                transaction.setStatus(STATUS_OPEN);
                 transaction.waitFor(null);
                 session.setStatus(oldSessionStatus);
                 return OPERATION_NEED_RETRY;

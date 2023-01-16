@@ -21,8 +21,7 @@ public class WaitingTransaction {
 
     public void wakeUp() {
         // 避免重复调用
-        if (transaction.getStatus() == Transaction.STATUS_WAITING) {
-            transaction.setStatus(Transaction.STATUS_OPEN);
+        if (transaction.getSession().getStatus() == SessionStatus.WAITING) {
             transaction.getSession().setStatus(SessionStatus.RETRYING);
             if (listener != null)
                 listener.wakeUp();

@@ -32,16 +32,6 @@ public interface Transaction {
      */
     public static final int STATUS_OPEN = 1;
 
-    /**
-     * The status of a transaction that is being committed, but possibly not
-     * yet finished. A transaction can go into this state when the store is
-     * closed while the transaction is committing. When opening a store,
-     * such transactions should be committed.
-     */
-    public static final int STATUS_COMMITTING = 2;
-
-    public static final int STATUS_WAITING = 3;
-
     public static final int OPERATION_COMPLETE = 1;
 
     public static final int OPERATION_NEED_RETRY = 2;
@@ -49,8 +39,6 @@ public interface Transaction {
     public static final int OPERATION_NEED_WAIT = 3;
 
     int getStatus();
-
-    void setStatus(int status);
 
     void setIsolationLevel(int level);
 

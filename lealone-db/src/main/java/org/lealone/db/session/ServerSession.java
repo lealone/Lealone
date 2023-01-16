@@ -476,7 +476,6 @@ public class ServerSession extends SessionBase {
         if (transaction != null) {
             checkCommitRollback();
             checkDataModification();
-            transaction.setStatus(Transaction.STATUS_COMMITTING);
             sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
             transaction.asyncCommit(asyncTask);
         } else {
@@ -1237,7 +1236,7 @@ public class ServerSession extends SessionBase {
 
     private void checkTransactionTimeout(TimeoutListener timeoutListener) {
         Transaction t = transaction;
-        if (t != null && t.getStatus() == Transaction.STATUS_WAITING) {
+        if (t != null) {
             try {
                 t.checkTimeout();
             } catch (Throwable e) {
