@@ -27,8 +27,8 @@
             <distribution>repo</distribution>
         </license>
         <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <name>Server Side Public License 1.0</name>
+            <url>https://github.com/lealone/Lealone/blob/master/LICENSE.md</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
