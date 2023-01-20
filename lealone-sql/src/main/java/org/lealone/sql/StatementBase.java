@@ -67,7 +67,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private int currentRowNumber;
     private int rowScanCount;
     private boolean canReuse;
-    private boolean local;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
     /**
@@ -131,16 +130,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public void setPriority(int priority) {
         this.priority = priority;
-    }
-
-    @Override
-    public boolean isLocal() {
-        return local;
-    }
-
-    @Override
-    public void setLocal(boolean local) {
-        this.local = local;
     }
 
     @Override

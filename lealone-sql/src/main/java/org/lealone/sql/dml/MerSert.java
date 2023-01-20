@@ -63,13 +63,6 @@ public abstract class MerSert extends ManipulationStatement {
     }
 
     @Override
-    public void setLocal(boolean local) {
-        super.setLocal(local);
-        if (query != null)
-            query.setLocal(local);
-    }
-
-    @Override
     public int getPriority() {
         if (getCurrentRowNumber() > 0)
             return priority;

@@ -379,10 +379,6 @@ public class ServerSession extends SessionBase {
         this.lockTimeout = lockTimeout;
     }
 
-    public boolean isLocal() {
-        return connectionInfo == null || connectionInfo.isEmbedded();
-    }
-
     public ParsedSQLStatement parseStatement(String sql) {
         return database.createParser(this).parse(sql);
     }
@@ -407,16 +403,12 @@ public class ServerSession extends SessionBase {
     public PreparedSQLStatement prepareStatement(String sql, boolean rightsChecked) {
         SQLParser parser = database.createParser(this);
         parser.setRightsChecked(rightsChecked);
-        PreparedSQLStatement p = parser.parse(sql).prepare();
-        p.setLocal(isLocal());
-        return p;
+        return parser.parse(sql).prepare();
     }
 
     public PreparedSQLStatement prepareStatementLocal(String sql) {
         SQLParser parser = database.createParser(this);
-        PreparedSQLStatement p = parser.parse(sql).prepare();
-        p.setLocal(true);
-        return p;
+        return parser.parse(sql).prepare();
     }
 
     @Override
@@ -466,7 +458,6 @@ public class ServerSession extends SessionBase {
                 queryCache.put(sql, ps);
             }
         }
-        ps.setLocal(isLocal());
         if (fetchSize != -1)
             ps.setFetchSize(fetchSize);
         return ps;

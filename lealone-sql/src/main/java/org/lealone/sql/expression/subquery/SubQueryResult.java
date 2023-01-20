@@ -20,7 +20,6 @@ public class SubQueryResult extends DelegatedResult {
     protected int rowCount = -1;
 
     public SubQueryResult(Query query, int maxRows) {
-        query.setLocal(false);
         result = query.query(maxRows);
     }
 

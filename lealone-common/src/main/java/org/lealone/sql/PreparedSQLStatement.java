@@ -29,10 +29,6 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
     void setPriority(int priority);
 
-    boolean isLocal();
-
-    void setLocal(boolean local);
-
     void setObjectId(int objectId);
 
     boolean canReuse();
