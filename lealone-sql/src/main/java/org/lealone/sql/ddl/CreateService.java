@@ -83,11 +83,6 @@ public class CreateService extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
     public void setComment(String comment) {
         this.comment = comment;
     }

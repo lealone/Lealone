@@ -59,11 +59,6 @@ public class CreateIndex extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
     public void setPrimaryKey(boolean b) {
         this.primaryKey = b;
     }

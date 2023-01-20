@@ -43,11 +43,6 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
-    @Override
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();

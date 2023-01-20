@@ -44,11 +44,6 @@ public class DropRole extends DefinitionStatement implements AuthStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifExists;
-    }
-
-    @Override
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();

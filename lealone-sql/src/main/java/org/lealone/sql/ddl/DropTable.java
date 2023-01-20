@@ -58,14 +58,6 @@ public class DropTable extends SchemaStatement {
         }
     }
 
-    @Override
-    public boolean isIfDDL() {
-        if (next == null)
-            return ifExists;
-        else
-            return ifExists && next.isIfDDL();
-    }
-
     public void setDropAction(int dropAction) {
         this.dropAction = dropAction;
         if (next != null) {

@@ -35,11 +35,6 @@ public class DropDatabase extends DatabaseStatement {
         this.ifExists = ifExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifExists;
-    }
-
     public void setDeleteFiles(boolean deleteFiles) {
         this.deleteFiles = deleteFiles;
     }

@@ -57,11 +57,6 @@ public class CreateView extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
     public void setSelect(Query select) {
         this.select = select;
     }

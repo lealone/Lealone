@@ -120,11 +120,6 @@ public class CreateTable extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
     private void validateParameters() {
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
         if (data.storageEngineParams != null)

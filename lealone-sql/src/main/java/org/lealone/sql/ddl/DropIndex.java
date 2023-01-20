@@ -49,11 +49,6 @@ public class DropIndex extends SchemaStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifExists;
-    }
-
-    @Override
     public int update() {
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.INDEX, session);
         if (lock == null)
