@@ -32,9 +32,8 @@ public class TransactionalValue {
     // 对于一个已经提交的值，如果当前事务因为隔离级别的原因读不到这个值，那么就返回SIGHTLESS
     public static final Object SIGHTLESS = new Object();
 
-    private static final AtomicReferenceFieldUpdater<TransactionalValue, AOTransaction> //
-    tUpdater = AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AOTransaction.class,
-            "t");
+    private static final AtomicReferenceFieldUpdater<TransactionalValue, AOTransaction> tUpdater = //
+            AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AOTransaction.class, "t");
 
     private Object value;
     private volatile AOTransaction t;
@@ -141,10 +140,6 @@ public class TransactionalValue {
                 return owner.logId;
         }
         return 0;
-    }
-
-    public boolean supportsColumnLock() {
-        return false;
     }
 
     public boolean tryLock(AOTransaction t, int[] columnIndexes) {

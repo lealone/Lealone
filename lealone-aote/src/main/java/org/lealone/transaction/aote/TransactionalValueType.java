@@ -22,12 +22,7 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
-        return 4 + valueType.getMemory(v.getValue());
-        // TODO 由于BufferedMap的合并与复制逻辑的验证是并行的，
-        // 可能导致split时三个复制节点中某些相同的TransactionalValue有些globalReplicationName为null，有些不为null
-        // 这样就会得到不同的内存大小，从而使得splitKey不同
-        // return valueType.getMemory(v.value) + 12
-        // + (v.globalReplicationName == null ? 1 : 9 + ValueString.type.getMemory(v.globalReplicationName));
+        return 16 + valueType.getMemory(v.getValue());
     }
 
     @Override
