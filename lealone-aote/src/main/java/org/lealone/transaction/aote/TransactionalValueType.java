@@ -22,7 +22,7 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
-        return 16 + valueType.getMemory(v.getValue());
+        return 8 + valueType.getMemory(v.getValue());
     }
 
     @Override

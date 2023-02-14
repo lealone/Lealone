@@ -37,7 +37,6 @@ public class TransactionalValue {
 
     private Object value;
     private volatile AOTransaction t;
-    private long commitTimestamp;
 
     public TransactionalValue(Object value) {
         this.value = value;
@@ -112,8 +111,7 @@ public class TransactionalValue {
                 if (owner != null)
                     return owner.oldValue;
             } else {
-                if (tid >= commitTimestamp)
-                    return value;
+                return value;
             }
             return SIGHTLESS; // 刚刚insert但是还没有提交的记录
         }
@@ -179,19 +177,24 @@ public class TransactionalValue {
         AOTransaction t = this.t;
         if (t == null)
             return;
-        if (!isInsert && t.transactionEngine.containsRepeatableReadTransactions()) {
+        if (t.transactionEngine.containsRepeatableReadTransactions()) {
             synchronized (this) {
                 OldValue v = new OldValue();
-                LockOwner owner = t.getLockOwner(this);
-                if (owner != null)
-                    v.value = owner.oldValue;
-                v.tid = commitTimestamp;
-                v.next = t.transactionEngine.getOldValue(this);
+                if (!isInsert) {
+                    v.next = t.transactionEngine.getOldValue(this);
+                    if (v.next == null) {
+                        OldValue ov = new OldValue();
+                        LockOwner owner = t.getLockOwner(this);
+                        if (owner != null)
+                            ov.value = owner.oldValue;
+                        v.next = ov;
+                    }
+                }
+                v.value = value;
+                v.tid = t.commitTimestamp;
                 t.transactionEngine.addTransactionalValue(this, v);
             }
         }
-        commitTimestamp = t.commitTimestamp;
-        return;
     }
 
     public boolean isCommitted() {
