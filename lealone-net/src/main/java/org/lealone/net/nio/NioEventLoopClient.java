@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
@@ -150,11 +151,12 @@ class NioEventLoopClient extends NetClientBase {
     }
 
     @Override
-    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            int maxSharedSize, AsyncCallback<AsyncConnection> ac) {
+    protected void createConnectionInternal(Map<String, String> config, NetNode node,
+            AsyncConnectionManager connectionManager, int maxSharedSize,
+            AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        int socketRecvBuffer = 16 * 1024;
-        int socketSendBuffer = 8 * 1024;
+        int socketRecvBuffer = MapUtils.getInt(config, "socket_recv_buffer_size", 16 * 1024);
+        int socketSendBuffer = MapUtils.getInt(config, "socket_send_buffer_size", 8 * 1024);
         SocketChannel channel = null;
         try {
             channel = SocketChannel.open();

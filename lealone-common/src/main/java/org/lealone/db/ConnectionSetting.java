@@ -19,4 +19,7 @@ public enum ConnectionSetting {
 
     IS_SHARED,
     MAX_SHARED_SIZE,
+    CLIENT_NIO_EVENT_LOOP_INTERVAL,
+    SOCKET_RECV_BUFFER_SIZE,
+    SOCKET_SEND_BUFFER_SIZE,
 }

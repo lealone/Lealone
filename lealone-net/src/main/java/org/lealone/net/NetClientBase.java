@@ -18,7 +18,8 @@ public abstract class NetClientBase implements NetClient {
 
     // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
     // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。
-    private final ConcurrentHashMap<InetSocketAddress, AsyncConnectionPool> asyncConnections = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<InetSocketAddress, AsyncConnectionPool> asyncConnections //
+            = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean opened = new AtomicBoolean(false);
 
@@ -29,7 +30,7 @@ public abstract class NetClientBase implements NetClient {
 
     protected abstract void closeInternal();
 
-    protected abstract void createConnectionInternal(NetNode node,
+    protected abstract void createConnectionInternal(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager, int maxSharedSize,
             AsyncCallback<AsyncConnection> ac);
 
@@ -59,7 +60,7 @@ public abstract class NetClientBase implements NetClient {
         AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
             AsyncCallback<AsyncConnection> ac = new AsyncCallback<>();
-            createConnectionInternal(node, connectionManager,
+            createConnectionInternal(config, node, connectionManager,
                     AsyncConnectionPool.getMaxSharedSize(config), ac);
             return ac;
         } else {
