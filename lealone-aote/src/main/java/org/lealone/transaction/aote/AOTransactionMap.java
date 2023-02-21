@@ -663,7 +663,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public boolean isLocked(Object oldTValue, int[] columnIndexes) {
         TransactionalValue tv = (TransactionalValue) oldTValue;
-        return tv.isLocked(transaction.transactionId, columnIndexes);
+        return tv.isLocked(transaction, columnIndexes);
     }
 
     @Override

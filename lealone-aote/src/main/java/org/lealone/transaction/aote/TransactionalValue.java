@@ -18,47 +18,52 @@ import org.lealone.transaction.Transaction;
 //每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段
 public class TransactionalValue {
 
-    public static class LockOwner {
-        int logId;
-        Object oldValue;
-    }
-
     public static class OldValue {
         long tid;
         Object value;
         OldValue next;
     }
 
+    public static class RowLock {
+        final int logId;
+        final Object oldValue;
+        final AOTransaction t;
+
+        RowLock(AOTransaction t, Object oldValue) {
+            this.logId = t.getUndoLog().getLogId();
+            this.oldValue = oldValue;
+            this.t = t;
+        }
+
+        public boolean isCommitted() {
+            return t.isCommitted();
+        }
+    }
+
     // 对于一个已经提交的值，如果当前事务因为隔离级别的原因读不到这个值，那么就返回SIGHTLESS
     public static final Object SIGHTLESS = new Object();
 
-    private static final AtomicReferenceFieldUpdater<TransactionalValue, AOTransaction> tUpdater = //
-            AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, AOTransaction.class, "t");
+    private static final AtomicReferenceFieldUpdater<TransactionalValue, RowLock> rowLockUpdater = //
+            AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, RowLock.class, "rowLock");
 
     private Object value;
-    private volatile AOTransaction t;
+    private volatile RowLock rowLock;
 
-    public TransactionalValue(Object value) {
+    private TransactionalValue(Object value) {
         this.value = value;
     }
 
     public TransactionalValue(Object value, AOTransaction t) {
         this.value = value;
-        this.t = t;
-    }
-
-    private void addLockOwner(AOTransaction t) {
-        LockOwner owner = new LockOwner();
-        owner.logId = t.getUndoLog().getLogId();
-        owner.oldValue = value;
-        t.addTransactionalValue(this, owner);
+        this.rowLock = new RowLock(t, null); // insert的场景，old value是null
+        t.addLock(this);
     }
 
     // 二级索引需要设置
     public void setTransaction(AOTransaction t) {
-        if (this.t == null) {
-            addLockOwner(t);
-            this.t = t;
+        if (rowLock == null) {
+            rowLock = new RowLock(t, value);
+            t.addLock(this);
         }
     }
 
@@ -71,20 +76,19 @@ public class TransactionalValue {
     }
 
     public Object getValue(AOTransaction transaction) {
-        AOTransaction t = this.t;
-        if (t == transaction)
+        RowLock rl = rowLock;
+        if (rl != null && rl.t == transaction)
             return value;
         switch (transaction.getIsolationLevel()) {
         case Transaction.IL_READ_COMMITTED: {
-            if (t != null) {
-                if (t.isCommitted()) {
+            if (rl != null) {
+                if (rl.isCommitted()) {
                     return value;
                 } else {
-                    LockOwner owner = t.getLockOwner(this);
-                    if (owner == null)
+                    if (rl.oldValue == null)
                         return SIGHTLESS; // 刚刚insert但是还没有提交的记录
                     else
-                        return owner.oldValue;
+                        return rl.oldValue;
                 }
             }
             return value;
@@ -92,8 +96,8 @@ public class TransactionalValue {
         case Transaction.IL_REPEATABLE_READ:
         case Transaction.IL_SERIALIZABLE: {
             long tid = transaction.getTransactionId();
-            if (t != null) {
-                if (t.isCommitted() && tid >= t.commitTimestamp)
+            if (rl != null) {
+                if (rl.isCommitted() && tid >= rl.t.commitTimestamp)
                     return value;
             }
             OldValue oldValue = transaction.transactionEngine.getOldValue(this);
@@ -106,10 +110,9 @@ public class TransactionalValue {
             if (hasOld) {
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
-            if (t != null) {
-                LockOwner owner = t.getLockOwner(this);
-                if (owner != null)
-                    return owner.oldValue;
+            if (rl != null) {
+                if (rl.oldValue != null)
+                    return rl.oldValue;
             } else {
                 return value;
             }
@@ -126,47 +129,39 @@ public class TransactionalValue {
     // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
     // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
     public long getTid() {
-        AOTransaction t = this.t;
-        return t == null ? 0 : t.transactionId;
+        RowLock rl = rowLock;
+        return rl == null ? 0 : rl.t.transactionId;
     }
 
     public int getLogId() {
-        AOTransaction t = this.t;
-        if (t != null) {
-            LockOwner owner = t.getLockOwner(this);
-            if (owner != null)
-                return owner.logId;
-        }
-        return 0;
+        RowLock rl = rowLock;
+        return rl == null ? 0 : rl.logId;
     }
 
     public boolean tryLock(AOTransaction t, int[] columnIndexes) {
-        if (t == this.t)
+        RowLock rl = rowLock;
+        if (rl != null && t == rl.t)
             return true;
-        addLockOwner(t);
-        boolean ok = tUpdater.compareAndSet(this, null, t);
-        if (!ok) {
-            t.removeTransactionalValue(this);
+        rl = new RowLock(t, value);
+        if (rowLockUpdater.compareAndSet(this, null, rl)) {
+            t.addLock(this);
+            return true;
         }
-        return ok;
+        return false;
     }
 
-    public void unlock(boolean isInsert) {
-        AOTransaction t = this.t;
-        if (t == null)
-            return;
-        this.t = null;
-        if (!isInsert)
-            t.removeTransactionalValue(this);
+    public void unlock() {
+        rowLock = null;
     }
 
-    public boolean isLocked(long tid, int[] columnIndexes) {
-        AOTransaction t = this.t;
-        return t == null ? false : t.transactionId != tid;
+    public boolean isLocked(AOTransaction t, int[] columnIndexes) {
+        RowLock rl = rowLock;
+        return rl == null ? false : rl.t != t;
     }
 
     public AOTransaction getLockOwner(int[] columnIndexes) {
-        return t;
+        RowLock rl = rowLock;
+        return rl == null ? null : rl.t;
     }
 
     public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
@@ -174,9 +169,10 @@ public class TransactionalValue {
     }
 
     public void commit(boolean isInsert) {
-        AOTransaction t = this.t;
-        if (t == null)
+        RowLock rl = rowLock;
+        if (rl == null)
             return;
+        AOTransaction t = rl.t;
         if (t.transactionEngine.containsRepeatableReadTransactions()) {
             synchronized (this) {
                 OldValue v = new OldValue();
@@ -184,9 +180,7 @@ public class TransactionalValue {
                     v.next = t.transactionEngine.getOldValue(this);
                     if (v.next == null) {
                         OldValue ov = new OldValue();
-                        LockOwner owner = t.getLockOwner(this);
-                        if (owner != null)
-                            ov.value = owner.oldValue;
+                        ov.value = rl.oldValue;
                         v.next = ov;
                     }
                 }
@@ -198,8 +192,8 @@ public class TransactionalValue {
     }
 
     public boolean isCommitted() {
-        AOTransaction t = this.t;
-        return t == null || t.isCommitted();
+        RowLock rl = rowLock;
+        return rl == null || rl.isCommitted();
     }
 
     public void rollback(Object oldValue) {
@@ -212,11 +206,11 @@ public class TransactionalValue {
     }
 
     public void writeMeta(DataBuffer buff) {
-        AOTransaction t = this.t;
-        if (t == null) {
+        RowLock rl = rowLock;
+        if (rl == null) {
             buff.putVarLong(0);
         } else {
-            buff.putVarLong(t.transactionId);
+            buff.putVarLong(rl.t.transactionId);
         }
     }
 

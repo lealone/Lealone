@@ -92,7 +92,7 @@ public class UndoLogRecord {
 
     public void unlock() {
         if (newTV != null)
-            newTV.unlock(oldValue == null);
+            newTV.unlock();
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新

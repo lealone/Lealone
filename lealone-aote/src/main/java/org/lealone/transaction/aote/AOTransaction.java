@@ -8,7 +8,6 @@ package org.lealone.transaction.aote;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
@@ -54,8 +53,7 @@ public class AOTransaction implements Transaction {
     private final AtomicReference<LinkedList<WaitingTransaction>> waitingTransactionsRef //
             = new AtomicReference<>(EMPTY_LINKED_LIST);
 
-    private final ConcurrentHashMap<TransactionalValue, TransactionalValue.LockOwner> tValues //
-            = new ConcurrentHashMap<>();
+    private LinkedList<TransactionalValue> locks; // 行锁
 
     public AOTransaction(AOTransactionEngine engine, long tid) {
         transactionEngine = engine;
@@ -65,6 +63,12 @@ public class AOTransaction implements Transaction {
 
     public UndoLog getUndoLog() {
         return undoLog;
+    }
+
+    void addLock(TransactionalValue tv) {
+        if (locks == null)
+            locks = new LinkedList<>();
+        locks.add(tv);
     }
 
     @Override
@@ -236,10 +240,20 @@ public class AOTransaction implements Transaction {
     }
 
     private void endTransaction(boolean remove) {
+        unlock();
         savepoints = null;
         undoLog = null;
         if (remove)
             transactionEngine.removeTransaction(transactionId);
+    }
+
+    // 加行锁后还没走到创建redo log那一步，中间就出错了，此时需要解锁
+    private void unlock() {
+        if (locks != null) {
+            for (TransactionalValue tv : locks)
+                tv.unlock();
+            locks = null;
+        }
     }
 
     @Override
@@ -256,13 +270,6 @@ public class AOTransaction implements Transaction {
             waitingTransactions = waitingTransactionsRef.get();
         }
         lockedBy = null;
-
-        // 加行锁后还没走到创建redo log那一步，中间就出错了，此时需要解锁
-        if (!tValues.isEmpty()) {
-            for (TransactionalValue tv : tValues.keySet()) {
-                tv.unlock(false);
-            }
-        }
     }
 
     @Override
@@ -403,17 +410,5 @@ public class AOTransaction implements Transaction {
     @Override
     public String toString() {
         return "t[" + transactionId + ", " + autoCommit + "]";
-    }
-
-    void addTransactionalValue(TransactionalValue tv, TransactionalValue.LockOwner lo) {
-        tValues.put(tv, lo);
-    }
-
-    TransactionalValue.LockOwner removeTransactionalValue(TransactionalValue tv) {
-        return tValues.remove(tv);
-    }
-
-    TransactionalValue.LockOwner getLockOwner(TransactionalValue tv) {
-        return tValues.get(tv);
     }
 }
