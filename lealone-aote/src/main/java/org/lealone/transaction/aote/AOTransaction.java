@@ -240,20 +240,21 @@ public class AOTransaction implements Transaction {
     }
 
     private void endTransaction(boolean remove) {
-        unlock();
+        boolean undoLogIsEmpty = undoLog.isEmpty();
         savepoints = null;
         undoLog = null;
         if (remove)
             transactionEngine.removeTransaction(transactionId);
+        unlock(undoLogIsEmpty);
     }
 
     // 加行锁后还没走到创建redo log那一步，中间就出错了，此时需要解锁
-    private void unlock() {
-        if (locks != null) {
+    private void unlock(boolean undoLogIsEmpty) {
+        if (undoLogIsEmpty && locks != null) {
             for (TransactionalValue tv : locks)
                 tv.unlock();
-            locks = null;
         }
+        locks = null;
     }
 
     @Override
