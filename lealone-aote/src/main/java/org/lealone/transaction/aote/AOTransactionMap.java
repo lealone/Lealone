@@ -607,7 +607,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
         // 提前调用tryLock的场景直接跳过
-        if (!isLockedBySelf && !tv.tryLock(transaction, columnIndexes)) {
+        if (!isLockedBySelf && !tv.tryLock(transaction)) {
             // 当前行已经被其他事务锁住了
             return addWaitingTransaction(key, tv);
         }
@@ -620,19 +620,15 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public int addWaitingTransaction(Object key, Object oldTValue) {
-        return addWaitingTransaction(key, (TransactionalValue) oldTValue, null);
+        return addWaitingTransaction(key, (TransactionalValue) oldTValue);
     }
 
-    protected int addWaitingTransaction(Object key, TransactionalValue oldTValue) {
-        return addWaitingTransaction(key, oldTValue, null);
-    }
-
-    private int addWaitingTransaction(Object key, TransactionalValue oldTValue, int[] columnIndexes) {
+    private int addWaitingTransaction(Object key, TransactionalValue oldTValue) {
         Object object = Thread.currentThread();
         if (!(object instanceof TransactionListener)) {
             return Transaction.OPERATION_NEED_WAIT;
         }
-        AOTransaction t = oldTValue.getLockOwner(columnIndexes);
+        AOTransaction t = oldTValue.getLockOwner();
         // 有可能在这一步事务提交了
         if (t == null)
             return Transaction.OPERATION_NEED_RETRY;
@@ -646,7 +642,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
 
-        if (tv.tryLock(transaction, columnIndexes)) {
+        if (tv.tryLock(transaction)) {
             if (isForUpdate) {
                 // select for update，在提交阶段解锁
                 transaction.undoLog.add(getName(), key, null, tv, true);
@@ -655,7 +651,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         } else {
             // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
             // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
-            addWaitingTransaction(key, tv, columnIndexes);
+            addWaitingTransaction(key, tv);
             return false;
         }
     }
@@ -663,7 +659,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public boolean isLocked(Object oldTValue, int[] columnIndexes) {
         TransactionalValue tv = (TransactionalValue) oldTValue;
-        return tv.isLocked(transaction, columnIndexes);
+        return tv.isLocked(transaction);
     }
 
     @Override

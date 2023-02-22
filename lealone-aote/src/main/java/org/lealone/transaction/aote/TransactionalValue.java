@@ -131,7 +131,7 @@ public class TransactionalValue {
         return rl == null ? 0 : rl.t.transactionId;
     }
 
-    public boolean tryLock(AOTransaction t, int[] columnIndexes) {
+    public boolean tryLock(AOTransaction t) {
         RowLock rl = rowLock;
         if (rl != null && t == rl.t)
             return true;
@@ -147,12 +147,12 @@ public class TransactionalValue {
         rowLock = null;
     }
 
-    public boolean isLocked(AOTransaction t, int[] columnIndexes) {
+    public boolean isLocked(AOTransaction t) {
         RowLock rl = rowLock;
         return rl == null ? false : rl.t != t;
     }
 
-    public AOTransaction getLockOwner(int[] columnIndexes) {
+    public AOTransaction getLockOwner() {
         RowLock rl = rowLock;
         return rl == null ? null : rl.t;
     }
