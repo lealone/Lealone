@@ -24,15 +24,13 @@ public class TransactionalValue {
         OldValue next;
     }
 
-    public static class RowLock {
-        final int logId;
-        final Object oldValue;
+    private static class RowLock {
         final AOTransaction t;
+        final Object oldValue;
 
         RowLock(AOTransaction t, Object oldValue) {
-            this.logId = t.getUndoLog().getLogId();
-            this.oldValue = oldValue;
             this.t = t;
+            this.oldValue = oldValue;
         }
 
         public boolean isCommitted() {
@@ -131,11 +129,6 @@ public class TransactionalValue {
     public long getTid() {
         RowLock rl = rowLock;
         return rl == null ? 0 : rl.t.transactionId;
-    }
-
-    public int getLogId() {
-        RowLock rl = rowLock;
-        return rl == null ? 0 : rl.logId;
     }
 
     public boolean tryLock(AOTransaction t, int[] columnIndexes) {

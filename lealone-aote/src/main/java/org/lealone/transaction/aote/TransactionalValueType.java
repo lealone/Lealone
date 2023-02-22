@@ -34,9 +34,7 @@ public class TransactionalValueType implements StorageDataType {
         TransactionalValue b = (TransactionalValue) bObj;
         long comp = a.getTid() - b.getTid();
         if (comp == 0) {
-            comp = a.getLogId() - b.getLogId();
-            if (comp == 0)
-                return valueType.compare(a.getValue(), b.getValue());
+            return valueType.compare(a.getValue(), b.getValue());
         }
         return Long.signum(comp);
     }
