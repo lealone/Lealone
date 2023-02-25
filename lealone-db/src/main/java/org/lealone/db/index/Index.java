@@ -114,7 +114,7 @@ public interface Index extends SchemaObject {
         throw DbException.getUnsupportedException("remove row");
     }
 
-    default boolean tryLock(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    default boolean tryLock(ServerSession session, Row row, int[] lockColumns) {
         return false;
     }
 

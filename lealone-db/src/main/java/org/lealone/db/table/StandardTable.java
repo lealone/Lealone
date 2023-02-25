@@ -403,9 +403,9 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         // 只锁主索引即可
-        return primaryIndex.tryLock(session, row, lockColumns, isForUpdate);
+        return primaryIndex.tryLock(session, row, lockColumns);
     }
 
     @Override

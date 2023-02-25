@@ -106,16 +106,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf);
 
-    public default boolean tryLock(K key) {
-        Object oldTValue = getTransactionalValue(key);
-        return tryLock(key, oldTValue);
-    }
-
-    public default boolean tryLock(K key, Object oldTValue) {
-        return tryLock(key, oldTValue, null, false);
-    }
-
-    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes, boolean isForUpdate);
+    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes);
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
 

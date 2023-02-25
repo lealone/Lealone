@@ -18,19 +18,16 @@ public class UndoLogRecord {
     private Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     private final Object oldValue;
     private final TransactionalValue newTV;
-    private final boolean isForUpdate;
     private volatile boolean undone;
 
     UndoLogRecord next;
     UndoLogRecord prev;
 
-    public UndoLogRecord(String mapName, Object key, Object oldValue, TransactionalValue newTV,
-            boolean isForUpdate) {
+    public UndoLogRecord(String mapName, Object key, Object oldValue, TransactionalValue newTV) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
         this.newTV = newTV;
-        this.isForUpdate = isForUpdate;
     }
 
     public String getMapName() {
@@ -59,7 +56,7 @@ public class UndoLogRecord {
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
     public void commit(AOTransactionEngine transactionEngine) {
-        if (undone || isForUpdate)
+        if (undone)
             return;
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
         if (map == null) {
@@ -92,7 +89,7 @@ public class UndoLogRecord {
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AOTransactionEngine transactionEngine) {
-        if (undone || isForUpdate)
+        if (undone)
             return;
         StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
@@ -107,7 +104,7 @@ public class UndoLogRecord {
 
     // 用于redo时，不关心oldValue
     public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine transactionEngine) {
-        if (undone || isForUpdate)
+        if (undone)
             return;
         StorageMap<?, ?> map = transactionEngine.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了

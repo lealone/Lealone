@@ -532,7 +532,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         TransactionalValue newTV = new TransactionalValue(value, transaction);
         String mapName = getName();
-        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newTV, false);
+        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newTV);
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
@@ -579,7 +579,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             key = map.append(newTV);
         // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
         // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-        transaction.undoLog.add(map.getName(), key, null, newTV, false);
+        transaction.undoLog.add(map.getName(), key, null, newTV);
         if (handler != null)
             handler.handle(new AsyncResult<>(key));
         return key;
@@ -614,7 +614,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Object oldValue = tv.getValue();
         tv.setTransaction(transaction); // 二级索引需要设置
         tv.setValue(value);
-        transaction.undoLog.add(getName(), key, oldValue, tv, false);
+        transaction.undoLog.add(getName(), key, oldValue, tv);
         return Transaction.OPERATION_COMPLETE;
     }
 
@@ -637,16 +637,12 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes, boolean isForUpdate) {
+    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes) {
         DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
 
         if (tv.tryLock(transaction)) {
-            if (isForUpdate) {
-                // select for update，在提交阶段解锁
-                transaction.undoLog.add(getName(), key, null, tv, true);
-            }
             return true;
         } else {
             // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试

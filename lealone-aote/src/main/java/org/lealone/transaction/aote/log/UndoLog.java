@@ -36,9 +36,8 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV,
-            boolean isForUpdate) {
-        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV, isForUpdate);
+    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV) {
+        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV);
         if (first == null) {
             first = last = r;
         } else {

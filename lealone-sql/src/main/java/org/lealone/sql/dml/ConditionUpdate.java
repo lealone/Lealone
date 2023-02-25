@@ -104,7 +104,7 @@ public abstract class ConditionUpdate extends ManipulationStatement {
         }
 
         protected boolean tryLockRow(Row row, int[] lockColumns) {
-            if (!table.tryLockRow(session, row, lockColumns, false)) {
+            if (!table.tryLockRow(session, row, lockColumns)) {
                 oldRow = row;
                 return false;
             }

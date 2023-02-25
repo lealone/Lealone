@@ -246,7 +246,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         throw newUnsupportedException();
     }
 

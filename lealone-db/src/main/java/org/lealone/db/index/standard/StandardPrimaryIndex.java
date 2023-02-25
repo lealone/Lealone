@@ -239,9 +239,9 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryLock(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    public boolean tryLock(ServerSession session, Row row, int[] lockColumns) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        return map.tryLock(ValueLong.get(row.getKey()), row.getTValue(), lockColumns, isForUpdate);
+        return map.tryLock(ValueLong.get(row.getKey()), row.getTValue(), lockColumns);
     }
 
     @Override

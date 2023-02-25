@@ -935,7 +935,7 @@ public class TableFilter extends ColumnResolverBase {
      */
     public boolean lockRow() {
         if (state == FOUND) {
-            return table.tryLockRow(session, get(), null, true);
+            return table.tryLockRow(session, get(), null);
         }
         return false;
     }
