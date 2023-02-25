@@ -227,34 +227,30 @@ public class AOTransaction implements Transaction {
     }
 
     private void commitFinal() {
-        AOTransaction t = transactionEngine.removeTransaction(transactionId);
-        if (t == null)
+        // 避免重复提交
+        if (!transactionEngine.containsTransaction(transactionId))
             return;
-        t.commitTimestamp = t.transactionEngine.nextEvenTransactionId(); // 生成新的
+        commitTimestamp = transactionEngine.nextEvenTransactionId(); // 生成新的
         // 先提交，事务变成结束状态再解锁
-        UndoLog undoLog = t.undoLog;
         undoLog.commit(transactionEngine);
-        t.endTransaction(false);
-        undoLog.unlock();
+        endTransaction();
         // wakeUpWaitingTransactions(); //在session级调用
     }
 
-    private void endTransaction(boolean remove) {
-        boolean undoLogIsEmpty = undoLog.isEmpty();
+    private void endTransaction() {
         savepoints = null;
         undoLog = null;
-        if (remove)
-            transactionEngine.removeTransaction(transactionId);
-        unlock(undoLogIsEmpty);
+        transactionEngine.removeTransaction(transactionId);
+        unlock();
     }
 
-    // 加行锁后还没走到创建redo log那一步，中间就出错了，此时需要解锁
-    private void unlock(boolean undoLogIsEmpty) {
-        if (undoLogIsEmpty && locks != null) {
+    // 无论是提交还是回滚都需要解锁
+    private void unlock() {
+        if (locks != null) {
             for (TransactionalValue tv : locks)
                 tv.unlock();
+            locks = null;
         }
-        locks = null;
     }
 
     @Override
@@ -360,9 +356,7 @@ public class AOTransaction implements Transaction {
             checkNotClosed();
             rollbackTo(0);
         } finally {
-            UndoLog undoLog = this.undoLog;
-            endTransaction(true);
-            undoLog.unlock();
+            endTransaction();
             // wakeUpWaitingTransactions(); //在session级调用
         }
     }
@@ -399,7 +393,14 @@ public class AOTransaction implements Transaction {
     }
 
     private void rollbackTo(int toLogId) {
+        int logId = undoLog.getLogId();
         undoLog.rollbackTo(transactionEngine, toLogId);
+        if (locks != null) {
+            while (logId-- > toLogId) {
+                TransactionalValue tv = locks.removeLast();
+                tv.unlock();
+            }
+        }
     }
 
     protected void checkNotClosed() {

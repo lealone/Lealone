@@ -90,11 +90,6 @@ public class UndoLogRecord {
         }
     }
 
-    public void unlock() {
-        if (newTV != null)
-            newTV.unlock();
-    }
-
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AOTransactionEngine transactionEngine) {
         if (undone || isForUpdate)
@@ -108,7 +103,6 @@ public class UndoLogRecord {
                 newTV.rollback(oldValue);
             }
         }
-        unlock();
     }
 
     // 用于redo时，不关心oldValue

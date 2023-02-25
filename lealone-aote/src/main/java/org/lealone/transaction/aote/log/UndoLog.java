@@ -76,14 +76,6 @@ public class UndoLog {
         }
     }
 
-    public void unlock() {
-        UndoLogRecord r = first;
-        while (r != null) {
-            r.unlock();
-            r = r.next;
-        }
-    }
-
     public void rollbackTo(AOTransactionEngine transactionEngine, int toLogId) {
         while (logId > toLogId) {
             UndoLogRecord r = removeLast();
