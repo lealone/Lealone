@@ -167,6 +167,7 @@ class NioEventLoopClient extends NetClientBase {
             socket.setSendBufferSize(socketSendBuffer);
             socket.setTcpNoDelay(true);
             socket.setKeepAlive(true);
+            socket.setReuseAddress(true);
 
             ClientAttachment attachment = new ClientAttachment();
             attachment.connectionManager = connectionManager;
