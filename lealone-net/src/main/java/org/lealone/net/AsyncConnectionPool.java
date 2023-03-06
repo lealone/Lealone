@@ -16,8 +16,14 @@ public class AsyncConnectionPool {
     private final CopyOnWriteArrayList<AsyncConnection> list = new CopyOnWriteArrayList<>();
 
     public AsyncConnection getConnection(Map<String, String> config) {
-        if (!isShared(config))
+        if (!isShared(config)) {
+            // 专用连接如果空闲了也可以直接复用
+            for (AsyncConnection c : list) {
+                if (c.getMaxSharedSize() == 1 && c.getSharedSize() == 0)
+                    return c;
+            }
             return null;
+        }
         AsyncConnection best = null;
         int min = Integer.MAX_VALUE;
         for (AsyncConnection c : list) {
