@@ -35,7 +35,7 @@ import org.lealone.sql.expression.ValueExpression;
  * @author H2 Group
  * @author zhh
  */
-public class Update extends ConditionUpdate {
+public class Update extends UpDel {
 
     private final ArrayList<Column> columns = Utils.newSmallArrayList();
     private final HashMap<Column, Expression> expressionMap = new HashMap<>();
@@ -117,7 +117,7 @@ public class Update extends ConditionUpdate {
         return new YieldableUpdate(this, asyncHandler);
     }
 
-    private static class YieldableUpdate extends YieldableConditionUpdate {
+    private static class YieldableUpdate extends YieldableUpDel {
 
         final Update statement;
         final Column[] columns;

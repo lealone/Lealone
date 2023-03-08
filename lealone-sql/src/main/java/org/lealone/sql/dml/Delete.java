@@ -23,7 +23,7 @@ import org.lealone.sql.executor.YieldableBase;
  * @author H2 Group
  * @author zhh
  */
-public class Delete extends ConditionUpdate {
+public class Delete extends UpDel {
 
     public Delete(ServerSession session) {
         super(session);
@@ -67,7 +67,7 @@ public class Delete extends ConditionUpdate {
         return new YieldableDelete(this, asyncHandler);
     }
 
-    private static class YieldableDelete extends YieldableConditionUpdate {
+    private static class YieldableDelete extends YieldableUpDel {
 
         final Delete statement;
 

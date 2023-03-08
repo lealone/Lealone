@@ -23,7 +23,7 @@ import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 import org.lealone.sql.optimizer.TableFilter;
 
 // update和delete的基类
-public abstract class ConditionUpdate extends ManipulationStatement {
+public abstract class UpDel extends ManipulationStatement {
 
     protected TableFilter tableFilter;
     protected Expression condition;
@@ -33,7 +33,7 @@ public abstract class ConditionUpdate extends ManipulationStatement {
      */
     protected Expression limitExpr;
 
-    public ConditionUpdate(ServerSession session) {
+    public UpDel(ServerSession session) {
         super(session);
     }
 
@@ -72,7 +72,7 @@ public abstract class ConditionUpdate extends ManipulationStatement {
         }
     }
 
-    protected static abstract class YieldableConditionUpdate extends YieldableLoopUpdateBase {
+    protected static abstract class YieldableUpDel extends YieldableLoopUpdateBase {
 
         protected final TableFilter tableFilter;
         protected final Table table;
@@ -81,7 +81,7 @@ public abstract class ConditionUpdate extends ManipulationStatement {
         protected boolean hasNext;
         protected Row oldRow;
 
-        public YieldableConditionUpdate(StatementBase statement,
+        public YieldableUpDel(StatementBase statement,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler, TableFilter tableFilter,
                 Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
