@@ -50,7 +50,8 @@ public class Schema extends DbObjectBase {
      */
     private final HashSet<String> temporaryUniqueNames = new HashSet<>();
 
-    private final TransactionalDbObjects[] dbObjectsArray = new TransactionalDbObjects[DbObjectType.TYPES.length];
+    private final TransactionalDbObjects[] dbObjectsArray = //
+            new TransactionalDbObjects[DbObjectType.TYPES.length];
     private final DbObjectLock[] locks = new DbObjectLock[DbObjectType.TYPES.length];
 
     private final User owner;
@@ -698,8 +699,7 @@ public class Schema extends DbObjectBase {
             StorageEngine engine = PluginManager.getPlugin(StorageEngine.class, data.storageEngineName);
             if (engine == null) {
                 try {
-                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName)
-                            .getDeclaredConstructor().newInstance();
+                    engine = Utils.newInstance(data.storageEngineName);
                     PluginManager.register(engine);
                 } catch (Exception e) {
                     throw DbException.convert(e);

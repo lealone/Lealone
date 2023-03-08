@@ -1531,8 +1531,7 @@ public class Database implements DataHandler, DbObject {
             eventListener = null;
         } else {
             try {
-                eventListener = (DatabaseEventListener) Utils.loadUserClass(className)
-                        .getDeclaredConstructor().newInstance();
+                eventListener = Utils.newInstance(className);
                 eventListener.init(name);
             } catch (Throwable e) {
                 throw DbException.get(ErrorCode.ERROR_SETTING_DATABASE_EVENT_LISTENER_2, e, className,
