@@ -255,8 +255,8 @@ public class AOTransaction implements Transaction {
 
     @Override
     public void wakeUpWaitingTransactions() {
-        LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
         while (true) {
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
             if (waitingTransactions != null && waitingTransactions != EMPTY_LINKED_LIST) {
                 for (WaitingTransaction waitingTransaction : waitingTransactions) {
                     waitingTransaction.wakeUp();
@@ -264,7 +264,6 @@ public class AOTransaction implements Transaction {
             }
             if (waitingTransactionsRef.compareAndSet(waitingTransactions, null))
                 break;
-            waitingTransactions = waitingTransactionsRef.get();
         }
         lockedBy = null;
     }
@@ -282,10 +281,10 @@ public class AOTransaction implements Transaction {
         transaction.waitFor(this);
 
         WaitingTransaction wt = new WaitingTransaction(key, transaction, listener);
-        LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
         while (true) {
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
             // 如果已经提交了，通知重试
-            if (isClosed()) {
+            if (isClosed() || waitingTransactions == null) {
                 transaction.waitFor(null);
                 session.setStatus(oldSessionStatus);
                 return OPERATION_NEED_RETRY;
@@ -296,7 +295,6 @@ public class AOTransaction implements Transaction {
             if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
                 return OPERATION_NEED_WAIT;
             }
-            waitingTransactions = waitingTransactionsRef.get();
         }
     }
 
