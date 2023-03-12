@@ -308,14 +308,12 @@ public class AOTransaction implements Transaction {
         if (lockedBy != null && lockStartTime != 0
                 && System.currentTimeMillis() - lockStartTime > session.getLockTimeout()) {
             boolean isDeadlock = false;
-            WaitingTransaction waitingTransaction = null;
             LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
             if (waitingTransactions == null)
                 return;
             for (WaitingTransaction wt : waitingTransactions) {
                 if (wt.getTransaction() == lockedBy) {
                     isDeadlock = true;
-                    waitingTransaction = wt;
                     break;
                 }
             }
@@ -329,23 +327,23 @@ public class AOTransaction implements Transaction {
                     break;
                 }
             }
+            String keyStr = waitingTransaction2.getKey().toString();
             if (isDeadlock) {
-                String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
-                msg += "\r\n"
-                        + getMsg(lockedBy.transactionId, lockedBy.session, this, waitingTransaction);
+                String msg = getMsg(transactionId, session, lockedBy);
+                msg += "\r\n" + getMsg(lockedBy.transactionId, lockedBy.session, this);
+
+                msg += ", the locked object: " + keyStr;
                 throw DbException.get(ErrorCode.DEADLOCK_1, msg);
             } else {
-                String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
-                throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, msg);
+                String msg = getMsg(transactionId, session, lockedBy);
+                throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, keyStr, msg);
             }
         }
     }
 
-    private static String getMsg(long tid, Session session, AOTransaction transaction,
-            WaitingTransaction waitingTransaction) {
+    private static String getMsg(long tid, Session session, AOTransaction transaction) {
         return "transaction #" + tid + " in session " + session + " wait for transaction #"
-                + transaction.transactionId + " in session " + transaction.session + ", key: "
-                + waitingTransaction.getKey();
+                + transaction.transactionId + " in session " + transaction.session;
     }
 
     @Override
