@@ -19,7 +19,6 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     protected final ConcurrentLinkedQueue<PageOperation> pageOperations = new ConcurrentLinkedQueue<>();
     protected final AtomicLong size = new AtomicLong();
     protected final int handlerId;
-    protected final int waitingQueueSize;
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
     protected PageOperation lockedTask;
@@ -28,7 +27,6 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
         super(name);
         setDaemon(false);
         this.handlerId = handlerId;
-        this.waitingQueueSize = waitingQueueSize;
         waitingHandlers = new AtomicReferenceArray<>(waitingQueueSize);
     }
 
@@ -63,7 +61,7 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     @Override
     public void wakeUpWaitingHandlers() {
         if (hasWaitingHandlers.compareAndSet(true, false)) {
-            for (int i = 0; i < waitingQueueSize; i++) {
+            for (int i = 0, length = waitingHandlers.length(); i < length; i++) {
                 PageOperationHandler handler = waitingHandlers.get(i);
                 if (handler != null) {
                     handler.wakeUp();
