@@ -9,13 +9,13 @@
     <parent>
         <groupId>org.lealone</groupId>
         <artifactId>lealone</artifactId>
-        <version>5.1.2-SNAPSHOT</version>
+        <version>5.1.2</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>lealone-client</artifactId>
     <packaging>jar</packaging>
-    <version>5.1.2-SNAPSHOT</version>
+    <version>5.1.2</version>
 
     <dependencies>
         <dependency>
