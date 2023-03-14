@@ -91,6 +91,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return maxKey.get();
     }
 
+    public long incrementAndGetMaxKey() {
+        return maxKey.incrementAndGet();
+    }
+
     @Override
     public long getDiskSpaceUsed() {
         return 0;

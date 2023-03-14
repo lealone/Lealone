@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree.page;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
@@ -20,7 +21,7 @@ public abstract class PageOperations {
     // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove、Append
     public static abstract class SingleWrite<K, V, R> implements PageOperation {
         final BTreeMap<K, V> map;
-        final K key;
+        K key; // 允许append操作设置
         AsyncHandler<AsyncResult<R>> resultHandler;
 
         Page p; // 最终要操作的leaf page
@@ -192,8 +193,8 @@ public abstract class PageOperations {
 
     public static class Append<K, V> extends Put<K, V, K> {
 
-        public Append(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<K>> resultHandler) {
-            super(map, key, value, resultHandler);
+        public Append(BTreeMap<K, V> map, V value, AsyncHandler<AsyncResult<K>> resultHandler) {
+            super(map, null, value, resultHandler);
         }
 
         @Override
@@ -219,7 +220,9 @@ public abstract class PageOperations {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         protected Object writeLocal(int index) {
+            key = (K) ValueLong.get(map.incrementAndGetMaxKey());
             p.markDirty(true);
             insertLeaf(index, value);
             return key;

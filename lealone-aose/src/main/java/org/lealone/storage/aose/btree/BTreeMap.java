@@ -13,7 +13,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.value.ValueLong;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -540,14 +539,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return append0(value, handler);
     }
 
-    @SuppressWarnings("unchecked")
     private K append0(V value, AsyncHandler<AsyncResult<K>> handler) {
         checkWrite(value);
-        // 先得到一个long类型的key
-        K key = (K) ValueLong.get(maxKey.incrementAndGet());
-        Append<K, V> append = new Append<>(this, key, value, handler);
-        runPageOperation(append);
-        return key;
+        Append<K, V> append = new Append<>(this, value, handler);
+        return runPageOperation(append);
     }
 
     @Override
