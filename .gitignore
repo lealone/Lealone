@@ -4,4 +4,5 @@
 .settings
 .classpath
 .project
+.idea
 target
