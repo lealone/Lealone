@@ -97,10 +97,7 @@ public class Scheduler extends PageOperationHandlerBase
             executeNextStatement();
             runEventLoop();
         }
-        if (netEventLoop != null) {
-            netEventLoop.close();
-            netEventLoop = null;
-        }
+        netEventLoop.close();
     }
 
     private void runQueueTasks(ConcurrentLinkedQueue<AsyncTask> queue) {
@@ -376,13 +373,12 @@ public class Scheduler extends PageOperationHandlerBase
 
     private void runEventLoop() {
         try {
+            netEventLoop.write();
             netEventLoop.select();
-        } catch (IOException e1) {
-            logger.warn("Failed to select", e);
-            return;
+            handleSelectedKeys();
+        } catch (Throwable t) {
+            logger.warn("Failed to runEventLoop", t);
         }
-        netEventLoop.write();
-        handleSelectedKeys();
     }
 
     private void handleSelectedKeys() {
