@@ -75,7 +75,7 @@ public abstract class PageOperations {
                     return PageOperationResult.RETRY;
                 }
                 p = pRef.page; // 使用最新的page
-                write(poHandler);
+                write();
                 if (childOperation != null) {
                     return runChildOperation(poHandler);
                 } else {
@@ -86,7 +86,7 @@ public abstract class PageOperations {
             }
         }
 
-        private void write(PageOperationHandler poHandler) {
+        private void write() {
             int index = getKeyIndex();
             result = writeLocal(index);
 
