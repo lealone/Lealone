@@ -20,26 +20,12 @@ import org.lealone.sql.SQLStatement;
 public class AlterDatabase extends DatabaseStatement {
 
     private final Database db;
-    private String hostIds; // 可以指定具体的hostId
 
     public AlterDatabase(ServerSession session, Database db, RunMode runMode,
             CaseInsensitiveMap<String> parameters) {
         super(session, db.getName());
         this.db = db;
-        this.runMode = runMode;
-        // 先使用原有的参数，然后再用新的覆盖
-        this.parameters = new CaseInsensitiveMap<>(db.getParameters());
-        if (parameters != null && !parameters.isEmpty()) {
-            hostIds = parameters.get("hostIds");
-            if (hostIds != null) {
-                hostIds = hostIds.trim();
-                if (hostIds.isEmpty())
-                    hostIds = null;
-            }
-
-            this.parameters.putAll(parameters);
-            validateParameters();
-        }
+        validateParameters();
     }
 
     @Override
@@ -54,28 +40,9 @@ public class AlterDatabase extends DatabaseStatement {
         DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
         if (lock == null)
             return -1;
-
-        RunMode oldRunMode = db.getRunMode();
-        if (runMode == null) {
-            runMode = oldRunMode;
-        }
-        alterDatabase();
-        updateLocalMeta();
-        return 0;
-    }
-
-    private void alterDatabase() {
-        if (runMode != null)
-            db.setRunMode(runMode);
         if (parameters != null)
             db.alterParameters(parameters);
-        if (replicationParameters != null)
-            db.setReplicationParameters(replicationParameters);
-        if (nodeAssignmentParameters != null)
-            db.setNodeAssignmentParameters(nodeAssignmentParameters);
-    }
-
-    private void updateLocalMeta() {
-        LealoneDatabase.getInstance().updateMeta(session, db);
+        lealoneDB.updateMeta(session, db);
+        return 0;
     }
 }

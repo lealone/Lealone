@@ -27,7 +27,6 @@ public class CreateDatabase extends DatabaseStatement {
             CaseInsensitiveMap<String> parameters) {
         super(session, dbName);
         this.ifNotExists = ifNotExists;
-        this.runMode = runMode;
         this.parameters = parameters;
     }
 
@@ -53,8 +52,6 @@ public class CreateDatabase extends DatabaseStatement {
         validateParameters();
         int id = getObjectId(lealoneDB);
         Database newDB = new Database(id, dbName, parameters);
-        newDB.setReplicationParameters(replicationParameters);
-        newDB.setNodeAssignmentParameters(nodeAssignmentParameters);
         newDB.setRunMode(RunMode.CLIENT_SERVER);
         lealoneDB.addDatabaseObject(session, newDB, lock);
         // 将缓存过期掉

@@ -12,7 +12,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 
@@ -22,10 +21,7 @@ import org.lealone.db.session.ServerSession;
 public abstract class DatabaseStatement extends DefinitionStatement {
 
     protected final String dbName;
-    protected RunMode runMode;
     protected CaseInsensitiveMap<String> parameters;
-    protected CaseInsensitiveMap<String> replicationParameters;
-    protected CaseInsensitiveMap<String> nodeAssignmentParameters;
 
     protected DatabaseStatement(ServerSession session, String dbName) {
         super(session);
@@ -53,13 +49,9 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     }
 
     protected void validateParameters() {
-        if (this.parameters == null)
-            this.parameters = new CaseInsensitiveMap<>();
-
-        // 第一步: 验证可识别的参数
+        if (parameters == null || parameters.isEmpty())
+            return;
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
-        removeParameters(parameters);
-
         HashSet<String> recognizedSettingOptions = new HashSet<>(DbSetting.values().length);
         for (DbSetting s : DbSetting.values())
             recognizedSettingOptions.add(s.name());
@@ -70,19 +62,5 @@ public abstract class DatabaseStatement extends DefinitionStatement {
                     + "database setting options: %s", //
                     parameters.keySet(), dbName, recognizedSettingOptions));
         }
-
-        // 第二步: 初始化replicationParameters、nodeAssignmentParameters、database settings
-        parameters = new CaseInsensitiveMap<>(this.parameters);
-        removeParameters(parameters);
-
-        // parameters剩下的当成database setting
-    }
-
-    private static void removeParameters(CaseInsensitiveMap<String> parameters) {
-        parameters.remove("hostIds");
-        parameters.remove("replication_strategy");
-        parameters.remove("node_assignment_strategy");
-        parameters.remove("_operationNode_");
-        parameters.remove("_removeHostIds_");
     }
 }

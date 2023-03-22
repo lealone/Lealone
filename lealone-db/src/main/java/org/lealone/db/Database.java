@@ -202,9 +202,6 @@ public class Database implements DataHandler, DbObject {
     private final String storagePath; // 不使用原始的名称，而是用id替换数据库名
     private LobStorage lobStorage;
 
-    private Map<String, String> replicationParameters;
-    private Map<String, String> nodeAssignmentParameters;
-
     private RunMode runMode = RunMode.CLIENT_SERVER;
 
     private final TableAlterHistory tableAlterHistory = new TableAlterHistory();
@@ -338,22 +335,6 @@ public class Database implements DataHandler, DbObject {
         parameters.putAll(newParameters);
     }
 
-    public Map<String, String> getReplicationParameters() {
-        return replicationParameters;
-    }
-
-    public void setReplicationParameters(Map<String, String> replicationParameters) {
-        this.replicationParameters = replicationParameters;
-    }
-
-    public Map<String, String> getNodeAssignmentParameters() {
-        return nodeAssignmentParameters;
-    }
-
-    public void setNodeAssignmentParameters(Map<String, String> nodeAssignmentParameters) {
-        this.nodeAssignmentParameters = nodeAssignmentParameters;
-    }
-
     public void setRunMode(RunMode runMode) {
         if (runMode != null) {
             this.runMode = runMode;
@@ -369,8 +350,6 @@ public class Database implements DataHandler, DbObject {
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storages.putAll(storages);
         db.runMode = runMode;
-        db.replicationParameters = replicationParameters;
-        db.replicationParameters = nodeAssignmentParameters;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
         for (ServerSession s : userSessions) {
@@ -1976,7 +1955,6 @@ public class Database implements DataHandler, DbObject {
     }
 
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
-            Map<String, String> replicationProperties, Map<String, String> nodeAssignmentProperties,
             RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(quotedDbName);
@@ -2014,8 +1992,7 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, replicationParameters,
-                nodeAssignmentParameters, runMode);
+        return getCreateSQL(quoteIdentifier(name), parameters, runMode);
     }
 
     @Override
