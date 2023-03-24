@@ -199,6 +199,12 @@ public class Scheduler extends PageOperationHandlerBase
         YieldableCommand last = null;
         while (true) {
             YieldableCommand c;
+            // 如果执行insert语句时执行Prepared类型的select语句，
+            // 当select语句让出执行权时可能会导致insert语句被执行两次
+            // 见SchedulerYieldBugTest
+            if (nextBestCommand == last) {
+                nextBestCommand = null;
+            }
             if (nextBestCommand != null) {
                 c = nextBestCommand;
                 nextBestCommand = null;
