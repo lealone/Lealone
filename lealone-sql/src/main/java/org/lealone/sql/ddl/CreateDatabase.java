@@ -37,7 +37,7 @@ public class CreateDatabase extends DatabaseStatement {
 
     @Override
     public int update() {
-        checkRight(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
+        LealoneDatabase.checkAdminRight(session, "create database");
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
         DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
         if (lock == null)

@@ -122,4 +122,10 @@ public class LealoneDatabase extends Database {
         INSTANCE = new LealoneDatabase();
         return INSTANCE;
     }
+
+    // 只有用管理员连接到LealoneDatabase才能执行某些语句，比如CREATE/ALTER/DROP DATABASE
+    public static void checkAdminRight(ServerSession session, String stmt) {
+        if (!(LealoneDatabase.getInstance() == session.getDatabase() && session.getUser().isAdmin()))
+            throw DbException.get(ErrorCode.LEALONE_DATABASE_ADMIN_RIGHT_1, stmt);
+    }
 }

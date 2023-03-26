@@ -345,8 +345,6 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseAlter();
                 } else if (readIf("ANALYZE")) {
                     s = parseAnalyze();
-                } else if (readIf("ADMIN")) {
-                    s = parseAdmin();
                 }
                 break;
             case 'b':
@@ -556,20 +554,6 @@ public class LealoneSQLParser implements SQLParser {
         return command;
     }
 
-    private StatementBase parseAdmin() {
-        if (readIf("SHUTDOWN")) {
-            return parseShutdownServer();
-        } else {
-            throw getSyntaxError();
-        }
-    }
-
-    private StatementBase parseShutdownServer() {
-        read("SERVER");
-        int port = readInt();
-        return new ShutdownServer(session, port);
-    }
-
     private TransactionStatement parseBegin() {
         TransactionStatement command;
         if (!readIf("WORK")) {
@@ -591,7 +575,7 @@ public class LealoneSQLParser implements SQLParser {
         return command;
     }
 
-    private ShutdownDatabase parseShutdown() {
+    private StatementBase parseShutdown() {
         int type = SQLStatement.SHUTDOWN;
         if (readIf("IMMEDIATELY")) {
             type = SQLStatement.SHUTDOWN_IMMEDIATELY;
@@ -599,10 +583,17 @@ public class LealoneSQLParser implements SQLParser {
             type = SQLStatement.SHUTDOWN_COMPACT;
         } else if (readIf("DEFRAG")) {
             type = SQLStatement.SHUTDOWN_DEFRAG;
+        } else if (readIf("SERVER")) {
+            return parseShutdownServer();
         } else {
             readIf("SCRIPT");
         }
         return new ShutdownDatabase(session, type);
+    }
+
+    private StatementBase parseShutdownServer() {
+        int port = readInt();
+        return new ShutdownServer(session, port);
     }
 
     private TransactionStatement parseRollback() {

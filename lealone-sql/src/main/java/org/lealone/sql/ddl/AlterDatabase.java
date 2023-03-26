@@ -35,7 +35,7 @@ public class AlterDatabase extends DatabaseStatement {
 
     @Override
     public int update() {
-        checkRight();
+        LealoneDatabase.checkAdminRight(session, "alter database");
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
         DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
         if (lock == null)

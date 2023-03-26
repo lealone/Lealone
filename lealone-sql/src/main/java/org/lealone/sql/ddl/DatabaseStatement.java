@@ -8,11 +8,8 @@ package org.lealone.sql.ddl;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.DbSetting;
-import org.lealone.db.LealoneDatabase;
-import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 
 //CREATE/ALTER/DROP DATABASE语句在所有节点上都会执行一次，
@@ -31,21 +28,6 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     @Override
     public boolean isDatabaseStatement() {
         return true;
-    }
-
-    protected void checkRight() {
-        checkRight(null);
-    }
-
-    protected void checkRight(Integer errorCode) {
-        // 只有用管理员连接到LealoneDatabase才能执行CREATE/ALTER/DROP DATABASE语句
-        if (!(LealoneDatabase.getInstance() == session.getDatabase() && session.getUser().isAdmin())) {
-            if (errorCode != null)
-                throw DbException.get(errorCode.intValue());
-            else
-                throw DbException.get(ErrorCode.GENERAL_ERROR_1,
-                        "create/alter/drop database only allowed for the super user");
-        }
     }
 
     protected void validateParameters() {

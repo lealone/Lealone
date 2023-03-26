@@ -465,7 +465,7 @@ public interface SQLStatement extends SQLCommand {
     int SHUTDOWN_DEFRAG = 143;
 
     /**
-     * The type of a SHUTDOWN SERVER  statement.
+     * The type of a SHUTDOWN SERVER statement.
      */
     int SHUTDOWN_SERVER = 144;
 
