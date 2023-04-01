@@ -42,18 +42,27 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         if (isStarted())
             return;
         super.start();
+        ProtocolServerEngine.startedServers.add(this);
     }
 
     @Override
-    public synchronized void stop() {
-        if (isStopped())
-            return;
-        super.stop();
-
-        for (T c : connections) {
-            c.close();
+    public void stop() {
+        synchronized (this) {
+            if (isStopped())
+                return;
+            super.stop();
+            // 不关闭连接，执行SHUTDOWN SERVER后只是不能创建新连接
+            // for (T c : connections) {
+            // c.close();
+            // }
+            ProtocolServerEngine.startedServers.remove(this);
         }
-        SchedulerFactory.destroy();
+        // 同步块不能包含下面的代码，否则执行System.exit时会触发ShutdownHook又调用到stop，
+        // 而System.exit又需要等所有ShutdownHook结束后才能退出，所以就死锁了
+        if (ProtocolServerEngine.startedServers.isEmpty()) {
+            SchedulerFactory.destroy();
+            System.exit(0);
+        }
     }
 
     protected int getConnectionSize() {

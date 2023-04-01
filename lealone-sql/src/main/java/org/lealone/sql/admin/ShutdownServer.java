@@ -7,7 +7,6 @@ package org.lealone.sql.admin;
 
 import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.PluginManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
@@ -34,18 +33,10 @@ public class ShutdownServer extends AdminStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "shutdown server");
-        ThreadUtils.start("ShutdownServerThread", () -> {
-            try {
-                Thread.sleep(1000); // 返回结果给客户端需要一点时间，如果立刻关闭网络连接就不能发送结果了
-            } catch (InterruptedException e) {
-            }
-            for (ProtocolServerEngine e : PluginManager.getPlugins(ProtocolServerEngine.class)) {
-                // 没有初始化的不用管
-                if (e.isInited()) {
-                    ProtocolServer server = e.getProtocolServer();
-                    if (server.getPort() == port && server.isStarted()) {
-                        server.stop();
-                    }
+        ThreadUtils.start("ShutdownServerThread-Port-" + port, () -> {
+            for (ProtocolServer server : ProtocolServerEngine.startedServers) {
+                if (server.getPort() == port) {
+                    server.stop();
                 }
             }
         });

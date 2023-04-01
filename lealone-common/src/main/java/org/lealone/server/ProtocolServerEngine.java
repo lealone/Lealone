@@ -5,9 +5,14 @@
  */
 package org.lealone.server;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.lealone.db.PluggableEngine;
 
 public interface ProtocolServerEngine extends PluggableEngine {
+
+    public static final List<ProtocolServer> startedServers = new CopyOnWriteArrayList<>();
 
     ProtocolServer getProtocolServer();
 
