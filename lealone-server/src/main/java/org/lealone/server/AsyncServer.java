@@ -61,7 +61,9 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         // 而System.exit又需要等所有ShutdownHook结束后才能退出，所以就死锁了
         if (ProtocolServerEngine.startedServers.isEmpty()) {
             SchedulerFactory.destroy();
-            System.exit(0);
+            // 如果当前线程是ShutdownHook不能再执行System.exit，否则无法退出
+            if (!Thread.currentThread().getName().contains("ShutdownHook"))
+                System.exit(0);
         }
     }
 
