@@ -6,6 +6,7 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,6 +16,7 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
@@ -24,6 +26,7 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
+import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
@@ -36,12 +39,16 @@ import org.lealone.db.index.standard.StandardDelegateIndex;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.index.standard.StandardSecondaryIndex;
 import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueNull;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageSetting;
 import org.lealone.transaction.Transaction;
@@ -59,9 +66,9 @@ public class StandardTable extends Table {
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
 
-    private long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
+    private long lastModificationId;
     private boolean containsLargeObject;
     private Column rowIdColumn;
 
@@ -317,14 +324,15 @@ public class StandardTable extends Table {
     }
 
     // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
-    private AsyncHandler<AsyncResult<Integer>> createHandler(AsyncCallback<Integer> ac,
-            AtomicInteger count, AtomicBoolean isFailed) {
+    private AsyncHandler<AsyncResult<Integer>> createHandler(ServerSession session,
+            AsyncCallback<Integer> ac, AtomicInteger count, AtomicBoolean isFailed) {
         return ar -> {
             if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
                 ac.setAsyncResult(ar);
             }
             if (count.decrementAndGet() == 0 && !isFailed.get()) {
                 ac.setAsyncResult(ar);
+                analyzeIfRequired(session);
             }
         };
     }
@@ -344,7 +352,7 @@ public class StandardTable extends Table {
                 // 第一个是PrimaryIndex
                 for (int i = 0; i < size && !isFailed.get(); i++) {
                     Index index = indexesExcludeDelegate.get(i);
-                    index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+                    index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
                 }
             } else {
                 // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
@@ -352,11 +360,13 @@ public class StandardTable extends Table {
                     if (ar.isSucceeded()) {
                         if (count.decrementAndGet() == 0) {
                             ac.setAsyncResult(ar);
+                            analyzeIfRequired(session);
                             return;
                         }
                         for (int i = 1; i < size && !isFailed.get(); i++) {
                             Index index = indexesExcludeDelegate.get(i);
-                            index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+                            index.add(session, row)
+                                    .onComplete(createHandler(session, ac, count, isFailed));
                         }
                     } else {
                         ac.setAsyncResult(ar.getCause());
@@ -367,7 +377,6 @@ public class StandardTable extends Table {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
@@ -387,13 +396,12 @@ public class StandardTable extends Table {
             for (int i = 0; i < size && !isFailed.get(); i++) {
                 Index index = indexesExcludeDelegate.get(i);
                 index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
-                        .onComplete(createHandler(ac, count, isFailed));
+                        .onComplete(createHandler(session, ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
@@ -410,13 +418,12 @@ public class StandardTable extends Table {
             for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
                 Index index = indexesExcludeDelegate.get(i);
                 index.remove(session, row, isLockedBySelf)
-                        .onComplete(createHandler(ac, count, isFailed));
+                        .onComplete(createHandler(session, ac, count, isFailed));
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
@@ -434,20 +441,6 @@ public class StandardTable extends Table {
             index.truncate(session);
         }
         changesSinceAnalyze = 0;
-    }
-
-    protected void analyzeIfRequired(ServerSession session) {
-        if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
-            return;
-        }
-        changesSinceAnalyze = 0;
-        int n = 2 * nextAnalyze;
-        if (n > 0) {
-            nextAnalyze = n;
-        }
-        // TODO
-        // int rows = session.getDatabase().getSettings().analyzeSample / 10;
-        // Analyze.analyzeTable(session, this, rows, false);
     }
 
     @Override
@@ -597,5 +590,114 @@ public class StandardTable extends Table {
     @Override
     public Column[] getOldColumns() {
         return oldColumns;
+    }
+
+    private void analyzeIfRequired(ServerSession session) {
+        if (nextAnalyze == 0)
+            return;
+
+        synchronized (this) {
+            if (nextAnalyze > changesSinceAnalyze++) {
+                return;
+            }
+            changesSinceAnalyze = 0;
+            int n = 2 * nextAnalyze;
+            if (n > 0) {
+                nextAnalyze = n;
+            }
+        }
+
+        int rows = session.getDatabase().getSettings().analyzeSample / 10;
+        analyzeTable(session, this, rows, false);
+    }
+
+    /**
+     * Analyze this table.
+     *
+     * @param session the session
+     * @param table the table
+     * @param sample the number of sample rows
+     * @param manual whether the command was called by the user
+     */
+    public static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
+        if (table.getTableType() != TableType.STANDARD_TABLE || table.isHidden() || session == null) {
+            return;
+        }
+        if (!manual) {
+            if (session.getDatabase().isSysTableLocked()) {
+                return;
+            }
+            if (table.hasSelectTrigger()) {
+                return;
+            }
+        }
+        if (table.isTemporary() && !table.isGlobalTemporary()
+                && session.findLocalTempTable(table.getName()) == null) {
+            return;
+        }
+        if (table.isLockedExclusively() && !table.isLockedExclusivelyBy(session)) {
+            return;
+        }
+        if (!session.getUser().hasRight(table, Right.SELECT)) {
+            return;
+        }
+        if (session.getCancel() != 0) {
+            // if the connection is closed and there is something to undo
+            return;
+        }
+        Column[] columns = table.getColumns();
+        if (columns.length == 0) {
+            return;
+        }
+        Database db = session.getDatabase();
+        StatementBuilder buff = new StatementBuilder("SELECT ");
+        for (Column col : columns) {
+            buff.appendExceptFirst(", ");
+            int type = col.getType();
+            if (type == Value.BLOB || type == Value.CLOB) {
+                // can not index LOB columns, so calculating
+                // the selectivity is not required
+                buff.append("MAX(NULL)");
+            } else {
+                buff.append("SELECTIVITY(").append(col.getSQL()).append(')');
+            }
+        }
+        buff.append(" FROM ").append(table.getSQL());
+        if (sample > 0) {
+            buff.append(" LIMIT ? SAMPLE_SIZE ? ");
+        }
+        String sql = buff.toString();
+        PreparedSQLStatement command = session.prepareStatement(sql);
+        if (sample > 0) {
+            List<? extends CommandParameter> params = command.getParameters();
+            params.get(0).setValue(ValueInt.get(1));
+            params.get(1).setValue(ValueInt.get(sample));
+        }
+        Result result = command.query(0);
+        result.next();
+        for (int j = 0; j < columns.length; j++) {
+            Value v = result.currentRow()[j];
+            if (v != ValueNull.INSTANCE) {
+                int selectivity = v.getInt();
+                columns[j].setSelectivity(selectivity);
+            }
+        }
+        if (manual) {
+            db.updateMeta(session, table);
+        } else {
+            ServerSession sysSession = db.getSystemSession();
+            if (sysSession != session) {
+                // if the current session is the system session
+                // (which is the case if we are within a trigger)
+                // then we can't update the statistics because
+                // that would unlock all locked objects
+                synchronized (sysSession) {
+                    synchronized (db) {
+                        db.updateMeta(sysSession, table);
+                        sysSession.commit();
+                    }
+                }
+            }
+        }
     }
 }

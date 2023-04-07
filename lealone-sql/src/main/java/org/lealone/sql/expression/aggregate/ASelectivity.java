@@ -69,6 +69,8 @@ public class ASelectivity extends BuiltInAggregate {
 
         @Override
         Value getValue(ServerSession session) {
+            if (distinctHashes == null)
+                return ValueInt.get(Constants.SELECTIVITY_DEFAULT);
             m2 += distinctHashes.size();
             m2 = 100 * m2 / count;
             int s = (int) m2;
