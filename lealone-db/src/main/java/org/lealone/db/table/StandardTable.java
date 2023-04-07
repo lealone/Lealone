@@ -340,10 +340,28 @@ public class StandardTable extends Table {
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
         try {
-            // 第一个是PrimaryIndex
-            for (int i = 0; i < size && !isFailed.get(); i++) {
-                Index index = indexesExcludeDelegate.get(i);
-                index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+            if (primaryIndex.containsMainIndexColumn()) {
+                // 第一个是PrimaryIndex
+                for (int i = 0; i < size && !isFailed.get(); i++) {
+                    Index index = indexesExcludeDelegate.get(i);
+                    index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+                }
+            } else {
+                // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
+                primaryIndex.add(session, row).onComplete(ar -> {
+                    if (ar.isSucceeded()) {
+                        if (count.decrementAndGet() == 0) {
+                            ac.setAsyncResult(ar);
+                            return;
+                        }
+                        for (int i = 1; i < size && !isFailed.get(); i++) {
+                            Index index = indexesExcludeDelegate.get(i);
+                            index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+                        }
+                    } else {
+                        ac.setAsyncResult(ar.getCause());
+                    }
+                });
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);

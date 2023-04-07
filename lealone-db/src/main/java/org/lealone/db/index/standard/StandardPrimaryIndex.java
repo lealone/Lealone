@@ -107,6 +107,10 @@ public class StandardPrimaryIndex extends StandardIndex {
         return mainIndexColumn;
     }
 
+    public boolean containsMainIndexColumn() {
+        return mainIndexColumn != -1;
+    }
+
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
