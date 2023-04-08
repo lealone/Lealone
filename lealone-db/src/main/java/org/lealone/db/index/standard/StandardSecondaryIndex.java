@@ -6,8 +6,10 @@
 package org.lealone.db.index.standard;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
@@ -30,6 +32,7 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
+import org.lealone.storage.StorageSetting;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
@@ -74,8 +77,13 @@ public class StandardSecondaryIndex extends StandardIndex {
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
+        Map<String, String> parameters = table.getParameters();
+        if (!table.isPersistIndexes()) {
+            parameters = new HashMap<>(parameters);
+            parameters.put(StorageSetting.IN_MEMORY.name(), "1");
+        }
         TransactionMap<ValueArray, Value> map = session.getTransaction().openMap(mapName, keyType,
-                valueType, storage, table.getParameters());
+                valueType, storage, parameters);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.getInternalError("Incompatible key type");
         }

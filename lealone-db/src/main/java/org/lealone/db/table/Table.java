@@ -50,6 +50,8 @@ import org.lealone.sql.IExpression;
  */
 public abstract class Table extends SchemaObjectBase {
 
+    // 以下两种类型都要持久化表的数据，区别是TYPE_CACHED同样持久化索引数据，而TYPE_MEMORY不持久化索引数据。
+
     /**
      * The table type that means this table is a regular persistent table.
      */
