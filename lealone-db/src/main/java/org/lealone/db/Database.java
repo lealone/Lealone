@@ -92,7 +92,6 @@ public class Database implements DataHandler, DbObject {
 
     private static enum State {
         CONSTRUCTOR_CALLED, // 刚调用完构造函数阶段，也是默认阶段
-        OPENING,
         OPENED,
         STARTING,
         STARTED,
@@ -366,7 +365,6 @@ public class Database implements DataHandler, DbObject {
     public synchronized void init() {
         if (state != State.CONSTRUCTOR_CALLED)
             return;
-        state = State.OPENING;
 
         String listener = dbSettings.eventListener;
         if (listener != null) {
