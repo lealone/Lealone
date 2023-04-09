@@ -51,7 +51,7 @@ public class TableAlterHistory {
 
     public synchronized int getVersion(int id) {
         if (psGetVersion == null)
-            return -1;
+            DbException.throwInternalError();
         int version;
         try {
             psGetVersion.setInt(1, id);

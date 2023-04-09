@@ -380,6 +380,9 @@ public class Database implements DataHandler, DbObject {
 
         // 用户也可以在LealoneDatabase的public模式中建表修改表结构
         tableAlterHistory.init(getInternalConnection());
+        // 提前初始化表的版本号，避免在执行insert/update时用同步的方式加载
+        for (Table t : mainSchema.getAllTablesAndViews())
+            t.initVersion();
 
         opened();
         state = State.OPENED;

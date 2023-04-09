@@ -91,7 +91,7 @@ public abstract class Table extends SchemaObjectBase {
     private boolean onCommitTruncate;
     private Row nullRow;
 
-    private int version = -1;
+    private int version;
     private String packageName;
     private String codePath;
 
@@ -110,20 +110,20 @@ public abstract class Table extends SchemaObjectBase {
         return DbObjectType.TABLE_OR_VIEW;
     }
 
+    // 只在打开数据库的时候调用，也就是只有一个线程调用
+    public void initVersion() {
+        version = getDatabase().getTableAlterHistory().getVersion(getId());
+    }
+
     public int getVersion() {
-        if (version == -1) {
-            synchronized (this) {
-                version = getDatabase().getTableAlterHistory().getVersion(getId());
-            }
-        }
         return version;
     }
 
+    // 修改表结构时也只有一个线程调用
     public int incrementAndGetVersion() {
-        getVersion();
-        synchronized (this) {
-            return ++version;
-        }
+        int v = version + 1;
+        version = v;
+        return v;
     }
 
     @Override
