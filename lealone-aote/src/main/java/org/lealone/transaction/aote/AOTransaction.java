@@ -230,7 +230,7 @@ public class AOTransaction implements Transaction {
         // 避免重复提交
         if (!transactionEngine.containsTransaction(transactionId))
             return;
-        commitTimestamp = transactionEngine.nextEvenTransactionId(); // 生成新的
+        commitTimestamp = transactionEngine.nextTransactionId(); // 生成新的
         // 先提交，事务变成结束状态再解锁
         undoLog.commit(transactionEngine);
         endTransaction();

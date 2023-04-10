@@ -183,7 +183,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
-        long tid = getTransactionId(runMode == RunMode.SHARDING);
+        long tid = nextTransactionId();
         AOTransaction t = new AOTransaction(this, tid);
         t.setAutoCommit(autoCommit);
         currentTransactions.put(tid, t);
@@ -198,37 +198,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return config;
     }
 
-    private long getTransactionId(boolean isShardingMode) {
-        // 分布式事务使用奇数的事务ID
-        if (isShardingMode)
-            return nextOddTransactionId();
-        else
-            return nextEvenTransactionId();
-    }
-
-    public long nextOddTransactionId() {
-        return nextTransactionId(false);
-    }
-
-    public long nextEvenTransactionId() {
-        return nextTransactionId(true);
-    }
-
-    private long nextTransactionId(boolean isEven) {
-        long oldLast;
-        long last;
-        int delta;
-        do {
-            oldLast = lastTransactionId.get();
-            last = oldLast;
-            if (last % 2 == 0)
-                delta = isEven ? 2 : 1;
-            else
-                delta = isEven ? 1 : 2;
-
-            last += delta;
-        } while (!lastTransactionId.compareAndSet(oldLast, last));
-        return last;
+    public long nextTransactionId() {
+        return lastTransactionId.incrementAndGet();
     }
 
     @Override
@@ -371,7 +342,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     }
                 }
                 lastSavedAt = now;
-                logSyncService.checkpoint(nextEvenTransactionId());
+                logSyncService.checkpoint(nextTransactionId());
             }
         }
 
