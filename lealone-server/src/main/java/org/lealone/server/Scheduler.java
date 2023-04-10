@@ -48,7 +48,7 @@ public class Scheduler extends PageOperationHandlerBase
     private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<AsyncTask> maxPriorityQueue = new ConcurrentLinkedQueue<>();
 
-    private final ConcurrentLinkedQueue<AsyncTask> sessionInitTaskQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<SessionInitTask> sessionInitTasks = new ConcurrentLinkedQueue<>();
     private final SessionValidator sessionValidator = new SessionValidator();
 
     // 这个只增不删所以用CopyOnWriteArrayList
@@ -124,17 +124,19 @@ public class Scheduler extends PageOperationHandlerBase
 
     private void runSessionInitTasks() {
         if (canHandleNextSessionInitTask()) {
-            AsyncTask task = sessionInitTaskQueue.poll();
-            while (task != null) {
+            int size = sessionInitTasks.size();
+            for (int i = 0; i < size; i++) {
+                SessionInitTask task = sessionInitTasks.poll();
                 try {
-                    task.run();
-                    if (!canHandleNextSessionInitTask()) {
-                        break;
+                    if (!task.run()) {
+                        sessionInitTasks.add(task); // 继续加到最后，但是不会马上执行
                     }
                 } catch (Throwable e) {
                     logger.warn("Failed to run session init task: " + task, e);
                 }
-                task = sessionInitTaskQueue.poll();
+                if (!canHandleNextSessionInitTask()) {
+                    break;
+                }
             }
         }
     }
@@ -179,8 +181,8 @@ public class Scheduler extends PageOperationHandlerBase
         return sessionValidator.canHandleNextSessionInitTask();
     }
 
-    public void addSessionInitTask(AsyncTask task) {
-        sessionInitTaskQueue.add(task);
+    public void addSessionInitTask(SessionInitTask task) {
+        sessionInitTasks.add(task);
     }
 
     @Override

@@ -12,7 +12,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -63,12 +62,7 @@ public class TcpServerConnection extends TransferConnection {
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
-                if (scheduler.canHandleNextSessionInitTask()) {
-                    // 直接处理，不需要加入Scheduler的队列
-                    readInitPacket(in, packetId, sessionId);
-                } else {
-                    scheduler.addSessionInitTask(() -> readInitPacket(in, packetId, sessionId));
-                }
+                readInitPacket(in, packetId, sessionId);
             } else {
                 sessionNotFound(packetId, sessionId);
             }
@@ -92,8 +86,22 @@ public class TcpServerConnection extends TransferConnection {
             in.closeInputStream();
         }
 
+        SessionInitTask task = new SessionInitTask(this, packet, packetId, sessionId);
+        if (scheduler.canHandleNextSessionInitTask()) {
+            // 直接处理，如果完成了就不需要加入Scheduler的队列
+            if (task.run())
+                return;
+        }
+        scheduler.addSessionInitTask(task);
+    }
+
+    boolean createSession(SessionInit packet, int packetId, int sessionId) {
         try {
-            ServerSession session = createSession(packet.ci, sessionId);
+            ServerSession session = (ServerSession) packet.ci.createSession();
+            if (session == null) {
+                return false;
+            }
+            addSession(session, sessionId);
             scheduler.validateSession(true);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
@@ -108,10 +116,10 @@ public class TcpServerConnection extends TransferConnection {
             logger.error("Failed to create session, sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
+        return true;
     }
 
-    private ServerSession createSession(ConnectionInfo ci, int sessionId) {
-        ServerSession session = (ServerSession) ci.createSession();
+    private void addSession(ServerSession session, int sessionId) {
         // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
         // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
         // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
@@ -130,7 +138,6 @@ public class TcpServerConnection extends TransferConnection {
         session.setSessionInfo(si);
         scheduler.addSessionInfo(si);
         sessions.put(sessionId, si);
-        return session;
     }
 
     private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session)

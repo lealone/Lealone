@@ -1008,6 +1008,7 @@ public class Database implements DataHandler, DbObject {
         return createSession(user, null);
     }
 
+    // 创建session是低频且不耗时的操作，所以直接用synchronized即可，不必搞成异步增加复杂性
     public synchronized ServerSession createSession(User user, ConnectionInfo ci) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);

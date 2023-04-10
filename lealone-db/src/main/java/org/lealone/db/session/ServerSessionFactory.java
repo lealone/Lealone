@@ -14,6 +14,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
+import org.lealone.transaction.TransactionListener;
 
 /**
  * This class is responsible for creating new sessions.
@@ -45,7 +47,8 @@ public class ServerSessionFactory implements SessionFactory {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
         ServerSession session = createServerSession(dbName, ci);
-        initSession(session, ci);
+        if (session != null)
+            initSession(session, ci);
         return session;
     }
 
@@ -58,7 +61,22 @@ public class ServerSessionFactory implements SessionFactory {
             throw DbException.get(ErrorCode.DATABASE_IS_CLOSING);
         }
         if (!database.isInitialized()) {
-            database.init();
+            ServerSession session = new ServerSession(database, null, 0);
+            Object t = Thread.currentThread();
+            TransactionListener tl = (t instanceof TransactionListener) ? (TransactionListener) t : null;
+            session.setTransactionListener(tl);
+            DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
+            if (lock != null) {
+                try {
+                    database.init();
+                } finally {
+                    session.commit();
+                }
+            } else {
+                // 仅仅是从事务引擎中删除事务
+                session.getTransaction().rollback();
+                return null;
+            }
         }
 
         User user = null;

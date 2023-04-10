@@ -88,8 +88,7 @@ public class LealoneDatabase extends Database {
     }
 
     Map<String, Database> getDatabasesMap() {
-        HashMap<String, Database> map = getDbObjects(DbObjectType.DATABASE);
-        return map;
+        return getDbObjects(DbObjectType.DATABASE);
     }
 
     public List<Database> getDatabases() {
@@ -97,8 +96,7 @@ public class LealoneDatabase extends Database {
     }
 
     public Database findDatabase(String dbName) {
-        Database db = find(DbObjectType.DATABASE, null, dbName);
-        return db;
+        return find(DbObjectType.DATABASE, null, dbName);
     }
 
     /**
