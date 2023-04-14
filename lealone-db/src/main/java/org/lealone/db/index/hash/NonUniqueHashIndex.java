@@ -39,13 +39,13 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    protected void reset() {
+    protected synchronized void reset() {
         rows = ValueHashMap.newInstance();
         rowCount = 0;
     }
 
     @Override
-    public Future<Integer> add(ServerSession session, Row row) {
+    public synchronized Future<Integer> add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         ArrayList<Long> positions = rows.get(key);
         if (positions == null) {
@@ -58,7 +58,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
+    public synchronized Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         if (rowCount == 1) {
             // last row in table
             reset();
@@ -77,7 +77,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+    public synchronized Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             throw DbException.getInternalError();
         }

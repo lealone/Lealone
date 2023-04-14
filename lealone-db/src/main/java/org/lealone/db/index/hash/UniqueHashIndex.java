@@ -35,12 +35,12 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    protected void reset() {
+    protected synchronized void reset() {
         rows = ValueHashMap.newInstance();
     }
 
     @Override
-    public Future<Integer> add(ServerSession session, Row row) {
+    public synchronized Future<Integer> add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         Object old = rows.get(key);
         if (old != null) {
@@ -51,13 +51,13 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
+    public synchronized Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         rows.remove(row.getValue(indexColumn));
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+    public synchronized Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             // TODO hash index: should additionally check if values are the same
             throw DbException.getInternalError();
@@ -73,12 +73,12 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public long getRowCount(ServerSession session) {
+    public synchronized long getRowCount(ServerSession session) {
         return getRowCountApproximation();
     }
 
     @Override
-    public long getRowCountApproximation() {
+    public synchronized long getRowCountApproximation() {
         return rows.size();
     }
 
