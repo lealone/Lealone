@@ -44,7 +44,6 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageSetting;
-import org.lealone.transaction.Transaction;
 
 /**
  * @author H2 Group
@@ -340,41 +339,34 @@ public class StandardTable extends Table {
     public Future<Integer> addRow(ServerSession session, Row row) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
-            if (primaryIndex.containsMainIndexColumn()) {
-                // 第一个是PrimaryIndex
-                for (int i = 0; i < size && !isFailed.get(); i++) {
-                    Index index = indexesExcludeDelegate.get(i);
-                    index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
-                }
-            } else {
-                // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
-                primaryIndex.add(session, row).onComplete(ar -> {
-                    if (ar.isSucceeded()) {
-                        if (count.decrementAndGet() == 0) {
-                            ac.setAsyncResult(ar);
-                            analyzeIfRequired(session);
-                            return;
-                        }
-                        for (int i = 1; i < size && !isFailed.get(); i++) {
-                            Index index = indexesExcludeDelegate.get(i);
-                            index.add(session, row)
-                                    .onComplete(createHandler(session, ac, count, isFailed));
-                        }
-                    } else {
-                        ac.setAsyncResult(ar.getCause());
-                    }
-                });
+
+        if (primaryIndex.containsMainIndexColumn()) {
+            // 第一个是PrimaryIndex
+            for (int i = 0; i < size && !isFailed.get(); i++) {
+                Index index = indexesExcludeDelegate.get(i);
+                index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
             }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+        } else {
+            // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
+            primaryIndex.add(session, row).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    if (count.decrementAndGet() == 0) {
+                        ac.setAsyncResult(ar);
+                        analyzeIfRequired(session);
+                        return;
+                    }
+                    for (int i = 1; i < size && !isFailed.get(); i++) {
+                        Index index = indexesExcludeDelegate.get(i);
+                        index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
+                    }
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
         }
         return ac;
     }
@@ -384,22 +376,16 @@ public class StandardTable extends Table {
             boolean isLockedBySelf) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
-            // 第一个是PrimaryIndex
-            for (int i = 0; i < size && !isFailed.get(); i++) {
-                Index index = indexesExcludeDelegate.get(i);
-                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
-                        .onComplete(createHandler(session, ac, count, isFailed));
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+
+        // 第一个是PrimaryIndex
+        for (int i = 0; i < size && !isFailed.get(); i++) {
+            Index index = indexesExcludeDelegate.get(i);
+            index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
+                    .onComplete(createHandler(session, ac, count, isFailed));
         }
         return ac;
     }
@@ -407,21 +393,15 @@ public class StandardTable extends Table {
     @Override
     public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
-            for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
-                Index index = indexesExcludeDelegate.get(i);
-                index.remove(session, row, isLockedBySelf)
-                        .onComplete(createHandler(session, ac, count, isFailed));
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+
+        for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
+            Index index = indexesExcludeDelegate.get(i);
+            index.remove(session, row, isLockedBySelf)
+                    .onComplete(createHandler(session, ac, count, isFailed));
         }
         return ac;
     }
