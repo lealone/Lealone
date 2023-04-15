@@ -7,7 +7,6 @@ package org.lealone.db.index.hash;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
@@ -40,10 +39,6 @@ public class UniqueHashIndex extends HashIndex {
         rows = new ConcurrentHashMap<>();
     }
 
-    private Value getKey(SearchRow row) {
-        return row.getValue(indexColumn);
-    }
-
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         Object old = rows.putIfAbsent(getKey(row), row.getKey());
@@ -61,9 +56,7 @@ public class UniqueHashIndex extends HashIndex {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        if (first == null || last == null || (!getKey(first).equals(getKey(last)))) {
-            throw DbException.getInternalError();
-        }
+        checkSearchKey(first, last);
         Row result;
         Long pos = rows.get(getKey(first));
         if (pos == null) {

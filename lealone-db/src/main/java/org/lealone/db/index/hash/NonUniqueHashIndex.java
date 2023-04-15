@@ -6,8 +6,9 @@
 package org.lealone.db.index.hash;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
@@ -29,6 +30,7 @@ import org.lealone.transaction.Transaction;
  */
 public class NonUniqueHashIndex extends HashIndex {
 
+    private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
     private ValueHashMap<ArrayList<Long>> rows;
     private long rowCount;
 
@@ -39,55 +41,74 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    protected synchronized void reset() {
-        rows = ValueHashMap.newInstance();
-        rowCount = 0;
-    }
-
-    @Override
-    public synchronized Future<Integer> add(ServerSession session, Row row) {
-        Value key = row.getValue(indexColumn);
-        ArrayList<Long> positions = rows.get(key);
-        if (positions == null) {
-            positions = Utils.newSmallArrayList();
-            rows.put(key, positions);
+    protected void reset() {
+        lock.writeLock().lock();
+        try {
+            rows = ValueHashMap.newInstance();
+            rowCount = 0;
+        } finally {
+            lock.writeLock().unlock();
         }
-        positions.add(row.getKey());
-        rowCount++;
-        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public synchronized Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
-        if (rowCount == 1) {
-            // last row in table
-            reset();
-        } else {
-            Value key = row.getValue(indexColumn);
+    public Future<Integer> add(ServerSession session, Row row) {
+        lock.writeLock().lock();
+        try {
+            Value key = getKey(row);
             ArrayList<Long> positions = rows.get(key);
-            if (positions.size() == 1) {
-                // last row with such key
-                rows.remove(key);
-            } else {
-                positions.remove(row.getKey());
+            if (positions == null) {
+                positions = Utils.newSmallArrayList();
+                rows.put(key, positions);
             }
-            rowCount--;
+            positions.add(row.getKey());
+            rowCount++;
+        } finally {
+            lock.writeLock().unlock();
         }
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public synchronized Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        if (first == null || last == null) {
-            throw DbException.getInternalError();
-        }
-        if (first != last) {
-            if (compareKeys(first, last) != 0) {
-                throw DbException.getInternalError();
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
+        lock.writeLock().lock();
+        try {
+            if (rowCount == 1) {
+                // last row in table
+                reset();
+            } else {
+                Value key = getKey(row);
+                ArrayList<Long> positions = rows.get(key);
+                if (positions.size() == 1) {
+                    // last row with such key
+                    rows.remove(key);
+                } else {
+                    positions.remove(row.getKey());
+                }
+                rowCount--;
             }
+        } finally {
+            lock.writeLock().unlock();
         }
-        ArrayList<Long> positions = rows.get(first.getValue(indexColumn));
-        return new NonUniqueHashCursor(session, table, positions);
+        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        checkSearchKey(first, last);
+        lock.readLock().lock();
+        try {
+            ArrayList<Long> list;
+            ArrayList<Long> positions = rows.get(getKey(first));
+            if (positions == null)
+                list = new ArrayList<>(0);
+            else
+                // 这里必须copy一份，执行delete语句时会动态删除，这样会导致执行next()时漏掉一些记录
+                list = new ArrayList<>(positions);
+            return new NonUniqueHashCursor(session, table, list);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
@@ -102,8 +123,6 @@ public class NonUniqueHashIndex extends HashIndex {
 
     /**
      * Cursor implementation for non-unique hash index
-     *
-     * @author Sergi Vladykin
      */
     private static class NonUniqueHashCursor implements Cursor {
 
@@ -116,8 +135,7 @@ public class NonUniqueHashIndex extends HashIndex {
         public NonUniqueHashCursor(ServerSession session, Table table, ArrayList<Long> positions) {
             this.session = session;
             this.table = table;
-            // 这里必须copy一份，执行delete语句时会动态删除，这样会导致执行next()时漏掉一些记录
-            this.positions = new ArrayList<>(positions);
+            this.positions = positions;
         }
 
         @Override
