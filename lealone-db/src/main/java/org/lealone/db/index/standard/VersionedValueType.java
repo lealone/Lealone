@@ -61,13 +61,6 @@ public class VersionedValueType extends ValueDataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len) {
-        for (int i = 0; i < len; i++) {
-            obj[i] = read(buff);
-        }
-    }
-
-    @Override
     public Object read(ByteBuffer buff) {
         int vertion = DataUtils.readVarInt(buff);
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
