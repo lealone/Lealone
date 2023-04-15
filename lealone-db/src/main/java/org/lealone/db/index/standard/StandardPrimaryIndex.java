@@ -27,7 +27,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableAlterHistoryRecord;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
@@ -139,7 +138,7 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
+        VersionedValue value = new VersionedValue(row.getVersion(), row.getValueList());
         if (checkDuplicateKey) {
             Value key = ValueLong.get(row.getKey());
             map.addIfAbsent(key, value).onComplete(ar -> {
@@ -214,8 +213,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        VersionedValue newValue = new VersionedValue(newRow.getVersion(),
-                ValueArray.get(newRow.getValueList()));
+        VersionedValue newValue = new VersionedValue(newRow.getVersion(), newRow.getValueList());
         Value key = ValueLong.get(newRow.getKey());
         int ret = map.tryUpdate(key, newValue, updateColumns, oldRow.getTValue(), isLockedBySelf);
         session.setLastIdentity(key);
@@ -286,9 +284,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
         Object[] valueAndRef = getMap(session).getValueAndRef(ValueLong.get(key), columnIndexes);
         VersionedValue v = (VersionedValue) valueAndRef[0];
-        ValueArray array = v.value;
-        array = v.value;
-        Row row = new Row(array.getList(), 0);
+        Row row = new Row(v.columns, 0);
         row.setKey(key);
         row.setVersion(v.version);
         row.setTValue(valueAndRef[1]);
@@ -301,9 +297,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         if (value == null)
             return null;
         VersionedValue v = (VersionedValue) value;
-        ValueArray array = v.value;
-        array = v.value;
-        Row row = new Row(array.getList(), 0);
+        Row row = new Row(v.columns, 0);
         row.setKey(key);
         row.setVersion(v.version);
         row.setTValue(oldTValue);
@@ -495,7 +489,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         private void createRow(TransactionMapEntry<Value, VersionedValue> current) {
             Object tv = current.getTValue();
             VersionedValue value = current.getValue();
-            Value[] data = value.value.getList();
+            Value[] data = value.columns;
             int version = value.version;
             row = new Row(data, 0);
             row.setKey(current.getKey().getLong());

@@ -15,10 +15,10 @@ import org.lealone.storage.type.StorageDataType;
 
 public class VersionedValueType implements StorageDataType {
 
-    final StorageDataType valueType;
+    final ValueDataType valueType;
     final int columnCount;
 
-    public VersionedValueType(StorageDataType valueType, int columnCount) {
+    public VersionedValueType(ValueDataType valueType, int columnCount) {
         this.valueType = valueType;
         this.columnCount = columnCount;
     }
@@ -29,7 +29,7 @@ public class VersionedValueType implements StorageDataType {
         int memory = 4;
         if (v == null)
             return memory;
-        Value[] columns = v.value.getList();
+        Value[] columns = v.columns;
         for (int i = 0, len = columns.length; i < len; i++) {
             Value c = columns[i];
             if (c == null)
@@ -49,7 +49,7 @@ public class VersionedValueType implements StorageDataType {
         VersionedValue b = (VersionedValue) bObj;
         long comp = a.version - b.version;
         if (comp == 0) {
-            return valueType.compare(a.value, b.value);
+            return valueType.compareValues(a.columns, b.columns);
         }
         return Long.signum(comp);
     }
@@ -65,7 +65,7 @@ public class VersionedValueType implements StorageDataType {
     public Object read(ByteBuffer buff) {
         int vertion = DataUtils.readVarInt(buff);
         ValueArray value = (ValueArray) valueType.read(buff);
-        return new VersionedValue(vertion, value);
+        return new VersionedValue(vertion, value.getList());
     }
 
     @Override
@@ -79,7 +79,7 @@ public class VersionedValueType implements StorageDataType {
     public void write(DataBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
         buff.putVarInt(v.version);
-        valueType.write(buff, v.value);
+        valueType.write(buff, ValueArray.get(v.columns));
     }
 
     @Override
@@ -91,14 +91,14 @@ public class VersionedValueType implements StorageDataType {
     @Override
     public Object readMeta(ByteBuffer buff, int columnCount) {
         int vertion = DataUtils.readVarInt(buff);
-        Value[] values = new Value[columnCount];
-        return new VersionedValue(vertion, ValueArray.get(values));
+        Value[] columns = new Value[columnCount];
+        return new VersionedValue(vertion, columns);
     }
 
     @Override
     public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
         VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.value.getList();
+        Value[] columns = v.columns;
         if (columnIndex >= 0 && columnIndex < columns.length)
             buff.writeValue(columns[columnIndex]);
     }
@@ -106,7 +106,7 @@ public class VersionedValueType implements StorageDataType {
     @Override
     public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
         VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.value.getList();
+        Value[] columns = v.columns;
         if (columnIndex >= 0 && columnIndex < columns.length) {
             Value value = (Value) valueType.read(buff);
             columns[columnIndex] = value;
@@ -118,8 +118,8 @@ public class VersionedValueType implements StorageDataType {
         if (columnIndexes != null) {
             VersionedValue oldValue = (VersionedValue) oldObj;
             VersionedValue newValue = (VersionedValue) newObj;
-            Value[] oldColumns = oldValue.value.getList();
-            Value[] newColumns = newValue.value.getList();
+            Value[] oldColumns = oldValue.columns;
+            Value[] newColumns = newValue.columns;
             for (int i : columnIndexes) {
                 oldColumns[i] = newColumns[i];
             }
@@ -128,7 +128,7 @@ public class VersionedValueType implements StorageDataType {
 
     @Override
     public ValueArray getColumns(Object obj) {
-        return ((VersionedValue) obj).value;
+        return ValueArray.get(((VersionedValue) obj).columns);
     }
 
     @Override
@@ -139,7 +139,7 @@ public class VersionedValueType implements StorageDataType {
     @Override
     public int getMemory(Object obj, int columnIndex) {
         VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.value.getList();
+        Value[] columns = v.columns;
         if (columnIndex >= 0 && columnIndex < columns.length) {
             return valueType.getMemory(columns[columnIndex]);
         } else {

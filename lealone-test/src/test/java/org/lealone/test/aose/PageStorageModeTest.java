@@ -10,7 +10,6 @@ import org.lealone.db.index.standard.ValueDataType;
 import org.lealone.db.index.standard.VersionedValue;
 import org.lealone.db.index.standard.VersionedValueType;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.CursorParameters;
@@ -57,7 +56,7 @@ public class PageStorageModeTest extends AoseTestBase {
             for (int col = 0; col < columnCount; col++) {
                 columns[col] = ValueString.get("value-row" + row + "-col" + (col + 1));
             }
-            VersionedValue vv = new VersionedValue(row, ValueArray.get(columns));
+            VersionedValue vv = new VersionedValue(row, columns);
             TransactionalValue tv = TransactionalValue.createCommitted(vv);
             map.put(key, tv);
         }
@@ -80,19 +79,19 @@ public class PageStorageModeTest extends AoseTestBase {
         ValueLong key = ValueLong.get(4000);
         TransactionalValue tv = map.get(key);
         VersionedValue vv = (VersionedValue) tv.getValue();
-        Value columnValue = vv.value.getList()[columnIndex];
+        Value columnValue = vv.columns[columnIndex];
         assertEquals("value-row4000-col3", columnValue.getString());
 
         key = ValueLong.get(2);
         tv = map.get(key, columnIndex);
         vv = (VersionedValue) tv.getValue();
-        columnValue = vv.value.getList()[columnIndex];
+        columnValue = vv.columns[columnIndex];
         assertEquals("value-row2-col3", columnValue.getString());
 
         key = ValueLong.get(2999);
         tv = map.get(key, columnIndex);
         vv = (VersionedValue) tv.getValue();
-        columnValue = vv.value.getList()[columnIndex];
+        columnValue = vv.columns[columnIndex];
         assertEquals("value-row2999-col3", columnValue.getString());
 
         int rows = 0;
