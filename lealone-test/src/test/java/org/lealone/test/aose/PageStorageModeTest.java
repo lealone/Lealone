@@ -31,8 +31,7 @@ public class PageStorageModeTest extends AoseTestBase {
     @Test
     public void run() {
         ValueDataType keyType = new ValueDataType(null, null, null);
-        ValueDataType valueType = new ValueDataType(null, null, null);
-        VersionedValueType vvType = new VersionedValueType(valueType, columnCount);
+        VersionedValueType vvType = new VersionedValueType(null, null, null, columnCount);
         TransactionalValueType tvType = new TransactionalValueType(vvType);
 
         testRowStorage(keyType, tvType);

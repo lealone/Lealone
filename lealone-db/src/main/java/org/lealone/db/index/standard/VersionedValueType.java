@@ -9,24 +9,44 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.DataHandler;
+import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.storage.type.StorageDataType;
 
-public class VersionedValueType implements StorageDataType {
+public class VersionedValueType extends ValueDataType {
 
-    final ValueDataType valueType;
     final int columnCount;
 
-    public VersionedValueType(ValueDataType valueType, int columnCount) {
-        this.valueType = valueType;
+    public VersionedValueType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
+            int columnCount) {
+        super(handler, compareMode, sortTypes);
         this.columnCount = columnCount;
+    }
+
+    @Override
+    public int compare(Object aObj, Object bObj) {
+        if (aObj == bObj) {
+            return 0;
+        }
+        if (aObj == null) {
+            return -1;
+        } else if (bObj == null) {
+            return 1;
+        }
+        VersionedValue a = (VersionedValue) aObj;
+        VersionedValue b = (VersionedValue) bObj;
+        long comp = a.version - b.version;
+        if (comp == 0) {
+            return compareValues(a.columns, b.columns);
+        }
+        return Long.signum(comp);
     }
 
     @Override
     public int getMemory(Object obj) {
         VersionedValue v = (VersionedValue) obj;
-        int memory = 4;
+        int memory = 4 + 4;
         if (v == null)
             return memory;
         Value[] columns = v.columns;
@@ -35,23 +55,9 @@ public class VersionedValueType implements StorageDataType {
             if (c == null)
                 memory += 4;
             else
-                memory += valueType.getMemory(c);
+                memory += c.getMemory();
         }
         return memory;
-    }
-
-    @Override
-    public int compare(Object aObj, Object bObj) {
-        if (aObj == bObj) {
-            return 0;
-        }
-        VersionedValue a = (VersionedValue) aObj;
-        VersionedValue b = (VersionedValue) bObj;
-        long comp = a.version - b.version;
-        if (comp == 0) {
-            return valueType.compareValues(a.columns, b.columns);
-        }
-        return Long.signum(comp);
     }
 
     @Override
@@ -64,22 +70,15 @@ public class VersionedValueType implements StorageDataType {
     @Override
     public Object read(ByteBuffer buff) {
         int vertion = DataUtils.readVarInt(buff);
-        ValueArray value = (ValueArray) valueType.read(buff);
-        return new VersionedValue(vertion, value.getList());
-    }
-
-    @Override
-    public void write(DataBuffer buff, Object[] obj, int len) {
-        for (int i = 0; i < len; i++) {
-            write(buff, obj[i]);
-        }
+        ValueArray a = (ValueArray) DataBuffer.readValue(buff);
+        return new VersionedValue(vertion, a.getList());
     }
 
     @Override
     public void write(DataBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
         buff.putVarInt(v.version);
-        valueType.write(buff, ValueArray.get(v.columns));
+        buff.writeValue(ValueArray.get(v.columns));
     }
 
     @Override
@@ -108,7 +107,7 @@ public class VersionedValueType implements StorageDataType {
         VersionedValue v = (VersionedValue) obj;
         Value[] columns = v.columns;
         if (columnIndex >= 0 && columnIndex < columns.length) {
-            Value value = (Value) valueType.read(buff);
+            Value value = DataBuffer.readValue(buff);
             columns[columnIndex] = value;
         }
     }
@@ -141,7 +140,7 @@ public class VersionedValueType implements StorageDataType {
         VersionedValue v = (VersionedValue) obj;
         Value[] columns = v.columns;
         if (columnIndex >= 0 && columnIndex < columns.length) {
-            return valueType.getMemory(columns[columnIndex]);
+            return columns[columnIndex].getMemory();
         } else {
             return 0;
         }

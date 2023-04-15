@@ -8,7 +8,6 @@ package org.lealone.test.aote;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
-import org.lealone.db.index.standard.ValueDataType;
 import org.lealone.db.index.standard.VersionedValue;
 import org.lealone.db.index.standard.VersionedValueType;
 import org.lealone.db.result.SortOrder;
@@ -77,8 +76,7 @@ public class TransactionalValueTest extends AoteTestBase {
         for (int i = 0; i < columns; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
-        ValueDataType valueType = new ValueDataType(null, null, sortTypes);
-        VersionedValueType vvType = new VersionedValueType(valueType, columns);
+        VersionedValueType vvType = new VersionedValueType(null, null, sortTypes, columns);
 
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
