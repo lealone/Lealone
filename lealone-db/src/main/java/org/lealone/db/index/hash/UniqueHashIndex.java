@@ -5,6 +5,8 @@
  */
 package org.lealone.db.index.hash;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
@@ -14,7 +16,6 @@ import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
-import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.transaction.Transaction;
 
@@ -26,7 +27,7 @@ import org.lealone.transaction.Transaction;
  */
 public class UniqueHashIndex extends HashIndex {
 
-    private ValueHashMap<Long> rows;
+    private ConcurrentHashMap<Value, Long> rows;
 
     public UniqueHashIndex(Table table, int id, String indexName, IndexType indexType,
             IndexColumn[] columns) {
@@ -35,35 +36,36 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    protected synchronized void reset() {
-        rows = ValueHashMap.newInstance();
+    protected void reset() {
+        rows = new ConcurrentHashMap<>();
+    }
+
+    private Value getKey(SearchRow row) {
+        return row.getValue(indexColumn);
     }
 
     @Override
-    public synchronized Future<Integer> add(ServerSession session, Row row) {
-        Value key = row.getValue(indexColumn);
-        Object old = rows.get(key);
+    public Future<Integer> add(ServerSession session, Row row) {
+        Object old = rows.putIfAbsent(getKey(row), row.getKey());
         if (old != null) {
             throw getDuplicateKeyException();
         }
-        rows.put(key, row.getKey());
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public synchronized Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
-        rows.remove(row.getValue(indexColumn));
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
+        rows.remove(getKey(row));
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public synchronized Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        if (first == null || last == null) {
-            // TODO hash index: should additionally check if values are the same
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        if (first == null || last == null || (!getKey(first).equals(getKey(last)))) {
             throw DbException.getInternalError();
         }
         Row result;
-        Long pos = rows.get(first.getValue(indexColumn));
+        Long pos = rows.get(getKey(first));
         if (pos == null) {
             result = null;
         } else {
@@ -73,12 +75,12 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public synchronized long getRowCount(ServerSession session) {
+    public long getRowCount(ServerSession session) {
         return getRowCountApproximation();
     }
 
     @Override
-    public synchronized long getRowCountApproximation() {
+    public long getRowCountApproximation() {
         return rows.size();
     }
 
