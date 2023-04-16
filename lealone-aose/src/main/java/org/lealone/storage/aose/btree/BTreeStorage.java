@@ -29,7 +29,7 @@ import org.lealone.storage.fs.FileUtils;
 /**
  * A persistent storage for btree map.
  */
-public class BTreeStorage {
+public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
 
     private final BTreeMap<?, ?> map;
     private final String mapBaseDir;
@@ -87,6 +87,7 @@ public class BTreeStorage {
             CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
             cc.maxMemory = cacheSize;
             cache = new CacheLongKeyLIRS<>(cc);
+            cache.setCacheListener(this);
         } else {
             cache = null; // 当 cacheSize <= 0 时禁用缓存
         }
@@ -96,6 +97,15 @@ public class BTreeStorage {
             FileUtils.createDirectories(mapBaseDir);
         else {
             chunkManager.init(mapBaseDir);
+        }
+    }
+
+    @Override
+    public void onEvict(Page p) {
+        if (p != null && p.isLeaf() && p.getRef() != null
+                && !chunkManager.getRemovedPages().contains(p.getPos())) {
+            p.clear();
+            p.getRef().replacePage(null);
         }
     }
 

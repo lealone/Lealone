@@ -5,6 +5,7 @@
  */
 package org.lealone.storage.aose.btree.page;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.storage.page.PageOperationHandler;
@@ -50,6 +51,8 @@ public class PageReference {
 
     Page page;
     long pos;
+    ByteBuffer buff;
+    int pageLength;
 
     public PageReference() {
     }

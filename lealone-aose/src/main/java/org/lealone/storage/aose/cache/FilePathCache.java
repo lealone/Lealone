@@ -162,7 +162,5 @@ public class FilePathCache extends FilePathWrapper {
         public String toString() {
             return "cache:" + base.toString();
         }
-
     }
-
 }

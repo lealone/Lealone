@@ -18,13 +18,18 @@ public class BatchTest extends ClientTestBase {
     public void run() throws Exception {
         init();
         testStatementBatch();
-        testPreparedStatementBatch();
+        int count = 5000;
+        count = 1;
+        for (int i = 1; i <= count; i++) {
+            testPreparedStatementBatch();
+        }
         // testConcurrentBatch();
     }
 
     void init() throws Exception {
         executeUpdate("DROP TABLE IF EXISTS BatchTest");
-        executeUpdate("CREATE TABLE IF NOT EXISTS BatchTest(f1 int, f2 int)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS BatchTest(f1 int, f2 int, f3 int, f4 int, f5 int, f6 int)");
     }
 
     void testStatementBatch() throws Exception {
@@ -49,11 +54,15 @@ public class BatchTest extends ClientTestBase {
     }
 
     void testPreparedStatementBatch() throws Exception {
-        sql = "INSERT INTO BatchTest(f1, f2) VALUES(?, ?)";
+        sql = "INSERT INTO BatchTest(f1, f2, f3, f4,f5, f6) VALUES(?, ?, ?, ?, ?, ?)";
         PreparedStatement ps = conn.prepareStatement(sql);
         for (int i = 1; i <= 5; i++) {
             ps.setInt(1, i);
             ps.setInt(2, i * 2);
+            ps.setInt(3, i);
+            ps.setInt(4, i * 2);
+            ps.setInt(5, i);
+            ps.setInt(6, i * 2);
             ps.addBatch();
         }
 

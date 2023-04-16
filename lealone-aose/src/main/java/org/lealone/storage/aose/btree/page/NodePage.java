@@ -43,7 +43,15 @@ public class NodePage extends LocalPage {
         if (ref.page != null) {
             return ref.page;
         } else {
-            Page p = map.getBTreeStorage().readPage(ref.pos);
+            Page p;
+            if (ref.buff != null) {
+                p = Page.read(map, ref.pos, ref.buff, ref.pageLength);
+                map.getBTreeStorage().cachePage(pos, p, p.getMemory());
+            } else {
+                p = map.getBTreeStorage().readPage(ref.pos);
+                ref.buff = p.buff;
+                ref.pageLength = p.pageLength;
+            }
             ref.replacePage(p);
             p.setRef(ref);
             p.setParentRef(getRef());

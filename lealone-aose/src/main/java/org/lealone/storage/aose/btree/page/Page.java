@@ -23,12 +23,17 @@ public class Page {
 
     protected final BTreeMap<?, ?> map;
     protected long pos;
+    protected ByteBuffer buff;
+    protected int pageLength;
 
     private PageReference ref;
     private PageReference parentRef;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
+    }
+
+    public void clear() {
     }
 
     public void setParentRef(PageReference parentRef) {
@@ -307,12 +312,19 @@ public class Page {
     public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos,
             int pageLength) {
         ByteBuffer buff = readPageBuff(fileStorage, filePos, pageLength);
+        return read(map, pos, buff, pageLength);
+    }
+
+    public static Page read(BTreeMap<?, ?> map, long pos, ByteBuffer buff, int pageLength) {
         int type = PageUtils.getPageType(pos);
         Page p = create(map, type);
         p.pos = pos;
+        p.buff = buff;
+        p.pageLength = pageLength;
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
         p.read(buff, chunkId, offset, pageLength, false);
+        buff.flip();
         return p;
     }
 

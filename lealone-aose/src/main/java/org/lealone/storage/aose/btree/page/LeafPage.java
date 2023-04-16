@@ -34,6 +34,12 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
+    public void clear() {
+        keys = null;
+        values = null;
+    }
+
+    @Override
     public boolean isLeaf() {
         return true;
     }

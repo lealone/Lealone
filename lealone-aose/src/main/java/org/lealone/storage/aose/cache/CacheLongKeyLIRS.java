@@ -45,6 +45,10 @@ import org.lealone.common.util.DataUtils;
  */
 public class CacheLongKeyLIRS<V> {
 
+    public interface CacheListener<V> {
+        void onEvict(V v);
+    }
+
     /**
      * The maximum memory this cache should use.
      */
@@ -57,6 +61,12 @@ public class CacheLongKeyLIRS<V> {
     private final int segmentMask;
     private final int stackMoveDistance;
     private final int nonResidentQueueSize;
+
+    private CacheListener<V> cacheListener;
+
+    public void setCacheListener(CacheListener<V> cacheListener) {
+        this.cacheListener = cacheListener;
+    }
 
     /**
      * Create a new cache with the given memory size.
@@ -162,6 +172,7 @@ public class CacheLongKeyLIRS<V> {
         if (s == s2) {
             // no other thread resized, so we do
             s = new Segment<V>(s, newLen);
+            s.setCacheListener(cacheListener);
             segments[segmentIndex] = s;
         }
         return s;
@@ -567,6 +578,12 @@ public class CacheLongKeyLIRS<V> {
          * The number of times any item was moved to the top of the stack.
          */
         private int stackMoveCounter;
+
+        private CacheListener<V> cacheListener;
+
+        public void setCacheListener(CacheListener<V> cacheListener) {
+            this.cacheListener = cacheListener;
+        }
 
         /**
          * Create a new cache segment.
@@ -984,6 +1001,8 @@ public class CacheLongKeyLIRS<V> {
             e.stackNext.stackPrev = e.stackPrev;
             e.stackPrev = e.stackNext = null;
             stackSize--;
+            if (cacheListener != null)
+                cacheListener.onEvict(e.value);
         }
 
         private void addToQueue(Entry<V> q, Entry<V> e) {
@@ -1007,6 +1026,8 @@ public class CacheLongKeyLIRS<V> {
             } else {
                 queue2Size--;
             }
+            if (cacheListener != null)
+                cacheListener.onEvict(e.value);
         }
 
         /**
@@ -1071,7 +1092,6 @@ public class CacheLongKeyLIRS<V> {
         void setMaxMemory(long maxMemory) {
             this.maxMemory = maxMemory;
         }
-
     }
 
     /**
@@ -1139,7 +1159,6 @@ public class CacheLongKeyLIRS<V> {
         boolean isHot() {
             return queueNext == null;
         }
-
     }
 
     /**
@@ -1170,5 +1189,4 @@ public class CacheLongKeyLIRS<V> {
         public int nonResidentQueueSize = 3;
 
     }
-
 }
