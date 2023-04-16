@@ -26,7 +26,7 @@ public class CharacterType extends StorageDataTypeBase {
 
     @Override
     public int getMemory(Object obj) {
-        return 24;
+        return 16;
     }
 
     @Override
@@ -44,5 +44,4 @@ public class CharacterType extends StorageDataTypeBase {
     public void writeValue(DataBuffer buff, Value v) {
         throw newInternalError();
     }
-
 }

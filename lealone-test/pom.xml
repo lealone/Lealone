@@ -29,6 +29,12 @@
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
+        <!--<dependency>
+            <groupId>org.openjdk.jol</groupId>
+            <artifactId>jol-core</artifactId>
+            <version>0.9</version>
+            <scope>test</scope>
+        </dependency>-->
     </dependencies>
 
     <build>

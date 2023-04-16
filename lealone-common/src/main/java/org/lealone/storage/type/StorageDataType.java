@@ -223,5 +223,4 @@ public interface StorageDataType {
         }
         return typeId;
     }
-
 }

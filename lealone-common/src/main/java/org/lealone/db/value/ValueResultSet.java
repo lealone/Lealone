@@ -159,5 +159,4 @@ public class ValueResultSet extends Value {
         }
         return ValueResultSet.get(new SimpleResultSet());
     }
-
 }

@@ -301,7 +301,7 @@ public class ValueTimestamp extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 40;
+            return 32;
         }
 
         @Override
@@ -326,6 +326,5 @@ public class ValueTimestamp extends Value {
             long nanos = DataUtils.readVarLong(buff) * 1000000 + DataUtils.readVarLong(buff);
             return ValueTimestamp.fromDateValueAndNanos(dateValue, nanos);
         }
-
     };
 }

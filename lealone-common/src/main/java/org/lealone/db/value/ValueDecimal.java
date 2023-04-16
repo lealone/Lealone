@@ -294,7 +294,7 @@ public class ValueDecimal extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 30;
+            return 24;
         }
 
         @Override
@@ -353,5 +353,4 @@ public class ValueDecimal extends Value {
             return ValueDecimal.get(new BigDecimal(b, scale));
         }
     };
-
 }

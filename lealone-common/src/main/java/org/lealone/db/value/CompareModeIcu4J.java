@@ -80,5 +80,4 @@ public class CompareModeIcu4J extends CompareMode {
             throw DbException.convert(e);
         }
     }
-
 }

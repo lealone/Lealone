@@ -38,5 +38,4 @@ public abstract class StorageDataTypeBase implements StorageDataType {
     protected IllegalStateException newInternalError() {
         return DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Internal error");
     }
-
 }

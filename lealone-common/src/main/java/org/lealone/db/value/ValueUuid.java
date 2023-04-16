@@ -240,7 +240,7 @@ public class ValueUuid extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 40;
+            return 32;
         }
 
         @Override
@@ -263,7 +263,5 @@ public class ValueUuid extends Value {
         public Value readValue(ByteBuffer buff) {
             return ValueUuid.get(buff.getLong(), buff.getLong());
         }
-
     };
-
 }

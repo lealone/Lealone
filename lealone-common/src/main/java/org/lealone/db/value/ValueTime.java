@@ -229,7 +229,7 @@ public class ValueTime extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 40;
+            return 24;
         }
 
         @Override
@@ -252,7 +252,5 @@ public class ValueTime extends Value {
             long nanos = DataUtils.readVarLong(buff) * 1000000 + DataUtils.readVarLong(buff);
             return ValueTime.fromNanos(nanos);
         }
-
     };
-
 }

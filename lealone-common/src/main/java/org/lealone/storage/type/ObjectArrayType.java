@@ -240,5 +240,4 @@ public class ObjectArrayType extends StorageDataTypeBase {
     public void writeValue(DataBuffer buff, Value v) {
         throw newInternalError();
     }
-
 }

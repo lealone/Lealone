@@ -666,5 +666,4 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
     public static ValueLob createSmallLob(int type, byte[] small, long precision) {
         return new ValueLob(type, small, precision);
     }
-
 }

@@ -132,5 +132,4 @@ public class SerializedObjectType extends StorageDataTypeBase {
                     Arrays.toString(data), e);
         }
     }
-
 }
