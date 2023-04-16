@@ -29,10 +29,10 @@ import org.lealone.sql.IExpression;
 public class ResultTempTable implements ResultExternal {
 
     private static final String COLUMN_NAME = "DATA";
+    private final ServerSession session;
     private final boolean distinct;
     private final SortOrder sort;
     private Index index;
-    private final ServerSession session;
     private Table table;
     private Cursor resultCursor;
     private int rowCount;
@@ -308,5 +308,4 @@ public class ResultTempTable implements ResultExternal {
         }
         return null;
     }
-
 }

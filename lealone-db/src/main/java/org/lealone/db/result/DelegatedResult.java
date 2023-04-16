@@ -8,6 +8,7 @@ package org.lealone.db.result;
 import org.lealone.db.value.Value;
 
 public class DelegatedResult implements Result {
+
     protected Result result;
 
     @Override
@@ -109,5 +110,4 @@ public class DelegatedResult implements Result {
     public int getFetchSize() {
         return result.getFetchSize();
     }
-
 }

@@ -6,18 +6,15 @@
 package org.lealone.db.result;
 
 import org.lealone.db.Constants;
-import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 
 /**
  * A simple row that contains data for only one column.
  */
-public class SimpleRowValue implements SearchRow {
+public class SimpleRowValue extends RowBase {
 
-    private long key;
-    private int version;
-    private int index;
     private final int virtualColumnCount;
+    private int index;
     private Value data;
 
     public SimpleRowValue(int columnCount) {
@@ -25,29 +22,8 @@ public class SimpleRowValue implements SearchRow {
     }
 
     @Override
-    public void setKeyAndVersion(SearchRow row) {
-        key = row.getKey();
-        version = row.getVersion();
-    }
-
-    @Override
-    public int getVersion() {
-        return version;
-    }
-
-    @Override
     public int getColumnCount() {
         return virtualColumnCount;
-    }
-
-    @Override
-    public long getKey() {
-        return key;
-    }
-
-    @Override
-    public void setKey(long key) {
-        this.key = key;
     }
 
     @Override
@@ -57,22 +33,20 @@ public class SimpleRowValue implements SearchRow {
 
     @Override
     public void setValue(int idx, Value v) {
-        setValue(idx, v, null);
-    }
-
-    @Override
-    public void setValue(int idx, Value v, Column c) {
         index = idx;
         data = v;
     }
 
     @Override
-    public String toString() {
-        return "( /* " + key + " */ " + (data == null ? "null" : data.getTraceSQL()) + " )";
+    public int getMemory() {
+        if (memory == 0) {
+            memory = Constants.MEMORY_OBJECT + (data == null ? 0 : data.getMemory());
+        }
+        return memory;
     }
 
     @Override
-    public int getMemory() {
-        return Constants.MEMORY_OBJECT + (data == null ? 0 : data.getMemory());
+    public String toString() {
+        return "( /* " + key + " */ " + (data == null ? "null" : data.getTraceSQL()) + " )";
     }
 }

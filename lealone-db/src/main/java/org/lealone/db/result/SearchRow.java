@@ -5,19 +5,12 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 
 /**
- * The interface for rows stored in a table, and for partial rows stored in the
- * index.
+ * The interface for rows stored in a table, and for partial rows stored in the index.
  */
 public interface SearchRow {
-
-    /**
-     * An empty array of SearchRow objects.
-     */
-    SearchRow[] EMPTY_ARRAY = {};
 
     /**
      * Get the column count.
@@ -25,6 +18,29 @@ public interface SearchRow {
      * @return the column count
      */
     int getColumnCount();
+
+    /**
+     * Get the unique key of the row.
+     *
+     * @return the key
+     */
+    long getKey();
+
+    /**
+     * Set the unique key of the row.
+     *
+     * @param key the key
+     */
+    void setKey(long key);
+
+    /**
+     * Get the version of the row.
+     *
+     * @return the version
+     */
+    int getVersion();
+
+    void setVersion(int version);
 
     /**
      * Get the value for the column
@@ -41,36 +57,6 @@ public interface SearchRow {
      * @param v the new value
      */
     void setValue(int index, Value v);
-
-    void setValue(int index, Value v, Column column);
-
-    /**
-     * Set the position and version to match another row.
-     *
-     * @param old the other row.
-     */
-    void setKeyAndVersion(SearchRow old);
-
-    /**
-     * Get the version of the row.
-     *
-     * @return the version
-     */
-    int getVersion();
-
-    /**
-     * Set the unique key of the row.
-     *
-     * @param key the key
-     */
-    void setKey(long key);
-
-    /**
-     * Get the unique key of the row.
-     *
-     * @return the key
-     */
-    long getKey();
 
     /**
      * Get the estimated memory used for this row, in bytes.

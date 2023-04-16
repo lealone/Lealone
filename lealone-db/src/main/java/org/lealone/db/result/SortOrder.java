@@ -243,5 +243,4 @@ public class SortOrder implements Comparator<Value[]> {
     public int[] getSortTypes() {
         return sortTypes;
     }
-
 }

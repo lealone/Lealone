@@ -185,7 +185,7 @@ public class IndexCursor implements Cursor {
         if (id < 0) {
             row.setKey(v.getLong());
         } else {
-            row.setValue(id, v, column);
+            row.setValue(id, v);
         }
         return row;
     }
