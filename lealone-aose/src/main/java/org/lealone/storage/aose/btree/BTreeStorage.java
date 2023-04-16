@@ -20,7 +20,8 @@ import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
-import org.lealone.storage.cache.CacheLongKeyLIRS;
+import org.lealone.storage.aose.cache.CacheFileStorage;
+import org.lealone.storage.aose.cache.CacheLongKeyLIRS;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
@@ -428,7 +429,7 @@ public class BTreeStorage {
     }
 
     private FileStorage openFileStorage(String chunkFileName) {
-        FileStorage fileStorage = new FileStorage();
+        FileStorage fileStorage = new CacheFileStorage();
         fileStorage.open(chunkFileName, map.getConfig());
         return fileStorage;
     }

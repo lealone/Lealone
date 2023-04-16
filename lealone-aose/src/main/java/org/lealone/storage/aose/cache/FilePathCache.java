@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.cache;
+package org.lealone.storage.aose.cache;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -24,7 +24,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.storage.cache.FilePathCache;
 
 /**
  * This class is an abstraction of a random access file.
@@ -119,7 +118,6 @@ public class FileStorage {
     }
 
     public FileStorage() {
-
     }
 
     /**
@@ -597,6 +595,10 @@ public class FileStorage {
         writeBytes += len;
     }
 
+    protected FileChannel wrap(FileChannel file) {
+        return file;
+    }
+
     /**
      * Try to open the file.
      *
@@ -639,7 +641,7 @@ public class FileStorage {
                 encryptedFile = file;
                 file = new FilePathEncrypt.FileEncrypt(fileName, key, file);
             }
-            file = FilePathCache.wrap(file);
+            file = wrap(file);
             try {
                 if (readOnly) {
                     fileLock = file.tryLock(0, Long.MAX_VALUE, true);
