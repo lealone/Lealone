@@ -3,12 +3,14 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.fs;
+package org.lealone.storage.fs.impl;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * Allows to write to a file channel like an output stream.
@@ -54,5 +56,4 @@ public class FileChannelOutputStream extends OutputStream {
     public void close() throws IOException {
         channel.close();
     }
-
 }

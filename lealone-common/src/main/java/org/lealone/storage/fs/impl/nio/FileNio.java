@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.fs;
+package org.lealone.storage.fs.impl.nio;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -12,35 +12,19 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.NonWritableChannelException;
 
-/**
- * This file system stores files on disk and uses java.nio to access the files.
- * This class uses FileChannel.
- */
-public class FilePathNio extends FilePathWrapper {
-
-    @Override
-    public FileChannel open(String mode) throws IOException {
-        return new FileNio(name.substring(getScheme().length() + 1), mode);
-    }
-
-    @Override
-    public String getScheme() {
-        return "nio";
-    }
-
-}
+import org.lealone.storage.fs.impl.FileBase;
 
 /**
  * File which uses NIO FileChannel.
  */
 class FileNio extends FileBase {
 
-    private final String name;
+    private final String fileName;
     private final RandomAccessFile file;
     private final FileChannel channel;
 
     FileNio(String fileName, String mode) throws IOException {
-        this.name = fileName;
+        this.fileName = fileName;
         file = new RandomAccessFile(fileName, mode);
         channel = file.getChannel();
     }
@@ -124,7 +108,6 @@ class FileNio extends FileBase {
 
     @Override
     public String toString() {
-        return "nio:" + name;
+        return "nio:" + fileName;
     }
-
 }

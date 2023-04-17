@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.fs;
+package org.lealone.storage.fs.impl.disk;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,10 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.NonWritableChannelException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +22,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.storage.fs.FilePath;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * This file system stores files on disk.
@@ -33,6 +32,11 @@ import org.lealone.db.api.ErrorCode;
 public class FilePathDisk extends FilePath {
 
     private static final String CLASSPATH_PREFIX = "classpath:";
+
+    @Override
+    public String getScheme() {
+        return "file";
+    }
 
     @Override
     public FilePathDisk getPath(String path) {
@@ -320,7 +324,7 @@ public class FilePathDisk extends FilePath {
      * Call the garbage collection and run finalization. This close all files
      * that were not closed, and are no longer referenced.
      */
-    static void freeMemoryAndFinalize() {
+    private static void freeMemoryAndFinalize() {
         IOUtils.trace("freeMemoryAndFinalize", null, null);
         Runtime rt = Runtime.getRuntime();
         long mem = rt.freeMemory();
@@ -350,11 +354,6 @@ public class FilePathDisk extends FilePath {
             }
         }
         return f;
-    }
-
-    @Override
-    public String getScheme() {
-        return "file";
     }
 
     @Override
@@ -388,98 +387,4 @@ public class FilePathDisk extends FilePath {
             return get(f.getCanonicalPath());
         }
     }
-
-}
-
-/**
- * Uses java.io.RandomAccessFile to access a file.
- */
-class FileDisk extends FileBase {
-
-    private final RandomAccessFile file;
-    private final String name;
-    private final boolean readOnly;
-
-    FileDisk(String fileName, String mode) throws FileNotFoundException {
-        this.file = new RandomAccessFile(fileName, mode);
-        this.name = fileName;
-        this.readOnly = mode.equals("r");
-    }
-
-    @Override
-    public void force(boolean metaData) throws IOException {
-        String m = SysProperties.SYNC_METHOD;
-        if ("".equals(m)) {
-            // do nothing
-        } else if ("sync".equals(m)) {
-            file.getFD().sync();
-        } else if ("force".equals(m)) {
-            file.getChannel().force(true);
-        } else if ("forceFalse".equals(m)) {
-            file.getChannel().force(false);
-        } else {
-            file.getFD().sync();
-        }
-    }
-
-    @Override
-    public FileChannel truncate(long newLength) throws IOException {
-        // compatibility with JDK FileChannel#truncate
-        if (readOnly) {
-            throw new NonWritableChannelException();
-        }
-        if (newLength < file.length()) {
-            file.setLength(newLength);
-        }
-        return this;
-    }
-
-    @Override
-    public synchronized FileLock tryLock(long position, long size, boolean shared) throws IOException {
-        return file.getChannel().tryLock(position, size, shared);
-    }
-
-    @Override
-    public void implCloseChannel() throws IOException {
-        file.close();
-    }
-
-    @Override
-    public long position() throws IOException {
-        return file.getFilePointer();
-    }
-
-    @Override
-    public long size() throws IOException {
-        return file.length();
-    }
-
-    @Override
-    public int read(ByteBuffer dst) throws IOException {
-        int len = file.read(dst.array(), dst.arrayOffset() + dst.position(), dst.remaining());
-        if (len > 0) {
-            dst.position(dst.position() + len);
-        }
-        return len;
-    }
-
-    @Override
-    public FileChannel position(long pos) throws IOException {
-        file.seek(pos);
-        return this;
-    }
-
-    @Override
-    public int write(ByteBuffer src) throws IOException {
-        int len = src.remaining();
-        file.write(src.array(), src.arrayOffset() + src.position(), len);
-        src.position(src.position() + len);
-        return len;
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
-
 }

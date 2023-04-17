@@ -18,14 +18,13 @@ import org.lealone.db.DataHandler;
 public class FileStorageOutputStream extends OutputStream {
 
     private FileStorage fileStorage;
-    private final DataBuffer page;
-    private final String compressionAlgorithm;
     private final CompressTool compress;
+    private final String compressionAlgorithm;
+    private final DataBuffer page;
     private final byte[] buffer = { 0 };
 
-    public FileStorageOutputStream(FileStorage fileStorage, DataHandler handler,
-            String compressionAlgorithm) {
-        this.fileStorage = fileStorage;
+    public FileStorageOutputStream(FileStorage fs, DataHandler handler, String compressionAlgorithm) {
+        this.fileStorage = fs;
         if (compressionAlgorithm != null) {
             this.compress = CompressTool.getInstance();
             this.compressionAlgorithm = compressionAlgorithm;
@@ -83,5 +82,4 @@ public class FileStorageOutputStream extends OutputStream {
             }
         }
     }
-
 }

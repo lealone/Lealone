@@ -46,14 +46,8 @@ public class LocalDataHandler implements DataHandler {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStorage fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey, 0);
+        FileStorage fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey);
         fileStorage.setCheckedWriting(false);
-        try {
-            fileStorage.init();
-        } catch (DbException e) {
-            fileStorage.closeSilently();
-            throw e;
-        }
         return fileStorage;
     }
 

@@ -16,30 +16,60 @@ import java.util.Map;
 
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.storage.fs.impl.FilePathWrapper;
 
 /**
  * A path to a file. It similar to the Java 7 <code>java.nio.file.Path</code>,
  * but simpler, and works with older versions of Java. It also implements the
- * relevant methods found in <code>java.nio.file.FileSystem</code> and
- * <code>FileSystems</code>
+ * relevant methods found in <code>java.nio.file.FileSystem</code> and <code>FileSystems</code>
  */
 public abstract class FilePath {
 
     private static FilePath defaultProvider;
-
     private static Map<String, FilePath> providers;
 
-    /**
-     * The prefix for temporary files.
-     */
+    // The prefix for temporary files.
     private static String tempRandom;
     private static long tempSequence;
 
+    // register default providers
+    static {
+        // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
+        String packageName = FilePathWrapper.class.getPackage().getName() + ".";
+        providers = Collections.synchronizedMap(new HashMap<>());
+        for (String c : new String[] { //
+                "disk.FilePathDisk",
+                "nio.FilePathNio", //
+                "zip.FilePathZip" }) {
+            try {
+                FilePath p = Utils.newInstance(packageName + c);
+                providers.put(p.getScheme(), p);
+                if (defaultProvider == null) {
+                    defaultProvider = p;
+                }
+            } catch (Exception e) {
+                // ignore - the files may be excluded in purpose
+            }
+        }
+    }
+
     /**
-     * The complete path (which may be absolute or relative, depending on the
-     * file system).
+     * Register a file provider.
+     *
+     * @param provider the file provider
      */
-    protected String name;
+    public static void register(FilePath provider) {
+        providers.put(provider.getScheme(), provider);
+    }
+
+    /**
+     * Unregister a file provider.
+     *
+     * @param provider the file provider
+     */
+    public static void unregister(FilePath provider) {
+        providers.remove(provider.getScheme());
+    }
 
     /**
      * Get the file path object for the given path.
@@ -51,7 +81,6 @@ public abstract class FilePath {
     public static FilePath get(String path) {
         path = path.replace('\\', '/');
         int index = path.indexOf(':');
-        registerDefaultProviders();
         if (index < 2) {
             // use the default provider if no prefix or
             // only a single character (drive name)
@@ -66,45 +95,30 @@ public abstract class FilePath {
         return p.getPath(path);
     }
 
-    private static void registerDefaultProviders() {
-        if (providers == null || defaultProvider == null) {
-            // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
-            String packageName = FilePath.class.getPackage().getName() + ".";
-            Map<String, FilePath> map = Collections.synchronizedMap(new HashMap<>());
-            for (String c : new String[] { "FilePathDisk", "FilePathNio", "FilePathZip" }) {
-                try {
-                    FilePath p = Utils.newInstance(packageName + c);
-                    map.put(p.getScheme(), p);
-                    if (defaultProvider == null) {
-                        defaultProvider = p;
-                    }
-                } catch (Exception e) {
-                    // ignore - the files may be excluded in purpose
-                }
-            }
-            providers = map;
-        }
-    }
+    /**
+     * The complete path (which may be absolute or relative, depending on the file system).
+     */
+    public String name;
 
     /**
-     * Register a file provider.
+     * Get the scheme (prefix) for this file provider.
+     * This is similar to
+     * <code>java.nio.file.spi.FileSystemProvider.getScheme</code>.
      *
-     * @param provider the file provider
+     * @return the scheme
      */
-    public static void register(FilePath provider) {
-        registerDefaultProviders();
-        providers.put(provider.getScheme(), provider);
-    }
+    public abstract String getScheme();
 
     /**
-     * Unregister a file provider.
+     * Convert a file to a path. This is similar to
+     * <code>java.nio.file.spi.FileSystemProvider.getPath</code>, but may
+     * return an object even if the scheme doesn't match in case of the the
+     * default file provider.
      *
-     * @param provider the file provider
+     * @param path the path
+     * @return the file path object
      */
-    public static void unregister(FilePath provider) {
-        registerDefaultProviders();
-        providers.remove(provider.getScheme());
-    }
+    public abstract FilePath getPath(String path);
 
     /**
      * Get the size of a file in bytes
@@ -216,19 +230,19 @@ public abstract class FilePath {
     public abstract OutputStream newOutputStream(boolean append) throws IOException;
 
     /**
+     * Create an input stream to read from the file.
+     *
+     * @return the input stream
+     */
+    public abstract InputStream newInputStream() throws IOException;
+
+    /**
      * Open a random access file object.
      *
      * @param mode the access mode. Supported are r, rw, rws, rwd
      * @return the file object
      */
     public abstract FileChannel open(String mode) throws IOException;
-
-    /**
-     * Create an input stream to read from the file.
-     *
-     * @return the input stream
-     */
-    public abstract InputStream newInputStream() throws IOException;
 
     /**
      * Disable the ability to write.
@@ -246,7 +260,7 @@ public abstract class FilePath {
      * @param inTempDir if the file should be stored in the temporary directory
      * @return the name of the created file
      */
-    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir)
+    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) //
             throws IOException {
         while (true) {
             FilePath p = getPath(name + getNextTempFileNamePart(false) + suffix);
@@ -285,26 +299,6 @@ public abstract class FilePath {
     }
 
     /**
-     * Get the scheme (prefix) for this file provider.
-     * This is similar to
-     * <code>java.nio.file.spi.FileSystemProvider.getScheme</code>.
-     *
-     * @return the scheme
-     */
-    public abstract String getScheme();
-
-    /**
-     * Convert a file to a path. This is similar to
-     * <code>java.nio.file.spi.FileSystemProvider.getPath</code>, but may
-     * return an object even if the scheme doesn't match in case of the the
-     * default file provider.
-     *
-     * @param path the path
-     * @return the file path object
-     */
-    public abstract FilePath getPath(String path);
-
-    /**
      * Get the unwrapped file name (without wrapper prefixes if wrapping /
      * delegating file systems are used).
      *
@@ -313,5 +307,4 @@ public abstract class FilePath {
     public FilePath unwrap() {
         return this;
     }
-
 }

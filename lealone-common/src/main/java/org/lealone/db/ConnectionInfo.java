@@ -21,7 +21,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.db.session.SessionSetting;
-import org.lealone.storage.fs.FilePathEncrypt;
+import org.lealone.storage.fs.impl.encrypt.FilePathEncrypt;
 
 /**
  * Encapsulates the connection settings, including user name and password.

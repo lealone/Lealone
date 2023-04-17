@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.fs;
+package org.lealone.storage.fs.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,5 +67,4 @@ public class FileChannelInputStream extends InputStream {
             channel.close();
         }
     }
-
 }

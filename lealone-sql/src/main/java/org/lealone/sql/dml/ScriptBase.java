@@ -114,7 +114,6 @@ public abstract class ScriptBase extends ManipulationStatement {
         String file = getFileName();
         fileStorage = FileStorage.open(db, file, "rw", cipher, key);
         fileStorage.setCheckedWriting(false);
-        fileStorage.init();
     }
 
     /**

@@ -617,15 +617,7 @@ public class Database implements DataHandler, DbObject {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStorage fileStorage = FileStorage.open(this, name, openMode, dbSettings.cipher,
-                dbSettings.filePasswordHash);
-        try {
-            fileStorage.init();
-        } catch (DbException e) {
-            fileStorage.closeSilently();
-            throw e;
-        }
-        return fileStorage;
+        return FileStorage.open(this, name, openMode, dbSettings.cipher, dbSettings.filePasswordHash);
     }
 
     /**

@@ -439,9 +439,7 @@ public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
     }
 
     private FileStorage openFileStorage(String chunkFileName) {
-        FileStorage fileStorage = new CacheFileStorage();
-        fileStorage.open(chunkFileName, map.getConfig());
-        return fileStorage;
+        return CacheFileStorage.open(chunkFileName, map.getConfig());
     }
 
     InputStream getInputStream(FilePath file) {

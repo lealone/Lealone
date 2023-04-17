@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.fs;
+package org.lealone.storage.fs.impl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -98,5 +98,4 @@ public abstract class FileBase extends FileChannel {
     public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
-
 }

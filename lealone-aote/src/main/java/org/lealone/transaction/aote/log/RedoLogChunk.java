@@ -39,8 +39,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         this.id = id;
         this.config = config;
         String chunkFileName = getChunkFileName(config, id);
-        fileStorage = new FileStorage();
-        fileStorage.open(chunkFileName, config);
+        fileStorage = FileStorage.open(chunkFileName, config);
         logQueue = new LinkedTransferQueue<>();
         pos = fileStorage.size();
         if (pos > 0)

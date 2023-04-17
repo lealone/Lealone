@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.aose.cache;
+package org.lealone.storage.fs.impl.nio;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -11,21 +11,18 @@ import java.nio.channels.FileChannel;
 import org.lealone.storage.fs.impl.FilePathWrapper;
 
 /**
- * A file with a read cache.
+ * This file system stores files on disk and uses java.nio to access the files.
+ * This class uses FileChannel.
  */
-public class FilePathCache extends FilePathWrapper {
-
-    public static FileChannel wrap(FileChannel f) {
-        return new FileCache(f);
-    }
+public class FilePathNio extends FilePathWrapper {
 
     @Override
     public String getScheme() {
-        return "cache";
+        return "nio";
     }
 
     @Override
     public FileChannel open(String mode) throws IOException {
-        return new FileCache(getBase().open(mode));
+        return new FileNio(name.substring(getScheme().length() + 1), mode);
     }
 }
