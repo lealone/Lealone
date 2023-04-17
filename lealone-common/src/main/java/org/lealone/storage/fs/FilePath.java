@@ -39,8 +39,7 @@ public abstract class FilePath {
         providers = Collections.synchronizedMap(new HashMap<>());
         for (String c : new String[] { //
                 "disk.FilePathDisk",
-                "nio.FilePathNio", //
-                "zip.FilePathZip" }) {
+                "nio.FilePathNio" }) {
             try {
                 FilePath p = Utils.newInstance(packageName + c);
                 providers.put(p.getScheme(), p);
