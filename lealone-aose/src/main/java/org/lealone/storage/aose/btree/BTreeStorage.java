@@ -19,9 +19,8 @@ import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.aose.btree.page.PageCache;
 import org.lealone.storage.aose.btree.page.PageUtils;
-import org.lealone.storage.aose.cache.CacheFileStorage;
-import org.lealone.storage.aose.cache.CacheLongKeyLIRS;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
@@ -29,7 +28,7 @@ import org.lealone.storage.fs.FileUtils;
 /**
  * A persistent storage for btree map.
  */
-public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
+public class BTreeStorage implements PageCache.CacheListener<Page> {
 
     private final BTreeMap<?, ?> map;
     private final String mapBaseDir;
@@ -45,7 +44,7 @@ public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
      * The page cache. The default size is 16 MB, and the average size is 2 KB.
      * It is split in 16 segments. The stack move distance is 2% of the expected number of entries.
      */
-    private final CacheLongKeyLIRS<Page> cache;
+    private final PageCache<Page> cache;
 
     /**
      * The compression level for new pages (0 for disabled, 1 for fast, 2 for high).
@@ -84,9 +83,9 @@ public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
 
         int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
         if (cacheSize > 0) {
-            CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
+            PageCache.Config cc = new PageCache.Config();
             cc.maxMemory = cacheSize;
-            cache = new CacheLongKeyLIRS<>(cc);
+            cache = new PageCache<>(cc);
             cache.setCacheListener(this);
         } else {
             cache = null; // 当 cacheSize <= 0 时禁用缓存
@@ -439,7 +438,7 @@ public class BTreeStorage implements CacheLongKeyLIRS.CacheListener<Page> {
     }
 
     private FileStorage openFileStorage(String chunkFileName) {
-        return CacheFileStorage.open(chunkFileName, map.getConfig());
+        return FileStorage.open(chunkFileName, map.getConfig());
     }
 
     InputStream getInputStream(FilePath file) {

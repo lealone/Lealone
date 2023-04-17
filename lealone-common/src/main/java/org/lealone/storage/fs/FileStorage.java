@@ -177,7 +177,6 @@ public class FileStorage {
                 String cipher = (String) config.get("cipher");
                 file = new FileEncrypt(fileName, cipher, key, file);
             }
-            file = wrap(file);
             try {
                 if (readOnly) {
                     fileLock = file.tryLock(0, Long.MAX_VALUE, true);
@@ -194,10 +193,6 @@ public class FileStorage {
         } catch (IOException e) {
             throw newISE(DataUtils.ERROR_READING_FAILED, "Could not open file {0}", fileName, e);
         }
-    }
-
-    protected FileChannel wrap(FileChannel file) {
-        return file;
     }
 
     public static IllegalStateException newISE(int errorCode, String message, Object... arguments) {

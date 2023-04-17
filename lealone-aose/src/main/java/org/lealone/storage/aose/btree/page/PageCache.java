@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.aose.cache;
+package org.lealone.storage.aose.btree.page;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,9 +41,10 @@ import org.lealone.common.util.DataUtils;
  * segment.
  *
  * @author Thomas Mueller
+ * @author zhh
  * @param <V> the value type
  */
-public class CacheLongKeyLIRS<V> {
+public class PageCache<V> {
 
     public interface CacheListener<V> {
         void onEvict(V v);
@@ -74,7 +75,7 @@ public class CacheLongKeyLIRS<V> {
      * @param config the configuration
      */
     @SuppressWarnings("unchecked")
-    public CacheLongKeyLIRS(Config config) {
+    public PageCache(Config config) {
         setMaxMemory(config.maxMemory);
         this.nonResidentQueueSize = config.nonResidentQueueSize;
         DataUtils.checkArgument(Integer.bitCount(config.segmentCount) == 1,
