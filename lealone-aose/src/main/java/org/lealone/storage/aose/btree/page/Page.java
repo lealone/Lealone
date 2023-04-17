@@ -477,7 +477,7 @@ public class Page {
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
 
-        map.getBTreeStorage().cachePage(pos, this, getMemory());
+        map.getBTreeStorage().cachePage(pos, this);
 
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,

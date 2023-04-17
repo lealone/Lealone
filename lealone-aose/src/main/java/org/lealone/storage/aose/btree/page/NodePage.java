@@ -46,7 +46,7 @@ public class NodePage extends LocalPage {
             Page p;
             if (ref.buff != null) {
                 p = Page.read(map, ref.pos, ref.buff, ref.pageLength);
-                map.getBTreeStorage().cachePage(pos, p, p.getMemory());
+                map.getBTreeStorage().cachePage(pos, p);
                 map.getBTreeStorage().removeWarmPage(pos);
             } else {
                 p = map.getBTreeStorage().readPage(ref.pos);
@@ -190,7 +190,7 @@ public class NodePage extends LocalPage {
 
         // cache again - this will make sure nodes stays in the cache
         // for a longer time
-        map.getBTreeStorage().cachePage(pos, this, getMemory());
+        map.getBTreeStorage().cachePage(pos, this);
 
         removeIfInMemory();
         return typePos + 1;

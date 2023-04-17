@@ -28,6 +28,11 @@ class ColumnPage extends Page {
     }
 
     @Override
+    public void clear() {
+        // values = null;
+    }
+
+    @Override
     public int getMemory() {
         int memory = 0;
         // 延迟计算
@@ -63,7 +68,7 @@ class ColumnPage extends Page {
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
             valueType.readColumn(buff, values[row], columnIndex);
         }
-        buff = null;
+        buff.flip(); // 可以复用
     }
 
     long write(Chunk chunk, DataBuffer buff) {

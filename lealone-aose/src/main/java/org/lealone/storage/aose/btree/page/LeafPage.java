@@ -231,7 +231,7 @@ public class LeafPage extends LocalPage {
         if (page.values == null) {
             columnPages[columnIndex].page = page;
             page.readColumn(values, columnIndex);
-            map.getBTreeStorage().cachePage(columnPages[columnIndex].pos, page, page.getMemory());
+            map.getBTreeStorage().cachePage(columnPages[columnIndex].pos, page);
         } else {
             // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
             values = page.values;

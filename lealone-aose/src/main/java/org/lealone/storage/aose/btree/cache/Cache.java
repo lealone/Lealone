@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.aose.btree.page;
+package org.lealone.storage.aose.btree.cache;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ import org.lealone.common.util.DataUtils;
  * @author zhh
  * @param <V> the value type
  */
-public class PageCache<V> {
+public class Cache<V> {
 
     public interface CacheListener<V> {
         void onEvict(V v);
@@ -77,7 +77,7 @@ public class PageCache<V> {
      * @param config the configuration
      */
     @SuppressWarnings("unchecked")
-    public PageCache(Config config) {
+    public Cache(Config config) {
         setMaxMemory(config.maxMemory);
         this.nonResidentQueueSize = config.nonResidentQueueSize;
         this.nonResidentQueueSizeHigh = config.nonResidentQueueSizeHigh;
@@ -878,21 +878,21 @@ public class PageCache<V> {
             mapSize--;
             usedMemory -= e.getMemory();
             if (e.stackNext != null) {
-                removeFromStack(e, true);
+                removeFromStack(e);
             }
             if (e.isHot()) {
                 // when removing a hot entry, the newest cold entry gets hot,
                 // so the number of hot entries does not change
                 e = queue.queueNext;
                 if (e != queue) {
-                    removeFromQueue(e, true);
+                    removeFromQueue(e);
                     if (e.stackNext == null) {
                         addToStackBottom(e);
                     }
                 }
                 pruneStack();
             } else {
-                removeFromQueue(e, true);
+                removeFromQueue(e);
             }
             return old;
         }
@@ -919,6 +919,7 @@ public class PageCache<V> {
             while (usedMemory > maxMemory && queueSize > 0) {
                 Entry<V> e = queue.queuePrev;
                 usedMemory -= e.memory;
+                onEvict(e);
                 removeFromQueue(e);
                 e.reference = new WeakReference<>(e.value);
                 e.value = null;
@@ -926,6 +927,11 @@ public class PageCache<V> {
                 // the size of the non-resident-cold entries needs to be limited
                 trimNonResidentQueue();
             }
+        }
+
+        private void onEvict(Entry<V> e) {
+            if (cacheListener != null)
+                cacheListener.onEvict(e.value);
         }
 
         void trimNonResidentQueue() {
@@ -1017,16 +1023,10 @@ public class PageCache<V> {
          * @param e the entry
          */
         private void removeFromStack(Entry<V> e) {
-            removeFromStack(e, false);
-        }
-
-        private void removeFromStack(Entry<V> e, boolean isRemove) {
             e.stackPrev.stackNext = e.stackNext;
             e.stackNext.stackPrev = e.stackPrev;
             e.stackPrev = e.stackNext = null;
             stackSize--;
-            if (!isRemove && cacheListener != null)
-                cacheListener.onEvict(e.value);
         }
 
         private void addToQueue(Entry<V> q, Entry<V> e) {
@@ -1042,10 +1042,6 @@ public class PageCache<V> {
         }
 
         private void removeFromQueue(Entry<V> e) {
-            removeFromQueue(e, false);
-        }
-
-        private void removeFromQueue(Entry<V> e, boolean isRemove) {
             e.queuePrev.queueNext = e.queueNext;
             e.queueNext.queuePrev = e.queuePrev;
             e.queuePrev = e.queueNext = null;
@@ -1054,8 +1050,6 @@ public class PageCache<V> {
             } else {
                 queue2Size--;
             }
-            if (!isRemove && cacheListener != null)
-                cacheListener.onEvict(e.value);
         }
 
         /**
