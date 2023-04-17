@@ -106,4 +106,8 @@ public class PageReference {
         else
             return PageUtils.isNodePage(pos);
     }
+
+    public void clearBuff() {
+        buff = null;
+    }
 }

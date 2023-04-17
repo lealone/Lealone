@@ -5,6 +5,7 @@
  */
 package org.lealone.storage.aose.btree.page;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,9 +26,9 @@ import org.lealone.common.util.DataUtils;
  * at most the specified amount of memory. The memory unit is not relevant,
  * however it is suggested to use bytes as the unit.
  * <p>
- * This class implements an approximation of the the LIRS replacement algorithm
+ * This class implements an approximation of the LIRS replacement algorithm
  * invented by Xiaodong Zhang and Song Jiang as described in
- * http://www.cse.ohio-state.edu/~zhang/lirs-sigmetrics-02.html with a few
+ * https://web.cse.ohio-state.edu/~zhang.574/lirs-sigmetrics-02.html with a few
  * smaller changes: An additional queue for non-resident entries is used, to
  * prevent unbound memory usage. The maximum size of this queue is at most the
  * size of the rest of the stack. About 6.25% of the mapped entries are cold.
@@ -50,6 +51,12 @@ public class PageCache<V> {
         void onEvict(V v);
     }
 
+    private CacheListener<V> cacheListener;
+
+    public void setCacheListener(CacheListener<V> cacheListener) {
+        this.cacheListener = cacheListener;
+    }
+
     /**
      * The maximum memory this cache should use.
      */
@@ -62,12 +69,7 @@ public class PageCache<V> {
     private final int segmentMask;
     private final int stackMoveDistance;
     private final int nonResidentQueueSize;
-
-    private CacheListener<V> cacheListener;
-
-    public void setCacheListener(CacheListener<V> cacheListener) {
-        this.cacheListener = cacheListener;
-    }
+    private final int nonResidentQueueSizeHigh;
 
     /**
      * Create a new cache with the given memory size.
@@ -78,6 +80,7 @@ public class PageCache<V> {
     public PageCache(Config config) {
         setMaxMemory(config.maxMemory);
         this.nonResidentQueueSize = config.nonResidentQueueSize;
+        this.nonResidentQueueSizeHigh = config.nonResidentQueueSizeHigh;
         DataUtils.checkArgument(Integer.bitCount(config.segmentCount) == 1,
                 "The segment count must be a power of 2, is {0}", config.segmentCount);
         this.segmentCount = config.segmentCount;
@@ -93,10 +96,19 @@ public class PageCache<V> {
      * Remove all entries.
      */
     public void clear() {
-        long max = Math.max(1, maxMemory / segmentCount);
+        long max = getMaxItemSize();
         for (int i = 0; i < segmentCount; i++) {
-            segments[i] = new Segment<V>(max, stackMoveDistance, 8, nonResidentQueueSize);
+            segments[i] = new Segment<>(max, stackMoveDistance, 8, nonResidentQueueSize,
+                    nonResidentQueueSizeHigh);
         }
+    }
+
+    /**
+     * Determines max size of the data item size to fit into cache
+     * @return data items size limit
+     */
+    public long getMaxItemSize() {
+        return Math.max(1, maxMemory / segmentCount);
     }
 
     private Entry<V> find(long key) {
@@ -112,8 +124,8 @@ public class PageCache<V> {
      * @return true if there is a resident entry
      */
     public boolean containsKey(long key) {
-        int hash = getHash(key);
-        return getSegment(hash).containsKey(key, hash);
+        Entry<V> e = find(key);
+        return e != null && e.value != null;
     }
 
     /**
@@ -125,7 +137,7 @@ public class PageCache<V> {
      */
     public V peek(long key) {
         Entry<V> e = find(key);
-        return e == null ? null : e.value;
+        return e == null ? null : e.getValue();
     }
 
     /**
@@ -149,7 +161,10 @@ public class PageCache<V> {
      * @param memory the memory used for the given entry
      * @return the old value, or null if there was no resident entry
      */
-    public V put(long key, V value, int memory) {
+    public V put(long key, V value, long memory) {
+        if (value == null) {
+            throw DataUtils.newIllegalArgumentException("The value may not be null");
+        }
         int hash = getHash(key);
         int segmentIndex = getSegmentIndex(hash);
         Segment<V> s = segments[segmentIndex];
@@ -172,7 +187,7 @@ public class PageCache<V> {
         Segment<V> s2 = segments[segmentIndex];
         if (s == s2) {
             // no other thread resized, so we do
-            s = new Segment<V>(s, newLen);
+            s = new Segment<>(s, newLen);
             s.setCacheListener(cacheListener);
             segments[segmentIndex] = s;
         }
@@ -180,13 +195,13 @@ public class PageCache<V> {
     }
 
     /**
-     * Get the size of the given value. The default implementation returns 1.
+     * Get the size of the given value. The default implementation returns 16.
      *
      * @param value the value
      * @return the size
      */
-    protected int sizeOf(V value) {
-        return 1;
+    protected long sizeOf(V value) {
+        return 16;
     }
 
     /**
@@ -215,9 +230,18 @@ public class PageCache<V> {
      * @param key the key (may not be null)
      * @return the memory, or 0 if there is no resident entry
      */
-    public int getMemory(long key) {
-        int hash = getHash(key);
-        return getSegment(hash).getMemory(key, hash);
+    public long getMemory(long key) {
+        Entry<V> e = find(key);
+        return e == null ? 0L : e.getMemory();
+    }
+
+    /**
+     * Get the memory overhead per value.
+     *
+     * @return the memory overhead per value
+     */
+    public static int getMemoryOverhead() {
+        return Entry.TOTAL_MEMORY_OVERHEAD;
     }
 
     /**
@@ -230,7 +254,9 @@ public class PageCache<V> {
      */
     public V get(long key) {
         int hash = getHash(key);
-        return getSegment(hash).get(key, hash);
+        Segment<V> s = getSegment(hash);
+        Entry<V> e = s.find(key, hash);
+        return s.get(e);
     }
 
     private Segment<V> getSegment(int hash) {
@@ -304,11 +330,7 @@ public class PageCache<V> {
      * @return the entry set
      */
     public synchronized Set<Map.Entry<Long, V>> entrySet() {
-        HashMap<Long, V> map = new HashMap<Long, V>();
-        for (long k : keySet()) {
-            map.put(k, find(k).value);
-        }
-        return map.entrySet();
+        return getMap().entrySet();
     }
 
     /**
@@ -317,7 +339,7 @@ public class PageCache<V> {
      * @return the set of keys
      */
     public Set<Long> keySet() {
-        HashSet<Long> set = new HashSet<Long>();
+        HashSet<Long> set = new HashSet<>();
         for (Segment<V> s : segments) {
             set.addAll(s.keySet());
         }
@@ -411,7 +433,7 @@ public class PageCache<V> {
      * @return the key list
      */
     public List<Long> keys(boolean cold, boolean nonResident) {
-        ArrayList<Long> keys = new ArrayList<Long>();
+        ArrayList<Long> keys = new ArrayList<>();
         for (Segment<V> s : segments) {
             keys.addAll(s.keys(cold, nonResident));
         }
@@ -424,9 +446,9 @@ public class PageCache<V> {
      * @return the entry set
      */
     public List<V> values() {
-        ArrayList<V> list = new ArrayList<V>();
+        ArrayList<V> list = new ArrayList<>();
         for (long k : keySet()) {
-            V value = find(k).value;
+            V value = peek(k);
             if (value != null) {
                 list.add(value);
             }
@@ -449,7 +471,7 @@ public class PageCache<V> {
      * @param value the value
      * @return true if it is stored
      */
-    public boolean containsValue(Object value) {
+    public boolean containsValue(V value) {
         return getMap().containsValue(value);
     }
 
@@ -459,9 +481,9 @@ public class PageCache<V> {
      * @return the map
      */
     public Map<Long, V> getMap() {
-        HashMap<Long, V> map = new HashMap<Long, V>();
+        HashMap<Long, V> map = new HashMap<>();
         for (long k : keySet()) {
-            V x = find(k).value;
+            V x = peek(k);
             if (x != null) {
                 map.put(k, x);
             }
@@ -478,6 +500,17 @@ public class PageCache<V> {
         for (Map.Entry<Long, ? extends V> e : m.entrySet()) {
             // copy only non-null entries
             put(e.getKey(), e.getValue());
+        }
+    }
+
+    /**
+     * Loop through segments, trimming the non resident queue.
+     */
+    public void trimNonResidentQueue() {
+        for (Segment<V> s : segments) {
+            synchronized (s) {
+                s.trimNonResidentQueue();
+            }
         }
     }
 
@@ -541,10 +574,16 @@ public class PageCache<V> {
         private final int mask;
 
         /**
-         * The number of entries in the non-resident queue, as a factor of the
-         * number of entries in the map.
+         * Low watermark for the number of entries in the non-resident queue,
+         * as a factor of the number of entries in the map.
          */
         private final int nonResidentQueueSize;
+
+        /**
+         * High watermark for the number of entries in the non-resident queue,
+         * as a factor of the number of entries in the map.
+         */
+        private final int nonResidentQueueSizeHigh;
 
         /**
          * The stack of recently referenced elements. This includes all hot
@@ -588,27 +627,29 @@ public class PageCache<V> {
 
         /**
          * Create a new cache segment.
-         *
          * @param maxMemory the maximum memory to use
          * @param stackMoveDistance the number of other entries to be moved to
          *        the top of the stack before moving an entry to the top
          * @param len the number of hash table buckets (must be a power of 2)
-         * @param nonResidentQueueSize the non-resident queue size factor
+         * @param nonResidentQueueSize the non-resident queue size low watermark factor
+         * @param nonResidentQueueSizeHigh  the non-resident queue size high watermark factor
          */
-        Segment(long maxMemory, int stackMoveDistance, int len, int nonResidentQueueSize) {
+        Segment(long maxMemory, int stackMoveDistance, int len, int nonResidentQueueSize,
+                int nonResidentQueueSizeHigh) {
             setMaxMemory(maxMemory);
             this.stackMoveDistance = stackMoveDistance;
             this.nonResidentQueueSize = nonResidentQueueSize;
+            this.nonResidentQueueSizeHigh = nonResidentQueueSizeHigh;
 
             // the bit mask has all bits set
             mask = len - 1;
 
             // initialize the stack and queue heads
-            stack = new Entry<V>();
+            stack = new Entry<>();
             stack.stackPrev = stack.stackNext = stack;
-            queue = new Entry<V>();
+            queue = new Entry<>();
             queue.queuePrev = queue.queueNext = queue;
-            queue2 = new Entry<V>();
+            queue2 = new Entry<>();
             queue2.queuePrev = queue2.queueNext = queue2;
 
             @SuppressWarnings("unchecked")
@@ -625,12 +666,13 @@ public class PageCache<V> {
          * @param len the number of hash table buckets (must be a power of 2)
          */
         Segment(Segment<V> old, int len) {
-            this(old.maxMemory, old.stackMoveDistance, len, old.nonResidentQueueSize);
+            this(old.maxMemory, old.stackMoveDistance, len, old.nonResidentQueueSize,
+                    old.nonResidentQueueSizeHigh);
             hits = old.hits;
             misses = old.misses;
             Entry<V> s = old.stack.stackPrev;
             while (s != old.stack) {
-                Entry<V> e = copy(s);
+                Entry<V> e = new Entry<>(s);
                 addToMap(e);
                 addToStack(e);
                 s = s.stackPrev;
@@ -639,7 +681,7 @@ public class PageCache<V> {
             while (s != old.queue) {
                 Entry<V> e = find(s.key, getHash(s.key));
                 if (e == null) {
-                    e = copy(s);
+                    e = new Entry<>(s);
                     addToMap(e);
                 }
                 addToQueue(queue, e);
@@ -649,7 +691,7 @@ public class PageCache<V> {
             while (s != old.queue2) {
                 Entry<V> e = find(s.key, getHash(s.key));
                 if (e == null) {
-                    e = copy(s);
+                    e = new Entry<>(s);
                     addToMap(e);
                 }
                 addToQueue(queue2, e);
@@ -679,63 +721,28 @@ public class PageCache<V> {
             int index = getHash(e.key) & mask;
             e.mapNext = entries[index];
             entries[index] = e;
-            usedMemory += e.memory;
+            usedMemory += e.getMemory();
             mapSize++;
         }
 
-        private static <V> Entry<V> copy(Entry<V> old) {
-            Entry<V> e = new Entry<V>();
-            e.key = old.key;
-            e.value = old.value;
-            e.memory = old.memory;
-            e.topMove = old.topMove;
-            return e;
-        }
-
         /**
-         * Get the memory used for the given key.
+         * Get the value from the given entry.
+         * This method adjusts the internal state of the cache sometimes,
+         * to ensure commonly used entries stay in the cache.
          *
-         * @param key the key (may not be null)
-         * @param hash the hash
-         * @return the memory, or 0 if there is no resident entry
-         */
-        int getMemory(long key, int hash) {
-            Entry<V> e = find(key, hash);
-            return e == null ? 0 : e.memory;
-        }
-
-        /**
-         * Get the value for the given key if the entry is cached. This method
-         * adjusts the internal state of the cache sometimes, to ensure commonly
-         * used entries stay in the cache.
-         *
-         * @param key the key (may not be null)
-         * @param hash the hash
+         * @param e the entry
          * @return the value, or null if there is no resident entry
          */
-        V get(long key, int hash) {
-            Entry<V> e = find(key, hash);
-            if (e == null) {
-                // the entry was not found
-                misses++;
-                return null;
-            }
-            V value = e.value;
+        synchronized V get(Entry<V> e) {
+            V value = e == null ? null : e.getValue();
             if (value == null) {
-                // it was a non-resident entry
+                // the entry was not found
+                // or it was a non-resident entry
                 misses++;
-                return null;
-            }
-            if (e.isHot()) {
-                if (e != stack.stackNext) {
-                    if (stackMoveDistance == 0 || stackMoveCounter - e.topMove > stackMoveDistance) {
-                        access(key, hash);
-                    }
-                }
             } else {
-                access(key, hash);
+                access(e);
+                hits++;
             }
-            hits++;
             return value;
         }
 
@@ -743,16 +750,12 @@ public class PageCache<V> {
          * Access an item, moving the entry to the top of the stack or front of
          * the queue if found.
          *
-         * @param key the key
+         * @param e entry to record access for
          */
-        private synchronized void access(long key, int hash) {
-            Entry<V> e = find(key, hash);
-            if (e == null || e.value == null) {
-                return;
-            }
+        private void access(Entry<V> e) {
             if (e.isHot()) {
-                if (e != stack.stackNext) {
-                    if (stackMoveDistance == 0 || stackMoveCounter - e.topMove > stackMoveDistance) {
+                if (e != stack.stackNext && e.stackNext != null) {
+                    if (stackMoveCounter - e.topMove > stackMoveDistance) {
                         // move a hot entry to the top of the stack
                         // unless it is already there
                         boolean wasEnd = e == stack.stackPrev;
@@ -766,22 +769,33 @@ public class PageCache<V> {
                     }
                 }
             } else {
-                removeFromQueue(e);
-                if (e.stackNext != null) {
-                    // resident cold entries become hot
-                    // if they are on the stack
-                    removeFromStack(e);
-                    // which means a hot entry needs to become cold
-                    // (this entry is cold, that means there is at least one
-                    // more entry in the stack, which must be hot)
-                    convertOldestHotToCold();
-                } else {
-                    // cold entries that are not on the stack
-                    // move to the front of the queue
-                    addToQueue(queue, e);
+                V v = e.getValue();
+                if (v != null) {
+                    removeFromQueue(e);
+                    if (e.reference != null) {
+                        e.value = v;
+                        e.reference = null;
+                        usedMemory += e.memory;
+                    }
+                    if (e.stackNext != null) {
+                        // resident, or even non-resident (weak value reference),
+                        // cold entries become hot if they are on the stack
+                        removeFromStack(e);
+                        // which means a hot entry needs to become cold
+                        // (this entry is cold, that means there is at least one
+                        // more entry in the stack, which must be hot)
+                        convertOldestHotToCold();
+                    } else {
+                        // cold entries that are not on the stack
+                        // move to the front of the queue
+                        addToQueue(queue, e);
+                    }
+                    // in any case, the cold entry is moved to the top of the stack
+                    addToStack(e);
+                    // but if newly promoted cold/non-resident is the only entry on a stack now
+                    // that means last one is cold, need to prune
+                    pruneStack();
                 }
-                // in any case, the cold entry is moved to the top of the stack
-                addToStack(e);
             }
         }
 
@@ -796,30 +810,23 @@ public class PageCache<V> {
          * @param memory the memory used for the given entry
          * @return the old value, or null if there was no resident entry
          */
-        synchronized V put(long key, int hash, V value, int memory) {
-            if (value == null) {
-                throw DataUtils.newIllegalArgumentException("The value may not be null");
-            }
-            V old;
+        synchronized V put(long key, int hash, V value, long memory) {
             Entry<V> e = find(key, hash);
-            if (e == null) {
-                old = null;
-            } else {
-                old = e.value;
+            boolean existed = e != null;
+            V old = null;
+            if (existed) {
+                old = e.getValue();
                 remove(key, hash);
             }
-            if (memory > maxMemory) {
+            if (memory + Entry.TOTAL_MEMORY_OVERHEAD > maxMemory) {
                 // the new entry is too big to fit
                 return old;
             }
-            e = new Entry<V>();
-            e.key = key;
-            e.value = value;
-            e.memory = memory;
+            e = new Entry<>(key, value, memory);
             int index = hash & mask;
             e.mapNext = entries[index];
             entries[index] = e;
-            usedMemory += memory;
+            usedMemory += e.memory;
             if (usedMemory > maxMemory) {
                 // old entries needs to be removed
                 evict();
@@ -833,6 +840,10 @@ public class PageCache<V> {
             mapSize++;
             // added entries are always added to the stack
             addToStack(e);
+            if (existed) {
+                // if it was there before (even non-resident), it becomes hot
+                access(e);
+            }
             return old;
         }
 
@@ -850,9 +861,7 @@ public class PageCache<V> {
             if (e == null) {
                 return null;
             }
-            V old;
             if (e.key == key) {
-                old = e.value;
                 entries[index] = e.mapNext;
             } else {
                 Entry<V> last;
@@ -863,28 +872,28 @@ public class PageCache<V> {
                         return null;
                     }
                 } while (e.key != key);
-                old = e.value;
                 last.mapNext = e.mapNext;
             }
+            V old = e.getValue();
             mapSize--;
-            usedMemory -= e.memory;
+            usedMemory -= e.getMemory();
             if (e.stackNext != null) {
-                removeFromStack(e);
+                removeFromStack(e, true);
             }
             if (e.isHot()) {
                 // when removing a hot entry, the newest cold entry gets hot,
                 // so the number of hot entries does not change
                 e = queue.queueNext;
                 if (e != queue) {
-                    removeFromQueue(e);
+                    removeFromQueue(e, true);
                     if (e.stackNext == null) {
                         addToStackBottom(e);
                     }
                 }
+                pruneStack();
             } else {
-                removeFromQueue(e);
+                removeFromQueue(e, true);
             }
-            pruneStack();
             return old;
         }
 
@@ -903,7 +912,7 @@ public class PageCache<V> {
             // ensure there are not too many hot entries: right shift of 5 is
             // division by 32, that means if there are only 1/32 (3.125%) or
             // less cold entries, a hot entry needs to become cold
-            while (queueSize <= (mapSize >>> 5) && stackSize > 0) {
+            while (queueSize <= ((mapSize - queue2Size) >>> 5) && stackSize > 0) {
                 convertOldestHotToCold();
             }
             // the oldest resident cold entries become non-resident
@@ -911,18 +920,28 @@ public class PageCache<V> {
                 Entry<V> e = queue.queuePrev;
                 usedMemory -= e.memory;
                 removeFromQueue(e);
+                e.reference = new WeakReference<>(e.value);
                 e.value = null;
-                e.memory = 0;
                 addToQueue(queue2, e);
                 // the size of the non-resident-cold entries needs to be limited
-                int maxQueue2Size = nonResidentQueueSize * (mapSize - queue2Size);
-                if (maxQueue2Size >= 0) {
-                    while (queue2Size > maxQueue2Size) {
-                        e = queue2.queuePrev;
-                        int hash = getHash(e.key);
-                        remove(e.key, hash);
+                trimNonResidentQueue();
+            }
+        }
+
+        void trimNonResidentQueue() {
+            int residentCount = mapSize - queue2Size;
+            int maxQueue2SizeHigh = nonResidentQueueSizeHigh * residentCount;
+            int maxQueue2Size = nonResidentQueueSize * residentCount;
+            while (queue2Size > maxQueue2Size) {
+                Entry<V> e = queue2.queuePrev;
+                if (queue2Size <= maxQueue2SizeHigh) {
+                    WeakReference<V> reference = e.reference;
+                    if (reference != null && reference.get() != null) {
+                        break; // stop trimming if entry holds a value
                     }
                 }
+                int hash = getHash(e.key);
+                remove(e.key, hash);
             }
         }
 
@@ -998,11 +1017,15 @@ public class PageCache<V> {
          * @param e the entry
          */
         private void removeFromStack(Entry<V> e) {
+            removeFromStack(e, false);
+        }
+
+        private void removeFromStack(Entry<V> e, boolean isRemove) {
             e.stackPrev.stackNext = e.stackNext;
             e.stackNext.stackPrev = e.stackPrev;
             e.stackPrev = e.stackNext = null;
             stackSize--;
-            if (cacheListener != null)
+            if (!isRemove && cacheListener != null)
                 cacheListener.onEvict(e.value);
         }
 
@@ -1019,6 +1042,10 @@ public class PageCache<V> {
         }
 
         private void removeFromQueue(Entry<V> e) {
+            removeFromQueue(e, false);
+        }
+
+        private void removeFromQueue(Entry<V> e, boolean isRemove) {
             e.queuePrev.queueNext = e.queueNext;
             e.queueNext.queuePrev = e.queuePrev;
             e.queuePrev = e.queueNext = null;
@@ -1027,7 +1054,7 @@ public class PageCache<V> {
             } else {
                 queue2Size--;
             }
-            if (cacheListener != null)
+            if (!isRemove && cacheListener != null)
                 cacheListener.onEvict(e.value);
         }
 
@@ -1040,7 +1067,7 @@ public class PageCache<V> {
          * @return the key list
          */
         synchronized List<Long> keys(boolean cold, boolean nonResident) {
-            ArrayList<Long> keys = new ArrayList<Long>();
+            ArrayList<Long> keys = new ArrayList<>();
             if (cold) {
                 Entry<V> start = nonResident ? queue2 : queue;
                 for (Entry<V> e = start.queueNext; e != start; e = e.queueNext) {
@@ -1055,25 +1082,12 @@ public class PageCache<V> {
         }
 
         /**
-         * Check whether there is a resident entry for the given key. This
-         * method does not adjust the internal state of the cache.
-         *
-         * @param key the key (may not be null)
-         * @param hash the hash
-         * @return true if there is a resident entry
-         */
-        boolean containsKey(long key, int hash) {
-            Entry<V> e = find(key, hash);
-            return e != null && e.value != null;
-        }
-
-        /**
          * Get the set of keys for resident entries.
          *
          * @return the set of keys
          */
         synchronized Set<Long> keySet() {
-            HashSet<Long> set = new HashSet<Long>();
+            HashSet<Long> set = new HashSet<>();
             for (Entry<V> e = stack.stackNext; e != stack; e = e.stackNext) {
                 set.add(e.key);
             }
@@ -1093,6 +1107,7 @@ public class PageCache<V> {
         void setMaxMemory(long maxMemory) {
             this.maxMemory = maxMemory;
         }
+
     }
 
     /**
@@ -1106,10 +1121,12 @@ public class PageCache<V> {
      */
     static class Entry<V> {
 
+        static final int TOTAL_MEMORY_OVERHEAD = 112;
+
         /**
          * The key.
          */
-        long key;
+        final long key;
 
         /**
          * The value. Set to null for non-resident-cold entries.
@@ -1117,9 +1134,14 @@ public class PageCache<V> {
         V value;
 
         /**
+         * Weak reference to the value. Set to null for resident entries.
+         */
+        WeakReference<V> reference;
+
+        /**
          * The estimated memory used.
          */
-        int memory;
+        final long memory;
 
         /**
          * When the item was last moved to the top of the stack.
@@ -1152,6 +1174,24 @@ public class PageCache<V> {
          */
         Entry<V> mapNext;
 
+        Entry() {
+            this(0L, null, 0L);
+        }
+
+        Entry(long key, V value, long memory) {
+            this.key = key;
+            this.memory = memory + TOTAL_MEMORY_OVERHEAD;
+            this.value = value;
+        }
+
+        Entry(Entry<V> old) {
+            this.key = old.key;
+            this.memory = old.memory;
+            this.value = old.value;
+            this.reference = old.reference;
+            this.topMove = old.topMove;
+        }
+
         /**
          * Whether this entry is hot. Cold entries are in one of the two queues.
          *
@@ -1159,6 +1199,14 @@ public class PageCache<V> {
          */
         boolean isHot() {
             return queueNext == null;
+        }
+
+        V getValue() {
+            return value == null ? reference.get() : value;
+        }
+
+        long getMemory() {
+            return value == null ? 0L : memory;
         }
     }
 
@@ -1184,10 +1232,15 @@ public class PageCache<V> {
         public int stackMoveDistance = 32;
 
         /**
-         * The number of entries in the non-resident queue, as a factor of the
-         * number of all other entries in the map.
+         * Low water mark for the number of entries in the non-resident queue,
+         * as a factor of the number of all other entries in the map.
          */
-        public int nonResidentQueueSize = 3;
+        public final int nonResidentQueueSize = 3;
 
+        /**
+         * High watermark for the number of entries in the non-resident queue,
+         * as a factor of the number of all other entries in the map
+         */
+        public final int nonResidentQueueSizeHigh = 12;
     }
 }

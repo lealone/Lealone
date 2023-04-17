@@ -16,7 +16,6 @@ class ColumnPage extends Page {
 
     Object[] values; // 每个元素指向一条记录，并不是字段值
     private int columnIndex;
-    private ByteBuffer buff;
 
     ColumnPage(BTreeMap<?, ?> map) {
         super(map);

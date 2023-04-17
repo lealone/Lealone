@@ -252,6 +252,14 @@ public class Page {
         return 0;
     }
 
+    public int getBuffMemory() {
+        return buff == null ? 0 : buff.limit();
+    }
+
+    public int getTotalMemory() {
+        return getMemory() + getBuffMemory();
+    }
+
     /**
      * Create a copy of this page.
      *
@@ -324,7 +332,8 @@ public class Page {
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
         p.read(buff, chunkId, offset, pageLength, false);
-        buff.flip();
+        if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
+            buff.flip();
         return p;
     }
 

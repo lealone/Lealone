@@ -28,7 +28,7 @@ import org.lealone.storage.fs.FileUtils;
 /**
  * A persistent storage for btree map.
  */
-public class BTreeStorage implements PageCache.CacheListener<Page> {
+public class BTreeStorage {
 
     private final BTreeMap<?, ?> map;
     private final String mapBaseDir;
@@ -44,7 +44,8 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
      * The page cache. The default size is 16 MB, and the average size is 2 KB.
      * It is split in 16 segments. The stack move distance is 2% of the expected number of entries.
      */
-    private final PageCache<Page> cache;
+    private final PageCache<Page> hotCache;
+    private final PageCache<Page> warmCache;
 
     /**
      * The compression level for new pages (0 for disabled, 1 for fast, 2 for high).
@@ -76,7 +77,8 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
 
         chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
-            cache = null;
+            hotCache = null;
+            warmCache = null;
             mapBaseDir = null;
             return;
         }
@@ -84,11 +86,16 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
         int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
         if (cacheSize > 0) {
             PageCache.Config cc = new PageCache.Config();
-            cc.maxMemory = cacheSize;
-            cache = new PageCache<>(cc);
-            cache.setCacheListener(this);
+            cc.maxMemory = cacheSize / 10 * 6;
+            hotCache = new PageCache<>(cc);
+            hotCache.setCacheListener(p -> onHotEvict(p));
+            cc = new PageCache.Config();
+            cc.maxMemory = cacheSize / 10 * 4;
+            warmCache = new PageCache<>(cc);
+            warmCache.setCacheListener(p -> onWarmEvict(p));
         } else {
-            cache = null; // 当 cacheSize <= 0 时禁用缓存
+            hotCache = null; // 当 cacheSize <= 0 时禁用缓存
+            warmCache = null;
         }
 
         mapBaseDir = map.getStorage().getStoragePath() + File.separator + map.getName();
@@ -99,12 +106,17 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
         }
     }
 
-    @Override
-    public void onEvict(Page p) {
-        if (p != null && p.isLeaf() && p.getRef() != null
-                && !chunkManager.getRemovedPages().contains(p.getPos())) {
+    private void onHotEvict(Page p) {
+        if (p != null && p.isLeaf() && p.getRef() != null) {
             p.clear();
             p.getRef().replacePage(null);
+            warmCache.put(p.getPos(), p, p.getBuffMemory());
+        }
+    }
+
+    private void onWarmEvict(Page p) {
+        if (p != null && p.isLeaf() && p.getRef() != null) {
+            p.getRef().clearBuff();
         }
     }
 
@@ -180,8 +192,9 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
      * @param memory the memory used
      */
     public void cachePage(long pos, Page page, int memory) {
-        if (cache != null) {
-            cache.put(pos, page, memory);
+        if (hotCache != null) {
+            memory += page.getBuffMemory();
+            hotCache.put(pos, page, memory);
         }
     }
 
@@ -198,12 +211,8 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
         return readLocalPage(pos);
     }
 
-    private Page getPageFromCache(long pos) {
-        return cache == null ? null : cache.get(pos);
-    }
-
     private Page readLocalPage(long pos) {
-        Page p = getPageFromCache(pos);
+        Page p = hotCache == null ? null : hotCache.get(pos);
         if (p != null)
             return p;
         Chunk c = getChunk(pos);
@@ -212,6 +221,12 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
         p = Page.read(map, c.fileStorage, pos, filePos, pageLength);
         cachePage(pos, p, p.getMemory());
         return p;
+    }
+
+    public void removeWarmPage(long pos) {
+        if (warmCache != null) {
+            warmCache.remove(pos);
+        }
     }
 
     /**
@@ -230,11 +245,12 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
 
         chunkManager.addRemovedPage(pos);
 
-        if (cache != null) {
+        if (hotCache != null) {
             if (PageUtils.isLeafPage(pos)) {
                 // keep nodes in the cache, because they are still used for garbage collection
-                cache.remove(pos);
+                hotCache.remove(pos);
             }
+            warmCache.remove(pos);
         }
     }
 
@@ -270,10 +286,14 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
      * @return the cache size
      */
     public int getCacheSize() {
-        if (cache == null) {
+        return getCacheSize(hotCache) + getCacheSize(warmCache);
+    }
+
+    private int getCacheSize(PageCache<?> c) {
+        if (c == null) {
             return 0;
         }
-        return (int) (cache.getMaxMemory() / 1024 / 1024);
+        return (int) (c.getMaxMemory() / 1024 / 1024);
     }
 
     /**
@@ -282,9 +302,11 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
      * @param mb the cache size in MB.
      */
     public void setCacheSize(int mb) {
-        if (cache != null) {
-            cache.setMaxMemory(mb * 1024 * 1024L);
-            cache.clear();
+        if (hotCache != null) {
+            hotCache.setMaxMemory(mb * 1024 * 1024L / 10 * 6);
+            hotCache.clear();
+            warmCache.setMaxMemory(mb * 1024 * 1024L / 10 * 4);
+            warmCache.clear();
         }
     }
 
@@ -293,8 +315,8 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
     }
 
     long getMemorySpaceUsed() {
-        if (cache != null)
-            return cache.getUsedMemory();
+        if (hotCache != null)
+            return hotCache.getUsedMemory();
         else
             return 0;
     }
@@ -345,8 +367,10 @@ public class BTreeStorage implements PageCache.CacheListener<Page> {
             chunkManager.close();
             // release memory early - this is important when called
             // because of out of memory
-            if (cache != null)
-                cache.clear();
+            if (hotCache != null) {
+                hotCache.clear();
+                warmCache.clear();
+            }
         }
     }
 
