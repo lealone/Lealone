@@ -136,17 +136,6 @@ public abstract class StorageBuilder {
         return set(StorageSetting.PAGE_SPLIT_SIZE.name(), pageSplitSize);
     }
 
-    /**
-     * Set the listener to be used for exceptions that occur when writing in
-     * the background thread.
-     * 
-     * @param exceptionHandler the handler
-     * @return this
-     */
-    public StorageBuilder backgroundExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-        return set(StorageSetting.BACKGROUND_EXCEPTION_HANDLER.name(), exceptionHandler);
-    }
-
     public StorageBuilder minFillRate(int minFillRate) {
         return set(StorageSetting.MIN_FILL_RATE.name(), minFillRate);
     }

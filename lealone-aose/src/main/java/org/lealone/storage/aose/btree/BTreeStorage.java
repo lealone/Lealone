@@ -7,11 +7,11 @@ package org.lealone.storage.aose.btree;
 
 import java.io.File;
 import java.io.InputStream;
-import java.lang.Thread.UncaughtExceptionHandler;
 
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.StorageSetting;
@@ -37,8 +37,6 @@ public class BTreeStorage {
 
     private final int pageSplitSize;
     private final int minFillRate;
-
-    private final UncaughtExceptionHandler backgroundExceptionHandler;
 
     private final BTreeGC bgc;
 
@@ -67,8 +65,6 @@ public class BTreeStorage {
             minFillRate = 50;
         this.minFillRate = minFillRate;
         compressionLevel = parseCompressionLevel();
-        backgroundExceptionHandler = (UncaughtExceptionHandler) map
-                .getConfig(StorageSetting.BACKGROUND_EXCEPTION_HANDLER.name());
 
         int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
         bgc = new BTreeGC(map, cacheSize);
@@ -129,10 +125,7 @@ public class BTreeStorage {
     }
 
     public IllegalStateException panic(IllegalStateException e) {
-        if (backgroundExceptionHandler != null) {
-            backgroundExceptionHandler.uncaughtException(null, e);
-        }
-        closeImmediately();
+        closeImmediately(true);
         return e;
     }
 
@@ -278,7 +271,7 @@ public class BTreeStorage {
      * Remove this storage.
      */
     synchronized void remove() {
-        closeImmediately();
+        closeImmediately(false);
         if (map.isInMemory())
             return;
         FileUtils.deleteRecursive(mapBaseDir, true);
@@ -297,14 +290,13 @@ public class BTreeStorage {
 
     /**
      * Close the file and the storage, without writing anything.
-     * This method ignores all errors.
      */
-    private void closeImmediately() {
+    private void closeImmediately(boolean ignoreError) {
         try {
             closeStorage(true);
         } catch (Exception e) {
-            if (backgroundExceptionHandler != null) {
-                backgroundExceptionHandler.uncaughtException(null, e);
+            if (!ignoreError) {
+                throw DbException.convert(e);
             }
         }
     }

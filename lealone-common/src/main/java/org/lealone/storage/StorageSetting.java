@@ -17,5 +17,4 @@ public enum StorageSetting {
     MIN_FILL_RATE,
     MAP_TYPE,
     POH_FACTORY,
-    BACKGROUND_EXCEPTION_HANDLER,
 }

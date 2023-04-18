@@ -7,7 +7,6 @@ package org.lealone.db;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -184,7 +183,6 @@ public class Database implements DataHandler, DbObject {
 
     private SourceCompiler compiler;
     private DatabaseEventListener eventListener;
-    private DbException backgroundException;
     private QueryStatisticsData queryStatisticsData;
 
     private final int id;
@@ -1485,16 +1483,6 @@ public class Database implements DataHandler, DbObject {
         this.compareMode = compareMode;
     }
 
-    public void setBackgroundException(DbException e) {
-        if (backgroundException == null) {
-            backgroundException = e;
-            TraceSystem t = getTraceSystem();
-            if (t != null) {
-                t.getTrace(TraceModuleType.DATABASE).error(e, "flush");
-            }
-        }
-    }
-
     public void setEventListener(DatabaseEventListener eventListener) {
         this.eventListener = eventListener;
     }
@@ -1934,12 +1922,6 @@ public class Database implements DataHandler, DbObject {
                 storageBuilder.pageSplitSize(compressPageSize);
             }
         }
-        storageBuilder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                setBackgroundException(DbException.convert(e));
-            }
-        });
         return storageBuilder;
     }
 
