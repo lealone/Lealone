@@ -310,14 +310,16 @@ public class BTreeStorage {
     }
 
     private synchronized void closeStorage(boolean immediate) {
-        if (closed) {
+        if (closed)
             return;
+        try {
+            if (!immediate)
+                save();
+            chunkManager.close();
+            closed = true;
+        } finally {
+            bgc.close();
         }
-        if (!immediate)
-            save();
-        bgc.reset();
-        chunkManager.close();
-        closed = true;
     }
 
     public void setUnsavedChanges(boolean b) {

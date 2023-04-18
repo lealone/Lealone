@@ -15,15 +15,13 @@ import org.lealone.storage.aose.btree.page.PageReference;
 public class BTreeGC {
 
     private final BTreeMap<?, ?> map;
-    private final MemoryManager memoryManager = new MemoryManager(-1);
+    private final MemoryManager memoryManager;
 
-    public BTreeGC(BTreeMap<?, ?> map, int maxMemory) {
+    public BTreeGC(BTreeMap<?, ?> map, long maxMemory) {
         this.map = map;
-        if (maxMemory > 0) {
-            memoryManager.setMaxMemory(maxMemory);
-        } else {
-            memoryManager.setMaxMemory(MemoryManager.getGlobalMemoryManager().getMaxMemory());
-        }
+        if (maxMemory <= 0)
+            maxMemory = MemoryManager.getGlobalMemoryManager().getMaxMemory();
+        memoryManager = new MemoryManager(maxMemory);
     }
 
     public long getMaxMemory() {
@@ -38,7 +36,8 @@ public class BTreeGC {
         return memoryManager.getUsedMemory();
     }
 
-    public void reset() {
+    public void close() {
+        MemoryManager.getGlobalMemoryManager().decrementMemory(memoryManager.getUsedMemory());
         memoryManager.reset();
     }
 
