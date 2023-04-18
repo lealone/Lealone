@@ -13,7 +13,6 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 
 import org.lealone.storage.aose.btree.BTreeStorage;
-import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
 
 /**
@@ -102,8 +101,8 @@ public class ChunkCompactor {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
                 long pos = e.getKey();
                 if (PageUtils.isLeafPage(pos) && !removedPages.contains(pos)) {
-                    Page p = btreeStorage.readPage(pos);
-                    p.markDirtyRecursive(); // 直接标记为脏页即可，不用更新元素
+                    // 直接标记为脏页即可，不用更新元素
+                    btreeStorage.markDirtyLeafPage(pos);
                     saveIfNeeded = true;
                 }
             }

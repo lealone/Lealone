@@ -38,20 +38,25 @@ public class NodePage extends LocalPage {
     }
 
     @Override
+    public PageReference getChildPageReference(int index) {
+        return children[index];
+    }
+
+    @Override
     public Page getChildPage(int index) {
         PageReference ref = children[index];
         if (ref.page != null) {
+            ref.page.updateTime();
             return ref.page;
         } else {
             Page p;
-            if (ref.buff != null) {
-                p = Page.read(map, ref.pos, ref.buff, ref.pageLength);
-                map.getBTreeStorage().cachePage(pos, p);
-                map.getBTreeStorage().removeWarmPage(pos);
+            PageInfo pInfo = ref.pInfo;
+            if (pInfo != null && pInfo.buff != null) {
+                p = Page.read(map, ref.pos, pInfo.buff, pInfo.pageLength);
+                map.getBTreeStorage().gcIfNeeded(p.getMemory());
             } else {
                 p = map.getBTreeStorage().readPage(ref.pos);
-                ref.buff = p.buff;
-                ref.pageLength = p.pageLength;
+                ref.pInfo = p.pInfo;
             }
             ref.replacePage(p);
             p.setRef(ref);
@@ -186,11 +191,7 @@ public class NodePage extends LocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-
-        // cache again - this will make sure nodes stays in the cache
-        // for a longer time
-        map.getBTreeStorage().cachePage(pos, this);
+        updateChunkAndPage(chunk, start, pageLength, type);
 
         removeIfInMemory();
         return typePos + 1;

@@ -228,6 +228,9 @@ public interface StorageMap<K, V> {
 
     long getMemorySpaceUsed();
 
+    default void gc() {
+    }
+
     //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {

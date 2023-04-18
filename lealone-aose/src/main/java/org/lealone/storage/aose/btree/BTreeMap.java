@@ -413,6 +413,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    @Override
+    public void gc() {
+        btreeStorage.gc();
+    }
+
     public int getChildPageCount(Page p) {
         return p.getRawChildPageCount();
     }

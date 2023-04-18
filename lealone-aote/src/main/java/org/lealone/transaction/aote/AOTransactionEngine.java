@@ -240,6 +240,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     private void gc() {
+        for (MapInfo mapInfo : maps.values()) {
+            StorageMap<?, ?> map = mapInfo.map;
+            if (!map.isClosed())
+                map.gc();
+        }
         if (tValues.isEmpty())
             return;
         long minTid = Long.MAX_VALUE;

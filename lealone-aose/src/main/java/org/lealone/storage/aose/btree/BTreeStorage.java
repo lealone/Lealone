@@ -15,11 +15,11 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.StorageSetting;
-import org.lealone.storage.aose.btree.cache.CacheManager;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
@@ -40,7 +40,7 @@ public class BTreeStorage {
 
     private final UncaughtExceptionHandler backgroundExceptionHandler;
 
-    private final CacheManager cacheManager;
+    private final BTreeGC bgc;
 
     /**
      * The compression level for new pages (0 for disabled, 1 for fast, 2 for high).
@@ -70,20 +70,14 @@ public class BTreeStorage {
         backgroundExceptionHandler = (UncaughtExceptionHandler) map
                 .getConfig(StorageSetting.BACKGROUND_EXCEPTION_HANDLER.name());
 
+        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
+        bgc = new BTreeGC(map, cacheSize);
+
         chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
-            cacheManager = null;
             mapBaseDir = null;
             return;
         }
-
-        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
-        if (cacheSize > 0) {
-            cacheManager = new CacheManager(cacheSize);
-        } else {
-            cacheManager = null; // 当 cacheSize <= 0 时禁用缓存
-        }
-
         mapBaseDir = map.getStorage().getStoragePath() + File.separator + map.getName();
         if (!FileUtils.exists(mapBaseDir))
             FileUtils.createDirectories(mapBaseDir);
@@ -156,16 +150,30 @@ public class BTreeStorage {
         return chunkManager.getChunk(pos);
     }
 
-    /**
-     * Put the page in the cache.
-     * 
-     * @param pos the page position
-     * @param page the page
-     */
-    public void cachePage(long pos, Page page) {
-        if (cacheManager != null) {
-            cacheManager.cachePage(pos, page);
+    // ChunkCompactor在重写chunk中的page时会用到
+    public void markDirtyLeafPage(long pos) {
+        Page leaf = readLocalPage(pos, false);
+        Object key = leaf.getKey(0);
+        Page p = map.getRootPage();
+        while (p.isNode()) {
+            p.markDirty(false);
+            int index = p.getPageIndex(key);
+            PageReference ref = p.getChildPageReference(index);
+            if (ref.isNodePage()) {
+                p = p.getChildPage(index);
+            } else {
+                if (ref.getPage() == null) {
+                    ref.replacePage(leaf);
+                    leaf.setRef(ref);
+                    leaf.setParentRef(p.getRef());
+                } else {
+                    leaf.clear();
+                    leaf = ref.getPage();
+                }
+                break;
+            }
         }
+        leaf.markDirty();
     }
 
     /**
@@ -178,25 +186,25 @@ public class BTreeStorage {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
-        return readLocalPage(pos);
+        return readLocalPage(pos, true);
     }
 
-    private Page readLocalPage(long pos) {
-        Page p = cacheManager == null ? null : cacheManager.getCachePage(pos);
-        if (p != null)
-            return p;
+    private Page readLocalPage(long pos, boolean gc) {
         Chunk c = getChunk(pos);
         long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
         int pageLength = c.getPageLength(pos);
-        p = Page.read(map, c.fileStorage, pos, filePos, pageLength);
-        cachePage(pos, p);
+        Page p = Page.read(map, c.fileStorage, pos, filePos, pageLength);
+        if (gc)
+            gcIfNeeded(p.getTotalMemory());
         return p;
     }
 
-    public void removeWarmPage(long pos) {
-        if (cacheManager != null) {
-            cacheManager.removeWarmCache(pos);
-        }
+    public void gcIfNeeded(long delta) {
+        bgc.gcIfNeeded(delta);
+    }
+
+    public void gc() {
+        bgc.gc();
     }
 
     /**
@@ -207,17 +215,11 @@ public class BTreeStorage {
      */
     public void removePage(long pos, int memory) {
         hasUnsavedChanges = true;
-
         // we need to keep temporary pages
         if (pos == 0) {
             return;
         }
-
         chunkManager.addRemovedPage(pos);
-
-        if (cacheManager != null) {
-            cacheManager.removeCache(pos, memory);
-        }
     }
 
     public int getCompressionLevel() {
@@ -251,8 +253,8 @@ public class BTreeStorage {
      * 
      * @return the cache size
      */
-    public int getCacheSize() {
-        return cacheManager != null ? cacheManager.getCacheSize() : 0;
+    public long getCacheSize() {
+        return bgc.getMaxMemory();
     }
 
     /**
@@ -260,18 +262,16 @@ public class BTreeStorage {
      * 
      * @param mb the cache size in MB.
      */
-    public void setCacheSize(int mb) {
-        if (cacheManager != null) {
-            cacheManager.setCacheSize(mb);
-        }
+    public void setCacheSize(long mb) {
+        bgc.setMaxMemory(mb * 1024 * 1024);
     }
 
-    long getDiskSpaceUsed() {
+    public long getMemorySpaceUsed() {
+        return bgc.getUsedMemory();
+    }
+
+    public long getDiskSpaceUsed() {
         return FileUtils.folderSize(new File(mapBaseDir));
-    }
-
-    long getMemorySpaceUsed() {
-        return cacheManager != null ? cacheManager.getMemorySpaceUsed() : 0;
     }
 
     /**
@@ -309,19 +309,15 @@ public class BTreeStorage {
         }
     }
 
-    private void closeStorage(boolean immediate) {
+    private synchronized void closeStorage(boolean immediate) {
         if (closed) {
             return;
         }
         if (!immediate)
             save();
+        bgc.reset();
+        chunkManager.close();
         closed = true;
-        synchronized (this) {
-            chunkManager.close();
-            if (cacheManager != null) {
-                cacheManager.closeCache();
-            }
-        }
     }
 
     public void setUnsavedChanges(boolean b) {

@@ -21,10 +21,9 @@ public class Page {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
+    protected final PageInfo pInfo = new PageInfo();
     protected final BTreeMap<?, ?> map;
     protected long pos;
-    protected ByteBuffer buff;
-    protected int pageLength;
 
     private PageReference ref;
     private PageReference parentRef;
@@ -34,6 +33,14 @@ public class Page {
     }
 
     public void clear() {
+    }
+
+    public void updateTime() {
+        pInfo.updateTime();
+    }
+
+    public PageInfo getPageInfo() {
+        return pInfo;
     }
 
     public void setParentRef(PageReference parentRef) {
@@ -117,6 +124,14 @@ public class Page {
     */
     public long getTotalCount() {
         return 0;
+    }
+
+    public PageReference[] getChildren() {
+        throw ie();
+    }
+
+    public PageReference getChildPageReference(int index) {
+        throw ie();
     }
 
     /**
@@ -253,7 +268,7 @@ public class Page {
     }
 
     public int getBuffMemory() {
-        return buff == null ? 0 : buff.limit();
+        return pInfo.getBuffMemory();
     }
 
     public int getTotalMemory() {
@@ -276,11 +291,11 @@ public class Page {
         throw ie();
     }
 
-    void markDirty() {
+    public void markDirty() {
         markDirty(false);
     }
 
-    void markDirty(boolean hasUnsavedChanges) {
+    public void markDirty(boolean hasUnsavedChanges) {
         if (pos != 0) {
             removePage();
             pos = 0;
@@ -319,7 +334,11 @@ public class Page {
      */
     public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos,
             int pageLength) {
-        ByteBuffer buff = readPageBuff(fileStorage, filePos, pageLength);
+        if (pageLength < 0) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
+        }
+        ByteBuffer buff = fileStorage.readFully(filePos, pageLength);
         return read(map, pos, buff, pageLength);
     }
 
@@ -327,22 +346,15 @@ public class Page {
         int type = PageUtils.getPageType(pos);
         Page p = create(map, type);
         p.pos = pos;
-        p.buff = buff;
-        p.pageLength = pageLength;
+        p.pInfo.buff = buff;
+        p.pInfo.pageLength = pageLength;
+        p.updateTime();
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
         p.read(buff, chunkId, offset, pageLength, false);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();
         return p;
-    }
-
-    private static ByteBuffer readPageBuff(FileStorage fileStorage, long filePos, int pageLength) {
-        if (pageLength < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
-        }
-        return fileStorage.readFully(filePos, pageLength);
     }
 
     private static Page create(BTreeMap<?, ?> map, int type) {
@@ -387,10 +399,6 @@ public class Page {
             p = p.getChildPage(index);
         }
         return p;
-    }
-
-    public PageReference[] getChildren() {
-        throw ie();
     }
 
     static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength,
@@ -468,7 +476,7 @@ public class Page {
         return buff;
     }
 
-    void updateChunkAndCachePage(Chunk chunk, int start, int pageLength, int type) {
+    void updateChunkAndPage(Chunk chunk, int start, int pageLength, int type) {
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
@@ -477,7 +485,8 @@ public class Page {
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
 
-        map.getBTreeStorage().cachePage(pos, this);
+        // this will make sure nodes stays in the cache for a longer time
+        updateTime();
 
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,

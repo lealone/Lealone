@@ -57,7 +57,7 @@ class ColumnPage extends Page {
         int compressType = buff.get();
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
-        this.buff = expandPage(buff, compressType, start, pageLength);
+        pInfo.buff = expandPage(buff, compressType, start, pageLength);
     }
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
@@ -66,9 +66,9 @@ class ColumnPage extends Page {
         this.columnIndex = columnIndex;
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-            valueType.readColumn(buff, values[row], columnIndex);
+            valueType.readColumn(pInfo.buff, values[row], columnIndex);
         }
-        buff.flip(); // 可以复用
+        pInfo.buff.flip(); // 可以复用
     }
 
     long write(Chunk chunk, DataBuffer buff) {
@@ -93,7 +93,7 @@ class ColumnPage extends Page {
         int chunkId = chunk.id;
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
-        updateChunkAndCachePage(chunk, start, pageLength, type);
+        updateChunkAndPage(chunk, start, pageLength, type);
         return pos;
     }
 }
