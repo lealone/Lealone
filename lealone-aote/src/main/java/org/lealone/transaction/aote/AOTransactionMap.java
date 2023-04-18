@@ -539,6 +539,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
                 if (old != null) {
+                    // 在提交或回滚时直接忽略即可
                     r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
                     if (old.getValue() == null) {
@@ -552,9 +553,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                             ac.setAsyncResult((Throwable) null);
                         }
                     } else {
-                        // 不能用undoLog.undo()，因为它不是线程安全的，
-                        // 在undoLog.undo()中执行removeLast()在逻辑上也是不对的，
-                        // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
                         ac.setAsyncResult((Throwable) null);
                     }
                 } else {

@@ -18,7 +18,7 @@ public class UndoLogRecord {
     private Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     private final Object oldValue;
     private final TransactionalValue newTV;
-    private volatile boolean undone;
+    private boolean undone;
 
     UndoLogRecord next;
     UndoLogRecord prev;
