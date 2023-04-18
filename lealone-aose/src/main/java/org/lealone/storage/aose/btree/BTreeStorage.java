@@ -66,7 +66,8 @@ public class BTreeStorage {
         this.minFillRate = minFillRate;
         compressionLevel = parseCompressionLevel();
 
-        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 16 * 1024 * 1024);
+        // 原先是16M (16 * 1024 * 1024)，改用动态回收page后默认就不需要了
+        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), -1);
         bgc = new BTreeGC(map, cacheSize);
 
         chunkManager = new ChunkManager(this);
