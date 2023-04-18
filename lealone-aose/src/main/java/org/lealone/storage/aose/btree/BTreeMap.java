@@ -481,12 +481,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     //////////////////// 以下是同步和异步API的实现 ////////////////////////////////
 
     @Override
-    public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
-        V v = get(key);
-        handler.handle(new AsyncResult<>(v));
-    }
-
-    @Override
     public V put(K key, V value) {
         return put0(key, value, null);
     }

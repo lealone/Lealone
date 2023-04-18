@@ -265,8 +265,6 @@ public interface StorageMap<K, V> {
     }
 
     static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
-        AsyncResult<R> ar = new AsyncResult<>();
-        ar.setResult(result);
-        handler.handle(ar);
+        handler.handle(new AsyncResult<>(result));
     }
 }
