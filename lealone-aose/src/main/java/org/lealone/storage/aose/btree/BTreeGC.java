@@ -65,7 +65,6 @@ public class BTreeGC {
         for (PageReference ref : set) {
             Page p = ref.getPage();
             long memory = p.getMemory();
-            p.clear();
             ref.replacePage(null);
             memoryManager.decrementMemory(memory);
             globalMemoryManager.decrementMemory(memory);

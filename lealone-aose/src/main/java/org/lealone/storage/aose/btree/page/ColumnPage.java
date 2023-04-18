@@ -28,11 +28,6 @@ class ColumnPage extends Page {
     }
 
     @Override
-    public void clear() {
-        // values = null;
-    }
-
-    @Override
     public int getMemory() {
         int memory = 0;
         // 延迟计算

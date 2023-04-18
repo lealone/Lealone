@@ -32,9 +32,6 @@ public class Page {
         this.map = map;
     }
 
-    public void clear() {
-    }
-
     public void updateTime() {
         pInfo.updateTime();
     }
