@@ -45,11 +45,11 @@ public class NodePage extends LocalPage {
     @Override
     public Page getChildPage(int index) {
         PageReference ref = children[index];
-        if (ref.page != null) {
-            ref.page.updateTime();
-            return ref.page;
+        Page p = ref.page; // 先取出来，GC线程可能置null
+        if (p != null) {
+            p.updateTime();
+            return p;
         } else {
-            Page p;
             PageInfo pInfo = ref.pInfo;
             if (pInfo != null && pInfo.buff != null) {
                 p = Page.read(map, ref.pos, pInfo.buff, pInfo.pageLength);
