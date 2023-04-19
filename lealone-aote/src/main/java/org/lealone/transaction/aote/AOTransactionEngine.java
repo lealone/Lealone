@@ -339,6 +339,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 executeCheckpoint = totalEstimatedMemory > committedDataCacheSize;
             }
             if (executeCheckpoint) {
+                long nextTid = nextTransactionId();
                 for (MapInfo mapInfo : maps.values()) {
                     StorageMap<?, ?> map = mapInfo.map;
                     if (map.isClosed())
@@ -354,7 +355,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     }
                 }
                 lastSavedAt = now;
-                logSyncService.checkpoint(nextTransactionId());
+                // 如果保存数据的过程中有新的事务进来，那么不能增加checkpoint
+                if (nextTid == lastTransactionId.get())
+                    logSyncService.checkpoint(nextTid);
             }
         }
 
