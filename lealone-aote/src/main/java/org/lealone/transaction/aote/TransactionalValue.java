@@ -19,9 +19,15 @@ import org.lealone.transaction.Transaction;
 public class TransactionalValue {
 
     public static class OldValue {
-        long tid;
-        Object value;
+        final long tid;
+        final Object value;
         OldValue next;
+        boolean useLast;
+
+        public OldValue(long tid, Object value) {
+            this.tid = tid;
+            this.value = value;
+        }
     }
 
     private static class RowLock {
@@ -94,27 +100,32 @@ public class TransactionalValue {
         case Transaction.IL_REPEATABLE_READ:
         case Transaction.IL_SERIALIZABLE: {
             long tid = transaction.getTransactionId();
-            if (rl != null) {
-                if (rl.isCommitted() && tid >= rl.t.commitTimestamp)
-                    return value;
+            if (rl != null && rl.isCommitted() && tid >= rl.t.commitTimestamp) {
+                return value;
             }
             OldValue oldValue = transaction.transactionEngine.getOldValue(this);
-            boolean hasOld = oldValue != null;
-            while (oldValue != null) {
-                if (tid >= oldValue.tid)
-                    return oldValue.value;
-                oldValue = oldValue.next;
-            }
-            if (hasOld) {
+            if (oldValue != null) {
+                if (tid >= oldValue.tid) {
+                    if (rl != null && rl.oldValue != null)
+                        return rl.oldValue;
+                    else
+                        return value;
+                }
+                while (oldValue != null) {
+                    if (tid >= oldValue.tid)
+                        return oldValue.value;
+                    oldValue = oldValue.next;
+                }
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
             if (rl != null) {
                 if (rl.oldValue != null)
                     return rl.oldValue;
+                else
+                    return SIGHTLESS; // 刚刚insert但是还没有提交的记录
             } else {
                 return value;
             }
-            return SIGHTLESS; // 刚刚insert但是还没有提交的记录
         }
         case Transaction.IL_READ_UNCOMMITTED: {
             return value;
@@ -166,20 +177,31 @@ public class TransactionalValue {
         if (rl == null)
             return;
         AOTransaction t = rl.t;
-        if (t.transactionEngine.containsRepeatableReadTransactions()) {
-            synchronized (this) {
-                OldValue v = new OldValue();
-                if (!isInsert) {
-                    v.next = t.transactionEngine.getOldValue(this);
-                    if (v.next == null) {
-                        OldValue ov = new OldValue();
-                        ov.value = rl.oldValue;
-                        v.next = ov;
-                    }
+        AOTransactionEngine e = t.transactionEngine;
+        if (e.containsRepeatableReadTransactions()) {
+            if (isInsert) {
+                OldValue v = new OldValue(t.commitTimestamp, value);
+                e.addTransactionalValue(this, v);
+            } else {
+                long maxTid = e.getMaxRepeatableReadTransactionId();
+                OldValue old = e.getOldValue(this);
+                // 如果现有的版本已经足够给所有的可重复读事务使用了，那就不再加了
+                if (old != null && old.tid > maxTid) {
+                    old.useLast = true;
+                    return;
                 }
-                v.value = value;
-                v.tid = t.commitTimestamp;
-                t.transactionEngine.addTransactionalValue(this, v);
+                OldValue v = new OldValue(t.commitTimestamp, value);
+                if (old == null) {
+                    OldValue ov = new OldValue(0, rl.oldValue);
+                    v.next = ov;
+                } else if (old.useLast) {
+                    OldValue ov = new OldValue(old.tid + 1, rl.oldValue);
+                    ov.next = old;
+                    v.next = ov;
+                } else {
+                    v.next = old;
+                }
+                e.addTransactionalValue(this, v);
             }
         }
     }

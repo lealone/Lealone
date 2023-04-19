@@ -385,14 +385,7 @@ public class AOTransaction implements Transaction {
     }
 
     private void rollbackTo(int toLogId) {
-        // int logId = undoLog.getLogId();
         undoLog.rollbackTo(transactionEngine, toLogId);
-        // if (locks != null) {
-        // while (logId-- > toLogId) {
-        // TransactionalValue tv = locks.removeLast();
-        // tv.unlock();
-        // }
-        // }
     }
 
     protected void checkNotClosed() {

@@ -123,6 +123,15 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return rrTransactionCount.get() > 0;
     }
 
+    public long getMaxRepeatableReadTransactionId() {
+        long maxTid = -1;
+        for (AOTransaction t : currentTransactions.values()) {
+            if (t.isRepeatableRead() && t.getTransactionId() > maxTid)
+                maxTid = t.getTransactionId();
+        }
+        return maxTid;
+    }
+
     ///////////////////// 实现TransactionEngine接口 /////////////////////
 
     @Override
@@ -233,6 +242,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
+    private void removeTValues() {
+        for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
+            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
+        }
+    }
+
     private void gc() {
         for (MapInfo mapInfo : maps.values()) {
             StorageMap<?, ?> map = mapInfo.map;
@@ -241,34 +256,32 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
         if (tValues.isEmpty())
             return;
+        if (!containsRepeatableReadTransactions()) {
+            removeTValues();
+            return;
+        }
         long minTid = Long.MAX_VALUE;
         for (AOTransaction t : currentTransactions.values()) {
-            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ && t.getTransactionId() < minTid)
+            if (t.isRepeatableRead() && t.getTransactionId() < minTid)
                 minTid = t.getTransactionId();
         }
         if (minTid != Long.MAX_VALUE) {
             for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
-                synchronized (e.getKey()) {
-                    OldValue oldValue = e.getValue();
-                    if (oldValue != null && oldValue.tid < minTid) {
-                        tValues.remove(e.getKey());
-                        continue;
+                OldValue oldValue = e.getValue();
+                if (oldValue != null && oldValue.tid < minTid) {
+                    tValues.remove(e.getKey(), oldValue); // 如果不是原来的就不删除
+                    continue;
+                }
+                while (oldValue != null) {
+                    if (oldValue.tid < minTid) {
+                        oldValue.next = null;
+                        break;
                     }
-                    while (oldValue != null) {
-                        if (oldValue.tid < minTid) {
-                            oldValue.next = null;
-                            break;
-                        }
-                        oldValue = oldValue.next;
-                    }
+                    oldValue = oldValue.next;
                 }
             }
         } else {
-            for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
-                synchronized (e.getKey()) {
-                    tValues.remove(e.getKey());
-                }
-            }
+            removeTValues();
         }
     }
 
