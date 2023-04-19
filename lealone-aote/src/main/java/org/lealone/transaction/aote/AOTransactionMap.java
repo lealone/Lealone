@@ -357,11 +357,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    @Override
-    public K append(V value) {
-        return append(value, null);
-    }
-
     ///////////////////////// 以下是直接委派的StorageMap接口API /////////////////////////
 
     @Override
@@ -531,8 +526,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
         TransactionalValue newTV = new TransactionalValue(value, transaction);
-        String mapName = getName();
-        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newTV);
+        final UndoLogRecord r = transaction.undoLog.add(getName(), key, null, newTV);
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
@@ -568,22 +562,31 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public K append(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
+    public K append(V value) {
+        return append0(value, null);
+    }
+
+    @Override
+    public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        append0(value, handler);
+    }
+
+    private K append0(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
         TransactionalValue newTV = new TransactionalValue(value, transaction);
-        K key;
         if (handler != null) {
-            key = map.append(newTV, handler);
-            if (key == null)
-                return null; // 锁住了，继续等待
+            map.append(newTV, ar -> {
+                if (ar.isSucceeded())
+                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
+                handler.handle(ar);
+            });
+            return null;
         } else {
-            key = map.append(newTV);
+            K key = map.append(newTV);
+            // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
+            // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
+            transaction.undoLog.add(getName(), key, null, newTV);
+            return key;
         }
-        // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
-        // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-        transaction.undoLog.add(map.getName(), key, null, newTV);
-        if (handler != null)
-            handler.handle(new AsyncResult<>(key));
-        return key;
     }
 
     @Override

@@ -15,7 +15,7 @@ import org.lealone.transaction.aote.TransactionalValueType;
 public class UndoLogRecord {
 
     private final String mapName;
-    private Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
+    private final Object key;
     private final Object oldValue;
     private final TransactionalValue newTV;
     private boolean undone;
@@ -34,20 +34,12 @@ public class UndoLogRecord {
         return mapName;
     }
 
-    public UndoLogRecord getNext() {
-        return next;
-    }
-
     public Object getKey() {
         return key;
     }
 
-    public void setKey(Object key) {
-        this.key = key;
-    }
-
-    public Object getOldValue() {
-        return oldValue;
+    public UndoLogRecord getNext() {
+        return next;
     }
 
     public void setUndone(boolean undone) {

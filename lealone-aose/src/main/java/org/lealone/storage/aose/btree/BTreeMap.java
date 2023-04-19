@@ -534,8 +534,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
-        return append0(value, handler);
+    public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        append0(value, handler);
     }
 
     private K append0(V value, AsyncHandler<AsyncResult<K>> handler) {

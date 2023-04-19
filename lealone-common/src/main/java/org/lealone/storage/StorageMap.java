@@ -248,10 +248,9 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
-    default K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+    default void append(V value, AsyncHandler<AsyncResult<K>> handler) {
         K k = append(value);
         handleAsyncResult(handler, k);
-        return k;
     }
 
     default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {

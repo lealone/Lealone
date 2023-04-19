@@ -63,10 +63,6 @@ public class UndoLog {
         return r;
     }
 
-    public void undo() {
-        removeLast();
-    }
-
     public void commit(AOTransactionEngine transactionEngine) {
         UndoLogRecord r = first;
         while (r != null) {
