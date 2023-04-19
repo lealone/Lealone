@@ -55,6 +55,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private final ConcurrentHashMap<TransactionalValue, TransactionalValue.OldValue> tValues //
             = new ConcurrentHashMap<>();
 
+    // repeatable read 事务数
+    private final AtomicInteger rrTransactionCount = new AtomicInteger();
+
     private LogSyncService logSyncService;
     private CheckpointService checkpointService;
 
@@ -67,7 +70,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     AOTransaction removeTransaction(long tid) {
-        return currentTransactions.remove(tid);
+        AOTransaction t = currentTransactions.remove(tid);
+        if (t != null && t.isRepeatableRead())
+            rrTransactionCount.decrementAndGet();
+        return t;
     }
 
     boolean containsTransaction(long tid) {
@@ -113,21 +119,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             mapInfo.estimatedMemory.addAndGet(memory);
     }
 
-    // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
-    public boolean containsRepeatableReadTransactions(long lessThanVersion) {
-        for (AOTransaction t : currentTransactions.headMap(lessThanVersion).values()) {
-            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
-                return true;
-        }
-        return false;
-    }
-
     public boolean containsRepeatableReadTransactions() {
-        for (AOTransaction t : currentTransactions.values()) {
-            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
-                return true;
-        }
-        return false;
+        return rrTransactionCount.get() > 0;
     }
 
     ///////////////////// 实现TransactionEngine接口 /////////////////////
@@ -178,14 +171,15 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public AOTransaction beginTransaction(boolean autoCommit, RunMode runMode) {
+    public AOTransaction beginTransaction(boolean autoCommit, int isolationLevel) {
         if (logSyncService == null) {
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
         long tid = nextTransactionId();
-        AOTransaction t = new AOTransaction(this, tid);
-        t.setAutoCommit(autoCommit);
+        AOTransaction t = new AOTransaction(this, tid, autoCommit, isolationLevel);
+        if (t.isRepeatableRead())
+            rrTransactionCount.incrementAndGet();
         currentTransactions.put(tid, t);
         return t;
     }

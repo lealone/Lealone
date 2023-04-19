@@ -35,6 +35,7 @@ public class AOTransaction implements Transaction {
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
     final AOTransactionEngine transactionEngine;
     final long transactionId;
+    final int isolationLevel;
     final LogSyncService logSyncService;
     long commitTimestamp;
 
@@ -43,8 +44,7 @@ public class AOTransaction implements Transaction {
 
     private HashMap<String, Integer> savepoints;
     private Session session;
-    private int isolationLevel = IL_READ_COMMITTED; // 默认是读已提交级别
-    private boolean autoCommit;
+    private final boolean autoCommit;
 
     // 被哪个事务锁住记录了
     private volatile AOTransaction lockedBy;
@@ -55,10 +55,12 @@ public class AOTransaction implements Transaction {
 
     private LinkedList<TransactionalValue> locks; // 行锁
 
-    public AOTransaction(AOTransactionEngine engine, long tid) {
+    public AOTransaction(AOTransactionEngine engine, long tid, boolean autoCommit, int level) {
         transactionEngine = engine;
         transactionId = tid;
+        isolationLevel = level;
         logSyncService = engine.getLogSyncService();
+        this.autoCommit = autoCommit;
     }
 
     public UndoLog getUndoLog() {
@@ -92,13 +94,12 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public void setIsolationLevel(int level) {
-        isolationLevel = level;
-    }
-
-    @Override
     public int getIsolationLevel() {
         return isolationLevel;
+    }
+
+    public boolean isRepeatableRead() {
+        return isolationLevel >= Transaction.IL_REPEATABLE_READ;
     }
 
     @Override
@@ -109,11 +110,6 @@ public class AOTransaction implements Transaction {
     @Override
     public boolean isAutoCommit() {
         return autoCommit;
-    }
-
-    @Override
-    public void setAutoCommit(boolean autoCommit) {
-        this.autoCommit = autoCommit;
     }
 
     @Override

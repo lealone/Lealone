@@ -27,7 +27,6 @@ import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ManualCloseable;
 import org.lealone.db.Procedure;
-import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
@@ -1131,10 +1130,9 @@ public class ServerSession extends SessionBase {
         if (transaction != null)
             return transaction;
 
-        RunMode runMode = getRunMode();
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode);
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit,
+                transactionIsolationLevel);
         transaction.setSession(this);
-        transaction.setIsolationLevel(transactionIsolationLevel);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;

@@ -30,15 +30,11 @@ public interface Transaction {
 
     boolean isClosed();
 
-    void setIsolationLevel(int level);
-
     int getIsolationLevel();
 
     long getTransactionId();
 
     boolean isAutoCommit();
-
-    void setAutoCommit(boolean autoCommit);
 
     void setSession(Session session);
 

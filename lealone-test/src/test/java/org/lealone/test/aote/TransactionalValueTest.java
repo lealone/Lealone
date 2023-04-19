@@ -168,8 +168,7 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put("2", "b1");
         t.commit();
 
-        Transaction t1 = te.beginTransaction(false);
-        t1.setIsolationLevel(Transaction.IL_REPEATABLE_READ);
+        Transaction t1 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
         TransactionMap<String, String> map1 = t1.openMap("testRemove", storage);
 
         Transaction t2 = te.beginTransaction(false);

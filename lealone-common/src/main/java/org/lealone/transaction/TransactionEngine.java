@@ -6,15 +6,14 @@
 package org.lealone.transaction;
 
 import org.lealone.db.PluggableEngine;
-import org.lealone.db.RunMode;
 
 public interface TransactionEngine extends PluggableEngine {
 
     default Transaction beginTransaction(boolean autoCommit) {
-        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER);
+        return beginTransaction(autoCommit, Transaction.IL_READ_COMMITTED);
     }
 
-    Transaction beginTransaction(boolean autoCommit, RunMode runMode);
+    Transaction beginTransaction(boolean autoCommit, int isolationLevel);
 
     boolean supportsMVCC();
 

@@ -40,13 +40,15 @@ public class ConstantTest extends DbObjectTestBase {
 
     void testIsolationLevel() {
         ServerSession s1 = createSession();
-        s1.getTransaction().setIsolationLevel(Transaction.IL_READ_COMMITTED);
+        s1.setTransactionIsolationLevel(Transaction.IL_READ_COMMITTED);
+        s1.getTransaction();
         // s1找不到，因为还没有提交
         assertNull(schema.findConstant(s1, "ConstantTest"));
         s1.close();
 
         ServerSession s2 = createSession();
-        s2.getTransaction().setIsolationLevel(Transaction.IL_READ_UNCOMMITTED);
+        s2.setTransactionIsolationLevel(Transaction.IL_READ_UNCOMMITTED);
+        s2.getTransaction();
         // s2可以找到，虽然还没有提交，但是它的隔离级别是最宽松的
         assertNotNull(schema.findConstant(s2, "ConstantTest"));
         s2.close();

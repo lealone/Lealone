@@ -27,23 +27,19 @@ public class IsolationLevelTest extends AoteTestBase {
         map.put("2", "b");
 
         // 只有t2能读到t1未提交的值，其他都读不到
-        Transaction t2 = te.beginTransaction(false);
-        t2.setIsolationLevel(Transaction.IL_READ_UNCOMMITTED);
+        Transaction t2 = te.beginTransaction(false, Transaction.IL_READ_UNCOMMITTED);
         map = map.getInstance(t2);
         assertEquals("a", map.get("1"));
 
-        Transaction t3 = te.beginTransaction(false);
-        t3.setIsolationLevel(Transaction.IL_READ_COMMITTED);
+        Transaction t3 = te.beginTransaction(false, Transaction.IL_READ_COMMITTED);
         map = map.getInstance(t3);
         assertNull(map.get("1"));
 
-        Transaction t4 = te.beginTransaction(false);
-        t4.setIsolationLevel(Transaction.IL_REPEATABLE_READ);
+        Transaction t4 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
         map = map.getInstance(t4);
         assertNull(map.get("1"));
 
-        Transaction t5 = te.beginTransaction(false);
-        t5.setIsolationLevel(Transaction.IL_SERIALIZABLE);
+        Transaction t5 = te.beginTransaction(false, Transaction.IL_SERIALIZABLE);
         map = map.getInstance(t5);
         assertNull(map.get("1"));
 
@@ -56,8 +52,7 @@ public class IsolationLevelTest extends AoteTestBase {
     }
 
     private void test2() {
-        Transaction t1 = te.beginTransaction(false);
-        t1.setIsolationLevel(Transaction.IL_READ_COMMITTED);
+        Transaction t1 = te.beginTransaction(false, Transaction.IL_READ_COMMITTED);
         TransactionMap<String, String> map1 = t1.openMap(mapName + "_test2", storage);
         map1.clear();
         assertNull(map1.get("1"));
@@ -65,14 +60,12 @@ public class IsolationLevelTest extends AoteTestBase {
         map1.put("3", "c");
         t1.commit();
 
-        Transaction t2 = te.beginTransaction(false);
-        t2.setIsolationLevel(Transaction.IL_REPEATABLE_READ);
+        Transaction t2 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
         TransactionMap<String, String> map2 = map1.getInstance(t2);
         assertNull(map2.get("1"));
         assertEquals("c", map2.get("3"));
 
-        Transaction t3 = te.beginTransaction(false);
-        t3.setIsolationLevel(Transaction.IL_SERIALIZABLE);
+        Transaction t3 = te.beginTransaction(false, Transaction.IL_SERIALIZABLE);
         TransactionMap<String, String> map3 = map1.getInstance(t3);
         assertNull(map3.get("1"));
         assertEquals("c", map3.get("3"));

@@ -73,8 +73,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
 
-        // session.getRunMode()是针对当前session的，如果是SystemSession，就算数据库是ShardingMode，也不管它
-        Transaction t = transactionEngine.beginTransaction(false, session.getRunMode());
+        Transaction t = transactionEngine.beginTransaction(false,
+                session.getTransactionIsolationLevel());
         dataMap = t.openMap(mapName, keyType, vvType, storage, table.getParameters());
         t.commit(); // 避免产生内部未提交的事务
     }
