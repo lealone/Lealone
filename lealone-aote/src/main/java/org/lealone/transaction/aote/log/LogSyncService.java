@@ -59,7 +59,7 @@ public abstract class LogSyncService extends Thread {
             long syncStarted = System.currentTimeMillis();
             sync();
             lastSyncedAt = syncStarted;
-            if (redoLog.size() > redoLogRecordSyncThreshold)
+            if (redoLog.logQueueSize() > redoLogRecordSyncThreshold)
                 continue;
             long now = System.currentTimeMillis();
             long sleep = syncStarted + syncIntervalMillis - now;

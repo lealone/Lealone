@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
-import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
@@ -25,10 +24,6 @@ import org.lealone.transaction.aote.TransactionalValueType;
 
 public class RedoLog {
 
-    private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
-
-    public static final char NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
-
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
     private final Map<String, String> config;
@@ -38,7 +33,7 @@ public class RedoLog {
 
     RedoLog(Map<String, String> config) {
         this.config = config;
-        logChunkSize = MapUtils.getLong(config, "log_chunk_size", DEFAULT_LOG_CHUNK_SIZE);
+        logChunkSize = MapUtils.getLong(config, "log_chunk_size", 32 * 1024 * 1024); // 默认32M
 
         String baseDir = config.get("base_dir");
         String logDir = config.get("redo_log_dir");
@@ -111,8 +106,8 @@ public class RedoLog {
         }
     }
 
-    int size() {
-        return currentChunk.size();
+    int logQueueSize() {
+        return currentChunk.logQueueSize();
     }
 
     void addRedoLogRecord(RedoLogRecord r) {
