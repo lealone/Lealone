@@ -8,10 +8,12 @@ package org.lealone.test;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.main.Lealone;
+import org.lealone.main.config.Config;
 
 public class TcpServerStart {
 
     public static void main(String[] args) {
+        Config.setProperty("config", "lealone-test.yaml");
         Lealone.main(args);
     }
 
