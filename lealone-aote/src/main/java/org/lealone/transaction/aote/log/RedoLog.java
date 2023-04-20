@@ -75,7 +75,7 @@ public class RedoLog {
                 RedoLogChunk chunk = null;
                 try {
                     chunk = new RedoLogChunk(id, config);
-                    for (RedoLogRecord r : chunk.getAndResetRedoLogRecords()) {
+                    for (RedoLogRecord r : chunk.readRedoLogRecords()) {
                         lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
                     }
                 } finally {
