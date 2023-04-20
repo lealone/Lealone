@@ -126,4 +126,8 @@ public class RedoLog {
             currentChunk = new RedoLogChunk(currentChunk.getId() + 1, config);
         }
     }
+
+    public void ignoreCheckpoint() {
+        currentChunk.ignoreCheckpoint();
+    }
 }

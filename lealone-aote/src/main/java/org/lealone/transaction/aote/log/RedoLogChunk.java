@@ -173,6 +173,15 @@ class RedoLogChunk {
         }
     }
 
+    void ignoreCheckpoint() {
+        if (checkpointChunk != null) {
+            checkpointChunk.sync();
+            checkpointChunk.close();
+            checkpointChunk = null;
+            checkpointChunkId = 0;
+        }
+    }
+
     @Override
     public String toString() {
         return "RedoLogChunk[" + id + ", " + fileStorage.getFileName() + "]";

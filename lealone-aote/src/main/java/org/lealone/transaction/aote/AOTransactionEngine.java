@@ -343,24 +343,27 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 // 1.先切换redo log chunk文件
                 logSyncService.checkpoint(nextTid, false);
 
-                for (MapInfo mapInfo : maps.values()) {
-                    StorageMap<?, ?> map = mapInfo.map;
-                    if (map.isClosed())
-                        continue;
+                try {
+                    for (MapInfo mapInfo : maps.values()) {
+                        StorageMap<?, ?> map = mapInfo.map;
+                        if (map.isClosed())
+                            continue;
 
-                    // 在这里有可能把已提交和未提交事务的数据都保存了，
-                    // 不过不要紧，如果在生成检查点之后系统崩溃了导致未提交事务不能正常完成，还有读时撤销机制保证数据完整性，
-                    // 因为在保存未提交数据时，也同时保存了原来的数据，如果在读到未提交数据时发现了异常，就会进行撤销，
-                    // 读时撤销机制在TransactionalValue类中实现。
-                    AtomicInteger counter = mapInfo.estimatedMemory;
-                    if (force || counter != null && counter.getAndSet(0) > 0) {
-                        map.save();
+                        // 在这里有可能把已提交和未提交事务的数据都保存了，
+                        // 不过不要紧，如果在生成检查点之后系统崩溃了导致未提交事务不能正常完成，还有读时撤销机制保证数据完整性，
+                        // 因为在保存未提交数据时，也同时保存了原来的数据，如果在读到未提交数据时发现了异常，就会进行撤销，
+                        // 读时撤销机制在TransactionalValue类中实现。
+                        AtomicInteger counter = mapInfo.estimatedMemory;
+                        if (force || counter != null && counter.getAndSet(0) > 0) {
+                            map.save();
+                        }
                     }
+                    lastSavedAt = now;
+                    // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件
+                    logSyncService.checkpoint(nextTid, true);
+                } catch (Throwable t) {
+                    logSyncService.getRedoLog().ignoreCheckpoint();
                 }
-
-                lastSavedAt = now;
-                // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件
-                logSyncService.checkpoint(nextTid, true);
             }
         }
 
