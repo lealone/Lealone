@@ -63,8 +63,8 @@ public abstract class RedoLogRecord {
         }
     }
 
-    public static Checkpoint createCheckpoint(long checkpointId) {
-        return new Checkpoint(checkpointId);
+    public static Checkpoint createCheckpoint(long checkpointId, boolean saved) {
+        return new Checkpoint(checkpointId, saved);
     }
 
     public static DroppedMapRedoLogRecord createDroppedMapRedoLogRecord(String mapName) {
@@ -79,14 +79,20 @@ public abstract class RedoLogRecord {
     static class Checkpoint extends RedoLogRecord {
 
         private final long checkpointId;
+        private final boolean saved;
 
-        Checkpoint(long checkpointId) {
+        Checkpoint(long checkpointId, boolean saved) {
             this.checkpointId = checkpointId;
+            this.saved = saved;
         }
 
         @Override
         public boolean isCheckpoint() {
             return true;
+        }
+
+        public boolean isSaved() {
+            return saved;
         }
 
         @Override
@@ -108,7 +114,7 @@ public abstract class RedoLogRecord {
 
         public static RedoLogRecord read(ByteBuffer buff) {
             long checkpointId = DataUtils.readVarLong(buff);
-            return new Checkpoint(checkpointId);
+            return new Checkpoint(checkpointId, true);
         }
     }
 

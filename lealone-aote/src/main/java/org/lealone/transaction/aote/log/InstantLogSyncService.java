@@ -13,7 +13,7 @@ class InstantLogSyncService extends LogSyncService {
 
     InstantLogSyncService(Map<String, String> config) {
         super(config);
-        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 5);
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 100);
     }
 
     @Override

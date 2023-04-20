@@ -18,6 +18,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.transaction.aote.log.RedoLogRecord.Checkpoint;
 
 class RedoLogChunk {
 
@@ -39,6 +40,10 @@ class RedoLogChunk {
 
     private static final int BUFF_SIZE = 16 * 1024;
     private DataBuffer buff = DataBuffer.create(BUFF_SIZE);
+
+    private DataBuffer checkpointBuff = DataBuffer.create(11); // 1+10,可变long最多需要10个字节
+    private FileStorage checkpointChunk;
+    private int checkpointChunkId;
 
     private int id;
     private FileStorage fileStorage;
@@ -104,12 +109,11 @@ class RedoLogChunk {
             logQueue = new LinkedTransferQueue<>();
             long chunkLength = 0;
             for (RedoLogRecord r : redoLogRecordQueue) {
-                r.write(buff);
                 if (r.isCheckpoint()) {
-                    write(buff);
-                    checkpoint();
-                    chunkLength = 0;
+                    if (!checkpoint(r))
+                        chunkLength = 0;
                 } else {
+                    r.write(buff);
                     if (buff.position() > BUFF_SIZE)
                         chunkLength += write(buff);
                 }
@@ -138,17 +142,30 @@ class RedoLogChunk {
         return length;
     }
 
-    private void checkpoint() {
-        fileStorage.sync();
-        fileStorage.close();
-        id++;
-        fileStorage = getFileStorage(id, config);
-        pos = 0;
-        archiveOldChunkFiles();
+    private boolean checkpoint(RedoLogRecord r) {
+        Checkpoint cp = (Checkpoint) r;
+        if (cp.isSaved()) {
+            r.write(checkpointBuff);
+            checkpointChunk.writeFully(checkpointChunk.size(), checkpointBuff.getAndFlipBuffer());
+            checkpointBuff.clear();
+            checkpointChunk.sync();
+            checkpointChunk.close();
+            archiveOldChunkFiles();
+            checkpointChunk = null;
+            checkpointChunkId = 0;
+            return true;
+        } else {
+            write(buff);
+            checkpointChunk = fileStorage;
+            checkpointChunkId = id;
+            fileStorage = getFileStorage(++id, config);
+            pos = 0;
+            return false;
+        }
     }
 
     private void archiveOldChunkFiles() {
-        for (int i = 0; i < id; i++) {
+        for (int i = 0; i <= checkpointChunkId; i++) {
             String chunkFileName = getChunkFileName(config, i);
             String archiveFileName = getArchiveFileName(config, i);
             if (FileUtils.exists(chunkFileName))

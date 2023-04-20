@@ -43,6 +43,6 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void checkpoint(long checkpointId) {
+    public void checkpoint(long checkpointId, boolean saved) {
     }
 }

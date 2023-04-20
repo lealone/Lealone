@@ -24,7 +24,6 @@ public abstract class LogSyncService extends Thread {
     public static final String LOG_SYNC_TYPE_INSTANT = "instant";
     public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
-    private final int waitingQueueSize;
     private final AtomicReferenceArray<RedoLogSyncListener> waitingListeners;
     private final AtomicBoolean hasWaitingListeners = new AtomicBoolean(false);
     private final Semaphore haveWork = new Semaphore(1);
@@ -42,11 +41,9 @@ public abstract class LogSyncService extends Thread {
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(RunMode.isEmbedded(config));
+        waitingListeners = new AtomicReferenceArray<>(MapUtils.getSchedulerCount(config));
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config);
-
-        waitingQueueSize = MapUtils.getInt(config, "redo_log_sync_Listener_size", 100);
-        waitingListeners = new AtomicReferenceArray<>(waitingQueueSize);
     }
 
     public RedoLog getRedoLog() {
@@ -88,7 +85,7 @@ public abstract class LogSyncService extends Thread {
 
     private void notifyComplete() {
         if (hasWaitingListeners.compareAndSet(true, false)) {
-            for (int i = 0; i < waitingQueueSize; i++) {
+            for (int i = 0, len = waitingListeners.length(); i < len; i++) {
                 RedoLogSyncListener listener = waitingListeners.get(i);
                 if (listener != null) {
                     listener.wakeUpListener();
@@ -163,9 +160,9 @@ public abstract class LogSyncService extends Thread {
         }
     }
 
-    public void checkpoint(long checkpointId) {
-        RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId);
-        addAndMaybeWaitForSync(r);
+    public void checkpoint(long checkpointId, boolean saved) {
+        RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId, saved);
+        addRedoLogRecord(r);
     }
 
     public static LogSyncService create(Map<String, String> config) {
