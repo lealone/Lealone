@@ -182,7 +182,7 @@ public class AOTransaction implements Transaction {
             if (logSyncService.isInstantSync()) {
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
                 if (asyncCommit) {
-                    logSyncService.asyncCommit(r, this, null);
+                    logSyncService.asyncCommit(r, this);
                     return false;
                 } else {
                     logSyncService.addAndMaybeWaitForSync(r);

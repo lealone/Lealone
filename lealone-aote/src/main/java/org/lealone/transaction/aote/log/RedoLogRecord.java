@@ -15,6 +15,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
+import org.lealone.transaction.Transaction;
 
 public abstract class RedoLogRecord {
 
@@ -26,6 +27,15 @@ public abstract class RedoLogRecord {
 
     private volatile boolean synced;
     private CountDownLatch latch;
+    private Transaction waitingTransaction;
+
+    public Transaction getWaitingTransaction() {
+        return waitingTransaction;
+    }
+
+    public void setWaitingTransaction(Transaction waitingTransaction) {
+        this.waitingTransaction = waitingTransaction;
+    }
 
     boolean isSynced() {
         return synced;

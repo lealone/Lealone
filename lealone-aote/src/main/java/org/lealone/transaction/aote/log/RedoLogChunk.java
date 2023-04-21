@@ -49,14 +49,13 @@ class RedoLogChunk {
     private FileStorage fileStorage;
     private final Map<String, String> config;
     private final AtomicInteger logQueueSize = new AtomicInteger(0);
-    private LinkedTransferQueue<RedoLogRecord> logQueue;
+    private final LinkedTransferQueue<RedoLogRecord> logQueue = new LinkedTransferQueue<>();
     private long pos;
 
     RedoLogChunk(int id, Map<String, String> config) {
         this.id = id;
         this.config = config;
         fileStorage = getFileStorage(id, config);
-        logQueue = new LinkedTransferQueue<>();
         pos = fileStorage.size();
     }
 
@@ -94,8 +93,8 @@ class RedoLogChunk {
 
     void addRedoLogRecord(RedoLogRecord r) {
         // 虽然这两行不是原子操作，但是也没影响的，最多日志线程空转一下
-        logQueueSize.incrementAndGet();
         logQueue.add(r);
+        logQueueSize.incrementAndGet();
     }
 
     void close() {
@@ -103,12 +102,11 @@ class RedoLogChunk {
         fileStorage.close();
     }
 
-    synchronized void save() {
+    void save() {
         if (logQueueSize.get() > 0) {
-            LinkedTransferQueue<RedoLogRecord> redoLogRecordQueue = logQueue;
-            logQueue = new LinkedTransferQueue<>();
+            int count = 0;
             long chunkLength = 0;
-            for (RedoLogRecord r : redoLogRecordQueue) {
+            for (RedoLogRecord r : logQueue) {
                 if (r.isCheckpoint()) {
                     if (!checkpoint(r))
                         chunkLength = 0;
@@ -117,14 +115,18 @@ class RedoLogChunk {
                     if (buff.position() > BUFF_SIZE)
                         chunkLength += write(buff);
                 }
+                count++;
                 logQueueSize.decrementAndGet();
             }
             chunkLength += write(buff);
             if (chunkLength > 0) {
                 fileStorage.sync();
             }
-            for (RedoLogRecord r : redoLogRecordQueue) {
+            for (int i = 0; i < count; i++) {
+                RedoLogRecord r = logQueue.poll();
                 r.setSynced(true);
+                if (r.getWaitingTransaction() != null)
+                    r.getWaitingTransaction().asyncCommitComplete();
             }
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)

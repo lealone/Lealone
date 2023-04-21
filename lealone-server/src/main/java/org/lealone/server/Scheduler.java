@@ -7,7 +7,6 @@ package org.lealone.server;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -32,13 +31,10 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandlerBase;
-import org.lealone.transaction.RedoLogSyncListener;
-import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 
-public class Scheduler extends PageOperationHandlerBase
-        implements Runnable, SQLStatementExecutor, AsyncTaskHandler, TransactionListener,
-        PageOperation.ListenerFactory<Object>, RedoLogSyncListener {
+public class Scheduler extends PageOperationHandlerBase implements Runnable, SQLStatementExecutor,
+        AsyncTaskHandler, TransactionListener, PageOperation.ListenerFactory<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -451,30 +447,6 @@ public class Scheduler extends PageOperationHandlerBase
                 return result;
             }
         };
-    }
-
-    private LinkedList<Transaction> waitingTransactions;
-
-    @Override
-    public int getListenerId() {
-        return getHandlerId();
-    }
-
-    @Override
-    public void addWaitingTransaction(Transaction transaction) {
-        if (waitingTransactions == null)
-            waitingTransactions = new LinkedList<>();
-        waitingTransactions.add(transaction);
-    }
-
-    @Override
-    public void wakeUpListener() {
-        if (waitingTransactions != null) {
-            for (Transaction t : waitingTransactions) {
-                t.asyncCommitComplete();
-            }
-        }
-        wakeUp();
     }
 
     public DataBufferFactory getDataBufferFactory() {
