@@ -50,8 +50,14 @@ public abstract class LogSyncService extends Thread {
             long syncStarted = System.currentTimeMillis();
             sync();
             lastSyncedAt = syncStarted;
-            if (redoLog.logQueueSize() > redoLogRecordSyncThreshold)
+            if (isInstantSync()) {
+                // 如果是instant sync，只要一有redo log就接着马上同步，无需等待
+                if (redoLog.logQueueSize() > 0)
+                    continue;
+            } else if (redoLog.logQueueSize() > redoLogRecordSyncThreshold) {
+                // 如果是periodic sync，只要redo log达到阈值也接着马上同步，无需等待
                 continue;
+            }
             long now = System.currentTimeMillis();
             long sleep = syncStarted + syncIntervalMillis - now;
             if (sleep < 0)
