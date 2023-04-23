@@ -221,15 +221,17 @@ public class TransactionalValue {
     }
 
     public void writeMeta(DataBuffer buff) {
-        RowLock rl = rowLock;
-        if (rl == null) {
-            buff.putVarLong(0);
-        } else {
-            buff.putVarLong(rl.t.transactionId);
-        }
+        // RowLock rl = rowLock;
+        // if (rl == null) {
+        // buff.putVarLong(0);
+        // } else {
+        // buff.putVarLong(rl.t.transactionId);
+        // }
+        buff.putVarLong(0); // 兼容老版本
     }
 
     private void writeValue(DataBuffer buff, StorageDataType valueType) {
+        Object value = getCommittedValue();
         if (value == null) {
             buff.put((byte) 0);
         } else {
@@ -238,18 +240,26 @@ public class TransactionalValue {
         }
     }
 
+    private Object getCommittedValue() {
+        RowLock rl = rowLock;
+        if (rl == null || rl.t.isCommitted())
+            return value;
+        else
+            return rl.oldValue;
+    }
+
     public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType,
             StorageDataType oldValueType, int columnCount) {
-        long tid = DataUtils.readVarLong(buff);
+        DataUtils.readVarLong(buff); // 忽略tid
         Object value = valueType.readMeta(buff, columnCount);
-        return create(tid, value);
+        return createCommitted(value);
     }
 
     public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType,
             StorageDataType oldValueType) {
-        long tid = DataUtils.readVarLong(buff);
+        DataUtils.readVarLong(buff); // 忽略tid
         Object value = readValue(buff, valueType);
-        return create(tid, value);
+        return createCommitted(value);
     }
 
     private static Object readValue(ByteBuffer buff, StorageDataType valueType) {
@@ -257,15 +267,6 @@ public class TransactionalValue {
             return valueType.read(buff);
         else
             return null;
-    }
-
-    private static TransactionalValue create(long tid, Object value) {
-        if (tid == 0) {
-            return createCommitted(value);
-        } else {
-            // TODO 有没有必要写未提交的事务
-            return createCommitted(value);
-        }
     }
 
     public static TransactionalValue createCommitted(Object value) {
