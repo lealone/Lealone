@@ -160,11 +160,8 @@ public class AOTransaction implements Transaction {
 
     @Override
     public void asyncCommit(Runnable asyncTask) {
-        checkNotClosed();
         this.asyncTask = asyncTask;
-        if (writeRedoLog(true)) {
-            asyncCommitComplete();
-        }
+        writeRedoLog(true);
     }
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {
@@ -176,27 +173,25 @@ public class AOTransaction implements Transaction {
 
     // 如果不需要事务日志同步或者不需要立即做事务日志同步那么返回true，这时可以直接提交事务了。
     // 如果需要立即做事务日志，当需要异步提交事务时返回false，当需要同步提交时需要等待
-    private boolean writeRedoLog(boolean asyncCommit) {
+    private void writeRedoLog(boolean asyncCommit) {
+        checkNotClosed();
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
-            // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
-            if (logSyncService.isInstantSync()) {
-                RedoLogRecord r = createLocalTransactionRedoLogRecord();
-                if (asyncCommit) {
-                    logSyncService.asyncCommit(r, this);
-                    return false;
-                } else {
-                    logSyncService.addAndMaybeWaitForSync(r);
-                    return true;
-                }
+            RedoLogRecord r = createLocalTransactionRedoLogRecord();
+            if (r == null) {
+                // 不需要事务日志同步，可以直接提交事务了
+                if (asyncCommit)
+                    asyncCommitComplete();
+                return;
+            }
+            if (asyncCommit) {
+                logSyncService.asyncCommit(r, this);
             } else {
-                // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
-                RedoLogRecord r = createLocalTransactionRedoLogRecord();
-                logSyncService.addRedoLogRecord(r);
-                return true;
+                logSyncService.addAndMaybeWaitForSync(r);
             }
         } else {
-            // 如果不需要事务日志同步，那么什么都不做，可以直接提交事务了
-            return true;
+            // 不需要事务日志同步，可以直接提交事务了
+            if (asyncCommit)
+                asyncCommitComplete();
         }
     }
 
@@ -217,7 +212,6 @@ public class AOTransaction implements Transaction {
 
     @Override
     public void commit() {
-        checkNotClosed();
         writeRedoLog(false);
         commitFinal();
     }

@@ -63,7 +63,8 @@ public class TransactionStatement extends ManipulationStatement {
             session.begin();
             break;
         case SQLStatement.COMMIT:
-            session.asyncCommit(null);
+            // 在session.stopCurrentCommand中处理
+            // session.asyncCommit(null);
             break;
         case SQLStatement.ROLLBACK:
             session.rollback();

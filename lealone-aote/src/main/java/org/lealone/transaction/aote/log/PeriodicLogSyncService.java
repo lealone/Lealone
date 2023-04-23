@@ -40,9 +40,9 @@ class PeriodicLogSyncService extends LogSyncService {
     public void asyncCommit(RedoLogRecord r, AOTransaction t) {
         // 如果在同步周期内，可以提前提交事务
         if (!waitForSyncToCatchUp()) {
+            r.setCompleted(true);
             t.asyncCommitComplete();
-        } else {
-            super.asyncCommit(r, t);
         }
+        super.asyncCommit(r, t);
     }
 }

@@ -26,6 +26,7 @@ public abstract class RedoLogRecord {
     private static byte TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD = 2;
 
     private volatile boolean synced;
+    private boolean completed;
     private CountDownLatch latch;
     private Transaction waitingTransaction;
 
@@ -45,6 +46,14 @@ public abstract class RedoLogRecord {
         this.synced = synced;
         if (latch != null)
             latch.countDown();
+    }
+
+    boolean isCompleted() {
+        return completed;
+    }
+
+    void setCompleted(boolean completed) {
+        this.completed = completed;
     }
 
     void setLatch(CountDownLatch latch) {

@@ -141,8 +141,9 @@ class RedoLogChunk {
             for (int i = 0; i < count; i++) {
                 RedoLogRecord r = logQueue.poll();
                 r.setSynced(true);
-                if (r.getWaitingTransaction() != null)
+                if (!r.isCompleted() && r.getWaitingTransaction() != null) {
                     r.getWaitingTransaction().asyncCommitComplete();
+                }
             }
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)

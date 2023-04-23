@@ -50,6 +50,7 @@ import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
+import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
@@ -770,11 +771,13 @@ public class ServerSession extends SessionBase {
             AsyncResult<T> asyncResult) {
         if (executingNestedStatement)
             return;
+        boolean asyncCommit = false;
+        boolean isCommitCommand = currentCommand != null
+                && currentCommand.getType() == SQLStatement.COMMIT;
         closeTemporaryResults();
         closeCurrentCommand();
-        boolean asyncCommit = false;
         if (asyncResult != null && asyncHandler != null) {
-            if (isAutoCommit()) {
+            if (isAutoCommit() || isCommitCommand) {
                 asyncCommit = true;
                 // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
                 asyncCommit(() -> asyncHandler.handle(asyncResult));
@@ -783,12 +786,11 @@ public class ServerSession extends SessionBase {
                 asyncHandler.handle(asyncResult);
             }
         } else {
-            if (isAutoCommit()) {
+            if (isAutoCommit() || isCommitCommand) {
                 // 阻塞当前线程，可能需要等事务日志写完为止
                 commit();
             }
         }
-        // 可经执行下一条命令了
         // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
         if (!asyncCommit) {
             setYieldableCommand(null);
