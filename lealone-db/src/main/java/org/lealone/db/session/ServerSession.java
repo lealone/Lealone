@@ -772,8 +772,10 @@ public class ServerSession extends SessionBase {
             return;
         closeTemporaryResults();
         closeCurrentCommand();
+        boolean asyncCommit = false;
         if (asyncResult != null && asyncHandler != null) {
             if (isAutoCommit()) {
+                asyncCommit = true;
                 // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
                 asyncCommit(() -> asyncHandler.handle(asyncResult));
             } else {
@@ -787,7 +789,10 @@ public class ServerSession extends SessionBase {
             }
         }
         // 可经执行下一条命令了
-        setYieldableCommand(null);
+        // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
+        if (!asyncCommit) {
+            setYieldableCommand(null);
+        }
     }
 
     public void rollbackCurrentCommand() {
