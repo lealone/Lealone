@@ -8,10 +8,13 @@ package org.lealone.transaction.aote.log;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
@@ -22,6 +25,8 @@ import org.lealone.transaction.aote.log.RedoLogRecord.Checkpoint;
 
 class RedoLogChunk {
 
+    private static final Logger logger = LoggerFactory.getLogger(RedoLogChunk.class);
+
     static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + Constants.NAME_SEPARATOR;
 
     private static String getChunkFileName(Map<String, String> config, int id) {
@@ -29,13 +34,17 @@ class RedoLogChunk {
         return storagePath + File.separator + CHUNK_FILE_NAME_PREFIX + id;
     }
 
-    private static String getArchiveFileName(Map<String, String> config, int id) {
+    private static String getArchiveFileName(String archiveDir, int id) {
+        return archiveDir + File.separator + CHUNK_FILE_NAME_PREFIX + id;
+    }
+
+    private static String getArchiveDir(Map<String, String> config) {
         String storagePath = config.get(StorageSetting.STORAGE_PATH.name());
         String archiveDir = storagePath + File.separator
                 + MapUtils.getString(config, "archive_dir", "archives");
         if (!FileUtils.exists(archiveDir))
             FileUtils.createDirectories(archiveDir);
-        return archiveDir + File.separator + CHUNK_FILE_NAME_PREFIX + id;
+        return archiveDir;
     }
 
     private static final int BUFF_SIZE = 16 * 1024;
@@ -52,11 +61,18 @@ class RedoLogChunk {
     private final LinkedTransferQueue<RedoLogRecord> logQueue = new LinkedTransferQueue<>();
     private long pos;
 
+    private final int archiveMaxFiles;
+    private final String archiveDir;
+
     RedoLogChunk(int id, Map<String, String> config) {
         this.id = id;
         this.config = config;
         fileStorage = getFileStorage(id, config);
         pos = fileStorage.size();
+
+        // 按每小时执行一次checkpoint算，一天24小时，保留3天的归档文件
+        archiveMaxFiles = MapUtils.getInt(config, "archive_max_files", 24 * 3);
+        archiveDir = getArchiveDir(config);
     }
 
     private static FileStorage getFileStorage(int id, Map<String, String> config) {
@@ -167,11 +183,31 @@ class RedoLogChunk {
     }
 
     private void archiveOldChunkFiles() {
-        for (int i = 0; i <= checkpointChunkId; i++) {
-            String chunkFileName = getChunkFileName(config, i);
-            String archiveFileName = getArchiveFileName(config, i);
-            if (FileUtils.exists(chunkFileName))
-                FileUtils.move(chunkFileName, archiveFileName);
+        try {
+            for (int i = 0; i <= checkpointChunkId; i++) {
+                String chunkFileName = getChunkFileName(config, i);
+                String archiveFileName = getArchiveFileName(archiveDir, i);
+                if (FileUtils.exists(chunkFileName))
+                    FileUtils.move(chunkFileName, archiveFileName);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to archive files", e);
+        }
+        if (archiveMaxFiles > 0)
+            deleteOldArchiveFiles();
+    }
+
+    private void deleteOldArchiveFiles() {
+        try {
+            List<Integer> ids = RedoLog.getAllChunkIds(archiveDir);
+            if (ids.size() > archiveMaxFiles) {
+                for (int i = 0, size = ids.size() - archiveMaxFiles; i < size; i++) {
+                    String archiveFileName = getArchiveFileName(archiveDir, ids.get(i));
+                    FileUtils.delete(archiveFileName);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to delete files", e);
         }
     }
 

@@ -45,9 +45,13 @@ public class RedoLog {
     }
 
     private List<Integer> getAllChunkIds() {
+        return getAllChunkIds(config.get(StorageSetting.STORAGE_PATH.name()));
+    }
+
+    static List<Integer> getAllChunkIds(String dirStr) {
         ArrayList<Integer> ids = new ArrayList<>();
         int prefixLength = RedoLogChunk.CHUNK_FILE_NAME_PREFIX.length();
-        FilePath dir = FilePath.get(config.get(StorageSetting.STORAGE_PATH.name()));
+        FilePath dir = FilePath.get(dirStr);
         for (FilePath fp : dir.newDirectoryStream()) {
             String fullName = fp.getName();
             if (fullName.startsWith(RedoLogChunk.CHUNK_FILE_NAME_PREFIX)) {

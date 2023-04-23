@@ -11,11 +11,15 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.RunMode;
 import org.lealone.transaction.aote.AOTransaction;
 
 public abstract class LogSyncService extends Thread {
+
+    private static final Logger logger = LoggerFactory.getLogger(LogSyncService.class);
 
     public static final String LOG_SYNC_TYPE_PERIODIC = "periodic";
     public static final String LOG_SYNC_TYPE_INSTANT = "instant";
@@ -79,7 +83,11 @@ public abstract class LogSyncService extends Thread {
     }
 
     private void sync() {
-        redoLog.save();
+        try {
+            redoLog.save();
+        } catch (Exception e) {
+            logger.error("Failed to sync redo log", e);
+        }
     }
 
     private void wakeUp() {
