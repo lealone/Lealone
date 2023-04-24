@@ -44,6 +44,14 @@ public abstract class LogSyncService extends Thread {
         redoLog = new RedoLog(config);
     }
 
+    public boolean isInstantSync() {
+        return false;
+    }
+
+    public boolean needSync() {
+        return true;
+    }
+
     public RedoLog getRedoLog() {
         return redoLog;
     }
@@ -95,32 +103,17 @@ public abstract class LogSyncService extends Thread {
             haveWork.release();
     }
 
-    public boolean isInstantSync() {
-        return false;
-    }
-
-    public boolean needSync() {
-        return true;
-    }
-
-    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
-        // 可能为null
-        if (r == null)
-            return;
-        r.setWaitingTransaction(t);
-        redoLog.addRedoLogRecord(r);
-        wakeUp();
-    }
-
     public void close() {
         running = false;
         wakeUp();
     }
 
-    public void addRedoLogRecord(RedoLogRecord r) {
-        // 可能为null
-        if (r == null)
-            return;
+    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
+        r.setWaitingTransaction(t);
+        addRedoLogRecord(r);
+    }
+
+    protected void addRedoLogRecord(RedoLogRecord r) {
         redoLog.addRedoLogRecord(r);
         wakeUp();
     }
@@ -128,13 +121,9 @@ public abstract class LogSyncService extends Thread {
     public abstract void addAndMaybeWaitForSync(RedoLogRecord r);
 
     protected void addAndWaitForSync(RedoLogRecord r) {
-        // 可能为null
-        if (r == null)
-            return;
         CountDownLatch latch = new CountDownLatch(1);
         r.setLatch(latch);
-        redoLog.addRedoLogRecord(r);
-        wakeUp();
+        addRedoLogRecord(r);
         try {
             latch.await();
         } catch (InterruptedException e) {

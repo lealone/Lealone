@@ -119,7 +119,7 @@ class RedoLogChunk {
     }
 
     void save() {
-        if (logQueueSize.get() > 0) {
+        while (logQueueSize.get() > 0) {
             int count = 0;
             long chunkLength = 0;
             for (RedoLogRecord r : logQueue) {

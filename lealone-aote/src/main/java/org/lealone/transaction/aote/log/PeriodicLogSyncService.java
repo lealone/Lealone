@@ -27,16 +27,6 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void addAndMaybeWaitForSync(RedoLogRecord r) {
-        // 如果在同步周期内，不用等
-        if (!waitForSyncToCatchUp()) {
-            addRedoLogRecord(r);
-        } else {
-            addAndWaitForSync(r);
-        }
-    }
-
-    @Override
     public void asyncCommit(RedoLogRecord r, AOTransaction t) {
         // 如果在同步周期内，可以提前提交事务
         if (!waitForSyncToCatchUp()) {
@@ -44,5 +34,15 @@ class PeriodicLogSyncService extends LogSyncService {
             t.asyncCommitComplete();
         }
         super.asyncCommit(r, t);
+    }
+
+    @Override
+    public void addAndMaybeWaitForSync(RedoLogRecord r) {
+        // 如果在同步周期内，不用等
+        if (!waitForSyncToCatchUp()) {
+            addRedoLogRecord(r);
+        } else {
+            addAndWaitForSync(r);
+        }
     }
 }

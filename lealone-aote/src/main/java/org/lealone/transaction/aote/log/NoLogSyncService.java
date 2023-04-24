@@ -16,17 +16,12 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void run() {
-    }
-
-    @Override
     public boolean needSync() {
         return false;
     }
 
     @Override
-    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
-        t.asyncCommitComplete();
+    public void run() {
     }
 
     @Override
@@ -34,7 +29,8 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void addRedoLogRecord(RedoLogRecord r) {
+    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
+        t.asyncCommitComplete();
     }
 
     @Override
