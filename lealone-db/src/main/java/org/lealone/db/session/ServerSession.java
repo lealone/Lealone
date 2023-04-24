@@ -1479,4 +1479,9 @@ public class ServerSession extends SessionBase {
     public void endNestedStatement() {
         executingNestedStatement = false;
     }
+
+    public void clearQueryCache() {
+        if (queryCache != null)
+            queryCache.clear();
+    }
 }

@@ -17,6 +17,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.DataBufferFactory;
+import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
@@ -191,11 +192,22 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         periodicQueue.remove(task);
     }
 
+    private void gc() {
+        if (sessions.isEmpty())
+            return;
+        if (MemoryManager.getGlobalMemoryManager().needGc()) {
+            for (SessionInfo si : sessions) {
+                si.getSession().clearQueryCache();
+            }
+        }
+    }
+
     @Override
     public void executeNextStatement() {
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;
         while (true) {
+            gc();
             YieldableCommand c;
             // 如果执行insert语句时执行Prepared类型的select语句，
             // 当select语句让出执行权时可能会导致insert语句被执行两次
