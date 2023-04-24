@@ -21,6 +21,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.MemoryManager;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.storage.Storage;
@@ -249,10 +250,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     private void gc() {
-        for (MapInfo mapInfo : maps.values()) {
-            StorageMap<?, ?> map = mapInfo.map;
-            if (!map.isClosed())
-                map.gc();
+        if (MemoryManager.getGlobalMemoryManager().needGc()) {
+            for (MapInfo mapInfo : maps.values()) {
+                StorageMap<?, ?> map = mapInfo.map;
+                if (!map.isClosed())
+                    map.gc();
+            }
         }
         if (tValues.isEmpty())
             return;

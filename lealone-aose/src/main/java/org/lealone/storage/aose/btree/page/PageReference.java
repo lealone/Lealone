@@ -124,10 +124,17 @@ public class PageReference {
             return pInfo.lastTime;
     }
 
-    public long getHits() {
+    public int getHits() {
         if (page != null)
             return page.getPageInfo().hits;
         else
             return pInfo.hits;
+    }
+
+    public void resetHits() {
+        if (page != null)
+            page.getPageInfo().hits = 0;
+        else
+            pInfo.hits = 0;
     }
 }

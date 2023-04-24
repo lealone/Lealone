@@ -68,6 +68,8 @@ public class BTreeStorage {
 
         // 原先是16M (16 * 1024 * 1024)，改用动态回收page后默认就不需要了
         int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), -1);
+        if (cacheSize > 0 && cacheSize < pageSplitSize)
+            cacheSize = pageSplitSize * 2;
         bgc = new BTreeGC(map, cacheSize);
 
         chunkManager = new ChunkManager(this);

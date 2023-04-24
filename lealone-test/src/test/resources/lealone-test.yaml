@@ -17,7 +17,7 @@ storage_engines:
     enabled: true
     parameters: {
         page_split_size: 16k,
-        cache_size: 16m, # 每个 btree 的缓存大小
+        # cache_size: 16m, # 每个 btree 的缓存大小
         compress: no, # no、lzf、deflate 或 0、1、2
     }
 
