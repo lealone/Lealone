@@ -36,7 +36,12 @@ class QueryResultCache {
     }
 
     void setResult(LocalResult r) {
-        lastResult = r;
+        if (noCache)
+            return;
+        if (!isDeterministic())
+            disable();
+        else
+            lastResult = r;
     }
 
     LocalResult getResult(int limit) {
@@ -47,8 +52,7 @@ class QueryResultCache {
             long now = session.getDatabase().getModificationDataId();
             // 当lastEvaluated != now时，说明数据已经有变化，缓存的结果不能用了
             if (lastEvaluated == now && lastResult != null && !lastResult.isClosed()
-                    && limit == lastLimit
-                    && select.accept(ExpressionVisitorFactory.getDeterministicVisitor())) {
+                    && limit == lastLimit) {
                 if (sameResultAsLast(params)) {
                     lastResult = lastResult.createShallowCopy(session);
                     if (lastResult != null) {
@@ -66,6 +70,10 @@ class QueryResultCache {
             }
             return null;
         }
+    }
+
+    private boolean isDeterministic() {
+        return select.accept(ExpressionVisitorFactory.getDeterministicVisitor());
     }
 
     private Value[] getParameterValues() {
