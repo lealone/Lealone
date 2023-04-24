@@ -39,9 +39,3 @@ protocol_server_engines:
         daemon: false,
         ssl: false
     }
-
-server_encryption_options:
-    keystore: conf/.keystore
-    keystore_password: lealone
-    truststore: conf/.truststore
-    truststore_password: lealone
