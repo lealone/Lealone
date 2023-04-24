@@ -296,6 +296,7 @@ public class Database implements DataHandler, DbObject {
             dbSettings = DbSettings.getInstance(oldSettings);
             parameters.putAll(newSettings);
             LealoneDatabase.getInstance().updateMeta(systemSession, this);
+            systemSession.commit();
         }
         return changed;
     }
