@@ -160,6 +160,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
                 session.rollback();
             } else {
+                // 手动提交模式如果不设置状态会导致不能执行下一条语句
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
                 session.rollbackCurrentCommand();
             }
         }
