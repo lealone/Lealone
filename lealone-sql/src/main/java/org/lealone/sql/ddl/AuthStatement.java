@@ -5,6 +5,12 @@
  */
 package org.lealone.sql.ddl;
 
-//只是一个标记接口
-public interface AuthStatement {
+import org.lealone.db.session.ServerSession;
+
+//只是一个标记类
+public abstract class AuthStatement extends DefinitionStatement {
+
+    protected AuthStatement(ServerSession session) {
+        super(session);
+    }
 }

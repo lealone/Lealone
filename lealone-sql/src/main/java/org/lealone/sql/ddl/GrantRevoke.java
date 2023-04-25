@@ -31,7 +31,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class GrantRevoke extends DefinitionStatement implements AuthStatement {
+public class GrantRevoke extends AuthStatement {
 
     private final ArrayList<DbObject> dbObjects = new ArrayList<>();
     private int operationType;
