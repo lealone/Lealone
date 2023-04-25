@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableAnalyzer;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -41,7 +40,7 @@ public class Analyze extends DefinitionStatement {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
         for (Table table : db.getAllTablesAndViews(false)) {
-            TableAnalyzer.analyzeTable(session, table, sampleRows, true);
+            table.analyze(session, sampleRows);
         }
         return 0;
     }

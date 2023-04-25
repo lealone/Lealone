@@ -36,7 +36,7 @@ public class TableAnalyzer {
     }
 
     // 允许多线程运行，对changesSinceAnalyze计数虽然不是线程安全的，但不要求准确，所以不必用原子操作
-    public void analyze(ServerSession session) {
+    public void analyzeIfRequired(ServerSession session) {
         if (nextAnalyze > changesSinceAnalyze++) {
             return;
         }
@@ -55,6 +55,16 @@ public class TableAnalyzer {
         }
     }
 
+    public void analyze(ServerSession session, int sample) {
+        if (analyzing.compareAndSet(false, true)) {
+            try {
+                analyzeTable(session, table, sample, true);
+            } finally {
+                analyzing.set(false);
+            }
+        }
+    }
+
     /**
      * Analyze this table.
      *
@@ -63,23 +73,17 @@ public class TableAnalyzer {
      * @param sample the number of sample rows
      * @param manual whether the command was called by the user
      */
-    public static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
+    private static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
         if (table.getTableType() != TableType.STANDARD_TABLE || table.isHidden() || session == null) {
             return;
         }
         if (!manual) {
-            if (session.getDatabase().isSysTableLocked()) {
-                return;
-            }
             if (table.hasSelectTrigger()) {
                 return;
             }
         }
         if (table.isTemporary() && !table.isGlobalTemporary()
                 && session.findLocalTempTable(table.getName()) == null) {
-            return;
-        }
-        if (table.isLockedExclusively() && !table.isLockedExclusivelyBy(session)) {
             return;
         }
         if (!session.getUser().hasRight(table, Right.SELECT)) {
@@ -126,22 +130,6 @@ public class TableAnalyzer {
                 columns[j].setSelectivity(selectivity);
             }
         }
-        if (manual) {
-            db.updateMeta(session, table);
-        } else {
-            ServerSession sysSession = db.getSystemSession();
-            if (sysSession != session) {
-                // if the current session is the system session
-                // (which is the case if we are within a trigger)
-                // then we can't update the statistics because
-                // that would unlock all locked objects
-                synchronized (sysSession) {
-                    synchronized (db) {
-                        db.updateMeta(sysSession, table);
-                        sysSession.commit();
-                    }
-                }
-            }
-        }
+        db.updateMeta(session, table);
     }
 }

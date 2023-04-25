@@ -206,6 +206,9 @@ public abstract class Table extends SchemaObjectBase {
         return DbException.getUnsupportedException(getTableType().toString());
     }
 
+    public void analyze(ServerSession session, int sample) {
+    }
+
     /**
      * Add a row to the table and all indexes.
      *

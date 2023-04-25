@@ -332,7 +332,13 @@ public class StandardTable extends Table {
 
     private void analyzeIfRequired(ServerSession session) {
         if (tableAnalyzer != null)
-            tableAnalyzer.analyze(session);
+            tableAnalyzer.analyzeIfRequired(session);
+    }
+
+    @Override
+    public void analyze(ServerSession session, int sample) {
+        if (tableAnalyzer != null)
+            tableAnalyzer.analyze(session, sample);
     }
 
     @Override
