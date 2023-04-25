@@ -723,7 +723,7 @@ public class InfoMetaTable extends MetaTable {
                         // SEQUENCE_NAME
                         identifier(s.getName()),
                         // CURRENT_VALUE
-                        String.valueOf(s.getCurrentValue()),
+                        String.valueOf(s.getCurrentValue(session)),
                         // INCREMENT
                         String.valueOf(s.getIncrement()),
                         // IS_GENERATED

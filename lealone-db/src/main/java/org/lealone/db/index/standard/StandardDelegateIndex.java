@@ -41,6 +41,11 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
+    public Row getRow(ServerSession session, long key) {
+        return mainIndex.getRow(session, key);
+    }
+
+    @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong min = mainIndex.getKey(first, StandardPrimaryIndex.MIN, StandardPrimaryIndex.MIN);
         // ifNull is MIN_VALUE as well, because the column is never NULL

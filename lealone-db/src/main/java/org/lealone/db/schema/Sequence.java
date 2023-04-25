@@ -10,7 +10,10 @@ import java.math.BigInteger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.transaction.Transaction;
 
 /**
  * A sequence is created using the statement
@@ -24,7 +27,7 @@ public class Sequence extends SchemaObjectBase {
     /**
      * The default cache size for sequences.
      */
-    public static final int DEFAULT_CACHE_SIZE = 32;
+    private static final int DEFAULT_CACHE_SIZE = 32;
 
     private long value;
     private long valueWithMargin;
@@ -91,6 +94,54 @@ public class Sequence extends SchemaObjectBase {
         return DbObjectType.SEQUENCE;
     }
 
+    public Sequence copy() {
+        return new Sequence(schema, id, name, value, increment, cacheSize, minValue, maxValue, cycle,
+                belongsToTable);
+    }
+
+    public long getCurrentValue(ServerSession session) {
+        Sequence oldSequence = this.oldSequence;
+        if (transaction == session.getTransaction() || oldSequence == null)
+            return value - increment;
+        return oldSequence.value - oldSequence.increment;
+    }
+
+    public boolean getBelongsToTable() {
+        return belongsToTable;
+    }
+
+    public void setBelongsToTable(boolean b) {
+        this.belongsToTable = b;
+    }
+
+    public long getCacheSize() {
+        return cacheSize;
+    }
+
+    public void setCacheSize(long cacheSize) {
+        this.cacheSize = Math.max(1, cacheSize);
+    }
+
+    public long getIncrement() {
+        return increment;
+    }
+
+    public long getMinValue() {
+        return minValue;
+    }
+
+    public long getMaxValue() {
+        return maxValue;
+    }
+
+    public boolean getCycle() {
+        return cycle;
+    }
+
+    public void setCycle(boolean cycle) {
+        this.cycle = cycle;
+    }
+
     /**
      * Allows the start value, increment, min value and max value to be updated
      * atomically, including atomic validation. Useful because setting these
@@ -103,7 +154,13 @@ public class Sequence extends SchemaObjectBase {
      * @param maxValue the new max value (<code>null</code> if no change)
      * @param increment the new increment (<code>null</code> if no change)
      */
-    public synchronized void modify(Long startValue, Long minValue, Long maxValue, Long increment) {
+    public void modify(ServerSession session, Long startValue, Long minValue, Long maxValue,
+            Long increment, boolean copy) {
+        tryLock(session, copy);
+        modify(session, startValue, minValue, maxValue, increment, copy);
+    }
+
+    public void modify(Long startValue, Long minValue, Long maxValue, Long increment) {
         if (startValue == null) {
             startValue = this.value;
         }
@@ -167,32 +224,8 @@ public class Sequence extends SchemaObjectBase {
         return increment >= 0 ? minValue : maxValue;
     }
 
-    public boolean getBelongsToTable() {
-        return belongsToTable;
-    }
-
-    public long getIncrement() {
-        return increment;
-    }
-
-    public long getMinValue() {
-        return minValue;
-    }
-
-    public long getMaxValue() {
-        return maxValue;
-    }
-
-    public boolean getCycle() {
-        return cycle;
-    }
-
-    public void setCycle(boolean cycle) {
-        this.cycle = cycle;
-    }
-
     @Override
-    public synchronized String getCreateSQL() {
+    public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE SEQUENCE ");
         buff.append(getSQL()).append(" START WITH ").append(value);
         if (increment != 1) {
@@ -231,93 +264,31 @@ public class Sequence extends SchemaObjectBase {
      * @return the next value
      */
     public long getNext(ServerSession session) {
+        tryLock(session);
         boolean needsFlush = false;
         long retVal;
         long flushValueWithMargin = -1;
-        synchronized (this) {
-            if ((increment > 0 && value >= valueWithMargin)
-                    || (increment < 0 && value <= valueWithMargin)) {
-                valueWithMargin += increment * cacheSize;
+        if ((increment > 0 && value >= valueWithMargin) || (increment < 0 && value <= valueWithMargin)) {
+            valueWithMargin += increment * cacheSize;
+            flushValueWithMargin = valueWithMargin;
+            needsFlush = true;
+        }
+        if ((increment > 0 && value > maxValue) || (increment < 0 && value < minValue)) {
+            if (cycle) {
+                value = increment > 0 ? minValue : maxValue;
+                valueWithMargin = value + (increment * cacheSize);
                 flushValueWithMargin = valueWithMargin;
                 needsFlush = true;
+            } else {
+                throw DbException.get(ErrorCode.SEQUENCE_EXHAUSTED, getName());
             }
-            if ((increment > 0 && value > maxValue) || (increment < 0 && value < minValue)) {
-                if (cycle) {
-                    value = increment > 0 ? minValue : maxValue;
-                    valueWithMargin = value + (increment * cacheSize);
-                    flushValueWithMargin = valueWithMargin;
-                    needsFlush = true;
-                } else {
-                    throw DbException.get(ErrorCode.SEQUENCE_EXHAUSTED, getName());
-                }
-            }
-            retVal = value;
-            value += increment;
         }
+        retVal = value;
+        value += increment;
         if (needsFlush) {
-            flush(session, flushValueWithMargin);
+            flushInternal(session, flushValueWithMargin);
         }
         return retVal;
-    }
-
-    /**
-     * Flush the current value to disk.
-     */
-    public void flushWithoutMargin() {
-        if (valueWithMargin != value) {
-            valueWithMargin = value;
-            flush(null, valueWithMargin);
-        }
-    }
-
-    /**
-     * Flush the current value, including the margin, to disk.
-     *
-     * @param session the session
-     */
-    public void flush(ServerSession session, long flushValueWithMargin) {
-        if (session == null || !database.isSysTableLockedBy(session)) {
-            // This session may not lock the sys table (except if it already has
-            // locked it) because it must be committed immediately, otherwise
-            // other threads can not access the sys table.
-            ServerSession sysSession = database.getSystemSession();
-            synchronized (sysSession) {
-                flushInternal(sysSession, flushValueWithMargin);
-                sysSession.commit();
-            }
-        } else {
-            synchronized (session) {
-                flushInternal(session, flushValueWithMargin);
-            }
-        }
-    }
-
-    private void flushInternal(ServerSession session, long flushValueWithMargin) {
-        // final boolean metaWasLocked = database.lockMeta(session);
-        synchronized (this) {
-            if (flushValueWithMargin == lastFlushValueWithMargin) {
-                // if (!metaWasLocked) {
-                // database.unlockMeta(session);
-                // }
-                return;
-            }
-        }
-        // just for this case, use the value with the margin for the script
-        long realValue = value;
-        try {
-            value = valueWithMargin;
-            if (!isTemporary()) {
-                database.updateMeta(session, this);
-            }
-        } finally {
-            value = realValue;
-        }
-        synchronized (this) {
-            lastFlushValueWithMargin = flushValueWithMargin;
-        }
-        // if (!metaWasLocked) {
-        // database.unlockMeta(session);
-        // }
     }
 
     /**
@@ -327,20 +298,95 @@ public class Sequence extends SchemaObjectBase {
         flushWithoutMargin();
     }
 
-    public synchronized long getCurrentValue() {
-        return value - increment;
+    /**
+     * Flush the current value to disk.
+     */
+    private void flushWithoutMargin() {
+        if (valueWithMargin != value) {
+            valueWithMargin = value;
+            flush(database.getSystemSession(), valueWithMargin);
+            database.getSystemSession().commit();
+        }
     }
 
-    public void setBelongsToTable(boolean b) {
-        this.belongsToTable = b;
+    /**
+     * Flush the current value, including the margin, to disk.
+     *
+     * @param session the session
+     */
+    public void flush(ServerSession session, long flushValueWithMargin) {
+        tryLock(session);
+        flushInternal(session, flushValueWithMargin);
     }
 
-    public void setCacheSize(long cacheSize) {
-        this.cacheSize = Math.max(1, cacheSize);
+    private void flushInternal(ServerSession session, long flushValueWithMargin) {
+        if (flushValueWithMargin == lastFlushValueWithMargin)
+            return;
+        // just for this case, use the value with the margin for the script
+        long realValue = value;
+        try {
+            value = valueWithMargin;
+            if (!isTemporary()) {
+                schema.update(session, this, oldRow, lock);
+            }
+        } finally {
+            value = realValue;
+        }
+        lastFlushValueWithMargin = flushValueWithMargin;
     }
 
-    public long getCacheSize() {
-        return cacheSize;
+    private Transaction transaction;
+    private DbObjectLock lock;
+    private Row oldRow;
+    private Sequence oldSequence;
+
+    public DbObjectLock getLock() {
+        return lock;
     }
 
+    public Row getOldRow() {
+        return oldRow;
+    }
+
+    public void tryLock(ServerSession session) {
+        tryLock(session, true);
+    }
+
+    public void tryLock(ServerSession session, boolean copy) {
+        if (transaction == session.getTransaction())
+            return;
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
+        if (lock == null)
+            throw DbObjectLock.LOCKED_EXCEPTION;
+        Row oldRow = schema.tryLockSchemaObject(session, this, ErrorCode.SEQUENCE_NOT_FOUND_1);
+        if (oldRow == null)
+            throw DbObjectLock.LOCKED_EXCEPTION;
+        this.transaction = session.getTransaction();
+        this.lock = lock;
+        this.oldRow = oldRow;
+        if (copy)
+            this.oldSequence = copy();
+        lock.addHandler(ar -> {
+            this.transaction = null;
+            this.lock = null;
+            this.oldRow = null;
+            if (copy) {
+                if (!(ar.isSucceeded() && ar.getResult())) {
+                    rollback(this.oldSequence);
+                }
+                this.oldSequence = null;
+            }
+        });
+    }
+
+    private void rollback(Sequence oldSequence) {
+        this.increment = oldSequence.increment;
+        this.minValue = oldSequence.minValue;
+        this.maxValue = oldSequence.maxValue;
+        this.value = oldSequence.value;
+        this.valueWithMargin = oldSequence.valueWithMargin;
+        this.cacheSize = oldSequence.cacheSize;
+        this.cycle = oldSequence.cycle;
+        this.belongsToTable = oldSequence.belongsToTable;
+    }
 }

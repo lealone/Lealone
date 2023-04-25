@@ -271,7 +271,7 @@ public class SystemFunction extends BuiltInFunction {
         }
         case CURRVAL: {
             Sequence sequence = getSequence(session, v0, v1);
-            result = ValueLong.get(sequence.getCurrentValue());
+            result = ValueLong.get(sequence.getCurrentValue(session));
             break;
         }
         case CSVREAD: {

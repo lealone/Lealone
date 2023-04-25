@@ -327,7 +327,7 @@ public class Column {
 
     private void updateSequenceIfRequired(ServerSession session, Value value) {
         if (sequence != null) {
-            long current = sequence.getCurrentValue();
+            long current = sequence.getCurrentValue(session);
             long inc = sequence.getIncrement();
             long now = value.getLong();
             boolean update = false;
@@ -337,7 +337,7 @@ public class Column {
                 update = true;
             }
             if (update) {
-                sequence.modify(now + inc, null, null, null);
+                sequence.modify(session, now + inc, null, null, null, true);
                 session.setLastIdentity(ValueLong.get(now));
                 sequence.flush(session, 0);
             }

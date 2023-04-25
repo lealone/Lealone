@@ -6,11 +6,8 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
-import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
@@ -84,38 +81,26 @@ public class AlterSequence extends SchemaStatement {
 
     @Override
     public int update() {
-        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
-        if (lock == null)
-            return -1;
-
-        Database db = session.getDatabase();
+        sequence.tryLock(session, false);
         if (table != null) {
             session.getUser().checkRight(table, Right.ALL);
         }
+        Sequence newSequence = sequence.copy();
         if (cycle != null) {
-            sequence.setCycle(cycle);
+            newSequence.setCycle(cycle);
         }
         if (cacheSize != null) {
             long size = cacheSize.optimize(session).getValue(session).getLong();
-            sequence.setCacheSize(size);
+            newSequence.setCacheSize(size);
         }
         if (start != null || minValue != null || maxValue != null || increment != null) {
             Long startValue = getLong(start);
             Long min = getLong(minValue);
             Long max = getLong(maxValue);
             Long inc = getLong(increment);
-            sequence.modify(startValue, min, max, inc);
+            newSequence.modify(startValue, min, max, inc);
         }
-        // need to use the system session, so that the update
-        // can be committed immediately - not committing it
-        // would keep other transactions from using the sequence
-        ServerSession sysSession = db.getSystemSession();
-        synchronized (sysSession) {
-            synchronized (db) {
-                db.updateMeta(sysSession, sequence);
-                sysSession.commit();
-            }
-        }
+        schema.update(session, newSequence, sequence.getOldRow(), sequence.getLock());
         return 0;
     }
 

@@ -26,6 +26,7 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.lock.DbObjectLockImpl;
+import org.lealone.db.result.Row;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.CreateTableData;
@@ -180,6 +181,10 @@ public class Schema extends DbObjectBase {
         }
     }
 
+    public Row tryLockSchemaObject(ServerSession session, SchemaObject obj, int errorCode) {
+        return database.tryLockDbObject(session, obj, errorCode);
+    }
+
     /**
      * Add an object to this schema.
      *
@@ -228,6 +233,39 @@ public class Schema extends DbObjectBase {
                     dbObjects.rollback();
                 }
                 freeUniqueName(obj.getName());
+            });
+        }
+    }
+
+    public void update(ServerSession session, SchemaObject obj, Row oldRow, DbObjectLock lock) {
+        TransactionalDbObjects dbObjects = dbObjectsArray[obj.getType().value];
+        int id = obj.getId();
+
+        if (SysProperties.CHECK) {
+            if (obj.getSchema() != this) {
+                DbException.throwInternalError("wrong schema");
+            }
+            if (session == null) {
+                DbException.throwInternalError("session is null");
+            }
+            if (id < 0) {
+                DbException.throwInternalError("object id<0" + id);
+            }
+            if (!database.isObjectIdEnabled(id)) {
+                DbException.throwInternalError("object id is not enabled: " + id);
+            }
+        }
+
+        database.updateMeta(session, obj, oldRow);
+        dbObjects.copyOnAdd(session, obj);
+
+        if (lock != null) {
+            lock.addHandler(ar -> {
+                if (ar.isSucceeded() && ar.getResult()) {
+                    dbObjects.commit();
+                } else {
+                    dbObjects.rollback();
+                }
             });
         }
     }

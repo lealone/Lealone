@@ -17,6 +17,7 @@ import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
@@ -100,7 +101,10 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         }
 
         if (pendingException != null) {
-            handleException(pendingException);
+            if (DbObjectLock.LOCKED_EXCEPTION == pendingException) // 忽略
+                pendingException = null;
+            else
+                handleException(pendingException);
         } else if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
             stop();
         }

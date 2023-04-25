@@ -44,7 +44,6 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
-import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
@@ -64,7 +63,6 @@ import org.lealone.db.table.TableView;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueInt;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.Storage;
@@ -690,20 +688,21 @@ public class Database implements DataHandler, DbObject {
         return meta == null || meta.isLockedExclusivelyBy(session);
     }
 
-    private Cursor getMetaCursor(ServerSession session, int id) {
-        SearchRow r = meta.getTemplateSimpleRow(false);
-        r.setValue(0, ValueInt.get(id));
-        return metaIdIndex.find(session, r, r);
-    }
-
     public Cursor getMetaCursor(ServerSession session) {
         return metaIdIndex.find(session, null, null);
     }
 
     public Row findMeta(ServerSession session, int id) {
-        Cursor cursor = getMetaCursor(session, id);
-        if (cursor.next())
-            return cursor.get();
+        return metaIdIndex.getRow(session, id);
+    }
+
+    public Row tryLockDbObject(ServerSession session, DbObject obj, int errorCode) {
+        int id = obj.getId();
+        Row row = findMeta(session, id);
+        if (row == null)
+            throw DbException.get(errorCode, obj.getName());
+        if (meta.tryLockRow(session, row, null))
+            return row;
         else
             return null;
     }
@@ -753,15 +752,27 @@ public class Database implements DataHandler, DbObject {
      * @param obj the database object
      */
     public void updateMeta(ServerSession session, DbObject obj) {
+        updateMeta(session, obj, null);
+    }
+
+    public void updateMeta(ServerSession session, DbObject obj, Row oldRow) {
         int id = obj.getId();
         if (id > 0 && isMetaReady()) {
             checkWritingAllowed();
-            Row oldRow = findMeta(session, id);
+            boolean isLockedBySelf;
+            if (oldRow != null) {
+                isLockedBySelf = true;
+            } else {
+                isLockedBySelf = false;
+                oldRow = findMeta(session, id);
+            }
             if (oldRow != null) {
                 Row newRow = MetaRecord.getRow(meta, obj);
                 newRow.setKey(oldRow.getKey());
                 Column sqlColumn = meta.getColumn(2);
-                meta.updateRow(session, oldRow, newRow, new int[] { sqlColumn.getColumnId() });
+                meta.updateRow(session, oldRow, newRow, new int[] { sqlColumn.getColumnId() },
+                        isLockedBySelf);
+                getNextModificationMetaId();
             }
         }
     }

@@ -12,6 +12,8 @@ import org.lealone.db.session.ServerSession;
 
 public interface DbObjectLock {
 
+    public static final RuntimeException LOCKED_EXCEPTION = new RuntimeException();
+
     DbObjectType getDbObjectType();
 
     void addHandler(AsyncHandler<AsyncResult<Boolean>> handler);
