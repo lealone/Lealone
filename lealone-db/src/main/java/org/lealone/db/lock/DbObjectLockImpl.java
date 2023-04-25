@@ -86,11 +86,6 @@ public class DbObjectLockImpl implements DbObjectLock {
     }
 
     @Override
-    public boolean isLockedExclusively() {
-        return ref.get() != null;
-    }
-
-    @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
         return ref.get() == session.getTransaction();
     }

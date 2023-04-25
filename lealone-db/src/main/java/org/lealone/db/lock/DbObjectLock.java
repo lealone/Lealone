@@ -26,7 +26,5 @@ public interface DbObjectLock {
 
     void unlock(ServerSession session, boolean succeeded);
 
-    boolean isLockedExclusively();
-
     boolean isLockedExclusivelyBy(ServerSession session);
 }

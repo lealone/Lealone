@@ -675,19 +675,6 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    /**
-     * Checks if the system table (containing the catalog) is locked.
-     *
-     * @return true if it is currently locked
-     */
-    public boolean isSysTableLocked() {
-        return meta == null || meta.isLockedExclusively();
-    }
-
-    public boolean isSysTableLockedBy(ServerSession session) {
-        return meta == null || meta.isLockedExclusivelyBy(session);
-    }
-
     public Cursor getMetaCursor(ServerSession session) {
         return metaIdIndex.find(session, null, null);
     }

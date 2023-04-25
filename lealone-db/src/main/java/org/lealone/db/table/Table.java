@@ -167,25 +167,6 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     /**
-     * Check if this table is locked exclusively.
-     *
-     * @return true if it is.
-     */
-    public boolean isLockedExclusively() {
-        return dbObjectLock.isLockedExclusively();
-    }
-
-    /**
-     * Check if the table is exclusively locked by this session.
-     *
-     * @param session the session
-     * @return true if it is
-     */
-    public boolean isLockedExclusivelyBy(ServerSession session) {
-        return dbObjectLock.isLockedExclusivelyBy(session);
-    }
-
-    /**
      * Create an index for this table
      *
      * @param session the session
