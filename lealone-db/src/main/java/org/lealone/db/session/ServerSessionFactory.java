@@ -46,39 +46,43 @@ public class ServerSessionFactory implements SessionFactory {
         if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
-        ServerSession session = createServerSession(dbName, ci);
-        if (session != null)
-            initSession(session, ci);
-        return session;
-    }
-
-    private ServerSession createServerSession(String dbName, ConnectionInfo ci) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-
         // 如果数据库正在关闭过程中，不等待重试了，直接抛异常
         // 如果数据库已经关闭了，那么在接下来的init中会重新打开
         if (database.isClosing()) {
             throw DbException.get(ErrorCode.DATABASE_IS_CLOSING);
         }
-        if (!database.isInitialized()) {
-            ServerSession session = new ServerSession(database, null, 0);
-            Object t = Thread.currentThread();
-            TransactionListener tl = (t instanceof TransactionListener) ? (TransactionListener) t : null;
-            session.setTransactionListener(tl);
-            DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
-            if (lock != null) {
-                try {
-                    database.init();
-                } finally {
-                    session.commit();
-                }
-            } else {
-                // 仅仅是从事务引擎中删除事务
-                session.getTransaction().rollback();
-                return null;
-            }
+        if (!database.isInitialized() && !initDatabase(database, ci)) {
+            return null;
         }
+        User user = validateUser(database, ci);
+        ServerSession session = database.createSession(user, ci);
+        initSession(session, ci);
+        return session;
+    }
 
+    // 只能有一个线程初始化数据库
+    private boolean initDatabase(Database database, ConnectionInfo ci) {
+        ServerSession session = new ServerSession(database, null, 0);
+        Object t = Thread.currentThread();
+        TransactionListener tl = (t instanceof TransactionListener) ? (TransactionListener) t : null;
+        session.setTransactionListener(tl);
+        DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
+        if (lock != null) {
+            try {
+                database.init();
+            } finally {
+                session.commit();
+            }
+            return true;
+        } else {
+            // 仅仅是从事务引擎中删除事务
+            session.getTransaction().rollback();
+            return false;
+        }
+    }
+
+    private User validateUser(Database database, ConnectionInfo ci) {
         User user = null;
         if (database.validateFilePasswordHash(ci.getProperty(DbSetting.CIPHER.getName(), null),
                 ci.getFilePasswordHash())) {
@@ -93,9 +97,7 @@ public class ServerSessionFactory implements SessionFactory {
             database.removeSession(null);
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
-        ServerSession session = database.createSession(user, ci);
-        session.setRunMode(database.getRunMode());
-        return session;
+        return user;
     }
 
     private void initSession(ServerSession session, ConnectionInfo ci) {

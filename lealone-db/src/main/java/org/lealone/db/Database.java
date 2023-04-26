@@ -51,7 +51,6 @@ import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
-import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.InfoMetaTable;
@@ -143,7 +142,7 @@ public class Database implements DataHandler, DbObject {
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
     private LinkedList<ServerSession> waitingSessions;
     private ServerSession exclusiveSession;
-    private SystemSession systemSession;
+    private ServerSession systemSession;
     private User systemUser;
     private Schema mainSchema;
     private Schema infoSchema;
@@ -435,7 +434,7 @@ public class Database implements DataHandler, DbObject {
             addDatabaseObject(null, infoSchema, null);
             addDatabaseObject(null, perfSchema, null);
 
-            systemSession = new SystemSession(this, systemUser, ++nextSessionId);
+            systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
             // 在一个新事务中打开sys(meta)表
             systemSession.setAutoCommit(false);
@@ -1559,7 +1558,7 @@ public class Database implements DataHandler, DbObject {
         this.closeDelay = value;
     }
 
-    public SystemSession getSystemSession() {
+    public ServerSession getSystemSession() {
         return systemSession;
     }
 

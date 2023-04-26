@@ -17,7 +17,6 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DbSetting;
-import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
@@ -26,7 +25,6 @@ public abstract class SessionBase implements Session {
 
     protected boolean autoCommit = true;
     protected boolean closed;
-    protected RunMode runMode;
     protected TraceSystem traceSystem;
 
     @Override
@@ -63,16 +61,6 @@ public abstract class SessionBase implements Session {
         if (isClosed()) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
-    }
-
-    @Override
-    public void setRunMode(RunMode runMode) {
-        this.runMode = runMode;
-    }
-
-    @Override
-    public RunMode getRunMode() {
-        return runMode;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {

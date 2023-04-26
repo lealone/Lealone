@@ -13,11 +13,6 @@ import org.lealone.common.trace.TraceObjectType;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.db.RunMode;
-import org.lealone.db.async.Future;
-import org.lealone.server.protocol.AckPacket;
-import org.lealone.server.protocol.AckPacketHandler;
-import org.lealone.server.protocol.Packet;
 import org.lealone.sql.SQLCommand;
 
 /**
@@ -91,10 +86,6 @@ public interface Session extends Closeable {
 
     void checkClosed();
 
-    void setRunMode(RunMode runMode);
-
-    RunMode getRunMode();
-
     /**
      * Get the trace object
      * 
@@ -148,23 +139,4 @@ public interface Session extends Closeable {
     default int getLockTimeout() {
         return Integer.MAX_VALUE;
     }
-
-    @SuppressWarnings("unchecked")
-    default <P extends AckPacket> Future<P> send(Packet packet) {
-        return send(packet, p -> {
-            return (P) p;
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    default <P extends AckPacket> Future<P> send(Packet packet, int packetId) {
-        return send(packet, packetId, p -> {
-            return (P) p;
-        });
-    }
-
-    <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler);
-
-    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
-            AckPacketHandler<R, P> ackPacketHandler);
 }

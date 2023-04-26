@@ -243,14 +243,26 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         return ci.getNetworkTimeout();
     }
 
-    @Override
+    @SuppressWarnings("unchecked")
+    public <P extends AckPacket> Future<P> send(Packet packet) {
+        return send(packet, p -> {
+            return (P) p;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    public <P extends AckPacket> Future<P> send(Packet packet, int packetId) {
+        return send(packet, packetId, p -> {
+            return (P) p;
+        });
+    }
+
     public <R, P extends AckPacket> Future<R> send(Packet packet,
             AckPacketHandler<R, P> ackPacketHandler) {
         int packetId = getNextId();
         return send(packet, packetId, ackPacketHandler);
     }
 
-    @Override
     @SuppressWarnings("unchecked")
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
@@ -296,7 +308,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         return ac;
     }
 
-    public void removeAsyncCallback(int packetId) {
+    private void removeAsyncCallback(int packetId) {
         tcpConnection.removeAsyncCallback(packetId);
     }
 }

@@ -31,7 +31,6 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
@@ -43,9 +42,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.server.protocol.AckPacket;
-import org.lealone.server.protocol.AckPacketHandler;
-import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -1289,18 +1285,6 @@ public class ServerSession extends SessionBase {
     public void cancelStatement(int statementId) {
         if (currentCommand != null && currentCommand.getId() == statementId)
             currentCommand.cancel();
-    }
-
-    @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet,
-            AckPacketHandler<R, P> ackPacketHandler) {
-        throw DbException.getInternalError();
-    }
-
-    @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
-            AckPacketHandler<R, P> ackPacketHandler) {
-        throw DbException.getInternalError();
     }
 
     private ExpiringMap<Integer, ManualCloseable> cache; // 缓存PreparedStatement和结果集
