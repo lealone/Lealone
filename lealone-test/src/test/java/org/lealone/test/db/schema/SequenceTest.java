@@ -53,6 +53,8 @@ public class SequenceTest extends DbObjectTestBase {
         Sequence sequence = schema.findSequence(session, "myseq");
         assertEquals(10000, sequence.getMaxValue());
         executeUpdate("ALTER SEQUENCE myseq MAXVALUE 20000");
+        // sequence变动了需要重新取
+        sequence = schema.findSequence(session, "myseq");
         assertEquals(20000, sequence.getMaxValue());
     }
 

@@ -283,18 +283,16 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
         Object[] valueAndRef = getMap(session).getValueAndRef(ValueLong.get(key), columnIndexes);
-        VersionedValue v = (VersionedValue) valueAndRef[0];
-        Row row = new Row(v.columns, 0);
-        row.setKey(key);
-        row.setVersion(v.version);
-        row.setTValue(valueAndRef[1]);
-        return row;
+        return getRow(key, valueAndRef[0], valueAndRef[1]);
     }
 
     public Row getRow(ServerSession session, long key, Object oldTValue) {
         Object value = getMap(session).getValue(oldTValue);
-        // 已经删除了
-        if (value == null)
+        return getRow(key, value, oldTValue);
+    }
+
+    private Row getRow(long key, Object value, Object oldTValue) {
+        if (value == null) // 已经删除了
             return null;
         VersionedValue v = (VersionedValue) value;
         Row row = new Row(v.columns, 0);
