@@ -84,7 +84,7 @@ public class AOTransaction implements Transaction {
     }
 
     public boolean isCommitted() {
-        return isClosed();
+        return commitTimestamp > 0;
     }
 
     @Override

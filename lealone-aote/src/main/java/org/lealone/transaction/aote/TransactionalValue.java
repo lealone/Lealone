@@ -104,7 +104,7 @@ public class TransactionalValue {
         case Transaction.IL_REPEATABLE_READ:
         case Transaction.IL_SERIALIZABLE: {
             long tid = transaction.getTransactionId();
-            if (rl != null && rl.isCommitted() && tid >= rl.t.commitTimestamp) {
+            if (rl != null && rl.t.commitTimestamp > 0 && tid >= rl.t.commitTimestamp) {
                 return value;
             }
             OldValue oldValue = transaction.transactionEngine.getOldValue(this);
@@ -246,7 +246,7 @@ public class TransactionalValue {
 
     private Object getCommittedValue() {
         RowLock rl = rowLock;
-        if (rl == null || rl.t.commitTimestamp > 0 || rl.t.isCommitted())
+        if (rl == null || rl.t.commitTimestamp > 0)
             return value;
         else
             return rl.oldValue;
