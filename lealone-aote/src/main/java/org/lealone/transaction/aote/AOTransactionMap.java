@@ -537,15 +537,9 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
                     if (old.getValue() == null) {
-                        // 唯一索引加上这个条件会出错
-                        // 辅助索引的值是ValueNull.INSTANCE
-                        // || old.getValue() == ValueNull.INSTANCE) {
-
-                        if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
-                            ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                        } else {
-                            ac.setAsyncResult((Throwable) null);
-                        }
+                        old.setValue(value);
+                        transaction.undoLog.add(getName(), key, old.getOldValue(), old);
+                        ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
                         ac.setAsyncResult((Throwable) null);
                     }

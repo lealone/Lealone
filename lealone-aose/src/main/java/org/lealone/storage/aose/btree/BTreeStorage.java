@@ -168,7 +168,7 @@ public class BTreeStorage {
                 break;
             }
         }
-        leaf.markDirty();
+        leaf.markDirty(true);
     }
 
     /**

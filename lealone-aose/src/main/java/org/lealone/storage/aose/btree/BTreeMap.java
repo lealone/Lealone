@@ -418,6 +418,24 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         btreeStorage.gc();
     }
 
+    @Override
+    public void markDirty(Object key) {
+        Page p = getRootPage();
+        Page leaf = p;
+        while (p.isNode()) {
+            p.markDirty(false);
+            int index = p.getPageIndex(key);
+            PageReference ref = p.getChildPageReference(index);
+            if (ref.isNodePage()) {
+                p = p.getChildPage(index);
+            } else {
+                leaf = ref.getPage();
+                break;
+            }
+        }
+        leaf.markDirty(true);
+    }
+
     public int getChildPageCount(Page p) {
         return p.getRawChildPageCount();
     }

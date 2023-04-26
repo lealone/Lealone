@@ -71,6 +71,10 @@ public class TransactionalValue {
         }
     }
 
+    Object getOldValue() {
+        return rowLock.oldValue;
+    }
+
     public void setValue(Object value) {
         this.value = value;
     }

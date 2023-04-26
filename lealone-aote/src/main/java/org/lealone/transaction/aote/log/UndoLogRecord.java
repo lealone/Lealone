@@ -62,20 +62,11 @@ public class UndoLogRecord {
             } else {
                 map.decrementSize(); // 要减去1
                 newTV.commit(false);
-                map.put(key, newTV, ar -> {
-                });
+                map.markDirty(key);
             }
         } else { // update
             newTV.commit(false);
-            // TODO 如果不put回去存储引擎不知道数据发生变化了，会丢失更新的数据
-            // 是否可以考虑在TransactionalValue中增加page ref，然后调用markDirty方法，但是这种方案会增加内存开销
-            map.put(key, newTV, ar -> {
-            });
-            // TODO
-            // 先删除后增加的场景，需要重新put回去
-            // if (newValue.getOldValue() != null && newValue.getOldValue().getValue() == null) {
-            // map.put(key, ref);
-            // }
+            map.markDirty(key); // 无需put回去，标记一下脏页即可
         }
     }
 
