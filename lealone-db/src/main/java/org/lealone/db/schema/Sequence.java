@@ -6,6 +6,7 @@
 package org.lealone.db.schema;
 
 import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
@@ -29,7 +30,7 @@ public class Sequence extends SchemaObjectBase {
      */
     private static final int DEFAULT_CACHE_SIZE = 32;
 
-    private long value;
+    private AtomicLong value;
     private long valueWithMargin;
     private long increment;
     private long cacheSize;
@@ -77,16 +78,17 @@ public class Sequence extends SchemaObjectBase {
         this.increment = increment != null ? increment : 1;
         this.minValue = minValue != null ? minValue : getDefaultMinValue(startValue, this.increment);
         this.maxValue = maxValue != null ? maxValue : getDefaultMaxValue(startValue, this.increment);
-        this.value = startValue != null ? startValue : getDefaultStartValue(this.increment);
+        Long value = startValue != null ? startValue : getDefaultStartValue(this.increment);
         this.valueWithMargin = value;
         this.cacheSize = cacheSize != null ? Math.max(1, cacheSize) : DEFAULT_CACHE_SIZE;
         this.cycle = cycle;
         this.belongsToTable = belongsToTable;
-        if (!isValid(this.value, this.minValue, this.maxValue, this.increment)) {
-            throw DbException.get(ErrorCode.SEQUENCE_ATTRIBUTES_INVALID, name,
-                    String.valueOf(this.value), String.valueOf(this.minValue),
-                    String.valueOf(this.maxValue), String.valueOf(this.increment));
+        if (!isValid(value, this.minValue, this.maxValue, this.increment)) {
+            throw DbException.get(ErrorCode.SEQUENCE_ATTRIBUTES_INVALID, name, String.valueOf(value),
+                    String.valueOf(this.minValue), String.valueOf(this.maxValue),
+                    String.valueOf(this.increment));
         }
+        this.value = new AtomicLong(value.longValue());
     }
 
     @Override
@@ -95,15 +97,15 @@ public class Sequence extends SchemaObjectBase {
     }
 
     public Sequence copy() {
-        return new Sequence(schema, id, name, value, increment, cacheSize, minValue, maxValue, cycle,
-                belongsToTable);
+        return new Sequence(schema, id, name, value.get(), increment, cacheSize, minValue, maxValue,
+                cycle, belongsToTable);
     }
 
     public long getCurrentValue(ServerSession session) {
         Sequence oldSequence = this.oldSequence;
         if (transaction == session.getTransaction() || oldSequence == null)
-            return value - increment;
-        return oldSequence.value - oldSequence.increment;
+            return value.get() - increment;
+        return oldSequence.value.get() - oldSequence.increment;
     }
 
     public boolean getBelongsToTable() {
@@ -157,12 +159,12 @@ public class Sequence extends SchemaObjectBase {
     public void modify(ServerSession session, Long startValue, Long minValue, Long maxValue,
             Long increment, boolean copy) {
         tryLock(session, copy);
-        modify(session, startValue, minValue, maxValue, increment, copy);
+        modify(startValue, minValue, maxValue, increment);
     }
 
     public void modify(Long startValue, Long minValue, Long maxValue, Long increment) {
         if (startValue == null) {
-            startValue = this.value;
+            startValue = this.value.get();
         }
         if (minValue == null) {
             minValue = this.minValue;
@@ -178,7 +180,7 @@ public class Sequence extends SchemaObjectBase {
                     String.valueOf(startValue), String.valueOf(minValue), String.valueOf(maxValue),
                     String.valueOf(increment));
         }
-        this.value = startValue;
+        this.value.set(startValue);
         this.valueWithMargin = startValue;
         this.minValue = minValue;
         this.maxValue = maxValue;
@@ -231,10 +233,10 @@ public class Sequence extends SchemaObjectBase {
         if (increment != 1) {
             buff.append(" INCREMENT BY ").append(increment);
         }
-        if (minValue != getDefaultMinValue(value, increment)) {
+        if (minValue != getDefaultMinValue(value.get(), increment)) {
             buff.append(" MINVALUE ").append(minValue);
         }
-        if (maxValue != getDefaultMaxValue(value, increment)) {
+        if (maxValue != getDefaultMaxValue(value.get(), increment)) {
             buff.append(" MAXVALUE ").append(maxValue);
         }
         if (cycle) {
@@ -264,27 +266,30 @@ public class Sequence extends SchemaObjectBase {
      * @return the next value
      */
     public long getNext(ServerSession session) {
-        tryLock(session);
+        if (!belongsToTable)
+            tryLock(session);
         boolean needsFlush = false;
         long retVal;
         long flushValueWithMargin = -1;
-        if ((increment > 0 && value >= valueWithMargin) || (increment < 0 && value <= valueWithMargin)) {
+        if ((increment > 0 && value.get() >= valueWithMargin)
+                || (increment < 0 && value.get() <= valueWithMargin)) {
+            tryLock(session);
             valueWithMargin += increment * cacheSize;
             flushValueWithMargin = valueWithMargin;
             needsFlush = true;
         }
-        if ((increment > 0 && value > maxValue) || (increment < 0 && value < minValue)) {
+        if ((increment > 0 && value.get() > maxValue) || (increment < 0 && value.get() < minValue)) {
             if (cycle) {
-                value = increment > 0 ? minValue : maxValue;
-                valueWithMargin = value + (increment * cacheSize);
+                tryLock(session);
+                value.set(increment > 0 ? minValue : maxValue);
+                valueWithMargin = value.get() + (increment * cacheSize);
                 flushValueWithMargin = valueWithMargin;
                 needsFlush = true;
             } else {
                 throw DbException.get(ErrorCode.SEQUENCE_EXHAUSTED, getName());
             }
         }
-        retVal = value;
-        value += increment;
+        retVal = value.getAndAdd(increment);
         if (needsFlush) {
             flushInternal(session, flushValueWithMargin);
         }
@@ -302,8 +307,8 @@ public class Sequence extends SchemaObjectBase {
      * Flush the current value to disk.
      */
     private void flushWithoutMargin() {
-        if (valueWithMargin != value) {
-            valueWithMargin = value;
+        if (valueWithMargin != value.get()) {
+            valueWithMargin = value.get();
             flush(database.getSystemSession(), valueWithMargin);
             database.getSystemSession().commit();
         }
@@ -323,14 +328,14 @@ public class Sequence extends SchemaObjectBase {
         if (flushValueWithMargin == lastFlushValueWithMargin)
             return;
         // just for this case, use the value with the margin for the script
-        long realValue = value;
+        long realValue = value.get();
         try {
-            value = valueWithMargin;
+            value.set(valueWithMargin);
             if (!isTemporary()) {
                 schema.update(session, this, oldRow, lock);
             }
         } finally {
-            value = realValue;
+            value.set(realValue);
         }
         lastFlushValueWithMargin = flushValueWithMargin;
     }
