@@ -175,6 +175,9 @@ public class AOTransaction implements Transaction {
     // 如果需要立即做事务日志，当需要异步提交事务时返回false，当需要同步提交时需要等待
     private void writeRedoLog(boolean asyncCommit) {
         checkNotClosed();
+        // 在写redo log前先更新内存脏页，确保checkpoint线程保存脏页时使用的是新值
+        commitTimestamp = transactionEngine.nextTransactionId(); // 生成新的
+        undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
             RedoLogRecord r = createLocalTransactionRedoLogRecord();
             if (r == null) {
@@ -220,9 +223,6 @@ public class AOTransaction implements Transaction {
         // 避免重复提交
         if (!transactionEngine.containsTransaction(transactionId))
             return;
-        commitTimestamp = transactionEngine.nextTransactionId(); // 生成新的
-        // 先提交，事务变成结束状态再解锁
-        undoLog.commit(transactionEngine);
         endTransaction();
         // wakeUpWaitingTransactions(); //在session级调用
     }

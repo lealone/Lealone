@@ -246,7 +246,7 @@ public class TransactionalValue {
 
     private Object getCommittedValue() {
         RowLock rl = rowLock;
-        if (rl == null || rl.t.isCommitted())
+        if (rl == null || rl.t.commitTimestamp > 0 || rl.t.isCommitted())
             return value;
         else
             return rl.oldValue;
