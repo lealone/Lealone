@@ -47,17 +47,17 @@ public class UndoLogRecord {
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public void commit(AOTransactionEngine transactionEngine) {
+    public void commit(AOTransactionEngine te) {
         if (undone)
             return;
-        StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
+        StorageMap<Object, TransactionalValue> map = te.getStorageMap(mapName);
         if (map == null) {
             return; // map was later removed
         }
         if (oldValue == null) { // insert
             newTV.commit(true);
         } else if (newTV != null && newTV.getValue() == null) { // delete
-            if (!transactionEngine.containsRepeatableReadTransactions()) {
+            if (!te.containsRepeatableReadTransactions()) {
                 map.remove(key);
             } else {
                 map.decrementSize(); // 要减去1
@@ -71,10 +71,10 @@ public class UndoLogRecord {
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
-    public void rollback(AOTransactionEngine transactionEngine) {
+    public void rollback(AOTransactionEngine te) {
         if (undone)
             return;
-        StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
+        StorageMap<Object, TransactionalValue> map = te.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
             if (oldValue == null) {
@@ -86,10 +86,10 @@ public class UndoLogRecord {
     }
 
     // 用于redo时，不关心oldValue
-    public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine transactionEngine) {
+    public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine te) {
         if (undone)
             return;
-        StorageMap<?, ?> map = transactionEngine.getStorageMap(mapName);
+        StorageMap<?, ?> map = te.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map == null) {
             return;
@@ -112,6 +112,6 @@ public class UndoLogRecord {
 
         // 预估一下内存占用大小，当到达一个阈值时方便其他服务线程刷数据到硬盘
         int memory = writeBuffer.position() - lastPosition;
-        transactionEngine.incrementEstimatedMemory(mapName, memory);
+        te.incrementEstimatedMemory(mapName, memory);
     }
 }

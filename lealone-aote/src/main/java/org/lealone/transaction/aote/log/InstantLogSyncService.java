@@ -20,10 +20,4 @@ class InstantLogSyncService extends LogSyncService {
     public boolean isInstantSync() {
         return true;
     }
-
-    @Override
-    public void addAndMaybeWaitForSync(RedoLogRecord r) {
-        // 总是等待
-        addAndWaitForSync(r);
-    }
 }

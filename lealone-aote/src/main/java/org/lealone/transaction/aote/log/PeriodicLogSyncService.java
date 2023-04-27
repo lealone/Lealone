@@ -8,7 +8,6 @@ package org.lealone.transaction.aote.log;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
-import org.lealone.transaction.aote.AOTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
 
@@ -27,22 +26,22 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
-        // 如果在同步周期内，可以提前提交事务
+    public void asyncWrite(RedoLogRecord r) {
+        // 如果在同步周期内，可以提前触发已同步事件
         if (!waitForSyncToCatchUp()) {
-            r.setCompleted(true);
-            t.asyncCommitComplete();
+            r.onSynced();
         }
-        super.asyncCommit(r, t);
+        super.asyncWrite(r);
     }
 
     @Override
-    public void addAndMaybeWaitForSync(RedoLogRecord r) {
-        // 如果在同步周期内，不用等
+    public void syncWrite(RedoLogRecord r) {
+        // 如果在同步周期内，可以提前触发已同步事件，不用等待
         if (!waitForSyncToCatchUp()) {
-            addRedoLogRecord(r);
+            r.onSynced();
+            super.asyncWrite(r);
         } else {
-            addAndWaitForSync(r);
+            super.syncWrite(r);
         }
     }
 }

@@ -181,14 +181,14 @@ public class TransactionalValue {
         if (rl == null)
             return;
         AOTransaction t = rl.t;
-        AOTransactionEngine e = t.transactionEngine;
-        if (e.containsRepeatableReadTransactions()) {
+        AOTransactionEngine te = t.transactionEngine;
+        if (te.containsRepeatableReadTransactions()) {
             if (isInsert) {
                 OldValue v = new OldValue(t.commitTimestamp, value);
-                e.addTransactionalValue(this, v);
+                te.addTransactionalValue(this, v);
             } else {
-                long maxTid = e.getMaxRepeatableReadTransactionId();
-                OldValue old = e.getOldValue(this);
+                long maxTid = te.getMaxRepeatableReadTransactionId();
+                OldValue old = te.getOldValue(this);
                 // 如果现有的版本已经足够给所有的可重复读事务使用了，那就不再加了
                 if (old != null && old.tid > maxTid) {
                     old.useLast = true;
@@ -205,7 +205,7 @@ public class TransactionalValue {
                 } else {
                     v.next = old;
                 }
-                e.addTransactionalValue(this, v);
+                te.addTransactionalValue(this, v);
             }
         }
     }

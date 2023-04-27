@@ -459,15 +459,83 @@ public class ServerSession extends SessionBase {
         return ps;
     }
 
+    public void startCurrentCommand(PreparedSQLStatement statement) {
+        currentCommand = statement;
+        if (statement != null) {
+            // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
+            if (statement.isDatabaseStatement())
+                containsDatabaseStatement = true;
+            else if (statement.isDDL())
+                containsDDL = true;
+
+            if (queryTimeout > 0) {
+                long now = System.currentTimeMillis();
+                currentCommandStart = now;
+                cancelAt = now + queryTimeout;
+            }
+            currentCommandSavepointId = getTransaction().getSavepointId();
+            currentCommandLockIndex = locks.size();
+        }
+    }
+
+    private void closeCurrentCommand() {
+        // 关闭后一些DML语句才可以重用
+        if (currentCommand != null) {
+            currentCommand.close();
+            currentCommand = null;
+        }
+    }
+
+    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler,
+            AsyncResult<T> asyncResult) {
+        if (executingNestedStatement)
+            return;
+        boolean asyncCommit = false;
+        boolean isCommitCommand = currentCommand != null
+                && currentCommand.getType() == SQLStatement.COMMIT;
+        closeTemporaryResults();
+        closeCurrentCommand();
+        if (asyncResult != null && asyncHandler != null) {
+            if (isAutoCommit() || isCommitCommand) {
+                asyncCommit = true;
+                // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
+                asyncCommit(() -> asyncHandler.handle(asyncResult));
+            } else {
+                // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
+                asyncHandler.handle(asyncResult);
+            }
+        } else {
+            if (isAutoCommit() || isCommitCommand) {
+                // 阻塞当前线程，可能需要等事务日志写完为止
+                commit();
+            }
+        }
+        // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
+        if (!asyncCommit) {
+            setYieldableCommand(null);
+        }
+    }
+
+    public void rollbackCurrentCommand() {
+        rollbackTo(currentCommandSavepointId);
+        int size = locks.size();
+        if (currentCommandLockIndex < size) {
+            // 只解除当前语句拥有的锁
+            ArrayList<DbObjectLock> list = new ArrayList<>(locks);
+            for (int i = currentCommandLockIndex; i < size; i++) {
+                DbObjectLock lock = list.get(i);
+                lock.unlock(this, false);
+                locks.remove(lock);
+            }
+        }
+    }
+
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
-            checkCommitRollback();
-            checkDataModification();
-            sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
+            beforeCommit();
             transaction.asyncCommit(asyncTask);
         } else {
-            // 在手动提交模式下执行了COMMIT语句，然后再手动提交事务，
-            // 此时transaction为null，但是asyncTask不为null
+            // 包含子查询的场景
             if (asyncTask != null)
                 asyncTask.run();
         }
@@ -484,24 +552,29 @@ public class ServerSession extends SessionBase {
      * dropped or truncated at commit, this is done as well.
      */
     public void commit() {
-        if (transaction == null)
-            return;
-        checkCommitRollback();
-        checkDataModification();
-        transaction.commit();
-        commitFinal();
+        if (transaction != null) {
+            beforeCommit();
+            transaction.commit();
+            commitFinal();
+        }
     }
 
-    private void checkDataModification() {
-        // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
-        if (!isAutoCommit() && transaction.getSavepointId() > 0)
-            database.getNextModificationDataId();
+    private void beforeCommit() {
+        checkCommitRollback();
+        checkDataModification();
+        sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
     }
 
     private void checkCommitRollback() {
         if (commitOrRollbackDisabled && locks.size() > 0) {
             throw DbException.get(ErrorCode.COMMIT_ROLLBACK_NOT_ALLOWED);
         }
+    }
+
+    private void checkDataModification() {
+        // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
+        if (!isAutoCommit() && transaction.getSavepointId() > 0)
+            database.getNextModificationDataId();
     }
 
     private void endTransaction() {
@@ -733,77 +806,6 @@ public class ServerSession extends SessionBase {
             Thread.sleep(throttle);
         } catch (Exception e) {
             // ignore InterruptedException
-        }
-    }
-
-    public void startCurrentCommand(PreparedSQLStatement statement) {
-        currentCommand = statement;
-        if (statement != null) {
-            // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
-            if (statement.isDatabaseStatement())
-                containsDatabaseStatement = true;
-            else if (statement.isDDL())
-                containsDDL = true;
-
-            if (queryTimeout > 0) {
-                long now = System.currentTimeMillis();
-                currentCommandStart = now;
-                cancelAt = now + queryTimeout;
-            }
-            currentCommandSavepointId = getTransaction().getSavepointId();
-            currentCommandLockIndex = locks.size();
-        }
-    }
-
-    private void closeCurrentCommand() {
-        // 关闭后一些DML语句才可以重用
-        if (currentCommand != null) {
-            currentCommand.close();
-            currentCommand = null;
-        }
-    }
-
-    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler,
-            AsyncResult<T> asyncResult) {
-        if (executingNestedStatement)
-            return;
-        boolean asyncCommit = false;
-        boolean isCommitCommand = currentCommand != null
-                && currentCommand.getType() == SQLStatement.COMMIT;
-        closeTemporaryResults();
-        closeCurrentCommand();
-        if (asyncResult != null && asyncHandler != null) {
-            if (isAutoCommit() || isCommitCommand) {
-                asyncCommit = true;
-                // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
-                asyncCommit(() -> asyncHandler.handle(asyncResult));
-            } else {
-                // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
-                asyncHandler.handle(asyncResult);
-            }
-        } else {
-            if (isAutoCommit() || isCommitCommand) {
-                // 阻塞当前线程，可能需要等事务日志写完为止
-                commit();
-            }
-        }
-        // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
-        if (!asyncCommit) {
-            setYieldableCommand(null);
-        }
-    }
-
-    public void rollbackCurrentCommand() {
-        rollbackTo(currentCommandSavepointId);
-        int size = locks.size();
-        if (currentCommandLockIndex < size) {
-            // 只解除当前语句拥有的锁
-            ArrayList<DbObjectLock> list = new ArrayList<>(locks);
-            for (int i = currentCommandLockIndex; i < size; i++) {
-                DbObjectLock lock = list.get(i);
-                lock.unlock(this, false);
-                locks.remove(lock);
-            }
         }
     }
 

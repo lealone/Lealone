@@ -96,7 +96,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     void removeStorageMap(String mapName) {
         maps.remove(mapName);
         RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
-        logSyncService.addAndMaybeWaitForSync(r);
+        logSyncService.syncWrite(r);
     }
 
     void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {

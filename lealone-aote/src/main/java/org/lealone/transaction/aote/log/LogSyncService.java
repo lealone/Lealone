@@ -15,7 +15,6 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.RunMode;
-import org.lealone.transaction.aote.AOTransaction;
 
 public abstract class LogSyncService extends Thread {
 
@@ -108,22 +107,16 @@ public abstract class LogSyncService extends Thread {
         wakeUp();
     }
 
-    public void asyncCommit(RedoLogRecord r, AOTransaction t) {
-        r.setWaitingTransaction(t);
-        addRedoLogRecord(r);
-    }
-
-    protected void addRedoLogRecord(RedoLogRecord r) {
+    public void asyncWrite(RedoLogRecord r) {
         redoLog.addRedoLogRecord(r);
         wakeUp();
     }
 
-    public abstract void addAndMaybeWaitForSync(RedoLogRecord r);
-
-    protected void addAndWaitForSync(RedoLogRecord r) {
+    public void syncWrite(RedoLogRecord r) {
         CountDownLatch latch = new CountDownLatch(1);
         r.setLatch(latch);
-        addRedoLogRecord(r);
+        redoLog.addRedoLogRecord(r);
+        wakeUp();
         try {
             latch.await();
         } catch (InterruptedException e) {
@@ -133,7 +126,7 @@ public abstract class LogSyncService extends Thread {
 
     public void checkpoint(long checkpointId, boolean saved) {
         RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId, saved);
-        addRedoLogRecord(r);
+        asyncWrite(r);
     }
 
     public static LogSyncService create(Map<String, String> config) {

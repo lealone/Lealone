@@ -63,32 +63,30 @@ public class UndoLog {
         return r;
     }
 
-    public void commit(AOTransactionEngine transactionEngine) {
+    public void commit(AOTransactionEngine te) {
         UndoLogRecord r = first;
         while (r != null) {
-            r.commit(transactionEngine);
+            r.commit(te);
             r = r.next;
         }
     }
 
-    public void rollbackTo(AOTransactionEngine transactionEngine, int toLogId) {
+    public void rollbackTo(AOTransactionEngine te, int toLogId) {
         while (logId > toLogId) {
             UndoLogRecord r = removeLast();
-            r.rollback(transactionEngine);
+            r.rollback(te);
         }
     }
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public DataBuffer toRedoLogRecordBuffer(AOTransactionEngine transactionEngine) {
-        if (isEmpty())
-            return null;
+    public RedoLogRecord toRedoLogRecord(AOTransactionEngine te, long transactionId) {
         DataBuffer buffer = DataBuffer.create();
         UndoLogRecord r = first;
         while (r != null) {
-            r.writeForRedo(buffer, transactionEngine);
+            r.writeForRedo(buffer, te);
             r = r.next;
         }
         buffer.getAndFlipBuffer();
-        return buffer;
+        return RedoLogRecord.createTransactionRedoLogRecord(transactionId, buffer);
     }
 }

@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.DataBuffer;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
@@ -55,11 +54,11 @@ public class AOTransaction implements Transaction {
 
     private LinkedList<TransactionalValue> locks; // 行锁
 
-    public AOTransaction(AOTransactionEngine engine, long tid, boolean autoCommit, int level) {
-        transactionEngine = engine;
+    public AOTransaction(AOTransactionEngine te, long tid, boolean autoCommit, int level) {
+        transactionEngine = te;
         transactionId = tid;
         isolationLevel = level;
-        logSyncService = engine.getLogSyncService();
+        logSyncService = te.getLogSyncService();
         this.autoCommit = autoCommit;
     }
 
@@ -164,32 +163,15 @@ public class AOTransaction implements Transaction {
         writeRedoLog(true);
     }
 
-    private RedoLogRecord createLocalTransactionRedoLogRecord() {
-        DataBuffer operations = undoLog.toRedoLogRecordBuffer(transactionEngine);
-        if (operations == null || operations.limit() == 0)
-            return null;
-        return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
-    }
-
-    // 如果不需要事务日志同步或者不需要立即做事务日志同步那么返回true，这时可以直接提交事务了。
-    // 如果需要立即做事务日志，当需要异步提交事务时返回false，当需要同步提交时需要等待
     private void writeRedoLog(boolean asyncCommit) {
         checkNotClosed();
-        // 在写redo log前先更新内存脏页，确保checkpoint线程保存脏页时使用的是新值
-        commitTimestamp = transactionEngine.nextTransactionId(); // 生成新的
-        undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
-            RedoLogRecord r = createLocalTransactionRedoLogRecord();
-            if (r == null) {
-                // 不需要事务日志同步，可以直接提交事务了
-                if (asyncCommit)
-                    asyncCommitComplete();
-                return;
-            }
+            RedoLogRecord r = undoLog.toRedoLogRecord(transactionEngine, transactionId);
             if (asyncCommit) {
-                logSyncService.asyncCommit(r, this);
+                r.setTransaction(this);
+                logSyncService.asyncWrite(r);
             } else {
-                logSyncService.addAndMaybeWaitForSync(r);
+                logSyncService.syncWrite(r);
             }
         } else {
             // 不需要事务日志同步，可以直接提交事务了
@@ -198,7 +180,6 @@ public class AOTransaction implements Transaction {
         }
     }
 
-    @Override
     public void asyncCommitComplete() {
         commitFinal();
         if (session != null) {
@@ -221,8 +202,10 @@ public class AOTransaction implements Transaction {
 
     private void commitFinal() {
         // 避免重复提交
-        if (!transactionEngine.containsTransaction(transactionId))
+        if (undoLog == null)
             return;
+        commitTimestamp = transactionEngine.nextTransactionId();
+        undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
         endTransaction();
         // wakeUpWaitingTransactions(); //在session级调用
     }

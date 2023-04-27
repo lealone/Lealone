@@ -15,49 +15,32 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.aote.AOTransaction;
 
 public abstract class RedoLogRecord {
 
-    private static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
-
     private static byte TYPE_CHECKPOINT = 0;
-    private static byte TYPE_DROPPED_MAP_REDO_LOG_RECORD = 1;
-    private static byte TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD = 2;
+    private static byte TYPE_DROPPED_MAP = 1;
+    private static byte TYPE_TRANSACTION_REDO_LOG_RECORD = 2;
 
-    private volatile boolean synced;
-    private boolean completed;
+    private AOTransaction transaction;
     private CountDownLatch latch;
-    private Transaction waitingTransaction;
 
-    public Transaction getWaitingTransaction() {
-        return waitingTransaction;
-    }
-
-    public void setWaitingTransaction(Transaction waitingTransaction) {
-        this.waitingTransaction = waitingTransaction;
-    }
-
-    boolean isSynced() {
-        return synced;
-    }
-
-    void setSynced(boolean synced) {
-        this.synced = synced;
-        if (latch != null)
-            latch.countDown();
-    }
-
-    boolean isCompleted() {
-        return completed;
-    }
-
-    void setCompleted(boolean completed) {
-        this.completed = completed;
+    public void setTransaction(AOTransaction transaction) {
+        this.transaction = transaction;
     }
 
     void setLatch(CountDownLatch latch) {
         this.latch = latch;
+    }
+
+    void onSynced() {
+        if (latch != null) {
+            latch.countDown();
+        } else if (transaction != null) {
+            transaction.asyncCommitComplete();
+            transaction = null;
+        }
     }
 
     boolean isCheckpoint() {
@@ -73,10 +56,10 @@ public abstract class RedoLogRecord {
         int type = buff.get();
         if (type == TYPE_CHECKPOINT) {
             return Checkpoint.read(buff);
-        } else if (type == TYPE_DROPPED_MAP_REDO_LOG_RECORD) {
+        } else if (type == TYPE_DROPPED_MAP) {
             return DroppedMapRedoLogRecord.read(buff);
-        } else if (type == TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD) {
-            return LocalTransactionRedoLogRecord.read(buff);
+        } else if (type == TYPE_TRANSACTION_REDO_LOG_RECORD) {
+            return TransactionRedoLogRecord.read(buff);
         } else {
             throw DbException.getInternalError("unknow type: " + type);
         }
@@ -90,9 +73,9 @@ public abstract class RedoLogRecord {
         return new DroppedMapRedoLogRecord(mapName);
     }
 
-    public static LocalTransactionRedoLogRecord createLocalTransactionRedoLogRecord(long transactionId,
+    public static TransactionRedoLogRecord createTransactionRedoLogRecord(long transactionId,
             DataBuffer operations) {
-        return new LocalTransactionRedoLogRecord(transactionId, operations);
+        return new TransactionRedoLogRecord(transactionId, operations);
     }
 
     static class Checkpoint extends RedoLogRecord {
@@ -159,7 +142,7 @@ public abstract class RedoLogRecord {
 
         @Override
         public void write(DataBuffer buff) {
-            buff.put(TYPE_DROPPED_MAP_REDO_LOG_RECORD);
+            buff.put(TYPE_DROPPED_MAP);
             ValueString.type.write(buff, mapName);
         }
 
@@ -171,12 +154,18 @@ public abstract class RedoLogRecord {
 
     static class TransactionRedoLogRecord extends RedoLogRecord {
 
-        protected final long transactionId;
-        protected final ByteBuffer operations;
+        private final long transactionId;
+        private final ByteBuffer operations;
+        private DataBuffer buffer;
 
         public TransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
             this.transactionId = transactionId;
             this.operations = operations;
+        }
+
+        public TransactionRedoLogRecord(long transactionId, DataBuffer operations) {
+            this(transactionId, operations.getBuffer());
+            this.buffer = operations;
         }
 
         @Override
@@ -202,55 +191,20 @@ public abstract class RedoLogRecord {
 
         @Override
         public void write(DataBuffer buff) {
-            write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-        }
-
-        public void write(DataBuffer buff, byte type) {
-            buff.put(type);
+            buff.put(TYPE_TRANSACTION_REDO_LOG_RECORD);
             buff.putVarLong(transactionId);
             buff.putInt(operations.remaining());
             buff.put(operations);
-        }
-
-        public static ByteBuffer readOperations(ByteBuffer buff) {
-            ByteBuffer operations;
-            int len = buff.getInt(); // DataUtils.readVarInt(buff);
-            if (len > 0) {
-                byte[] value = new byte[len];
-                buff.get(value);
-                operations = ByteBuffer.wrap(value);
-            } else {
-                operations = EMPTY_BUFFER;
-            }
-            return operations;
-        }
-    }
-
-    static class LocalTransactionRedoLogRecord extends TransactionRedoLogRecord {
-
-        private DataBuffer buffer;
-
-        public LocalTransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
-            super(transactionId, operations);
-        }
-
-        public LocalTransactionRedoLogRecord(long transactionId, DataBuffer operations) {
-            super(transactionId, operations.getBuffer());
-            this.buffer = operations;
-        }
-
-        @Override
-        public void write(DataBuffer buff) {
-            write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
             if (buffer != null) {
                 buffer.close();
             }
         }
 
-        public static LocalTransactionRedoLogRecord read(ByteBuffer buff) {
+        public static TransactionRedoLogRecord read(ByteBuffer buff) {
             long transactionId = DataUtils.readVarLong(buff);
-            ByteBuffer operations = readOperations(buff);
-            return new LocalTransactionRedoLogRecord(transactionId, operations);
+            byte[] bytes = new byte[buff.getInt()];
+            buff.get(bytes);
+            return new TransactionRedoLogRecord(transactionId, ByteBuffer.wrap(bytes));
         }
     }
 }
