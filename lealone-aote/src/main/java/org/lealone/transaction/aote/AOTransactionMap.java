@@ -84,12 +84,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (tv.isCommitted() && tv.getValue() == null)
             return null;
 
-        // 有些底层存储引擎可能会在事务提交前就把脏数据存盘了，
-        // 然后还没等事务提交，数据库又崩溃了，那么在这里需要撤销才能得到正确的值，
-        // 这一过程被称为: 读时撤销
-        if (!transaction.transactionEngine.containsTransaction(tv.getTid())) {
-            return tv.undo(map, key);
-        }
         // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了
         return null;
     }

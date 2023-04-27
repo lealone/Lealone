@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 
@@ -170,10 +169,6 @@ public class TransactionalValue {
     public AOTransaction getLockOwner() {
         RowLock rl = rowLock;
         return rl == null ? null : rl.t;
-    }
-
-    public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
-        return this;
     }
 
     public void commit(boolean isInsert) {
