@@ -176,6 +176,7 @@ class RedoLogChunk {
             checkpointChunkId = id;
             fileStorage = getFileStorage(++id, config);
             pos = 0;
+            r.onSynced();
             return false;
         }
     }

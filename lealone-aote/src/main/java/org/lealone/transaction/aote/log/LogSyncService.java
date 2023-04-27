@@ -126,7 +126,10 @@ public abstract class LogSyncService extends Thread {
 
     public void checkpoint(long checkpointId, boolean saved) {
         RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId, saved);
-        asyncWrite(r);
+        if (!saved && isInstantSync())
+            syncWrite(r);
+        else
+            asyncWrite(r);
     }
 
     public static LogSyncService create(Map<String, String> config) {
