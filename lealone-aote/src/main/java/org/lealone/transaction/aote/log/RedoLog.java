@@ -75,7 +75,7 @@ public class RedoLog {
                 try {
                     chunk = new RedoLogChunk(id, config);
                     for (RedoLogRecord r : chunk.readRedoLogRecords()) {
-                        lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
+                        r.initPendingRedoLog(pendingRedoLog);
                     }
                 } finally {
                     // 注意一定要关闭，否则对应的chunk文件将无法删除，

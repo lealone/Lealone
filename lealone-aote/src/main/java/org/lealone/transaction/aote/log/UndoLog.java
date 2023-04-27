@@ -79,7 +79,7 @@ public class UndoLog {
     }
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public RedoLogRecord toRedoLogRecord(AOTransactionEngine te, long transactionId) {
+    public RedoLogRecord toRedoLogRecord(AOTransactionEngine te) {
         DataBuffer buffer = DataBuffer.create();
         UndoLogRecord r = first;
         while (r != null) {
@@ -87,6 +87,6 @@ public class UndoLog {
             r = r.next;
         }
         buffer.getAndFlipBuffer();
-        return RedoLogRecord.createTransactionRedoLogRecord(transactionId, buffer);
+        return RedoLogRecord.createTransactionRedoLogRecord(buffer);
     }
 }

@@ -143,8 +143,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
 
-        long lastTransactionId = logSyncService.getRedoLog().init();
-        this.lastTransactionId.set(lastTransactionId);
+        logSyncService.getRedoLog().init();
+        lastTransactionId.set(0);
 
         // 调用完initPendingRedoLog后再启动logSyncService
         logSyncService.start();
@@ -342,10 +342,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 executeCheckpoint = totalEstimatedMemory > committedDataCacheSize;
             }
             if (executeCheckpoint) {
-                long nextTid = nextTransactionId();
                 // 1.先切换redo log chunk文件
-                logSyncService.checkpoint(nextTid, false);
-
+                logSyncService.checkpoint(false);
                 try {
                     for (MapInfo mapInfo : maps.values()) {
                         StorageMap<?, ?> map = mapInfo.map;
@@ -358,7 +356,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     }
                     lastSavedAt = now;
                     // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件
-                    logSyncService.checkpoint(nextTid, true);
+                    logSyncService.checkpoint(true);
                 } catch (Throwable t) {
                     logSyncService.getRedoLog().ignoreCheckpoint();
                 }
