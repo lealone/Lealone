@@ -68,7 +68,7 @@ public class ConnectionInfoTest extends DbTestBase {
         }
 
         try {
-            String key = ConnectionSetting.IS_ROOT.name();
+            String key = ConnectionSetting.IS_SHARED.name();
             Properties prop = new Properties();
             prop.setProperty(key, "true");
             // url中设置的参数跟用Properties设置的参数虽然重复了，但值是一样的，所以合法

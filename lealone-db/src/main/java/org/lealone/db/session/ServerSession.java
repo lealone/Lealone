@@ -578,8 +578,6 @@ public class ServerSession extends SessionBase {
     }
 
     private void endTransaction() {
-        if (!isRoot)
-            setAutoCommit(true);
         containsDDL = false;
         containsDatabaseStatement = false;
         transaction.wakeUpWaitingTransactions();
@@ -1117,16 +1115,6 @@ public class ServerSession extends SessionBase {
      */
     public int nextObjectId() {
         return objectId++;
-    }
-
-    private boolean isRoot = true; // 分布式事务最开始启动时所在的session就是root session，相当于协调者
-
-    public boolean isRoot() {
-        return isRoot;
-    }
-
-    public void setRoot(boolean isRoot) {
-        this.isRoot = isRoot;
     }
 
     public Transaction getTransaction() {

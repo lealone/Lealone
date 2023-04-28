@@ -103,7 +103,6 @@ public class ServerSessionFactory implements SessionFactory {
     private void initSession(ServerSession session, ConnectionInfo ci) {
         boolean autoCommit = session.isAutoCommit();
         session.setAutoCommit(false);
-        session.setRoot(ci.getProperty(ConnectionSetting.IS_ROOT, true));
         boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
         session.setAllowLiterals(true);
         for (String setting : ci.getKeys()) {
