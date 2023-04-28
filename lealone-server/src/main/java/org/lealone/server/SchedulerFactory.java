@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.PluginManager;
-import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 
@@ -36,7 +35,6 @@ public class SchedulerFactory {
             schedulers[i] = new Scheduler(i, schedulerCount, config);
         }
 
-        AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         PageOperationHandlerFactory pohFactory = PageOperationHandlerFactory.create(config, schedulers);
         for (StorageEngine e : PluginManager.getPlugins(StorageEngine.class)) {
             // 停掉旧的处理器，不能同时有两个
