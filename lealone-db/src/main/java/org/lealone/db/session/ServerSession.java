@@ -689,8 +689,6 @@ public class ServerSession extends SessionBase {
                 closeAllCache();
                 cleanTempTables(true);
                 database.removeSession(this);
-                if (getTransactionListener() != null)
-                    getTransactionListener().removeSession(sessionInfo);
             } finally {
                 super.close();
             }
@@ -1242,7 +1240,6 @@ public class ServerSession extends SessionBase {
     }
 
     private TransactionListener transactionListener;
-    private Object sessionInfo;
 
     public TransactionListener getTransactionListener() {
         return transactionListener;
@@ -1250,14 +1247,6 @@ public class ServerSession extends SessionBase {
 
     public void setTransactionListener(TransactionListener transactionListener) {
         this.transactionListener = transactionListener;
-    }
-
-    public Object getSessionInfo() {
-        return sessionInfo;
-    }
-
-    public void setSessionInfo(Object sessionInfo) {
-        this.sessionInfo = sessionInfo;
     }
 
     private byte[] lobMacSalt;

@@ -22,9 +22,7 @@ import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
-import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryManager;
@@ -299,23 +297,6 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         netEventLoop.wakeup();
     }
 
-    @Override
-    public Object addSession(Session session, Object parentSessionInfo) {
-        SessionInfo parent = (SessionInfo) parentSessionInfo;
-        SessionInfo si = parent.copy((ServerSession) session);
-        ((ServerSession) session).setSessionInfo(si);
-        addSessionInfo(si);
-        return si;
-    }
-
-    @Override
-    public void removeSession(Object sessionInfo) {
-        SessionInfo si = (SessionInfo) sessionInfo;
-        // 不删除root session
-        if (!si.getSession().isRoot())
-            removeSessionInfo(si);
-    }
-
     private void checkSessionTimeout() {
         if (sessions.isEmpty())
             return;
@@ -447,8 +428,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 if (ar.isSucceeded()) {
                     result = ar.getResult();
                 } else {
-                    RuntimeException e = new RuntimeException(ar.getCause());
-                    setException(e);
+                    setException(new RuntimeException(ar.getCause()));
                 }
                 operationComplete();
             }
