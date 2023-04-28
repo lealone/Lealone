@@ -7,7 +7,6 @@ package org.lealone.db;
 
 public enum ConnectionSetting {
     IGNORE_UNKNOWN_SETTINGS,
-    INIT,
     USER,
     PASSWORD,
     PASSWORD_HASH,

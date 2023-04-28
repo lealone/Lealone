@@ -101,16 +101,18 @@ public class ServerSessionFactory implements SessionFactory {
     }
 
     private void initSession(ServerSession session, ConnectionInfo ci) {
+        String[] keys = ci.getKeys();
+        if (keys.length == 0)
+            return;
         boolean autoCommit = session.isAutoCommit();
         session.setAutoCommit(false);
-        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
         session.setAllowLiterals(true);
-        for (String setting : ci.getKeys()) {
-            if (SessionSetting.contains(setting) || DbSetting.contains(setting)) {
-                String value = ci.getProperty(setting);
+        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
+        for (String key : keys) {
+            if (SessionSetting.contains(key) || DbSetting.contains(key)) {
                 try {
-                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " '" + value
-                            + "'";
+                    String sql = "SET " + session.getDatabase().quoteIdentifier(key) + " '"
+                            + ci.getProperty(key) + "'";
                     session.prepareStatementLocal(sql).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
@@ -120,19 +122,8 @@ public class ServerSessionFactory implements SessionFactory {
                 }
             }
         }
-        String init = ci.getProperty(ConnectionSetting.INIT, null);
-        if (init != null) {
-            try {
-                session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        session.setAllowLiterals(false);
         session.commit();
         session.setAutoCommit(autoCommit);
+        session.setAllowLiterals(false);
     }
 }
