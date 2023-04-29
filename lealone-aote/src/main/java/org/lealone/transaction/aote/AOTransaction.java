@@ -82,6 +82,10 @@ public class AOTransaction implements Transaction {
         return session;
     }
 
+    public boolean isUpdateCommand() {
+        return session != null && !session.isQueryCommand();
+    }
+
     public boolean isCommitted() {
         return commitTimestamp > 0;
     }

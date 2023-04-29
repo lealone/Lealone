@@ -1447,4 +1447,9 @@ public class ServerSession extends SessionBase {
         if (queryCache != null)
             queryCache.clear();
     }
+
+    @Override
+    public boolean isQueryCommand() {
+        return currentCommand != null && currentCommand.isQuery();
+    }
 }

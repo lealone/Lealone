@@ -139,4 +139,8 @@ public interface Session extends Closeable {
     default int getLockTimeout() {
         return Integer.MAX_VALUE;
     }
+
+    default boolean isQueryCommand() {
+        return false;
+    }
 }

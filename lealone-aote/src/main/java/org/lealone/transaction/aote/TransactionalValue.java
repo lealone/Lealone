@@ -86,7 +86,10 @@ public class TransactionalValue {
         RowLock rl = rowLock;
         if (rl != null && rl.t == transaction)
             return value;
-        switch (transaction.getIsolationLevel()) {
+        // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
+        int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
+                : transaction.getIsolationLevel();
+        switch (isolationLevel) {
         case Transaction.IL_READ_COMMITTED: {
             if (rl != null) {
                 if (rl.isCommitted()) {
