@@ -43,9 +43,9 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     }
 
     @Override
-    public void handlePageOperation(PageOperation task) {
+    public void handlePageOperation(PageOperation po) {
         size.incrementAndGet();
-        pageOperations.add(task);
+        pageOperations.add(po);
         wakeUp();
     }
 

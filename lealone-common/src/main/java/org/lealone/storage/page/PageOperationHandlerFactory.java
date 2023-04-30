@@ -68,18 +68,6 @@ public abstract class PageOperationHandlerFactory {
         }
     }
 
-    public void addPageOperation(PageOperation po) {
-        Object t = Thread.currentThread();
-        // 如果当前线程本身就是PageOperationHandler，直接运行。
-        if (t instanceof PageOperationHandler) {
-            po.run((PageOperationHandler) t);
-        } else {
-            // 如果当前线程不是PageOperationHandler，按配置的分配策略选出一个出来，放到它的队列中，让它去处理
-            PageOperationHandler handler = getPageOperationHandler();
-            handler.handlePageOperation(po);
-        }
-    }
-
     public static PageOperationHandlerFactory create(Map<String, String> config) {
         return create(config, null);
     }
