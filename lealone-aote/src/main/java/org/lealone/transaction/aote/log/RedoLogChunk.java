@@ -120,9 +120,10 @@ class RedoLogChunk {
 
     void save() {
         while (logQueueSize.get() > 0) {
-            int count = 0;
+            LinkedList<RedoLogRecord> list = new LinkedList<>();
+            logQueue.drainTo(list); // 性能比逐个poll要好
             long chunkLength = 0;
-            for (RedoLogRecord r : logQueue) {
+            for (RedoLogRecord r : list) {
                 if (r.isCheckpoint()) {
                     if (!checkpoint(r))
                         chunkLength = 0;
@@ -131,15 +132,13 @@ class RedoLogChunk {
                     if (buff.position() > BUFF_SIZE)
                         chunkLength += write(buff);
                 }
-                count++;
                 logQueueSize.decrementAndGet();
             }
             chunkLength += write(buff);
             if (chunkLength > 0) {
                 fileStorage.sync();
             }
-            for (int i = 0; i < count; i++) {
-                RedoLogRecord r = logQueue.poll();
+            for (RedoLogRecord r : list) {
                 r.onSynced();
             }
             // 避免占用太多内存

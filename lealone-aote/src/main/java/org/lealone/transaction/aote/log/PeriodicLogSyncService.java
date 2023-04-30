@@ -28,9 +28,10 @@ class PeriodicLogSyncService extends LogSyncService {
     @Override
     public void asyncWrite(RedoLogRecord r) {
         // 如果在同步周期内，可以提前触发已同步事件
-        if (!waitForSyncToCatchUp()) {
-            r.onSynced();
-        }
+        // if (!waitForSyncToCatchUp()) {
+        // r.onSynced();
+        // }
+        r.onSynced();
         super.asyncWrite(r);
     }
 
