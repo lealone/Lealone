@@ -653,15 +653,10 @@ public class ConstraintReferential extends Constraint {
         }
         buff.append(')');
         String sql = buff.toString();
-        session.startNestedStatement();
-        try {
-            Result r = session.prepareStatement(sql).query(1);
-            if (r.next()) {
-                throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
-                        getShortDescription(null, null));
-            }
-        } finally {
-            session.endNestedStatement();
+        Result r = session.prepareStatement(sql).query(1);
+        if (r.next()) {
+            throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
+                    getShortDescription(null, null));
         }
     }
 

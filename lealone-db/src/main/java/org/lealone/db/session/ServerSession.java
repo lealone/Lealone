@@ -459,23 +459,27 @@ public class ServerSession extends SessionBase {
         return ps;
     }
 
-    public void startCurrentCommand(PreparedSQLStatement statement) {
-        currentCommand = statement;
-        if (statement != null) {
-            // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
-            if (statement.isDatabaseStatement())
-                containsDatabaseStatement = true;
-            else if (statement.isDDL())
-                containsDDL = true;
+    private short executingStatements;
 
+    public void startCurrentCommand(PreparedSQLStatement statement) {
+        if (executingStatements++ == 0) {
+            currentCommand = statement;
             if (queryTimeout > 0) {
                 long now = System.currentTimeMillis();
                 currentCommandStart = now;
                 cancelAt = now + queryTimeout;
             }
             currentCommandSavepointId = getTransaction().getSavepointId();
-            currentCommandLockIndex = locks.size();
+            if (locks.isEmpty())
+                currentCommandLockIndex = 0;
+            else
+                currentCommandLockIndex = locks.size() - 1;
         }
+        // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
+        if (statement.isDatabaseStatement())
+            containsDatabaseStatement = true;
+        else if (statement.isDDL())
+            containsDDL = true;
     }
 
     private void closeCurrentCommand() {
@@ -486,10 +490,12 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler,
-            AsyncResult<T> asyncResult) {
-        if (executingNestedStatement)
+    public <T> void stopCurrentCommand(PreparedSQLStatement statement,
+            AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        if (--executingStatements > 0) {
+            statement.close();
             return;
+        }
         boolean asyncCommit = false;
         boolean isCommitCommand = currentCommand != null
                 && currentCommand.getType() == SQLStatement.COMMIT;
@@ -1431,16 +1437,6 @@ public class ServerSession extends SessionBase {
             settings.put(setting.name(), v == null ? "null" : v.toString());
         }
         return settings;
-    }
-
-    private boolean executingNestedStatement;
-
-    public void startNestedStatement() {
-        executingNestedStatement = true;
-    }
-
-    public void endNestedStatement() {
-        executingNestedStatement = false;
     }
 
     public void clearQueryCache() {

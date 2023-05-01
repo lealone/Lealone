@@ -184,7 +184,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     public void stop() {
         stopped = true;
         stopInternal();
-        session.stopCurrentCommand(asyncHandler, asyncResult);
+        session.stopCurrentCommand(statement, asyncHandler, asyncResult);
 
         if (startTimeNanos > 0 && trace.isInfoEnabled()) {
             long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;

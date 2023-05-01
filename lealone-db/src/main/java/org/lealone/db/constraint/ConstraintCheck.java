@@ -136,14 +136,9 @@ public class ConstraintCheck extends Constraint {
             return;
         }
         String sql = "SELECT 1 FROM " + table.getSQL() + " WHERE NOT(" + expr.getSQL() + ")";
-        session.startNestedStatement();
-        try {
-            Result r = session.prepareStatement(sql).query(1);
-            if (r.next()) {
-                throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getName());
-            }
-        } finally {
-            session.endNestedStatement();
+        Result r = session.prepareStatement(sql).query(1);
+        if (r.next()) {
+            throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getName());
         }
     }
 
