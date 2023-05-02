@@ -64,6 +64,10 @@ public class Mode {
         return MODES.get(name);
     }
 
+    public boolean isPostgreSQL() {
+        return "PostgreSQL".equalsIgnoreCase(name);
+    }
+
     // Modes are also documented in the features section
 
     /**

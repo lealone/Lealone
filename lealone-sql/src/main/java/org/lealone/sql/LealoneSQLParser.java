@@ -896,26 +896,6 @@ public class LealoneSQLParser implements SQLParser {
             buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
         } else if (readIf("SCHEMAS")) {
             buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMAS");
-        } else if (readIf("CLIENT_ENCODING")) {
-            // for PostgreSQL compatibility
-            buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
-        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
-            // for PostgreSQL compatibility
-            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("TRANSACTION")) {
-            // for PostgreSQL compatibility
-            read("ISOLATION");
-            read("LEVEL");
-            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("DATESTYLE")) {
-            // for PostgreSQL compatibility
-            buff.append("'ISO' AS DATESTYLE FROM DUAL");
-        } else if (readIf("SERVER_VERSION")) {
-            // for PostgreSQL compatibility
-            buff.append("'8.1.4' AS SERVER_VERSION FROM DUAL");
-        } else if (readIf("SERVER_ENCODING")) {
-            // for PostgreSQL compatibility
-            buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
         } else if (readIf("TABLES")) {
             String schema = session.getCurrentSchemaName();
             if (readIf("FROM")) {
@@ -943,6 +923,12 @@ public class LealoneSQLParser implements SQLParser {
                     + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
                     + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
+        } else {
+            if (session.getDatabase().getMode().isPostgreSQL()) {
+                parseShowPostgreSQL(buff);
+            } else {
+                throw getSyntaxError();
+            }
         }
         boolean b = session.getAllowLiterals();
         try {
@@ -952,6 +938,27 @@ public class LealoneSQLParser implements SQLParser {
             return prepare(session, buff.toString(), paramValues);
         } finally {
             session.setAllowLiterals(b);
+        }
+    }
+
+    // for PostgreSQL compatibility
+    private void parseShowPostgreSQL(StringBuilder buff) {
+        if (readIf("CLIENT_ENCODING")) {
+            buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
+        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
+            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
+        } else if (readIf("TRANSACTION")) {
+            read("ISOLATION");
+            read("LEVEL");
+            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
+        } else if (readIf("DATESTYLE")) {
+            buff.append("'ISO' AS DATESTYLE FROM DUAL");
+        } else if (readIf("SERVER_VERSION")) {
+            buff.append("'8.1.4' AS SERVER_VERSION FROM DUAL");
+        } else if (readIf("SERVER_ENCODING")) {
+            buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
+        } else {
+            throw getSyntaxError();
         }
     }
 
