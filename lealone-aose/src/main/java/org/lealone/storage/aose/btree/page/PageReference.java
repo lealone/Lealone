@@ -28,16 +28,19 @@ public class PageReference {
     public boolean tryLock(PageOperationHandler newLockOwner) {
         if (newLockOwner == lockOwner)
             return true;
-        do {
+        while (true) {
+            if (lockUpdater.compareAndSet(this, null, newLockOwner))
+                return true;
             PageOperationHandler owner = lockOwner;
-            boolean ok = lockUpdater.compareAndSet(this, null, newLockOwner);
-            if (!ok && owner != null) {
+            if (owner != null) {
                 owner.addWaitingHandler(newLockOwner);
             }
-            if (ok)
-                return true;
-        } while (lockOwner == null);
-        return false;
+            // 解锁了，或者又被其他线程锁住了
+            if (lockOwner == null || lockOwner != owner)
+                continue;
+            else
+                return false;
+        }
     }
 
     public void unlock() {
