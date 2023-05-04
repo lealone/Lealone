@@ -68,6 +68,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private boolean canReuse;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
+    private SQLStatementExecutor executor;
+
     /**
      * Create a new object.
      *
@@ -365,31 +367,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         this.prepareAlways = prepareAlways;
     }
 
-    private boolean yieldIfNeeded() {
-        Thread t = Thread.currentThread();
-        if (t instanceof SQLStatementExecutor) {
-            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
-            return sqlStatementExecutor.yieldIfNeeded(this);
-        }
-        return false;
-    }
-
-    /**
-     * Set the current row number.
-     *
-     * @param rowNumber the row number
-     */
-    public boolean setCurrentRowNumber(int rowNumber) {
-        boolean yieldIfNeeded = false;
-        if ((++rowScanCount & 127) == 0) {
-            checkCanceled();
-            yieldIfNeeded = yieldIfNeeded();
-        }
-        this.currentRowNumber = rowNumber;
-        setProgress();
-        return yieldIfNeeded;
-    }
-
     /**
      * Get the current row number.
      *
@@ -400,13 +377,35 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
+     * Set the current row number.
+     *
+     * @param rowNumber the row number
+     */
+    public boolean setCurrentRowNumber(int rowNumber) {
+        return setCurrentRowNumber(rowNumber, true);
+    }
+
+    public boolean setCurrentRowNumber(int rowNumber, boolean yieldEnabled) {
+        this.currentRowNumber = rowNumber;
+        if ((++rowScanCount & 127) == 0) {
+            checkCanceled();
+            setProgress();
+            if (yieldEnabled && executor != null)
+                return executor.yieldIfNeeded(this);
+        }
+        return false;
+    }
+
+    /**
      * Notifies query progress via the DatabaseEventListener
      */
     private void setProgress() {
-        if ((currentRowNumber & 127) == 0) {
-            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
-                    currentRowNumber, 0);
-        }
+        session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
+                currentRowNumber, 0);
+    }
+
+    public void setExecutor(SQLStatementExecutor executor) {
+        this.executor = executor;
     }
 
     /**

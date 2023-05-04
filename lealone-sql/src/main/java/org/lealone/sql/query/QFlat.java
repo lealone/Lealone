@@ -16,11 +16,14 @@ class QFlat extends QOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.next()) {
+        rebuildSearchRowIfNeeded();
+        while (hasNext) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
-                if (select.isForUpdate && !select.topTableFilter.lockRow())
-                    return; // 锁记录失败
+                if (select.isForUpdate) {
+                    if (!tryLockRow())
+                        return; // 锁记录失败
+                }
                 Value[] row = createRow();
                 result.addRow(row);
                 rowCount++;
@@ -30,6 +33,7 @@ class QFlat extends QOperator {
             }
             if (yield)
                 return;
+            hasNext = select.topTableFilter.next();
         }
         loopEnd = true;
     }

@@ -67,5 +67,8 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         T getResult();
 
         int getPriority();
+
+        void setExecutor(SQLStatementExecutor executor);
+
     }
 }

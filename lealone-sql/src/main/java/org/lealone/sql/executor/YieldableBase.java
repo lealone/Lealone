@@ -22,6 +22,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
+import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
 
@@ -81,6 +82,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     @Override
     public int getPriority() {
         return statement.getPriority();
+    }
+
+    @Override
+    public void setExecutor(SQLStatementExecutor executor) {
+        statement.setExecutor(executor);
     }
 
     @Override
@@ -205,7 +211,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     public boolean yieldIfNeeded(int rowNumber) {
-        // 需要先设置行号
-        return statement.setCurrentRowNumber(rowNumber) && yieldEnabled;
+        return statement.setCurrentRowNumber(rowNumber, yieldEnabled);
     }
 }

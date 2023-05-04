@@ -23,6 +23,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.session.ServerSession.YieldableCommand;
+import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryManager;
@@ -207,17 +208,11 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         while (true) {
             gc();
             YieldableCommand c;
-            // 如果执行insert语句时执行Prepared类型的select语句，
-            // 当select语句让出执行权时可能会导致insert语句被执行两次
-            // 见SchedulerYieldBugTest
-            if (nextBestCommand == last) {
-                nextBestCommand = null;
-            }
             if (nextBestCommand != null) {
                 c = nextBestCommand;
                 nextBestCommand = null;
             } else {
-                c = getNextBestCommand(priority, true);
+                c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
                 checkSessionTimeout();
@@ -226,7 +221,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 runSessionTasks();
                 runQueueTasks(maxPriorityQueue);
                 runQueueTasks(normPriorityQueue);
-                c = getNextBestCommand(priority, true);
+                c = getNextBestCommand(null, priority, true);
                 if (c == null) {
                     break;
                 }
@@ -255,20 +250,32 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         try {
-            netEventLoop.getSelector().selectNow();
-        } catch (IOException e) {
-            logger.warn("Failed to selectNow", e);
+            runQueueTasks(maxPriorityQueue);
+            runQueueTasks(normPriorityQueue);
+            runQueueTasks(minPriorityQueue);
+            try {
+                netEventLoop.getSelector().selectNow();
+            } catch (IOException e) {
+                logger.warn("Failed to selectNow", e);
+            }
+            handleSelectedKeys();
+            netEventLoop.write();
+            runSessionInitTasks();
+            runSessionTasks();
+            netEventLoop.write();
+        } catch (Exception e) {
+            logger.warn("Failed to yieldIfNeeded", e);
+            return false;
         }
-        handleSelectedKeys();
-        netEventLoop.write();
-        runSessionInitTasks();
-        runSessionTasks();
-        netEventLoop.write();
+
+        // 至少有两个session才需要yield
+        if (sessions.size() < 2)
+            return false;
 
         // 如果来了更高优化级的命令，那么当前正在执行的语句就让出当前线程，
         // 当前线程转去执行高优先级的命令
         int priority = current.getPriority();
-        nextBestCommand = getNextBestCommand(priority, false);
+        nextBestCommand = getNextBestCommand(current.getSession(), priority, false);
         if (nextBestCommand != null) {
             current.setPriority(priority + 1);
             return true;
@@ -276,11 +283,15 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         return false;
     }
 
-    private YieldableCommand getNextBestCommand(int priority, boolean checkTimeout) {
+    private YieldableCommand getNextBestCommand(Session currentSession, int priority,
+            boolean checkTimeout) {
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
         for (SessionInfo si : sessions) {
+            // 执行yieldIfNeeded时，不需要检查当前session
+            if (currentSession == si.getSession())
+                continue;
             YieldableCommand c = si.getYieldableCommand(checkTimeout);
             if (c == null)
                 continue;

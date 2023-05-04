@@ -89,6 +89,7 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected void executeInternal() {
+        session.setStatus(SessionStatus.STATEMENT_RUNNING);
         queryOperator.run();
         if (queryOperator.isStopped()) {
             // 查询结果已经增加到target了

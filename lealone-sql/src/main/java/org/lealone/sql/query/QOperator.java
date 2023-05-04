@@ -7,7 +7,9 @@ package org.lealone.sql.query;
 
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
+import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
@@ -22,6 +24,9 @@ abstract class QOperator implements Operator {
     protected final Select select;
     protected final ServerSession session;
     protected final ExpressionEvaluator conditionEvaluator;
+
+    protected boolean hasNext;
+    protected Row oldRow;
 
     int columnCount;
     ResultTarget target;
@@ -54,7 +59,11 @@ abstract class QOperator implements Operator {
     }
 
     boolean yieldIfNeeded(int rowNumber) {
-        return yieldableSelect.yieldIfNeeded(rowNumber);
+        if (yieldableSelect.yieldIfNeeded(rowNumber)) {
+            session.setStatus(SessionStatus.STATEMENT_YIELDED);
+            return true;
+        }
+        return false;
     }
 
     boolean canBreakLoop() {
@@ -67,6 +76,24 @@ abstract class QOperator implements Operator {
             return true;
         }
         return false;
+    }
+
+    protected void rebuildSearchRowIfNeeded() {
+        if (oldRow != null) {
+            // 如果oldRow已经删除了那么移到下一行
+            if (select.topTableFilter.rebuildSearchRow(session, oldRow) == null)
+                hasNext = select.topTableFilter.next();
+            oldRow = null;
+        }
+    }
+
+    protected boolean tryLockRow() {
+        Row row = select.topTableFilter.get();
+        if (!select.topTableFilter.getTable().tryLockRow(session, row, null)) {
+            oldRow = row;
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -90,6 +117,11 @@ abstract class QOperator implements Operator {
         rowCount = 0;
         select.setCurrentRowNumber(0);
         sampleSize = select.getSampleSizeValue(session);
+
+        if (limitRows == 0)
+            hasNext = false;
+        else
+            hasNext = select.topTableFilter.next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
     }
 
     @Override
