@@ -377,6 +377,6 @@ public class AOTransaction implements Transaction {
 
     @Override
     public String toString() {
-        return "t[" + transactionId + ", " + autoCommit + "]";
+        return "t[" + transactionId + ", " + autoCommit + ", lockedBy: " + lockedBy + "]";
     }
 }

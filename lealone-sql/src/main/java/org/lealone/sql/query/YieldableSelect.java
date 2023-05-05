@@ -92,19 +92,27 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected void executeInternal() {
-        session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        queryOperator.run();
-        if (queryOperator.isStopped()) {
-            // 查询结果已经增加到target了
-            if (target != null) {
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            } else if (queryOperator.getLocalResult() != null) {
-                LocalResult r = queryOperator.getLocalResult();
-                setResult(r, r.getRowCount());
-                select.resultCache.setResult(r);
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+        while (true) {
+            session.setStatus(SessionStatus.STATEMENT_RUNNING);
+            queryOperator.run();
+            if (queryOperator.isStopped()) {
+                // 查询结果已经增加到target了
+                if (target != null) {
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                } else if (queryOperator.getLocalResult() != null) {
+                    LocalResult r = queryOperator.getLocalResult();
+                    setResult(r, r.getRowCount());
+                    select.resultCache.setResult(r);
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                }
+                break;
+            }
+            if (session.getStatus() == SessionStatus.STATEMENT_YIELDED
+                    || session.getStatus() == SessionStatus.WAITING) {
+                return;
             }
         }
+
     }
 
     private QOperator createQueryOperator() {

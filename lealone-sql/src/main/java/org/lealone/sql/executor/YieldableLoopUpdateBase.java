@@ -26,10 +26,11 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
     @Override
     protected void executeInternal() {
-        if (!loopEnd) {
+        while (!loopEnd && pendingException == null) {
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
             executeLoopUpdate();
-            if (session.getStatus() == SessionStatus.WAITING) {
+            if (session.getStatus() == SessionStatus.STATEMENT_YIELDED
+                    || session.getStatus() == SessionStatus.WAITING) {
                 return;
             }
         }
