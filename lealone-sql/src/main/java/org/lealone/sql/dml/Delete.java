@@ -69,12 +69,9 @@ public class Delete extends UpDel {
 
     private static class YieldableDelete extends YieldableUpDel {
 
-        final Delete statement;
-
         public YieldableDelete(Delete statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
                     statement.condition);
-            this.statement = statement;
         }
 
         @Override
@@ -82,15 +79,8 @@ public class Delete extends UpDel {
             if (!table.trySharedLock(session))
                 return true;
             session.getUser().checkRight(table, Right.DELETE);
-            tableFilter.startQuery(session);
-            tableFilter.reset();
             table.fire(session, Trigger.DELETE, true);
-            statement.setCurrentRowNumber(0);
-            if (limitRows == 0)
-                hasNext = false;
-            else
-                hasNext = tableFilter.next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
-            return false;
+            return super.startInternal();
         }
 
         @Override
@@ -121,7 +111,7 @@ public class Delete extends UpDel {
                         }
                     }
                 }
-                hasNext = tableFilter.next();
+                hasNext = next();
             }
             onLoopEnd();
         }

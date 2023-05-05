@@ -81,9 +81,8 @@ public abstract class UpDel extends ManipulationStatement {
         protected boolean hasNext;
         protected Row oldRow;
 
-        public YieldableUpDel(StatementBase statement,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler, TableFilter tableFilter,
-                Expression limitExpr, Expression condition) {
+        public YieldableUpDel(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler,
+                TableFilter tableFilter, Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
             this.tableFilter = tableFilter;
             table = tableFilter.getTable();
@@ -94,11 +93,27 @@ public abstract class UpDel extends ManipulationStatement {
                 conditionEvaluator = new ExpressionInterpreter(session, condition);
         }
 
+        @Override
+        protected boolean startInternal() {
+            tableFilter.startQuery(session);
+            tableFilter.reset();
+            statement.setCurrentRowNumber(0);
+            if (limitRows == 0)
+                hasNext = false;
+            else
+                hasNext = next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
+            return false;
+        }
+
+        protected boolean next() {
+            return tableFilter.next();
+        }
+
         protected void rebuildSearchRowIfNeeded() {
             if (oldRow != null) {
                 // 如果oldRow已经删除了那么移到下一行
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
-                    hasNext = tableFilter.next();
+                    hasNext = next();
                 oldRow = null;
             }
         }

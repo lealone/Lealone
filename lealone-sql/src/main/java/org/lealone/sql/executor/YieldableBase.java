@@ -211,6 +211,10 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     public boolean yieldIfNeeded(int rowNumber) {
-        return statement.setCurrentRowNumber(rowNumber, yieldEnabled);
+        if (statement.setCurrentRowNumber(rowNumber, yieldEnabled)) {
+            session.setStatus(SessionStatus.STATEMENT_YIELDED);
+            return true;
+        }
+        return false;
     }
 }

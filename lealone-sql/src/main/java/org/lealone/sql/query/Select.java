@@ -65,7 +65,7 @@ import org.lealone.sql.optimizer.TableFilter;
  */
 public class Select extends Query {
 
-    TableFilter topTableFilter;
+    private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = Utils.newSmallArrayList();
     private final ArrayList<TableFilter> topFilters = Utils.newSmallArrayList();
     private ArrayList<Expression> group;

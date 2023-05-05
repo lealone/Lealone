@@ -43,7 +43,7 @@ public class DistinctQueryTest extends SqlTestBase {
         sql = "select count(distinct f1) from DistinctQueryTest";
         assertEquals(4, getIntValue(1, true));
 
-        sql = "select distinct f1, f2 from DistinctQueryTest";
+        sql = "select distinct f1, f2 from DistinctQueryTest for update";
         count = printResultSet();
         assertEquals(6, count);
         // 不支持多个字段

@@ -7,6 +7,7 @@ package org.lealone.sql.query;
 
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
+import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.Value;
 
@@ -23,20 +24,33 @@ class QDistinct extends QOperator {
     }
 
     @Override
+    protected Row getRow() {
+        SearchRow found = cursor.getSearchRow();
+        return topTableFilter.getTable().getRow(session, found.getKey());
+    }
+
+    @Override
+    protected boolean next() {
+        return cursor.next();
+    }
+
+    @Override
     public void start() {
-        super.start();
-        index = select.topTableFilter.getIndex();
+        index = topTableFilter.getIndex();
         columnIds = index.getColumnIds();
         size = columnIds.length;
         cursor = index.findDistinct(session);
         yieldableSelect.disableOlap(); // 无需从oltp转到olap
+        super.start();
     }
 
     @Override
     public void run() {
-        while (cursor.next()) {
-            if (select.isForUpdate && !select.topTableFilter.lockRow())
+        rebuildSearchRowIfNeeded();
+        while (hasNext) {
+            if (select.isForUpdate && !tryLockRow()) {
                 return; // 锁记录失败
+            }
             boolean yield = yieldIfNeeded(++loopCount);
             SearchRow found = cursor.getSearchRow();
             Value[] row = new Value[size];
@@ -50,6 +64,7 @@ class QDistinct extends QOperator {
             }
             if (yield)
                 return;
+            hasNext = next();
         }
         loopEnd = true;
     }

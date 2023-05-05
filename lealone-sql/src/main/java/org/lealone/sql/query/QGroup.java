@@ -32,11 +32,13 @@ class QGroup extends QOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.next()) {
+        rebuildSearchRowIfNeeded();
+        while (hasNext) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
-                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                if (select.isForUpdate && !tryLockRow()) {
                     return; // 锁记录失败
+                }
                 rowCount++;
                 Value key = getKey(select);
                 select.currentGroup = getOrCreateGroup(groups, key);
@@ -48,6 +50,7 @@ class QGroup extends QOperator {
             }
             if (yield)
                 return;
+            hasNext = next();
         }
         // 把分组后的记录放到result中
         addGroupRows(groups, select, columnCount, result);

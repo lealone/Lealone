@@ -20,9 +20,8 @@ class QFlat extends QOperator {
         while (hasNext) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
-                if (select.isForUpdate) {
-                    if (!tryLockRow())
-                        return; // 锁记录失败
+                if (select.isForUpdate && !tryLockRow()) {
+                    return; // 锁记录失败
                 }
                 Value[] row = createRow();
                 result.addRow(row);
@@ -33,7 +32,7 @@ class QFlat extends QOperator {
             }
             if (yield)
                 return;
-            hasNext = select.topTableFilter.next();
+            hasNext = next();
         }
         loopEnd = true;
     }

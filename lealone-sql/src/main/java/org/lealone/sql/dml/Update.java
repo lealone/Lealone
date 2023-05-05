@@ -143,15 +143,8 @@ public class Update extends UpDel {
             if (!table.trySharedLock(session))
                 return true;
             session.getUser().checkRight(table, Right.UPDATE);
-            tableFilter.startQuery(session);
-            tableFilter.reset();
             table.fire(session, Trigger.UPDATE, true);
-            statement.setCurrentRowNumber(0);
-            if (limitRows == 0)
-                hasNext = false;
-            else
-                hasNext = tableFilter.next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
-            return false;
+            return super.startInternal();
         }
 
         @Override
@@ -184,7 +177,7 @@ public class Update extends UpDel {
                         }
                     }
                 }
-                hasNext = tableFilter.next();
+                hasNext = next();
             }
             onLoopEnd();
         }
