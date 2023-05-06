@@ -50,6 +50,12 @@ public abstract class PageOperations {
             return (R) result;
         }
 
+        private boolean isPageChanged() {
+            // root page从leaf page变成node page
+            // 或者leaf page被切割了
+            return pRef.isNodePage() || pRef.isDataStructureChanged();
+        }
+
         @Override
         public PageOperationResult run(PageOperationHandler poHandler) {
             if (p == null) {
@@ -59,7 +65,7 @@ public abstract class PageOperations {
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
-            if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
+            if (isPageChanged()) {
                 p = null;
                 // 不用递归调用，让调度器重试
                 return PageOperationResult.RETRY;
@@ -69,7 +75,7 @@ public abstract class PageOperations {
                 return runChildOperation(poHandler);
             }
             if (pRef.tryLock(poHandler)) {
-                if (pRef.page.isNode() || pRef.isDataStructureChanged()) {
+                if (isPageChanged()) {
                     p = null;
                     pRef.unlock();
                     return PageOperationResult.RETRY;
@@ -322,7 +328,6 @@ public abstract class PageOperations {
 
             // 先看看父节点是否需要切割
             if (parent.needSplit()) {
-                // node page的切割直接由单一的node page处理器处理，不会产生并发问题
                 TmpNodePage tmp = splitPage(parent);
                 for (PageReference ref : tmp.left.page.getChildren()) {
                     if (ref.page != null) // 没有加载的子节点直接忽略
@@ -432,9 +437,8 @@ public abstract class PageOperations {
         // 第二步:
         // 如果是对root leaf page进行切割，因为当前只有一个线程在处理，所以直接替换root即可，这是安全的
         if (p == p.map.getRootPage()) {
-            tmp.left.page.setParentRef(tmp.parent.getRef());
-            tmp.right.page.setParentRef(tmp.parent.getRef());
-            p.map.newRoot(tmp.parent);
+            // 直接替换即可，子page的ParentRef会自动设置
+            p.map.getRootPageRef().replacePage(tmp.parent);
             return null;
         }
 

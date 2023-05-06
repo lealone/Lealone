@@ -60,17 +60,23 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final PageOperationHandlerFactory pohFactory;
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
-    private class RootPageReference extends PageReference {
+    private static class RootPageReference extends PageReference {
         @Override
-        public void replacePage(Page page) {
-            super.replacePage(page);
-            setRootRef(page); // 当要替换page时也设置root page相关信息
+        public void replacePage(Page newRoot) {
+            newRoot.setRef(this);
+            if (getPage() != newRoot && newRoot.isNode()) {
+                for (PageReference ref : newRoot.getChildren()) {
+                    Page p = ref.getPage();
+                    if (p != null && p.getParentRef() != this)
+                        p.setParentRef(this);
+                }
+            }
+            super.replacePage(newRoot);
         }
     }
 
+    // btree的root page引用，最开始是一个leaf page，随时都会指向新的page
     private final RootPageReference rootRef = new RootPageReference();
-    // btree的root page，最开始是一个leaf page，随时都会指向新的page
-    private Page root;
 
     public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, Object> config, AOStorage aoStorage) {
@@ -93,39 +99,24 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             size.set(lastChunk.mapSize);
             Page root = btreeStorage.readPage(lastChunk.rootPagePos);
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
-            setRootRef(root);
+            rootRef.replacePage(root);
             setMaxKey(lastKey());
         } else {
-            root = LeafPage.createEmpty(this);
-            setRootRef(root);
-        }
-    }
-
-    private void setRootRef(Page root) {
-        if (this.root != root) {
-            this.root = root;
-        }
-        if (rootRef.getPage() != root) {
-            if (root.getRef() != rootRef) {
-                root.setRef(rootRef);
-                rootRef.replacePage(root);
-            }
-            if (root.isNode()) {
-                for (PageReference ref : root.getChildren()) {
-                    Page p = ref.getPage();
-                    if (p != null && p.getParentRef() != rootRef)
-                        p.setParentRef(rootRef);
-                }
-            }
+            Page root = LeafPage.createEmpty(this);
+            rootRef.replacePage(root);
         }
     }
 
     public Page getRootPage() {
-        return root;
+        return rootRef.getPage();
+    }
+
+    public PageReference getRootPageRef() {
+        return rootRef;
     }
 
     public void newRoot(Page newRoot) {
-        setRootRef(newRoot);
+        rootRef.replacePage(newRoot);
     }
 
     private void acquireSharedLock() {
@@ -189,7 +180,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // test only
     public int getLevel(K key) {
         int level = 1;
-        Page p = root.gotoLeafPage(key);
+        Page p = getRootPage().gotoLeafPage(key);
         PageReference parentRef = p.getParentRef();
         while (parentRef != null) {
             level++;
@@ -200,14 +191,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, boolean allColumns) {
-        Page p = root.gotoLeafPage(key);
+        Page p = getRootPage().gotoLeafPage(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, allColumns) : null;
     }
 
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, int[] columnIndexes) {
-        Page p = root.gotoLeafPage(key);
+        Page p = getRootPage().gotoLeafPage(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
@@ -233,7 +224,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (isEmpty()) {
             return null;
         }
-        Page p = root;
+        Page p = getRootPage();
         while (true) {
             if (p.isLeaf()) {
                 return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
@@ -271,7 +262,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @return the key, or null if no such key exists
      */
     private K getMinMax(K key, boolean min, boolean excluding) {
-        return getMinMax(root, key, min, excluding);
+        return getMinMax(getRootPage(), key, min, excluding);
     }
 
     @SuppressWarnings("unchecked")
@@ -360,7 +351,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         try {
             acquireExclusiveLock();
 
-            root.removeAllRecursive();
+            getRootPage().removeAllRecursive();
             size.set(0);
             maxKey.set(0);
             newRoot(LeafPage.createEmpty(this));
@@ -460,7 +451,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void printPage(boolean readOffLinePage) {
-        System.out.println(root.getPrettyPageInfo(readOffLinePage));
+        System.out.println(getRootPage().getPrettyPageInfo(readOffLinePage));
     }
 
     @Override
@@ -474,11 +465,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public Page gotoLeafPage(Object key) {
-        return root.gotoLeafPage(key);
+        return getRootPage().gotoLeafPage(key);
     }
 
     public Page gotoLeafPage(Object key, boolean markDirty) {
-        return root.gotoLeafPage(key, markDirty);
+        return getRootPage().gotoLeafPage(key, markDirty);
     }
 
     // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null
