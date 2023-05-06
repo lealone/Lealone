@@ -20,6 +20,7 @@ public abstract class PageOperations {
 
     // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove、Append
     public static abstract class SingleWrite<K, V, R> implements PageOperation {
+
         final BTreeMap<K, V> map;
         K key; // 允许append操作设置
         AsyncHandler<AsyncResult<R>> resultHandler;
@@ -150,6 +151,7 @@ public abstract class PageOperations {
     }
 
     public static class Put<K, V, R> extends SingleWrite<K, V, R> {
+
         final V value;
 
         public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> resultHandler) {
@@ -236,6 +238,7 @@ public abstract class PageOperations {
     }
 
     public static class Replace<K, V> extends Put<K, V, Boolean> {
+
         private final V oldValue;
 
         public Replace(BTreeMap<K, V> map, K key, V oldValue, V newValue,
@@ -301,6 +304,7 @@ public abstract class PageOperations {
     // 这个类不处理root leaf page被切割的场景，在执行Put操作时已经直接处理，
     // 也就是说此时的btree至少有两层
     private static class AddChild implements ChildOperation {
+
         private TmpNodePage tmpNodePage;
         private int count;
 
@@ -315,16 +319,14 @@ public abstract class PageOperations {
 
         private boolean insertChildren(PageOperationHandler poHandler, TmpNodePage tmpNodePage) {
             this.tmpNodePage = tmpNodePage;
-            Page parent = tmpNodePage.old.getParentRef().page;
-            Page old = parent;
-            if (!old.getRef().tryLock(poHandler))
+            PageReference parentRef = tmpNodePage.old.getParentRef();
+            if (!parentRef.tryLock(poHandler))
                 return false;
             count++;
-            PageReference parentRef = parent.getRef();
+            Page parent = parentRef.getPage();
             int index = parent.getPageIndex(tmpNodePage.key);
             parent = parent.copy();
             parent.setAndInsertChild(index, tmpNodePage);
-            parentRef.replacePage(parent);
 
             // 先看看父节点是否需要切割
             if (parent.needSplit()) {
@@ -339,25 +341,22 @@ public abstract class PageOperations {
                 }
                 // 如果是root node page，那么直接替换
                 if (parent.getParentRef() == null) {
-                    tmp.left.page.setParentRef(tmp.parent.getRef());
-                    tmp.right.page.setParentRef(tmp.parent.getRef());
                     parent.map.newRoot(tmp.parent);
                 } else {
                     insertChildren(poHandler, tmp);
                 }
             } else {
-                // 如果是root node page，那么直接替换
-                if (parent.getParentRef() == null)
-                    parent.map.newRoot(parent);
+                parentRef.replacePage(parent);
             }
             count--;
-            old.getRef().unlock();
+            parentRef.unlock();
             return true;
         }
     }
 
     // 不处理root leaf page的场景，在Remove类那里已经保证不会删除root leaf page
     private static class RemoveChild implements ChildOperation {
+
         private final Page old;
         private final Object key;
         private int count;
@@ -413,6 +412,7 @@ public abstract class PageOperations {
     }
 
     public static class TmpNodePage {
+
         final Page parent;
         final Page old;
         final PageReference left;
