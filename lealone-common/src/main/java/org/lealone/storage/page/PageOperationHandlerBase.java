@@ -21,7 +21,6 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     protected final int handlerId;
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
-    protected PageOperation lockedTask;
 
     public PageOperationHandlerBase(int handlerId, String name, int waitingQueueSize) {
         super(name);
@@ -72,28 +71,26 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     }
 
     protected void runPageOperationTasks() {
-        PageOperation task;
-        // 先执行上一个被锁定的task，严格保证每个PageOperation的执行顺序
-        if (lockedTask != null) {
-            task = lockedTask;
-            lockedTask = null;
-        } else {
-            task = pageOperations.poll();
-        }
-        while (task != null) {
-            try {
-                PageOperationResult result = task.run(this);
-                if (result == PageOperationResult.LOCKED) {
-                    lockedTask = task;
-                    break;
-                } else if (result == PageOperationResult.RETRY) {
-                    continue;
+        if (size.get() <= 0)
+            return;
+        long size = this.size.get();
+        for (int i = 0; i < size; i++) {
+            PageOperation po = pageOperations.poll();
+            while (true) {
+                try {
+                    PageOperationResult result = po.run(this);
+                    if (result == PageOperationResult.LOCKED) {
+                        pageOperations.add(po);
+                    } else if (result == PageOperationResult.RETRY) {
+                        continue;
+                    } else {
+                        this.size.decrementAndGet();
+                    }
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run page operation: " + po, e);
                 }
-            } catch (Throwable e) {
-                getLogger().warn("Failed to run page operation: " + task, e);
+                break;
             }
-            size.decrementAndGet();
-            task = pageOperations.poll();
         }
     }
 }
