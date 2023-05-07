@@ -26,7 +26,7 @@ import org.lealone.storage.aose.btree.page.PageOperations.Put;
 import org.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import org.lealone.storage.aose.btree.page.PageOperations.Remove;
 import org.lealone.storage.aose.btree.page.PageOperations.Replace;
-import org.lealone.storage.aose.btree.page.PageOperations.SingleWrite;
+import org.lealone.storage.aose.btree.page.PageOperations.WriteOperation;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
 import org.lealone.storage.fs.FilePath;
@@ -569,7 +569,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return runPageOperation(remove);
     }
 
-    private <R> R runPageOperation(SingleWrite<?, ?, R> po) {
+    private <R> R runPageOperation(WriteOperation<?, ?, R> po) {
         PageOperationHandler poHandler = getPageOperationHandler(false);
         // 先快速试一次，如果不成功再用异步等待的方式
         if (po.run(poHandler) == PageOperationResult.SUCCEEDED)
