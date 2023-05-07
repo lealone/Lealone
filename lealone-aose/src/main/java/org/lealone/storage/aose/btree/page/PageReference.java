@@ -26,8 +26,9 @@ public class PageReference {
     }
 
     public boolean tryLock(PageOperationHandler newLockOwner) {
+        // 前面的操作被锁住了就算lockOwner相同后续的也不能再继续
         if (newLockOwner == lockOwner)
-            return true;
+            return false;
         while (true) {
             if (lockUpdater.compareAndSet(this, null, newLockOwner))
                 return true;

@@ -97,23 +97,21 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
-        children = children.clone(); // 必须弄一份新的，否则影响其他线程
-        children[index] = tmpNodePage.right;
+    Page copyAndInsertChild(TmpNodePage tmpNodePage) {
+        int index = getPageIndex(tmpNodePage.key);
         Object[] newKeys = new Object[keys.length + 1];
         DataUtils.copyWithGap(keys, newKeys, keys.length, index);
         newKeys[index] = tmpNodePage.key;
-        keys = newKeys;
 
-        int childCount = children.length;
-        PageReference[] newChildren = new PageReference[childCount + 1];
-        DataUtils.copyWithGap(children, newChildren, childCount, index);
+        PageReference[] newChildren = new PageReference[children.length + 1];
+        DataUtils.copyWithGap(children, newChildren, children.length, index);
         newChildren[index] = tmpNodePage.left;
-        children = newChildren;
+        newChildren[index + 1] = tmpNodePage.right;
 
         tmpNodePage.left.page.setParentRef(getRef());
         tmpNodePage.right.page.setParentRef(getRef());
-        addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
+        int memory = map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD;
+        return copy(newKeys, newChildren, getMemory() + memory, true);
     }
 
     @Override
@@ -258,7 +256,11 @@ public class NodePage extends LocalPage {
     }
 
     private NodePage copy(boolean removePage) {
-        NodePage newPage = create(map, keys, children, getMemory());
+        return copy(keys, children, getMemory(), removePage);
+    }
+
+    private NodePage copy(Object[] keys, PageReference[] children, int memory, boolean removePage) {
+        NodePage newPage = create(map, keys, children, memory);
         newPage.cachedCompare = cachedCompare;
         newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());

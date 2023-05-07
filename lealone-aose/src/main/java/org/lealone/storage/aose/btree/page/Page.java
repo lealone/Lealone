@@ -208,7 +208,7 @@ public class Page {
         throw ie();
     }
 
-    void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
+    Page copyAndInsertChild(TmpNodePage tmpNodePage) {
         throw ie();
     }
 

@@ -11,6 +11,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
 
 public abstract class PageOperations {
@@ -301,12 +302,83 @@ public abstract class PageOperations {
         public boolean run(PageOperationHandler poHandler);
     }
 
-    // 这个类不处理root leaf page被切割的场景，在执行Put操作时已经直接处理，
-    // 也就是说此时的btree至少有两层
+    private static class SplitNodePage implements PageOperation {
+
+        private final PageReference pRef;
+
+        public SplitNodePage(PageReference pRef) {
+            this.pRef = pRef;
+        }
+
+        @Override
+        public PageOperationResult run(PageOperationHandler poHandler) {
+            return run(poHandler, false);
+        }
+
+        public PageOperationResult run(PageOperationHandler poHandler, boolean lockedBySelf) {
+            if (pRef.isDataStructureChanged()) // 被切割过了，忽略掉
+                return PageOperationResult.SUCCEEDED;
+            if (!lockedBySelf && !pRef.tryLock(poHandler))
+                return PageOperationResult.LOCKED;
+
+            boolean result;
+            Page p = pRef.getPage();
+            TmpNodePage tmpNodePage = splitPage(p);
+            // 如果是root node page，那么直接替换
+            if (p.getParentRef() == null) {
+                p.map.newRoot(tmpNodePage.parent);
+                setParentRef(tmpNodePage);
+                result = true;
+            } else {
+                result = insertChild(poHandler, tmpNodePage);
+                // 非root node page被切割后，原有的ref都被废弃
+                if (result) {
+                    pRef.setDataStructureChanged(true);
+                    setParentRef(tmpNodePage);
+                }
+            }
+            if (!lockedBySelf)
+                pRef.unlock();
+            return result ? PageOperationResult.SUCCEEDED : PageOperationResult.LOCKED;
+        }
+    }
+
+    private static void setParentRef(TmpNodePage tmpNodePage) {
+        for (PageReference ref : tmpNodePage.left.page.getChildren()) {
+            if (ref.page != null) // 没有加载的子节点直接忽略
+                ref.page.setParentRef(tmpNodePage.left.page.getRef());
+        }
+        for (PageReference ref : tmpNodePage.right.page.getChildren()) {
+            if (ref.page != null)
+                ref.page.setParentRef(tmpNodePage.right.page.getRef());
+        }
+    }
+
+    private static boolean insertChild(PageOperationHandler poHandler, TmpNodePage tmpNodePage) {
+        PageReference parentRef = tmpNodePage.old.getParentRef();
+        if (!parentRef.tryLock(poHandler))
+            return false;
+        if (parentRef.isDataStructureChanged() || parentRef != tmpNodePage.old.getParentRef()) {
+            parentRef.unlock();
+            return insertChild(poHandler, tmpNodePage);
+        }
+
+        Page newParent = parentRef.getPage().copyAndInsertChild(tmpNodePage);
+        parentRef.replacePage(newParent);
+        // 先看看父节点是否需要切割
+        if (newParent.needSplit()) {
+            SplitNodePage snp = new SplitNodePage(parentRef);
+            if (snp.run(poHandler, true) != PageOperationResult.SUCCEEDED)
+                poHandler.handlePageOperation(snp);
+        }
+        parentRef.unlock();
+        return true;
+    }
+
+    // 这个类不处理root leaf page被切割的场景，在执行Put操作时已经直接处理， 也就是说此时的btree至少有两层
     private static class AddChild implements ChildOperation {
 
-        private TmpNodePage tmpNodePage;
-        private int count;
+        private final TmpNodePage tmpNodePage;
 
         public AddChild(TmpNodePage tmpNodePage) {
             this.tmpNodePage = tmpNodePage;
@@ -314,43 +386,7 @@ public abstract class PageOperations {
 
         @Override
         public boolean run(PageOperationHandler poHandler) {
-            return insertChildren(poHandler, tmpNodePage) && count == 0;
-        }
-
-        private boolean insertChildren(PageOperationHandler poHandler, TmpNodePage tmpNodePage) {
-            this.tmpNodePage = tmpNodePage;
-            PageReference parentRef = tmpNodePage.old.getParentRef();
-            if (!parentRef.tryLock(poHandler))
-                return false;
-            count++;
-            Page parent = parentRef.getPage();
-            int index = parent.getPageIndex(tmpNodePage.key);
-            parent = parent.copy();
-            parent.setAndInsertChild(index, tmpNodePage);
-
-            // 先看看父节点是否需要切割
-            if (parent.needSplit()) {
-                TmpNodePage tmp = splitPage(parent);
-                for (PageReference ref : tmp.left.page.getChildren()) {
-                    if (ref.page != null) // 没有加载的子节点直接忽略
-                        ref.page.setParentRef(tmp.left.page.getRef());
-                }
-                for (PageReference ref : tmp.right.page.getChildren()) {
-                    if (ref.page != null)
-                        ref.page.setParentRef(tmp.right.page.getRef());
-                }
-                // 如果是root node page，那么直接替换
-                if (parent.getParentRef() == null) {
-                    parent.map.newRoot(tmp.parent);
-                } else {
-                    insertChildren(poHandler, tmp);
-                }
-            } else {
-                parentRef.replacePage(parent);
-            }
-            count--;
-            parentRef.unlock();
-            return true;
+            return insertChild(poHandler, tmpNodePage);
         }
     }
 
