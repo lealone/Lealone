@@ -5,6 +5,7 @@
  */
 package org.lealone.main;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -234,7 +235,7 @@ public class Lealone {
             throw new ConfigException("base_dir must be specified and not empty");
         SysProperties.setBaseDir(config.base_dir);
 
-        logger.info("Base dir: {}", config.base_dir);
+        logger.info("Base dir: {}", new File(config.base_dir).getAbsolutePath());
     }
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server

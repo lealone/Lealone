@@ -2,7 +2,7 @@
 # Licensed under the Server Side Public License, v 1.
 # Initial Developer: zhh
 
-base_dir: ../data
+base_dir: ${LEALONE_HOME}/data
 
 listen_address: 127.0.0.1
 

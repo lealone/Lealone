@@ -94,12 +94,13 @@ public class YamlConfigLoader implements ConfigLoader {
                     throw new AssertionError(e);
                 }
 
-                Constructor configConstructor = new Constructor(Config.class);
+                YamlConstructor configConstructor = new YamlConstructor(Config.class);
                 addTypeDescription(configConstructor);
 
                 MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
                 configConstructor.setPropertyUtils(propertiesChecker);
                 Yaml yaml = new Yaml(configConstructor);
+                yaml.addImplicitResolver(YamlConstructor.ENV_TAG, YamlConstructor.ENV_FORMAT, "$");
                 Config result = yaml.loadAs(new ByteArrayInputStream(configBytes), Config.class);
                 propertiesChecker.check();
                 return result;
