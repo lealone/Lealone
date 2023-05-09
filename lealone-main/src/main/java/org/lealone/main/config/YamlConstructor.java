@@ -19,7 +19,7 @@ public class YamlConstructor extends EnvScalarConstructor {
 
     // EnvScalarConstructor 不支持 ${LEALONE_HOME}/data 这种语法，所以这里用新的正则表达式实现
     public static final Pattern ENV_FORMAT = Pattern.compile(
-            "^\\$\\{\\s*((?<name>\\w+)((?<separator>:?(-|\\?))(?<value>\\S+)?)?)\\s*\\}(?<suffix>\\X*)$");
+            "^\\$\\{\\s*((?<name>\\w+)((?<separator>:?(-|\\?))(?<value>\\S+)?)?)\\s*\\}(?<suffix>\\S*\\s*)$");
 
     public YamlConstructor(Class<? extends Object> theRoot) {
         super(new TypeDescription(theRoot), null, new LoaderOptions());
@@ -36,7 +36,8 @@ public class YamlConstructor extends EnvScalarConstructor {
             String value = matcher.group("value");
             String separator = matcher.group("separator");
             String suffix = matcher.group("suffix");
-            return apply(name, separator, value != null ? value : "", getEnv(name)) + suffix;
+            return apply(name, separator, (value != null ? value : ""), getEnv(name))
+                    + (suffix != null ? suffix.trim() : "");
         }
     }
 }
