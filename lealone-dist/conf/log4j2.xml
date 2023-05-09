@@ -9,8 +9,8 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%-5level %date{HH:mm:ss.SSS} %msg%n" />
         </Console>
-        <RollingFile name="RollingFile" fileName="${sys:lealone.logdir}/lealone.log"
-            filePattern="${sys:lealone.logdir}/lealone.log.%i.zip">
+        <RollingFile name="RollingFile" fileName="${env:LEALONE_HOME}/logs/lealone.log"
+            filePattern="${env:LEALONE_HOME}/logs/lealone.log.%i.zip">
             <PatternLayout pattern="%-5level [%thread] [%date{ISO8601}] [%F] %msg%n" />
             <Policies>
                 <SizeBasedTriggeringPolicy size="20MB" />

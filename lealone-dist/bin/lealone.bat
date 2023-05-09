@@ -25,8 +25,7 @@ REM  -XX:MaxTenuringThreshold=1^
 REM  -XX:CMSInitiatingOccupancyFraction=75^
 REM  -XX:+UseCMSInitiatingOccupancyOnly
 
-set JAVA_OPTS=-Xms10M^
- -Dlealone.logdir="%LEALONE_HOME%\logs"
+set JAVA_OPTS=%JAVA_OPTS%
 
 set str=%1
 if "%str%"=="-debug" (
