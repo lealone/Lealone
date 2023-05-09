@@ -25,7 +25,6 @@ fi
 # JAVA_OPTS="$JAVA_OPTS -XX:CMSInitiatingOccupancyFraction=75"
 # JAVA_OPTS="$JAVA_OPTS -XX:+UseCMSInitiatingOccupancyOnly"
 
-JAVA_OPTS=-Xms10M
 JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
 
 if [ "$1" = "-debug" ]; then
