@@ -28,7 +28,7 @@ public abstract class PageOperations {
 
         Page p; // 最终要操作的leaf page
         PageReference pRef;
-        Object result;
+        R result;
 
         public WriteOperation(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
             this.map = map;
@@ -45,15 +45,13 @@ public abstract class PageOperations {
             return resultHandler;
         }
 
-        @SuppressWarnings("unchecked")
         public R getResult() {
-            return (R) result;
+            return result;
         }
 
         private boolean isPageChanged() {
-            // root page从leaf page变成node page
-            // 或者leaf page被切割了
-            return pRef.isNodePage() || pRef.isDataStructureChanged();
+            // leaf page被切割了或者root page从leaf page变成node page
+            return pRef.isDataStructureChanged() || pRef.isNodePage();
         }
 
         @Override
@@ -77,17 +75,18 @@ public abstract class PageOperations {
                     pRef.unlock();
                     return PageOperationResult.RETRY;
                 }
-                p = pRef.page; // 使用最新的page
                 write(poHandler);
-                return handleAsyncResult();
+                return PageOperationResult.SUCCEEDED;
             } else {
                 return PageOperationResult.LOCKED;
             }
         }
 
+        @SuppressWarnings("unchecked")
         private void write(PageOperationHandler poHandler) {
+            p = pRef.page; // 使用最新的page
             int index = getKeyIndex();
-            result = writeLocal(index, poHandler);
+            result = (R) writeLocal(index, poHandler);
 
             // 看看当前leaf page是否需要进行切割
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
@@ -95,14 +94,10 @@ public abstract class PageOperations {
                 // 异步执行split操作，先尝试立刻执行，如果没有成功就加入等待队列
                 asyncSplitPage(poHandler, p);
             }
-        }
 
-        @SuppressWarnings("unchecked")
-        private PageOperationResult handleAsyncResult() {
-            pRef.unlock();
+            pRef.unlock(); // 快速释放锁，不用等处理结果
             if (resultHandler != null)
-                resultHandler.handle(new AsyncResult<>((R) result));
-            return PageOperationResult.SUCCEEDED;
+                resultHandler.handle(new AsyncResult<>(result));
         }
 
         // 这里的index是key所在的leaf page的索引，
