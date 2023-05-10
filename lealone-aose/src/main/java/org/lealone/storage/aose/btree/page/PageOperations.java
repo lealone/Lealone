@@ -63,19 +63,20 @@ public abstract class PageOperations {
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
+            // 这一步可以没有，但可以避免多线程在一个不再使用的page上加锁等待
             if (isPageChanged()) {
                 p = null;
-                // 不用递归调用，让调度器重试
-                return PageOperationResult.RETRY;
+                return PageOperationResult.RETRY; // 不用递归调用，让调度器重试
             }
 
             if (pRef.tryLock(poHandler)) {
+                // 这一步检查是必需的，不能在一个不再使用的page上面进行写操作
                 if (isPageChanged()) {
                     p = null;
                     pRef.unlock();
                     return PageOperationResult.RETRY;
                 }
-                write(poHandler);
+                writeLocal(poHandler);
                 return PageOperationResult.SUCCEEDED;
             } else {
                 return PageOperationResult.LOCKED;
@@ -83,7 +84,7 @@ public abstract class PageOperations {
         }
 
         @SuppressWarnings("unchecked")
-        private void write(PageOperationHandler poHandler) {
+        private void writeLocal(PageOperationHandler poHandler) {
             p = pRef.page; // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
@@ -312,8 +313,8 @@ public abstract class PageOperations {
 
         protected abstract PageOperationResult runLocked(PageOperationHandler poHandler);
 
-        protected static boolean tryLockParentRef(Page page, PageOperationHandler poHandler) {
-            PageReference parentRef = page.getParentRef();
+        protected static boolean tryLockParentRef(PageReference pRef, PageOperationHandler poHandler) {
+            PageReference parentRef = pRef.getParentRef();
             if (parentRef.isDataStructureChanged())
                 return false;
             if (!parentRef.tryLock(poHandler))
@@ -322,9 +323,9 @@ public abstract class PageOperations {
                 parentRef.unlock();
                 return false;
             }
-            if (page.getParentRef() != parentRef) {
+            if (pRef.getParentRef() != parentRef) {
                 parentRef.unlock();
-                return tryLockParentRef(page, poHandler);
+                return tryLockParentRef(pRef, poHandler);
             }
             return true;
         }
@@ -347,9 +348,9 @@ public abstract class PageOperations {
             if (pRef.isRoot()) {
                 p.map.newRoot(LeafPage.createEmpty(p.map));
             } else {
-                if (!tryLockParentRef(p, poHandler))
+                if (!tryLockParentRef(pRef, poHandler))
                     return PageOperationResult.LOCKED;
-                PageReference parentRef = p.getParentRef();
+                PageReference parentRef = pRef.getParentRef();
                 Page parent = parentRef.getPage();
                 int index = parent.getPageIndex(key);
                 parent = parent.copy();
@@ -384,10 +385,10 @@ public abstract class PageOperations {
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
-                if (!tryLockParentRef(p, poHandler))
+                if (!tryLockParentRef(pRef, poHandler))
                     return PageOperationResult.LOCKED;
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
-                PageReference parentRef = p.getParentRef();
+                PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getPage().copyAndInsertChild(tmpNodePage);
                 parentRef.replacePage(newParent);
                 // 先看看父节点是否需要切割
@@ -430,11 +431,11 @@ public abstract class PageOperations {
             PageReference rRef = tmpNodePage.right.page.getRef();
             for (PageReference ref : tmpNodePage.left.page.getChildren()) {
                 if (ref.page != null) // 没有加载的子节点直接忽略
-                    ref.page.setParentRef(lRef);
+                    ref.setParentRef(lRef);
             }
             for (PageReference ref : tmpNodePage.right.page.getChildren()) {
                 if (ref.page != null)
-                    ref.page.setParentRef(rRef);
+                    ref.setParentRef(rRef);
             }
         }
     }

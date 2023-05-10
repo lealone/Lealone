@@ -66,9 +66,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             newRoot.setRef(this);
             if (getPage() != newRoot && newRoot.isNode()) {
                 for (PageReference ref : newRoot.getChildren()) {
-                    Page p = ref.getPage();
-                    if (p != null && p.getParentRef() != this)
-                        p.setParentRef(this);
+                    if (ref.getPage() != null && ref.getParentRef() != this)
+                        ref.setParentRef(this);
                 }
             }
             super.replacePage(newRoot);
@@ -180,18 +179,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public V get(K key, int[] columnIndexes) {
         return binarySearch(key, columnIndexes);
-    }
-
-    // test only
-    public int getLevel(K key) {
-        int level = 1;
-        Page p = getRootPage().gotoLeafPage(key);
-        PageReference parentRef = p.getParentRef();
-        while (parentRef != null) {
-            level++;
-            parentRef = parentRef.getPage().getParentRef();
-        }
-        return level;
     }
 
     @SuppressWarnings("unchecked")

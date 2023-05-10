@@ -26,7 +26,6 @@ public class Page {
     protected long pos;
 
     private PageReference ref;
-    private PageReference parentRef;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -38,14 +37,6 @@ public class Page {
 
     public PageInfo getPageInfo() {
         return pInfo;
-    }
-
-    public void setParentRef(PageReference parentRef) {
-        this.parentRef = parentRef;
-    }
-
-    public PageReference getParentRef() {
-        return parentRef;
     }
 
     public void setRef(PageReference ref) {
@@ -305,10 +296,10 @@ public class Page {
 
     public void markDirtyRecursive() {
         markDirty(true);
-        PageReference parentRef = getParentRef();
+        PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
             parentRef.page.markDirty(false);
-            parentRef = parentRef.page.getParentRef();
+            parentRef = parentRef.getParentRef();
         }
     }
 

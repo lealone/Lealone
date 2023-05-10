@@ -161,7 +161,6 @@ public class BTreeStorage {
                 if (ref.getPage() == null) {
                     ref.replacePage(leaf);
                     leaf.setRef(ref);
-                    leaf.setParentRef(p.getRef());
                 } else {
                     leaf = ref.getPage();
                 }

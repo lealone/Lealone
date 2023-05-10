@@ -15,6 +15,7 @@ public class PageReference {
     lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageOperationHandler.class,
             "lockOwner");
     protected volatile PageOperationHandler lockOwner;
+
     private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
 
     public boolean isDataStructureChanged() {
@@ -23,6 +24,16 @@ public class PageReference {
 
     public void setDataStructureChanged(boolean dataStructureChanged) {
         this.dataStructureChanged = dataStructureChanged;
+    }
+
+    private PageReference parentRef;
+
+    public void setParentRef(PageReference parentRef) {
+        this.parentRef = parentRef;
+    }
+
+    public PageReference getParentRef() {
+        return parentRef;
     }
 
     public boolean tryLock(PageOperationHandler newLockOwner) {

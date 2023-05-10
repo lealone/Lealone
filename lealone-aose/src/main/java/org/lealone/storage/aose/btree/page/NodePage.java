@@ -60,7 +60,6 @@ public class NodePage extends LocalPage {
             }
             ref.replacePage(p);
             p.setRef(ref);
-            p.setParentRef(getRef());
             return p;
         }
     }
@@ -108,8 +107,8 @@ public class NodePage extends LocalPage {
         newChildren[index] = tmpNodePage.left;
         newChildren[index + 1] = tmpNodePage.right;
 
-        tmpNodePage.left.page.setParentRef(getRef());
-        tmpNodePage.right.page.setParentRef(getRef());
+        tmpNodePage.left.setParentRef(getRef());
+        tmpNodePage.right.setParentRef(getRef());
         int memory = map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD;
         return copy(newKeys, newChildren, getMemory() + memory, true);
     }
@@ -146,6 +145,7 @@ public class NodePage extends LocalPage {
             if (pageType == 0)
                 buff.getInt(); // replicationHostIds
             children[i] = new PageReference(null, p[i]);
+            children[i].setParentRef(getRef());
         }
         buff = expandPage(buff, type, start, pageLength);
 
@@ -262,7 +262,6 @@ public class NodePage extends LocalPage {
     private NodePage copy(Object[] keys, PageReference[] children, int memory, boolean removePage) {
         NodePage newPage = create(map, keys, children, memory);
         newPage.cachedCompare = cachedCompare;
-        newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         if (removePage) {
             // mark the old as deleted

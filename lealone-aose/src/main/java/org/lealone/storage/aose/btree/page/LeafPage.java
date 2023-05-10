@@ -130,7 +130,6 @@ public class LeafPage extends LocalPage {
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
         LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory());
         newPage.cachedCompare = cachedCompare;
-        newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         // mark the old as deleted
         removePage();
@@ -342,7 +341,6 @@ public class LeafPage extends LocalPage {
     private LeafPage copy(boolean removePage) {
         LeafPage newPage = create(map, keys, values, totalCount, getMemory());
         newPage.cachedCompare = cachedCompare;
-        newPage.setParentRef(getParentRef());
         newPage.setRef(getRef());
         if (removePage) {
             // mark the old as deleted
