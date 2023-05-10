@@ -52,6 +52,10 @@ public class PageReference {
         }
     }
 
+    public boolean isRoot() {
+        return false;
+    }
+
     Page page;
     long pos;
     public PageInfo pInfo;

@@ -92,7 +92,7 @@ public abstract class PageOperations {
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
             if (index < 0 && p.needSplit()) {
                 // 异步执行split操作，先尝试立刻执行，如果没有成功就加入等待队列
-                asyncSplitPage(poHandler, p);
+                asyncSplitPage(poHandler, pRef);
             }
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
@@ -107,7 +107,7 @@ public abstract class PageOperations {
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
             p = p.copyLeaf(index, key, value); // copy之后Ref还是一样的
-            p.getRef().replacePage(p);
+            pRef.replacePage(p);
             map.setMaxKey(key);
         }
 
@@ -265,40 +265,38 @@ public abstract class PageOperations {
             }
             markDirtyPages();
             Object oldValue = p.getValue(index);
-            Page oldRootPage = map.getRootPage();
             Page newPage = p.copy(); // 删除元素需要先copy，否则会产生get和remove的并发问题
             newPage.remove(index);
-            p.getRef().replacePage(newPage);
-            if (newPage.isEmpty() && p != oldRootPage) { // 删除leaf page，但是root leaf page除外
-                asyncRemovePage(poHandler, p, key);
+            pRef.replacePage(newPage);
+            if (newPage.isEmpty() && !pRef.isRoot()) { // 删除leaf page，但是root leaf page除外
+                asyncRemovePage(poHandler, pRef, key);
             }
             return oldValue;
         }
     }
 
-    private static void asyncRemovePage(PageOperationHandler poHandler, Page page, Object key) {
-        RemovePage rp = new RemovePage(page, key);
+    private static void asyncRemovePage(PageOperationHandler poHandler, PageReference pRef, Object key) {
+        RemovePage rp = new RemovePage(pRef, key);
         if (rp.runLocked(poHandler) != PageOperationResult.SUCCEEDED)
             poHandler.handlePageOperation(rp);
     }
 
-    private static void asyncSplitPage(PageOperationHandler poHandler, Page page) {
-        SplitPage sp = new SplitPage(page);
+    private static void asyncSplitPage(PageOperationHandler poHandler, PageReference pRef) {
+        SplitPage sp = new SplitPage(pRef);
         if (sp.runLocked(poHandler) != PageOperationResult.SUCCEEDED)
             poHandler.handlePageOperation(sp);
     }
 
     private static abstract class ChildOperation implements PageOperation {
 
-        protected final Page page;
+        protected final PageReference pRef;
 
-        public ChildOperation(Page page) {
-            this.page = page;
+        public ChildOperation(PageReference pRef) {
+            this.pRef = pRef;
         }
 
         @Override
         public PageOperationResult run(PageOperationHandler poHandler) {
-            PageReference pRef = page.getRef();
             if (pRef.isDataStructureChanged()) // 忽略掉
                 return PageOperationResult.SUCCEEDED;
             if (!pRef.tryLock(poHandler))
@@ -337,18 +335,17 @@ public abstract class PageOperations {
 
         private final Object key;
 
-        public RemovePage(Page page, Object key) {
-            super(page);
+        public RemovePage(PageReference pRef, Object key) {
+            super(pRef);
             this.key = key;
         }
 
         @Override
         protected PageOperationResult runLocked(PageOperationHandler poHandler) {
-            PageReference pRef = page.getRef();
             Page p = pRef.getPage(); // 获得最新的
             // 如果是root node page，那么直接替换
-            if (p.getParentRef() == null) {
-                p.map.newRoot(LeafPage.createEmpty(page.map));
+            if (pRef.isRoot()) {
+                p.map.newRoot(LeafPage.createEmpty(p.map));
             } else {
                 if (!tryLockParentRef(p, poHandler))
                     return PageOperationResult.LOCKED;
@@ -360,7 +357,7 @@ public abstract class PageOperations {
                 parentRef.replacePage(parent);
                 // 先看看父节点是否需要切割
                 if (parent.isEmpty()) {
-                    asyncRemovePage(poHandler, parent, key);
+                    asyncRemovePage(poHandler, parentRef, key);
                 }
                 // 非root page被切割后，原有的ref被废弃
                 if (p.map.getRootPageRef() != pRef)
@@ -373,35 +370,32 @@ public abstract class PageOperations {
 
     private static class SplitPage extends ChildOperation {
 
-        public SplitPage(Page page) {
-            super(page);
+        public SplitPage(PageReference pRef) {
+            super(pRef);
         }
 
         @Override
         protected PageOperationResult runLocked(PageOperationHandler poHandler) {
-            PageReference pRef = page.getRef();
             Page p = pRef.getPage(); // 获得最新的
-            TmpNodePage tmpNodePage;
             // 如果是root page，那么直接替换
-            if (p.getParentRef() == null) {
-                tmpNodePage = splitPage(p);
+            if (pRef.isRoot()) {
+                TmpNodePage tmpNodePage = splitPage(p);
                 p.map.newRoot(tmpNodePage.parent);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
                 if (!tryLockParentRef(p, poHandler))
                     return PageOperationResult.LOCKED;
-                tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
+                TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = p.getParentRef();
                 Page newParent = parentRef.getPage().copyAndInsertChild(tmpNodePage);
                 parentRef.replacePage(newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
-                    asyncSplitPage(poHandler, newParent);
+                    asyncSplitPage(poHandler, parentRef);
                 }
                 // 非root page被切割后，原有的ref被废弃
-                if (p.map.getRootPageRef() != pRef)
-                    pRef.setDataStructureChanged(true);
+                pRef.setDataStructureChanged(true);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
                 parentRef.unlock();
@@ -414,7 +408,6 @@ public abstract class PageOperations {
             int at = p.getKeyCount() / 2;
             Object k = p.getKey(at);
             // 切割前必须copy当前被切割的页面，否则其他读线程可能读到切割过程中不一致的数据
-            Page old = p;
             p = p.copy();
             // 对页面进行切割后，会返回右边的新页面，而copy后的当前被切割页面变成左边的新页面
             Page rightChildPage = p.split(at);
@@ -429,7 +422,7 @@ public abstract class PageOperations {
             // 它俩的ParentRef不在这里设置，调用者根据自己的情况设置
             leftChildPage.setRef(leftRef);
             rightChildPage.setRef(rightRef);
-            return new TmpNodePage(parent, old, leftRef, rightRef, k);
+            return new TmpNodePage(parent, leftRef, rightRef, k);
         }
 
         private static void setParentRef(TmpNodePage tmpNodePage) {
@@ -448,14 +441,12 @@ public abstract class PageOperations {
 
     public static class TmpNodePage {
         final Page parent;
-        final Page old;
         final PageReference left;
         final PageReference right;
         final Object key;
 
-        public TmpNodePage(Page parent, Page old, PageReference left, PageReference right, Object key) {
+        public TmpNodePage(Page parent, PageReference left, PageReference right, Object key) {
             this.parent = parent;
-            this.old = old;
             this.left = left;
             this.right = right;
             this.key = key;

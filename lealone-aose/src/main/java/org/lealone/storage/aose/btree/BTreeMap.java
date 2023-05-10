@@ -73,6 +73,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
             super.replacePage(newRoot);
         }
+
+        @Override
+        public boolean isRoot() {
+            return true;
+        }
     }
 
     // btree的root page引用，最开始是一个leaf page，随时都会指向新的page
