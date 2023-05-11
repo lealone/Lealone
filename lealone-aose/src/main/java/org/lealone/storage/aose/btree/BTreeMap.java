@@ -342,8 +342,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         checkWrite();
         try {
             acquireExclusiveLock();
-
-            getRootPage().removeAllRecursive();
+            btreeStorage.clear();
             size.set(0);
             maxKey.set(0);
             newRoot(LeafPage.createEmpty(this));
@@ -356,7 +355,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void remove() {
         try {
             acquireExclusiveLock();
-
             btreeStorage.remove();
             closeMap();
         } finally {
@@ -373,7 +371,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void close() {
         try {
             acquireExclusiveLock();
-
             closeMap();
             btreeStorage.close();
         } finally {
@@ -389,7 +386,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void save() {
         try {
             acquireSharedLock(); // 用共享锁
-
             btreeStorage.save();
         } finally {
             releaseSharedLock();

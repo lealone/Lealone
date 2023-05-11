@@ -270,31 +270,6 @@ public class NodePage extends LocalPage {
         return newPage;
     }
 
-    @Override
-    public void removeAllRecursive() {
-        if (children != null) {
-            // TODO 消除这些难理解的规则
-            // 不能直接使用getRawChildPageCount， RTreeMap这样的子类会返回getRawChildPageCount() - 1
-            for (int i = 0, size = map.getChildPageCount(this); i < size; i++) {
-                PageReference ref = children[i];
-                if (ref.page != null) {
-                    ref.page.removeAllRecursive();
-                } else {
-                    long pos = children[i].pos;
-                    int type = PageUtils.getPageType(pos);
-                    if (type == PageUtils.PAGE_TYPE_LEAF) {
-                        Chunk c = map.getBTreeStorage().getChunk(pos);
-                        int mem = c.getPageLength(pos);
-                        map.getBTreeStorage().removePage(pos, mem);
-                    } else {
-                        map.getBTreeStorage().readPage(pos).removeAllRecursive();
-                    }
-                }
-            }
-        }
-        removePage();
-    }
-
     static NodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
         NodePage p = new NodePage(map);
         // the position is 0

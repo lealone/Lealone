@@ -356,13 +356,12 @@ public abstract class PageOperations {
                 parent = parent.copy();
                 parent.remove(index);
                 parentRef.replacePage(parent);
-                // 先看看父节点是否需要切割
+                // 先看看父节点是否需要删除
                 if (parent.isEmpty()) {
                     asyncRemovePage(poHandler, parentRef, key);
                 }
-                // 非root page被切割后，原有的ref被废弃
-                if (p.map.getRootPageRef() != pRef)
-                    pRef.setDataStructureChanged(true);
+                // 非root page被删除后，原有的ref被废弃
+                pRef.setDataStructureChanged(true);
                 parentRef.unlock();
             }
             return PageOperationResult.SUCCEEDED;

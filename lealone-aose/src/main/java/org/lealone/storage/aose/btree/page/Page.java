@@ -304,13 +304,6 @@ public class Page {
     }
 
     /**
-     * Remove this page and all child pages.
-     */
-    public void removeAllRecursive() {
-        throw ie();
-    }
-
-    /**
      * Read a page.
      * 
      * @param map the map

@@ -150,11 +150,6 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void removeAllRecursive() {
-        removePage();
-    }
-
-    @Override
     public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         int mode = buff.get(buff.position() + 4);

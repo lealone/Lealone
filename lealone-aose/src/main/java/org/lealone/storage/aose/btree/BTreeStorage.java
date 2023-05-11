@@ -268,6 +268,14 @@ public class BTreeStorage {
         return FileUtils.folderSize(new File(mapBaseDir));
     }
 
+    synchronized void clear() {
+        if (map.isInMemory())
+            return;
+        bgc.close();
+        chunkManager.close();
+        // FileUtils.deleteRecursive(mapBaseDir, true);
+    }
+
     /**
      * Remove this storage.
      */
