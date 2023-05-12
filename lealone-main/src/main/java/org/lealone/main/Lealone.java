@@ -52,19 +52,15 @@ public class Lealone {
         }).start();
         try {
             latch.await();
-            runnable.run();
+            if (runnable != null)
+                runnable.run();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
     }
 
     public static void embed(String[] args) {
-        run(args, true, null);
-    }
-
-    // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
-    public static void run(String[] args, boolean embedded, CountDownLatch latch) {
-        new Lealone().run(embedded, latch);
+        new Lealone().run(true, null);
     }
 
     public static void runScript(String url, String... sqlScripts) {
