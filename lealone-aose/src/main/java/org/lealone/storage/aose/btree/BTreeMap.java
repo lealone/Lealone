@@ -101,7 +101,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
-            Page root = btreeStorage.readPage(lastChunk.rootPagePos);
+            Page root = btreeStorage.readPage(rootRef, lastChunk.rootPagePos);
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             rootRef.replacePage(root);
             setMaxKey(lastKey());

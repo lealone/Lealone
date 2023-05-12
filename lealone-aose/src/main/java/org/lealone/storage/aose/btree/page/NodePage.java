@@ -52,14 +52,13 @@ public class NodePage extends LocalPage {
         } else {
             PageInfo pInfo = ref.pInfo;
             if (pInfo != null && pInfo.buff != null) {
-                p = Page.read(map, ref.pos, pInfo.buff, pInfo.pageLength);
+                p = map.getBTreeStorage().readPage(ref, ref.pos, pInfo.buff, pInfo.pageLength);
                 map.getBTreeStorage().gcIfNeeded(p.getMemory());
             } else {
-                p = map.getBTreeStorage().readPage(ref.pos);
+                p = map.getBTreeStorage().readPage(ref);
                 ref.pInfo = p.pInfo;
             }
             ref.replacePage(p);
-            p.setRef(ref);
             return p;
         }
     }
@@ -212,10 +211,11 @@ public class NodePage extends LocalPage {
             Page p = children[i].page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff);
-                // 不能 children[i] = new PageReference(p);
-                // 要保证 children[i] 等于 p.ref
                 children[i].pos = p.pos;
             }
+            // 释放资源
+            children[i].page = null;
+            children[i].pInfo = null;
         }
         int old = buff.position();
         buff.position(patch);
@@ -293,7 +293,7 @@ public class NodePage extends LocalPage {
                     children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        map.getBTreeStorage().readPage(children[i].pos)
+                        map.getBTreeStorage().readPage(children[i])
                                 .getPrettyPageInfoRecursive(indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");

@@ -7,6 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.io.File;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
@@ -148,7 +149,7 @@ public class BTreeStorage {
 
     // ChunkCompactor在重写chunk中的page时会用到
     public void markDirtyLeafPage(long pos) {
-        Page leaf = readLocalPage(pos, false);
+        Page leaf = readPage(null, pos, false);
         Object key = leaf.getKey(0);
         Page p = map.getRootPage();
         while (p.isNode()) {
@@ -170,26 +171,46 @@ public class BTreeStorage {
         leaf.markDirty(true);
     }
 
-    /**
-     * Read a page.
-     * 
-     * @param pos the page position
-     * @return the page
-     */
     public Page readPage(long pos) {
+        return readPage(null, pos);
+    }
+
+    public Page readPage(PageReference ref) {
+        return readPage(ref, ref.getPos());
+    }
+
+    public Page readPage(PageReference ref, long pos) {
+        return readPage(ref, pos, true);
+    }
+
+    private Page readPage(PageReference ref, long pos, boolean gc) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
-        return readLocalPage(pos, true);
-    }
-
-    private Page readLocalPage(long pos, boolean gc) {
         Chunk c = getChunk(pos);
         long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
         int pageLength = c.getPageLength(pos);
-        Page p = Page.read(map, c.fileStorage, pos, filePos, pageLength);
+        if (pageLength < 0) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
+        }
+        ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
+        Page p = readPage(ref, pos, buff, pageLength);
         if (gc)
             gcIfNeeded(p.getTotalMemory());
+        return p;
+    }
+
+    public Page readPage(PageReference ref, long pos, ByteBuffer buff, int pageLength) {
+        int type = PageUtils.getPageType(pos);
+        Page p = Page.create(map, pos, buff, pageLength, type);
+        p.setRef(ref);
+        p.updateTime();
+        int chunkId = PageUtils.getPageChunkId(pos);
+        int offset = PageUtils.getPageOffset(pos);
+        p.read(buff, chunkId, offset, pageLength, false);
+        if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
+            buff.flip();
         return p;
     }
 

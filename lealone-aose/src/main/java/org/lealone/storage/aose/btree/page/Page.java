@@ -15,11 +15,27 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
-import org.lealone.storage.fs.FileStorage;
 
 public class Page {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
+    public static Page create(BTreeMap<?, ?> map, long pos, ByteBuffer buff, int pageLength, int type) {
+        Page p;
+        if (type == PageUtils.PAGE_TYPE_LEAF)
+            p = new LeafPage(map);
+        else if (type == PageUtils.PAGE_TYPE_NODE)
+            p = new NodePage(map);
+        else if (type == PageUtils.PAGE_TYPE_COLUMN)
+            p = new ColumnPage(map);
+        else
+            throw DbException.getInternalError("type: " + type);
+
+        p.pos = pos;
+        p.pInfo.buff = buff;
+        p.pInfo.pageLength = pageLength;
+        return p;
+    }
 
     protected final PageInfo pInfo = new PageInfo();
     protected final BTreeMap<?, ?> map;
@@ -301,54 +317,6 @@ public class Page {
             parentRef.page.markDirty(false);
             parentRef = parentRef.getParentRef();
         }
-    }
-
-    /**
-     * Read a page.
-     * 
-     * @param map the map
-     * @param fileStorage the file storage
-     * @param pos the position
-     * @param filePos the position in the file
-     * @param pageLength the page length
-     * @return the page
-     */
-    public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos,
-            int pageLength) {
-        if (pageLength < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
-        }
-        ByteBuffer buff = fileStorage.readFully(filePos, pageLength);
-        return read(map, pos, buff, pageLength);
-    }
-
-    public static Page read(BTreeMap<?, ?> map, long pos, ByteBuffer buff, int pageLength) {
-        int type = PageUtils.getPageType(pos);
-        Page p = create(map, type);
-        p.pos = pos;
-        p.pInfo.buff = buff;
-        p.pInfo.pageLength = pageLength;
-        p.updateTime();
-        int chunkId = PageUtils.getPageChunkId(pos);
-        int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, pageLength, false);
-        if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
-            buff.flip();
-        return p;
-    }
-
-    private static Page create(BTreeMap<?, ?> map, int type) {
-        Page p;
-        if (type == PageUtils.PAGE_TYPE_LEAF)
-            p = new LeafPage(map);
-        else if (type == PageUtils.PAGE_TYPE_NODE)
-            p = new NodePage(map);
-        else if (type == PageUtils.PAGE_TYPE_COLUMN)
-            p = new ColumnPage(map);
-        else
-            throw DbException.getInternalError("type: " + type);
-        return p;
     }
 
     // 返回key所在的leaf page
