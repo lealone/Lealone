@@ -27,7 +27,7 @@ public class Shell extends LealoneClient {
     protected Connection getConnection() throws SQLException {
         ConnectionInfo ci = getConnectionInfo();
         if (ci.isEmbedded()) {
-            Lealone.embed(getArgs());
+            Lealone.embed();
         }
         return new JdbcConnection(ci);
     }

@@ -126,6 +126,7 @@ public class LealoneClient {
             } else if (arg.equals("-client") || arg.equals("-debug")) {
                 continue;
             } else {
+                println("Unsupported option: " + arg);
                 showUsage();
                 return;
             }

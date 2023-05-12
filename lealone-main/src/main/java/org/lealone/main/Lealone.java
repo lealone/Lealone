@@ -59,7 +59,7 @@ public class Lealone {
         }
     }
 
-    public static void embed(String[] args) {
+    public static void embed() {
         new Lealone().run(true, null);
     }
 
@@ -153,11 +153,8 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            if (embedded) {
-                if (latch != null)
-                    latch.countDown();
+            if (embedded)
                 return;
-            }
 
             startProtocolServers();
 

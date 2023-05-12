@@ -16,7 +16,10 @@ public class ShellTest {
         String[] args2 = { //
                 // "-help", //
                 // "-url", url, //
-                // "-user", "root," //
+                // "-user",
+                // "root", //
+                // "-database",
+                // "test", //
                 // "-embed", //
         };
         Shell.main(args2);
