@@ -377,7 +377,7 @@ public class LealoneClient {
     }
 
     private void printException(Exception e) {
-        println("Exception: " + e.toString());
+        println("Exception: " + e.getMessage());
         e.printStackTrace(err);
     }
 
@@ -449,9 +449,10 @@ public class LealoneClient {
                 JdbcUtils.closeSilently(rs);
             }
         } catch (SQLException e) {
-            println("Error: " + DbException.getRootCause(e).getMessage());
             if (listMode) {
                 e.printStackTrace(err);
+            } else {
+                println("Error: " + DbException.getRootCause(e).getMessage());
             }
         }
         println();

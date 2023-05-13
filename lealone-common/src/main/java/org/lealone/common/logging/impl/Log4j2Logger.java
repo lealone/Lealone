@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.message.FormattedMessage;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.spi.ExtendedLogger;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 
 class Log4j2Logger implements Logger {
@@ -155,6 +156,7 @@ class Log4j2Logger implements Logger {
     }
 
     private void log(Level level, Object message, Throwable t) {
+        t = DbException.getCause(t);
         if (message instanceof Message) {
             logger.logIfEnabled(FQCN, level, null, (Message) message, t);
         } else {
@@ -167,6 +169,7 @@ class Log4j2Logger implements Logger {
     }
 
     private void log(Level level, String message, Throwable t, Object... params) {
+        t = DbException.getCause(t);
         logger.logIfEnabled(FQCN, level, null, new FormattedMessage(message, params), t);
     }
 }

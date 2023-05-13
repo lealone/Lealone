@@ -381,4 +381,11 @@ public class DbException extends RuntimeException {
         }
         return root;
     }
+
+    public static Throwable getCause(Throwable t) {
+        if (t instanceof DbException)
+            return ((DbException) t).getSQLException();
+        else
+            return t;
+    }
 }

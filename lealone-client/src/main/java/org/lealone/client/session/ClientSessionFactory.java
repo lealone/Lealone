@@ -68,8 +68,8 @@ public class ClientSessionFactory implements SessionFactory {
             } else {
                 // 如果已经是最后一个了那就可以直接抛异常了，否则再选其他的
                 if (servers.length == 1) {
-                    Throwable e = ar.getCause();
-                    e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + server);
+                    Throwable e = DbException.getCause(ar.getCause());
+                    e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, server);
                     topAc.setAsyncResult(e);
                 } else {
                     int len = servers.length;
