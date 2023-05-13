@@ -257,12 +257,6 @@ public class Page {
         throw ie();
     }
 
-    /**
-     * Unlink the children recursively after all data is written.
-     */
-    void writeEnd() {
-    }
-
     public int getRawChildPageCount() {
         return 0;
     }

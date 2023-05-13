@@ -108,7 +108,7 @@ public class ChunkCompactor {
             }
         }
         if (saveIfNeeded) {
-            btreeStorage.executeSave(false);
+            btreeStorage.executeSave();
             removedPages = chunkManager.getRemovedPagesCopy();
             removeUnusedChunks(old, removedPages);
         }

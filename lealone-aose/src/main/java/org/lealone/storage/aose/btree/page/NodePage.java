@@ -224,21 +224,6 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    void writeEnd() {
-        for (int i = 0, len = children.length; i < len; i++) {
-            PageReference ref = children[i];
-            if (ref.page != null) {
-                if (ref.page.getPos() == 0) {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
-                            "Page not written");
-                }
-                ref.page.writeEnd();
-                children[i] = new PageReference(null, ref.pos);
-            }
-        }
-    }
-
-    @Override
     public int getRawChildPageCount() {
         return children.length;
     }

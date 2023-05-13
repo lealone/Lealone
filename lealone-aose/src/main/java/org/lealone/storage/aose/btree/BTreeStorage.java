@@ -349,53 +349,27 @@ public class BTreeStorage {
     }
 
     /**
-     * Check whether there are any unsaved changes.
-     * 
-     * @return if there are any changes
-     */
-    private boolean hasUnsavedChanges() {
-        boolean b = hasUnsavedChanges;
-        hasUnsavedChanges = false;
-        return b;
-    }
-
-    /**
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
      */
     synchronized void save() {
-        if (closed) {
-            return;
-        }
-        if (map.isInMemory()) {
+        if (!hasUnsavedChanges || closed || map.isInMemory()) {
             return;
         }
         if (map.isReadOnly()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "This storage is read-only");
         }
-        if (!hasUnsavedChanges()) {
-            return;
-        }
+        hasUnsavedChanges = false;
         try {
-            executeSave(false);
+            executeSave();
             new ChunkCompactor(this, chunkManager).executeCompact();
         } catch (IllegalStateException e) {
             throw panic(e);
         }
     }
 
-    synchronized void forceSave() {
-        if (closed) {
-            return;
-        }
-        executeSave(true);
-    }
-
-    public synchronized void executeSave(boolean force) {
-        if (map.isInMemory()) {
-            return;
-        }
+    public synchronized void executeSave() {
         DataBuffer chunkBody = DataBuffer.create();
         try {
             Chunk c = chunkManager.createChunk();
@@ -403,12 +377,8 @@ public class BTreeStorage {
             c.mapSize = map.size();
 
             Page p = map.getRootPage();
-            // 如果不写，rootPagePos会是0，重新打开时会报错
-            // if (p.getTotalCount() > 0 || force) {
             p.writeUnsavedRecursive(c, chunkBody);
             c.rootPagePos = p.getPos();
-            // p.writeEnd();
-            // }
 
             c.write(chunkBody, chunkManager.getRemovedPages());
 
