@@ -666,6 +666,27 @@ public class SystemFunction extends BuiltInFunction {
             }
             break;
         }
+        case CASE: {
+            t = args[2].getType();
+            p = args[2].getPrecision();
+            s = args[2].getScale();
+            d = args[2].getDisplaySize();
+            for (int i = 3, len = args.length - 1; i < len; i += 2) {
+                int index = i + 1;
+                t = Value.getHigherOrder(t, args[index].getType());
+                p = Math.max(p, args[index].getPrecision());
+                s = Math.max(s, args[index].getScale());
+                d = Math.max(d, args[index].getDisplaySize());
+            }
+            if (args.length % 2 == 0) { // elsePart
+                int index = args.length - 1;
+                t = Value.getHigherOrder(t, args[index].getType());
+                p = Math.max(p, args[index].getPrecision());
+                s = Math.max(s, args[index].getScale());
+                d = Math.max(d, args[index].getDisplaySize());
+            }
+            break;
+        }
         case CASEWHEN:
             t = Value.getHigherOrder(args[1].getType(), args[2].getType());
             p = Math.max(args[1].getPrecision(), args[2].getPrecision());

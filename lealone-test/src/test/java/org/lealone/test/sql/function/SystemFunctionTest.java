@@ -52,6 +52,19 @@ public class SystemFunctionTest extends SqlTestBase {
         // 执行两次，触发缓存
         executeQuery(sql);
         executeQuery(sql);
+
+        // https://github.com/lealone/Lealone/issues/177
+        executeQuery("SELECT SET(@v, 15)");
+        sql = "SELECT SUM(CASE WHEN @v<10 THEN 1 ELSE 2 END)";
+        assertCASE("2", 1);
+        executeQuery("SELECT SET(@v, 5)");
+        // 不能这么用，会先对sum的on求值
+        sql = "SELECT SET(@v, 5), SUM(CASE WHEN @v<10 THEN 1 ELSE 2 END)";
+        sql = "SELECT SUM(CASE WHEN @v<10 THEN 1 ELSE 2 END)";
+        assertCASE("1", 1);
+
+        sql = "SELECT SUM(CASE @v WHEN 1 THEN 1 WHEN 5 THEN 5 END)";
+        assertCASE("5", 1);
     }
 
     private void assertCASE(Object expected, int index) throws Exception {
