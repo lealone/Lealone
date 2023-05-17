@@ -204,7 +204,7 @@ public class BTreeMapTest extends AoseTestBase {
             map.remove(i);
         }
 
-        map.printPage();
+        // map.printPage();
     }
 
     // remove相对比较复杂，单独拿来重点测

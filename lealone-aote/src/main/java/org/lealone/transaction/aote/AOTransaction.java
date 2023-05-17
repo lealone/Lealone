@@ -186,9 +186,6 @@ public class AOTransaction implements Transaction {
 
     public void asyncCommitComplete() {
         commitFinal();
-        if (session != null) {
-            session.asyncCommitComplete();
-        }
         if (asyncTask != null) {
             try {
                 asyncTask.run();

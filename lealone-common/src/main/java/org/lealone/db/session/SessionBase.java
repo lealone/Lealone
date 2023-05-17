@@ -38,10 +38,6 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void asyncCommitComplete() {
-    }
-
-    @Override
     public void close() {
         closed = true;
     }

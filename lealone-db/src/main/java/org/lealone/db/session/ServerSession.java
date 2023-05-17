@@ -539,17 +539,16 @@ public class ServerSession extends SessionBase {
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
             beforeCommit();
-            transaction.asyncCommit(asyncTask);
+            transaction.asyncCommit(() -> {
+                commitFinal();
+                if (asyncTask != null)
+                    asyncTask.run();
+            });
         } else {
             // 包含子查询的场景
             if (asyncTask != null)
                 asyncTask.run();
         }
-    }
-
-    @Override
-    public void asyncCommitComplete() {
-        commitFinal();
     }
 
     /**
