@@ -33,4 +33,4 @@ fi
 
 CLASSPATH=$LEALONE_HOME/conf:$LEALONE_HOME/lib/*
 
-"$JAVA_HOME/bin/java" $JAVA_OPTS -cp $CLASSPATH org.lealone.main.Lealone $@
+"$JAVA_HOME/bin/java" $JAVA_OPTS -cp $CLASSPATH org.lealone.main.Lealone "$@"
