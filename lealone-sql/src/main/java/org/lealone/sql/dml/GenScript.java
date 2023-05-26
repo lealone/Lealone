@@ -33,7 +33,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
@@ -663,7 +662,7 @@ public class GenScript extends ScriptBase {
     private void reset() {
         result = null;
         buffer = null;
-        lineSeparatorString = SysProperties.LINE_SEPARATOR;
+        lineSeparatorString = System.lineSeparator();
         lineSeparator = lineSeparatorString.getBytes(charset);
     }
 

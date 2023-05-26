@@ -169,8 +169,8 @@ public class FilePathDisk extends FilePath {
             String[] files = f.list();
             if (files != null) {
                 String base = f.getCanonicalPath();
-                if (!base.endsWith(SysProperties.FILE_SEPARATOR)) {
-                    base += SysProperties.FILE_SEPARATOR;
+                if (!base.endsWith(File.separator)) {
+                    base += File.separator;
                 }
                 for (int i = 0, len = files.length; i < len; i++) {
                     list.add(getPath(base + files[i]));

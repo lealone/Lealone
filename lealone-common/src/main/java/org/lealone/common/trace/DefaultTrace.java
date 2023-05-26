@@ -8,7 +8,6 @@ package org.lealone.common.trace;
 import java.text.MessageFormat;
 
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.SysProperties;
 
 /**
  * This class represents a default trace module.
@@ -34,7 +33,7 @@ class DefaultTrace implements Trace {
         this.module = module;
         this.traceObjectName = traceObjectName;
         this.id = id;
-        this.lineSeparator = SysProperties.LINE_SEPARATOR;
+        this.lineSeparator = System.lineSeparator();
     }
 
     @Override

@@ -31,7 +31,6 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.result.SimpleRowSource;
@@ -57,7 +56,7 @@ public class Csv implements SimpleRowSource {
     private boolean preserveWhitespace;
     private boolean writeColumnHeader = true;
     private char lineComment;
-    private String lineSeparator = SysProperties.LINE_SEPARATOR;
+    private String lineSeparator = System.lineSeparator();
     private String nullString = "";
 
     private String fileName;

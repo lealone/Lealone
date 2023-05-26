@@ -38,26 +38,13 @@ import org.lealone.storage.fs.FileUtils;
  * </pre>
  * 
  * <p>
- * 除FILE_SEPARATOR、LINE_SEPARATOR、USER_HOME这些标准属性外，
- * 其他属性都默认加"lealone."前缀
+ * 除USER_HOME外，其他属性都默认加"lealone."前缀
  * </p>
  * 
  * @author H2 Group
  * @author zhh
  */
 public class SysProperties {
-
-    /**
-     * System property <code>file.separator</code> (default: /).<br />
-     * It is usually set by the system, and used to build absolute file names.
-     */
-    public static final String FILE_SEPARATOR = Utils.getProperty("file.separator", "/");
-
-    /**
-     * System property <code>line.separator</code> (default: \n).<br />
-     * It is usually set by the system, and used by the script and trace tools.
-     */
-    public static final String LINE_SEPARATOR = Utils.getProperty("line.separator", "\n");
 
     /**
      * System property <code>user.home</code> (empty string if not set).<br />
@@ -127,7 +114,7 @@ public class SysProperties {
      * System property <code>lob.close.between.reads</code> (default: false).<br />
      * Close LOB files between read operations.
      */
-    public static boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
+    public static final boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
 
     /**
      * System property <code>lob.in.database</code> (default: true).<br />
@@ -158,22 +145,6 @@ public class SysProperties {
      * The maximum size of a LOB value that is written as data to the trace system.
      */
     public static final long MAX_TRACE_DATA_LENGTH = getProperty("max.trace.data.length", 65535);
-
-    /**
-     * System property <code>nio.load.mapped</code> (default: false).<br />
-     * If the mapped buffer should be loaded when the file is opened.
-     * This can improve performance.
-     */
-    public static final boolean NIO_LOAD_MAPPED = getProperty("nio.load.mapped", false);
-
-    /**
-     * System property <code>nio.cleaner.hack</code> (default: false).<br />
-     * If enabled, use the reflection hack to un-map the mapped file if
-     * possible. If disabled, System.gc() is called in a loop until the object
-     * is garbage collected. See also
-     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
-     */
-    public static final boolean NIO_CLEANER_HACK = getProperty("nio.cleaner.hack", false);
 
     /**
      * System property <code>object.cache</code> (default: true).<br />
@@ -225,12 +196,6 @@ public class SysProperties {
      * the beginning of a result set in a descending sort.
      */
     public static final boolean SORT_NULLS_HIGH = getProperty("sort.nulls.high", false);
-
-    /**
-     * System property <code>split.file.size.shift</code> (default: 30).<br />
-     * The maximum file size of a split file is 1L &lt;&lt; x.
-     */
-    public static final long SPLIT_FILE_SIZE_SHIFT = getProperty("split.file.size.shift", 30);
 
     /**
      * System property <code>sync.method</code> (default: sync).<br />
@@ -295,7 +260,7 @@ public class SysProperties {
      * defensive copy himself before storing, or ensure that the value object is
      * immutable.
      */
-    public static boolean SERIALIZE_JAVA_OBJECT = getProperty("serialize.java.object", true);
+    public static final boolean SERIALIZE_JAVA_OBJECT = getProperty("serialize.java.object", true);
 
     /**
      * System property <code>java.object.serializer</code> (default: null).<br />
