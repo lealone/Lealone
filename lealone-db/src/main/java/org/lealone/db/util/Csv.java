@@ -16,6 +16,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -46,7 +48,7 @@ public class Csv implements SimpleRowSource {
 
     private String[] columnNames;
 
-    private String characterSet = SysProperties.FILE_ENCODING;
+    private String characterSet;
     private char escapeCharacter = '\"';
     private char fieldDelimiter = '\"';
     private char fieldSeparatorRead = ',';
@@ -256,7 +258,9 @@ public class Csv implements SimpleRowSource {
             try {
                 OutputStream out = FileUtils.newOutputStream(fileName, false);
                 out = new BufferedOutputStream(out, Constants.IO_BUFFER_SIZE);
-                output = new BufferedWriter(new OutputStreamWriter(out, characterSet));
+                output = new BufferedWriter(
+                        characterSet != null ? new OutputStreamWriter(out, characterSet)
+                                : new OutputStreamWriter(out));
             } catch (Exception e) {
                 close();
                 throw DbException.convertToIOException(e);
@@ -314,7 +318,9 @@ public class Csv implements SimpleRowSource {
             try {
                 InputStream in = FileUtils.newInputStream(fileName);
                 in = new BufferedInputStream(in, Constants.IO_BUFFER_SIZE);
-                input = new InputStreamReader(in, characterSet);
+                Charset charset = characterSet != null ? Charset.forName(characterSet)
+                        : StandardCharsets.UTF_8;
+                input = new InputStreamReader(in, charset);
             } catch (IOException e) {
                 close();
                 throw e;

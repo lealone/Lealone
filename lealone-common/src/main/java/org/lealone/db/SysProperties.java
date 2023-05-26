@@ -38,7 +38,7 @@ import org.lealone.storage.fs.FileUtils;
  * </pre>
  * 
  * <p>
- * 除FILE_ENCODING、FILE_SEPARATOR、LINE_SEPARATOR、USER_HOME这些标准属性外，
+ * 除FILE_SEPARATOR、LINE_SEPARATOR、USER_HOME这些标准属性外，
  * 其他属性都默认加"lealone."前缀
  * </p>
  * 
@@ -46,13 +46,6 @@ import org.lealone.storage.fs.FileUtils;
  * @author zhh
  */
 public class SysProperties {
-
-    /**
-     * System property <code>file.encoding</code> (default: Cp1252).<br />
-     * It is usually set by the system and is the default encoding used for the
-     * RunScript and CSV tool.
-     */
-    public static final String FILE_ENCODING = Utils.getProperty("file.encoding", "Cp1252");
 
     /**
      * System property <code>file.separator</code> (default: /).<br />
