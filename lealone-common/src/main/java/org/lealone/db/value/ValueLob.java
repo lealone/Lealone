@@ -219,9 +219,7 @@ public class ValueLob extends Value {
             if (tempFile != null) {
                 tempFile.stopAutoDelete();
             }
-            // synchronize on the database, to avoid concurrent temp file
-            // creation / deletion / backup
-            synchronized (handler.getLobSyncObject()) {
+            synchronized (this) {
                 FileUtils.delete(fileName);
             }
         }

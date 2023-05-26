@@ -74,13 +74,6 @@ public interface DataHandler {
     String getLobCompressionAlgorithm(int type);
 
     /**
-     * Get the synchronization object for lob operations.
-     *
-     * @return the synchronization object
-     */
-    Object getLobSyncObject();
-
-    /**
      * Get the lob storage mechanism to use.
      *
      * @return the lob storage mechanism

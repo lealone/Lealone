@@ -19,7 +19,6 @@ public class LocalDataHandler implements DataHandler {
 
     private final String cipher;
     private final byte[] fileEncryptionKey;
-    private final Object lobSyncObject = new Object();
     private LobReader lobReader;
     private LobStorage lobStorage;
 
@@ -74,11 +73,6 @@ public class LocalDataHandler implements DataHandler {
     @Override
     public String getLobCompressionAlgorithm(int type) {
         return null;
-    }
-
-    @Override
-    public Object getLobSyncObject() {
-        return lobSyncObject;
     }
 
     @Override

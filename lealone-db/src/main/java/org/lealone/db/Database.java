@@ -154,7 +154,6 @@ public class Database implements DataHandler, DbObject {
     private int nextTempTableId;
 
     private final BitField objectIds = new BitField();
-    private final Object lobSyncObject = new Object();
 
     private final AtomicLong modificationDataId = new AtomicLong();
     private final AtomicLong modificationMetaId = new AtomicLong();
@@ -1570,11 +1569,6 @@ public class Database implements DataHandler, DbObject {
     @Override
     public String getLobCompressionAlgorithm(int type) {
         return dbSettings.lobCompressionAlgorithm;
-    }
-
-    @Override
-    public Object getLobSyncObject() {
-        return lobSyncObject;
     }
 
     @Override
