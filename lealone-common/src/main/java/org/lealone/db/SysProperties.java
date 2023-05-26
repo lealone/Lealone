@@ -38,7 +38,7 @@ import org.lealone.storage.fs.FileUtils;
  * </pre>
  * 
  * <p>
- * 除FILE_ENCODING、FILE_SEPARATOR、JAVA_SPECIFICATION_VERSION、LINE_SEPARATOR、USER_HOME这些标准属性外，
+ * 除FILE_ENCODING、FILE_SEPARATOR、LINE_SEPARATOR、USER_HOME这些标准属性外，
  * 其他属性都默认加"lealone."前缀
  * </p>
  * 
@@ -59,13 +59,6 @@ public class SysProperties {
      * It is usually set by the system, and used to build absolute file names.
      */
     public static final String FILE_SEPARATOR = Utils.getProperty("file.separator", "/");
-
-    /**
-     * System property <code>java.specification.version</code>.<br />
-     * It is set by the system. Examples: 1.4, 1.5, 1.6.
-     */
-    public static final String JAVA_SPECIFICATION_VERSION = Utils
-            .getProperty("java.specification.version", "1.4");
 
     /**
      * System property <code>line.separator</code> (default: \n).<br />
