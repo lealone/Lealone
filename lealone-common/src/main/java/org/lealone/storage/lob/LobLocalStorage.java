@@ -12,7 +12,6 @@ import java.io.Reader;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DataHandler;
-import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 
 /**
@@ -47,7 +46,7 @@ public class LobLocalStorage implements LobStorage {
     }
 
     @Override
-    public Value createBlob(InputStream in, long maxLength) {
+    public ValueLob createBlob(InputStream in, long maxLength) {
         // need to use a temp file, because the input stream could come from
         // the same database, which would create a weird situation (trying
         // to read a block while writing something)
@@ -55,7 +54,7 @@ public class LobLocalStorage implements LobStorage {
     }
 
     @Override
-    public Value createClob(Reader reader, long maxLength) {
+    public ValueLob createClob(Reader reader, long maxLength) {
         // need to use a temp file, because the input stream could come from
         // the same database, which would create a weird situation (trying
         // to read a block while writing something)

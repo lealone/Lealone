@@ -27,6 +27,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableAlterHistoryRecord;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
@@ -110,6 +111,10 @@ public class StandardPrimaryIndex extends StandardIndex {
         return mainIndexColumn != -1;
     }
 
+    private ValueLob getLargeObject(Row row, int columnId) {
+        return (ValueLob) row.getValue(columnId);
+    }
+
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
@@ -124,14 +129,14 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
 
         if (table.containsLargeObject()) {
-            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
-                Value v = row.getValue(i);
-                Value v2 = v.link(database, getId());
+            for (int columnId : table.getLargeObjectColumns()) {
+                ValueLob v = getLargeObject(row, columnId);
+                ValueLob v2 = v.link(database, getId());
                 if (v2.isLinked()) {
                     session.unlinkAtCommitStop(v2);
                 }
                 if (v != v2) {
-                    row.setValue(i, v2);
+                    row.setValue(columnId, v2);
                 }
             }
         }
@@ -196,18 +201,18 @@ public class StandardPrimaryIndex extends StandardIndex {
                     map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getTValue()));
 
         if (table.containsLargeObject()) {
-            for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
-                Value v = newRow.getValue(i);
-                Value v2 = v.link(database, getId());
+            for (int columnId : table.getLargeObjectColumns()) {
+                ValueLob v = getLargeObject(newRow, columnId);
+                ValueLob v2 = v.link(database, getId());
                 if (v2.isLinked()) {
                     session.unlinkAtCommitStop(v2);
                 }
                 if (v != v2) {
-                    newRow.setValue(i, v2);
+                    newRow.setValue(columnId, v2);
                 }
             }
-            for (int i = 0, len = oldRow.getColumnCount(); i < len; i++) {
-                Value v = oldRow.getValue(i);
+            for (int columnId : table.getLargeObjectColumns()) {
+                ValueLob v = getLargeObject(oldRow, columnId);
                 if (v.isLinked()) {
                     session.unlinkAtCommit(v);
                 }
@@ -230,8 +235,8 @@ public class StandardPrimaryIndex extends StandardIndex {
             return Future.succeededFuture(map.addWaitingTransaction(key, tv));
 
         if (table.containsLargeObject()) {
-            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
-                Value v = row.getValue(i);
+            for (int columnId : table.getLargeObjectColumns()) {
+                ValueLob v = getLargeObject(row, columnId);
                 if (v.isLinked()) {
                     session.unlinkAtCommit(v);
                 }

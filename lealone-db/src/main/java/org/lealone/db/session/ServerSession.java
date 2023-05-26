@@ -39,6 +39,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
@@ -87,7 +88,7 @@ public class ServerSession extends SessionBase {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
-    private HashMap<String, Value> unlinkLobMap;
+    private HashMap<String, ValueLob> unlinkLobMap;
     private boolean containsLargeObject;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
@@ -164,12 +165,14 @@ public class ServerSession extends SessionBase {
             old = variables.remove(name);
         } else {
             // link LOB values, to make sure we have our own object
-            value = value.link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
+            if (value instanceof ValueLob)
+                value = ((ValueLob) value).link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
             old = variables.put(name, value);
         }
         if (old != null) {
             // close the old value (in case it is a lob)
-            old.unlink(database);
+            if (old instanceof ValueLob)
+                ((ValueLob) old).unlink(database);
             old.close();
         }
     }
@@ -605,7 +608,7 @@ public class ServerSession extends SessionBase {
             containsLargeObject = false;
         }
         if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
-            for (Value v : unlinkLobMap.values()) {
+            for (ValueLob v : unlinkLobMap.values()) {
                 v.unlink(database);
                 v.close();
             }
@@ -902,7 +905,7 @@ public class ServerSession extends SessionBase {
      *
      * @param v the value
      */
-    public void unlinkAtCommit(Value v) {
+    public void unlinkAtCommit(ValueLob v) {
         if (SysProperties.CHECK && !v.isLinked()) {
             DbException.throwInternalError();
         }
@@ -918,7 +921,7 @@ public class ServerSession extends SessionBase {
      *
      * @param v the value
      */
-    public void unlinkAtCommitStop(Value v) {
+    public void unlinkAtCommitStop(ValueLob v) {
         if (unlinkLobMap != null) {
             unlinkLobMap.remove(v.toString());
         }

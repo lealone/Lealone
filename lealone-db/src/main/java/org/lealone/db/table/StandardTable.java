@@ -60,8 +60,8 @@ public class StandardTable extends Table {
     private final TableAnalyzer tableAnalyzer;
 
     private long lastModificationId;
-    private boolean containsLargeObject;
     private Column rowIdColumn;
+    private int[] largeObjectColumns;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -82,11 +82,6 @@ public class StandardTable extends Table {
 
         setTemporary(data.temporary);
         setColumns(data.columns.toArray(new Column[0]));
-        for (Column col : getColumns()) {
-            if (DataType.isLargeObject(col.getType())) {
-                containsLargeObject = true;
-            }
-        }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
         indexesExcludeDelegate.add(primaryIndex);
@@ -461,7 +456,7 @@ public class StandardTable extends Table {
 
     @Override
     public boolean containsLargeObject() {
-        return containsLargeObject;
+        return largeObjectColumns != null;
     }
 
     @Override
@@ -491,7 +486,7 @@ public class StandardTable extends Table {
 
     @Override
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
-        if (containsLargeObject) {
+        if (containsLargeObject()) {
             // unfortunately, the data is gone on rollback
             truncate(session);
             if (database.getLobStorage() != null)
@@ -565,16 +560,38 @@ public class StandardTable extends Table {
         return name.toString();
     }
 
+    private Column[] oldColumns;
+
+    @Override
+    public Column[] getOldColumns() {
+        return oldColumns;
+    }
+
     @Override
     public void setNewColumns(Column[] columns) {
         this.oldColumns = this.columns;
         setColumns(columns);
     }
 
-    private Column[] oldColumns;
-
     @Override
-    public Column[] getOldColumns() {
-        return oldColumns;
+    protected void setColumns(Column[] columns) {
+        super.setColumns(columns);
+        largeObjectColumns = null;
+        ArrayList<Column> list = new ArrayList<>(1);
+        for (Column col : getColumns()) {
+            if (DataType.isLargeObject(col.getType())) {
+                list.add(col);
+            }
+        }
+        if (!list.isEmpty()) {
+            int size = list.size();
+            largeObjectColumns = new int[size];
+            for (int i = 0; i < size; i++)
+                largeObjectColumns[i] = list.get(i).getColumnId();
+        }
+    }
+
+    public int[] getLargeObjectColumns() {
+        return largeObjectColumns;
     }
 }

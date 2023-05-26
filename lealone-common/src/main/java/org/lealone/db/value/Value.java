@@ -30,7 +30,6 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
@@ -168,6 +167,13 @@ public abstract class Value implements Comparable<Value> {
     private static SoftReference<Value[]> softCache = new SoftReference<Value[]>(null);
     private static final BigDecimal MAX_LONG_DECIMAL = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal MIN_LONG_DECIMAL = BigDecimal.valueOf(Long.MIN_VALUE);
+
+    private static final CompareMode COMPARE_MODE = CompareMode.getInstance(null, 0, false);
+
+    @Override
+    public int compareTo(Value o) {
+        return compareTo(o, COMPARE_MODE);
+    }
 
     /**
      * Get the SQL expression for this value.
@@ -931,8 +937,7 @@ public abstract class Value implements Comparable<Value> {
     }
 
     /**
-     * Compare this value against another value using the specified compare
-     * mode.
+     * Compare this value against another value using the specified compare mode.
      *
      * @param v the other value
      * @param mode the compare mode
@@ -1020,38 +1025,6 @@ public abstract class Value implements Comparable<Value> {
     }
 
     /**
-     * Link a large value to a given table. For values that are kept fully in
-     * memory this method has no effect.
-     *
-     * @param handler the data handler
-     * @param tableId the table to link to
-     * @return the new value or itself
-     */
-    public Value link(DataHandler handler, int tableId) {
-        return this;
-    }
-
-    /**
-     * Check if this value is linked to a specific table. For values that are
-     * kept fully in memory, this method returns false.
-     *
-     * @return true if it is
-     */
-    public boolean isLinked() {
-        return false;
-    }
-
-    /**
-     * Mark any underlying resource as 'not linked to any table'. For values
-     * that are kept fully in memory this method has no effect.
-     *
-     * @param handler the data handler
-     */
-    public void unlink(DataHandler handler) {
-        // nothing to do
-    }
-
-    /**
      * Close the underlying resource, if any. For values that are kept fully in
      * memory this method has no effect.
      */
@@ -1096,43 +1069,6 @@ public abstract class Value implements Comparable<Value> {
         throw DbException.getUnsupportedException(DataType.getDataType(getType()).name + " " + op);
     }
 
-    /**
-     * Get the table (only for LOB object).
-     *
-     * @return the table id
-     */
-    public int getTableId() {
-        return 0;
-    }
-
-    /**
-     * Get the byte array.
-     *
-     * @return the byte array
-     */
-    public byte[] getSmall() {
-        return null;
-    }
-
-    /**
-     * Copy this value to a temporary file if necessary.
-     *
-     * @return the new value
-     */
-    public Value copyToTemp() {
-        return this;
-    }
-
-    /**
-     * Create an independent copy of this value if needed, that will be bound to
-     * a result. If the original row is removed, this copy is still readable.
-     *
-     * @return the value (this for small objects)
-     */
-    public Value copyToResult() {
-        return this;
-    }
-
     public ResultSet getResultSet() {
         SimpleResultSet rs = new SimpleResultSet();
         rs.addColumn("X", DataType.convertTypeToSQLType(getType()),
@@ -1140,13 +1076,6 @@ public abstract class Value implements Comparable<Value> {
         rs.addRow(getObject());
         return rs;
     }
-
-    @Override
-    public int compareTo(Value o) {
-        return compareTo(o, compareMode);
-    }
-
-    private static CompareMode compareMode = CompareMode.getInstance(null, 0, false);
 
     public final boolean isFalse() {
         return this != ValueNull.INSTANCE && !getBoolean();

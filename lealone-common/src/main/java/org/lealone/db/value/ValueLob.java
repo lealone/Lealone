@@ -155,24 +155,45 @@ public class ValueLob extends Value {
         return FileUtils.createTempFile(path, Constants.SUFFIX_TEMP_FILE, true, true);
     }
 
-    /**
-     * Create a LOB value.
-     *
-     * @param type the type
-     * @param handler the data handler
-     * @param tableId the table id
-     * @param id the lob id
-     * @param hmac the message authentication code
-     * @param precision the precision (number of bytes / characters)
-     * @return the value
-     */
-    public static ValueLob create(int type, DataHandler handler, int tableId, long id, byte[] hmac,
-            long precision) {
-        return new ValueLob(type, handler, tableId, id, hmac, precision);
+    @Override
+    public int getType() {
+        return type;
+    }
+
+    @Override
+    public long getPrecision() {
+        return precision;
+    }
+
+    @Override
+    public int getDisplaySize() {
+        return MathUtils.convertLongToInt(getPrecision());
     }
 
     public void setHandler(DataHandler handler) {
         this.handler = handler;
+    }
+
+    /**
+     * Get the current table id of this lob.
+     *
+     * @return the table id
+     */
+    public int getTableId() {
+        return tableId;
+    }
+
+    /**
+     * Get the data if this a small lob value.
+     *
+     * @return the data
+     */
+    public byte[] getSmall() {
+        return small;
+    }
+
+    public long getLobId() {
+        return lobId;
     }
 
     /**
@@ -205,12 +226,38 @@ public class ValueLob extends Value {
     }
 
     @Override
-    public boolean isLinked() {
-        return tableId != LobStorage.TABLE_ID_SESSION_VARIABLE && small == null;
-    }
-
-    public boolean isStored() {
-        return small == null && fileName == null;
+    public Value convertPrecision(long precision, boolean force) {
+        if (this.precision <= precision) {
+            return this;
+        }
+        ValueLob lob;
+        if (type == CLOB) {
+            if (handler == null) {
+                try {
+                    int p = MathUtils.convertLongToInt(precision);
+                    String s = IOUtils.readStringAndClose(getReader(), p);
+                    byte[] data = s.getBytes(Constants.UTF8);
+                    lob = ValueLob.createSmallLob(type, data, s.length());
+                } catch (IOException e) {
+                    throw DbException.convertIOException(e, null);
+                }
+            } else {
+                lob = ValueLob.createTempClob(getReader(), precision, handler);
+            }
+        } else {
+            if (handler == null) {
+                try {
+                    int p = MathUtils.convertLongToInt(precision);
+                    byte[] data = IOUtils.readBytesAndClose(getInputStream(), p);
+                    lob = ValueLob.createSmallLob(type, data, data.length);
+                } catch (IOException e) {
+                    throw DbException.convertIOException(e, null);
+                }
+            } else {
+                lob = ValueLob.createTempBlob(getInputStream(), precision, handler);
+            }
+        }
+        return lob;
     }
 
     @Override
@@ -228,7 +275,24 @@ public class ValueLob extends Value {
         }
     }
 
-    @Override
+    public boolean isStored() {
+        return small == null && fileName == null;
+    }
+
+    /**
+     * Check if this value is linked to a specific table. For values that are
+     * kept fully in memory, this method returns false.
+     *
+     * @return true if it is
+     */
+    public boolean isLinked() {
+        return tableId != LobStorage.TABLE_ID_SESSION_VARIABLE && small == null;
+    }
+
+    /**
+     * Mark any underlying resource as 'not linked to any table'. For values
+     * that are kept fully in memory this method has no effect.
+     */
     public void unlink(DataHandler database) {
         if (small == null && tableId != LobStorage.TABLE_ID_SESSION_VARIABLE) {
             database.getLobStorage().setTable(this, LobStorage.TABLE_ID_SESSION_VARIABLE);
@@ -236,18 +300,23 @@ public class ValueLob extends Value {
         }
     }
 
-    @Override
-    public Value link(DataHandler database, int tabId) {
+    /**
+     * Link a large value to a given table. For values that are kept fully in
+     * memory this method has no effect.
+     *
+     * @return the new value or itself
+     */
+    public ValueLob link(DataHandler database, int tabId) {
         if (small == null) {
             if (tableId == LobStorage.TABLE_TEMP) {
                 database.getLobStorage().setTable(this, tabId);
                 this.tableId = tabId;
             } else {
-                return handler.getLobStorage().copyLob(this, tabId, getPrecision());
+                return database.getLobStorage().copyLob(this, tabId, getPrecision());
             }
         } else if (small.length > database.getMaxLengthInplaceLob()) {
             LobStorage s = database.getLobStorage();
-            Value v;
+            ValueLob v;
             if (type == Value.BLOB) {
                 v = s.createBlob(getInputStream(), getPrecision());
             } else {
@@ -256,26 +325,6 @@ public class ValueLob extends Value {
             return v.link(database, tabId);
         }
         return this;
-    }
-
-    /**
-     * Get the current table id of this lob.
-     *
-     * @return the table id
-     */
-    @Override
-    public int getTableId() {
-        return tableId;
-    }
-
-    @Override
-    public int getType() {
-        return type;
-    }
-
-    @Override
-    public long getPrecision() {
-        return precision;
     }
 
     @Override
@@ -433,26 +482,6 @@ public class ValueLob extends Value {
         return buff.toString();
     }
 
-    /**
-     * Get the data if this a small lob value.
-     *
-     * @return the data
-     */
-    @Override
-    public byte[] getSmall() {
-        return small;
-    }
-
-    @Override
-    public int getDisplaySize() {
-        return MathUtils.convertLongToInt(getPrecision());
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        return other instanceof ValueLob && compareSecure((Value) other, null) == 0;
-    }
-
     @Override
     public int getMemory() {
         if (small != null) {
@@ -462,23 +491,12 @@ public class ValueLob extends Value {
     }
 
     /**
-     * Create an independent copy of this temporary value.
-     * The file will not be deleted automatically.
-     *
-     * @return the value
-     */
-    @Override
-    public ValueLob copyToTemp() {
-        return this;
-    }
-
-    /**
-     * Create an independent copy of this value,
-     * that will be bound to a result.
+     * Create an independent copy of this value if needed, that will be bound to
+     * a result. If the original row is removed, this copy is still readable.
      *
      * @return the value (this for small objects)
      */
-    @Override
+    @Deprecated
     public ValueLob copyToResult() {
         if (handler == null) {
             return this;
@@ -490,13 +508,14 @@ public class ValueLob extends Value {
         return s.copyLob(this, LobStorage.TABLE_RESULT, getPrecision());
     }
 
-    public long getLobId() {
-        return lobId;
-    }
-
     @Override
     public String toString() {
         return "lob: " + fileName + " table: " + tableId + " id: " + lobId;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof ValueLob && compareSecure((Value) other, null) == 0;
     }
 
     /**
@@ -601,41 +620,6 @@ public class ValueLob extends Value {
         return (int) m;
     }
 
-    @Override
-    public Value convertPrecision(long precision, boolean force) {
-        if (this.precision <= precision) {
-            return this;
-        }
-        ValueLob lob;
-        if (type == CLOB) {
-            if (handler == null) {
-                try {
-                    int p = MathUtils.convertLongToInt(precision);
-                    String s = IOUtils.readStringAndClose(getReader(), p);
-                    byte[] data = s.getBytes(Constants.UTF8);
-                    lob = ValueLob.createSmallLob(type, data, s.length());
-                } catch (IOException e) {
-                    throw DbException.convertIOException(e, null);
-                }
-            } else {
-                lob = ValueLob.createTempClob(getReader(), precision, handler);
-            }
-        } else {
-            if (handler == null) {
-                try {
-                    int p = MathUtils.convertLongToInt(precision);
-                    byte[] data = IOUtils.readBytesAndClose(getInputStream(), p);
-                    lob = ValueLob.createSmallLob(type, data, data.length);
-                } catch (IOException e) {
-                    throw DbException.convertIOException(e, null);
-                }
-            } else {
-                lob = ValueLob.createTempBlob(getInputStream(), precision, handler);
-            }
-        }
-        return lob;
-    }
-
     /**
      * Create a LOB object that fits in memory.
      *
@@ -663,5 +647,21 @@ public class ValueLob extends Value {
      */
     public static ValueLob createSmallLob(int type, byte[] small, long precision) {
         return new ValueLob(type, small, precision);
+    }
+
+    /**
+     * Create a LOB value.
+     *
+     * @param type the type
+     * @param handler the data handler
+     * @param tableId the table id
+     * @param id the lob id
+     * @param hmac the message authentication code
+     * @param precision the precision (number of bytes / characters)
+     * @return the value
+     */
+    public static ValueLob create(int type, DataHandler handler, int tableId, long id, byte[] hmac,
+            long precision) {
+        return new ValueLob(type, handler, tableId, id, hmac, precision);
     }
 }
