@@ -805,10 +805,6 @@ public class DataType {
             return Value.DECIMAL;
         } else if (ResultSet.class.isAssignableFrom(x)) {
             return Value.RESULT_SET;
-        } else if (Value.ValueBlob.class.isAssignableFrom(x)) {
-            return Value.BLOB;
-        } else if (Value.ValueClob.class.isAssignableFrom(x)) {
-            return Value.CLOB;
         } else if (Date.class.isAssignableFrom(x)) {
             return Value.DATE;
         } else if (Time.class.isAssignableFrom(x)) {

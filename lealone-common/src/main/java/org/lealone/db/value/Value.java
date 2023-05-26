@@ -1141,20 +1141,6 @@ public abstract class Value implements Comparable<Value> {
         return rs;
     }
 
-    /**
-     * A "binary large object".
-     */
-    public interface ValueClob {
-        // this is a marker interface
-    }
-
-    /**
-     * A "character large object".
-     */
-    public interface ValueBlob {
-        // this is a marker interface
-    }
-
     @Override
     public int compareTo(Value o) {
         return compareTo(o, compareMode);

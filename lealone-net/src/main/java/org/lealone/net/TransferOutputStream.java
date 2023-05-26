@@ -337,16 +337,14 @@ public class TransferOutputStream implements NetOutputStream {
             break;
         case Value.BLOB:
         case Value.CLOB: {
-            if (v instanceof ValueLob) {
-                ValueLob lob = (ValueLob) v;
-                if (lob.isStored()) {
-                    writeLong(-1);
-                    writeInt(lob.getTableId());
-                    writeLong(lob.getLobId());
-                    writeBytes(calculateLobMac(session, lob.getLobId()));
-                    writeLong(lob.getPrecision());
-                    break;
-                }
+            ValueLob lob = (ValueLob) v;
+            if (lob.isStored()) {
+                writeLong(-1);
+                writeInt(lob.getTableId());
+                writeLong(lob.getLobId());
+                writeBytes(calculateLobMac(session, lob.getLobId()));
+                writeLong(lob.getPrecision());
+                break;
             }
             long length = v.getPrecision();
             if (length < 0) {

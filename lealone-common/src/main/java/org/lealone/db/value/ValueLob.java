@@ -36,7 +36,7 @@ import org.lealone.storage.lob.LobStorage;
  * Small objects are kept in memory and stored in the record.
  * Large objects are either stored in the database, or in temporary files.
  */
-public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob {
+public class ValueLob extends Value {
 
     private final int type;
     private final long lobId;
@@ -89,14 +89,14 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
         this.lobId = 0;
         this.hmac = null;
         this.fileName = createTempLobFileName(handler);
-        this.tempFile = this.handler.openFile(fileName, "rw", false);
+        this.tempFile = handler.openFile(fileName, "rw", false);
         this.tempFile.autoDelete();
         FileStorageOutputStream out = new FileStorageOutputStream(tempFile, null, null);
         long tmpPrecision = 0;
         try {
             char[] buff = new char[Constants.IO_BUFFER_SIZE];
             while (true) {
-                int len = getBufferSize(this.handler, false, remaining);
+                int len = getBufferSize(handler, false, remaining);
                 len = IOUtils.readFully(in, buff);
                 if (len <= 0) {
                     break;
@@ -122,11 +122,11 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
         this.lobId = 0;
         this.hmac = null;
         this.fileName = createTempLobFileName(handler);
-        this.tempFile = this.handler.openFile(fileName, "rw", false);
+        this.tempFile = handler.openFile(fileName, "rw", false);
         this.tempFile.autoDelete();
         FileStorageOutputStream out = new FileStorageOutputStream(tempFile, null, null);
         long tmpPrecision = 0;
-        boolean compress = this.handler.getLobCompressionAlgorithm(Value.BLOB) != null;
+        boolean compress = handler.getLobCompressionAlgorithm(Value.BLOB) != null;
         try {
             while (true) {
                 tmpPrecision += len;
@@ -135,7 +135,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
                 if (remaining <= 0) {
                     break;
                 }
-                len = getBufferSize(this.handler, compress, remaining);
+                len = getBufferSize(handler, compress, remaining);
                 len = IOUtils.readFully(in, buff);
                 if (len <= 0) {
                     break;
