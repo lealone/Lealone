@@ -29,20 +29,8 @@ public interface LobStorage {
      */
     int TABLE_TEMP = -2;
 
-    /**
-     * Initialize the lob storage.
-     */
-    void init();
-
     default void save() {
     }
-
-    /**
-     * Whether the storage is read-only
-     *
-     * @return true if yes
-     */
-    boolean isReadOnly();
 
     /**
      * Create a BLOB object.

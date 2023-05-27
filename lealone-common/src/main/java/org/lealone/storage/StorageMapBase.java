@@ -69,15 +69,20 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     @Override
     public void setMaxKey(K key) {
         if (key instanceof ValueLong) {
-            long k = ((ValueLong) key).getLong();
-            while (true) {
-                long old = maxKey.get();
-                if (k > old) {
-                    if (maxKey.compareAndSet(old, k))
-                        break;
-                } else {
+            setMaxKey(((ValueLong) key).getLong());
+        } else if (key instanceof Number) {
+            setMaxKey(((Number) key).longValue());
+        }
+    }
+
+    private void setMaxKey(long key) {
+        while (true) {
+            long old = maxKey.get();
+            if (key > old) {
+                if (maxKey.compareAndSet(old, key))
                     break;
-                }
+            } else {
+                break;
             }
         }
     }

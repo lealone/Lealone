@@ -23,6 +23,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
+import org.lealone.db.value.ValueLong;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
@@ -36,16 +37,13 @@ import org.lealone.storage.lob.LobStorage;
  * @author H2 Group
  * @author zhh
  */
-// 把所有的大对象(BLOB/CLOB)变成流，然后通过三个BTreeMap配合完成对大对象的存储
+// 把所有的大对象(BLOB/CLOB)变成流，然后通过2个BTreeMap配合完成对大对象的存储
 public class LobStreamStorage implements LobStorage {
 
     private static final boolean TRACE = false;
 
     private final DataHandler dataHandler;
     private final AOStorage storage;
-
-    private final Object nextLobIdSync = new Object();
-    private long nextLobId;
 
     /**
      * The lob metadata map. It contains the mapping from the lob id(which is a long) 
@@ -65,75 +63,59 @@ public class LobStreamStorage implements LobStorage {
     }
 
     public LobStreamMap getLobStreamMap() {
+        init();
         return lobStreamMap;
     }
 
     @Override
-    public void init() {
-        if (lobMap == null)
-            lazyInit();
+    public void save() {
+        if (lobMap != null) {
+            lobMap.save();
+            lobStreamMap.save();
+        }
     }
 
-    @Override
-    public void save() {
+    private void init() {
         if (lobMap == null)
-            return;
-        lobMap.save();
-        lobStreamMap.save();
+            lazyInit();
     }
 
     // 不是每个数据库都用到大对象字段的，所以只有实际用到时才创建相应的BTreeMap
     private synchronized void lazyInit() {
         if (lobMap != null)
             return;
-        lobMap = storage.openBTreeMap("lobMap");
-        lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData"));
-
-        // garbage collection of the last blocks
-        if (storage.isReadOnly()) {
-            return;
-        }
-        if (lobStreamMap.isEmpty()) {
-            return;
-        }
-        // search the last referenced block
-        // (a lob may not have any referenced blocks if data is kept inline,
-        // so we need to loop)
-        long lastUsedKey = -1;
-        Long lobId = lobMap.lastKey();
-        while (lobId != null) {
-            Object[] v = lobMap.get(lobId);
-            byte[] id = (byte[]) v[0];
-            lastUsedKey = lobStreamMap.getMaxBlockKey(id);
-            if (lastUsedKey >= 0) {
-                break;
-            }
-            lobId = lobMap.floorKey(lobId);
-        }
-        if (TRACE) {
-            trace("lastUsedKey=" + lastUsedKey);
-        }
-        // delete all blocks that are newer
-        while (true) {
-            Long last = lobStreamMap.lastKey();
-            if (last == null || last <= lastUsedKey) {
-                break;
+        BTreeMap<Long, Object[]> lobMap = storage.openBTreeMap("lobMap", ValueLong.type, null, null);
+        lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData", ValueLong.type, null, null));
+        if (!lobStreamMap.isEmpty()) {
+            // search the last referenced block
+            // (a lob may not have any referenced blocks if data is kept inline, so we need to loop)
+            long lastUsedKey = -1;
+            Long lobId = lobMap.lastKey();
+            while (lobId != null) {
+                Object[] v = lobMap.get(lobId);
+                byte[] id = (byte[]) v[0];
+                lastUsedKey = lobStreamMap.getMaxBlockKey(id);
+                if (lastUsedKey >= 0) {
+                    break;
+                }
+                lobId = lobMap.floorKey(lobId);
             }
             if (TRACE) {
-                trace("gc " + last);
+                trace("lastUsedKey=" + lastUsedKey);
             }
-            lobStreamMap.remove(last);
+            // delete all blocks that are newer
+            while (true) {
+                Long last = lobStreamMap.lastKey();
+                if (last == null || last <= lastUsedKey) {
+                    break;
+                }
+                if (TRACE) {
+                    trace("gc " + last);
+                }
+                lobStreamMap.remove(last);
+            }
         }
-        // don't re-use block ids, except at the very end
-        Long last = lobStreamMap.lastKey();
-        if (last != null) {
-            lobStreamMap.setNextKey(last + 1);
-        }
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return storage.isReadOnly();
+        this.lobMap = lobMap;
     }
 
     @Override
@@ -160,7 +142,6 @@ public class LobStreamStorage implements LobStorage {
     @Override
     public ValueLob createClob(Reader reader, long maxLength) {
         init();
-        int type = Value.CLOB;
         try {
             // we multiple by 3 here to get the worst-case size in bytes
             if (maxLength != -1 && maxLength * 3 <= dataHandler.getMaxLengthInplaceLob()) {
@@ -174,17 +155,13 @@ public class LobStreamStorage implements LobStorage {
                     throw new IllegalStateException("len > maxinplace, " + utf8.length + " > "
                             + dataHandler.getMaxLengthInplaceLob());
                 }
-                return ValueLob.createSmallLob(type, utf8);
+                return ValueLob.createSmallLob(Value.CLOB, utf8);
             }
             if (maxLength < 0) {
                 maxLength = Long.MAX_VALUE;
             }
             CountingReaderInputStream in = new CountingReaderInputStream(reader, maxLength);
-            ValueLob lob = createLob(in, type);
-            // the length is not correct
-            lob = ValueLob.create(type, dataHandler, lob.getTableId(), lob.getLobId(), null,
-                    in.getLength());
-            return lob;
+            return createLob(in, Value.CLOB);
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
@@ -192,26 +169,18 @@ public class LobStreamStorage implements LobStorage {
 
     private ValueLob createLob(InputStream in, int type) throws IOException {
         byte[] streamStoreId = lobStreamMap.put(in);
-        long lobId = generateLobId();
-        long length = lobStreamMap.length(streamStoreId);
         int tableId = LobStorage.TABLE_TEMP;
         Object[] value = { streamStoreId, tableId };
-        lobMap.put(lobId, value);
-        ValueLob lob = ValueLob.create(type, dataHandler, tableId, lobId, null, length);
+        long lobId = lobMap.append(value);
+        long length;
+        if (in instanceof CountingReaderInputStream)
+            length = ((CountingReaderInputStream) in).getLength();
+        else
+            length = lobStreamMap.length(streamStoreId);
         if (TRACE) {
             trace("create " + tableId + "/" + lobId);
         }
-        return lob;
-    }
-
-    private long generateLobId() {
-        synchronized (nextLobIdSync) {
-            if (nextLobId == 0) {
-                Long id = lobMap.lastKey();
-                nextLobId = id == null ? 1 : id + 1;
-            }
-            return nextLobId++;
-        }
+        return ValueLob.create(type, dataHandler, tableId, lobId, null, length);
     }
 
     @Override
@@ -222,19 +191,19 @@ public class LobStreamStorage implements LobStorage {
             throw DbException.getInternalError("Lob not found: " + lob.getLobId());
         }
         byte[] streamStoreId = (byte[]) value[0];
-        return lobStreamMap.get(streamStoreId);
+        return lobStreamMap.getInputStream(streamStoreId);
     }
 
     @Override
     public void setTable(ValueLob lob, int tableId) {
         init();
         long lobId = lob.getLobId();
-        Object[] value = lobMap.remove(lobId);
+        Object[] value = lobMap.get(lobId);
+        value[1] = tableId;
         if (TRACE) {
             trace("move " + lob.getTableId() + "/" + lob.getLobId() + " > " + tableId + "/" + lobId);
         }
-        value[1] = tableId;
-        lobMap.put(lobId, value);
+        lobMap.markDirty(lobId);
     }
 
     @Override
@@ -266,9 +235,7 @@ public class LobStreamStorage implements LobStorage {
     @Override
     public void removeLob(ValueLob lob) {
         init();
-        int tableId = lob.getTableId();
-        long lobId = lob.getLobId();
-        removeLob(tableId, lobId);
+        removeLob(lob.getTableId(), lob.getLobId());
     }
 
     private void removeLob(int tableId, long lobId) {

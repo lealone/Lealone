@@ -210,7 +210,11 @@ public abstract class PageOperations {
         @Override
         @SuppressWarnings("unchecked")
         protected Object writeLocal(int index, PageOperationHandler poHandler) {
-            key = (K) ValueLong.get(map.incrementAndGetMaxKey());
+            long k = map.incrementAndGetMaxKey();
+            if (map.getKeyType() == ValueLong.type)
+                key = (K) Long.valueOf(k);
+            else
+                key = (K) ValueLong.get(k);
             p.markDirty(true);
             insertLeaf(index, value);
             return key;

@@ -26,23 +26,9 @@ public class LobLocalStorage implements LobStorage {
     private final DataHandler handler;
     private final LobReader lobReader;
 
-    public LobLocalStorage(DataHandler handler) {
-        this(handler, null);
-    }
-
     public LobLocalStorage(DataHandler handler, LobReader lobReader) {
         this.handler = handler;
         this.lobReader = lobReader;
-    }
-
-    @Override
-    public void init() {
-        // nothing to do
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return false;
     }
 
     @Override
