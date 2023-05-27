@@ -229,30 +229,6 @@ public class LobStreamStorage implements LobStorage {
     }
 
     @Override
-    public ValueLob copyLob(ValueLob old, int tableId, long length) {
-        init();
-        int type = old.getType();
-        long oldLobId = old.getLobId();
-        long oldLength = old.getPrecision();
-        if (oldLength != length) {
-            throw DbException.getInternalError("Length is different");
-        }
-        Object[] value = lobMap.get(oldLobId);
-        value = Arrays.copyOf(value, value.length);
-        byte[] streamStoreId = (byte[]) value[0];
-        long lobId = generateLobId();
-        value[1] = tableId;
-        lobMap.put(lobId, value);
-        Object[] key = new Object[] { streamStoreId, lobId };
-        refMap.put(key, Boolean.TRUE);
-        ValueLob lob = ValueLob.create(type, dataHandler, tableId, lobId, null, length);
-        if (TRACE) {
-            trace("copy " + old.getTableId() + "/" + old.getLobId() + " > " + tableId + "/" + lobId);
-        }
-        return lob;
-    }
-
-    @Override
     public InputStream getInputStream(ValueLob lob, byte[] hmac, long byteCount) throws IOException {
         init();
         Object[] value = lobMap.get(lob.getLobId());
@@ -298,7 +274,6 @@ public class LobStreamStorage implements LobStorage {
         }
         if (tableId == LobStorage.TABLE_ID_SESSION_VARIABLE) {
             removeAllForTable(LobStorage.TABLE_TEMP);
-            removeAllForTable(LobStorage.TABLE_RESULT);
         }
     }
 

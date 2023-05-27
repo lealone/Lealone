@@ -30,11 +30,6 @@ public interface LobStorage {
     int TABLE_TEMP = -2;
 
     /**
-     * The table id for result sets.
-     */
-    int TABLE_RESULT = -3;
-
-    /**
      * Initialize the lob storage.
      */
     void init();
@@ -66,16 +61,6 @@ public interface LobStorage {
      * @return the LOB
      */
     ValueLob createClob(Reader reader, long maxLength);
-
-    /**
-     * Copy a lob.
-     *
-     * @param old the old lob
-     * @param tableId the new table id
-     * @param length the length
-     * @return the new lob
-     */
-    ValueLob copyLob(ValueLob old, int tableId, long length);
 
     /**
      * Get the input stream for the given lob.

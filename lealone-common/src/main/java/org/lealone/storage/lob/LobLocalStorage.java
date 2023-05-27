@@ -62,11 +62,6 @@ public class LobLocalStorage implements LobStorage {
     }
 
     @Override
-    public ValueLob copyLob(ValueLob old, int tableId, long length) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public InputStream getInputStream(ValueLob lob, byte[] hmac, long byteCount) throws IOException {
         if (byteCount < 0) {
             byteCount = Long.MAX_VALUE;

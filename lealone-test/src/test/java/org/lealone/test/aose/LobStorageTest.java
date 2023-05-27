@@ -48,9 +48,6 @@ public class LobStorageTest extends AoseTestBase {
         in = lobStorage.getInputStream(lob, null, 0);
         assertNotNull(in);
 
-        lob = lobStorage.copyLob(lob, 10, lob.getPrecision());
-        assertEquals(10, lob.getTableId());
-
         lobStorage.setTable(lob, 20);
         lobStorage.removeAllForTable(20);
         lobStorage.removeLob(lob);

@@ -310,17 +310,14 @@ public class ValueLob extends Value {
         if (small == null) {
             if (tableId == LobStorage.TABLE_TEMP) {
                 database.getLobStorage().setTable(this, tabId);
-                this.tableId = tabId;
-            } else {
-                return database.getLobStorage().copyLob(this, tabId, getPrecision());
+                tableId = tabId;
             }
         } else if (small.length > database.getMaxLengthInplaceLob()) {
-            LobStorage s = database.getLobStorage();
             ValueLob v;
             if (type == Value.BLOB) {
-                v = s.createBlob(getInputStream(), getPrecision());
+                v = database.getLobStorage().createBlob(getInputStream(), getPrecision());
             } else {
-                v = s.createClob(getReader(), getPrecision());
+                v = database.getLobStorage().createClob(getReader(), getPrecision());
             }
             return v.link(database, tabId);
         }
@@ -488,24 +485,6 @@ public class ValueLob extends Value {
             return small.length + 104;
         }
         return 140;
-    }
-
-    /**
-     * Create an independent copy of this value if needed, that will be bound to
-     * a result. If the original row is removed, this copy is still readable.
-     *
-     * @return the value (this for small objects)
-     */
-    @Deprecated
-    public ValueLob copyToResult() {
-        if (handler == null) {
-            return this;
-        }
-        LobStorage s = handler.getLobStorage();
-        if (s.isReadOnly()) {
-            return this;
-        }
-        return s.copyLob(this, LobStorage.TABLE_RESULT, getPrecision());
     }
 
     @Override
