@@ -63,6 +63,10 @@ public class LobStreamMap {
         this.map = map;
     }
 
+    public void save() {
+        map.save();
+    }
+
     public boolean isEmpty() {
         return map.isEmpty();
     }

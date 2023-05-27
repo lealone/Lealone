@@ -52,21 +52,11 @@ public class LobStreamStorage implements LobStorage {
      * to the stream store id (which is a byte array).
      *
      * Key: lobId (long)
-     * Value: { streamStoreId (byte[]), tableId (int), byteCount (long), hash (long) }. //最后两个未使用
+     * Value: { streamStoreId (byte[]), tableId (int) }.
      */
     private BTreeMap<Long, Object[]> lobMap;
 
-    /**
-     * The reference map. It is used to remove data from the stream store: if no
-     * more entries for the given streamStoreId exist, the data is removed from
-     * the stream store.
-     *
-     * Key: { streamStoreId (byte[]), lobId (long) }.
-     * Value: true (boolean).
-     */
-    private BTreeMap<Object[], Boolean> refMap; // 调用copyLob时会有多个lob引用同一个streamStoreId
-
-    // 这个字段才是实际存放大对象字节流的，上面两个只是放引用
+    // 这个字段才是实际存放大对象字节流的
     private LobStreamMap lobStreamMap;
 
     public LobStreamStorage(DataHandler dataHandler, Storage storage) {
@@ -89,8 +79,7 @@ public class LobStreamStorage implements LobStorage {
         if (lobMap == null)
             return;
         lobMap.save();
-        refMap.save();
-        storage.openBTreeMap("lobData").save();
+        lobStreamMap.save();
     }
 
     // 不是每个数据库都用到大对象字段的，所以只有实际用到时才创建相应的BTreeMap
@@ -98,7 +87,6 @@ public class LobStreamStorage implements LobStorage {
         if (lobMap != null)
             return;
         lobMap = storage.openBTreeMap("lobMap");
-        refMap = storage.openBTreeMap("lobRef");
         lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData"));
 
         // garbage collection of the last blocks
@@ -209,8 +197,6 @@ public class LobStreamStorage implements LobStorage {
         int tableId = LobStorage.TABLE_TEMP;
         Object[] value = { streamStoreId, tableId };
         lobMap.put(lobId, value);
-        Object[] key = { streamStoreId, lobId };
-        refMap.put(key, Boolean.TRUE);
         ValueLob lob = ValueLob.create(type, dataHandler, tableId, lobId, null, length);
         if (TRACE) {
             trace("create " + tableId + "/" + lobId);
@@ -295,21 +281,7 @@ public class LobStreamStorage implements LobStorage {
             return;
         }
         byte[] streamStoreId = (byte[]) value[0];
-        Object[] key = new Object[] { streamStoreId, lobId };
-        refMap.remove(key);
-        // check if there are more entries for this streamStoreId
-        key = new Object[] { streamStoreId, 0L };
-        value = refMap.ceilingKey(key);
-        boolean hasMoreEntries = false;
-        if (value != null) {
-            byte[] s2 = (byte[]) value[0];
-            if (Arrays.equals(streamStoreId, s2)) {
-                hasMoreEntries = true;
-            }
-        }
-        if (!hasMoreEntries) {
-            lobStreamMap.remove(streamStoreId);
-        }
+        lobStreamMap.remove(streamStoreId);
     }
 
     private static void trace(String op) {
