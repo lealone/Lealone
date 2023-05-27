@@ -115,6 +115,16 @@ public class StandardPrimaryIndex extends StandardIndex {
         return (ValueLob) row.getValue(columnId);
     }
 
+    private void linkLargeObject(ServerSession session, Row row, int columnId, ValueLob v) {
+        ValueLob v2 = v.link(database, getId());
+        if (v2.isLinked()) {
+            session.unlinkAtCommitStop(v2);
+        }
+        if (v != v2) {
+            row.setValue(columnId, v2);
+        }
+    }
+
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
@@ -131,13 +141,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
                 ValueLob v = getLargeObject(row, columnId);
-                ValueLob v2 = v.link(database, getId());
-                if (v2.isLinked()) {
-                    session.unlinkAtCommitStop(v2);
-                }
-                if (v != v2) {
-                    row.setValue(columnId, v2);
-                }
+                linkLargeObject(session, row, columnId, v);
             }
         }
 
@@ -202,19 +206,14 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
-                ValueLob v = getLargeObject(newRow, columnId);
-                ValueLob v2 = v.link(database, getId());
-                if (v2.isLinked()) {
-                    session.unlinkAtCommitStop(v2);
-                }
-                if (v != v2) {
-                    newRow.setValue(columnId, v2);
-                }
-            }
-            for (int columnId : table.getLargeObjectColumns()) {
-                ValueLob v = getLargeObject(oldRow, columnId);
-                if (v.isLinked()) {
-                    session.unlinkAtCommit(v);
+                ValueLob oldLob = getLargeObject(oldRow, columnId);
+                ValueLob newLob = getLargeObject(newRow, columnId);
+                // 如果lob字段不需要更新那就什么都不需要做
+                if (oldLob != newLob) {
+                    linkLargeObject(session, newRow, columnId, newLob);
+                    if (oldLob.isLinked()) {
+                        session.unlinkAtCommit(oldLob);
+                    }
                 }
             }
         }
