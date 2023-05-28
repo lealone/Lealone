@@ -111,8 +111,15 @@ public class StandardPrimaryIndex extends StandardIndex {
         return mainIndexColumn != -1;
     }
 
+    // 执行ddl语句增删lob字段时老记录里没有lob字段需要特殊处理
     private ValueLob getLargeObject(Row row, int columnId) {
-        return (ValueLob) row.getValue(columnId);
+        if (columnId >= row.getColumnCount())
+            return null;
+        Value v = row.getValue(columnId);
+        if (v instanceof ValueLob)
+            return (ValueLob) v;
+        else
+            return null;
     }
 
     private void linkLargeObject(ServerSession session, Row row, int columnId, ValueLob v) {
@@ -141,7 +148,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
                 ValueLob v = getLargeObject(row, columnId);
-                linkLargeObject(session, row, columnId, v);
+                if (v != null)
+                    linkLargeObject(session, row, columnId, v);
             }
         }
 
@@ -236,7 +244,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
                 ValueLob v = getLargeObject(row, columnId);
-                if (v.isLinked()) {
+                if (v != null && v.isLinked()) {
                     session.unlinkAtCommit(v);
                 }
             }
