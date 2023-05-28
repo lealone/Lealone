@@ -132,6 +132,16 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
     }
 
+    public void onAddSucceeded(ServerSession session, Row row) {
+        if (table.containsLargeObject()) {
+            for (int columnId : table.getLargeObjectColumns()) {
+                ValueLob v = getLargeObject(row, columnId);
+                if (v != null)
+                    linkLargeObject(session, row, columnId, v);
+            }
+        }
+    }
+
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
@@ -143,14 +153,6 @@ public class StandardPrimaryIndex extends StandardIndex {
         } else {
             long k = row.getValue(mainIndexColumn).getLong();
             row.setKey(k);
-        }
-
-        if (table.containsLargeObject()) {
-            for (int columnId : table.getLargeObjectColumns()) {
-                ValueLob v = getLargeObject(row, columnId);
-                if (v != null)
-                    linkLargeObject(session, row, columnId, v);
-            }
         }
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();

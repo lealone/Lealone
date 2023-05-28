@@ -336,11 +336,27 @@ public class StandardTable extends Table {
             tableAnalyzer.analyze(session, sample);
     }
 
+    private AsyncCallback<Integer> createAsyncCallbackForAddRow(ServerSession session, Row row) {
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        if (containsLargeObject()) {
+            // 增加row全部成功后再连接大对象
+            AsyncCallback<Integer> acLob = new AsyncCallback<>();
+            acLob.onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    primaryIndex.onAddSucceeded(session, row);
+                }
+                ac.setAsyncResult(ar);
+            });
+            return acLob;
+        }
+        return ac;
+    }
+
     @Override
     public Future<Integer> addRow(ServerSession session, Row row) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = createAsyncCallbackForAddRow(session, row);
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
