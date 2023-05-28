@@ -38,6 +38,8 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
+import org.lealone.db.value.BlobBase;
+import org.lealone.db.value.ClobBase;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
@@ -1000,6 +1002,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             Value v;
             if (x == null) {
                 v = ValueNull.INSTANCE;
+            } else if (x instanceof BlobBase) {
+                v = ((BlobBase) x).getValue();
             } else {
                 v = conn.createBlob(x.getBinaryStream(), -1);
             }
@@ -1049,6 +1053,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             Value v;
             if (x == null) {
                 v = ValueNull.INSTANCE;
+            } else if (x instanceof ClobBase) {
+                v = ((ClobBase) x).getValue();
             } else {
                 v = conn.createClob(x.getCharacterStream(), -1);
             }
@@ -1443,6 +1449,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             Value v;
             if (x == null) {
                 v = ValueNull.INSTANCE;
+            } else if (x instanceof ClobBase) {
+                v = ((ClobBase) x).getValue();
             } else {
                 v = conn.createClob(x.getCharacterStream(), -1);
             }

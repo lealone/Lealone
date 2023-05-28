@@ -25,6 +25,10 @@ public abstract class BlobBase extends TraceObject implements Blob {
 
     protected Value value;
 
+    public Value getValue() {
+        return value;
+    }
+
     /**
      * Returns the length.
      *

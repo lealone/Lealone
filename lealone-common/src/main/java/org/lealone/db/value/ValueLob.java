@@ -534,8 +534,7 @@ public class ValueLob extends Value {
                 return ValueLob.createSmallLob(Value.CLOB, small, len);
             }
             reader.reset();
-            ValueLob lob = new ValueLob(handler, reader, remaining);
-            return lob;
+            return new ValueLob(handler, reader, remaining);
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
@@ -570,8 +569,7 @@ public class ValueLob extends Value {
                 System.arraycopy(buff, 0, small, 0, len);
                 return ValueLob.createSmallLob(Value.BLOB, small, small.length);
             }
-            ValueLob lob = new ValueLob(handler, buff, len, in, remaining);
-            return lob;
+            return new ValueLob(handler, buff, len, in, remaining);
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }

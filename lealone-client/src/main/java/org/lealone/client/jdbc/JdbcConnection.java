@@ -5,9 +5,7 @@
  */
 package org.lealone.client.jdbc;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.sql.Array;
 import java.sql.Blob;
@@ -45,6 +43,7 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.SQLCommand;
@@ -1330,6 +1329,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         return rs;
     }
 
+    private ValueLob createEmptyLob(int type) {
+        return ValueLob.createSmallLob(type, Utils.EMPTY_BYTES, 0);
+    }
+
     /**
      * Create a new empty Clob object.
      *
@@ -1341,9 +1344,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             int id = getNextTraceId(TraceObjectType.CLOB);
             debugCodeAssign(TraceObjectType.CLOB, id, "createClob()");
             checkClosed();
-            Value v = session.getDataHandler().getLobStorage()
-                    .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
-            return new JdbcClob(this, v, id);
+            return new JdbcClob(this, createEmptyLob(Value.CLOB), id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1360,9 +1361,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             int id = getNextTraceId(TraceObjectType.BLOB);
             debugCodeAssign(TraceObjectType.BLOB, id, "createClob()");
             checkClosed();
-            Value v = session.getDataHandler().getLobStorage()
-                    .createBlob(new ByteArrayInputStream(Utils.EMPTY_BYTES), 0);
-            return new JdbcBlob(this, v, id);
+            return new JdbcBlob(this, createEmptyLob(Value.BLOB), id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1380,9 +1379,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             int id = getNextTraceId(TraceObjectType.CLOB);
             debugCodeAssign("NClob", TraceObjectType.CLOB, id, "createNClob()");
             checkClosed();
-            Value v = session.getDataHandler().getLobStorage()
-                    .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
-            return new JdbcClob(this, v, id);
+            return new JdbcClob(this, createEmptyLob(Value.CLOB), id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1501,8 +1498,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         if (length <= 0) {
             length = -1;
         }
-        Value v = session.getDataHandler().getLobStorage().createClob(x, length);
-        return v;
+        return session.getDataHandler().getLobStorage().createClob(x, length);
     }
 
     /**
@@ -1520,8 +1516,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         if (length <= 0) {
             length = -1;
         }
-        Value v = session.getDataHandler().getLobStorage().createBlob(x, length);
-        return v;
+        return session.getDataHandler().getLobStorage().createBlob(x, length);
     }
 
     private static void checkMap(Map<String, Class<?>> map) {

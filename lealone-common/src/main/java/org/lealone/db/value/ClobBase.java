@@ -27,6 +27,10 @@ public abstract class ClobBase extends TraceObject implements Clob, NClob {
 
     protected Value value;
 
+    public Value getValue() {
+        return value;
+    }
+
     /**
      * Returns the length.
      *
