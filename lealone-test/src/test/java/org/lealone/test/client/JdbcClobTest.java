@@ -26,6 +26,7 @@ public class JdbcClobTest extends ClientTestBase {
         query(stmt, clobStr);
 
         addClob(stmt, clobStr);
+        unique(conn, stmt, clobStr);
 
         // stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
 
@@ -50,13 +51,9 @@ public class JdbcClobTest extends ClientTestBase {
     }
 
     static void insert(Connection conn, String clobStr) throws Exception {
-        JdbcClob clob = (JdbcClob) conn.createClob();
-        // 从1开始
-        clob.setString(1, clobStr);
-
         PreparedStatement ps = conn
                 .prepareStatement("INSERT INTO JdbcClobTest(f1, f2, f3) VALUES(1, 2, ?)");
-        ps.setClob(1, clob);
+        ps.setClob(1, createClob(conn, clobStr));
         ps.executeUpdate();
         ps.close();
     }
@@ -86,5 +83,35 @@ public class JdbcClobTest extends ClientTestBase {
 
         JdbcClob clob = (JdbcClob) rs.getClob(3);
         assertNull(clob);
+    }
+
+    static JdbcClob createClob(Connection conn, String clobStr) throws Exception {
+        JdbcClob clob = (JdbcClob) conn.createClob();
+        // 从1开始
+        clob.setString(1, clobStr);
+        return clob;
+    }
+
+    static void unique(Connection conn, Statement stmt, String clobStr) throws Exception {
+        stmt.executeUpdate("DROP TABLE IF EXISTS UniqueClobTest");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS UniqueClobTest (f1 int, f2 clob,"
+                + "CONSTRAINT uk_configinfo_datagrouptenant UNIQUE (f1))");
+        PreparedStatement ps = conn.prepareStatement("INSERT INTO UniqueClobTest(f1, f2) VALUES(?, ?)");
+        ps.setInt(1, 1);
+        ps.setClob(2, createClob(conn, clobStr));
+        ps.executeUpdate();
+
+        ps.setInt(1, 1);
+        ps.setClob(2, createClob(conn, clobStr));
+        try {
+            ps.executeUpdate();
+            fail();
+        } catch (Exception e) {
+            ps = conn.prepareStatement("UPDATE UniqueClobTest SET f2=? WHERE f1=?");
+            ps.setInt(2, 1);
+            ps.setClob(1, createClob(conn, clobStr));
+            ps.executeUpdate();
+        }
+        ps.close();
     }
 }
