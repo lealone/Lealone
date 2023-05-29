@@ -88,7 +88,8 @@ public class ServerSession extends SessionBase {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
-    private HashMap<String, ValueLob> unlinkLobMap;
+    private HashMap<String, ValueLob> unlinkLobMapAtCommit;
+    private HashMap<String, ValueLob> unlinkLobMapAtRollback;
     private boolean containsLargeObject;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
@@ -593,6 +594,15 @@ public class ServerSession extends SessionBase {
         transaction = null;
     }
 
+    private void unlinkLob(HashMap<String, ValueLob> lobMap) {
+        if (lobMap != null) {
+            for (ValueLob v : lobMap.values()) {
+                v.unlink(database);
+                v.close();
+            }
+        }
+    }
+
     private void commitFinal() {
         if (!containsDDL) {
             // do not clean the temp tables if the last command was a create/drop
@@ -603,16 +613,12 @@ public class ServerSession extends SessionBase {
             }
         }
         if (containsLargeObject) {
+            unlinkLob(unlinkLobMapAtCommit);
+            unlinkLobMapAtCommit = null;
+            unlinkLobMapAtRollback = null;
+            containsLargeObject = false;
             if (database.getLobStorage() != null)
                 database.getLobStorage().save();
-            containsLargeObject = false;
-        }
-        if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
-            for (ValueLob v : unlinkLobMap.values()) {
-                v.unlink(database);
-                v.close();
-            }
-            unlinkLobMap = null;
         }
         unlockAll(true);
         endTransaction();
@@ -632,6 +638,12 @@ public class ServerSession extends SessionBase {
         unlockAll(false);
         endTransaction();
 
+        if (containsLargeObject) {
+            unlinkLob(unlinkLobMapAtRollback);
+            unlinkLobMapAtCommit = null;
+            unlinkLobMapAtRollback = null;
+            containsLargeObject = false;
+        }
         if (autoCommitAtTransactionEnd) {
             autoCommit = true;
             autoCommitAtTransactionEnd = false;
@@ -899,32 +911,25 @@ public class ServerSession extends SessionBase {
         return database;
     }
 
-    /**
-     * Remember that the given LOB value must be un-linked (disconnected from
-     * the table) at commit.
-     *
-     * @param v the value
-     */
     public void unlinkAtCommit(ValueLob v) {
         if (SysProperties.CHECK && !v.isLinked()) {
             DbException.throwInternalError();
         }
-        if (unlinkLobMap == null) {
-            unlinkLobMap = new HashMap<>();
+        if (unlinkLobMapAtCommit == null) {
+            unlinkLobMapAtCommit = new HashMap<>();
         }
-        unlinkLobMap.put(v.toString(), v);
+        unlinkLobMapAtCommit.put(v.toString(), v);
         containsLargeObject = true;
     }
 
-    /**
-     * Do not unlink this LOB value at commit any longer.
-     *
-     * @param v the value
-     */
-    public void unlinkAtCommitStop(ValueLob v) {
-        if (unlinkLobMap != null) {
-            unlinkLobMap.remove(v.toString());
+    public void unlinkAtRollback(ValueLob v) {
+        if (SysProperties.CHECK && !v.isLinked()) {
+            DbException.throwInternalError();
         }
+        if (unlinkLobMapAtRollback == null) {
+            unlinkLobMapAtRollback = new HashMap<>();
+        }
+        unlinkLobMapAtRollback.put(v.toString(), v);
         containsLargeObject = true;
     }
 

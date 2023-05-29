@@ -125,7 +125,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     private void linkLargeObject(ServerSession session, Row row, int columnId, ValueLob v) {
         ValueLob v2 = v.link(database, getId());
         if (v2.isLinked()) {
-            session.unlinkAtCommitStop(v2);
+            session.unlinkAtRollback(v2);
         }
         if (v != v2) {
             row.setValue(columnId, v2);
