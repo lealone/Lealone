@@ -5,9 +5,9 @@
  */
 package org.lealone.storage;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -117,6 +117,18 @@ public abstract class StorageBase implements Storage {
     }
 
     @Override
+    public void backupTo(String baseDir, ZipOutputStream out, Long lastDate) {
+        if (isInMemory())
+            return;
+        save();
+        try {
+            backupFiles(baseDir, out, lastDate);
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "");
+        }
+    }
+
+    @Override
     public void close() {
         for (StorageEventListener listener : listeners.values())
             listener.beforeClose(this);
@@ -155,30 +167,36 @@ public abstract class StorageBase implements Storage {
     }
 
     private void backupFiles(String toFile, Long lastDate) {
-        String path = getStoragePath(); // 可能是一个文件或目录
-        if (!toFile.toLowerCase().endsWith(".zip"))
-            toFile += ".zip";
-        try (OutputStream zip = FileUtils.newOutputStream(toFile, false);
-                ZipOutputStream out = new ZipOutputStream(zip)) {
-            FilePath p = FilePath.get(path);
-            if (p.isDirectory()) {
-                String pathShortName = path.replace('\\', '/');
-                pathShortName = pathShortName.substring(pathShortName.lastIndexOf('/') + 1);
-                FilePath dir = FilePath.get(path);
-                for (FilePath map : dir.newDirectoryStream()) {
-                    String mapName = map.getName();
-                    String entryNameBase = pathShortName + "/" + mapName;
-                    for (FilePath file : map.newDirectoryStream()) {
-                        if (lastDate == null || file.lastModified() > lastDate.longValue())
-                            backupFile(out, getInputStream(mapName, file),
-                                    entryNameBase + "/" + file.getName());
-                    }
-                }
-            } else {
-                backupFile(out, p.newInputStream(), p.getName());
-            }
+        try (ZipOutputStream out = createZipOutputStream(toFile)) {
+            backupFiles(null, out, lastDate);
         } catch (IOException e) {
             throw DbException.convertIOException(e, toFile);
+        }
+    }
+
+    private void backupFiles(String baseDir, ZipOutputStream out, Long lastDate) throws IOException {
+        if (baseDir != null)
+            baseDir = new File(baseDir).getCanonicalPath().replace('\\', '/');
+        String path = new File(getStoragePath()).getCanonicalPath(); // 可能是一个文件或目录
+        FilePath p = FilePath.get(path);
+        if (p.isDirectory()) {
+            String pathShortName = path.replace('\\', '/');
+            if (baseDir != null && pathShortName.startsWith(baseDir))
+                pathShortName = pathShortName.substring(baseDir.length() + 1);
+            else
+                pathShortName = pathShortName.substring(pathShortName.lastIndexOf('/') + 1);
+            FilePath dir = FilePath.get(path);
+            for (FilePath map : dir.newDirectoryStream()) {
+                String mapName = map.getName();
+                String entryNameBase = pathShortName + "/" + mapName;
+                for (FilePath file : map.newDirectoryStream()) {
+                    if (lastDate == null || file.lastModified() > lastDate.longValue())
+                        backupFile(out, getInputStream(mapName, file),
+                                entryNameBase + "/" + file.getName());
+                }
+            }
+        } else {
+            backupFile(out, p.newInputStream(), p.getName());
         }
     }
 
@@ -189,5 +207,11 @@ public abstract class StorageBase implements Storage {
         out.putNextEntry(new ZipEntry(entryName));
         IOUtils.copyAndCloseInput(in, out);
         out.closeEntry();
+    }
+
+    public static ZipOutputStream createZipOutputStream(String fileName) throws IOException {
+        if (!fileName.toLowerCase().endsWith(".zip"))
+            fileName += ".zip";
+        return new ZipOutputStream(FileUtils.newOutputStream(fileName, false));
     }
 }

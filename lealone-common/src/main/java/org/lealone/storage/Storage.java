@@ -7,6 +7,7 @@ package org.lealone.storage;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
@@ -47,6 +48,8 @@ public interface Storage {
     }
 
     void backupTo(String fileName, Long lastDate);
+
+    void backupTo(String baseDir, ZipOutputStream out, Long lastDate);
 
     void close();
 

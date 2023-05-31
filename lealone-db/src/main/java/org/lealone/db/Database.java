@@ -20,6 +20,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -65,6 +66,7 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.Storage;
+import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileStorage;
@@ -159,7 +161,6 @@ public class Database implements DataHandler, DbObject {
     private final AtomicLong modificationMetaId = new AtomicLong();
 
     private Table meta;
-    private String metaStorageEngineName;
     private Index metaIdIndex;
 
     private TraceSystem traceSystem;
@@ -198,6 +199,7 @@ public class Database implements DataHandler, DbObject {
     private RunMode runMode = RunMode.CLIENT_SERVER;
 
     private final TableAlterHistory tableAlterHistory = new TableAlterHistory();
+    private final ConcurrentHashMap<Integer, DataHandler> dataHandlers = new ConcurrentHashMap<>();
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -478,7 +480,7 @@ public class Database implements DataHandler, DbObject {
         data.create = true;
         data.isHidden = true;
         data.session = systemSession;
-        data.storageEngineName = metaStorageEngineName = getDefaultStorageEngineName();
+        data.storageEngineName = getDefaultStorageEngineName();
         meta = infoSchema.createTable(data);
         objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
 
@@ -1103,7 +1105,7 @@ public class Database implements DataHandler, DbObject {
                 boolean containsLargeObject = false;
                 for (Schema schema : getAllSchemas()) {
                     for (Table table : schema.getAllTablesAndViews()) {
-                        if (table.containsLargeObject()) {
+                        if (table.containsLargeObject() && !table.getDataHandler().isTableLobStorage()) {
                             containsLargeObject = true;
                             break;
                         }
@@ -1835,13 +1837,20 @@ public class Database implements DataHandler, DbObject {
 
     public void backupTo(String fileName, Long lastDate) {
         checkpoint();
-        for (Storage s : getStorages()) {
-            s.backupTo(fileName, lastDate);
+        String baseDir = getStoragePath().replace('\\', '/');
+        baseDir = baseDir.substring(0, baseDir.lastIndexOf('/'));
+        try (ZipOutputStream out = StorageBase.createZipOutputStream(fileName)) {
+            // 如果有database lob storage，这一步也把它备份了
+            for (Storage s : getStorages()) {
+                s.backupTo(baseDir, out, lastDate);
+            }
+            // 备份table lob storage
+            for (DataHandler dh : dataHandlers.values()) {
+                dh.getLobStorage().backupTo(baseDir, out, lastDate);
+            }
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, fileName);
         }
-    }
-
-    public Storage getMetaStorage() {
-        return storages.get(metaStorageEngineName);
     }
 
     public List<Storage> getStorages() {
@@ -1856,8 +1865,8 @@ public class Database implements DataHandler, DbObject {
         Storage storage = storages.get(storageEngine.getName());
         if (storage != null)
             return storage;
-
-        storage = getStorageBuilder(storageEngine).openStorage();
+        String storagePath = persistent ? getStoragePath() : null;
+        storage = getStorageBuilder(storageEngine, storagePath).openStorage();
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null)
             setLobStorage(storageEngine.getLobStorage(this, storage));
@@ -1885,12 +1894,11 @@ public class Database implements DataHandler, DbObject {
         return path;
     }
 
-    private StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
+    public StorageBuilder getStorageBuilder(StorageEngine storageEngine, String storagePath) {
         StorageBuilder storageBuilder = storageEngine.getStorageBuilder();
         if (!persistent) {
             storageBuilder.inMemory();
         } else {
-            String storagePath = getStoragePath();
             byte[] key = getFileEncryptionKey();
             storageBuilder.pageSplitSize(getPageSize());
             storageBuilder.storagePath(storagePath);
@@ -2047,5 +2055,18 @@ public class Database implements DataHandler, DbObject {
 
     public TableAlterHistory getTableAlterHistory() {
         return tableAlterHistory;
+    }
+
+    public DataHandler getDataHandler(int tableId) {
+        DataHandler dh = dataHandlers.get(tableId);
+        return dh == null ? this : dh;
+    }
+
+    public void addDataHandler(int tableId, DataHandler dataHandler) {
+        dataHandlers.put(tableId, dataHandler);
+    }
+
+    public void removeDataHandler(int tableId) {
+        dataHandlers.remove(tableId);
     }
 }

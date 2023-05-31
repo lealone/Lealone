@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -123,12 +124,34 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     private void linkLargeObject(ServerSession session, Row row, int columnId, ValueLob v) {
-        ValueLob v2 = v.link(database, getId());
+        ValueLob v2 = v.link(table.getDataHandler(), getId());
         if (v2.isLinked()) {
+            DataHandler dh = table.getDataHandler();
+            int id = dh.isTableLobStorage() ? getId() : -1;
+            v2.setHandler(dh);
             session.unlinkAtRollback(v2);
+            session.addDataHandler(id, dh);
+            v2.setUseTableLobStorage(dh.isTableLobStorage());
         }
         if (v != v2) {
             row.setValue(columnId, v2);
+        }
+    }
+
+    private void unlinkLargeObject(ServerSession session, ValueLob v) {
+        if (v != null && v.isLinked()) {
+            DataHandler dh;
+            int id;
+            if (v.isUseTableLobStorage()) {
+                dh = table.getDataHandler();
+                id = getId();
+            } else {
+                dh = database;
+                id = -1;
+            }
+            v.setHandler(dh);
+            session.unlinkAtCommit(v);
+            session.addDataHandler(id, dh);
         }
     }
 
@@ -221,9 +244,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 // 如果lob字段不需要更新那就什么都不需要做
                 if (oldLob != newLob) {
                     linkLargeObject(session, newRow, columnId, newLob);
-                    if (oldLob.isLinked()) {
-                        session.unlinkAtCommit(oldLob);
-                    }
+                    unlinkLargeObject(session, oldLob);
                 }
             }
         }
@@ -246,9 +267,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
                 ValueLob v = getLargeObject(row, columnId);
-                if (v != null && v.isLinked()) {
-                    session.unlinkAtCommit(v);
-                }
+                unlinkLargeObject(session, v);
             }
         }
         return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf));
@@ -341,10 +360,6 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public void truncate(ServerSession session) {
-        // 内存数据库没有LobStorage
-        if (table.containsLargeObject() && database.getLobStorage() != null) {
-            database.getLobStorage().removeAllForTable(table.getId());
-        }
         getMap(session).clear();
     }
 

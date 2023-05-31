@@ -16,6 +16,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
@@ -72,6 +73,21 @@ public class LobStreamStorage implements LobStorage {
         if (lobMap != null) {
             lobMap.save();
             lobStreamMap.save();
+        }
+    }
+
+    @Override
+    public void close() {
+        if (storage != null) {
+            storage.close();
+        }
+    }
+
+    @Override
+    public void backupTo(String baseDir, ZipOutputStream out, Long lastDate) {
+        if (storage != null) {
+            init();
+            storage.backupTo(baseDir, out, lastDate);
         }
     }
 
@@ -212,6 +228,11 @@ public class LobStreamStorage implements LobStorage {
             return;
         }
         init();
+        if (dataHandler.isTableLobStorage()) {
+            lobMap.clear();
+            lobStreamMap.clear();
+            return;
+        }
         // this might not be very efficient -
         // to speed it up, we would need yet another map
         ArrayList<Long> list = new ArrayList<>();

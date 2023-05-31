@@ -8,6 +8,7 @@ package org.lealone.storage.lob;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.db.value.ValueLob;
 
@@ -30,6 +31,12 @@ public interface LobStorage {
     int TABLE_TEMP = -2;
 
     default void save() {
+    }
+
+    default void close() {
+    }
+
+    default void backupTo(String baseDir, ZipOutputStream out, Long lastDate) {
     }
 
     /**

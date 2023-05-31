@@ -37,7 +37,8 @@ public class JdbcClobTest extends ClientTestBase {
     static void init(Statement stmt) throws Exception {
         // stmt.executeUpdate("set DB_CLOSE_DELAY 0");
         stmt.executeUpdate("DROP TABLE IF EXISTS JdbcClobTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JdbcClobTest (f1 int, f2 long, f3 clob)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JdbcClobTest (f1 int, f2 long, f3 clob) "
+                + "parameters(USE_TABLE_LOB_STORAGE=true)");
     }
 
     static String getClobStr() {

@@ -55,6 +55,8 @@ public class ValueLob extends Value {
     private int tableId;
     private int hash;
 
+    private boolean useTableLobStorage;
+
     private ValueLob(int type, DataHandler handler, int tableId, long lobId, byte[] hmac,
             long precision) {
         this.type = type;
@@ -172,6 +174,18 @@ public class ValueLob extends Value {
 
     public void setHandler(DataHandler handler) {
         this.handler = handler;
+    }
+
+    public DataHandler getHandler() {
+        return handler;
+    }
+
+    public boolean isUseTableLobStorage() {
+        return useTableLobStorage;
+    }
+
+    public void setUseTableLobStorage(boolean useTableLobStorage) {
+        this.useTableLobStorage = useTableLobStorage;
     }
 
     /**

@@ -79,4 +79,8 @@ public interface DataHandler {
      * @return the lob storage mechanism
      */
     LobStorage getLobStorage();
+
+    default boolean isTableLobStorage() {
+        return false;
+    }
 }

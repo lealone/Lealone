@@ -17,4 +17,5 @@ public enum StorageSetting {
     MIN_FILL_RATE,
     MAP_TYPE,
     POH_FACTORY,
+    USE_TABLE_LOB_STORAGE,
 }

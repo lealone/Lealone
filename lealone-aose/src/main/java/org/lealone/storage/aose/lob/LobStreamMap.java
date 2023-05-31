@@ -49,6 +49,10 @@ public class LobStreamMap {
         map.save();
     }
 
+    public void clear() {
+        map.clear();
+    }
+
     public boolean isEmpty() {
         return map.isEmpty();
     }

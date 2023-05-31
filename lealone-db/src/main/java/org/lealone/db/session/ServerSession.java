@@ -88,13 +88,14 @@ public class ServerSession extends SessionBase {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
+    private HashMap<Integer, DataHandler> dataHandlers;
     private HashMap<String, ValueLob> unlinkLobMapAtCommit;
     private HashMap<String, ValueLob> unlinkLobMapAtRollback;
     private boolean containsLargeObject;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
     private boolean autoCommitAtTransactionEnd;
-    private volatile long cancelAt;
+    private long cancelAt;
     private final long sessionStart = System.currentTimeMillis();
     private long transactionStart;
     private long currentCommandStart;
@@ -111,7 +112,7 @@ public class ServerSession extends SessionBase {
     private boolean containsDDL;
     private boolean containsDatabaseStatement;
 
-    private volatile Transaction transaction;
+    private Transaction transaction;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -597,7 +598,7 @@ public class ServerSession extends SessionBase {
     private void unlinkLob(HashMap<String, ValueLob> lobMap) {
         if (lobMap != null) {
             for (ValueLob v : lobMap.values()) {
-                v.unlink(database);
+                v.unlink(v.getHandler());
                 v.close();
             }
         }
@@ -617,8 +618,12 @@ public class ServerSession extends SessionBase {
             unlinkLobMapAtCommit = null;
             unlinkLobMapAtRollback = null;
             containsLargeObject = false;
-            if (database.getLobStorage() != null)
-                database.getLobStorage().save();
+            if (dataHandlers != null) {
+                for (DataHandler dh : dataHandlers.values())
+                    dh.getLobStorage().save();
+                dataHandlers = null;
+            }
+
         }
         unlockAll(true);
         endTransaction();
@@ -909,6 +914,13 @@ public class ServerSession extends SessionBase {
     @Override
     public DataHandler getDataHandler() {
         return database;
+    }
+
+    public void addDataHandler(int tableId, DataHandler dataHandler) {
+        if (dataHandlers == null) {
+            dataHandlers = new HashMap<>();
+        }
+        dataHandlers.put(tableId, dataHandler);
     }
 
     public void unlinkAtCommit(ValueLob v) {
@@ -1250,18 +1262,6 @@ public class ServerSession extends SessionBase {
         this.transactionListener = transactionListener;
     }
 
-    private byte[] lobMacSalt;
-
-    @Override
-    public void setLobMacSalt(byte[] lobMacSalt) {
-        this.lobMacSalt = lobMacSalt;
-    }
-
-    @Override
-    public byte[] getLobMacSalt() {
-        return lobMacSalt;
-    }
-
     @Override
     public void setNetworkTimeout(int milliseconds) {
         if (connectionInfo != null)
@@ -1280,7 +1280,7 @@ public class ServerSession extends SessionBase {
     }
 
     private ExpiringMap<Integer, ManualCloseable> cache; // 缓存PreparedStatement和结果集
-    private SmallLRUCache<Long, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
+    private SmallLRUCache<String, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     private void closeAllCache() {
         if (cache != null) {
@@ -1315,7 +1315,7 @@ public class ServerSession extends SessionBase {
         return cache.remove(k, ifAvailable);
     }
 
-    public SmallLRUCache<Long, InputStream> getLobCache() {
+    public SmallLRUCache<String, InputStream> getLobCache() {
         if (lobCache == null) {
             lobCache = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
                     SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));

@@ -15,6 +15,7 @@ import java.util.Set;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
@@ -1095,5 +1096,9 @@ public abstract class Table extends SchemaObjectBase {
 
     public String getParameter(String name) {
         return null;
+    }
+
+    public DataHandler getDataHandler() {
+        return database;
     }
 }

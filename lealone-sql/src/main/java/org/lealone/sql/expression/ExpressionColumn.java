@@ -219,7 +219,7 @@ public class ExpressionColumn extends Expression {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
         if (value instanceof ValueLob) {
-            ((ValueLob) value).setHandler(database);
+            ((ValueLob) value).setHandler(columnResolver.getTableFilter().getTable().getDataHandler());
         }
         return value;
     }

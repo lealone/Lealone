@@ -611,7 +611,12 @@ public class DataBuffer implements AutoCloseable {
             ValueLob lob = (ValueLob) v;
             byte[] small = lob.getSmall();
             if (small == null) {
-                buff.putVarInt(-3).putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
+                if (lob.isUseTableLobStorage()) {
+                    buff.putVarInt(-2);
+                } else {
+                    buff.putVarInt(-3);
+                }
+                buff.putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
                         .putVarLong(lob.getPrecision());
             } else {
                 buff.putVarInt(small.length).put(small);
@@ -764,12 +769,16 @@ public class DataBuffer implements AutoCloseable {
                 byte[] small = DataUtils.newBytes(smallLen);
                 buff.get(small, 0, smallLen);
                 return ValueLob.createSmallLob(type, small);
-            } else if (smallLen == -3) {
+            } else if (smallLen == -3 || smallLen == -2) {
                 int tableId = readVarInt(buff);
                 long lobId = readVarLong(buff);
                 long precision = readVarLong(buff);
-                // ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
                 ValueLob lob = ValueLob.create(type, null, tableId, lobId, null, precision);
+                if (smallLen == -3) {
+                    lob.setUseTableLobStorage(false);
+                } else {
+                    lob.setUseTableLobStorage(true);
+                }
                 return lob;
             } else {
                 throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "lob type: " + smallLen);

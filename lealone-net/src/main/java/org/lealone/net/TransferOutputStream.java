@@ -18,9 +18,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.security.SHA256;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DataBufferFactory;
@@ -51,7 +49,6 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static final int BUFFER_SIZE = 4 * 1024;
     static final int LOB_MAGIC = 0x1234;
-    private static final int LOB_MAC_SALT_LENGTH = 16;
 
     public static final byte REQUEST = 1;
     public static final byte RESPONSE = 2;
@@ -342,7 +339,7 @@ public class TransferOutputStream implements NetOutputStream {
                 writeLong(-1);
                 writeInt(lob.getTableId());
                 writeLong(lob.getLobId());
-                writeBytes(calculateLobMac(session, lob.getLobId()));
+                writeBytes(calculateLobMac(session, lob));
                 writeLong(lob.getPrecision());
                 break;
             }
@@ -467,32 +464,27 @@ public class TransferOutputStream implements NetOutputStream {
     /**
      * Verify the HMAC.
      *
-     * @param hmac the message authentication code
+     * @param hmacData the message authentication code
      * @param lobId the lobId
      * @throws DbException if the HMAC does not match
      */
-    public static void verifyLobMac(Session session, byte[] hmac, long lobId) {
-        byte[] result = calculateLobMac(session, lobId);
-        if (!Utils.compareSecure(hmac, result)) {
+    public static int verifyLobMac(Session session, byte[] hmacData, long lobId) {
+        long hmac = Utils.readLong(hmacData, 0);
+        if ((lobId >> 32) != ((int) hmac)) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
                     "Invalid lob hmac; possibly the connection was re-opened internally");
         }
+        return (int) (hmac >> 32);
     }
 
-    private static byte[] calculateLobMac(Session session, long lobId) {
-        byte[] lobMacSalt = null;
-        if (session != null) {
-            lobMacSalt = session.getLobMacSalt();
-        }
-        if (lobMacSalt == null) {
-            lobMacSalt = MathUtils.secureRandomBytes(LOB_MAC_SALT_LENGTH);
-            if (session != null) {
-                session.setLobMacSalt(lobMacSalt);
-            }
-        }
-        byte[] data = new byte[8];
-        Utils.writeLong(data, 0, lobId);
-        byte[] hmacData = SHA256.getHashWithSalt(data, lobMacSalt);
+    private static byte[] calculateLobMac(Session session, ValueLob lob) {
+        int tableId = lob.getTableId();
+        long lobId = lob.getLobId();
+        if (lob.isUseTableLobStorage())
+            tableId = -tableId;
+        long hmac = (lobId >> 32) + (((long) tableId) << 32);
+        byte[] hmacData = new byte[8];
+        Utils.writeLong(hmacData, 0, hmac);
         return hmacData;
     }
 

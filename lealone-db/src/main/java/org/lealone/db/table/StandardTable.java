@@ -12,10 +12,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.SysProperties;
@@ -62,6 +64,8 @@ public class StandardTable extends Table {
     private long lastModificationId;
     private Column rowIdColumn;
     private int[] largeObjectColumns;
+    private DataHandler dataHandler;
+    private final boolean useTableLobStorage;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -79,6 +83,9 @@ public class StandardTable extends Table {
         isHidden = data.isHidden;
         int nextAnalyze = database.getSettings().analyzeAuto;
         tableAnalyzer = nextAnalyze > 0 ? new TableAnalyzer(this, nextAnalyze) : null;
+
+        useTableLobStorage = MapUtils.getBoolean(parameters, StorageSetting.USE_TABLE_LOB_STORAGE.name(),
+                true);
 
         setTemporary(data.temporary);
         setColumns(data.columns.toArray(new Column[0]));
@@ -175,6 +182,7 @@ public class StandardTable extends Table {
         for (Index index : indexes) {
             index.close(session);
         }
+        database.removeDataHandler(getId());
     }
 
     @Override
@@ -438,6 +446,8 @@ public class StandardTable extends Table {
         }
         if (tableAnalyzer != null)
             tableAnalyzer.reset();
+        if (containsLargeObject())
+            dataHandler.getLobStorage().removeAllForTable(getId());
     }
 
     @Override
@@ -503,10 +513,10 @@ public class StandardTable extends Table {
     @Override
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         if (containsLargeObject()) {
-            // unfortunately, the data is gone on rollback
-            truncate(session);
-            if (database.getLobStorage() != null)
-                database.getLobStorage().removeAllForTable(getId());
+            if (dataHandler.isTableLobStorage())
+                dataHandler.getLobStorage().close();
+            else
+                dataHandler.getLobStorage().removeAllForTable(getId());
         }
         super.removeChildrenAndResources(session, lock);
         // go backwards because database.removeIndex will
@@ -604,10 +614,24 @@ public class StandardTable extends Table {
             largeObjectColumns = new int[size];
             for (int i = 0; i < size; i++)
                 largeObjectColumns[i] = list.get(i).getColumnId();
+
+            if (useTableLobStorage) {
+                dataHandler = new TableDataHandler(this, getMapNameForTable(getId()));
+                database.addDataHandler(getId(), dataHandler);
+            } else {
+                dataHandler = database;
+            }
+        } else {
+            dataHandler = database;
         }
     }
 
     public int[] getLargeObjectColumns() {
         return largeObjectColumns;
+    }
+
+    @Override
+    public DataHandler getDataHandler() {
+        return dataHandler;
     }
 }
