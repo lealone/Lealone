@@ -10,7 +10,6 @@ import org.lealone.main.Shell;
 public class ShellTest {
 
     public static void main(String[] args) {
-        // System.setProperty("lealone.config", "lealone-test.yaml");
         // String url = "jdbc:lealone:tcp://localhost:9210/lealone";
         // url = "jdbc:lealone:embed:lealone";
         String[] args2 = { //

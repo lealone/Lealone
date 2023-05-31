@@ -30,12 +30,21 @@ public class YamlConfigLoader implements ConfigLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(YamlConfigLoader.class);
 
-    private final static String DEFAULT_CONFIGURATION = "lealone.yaml";
-
     private static URL getConfigURL() throws ConfigException {
         String configUrl = Config.getProperty("config");
-        if (configUrl == null)
-            configUrl = DEFAULT_CONFIGURATION;
+        if (configUrl != null) {
+            URL url = getConfigURL(configUrl);
+            if (url != null)
+                return url;
+            logger.warn("Config file not found: " + configUrl);
+        }
+        URL url = getConfigURL("lealone.yaml");
+        if (url == null)
+            url = getConfigURL("lealone-test.yaml");
+        return url;
+    }
+
+    private static URL getConfigURL(String configUrl) throws ConfigException {
         URL url;
         try {
             url = new URL(configUrl);

@@ -10,7 +10,6 @@ import org.lealone.main.Lealone;
 public class LealoneTest {
 
     public static void main(String[] args) {
-        // System.setProperty("lealone.config", "lealone-test.yaml");
         String[] args2 = { //
                 // "-help", //
                 // "-host", "127.0.0.1", //
