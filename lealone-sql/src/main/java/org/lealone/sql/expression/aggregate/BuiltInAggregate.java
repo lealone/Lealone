@@ -96,7 +96,7 @@ public abstract class BuiltInAggregate extends Aggregate {
 
     protected abstract AggregateData createAggregateData();
 
-    private AggregateData getAggregateData() {
+    public AggregateData getAggregateData() {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)

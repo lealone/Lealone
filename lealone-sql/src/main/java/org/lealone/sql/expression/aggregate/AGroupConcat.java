@@ -122,13 +122,13 @@ public class AGroupConcat extends BuiltInAggregate {
         return visitor.visitAGroupConcat(this);
     }
 
-    private class AggregateDataGroupConcat extends AggregateData {
+    public class AggregateDataGroupConcat extends AggregateData {
 
         private ArrayList<Value> list;
         private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (v != ValueNull.INSTANCE) {
                 v = v.convertTo(Value.STRING);
                 if (groupConcatOrderList != null) {

@@ -45,13 +45,13 @@ public class AHistogram extends BuiltInAggregate {
 
     // 会忽略distinct
     // 计算每个值出现的次数
-    private class AggregateDataHistogram extends AggregateData {
+    public class AggregateDataHistogram extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataHistogram> distinctValues;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (distinctValues == null) {
                 distinctValues = ValueHashMap.newInstance();
             }

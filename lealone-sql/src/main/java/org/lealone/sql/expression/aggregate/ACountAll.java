@@ -43,12 +43,24 @@ public class ACountAll extends BuiltInAggregate {
         return "COUNT(*)";
     }
 
-    private class AggregateDataCountAll extends AggregateData {
+    public class AggregateDataCountAll extends AggregateData {
 
         private long count;
 
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+
+        public Select getSelect() {
+            return select;
+        }
+
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             count++;
         }
 

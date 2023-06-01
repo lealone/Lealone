@@ -14,7 +14,7 @@ import org.lealone.db.value.Value;
  * @author H2 Group
  * @author zhh
  */
-abstract class AggregateData {
+public abstract class AggregateData {
 
     /**
      * Add a value to this aggregate.
@@ -22,7 +22,7 @@ abstract class AggregateData {
      * @param session the session
      * @param v the value
      */
-    abstract void add(ServerSession session, Value v);
+    public abstract void add(ServerSession session, Value v);
 
     /**
      * Get the aggregate result.

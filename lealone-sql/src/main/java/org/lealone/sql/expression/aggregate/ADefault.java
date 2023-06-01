@@ -125,18 +125,51 @@ public class ADefault extends BuiltInAggregate {
         return getSQL(text);
     }
 
-    private class AggregateDataDefault extends AggregateData {
+    public class AggregateDataDefault extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataDefault> distinctValues;
         private Value value;
         private double m2, mean;
 
-        // private ValueVector vv;
-        // private ValueVector bvv;
+        public boolean isDistinct() {
+            return distinct;
+        }
+
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+
+        public ValueHashMap<AggregateDataDefault> getDistinctValues() {
+            return distinctValues;
+        }
+
+        public void setDistinctValues(ValueHashMap<AggregateDataDefault> distinctValues) {
+            this.distinctValues = distinctValues;
+        }
+
+        public int getAType() {
+            return type;
+        }
+
+        public int getDataType() {
+            return dataType;
+        }
+
+        public Value getValue() {
+            return value;
+        }
+
+        public void setValue(Value value) {
+            this.value = value;
+        }
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             add(session, v, distinct);
         }
 
@@ -179,6 +212,13 @@ public class ADefault extends BuiltInAggregate {
                     value = v;
                 }
                 break;
+            default:
+                addOther(session, v);
+            }
+        }
+
+        public void addOther(ServerSession session, Value v) {
+            switch (type) {
             case Aggregate.STDDEV_POP:
             case Aggregate.STDDEV_SAMP:
             case Aggregate.VAR_POP:

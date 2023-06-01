@@ -1403,6 +1403,16 @@ public class ServerSession extends SessionBase {
         this.olapThreshold = olapThreshold;
     }
 
+    private int olapBatchSize;
+
+    public int getOlapBatchSize() {
+        return olapBatchSize;
+    }
+
+    public void setOlapBatchSize(int olapBatchSize) {
+        this.olapBatchSize = olapBatchSize;
+    }
+
     public Map<String, String> getSettings() {
         Map<String, String> settings = new LinkedHashMap<>(SessionSetting.values().length);
         for (SessionSetting setting : SessionSetting.values()) {

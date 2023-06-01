@@ -40,13 +40,33 @@ public class ACount extends BuiltInAggregate {
         return getSQL("COUNT");
     }
 
-    private class AggregateDataCount extends AggregateData {
+    public class AggregateDataCount extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataCount> distinctValues;
 
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+
+        public ValueHashMap<AggregateDataCount> getDistinctValues() {
+            return distinctValues;
+        }
+
+        public void setDistinctValues(ValueHashMap<AggregateDataCount> distinctValues) {
+            this.distinctValues = distinctValues;
+        }
+
+        public boolean isDistinct() {
+            return distinct;
+        }
+
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }

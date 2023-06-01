@@ -41,14 +41,14 @@ public class ASelectivity extends BuiltInAggregate {
 
     // 会忽略distinct
     // 返回(100 * distinctCount/rowCount)
-    private class AggregateDataSelectivity extends AggregateData {
+    public class AggregateDataSelectivity extends AggregateData {
 
         private long count;
         private IntIntHashMap distinctHashes;
         private double m2;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             // 是基于某个表达式(多数是单个字段)算不重复的记录数所占总记录数的百分比
             // Constants.SELECTIVITY_DISTINCT_COUNT默认是1万，这个值不能改，
             // 对统计值影响很大。通常这个值越大，统计越精确，但是会使用更多内存。
