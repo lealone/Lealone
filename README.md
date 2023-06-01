@@ -42,8 +42,6 @@
 
 * 支持不停机快速手动或自动转换运行模式: Client/Server 模式 -> 复制模式 -> Sharding 模式
 
-* 支持表达式编译、支持向量化
-
 
 ### Lealone 文档
 
@@ -68,11 +66,18 @@
 
 ### Lealone Plugins
 
-* [使用 MySQL 或 PostgreSQL 的客户端和 SQL 语法访问 Lealone 数据库](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E4%BD%BF%E7%94%A8MySQL%E6%88%96PostgreSQL%E7%9A%84%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%92%8CSQL%E8%AF%AD%E6%B3%95%E8%AE%BF%E9%97%AELealone%E6%95%B0%E6%8D%AE%E5%BA%93.md)
-
 * 支持可插拨的存储引擎 (MemoryStore、MVStore)
 
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
+
+
+### QinSQL OLAP 引擎
+
+* 支持表达式编译、支持向量化
+
+* [支持使用 MySQL 或 PostgreSQL 的客户端和 SQL 语法访问 Lealone 数据库](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E4%BD%BF%E7%94%A8MySQL%E6%88%96PostgreSQL%E7%9A%84%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%92%8CSQL%E8%AF%AD%E6%B3%95%E8%AE%BF%E9%97%AELealone%E6%95%B0%E6%8D%AE%E5%BA%93.md)
+
+* [更多细节...](https://github.com/qinsql/QinSQL)
 
 
 ### Lealone 名字的由来
