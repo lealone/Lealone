@@ -570,6 +570,7 @@ public class ServerSession extends SessionBase {
     }
 
     private void beforeCommit() {
+        addLobTask();
         checkCommitRollback();
         checkDataModification();
         sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
@@ -604,6 +605,24 @@ public class ServerSession extends SessionBase {
         }
     }
 
+    private void addLobTask() {
+        if (containsLargeObject) {
+            unlinkLob(unlinkLobMapAtCommit);
+            unlinkLobMapAtCommit = null;
+            unlinkLobMapAtRollback = null;
+            containsLargeObject = false;
+
+            if (dataHandlers != null) {
+                HashMap<Integer, DataHandler> dHandlers = dataHandlers;
+                dataHandlers = null;
+                transaction.addLobTask(() -> {
+                    for (DataHandler dh : dHandlers.values())
+                        dh.getLobStorage().save();
+                });
+            }
+        }
+    }
+
     private void commitFinal() {
         if (!containsDDL) {
             // do not clean the temp tables if the last command was a create/drop
@@ -612,18 +631,6 @@ public class ServerSession extends SessionBase {
                 autoCommit = true;
                 autoCommitAtTransactionEnd = false;
             }
-        }
-        if (containsLargeObject) {
-            unlinkLob(unlinkLobMapAtCommit);
-            unlinkLobMapAtCommit = null;
-            unlinkLobMapAtRollback = null;
-            containsLargeObject = false;
-            if (dataHandlers != null) {
-                for (DataHandler dh : dataHandlers.values())
-                    dh.getLobStorage().save();
-                dataHandlers = null;
-            }
-
         }
         unlockAll(true);
         endTransaction();

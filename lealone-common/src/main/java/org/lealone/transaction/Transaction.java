@@ -72,6 +72,9 @@ public interface Transaction {
 
     int getSavepointId();
 
+    default void addLobTask(Runnable lobTask) {
+    }
+
     default void asyncCommit() {
         asyncCommit(null);
     }

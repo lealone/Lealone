@@ -24,6 +24,7 @@ import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.WaitingTransaction;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
+import org.lealone.transaction.aote.log.RedoLogRecord.LobSave;
 import org.lealone.transaction.aote.log.UndoLog;
 
 public class AOTransaction implements Transaction {
@@ -161,6 +162,13 @@ public class AOTransaction implements Transaction {
         return undoLog.getLogId();
     }
 
+    private Runnable lobTask;
+
+    @Override
+    public void addLobTask(Runnable lobTask) {
+        this.lobTask = lobTask;
+    }
+
     @Override
     public void asyncCommit(Runnable asyncTask) {
         this.asyncTask = asyncTask;
@@ -171,6 +179,8 @@ public class AOTransaction implements Transaction {
         checkNotClosed();
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
             RedoLogRecord r = undoLog.toRedoLogRecord(transactionEngine);
+            if (lobTask != null)
+                r = new LobSave(lobTask, r);
             if (asyncCommit) {
                 r.setTransaction(this);
                 logSyncService.asyncWrite(r);
@@ -178,6 +188,8 @@ public class AOTransaction implements Transaction {
                 logSyncService.syncWrite(r);
             }
         } else {
+            if (lobTask != null)
+                lobTask.run();
             // 不需要事务日志同步，可以直接提交事务了
             if (asyncCommit)
                 asyncCommitComplete();

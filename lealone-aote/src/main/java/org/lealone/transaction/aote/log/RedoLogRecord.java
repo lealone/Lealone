@@ -191,4 +191,25 @@ public abstract class RedoLogRecord {
             return new TransactionRedoLogRecord(ByteBuffer.wrap(bytes));
         }
     }
+
+    public static class LobSave extends RedoLogRecord {
+
+        Runnable lobTask;
+        RedoLogRecord r;
+
+        public LobSave(Runnable lobTask, RedoLogRecord r) {
+            this.lobTask = lobTask;
+            this.r = r;
+        }
+
+        @Override
+        void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
+        }
+
+        @Override
+        void write(DataBuffer buff) {
+            lobTask.run();
+            r.write(buff);
+        }
+    }
 }
