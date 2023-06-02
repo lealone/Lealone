@@ -1450,6 +1450,9 @@ public class ServerSession extends SessionBase {
             case OLAP_THRESHOLD:
                 v = olapThreshold;
                 break;
+            case OLAP_BATCH_SIZE:
+                v = olapBatchSize;
+                break;
             }
             settings.put(setting.name(), v == null ? "null" : v.toString());
         }

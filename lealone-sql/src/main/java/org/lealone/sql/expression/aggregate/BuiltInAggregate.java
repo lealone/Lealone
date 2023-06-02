@@ -57,6 +57,10 @@ public abstract class BuiltInAggregate extends Aggregate {
         this.distinct = distinct;
     }
 
+    public int getAType() {
+        return type;
+    }
+
     @Override
     public Expression getOn() {
         return on;
