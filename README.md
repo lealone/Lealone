@@ -64,13 +64,6 @@
 * [ORM 框架文档](https://github.com/lealone/Lealone-Docs#lealone-orm-%E6%A1%86%E6%9E%B6)
 
 
-### Lealone Plugins
-
-* 支持可插拨的存储引擎 (MemoryStore、MVStore)
-
-* [更多细节...](https://github.com/lealone/Lealone-Plugins)
-
-
 ### QinSQL OLAP 引擎
 
 * 支持表达式编译、支持向量化
