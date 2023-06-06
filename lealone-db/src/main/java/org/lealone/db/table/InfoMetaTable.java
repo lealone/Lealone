@@ -11,12 +11,12 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
@@ -618,23 +618,16 @@ public class InfoMetaTable extends MetaTable {
             }
 
             // database settings
-            add(rows, "EXCLUSIVE", "database",
-                    database.getExclusiveSession() == null ? "FALSE" : "TRUE");
-            add(rows, "MODE", "database", database.getMode().getName());
-            add(rows, "MULTI_THREADED", "database", "1");
-            add(rows, "MVCC", "database", database.isMultiVersion() ? "TRUE" : "FALSE");
+            TreeMap<String, String> s = new TreeMap<>(database.getSettings().getSettings());
+            s.put("EXCLUSIVE", database.getExclusiveSession() == null ? "false" : "true");
+            s.put("MODE", database.getMode().getName());
+            s.put("MULTI_THREADED", "1");
+            s.put("MVCC", database.isMultiVersion() ? "true" : "false");
             for (Map.Entry<String, String> e : database.getParameters().entrySet()) {
-                add(rows, identifier(e.getKey()), "database", e.getValue());
+                s.put(identifier(e.getKey()), e.getValue());
             }
-            Map<String, String> s = database.getSettings().getSettings();
-            ArrayList<String> settingNames = new ArrayList<>(s.size());
-            settingNames.addAll(s.keySet());
-            Collections.sort(settingNames);
-            for (String k : settingNames) {
-                add(rows, k, "database", s.get(k));
-            }
-            if (database.isPersistent()) {
-                database.addPersistentMetaInfo(this, rows);
+            for (Entry<String, String> e : s.entrySet()) {
+                add(rows, e.getKey(), "database", e.getValue());
             }
 
             // session settings

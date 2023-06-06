@@ -55,7 +55,6 @@ import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.InfoMetaTable;
-import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.PerfMetaTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableAlterHistory;
@@ -1428,9 +1427,6 @@ public class Database implements DataHandler, DbObject {
             }
         }
         return null;
-    }
-
-    public void addPersistentMetaInfo(MetaTable mt, ArrayList<Row> rows) {
     }
 
     /**
