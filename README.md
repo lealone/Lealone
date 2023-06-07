@@ -1,7 +1,7 @@
 
 ### Lealone 是什么
 
-* 是一个兼具 RDBMS、NoSQL 优点的面向微服务和 OLTP/OLAP 场景的单机与分布式关系数据库
+* 是一个兼具 RDBMS、NoSQL 优点、面向微服务和 OLTP/OLAP 场景的单机与分布式关系数据库
 
 
 ### Lealone 有哪些特性
@@ -24,7 +24,7 @@
 
 * 支持通过 CREATE SERVICE 语句创建可托管的后端服务
 
-* 非常小的绿色环保安装包，只有 2M 左右的大小
+* 只需要一个不到 2M 的 jar 包就能运行，不需要安装
 
 
 ##### 普通特性
@@ -64,7 +64,7 @@
 * [ORM 框架文档](https://github.com/lealone/Lealone-Docs#lealone-orm-%E6%A1%86%E6%9E%B6)
 
 
-### QinSQL OLAP 引擎
+### Lealone OLAP 引擎
 
 * 支持表达式编译、支持向量化
 
