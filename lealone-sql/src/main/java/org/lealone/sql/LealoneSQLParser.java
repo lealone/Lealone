@@ -5051,6 +5051,8 @@ public class LealoneSQLParser implements SQLParser {
             }
             return command;
         } else {
+            if (!identifiersToUpper)
+                currentToken = currentToken.toUpperCase();
             // 先看看是否是session级的参数，然后再看是否是database级的
             SetStatement command;
             try {
