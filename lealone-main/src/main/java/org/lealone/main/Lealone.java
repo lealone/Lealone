@@ -385,7 +385,8 @@ public class Lealone {
         server.start();
         final String name = server.getName();
         ShutdownHookUtils.addShutdownHook(server, () -> {
-            server.stop();
+            if (!server.isStopped())
+                server.stop();
             logger.info(name + " stopped");
         });
         logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());

@@ -35,7 +35,7 @@ public class ShutdownServer extends AdminStatement {
         LealoneDatabase.checkAdminRight(session, "shutdown server");
         ThreadUtils.start("ShutdownServerThread-Port-" + port, () -> {
             for (ProtocolServer server : ProtocolServerEngine.startedServers) {
-                if (server.getPort() == port) {
+                if (port < 0 || server.getPort() == port) {
                     server.stop();
                 }
             }

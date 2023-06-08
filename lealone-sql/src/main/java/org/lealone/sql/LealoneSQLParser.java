@@ -592,7 +592,12 @@ public class LealoneSQLParser implements SQLParser {
     }
 
     private StatementBase parseShutdownServer() {
-        int port = readInt();
+        int port;
+        if (currentTokenType == END || isToken(";")) {
+            port = -1;
+        } else {
+            port = readInt();
+        }
         return new ShutdownServer(session, port);
     }
 
