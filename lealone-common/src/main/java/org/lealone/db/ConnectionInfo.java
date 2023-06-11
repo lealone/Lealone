@@ -427,6 +427,16 @@ public class ConnectionInfo implements Cloneable {
      * @return the property keys
      */
     public String[] getKeys() {
+        return getKeys(false);
+    }
+
+    public String[] getKeys(boolean ignoreClientSettings) {
+        if (ignoreClientSettings) {
+            // 这些参数不需要传给server
+            removeProperty(ConnectionSetting.IS_SHARED, null);
+            removeProperty(ConnectionSetting.MAX_SHARED_SIZE, null);
+            removeProperty(ConnectionSetting.NET_CLIENT_COUNT, null);
+        }
         String[] keys = new String[prop.size()];
         prop.keySet().toArray(keys);
         return keys;

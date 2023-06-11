@@ -53,7 +53,7 @@ public class SessionInit implements Packet {
         out.writeBytes(ci.getUserPasswordHash());
         out.writeBytes(ci.getFilePasswordHash());
         out.writeBytes(ci.getFileEncryptionKey());
-        String[] keys = ci.getKeys();
+        String[] keys = ci.getKeys(true);
         out.writeInt(keys.length);
         for (String key : keys) {
             out.writeString(key).writeString(ci.getProperty(key));
