@@ -232,10 +232,12 @@ class NioEventLoop implements NetEventLoop {
                 }
             }
         } catch (Exception e) {
-            if (endException == e)
-                logger.info((conn.isServer() ? "Client " : "\r\nServer ") + endExceptionMsg);
-            else
+            if (endException == e) {
+                if (isDebugEnabled)
+                    logger.debug((conn.isServer() ? "Client " : "\r\nServer ") + endExceptionMsg);
+            } else {
                 logger.warn("Failed to read", e);
+            }
             conn.handleException(e);
             closeChannel(channel);
         }
