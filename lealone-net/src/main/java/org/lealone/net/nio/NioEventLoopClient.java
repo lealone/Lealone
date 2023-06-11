@@ -27,15 +27,12 @@ import org.lealone.net.TcpClientConnection;
 class NioEventLoopClient extends NetClientBase {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoopClient.class);
-    private static final NioEventLoopClient instance = new NioEventLoopClient();
 
-    public static NioEventLoopClient getInstance() {
-        return instance;
-    }
-
+    private final int id;
     private NioEventLoop nioEventLoop;
 
-    private NioEventLoopClient() {
+    NioEventLoopClient(int id) {
+        this.id = id;
     }
 
     private synchronized void createNioEventLoop(Map<String, String> config) {
@@ -43,7 +40,7 @@ class NioEventLoopClient extends NetClientBase {
             try {
                 nioEventLoop = new NioEventLoop(config, "client_nio_event_loop_interval", 1000); // 默认1秒
                 nioEventLoop.setOwner(this);
-                ThreadUtils.start("ClientNioEventLoopService", () -> {
+                ThreadUtils.start("ClientNioEventLoopService-" + id, () -> {
                     NioEventLoopClient.this.run();
                 });
             } catch (IOException e) {

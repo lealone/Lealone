@@ -88,8 +88,8 @@ public class ClientSessionFactory implements SessionFactory {
     private static void createClientSession(ConnectionInfo ci, String server,
             AsyncCallback<ClientSession> ac) {
         NetNode node = NetNode.createTCP(server);
-        NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+        NetFactory factory = NetFactoryManager.getFactory(config, true);
         // 多个客户端session会共用同一条TCP连接
         factory.getNetClient().createConnection(config, node).onComplete(ar -> {
             if (ar.isSucceeded()) {
