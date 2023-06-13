@@ -86,17 +86,16 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
-        // 注意，不要敲成contains，是containsKey
-        if (!maps.containsKey(map.getName())) {
-            maps.put(map.getName(), new MapInfo(map));
+        if (maps.putIfAbsent(map.getName(), new MapInfo(map)) == null) {
             map.getStorage().registerEventListener(this);
         }
     }
 
     void removeStorageMap(String mapName) {
-        maps.remove(mapName);
-        RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
-        logSyncService.syncWrite(r);
+        if (maps.remove(mapName) != null) {
+            RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
+            logSyncService.syncWrite(r);
+        }
     }
 
     void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
@@ -143,10 +142,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
 
+        // 先初始化redo log
         logSyncService.getRedoLog().init();
         lastTransactionId.set(0);
 
-        // 调用完initPendingRedoLog后再启动logSyncService
+        // 再启动logSyncService
         logSyncService.start();
 
         if (RunMode.isEmbedded(config)) {
