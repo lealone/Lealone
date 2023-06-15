@@ -78,9 +78,7 @@ public abstract class PageOperationHandlerFactory {
             config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
-        String type = null; // "LoadBalance";
-        if (config.containsKey(key))
-            type = config.get(key);
+        String type = config.get(key);
         if (type == null || type.equalsIgnoreCase("RoundRobin"))
             factory = new RoundRobinFactory(config, handlers);
         else if (type.equalsIgnoreCase("Random"))
@@ -118,7 +116,7 @@ public abstract class PageOperationHandlerFactory {
 
         @Override
         public PageOperationHandler getPageOperationHandler() {
-            return pageOperationHandlers[index.getAndIncrement() % pageOperationHandlers.length];
+            return pageOperationHandlers[getAndIncrementIndex(index) % pageOperationHandlers.length];
         }
     }
 
@@ -134,10 +132,25 @@ public abstract class PageOperationHandlerFactory {
             int index = 0;
             for (int i = 0, size = pageOperationHandlers.length; i < size; i++) {
                 long load = pageOperationHandlers[i].getLoad();
-                if (load < minLoad)
+                if (load < minLoad) {
                     index = i;
+                    minLoad = load;
+                }
             }
             return pageOperationHandlers[index];
         }
+    }
+
+    // 变成负数时从0开始
+    public static int getAndIncrementIndex(AtomicInteger index) {
+        int i = index.getAndIncrement();
+        if (i < 0) {
+            if (index.compareAndSet(i, 1)) {
+                i = 0;
+            } else {
+                i = index.getAndIncrement();
+            }
+        }
+        return i;
     }
 }

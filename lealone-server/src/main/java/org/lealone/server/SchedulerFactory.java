@@ -18,7 +18,7 @@ public class SchedulerFactory {
     private static final AtomicInteger index = new AtomicInteger(0);
 
     public static Scheduler getScheduler() {
-        return schedulers[index.getAndIncrement() % schedulers.length];
+        return schedulers[PageOperationHandlerFactory.getAndIncrementIndex(index) % schedulers.length];
     }
 
     public static synchronized void init(Map<String, String> config) {
