@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -20,24 +21,19 @@ public class Page {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
-    public static Page create(BTreeMap<?, ?> map, long pos, ByteBuffer buff, int pageLength, int type) {
-        Page p;
-        if (type == PageUtils.PAGE_TYPE_LEAF)
-            p = new LeafPage(map);
-        else if (type == PageUtils.PAGE_TYPE_NODE)
-            p = new NodePage(map);
-        else if (type == PageUtils.PAGE_TYPE_COLUMN)
-            p = new ColumnPage(map);
-        else
+    public static Page create(BTreeMap<?, ?> map, int type) {
+        switch (type) {
+        case PageUtils.PAGE_TYPE_LEAF:
+            return new LeafPage(map);
+        case PageUtils.PAGE_TYPE_NODE:
+            return new NodePage(map);
+        case PageUtils.PAGE_TYPE_COLUMN:
+            return new ColumnPage(map);
+        default:
             throw DbException.getInternalError("type: " + type);
-
-        p.pos = pos;
-        p.pInfo.buff = buff;
-        p.pInfo.pageLength = pageLength;
-        return p;
+        }
     }
 
-    protected final PageInfo pInfo = new PageInfo();
     protected final BTreeMap<?, ?> map;
     protected long pos;
 
@@ -45,14 +41,6 @@ public class Page {
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
-    }
-
-    public void updateTime() {
-        pInfo.updateTime();
-    }
-
-    public PageInfo getPageInfo() {
-        return pInfo;
     }
 
     public void setRef(PageReference ref) {
@@ -148,6 +136,26 @@ public class Page {
         throw ie();
     }
 
+    // 多线程读page也是线程安全的
+    protected Page getChildPage(PageReference ref) {
+        PageInfo pInfo = ref.getPageInfo(); // 先取出来，GC线程可能把pInfo.page置null
+        Page p = pInfo.page;
+        if (p != null) {
+            ref.updateTime();
+            return p;
+        } else {
+            BTreeStorage bs = map.getBTreeStorage();
+            if (pInfo.buff != null) {
+                p = bs.readPage(pInfo, ref, ref.getPos(), pInfo.buff, pInfo.pageLength);
+                bs.gcIfNeeded(p.getMemory());
+            } else {
+                p = bs.readPage(pInfo, ref);
+            }
+            // 如果另一个线程执行save，此时p有可能为null，那就再读一次
+            return p != null ? p : getChildPage(ref);
+        }
+    }
+
     /**
      * Check whether this is a leaf page.
      * 
@@ -241,7 +249,7 @@ public class Page {
      * @param expectedPageLength the expected page length
      * @param disableCheck disable check
      */
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         throw ie();
     }
@@ -253,7 +261,7 @@ public class Page {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
         throw ie();
     }
 
@@ -266,7 +274,7 @@ public class Page {
     }
 
     public int getBuffMemory() {
-        return pInfo.getBuffMemory();
+        return ref.getPageInfo().getBuffMemory();
     }
 
     public int getTotalMemory() {
@@ -308,7 +316,7 @@ public class Page {
         markDirty(true);
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
-            parentRef.page.markDirty(false);
+            parentRef.getPage().markDirty(false);
             parentRef = parentRef.getParentRef();
         }
     }
@@ -427,10 +435,6 @@ public class Page {
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
-
-        // this will make sure nodes stays in the cache for a longer time
-        updateTime();
-
         if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
@@ -453,5 +457,22 @@ public class Page {
         int nodePageCount;
         int levelCount;
         boolean readOffLinePage;
+    }
+
+    public static class SavedPage {
+
+        public final PageReference pRef;
+        public final PageInfo pInfo;
+
+        public SavedPage(PageReference pRef, PageInfo pInfo) {
+            this.pRef = pRef;
+            this.pInfo = pInfo;
+        }
+
+        public void release() {
+            if (pRef.getPageInfo() == pInfo) {
+                pRef.replacePage(pInfo, new PageInfo(pInfo.page.pos));
+            }
+        }
     }
 }

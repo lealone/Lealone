@@ -12,7 +12,7 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.type.StorageDataType;
 
-class ColumnPage extends Page {
+public class ColumnPage extends Page {
 
     Object[] values; // 每个元素指向一条记录，并不是字段值
     private int columnIndex;
@@ -41,7 +41,7 @@ class ColumnPage extends Page {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
@@ -56,7 +56,7 @@ class ColumnPage extends Page {
     }
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
-    void readColumn(Object[] values, int columnIndex) {
+    void readColumn(PageInfo pInfo, Object[] values, int columnIndex) {
         this.values = values;
         this.columnIndex = columnIndex;
         StorageDataType valueType = map.getValueType();

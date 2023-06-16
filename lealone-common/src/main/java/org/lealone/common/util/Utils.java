@@ -972,11 +972,11 @@ public class Utils {
         }
     }
 
-    public static int toIntMB(String value, int def) {
+    public static long toLongMB(String value, long def) {
         if (value == null)
             return def;
         try {
-            return Integer.parseInt(value) * 1024 * 1024;
+            return Long.parseLong(value) * 1024 * 1024;
         } catch (Exception e) {
             DbException.traceThrowable(e);
             return def;

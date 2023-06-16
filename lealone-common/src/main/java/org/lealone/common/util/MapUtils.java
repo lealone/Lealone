@@ -20,11 +20,11 @@ public class MapUtils {
         return Utils.toInt(value, def);
     }
 
-    public static int getIntMB(Map<String, String> map, String key, int def) {
+    public static long getLongMB(Map<String, String> map, String key, long def) {
         if (map == null)
             return def;
         String value = map.get(key);
-        return Utils.toIntMB(value, def);
+        return Utils.toLongMB(value, def);
     }
 
     public static long getLong(Map<String, String> map, String key, long def) {

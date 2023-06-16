@@ -14,13 +14,17 @@ import org.lealone.storage.aose.btree.page.PageReference;
 
 public class BTreeGC {
 
+    private static MemoryManager GMM() {
+        return MemoryManager.getGlobalMemoryManager();
+    }
+
     private final BTreeMap<?, ?> map;
     private final MemoryManager memoryManager;
 
     public BTreeGC(BTreeMap<?, ?> map, long maxMemory) {
         this.map = map;
         if (maxMemory <= 0)
-            maxMemory = MemoryManager.getGlobalMemoryManager().getMaxMemory();
+            maxMemory = GMM().getMaxMemory();
         memoryManager = new MemoryManager(maxMemory);
     }
 
@@ -36,13 +40,23 @@ public class BTreeGC {
         return memoryManager.getUsedMemory();
     }
 
+    public long getDirtyMemory() {
+        return memoryManager.getDirtyMemory();
+    }
+
+    public void addDirtyMemory(int mem) {
+        memoryManager.addDirtyMemory(mem);
+        GMM().addDirtyMemory(mem);
+    }
+
     public void close() {
-        MemoryManager.getGlobalMemoryManager().decrementMemory(memoryManager.getUsedMemory());
+        GMM().addDirtyMemoryOnly(-memoryManager.getDirtyMemory());
+        GMM().addUsedMemoryOnly(-memoryManager.getUsedMemory());
         memoryManager.reset();
     }
 
     public void gcIfNeeded(long delta) {
-        MemoryManager globalMemoryManager = MemoryManager.getGlobalMemoryManager();
+        MemoryManager globalMemoryManager = GMM();
         if (globalMemoryManager.needGc()) {
             gc(false);
         }
@@ -66,7 +80,7 @@ public class BTreeGC {
 
     private void gc(boolean lru) {
         long now = System.currentTimeMillis();
-        MemoryManager globalMemoryManager = MemoryManager.getGlobalMemoryManager();
+        MemoryManager globalMemoryManager = GMM();
         gc(map.getRootPage(), now, 30 * 60 * 1000, true);
         if (globalMemoryManager.needGc())
             gc(map.getRootPage(), now, 15 * 60 * 1000, true);
@@ -79,7 +93,7 @@ public class BTreeGC {
     }
 
     private TreeSet<PageReference> lru1() {
-        MemoryManager globalMemoryManager = MemoryManager.getGlobalMemoryManager();
+        MemoryManager globalMemoryManager = GMM();
         Comparator<PageReference> comparator = (r1, r2) -> (int) (r1.getLastTime() - r2.getLastTime());
         TreeSet<PageReference> set = new TreeSet<>(comparator);
         collect(set, map.getRootPage());
@@ -87,7 +101,7 @@ public class BTreeGC {
         for (PageReference ref : set) {
             Page p = ref.getPage();
             long memory = p.getMemory();
-            ref.replacePage(null);
+            ref.releasePage();
             memoryManager.decrementMemory(memory);
             globalMemoryManager.decrementMemory(memory);
             if (size-- == 0)
@@ -97,11 +111,11 @@ public class BTreeGC {
     }
 
     private void lru2(TreeSet<PageReference> set) {
-        MemoryManager globalMemoryManager = MemoryManager.getGlobalMemoryManager();
+        MemoryManager globalMemoryManager = GMM();
         int size = set.size() / 3 + 1;
         for (PageReference ref : set) {
             long memory = ref.getBuffMemory();
-            ref.clearBuff();
+            ref.releaseBuff();
             memoryManager.decrementMemory(memory);
             globalMemoryManager.decrementMemory(memory);
             if (size-- == 0)
@@ -155,11 +169,11 @@ public class BTreeGC {
                                     memory = p.getTotalMemory();
                                 else
                                     memory = p.getMemory();
-                                ref.replacePage(null);
+                                ref.releasePage();
                                 if (gcAll)
-                                    ref.clearBuff();
+                                    ref.releaseBuff();
                                 memoryManager.decrementMemory(memory);
-                                MemoryManager.getGlobalMemoryManager().decrementMemory(memory);
+                                GMM().decrementMemory(memory);
                             }
                         }
                     }

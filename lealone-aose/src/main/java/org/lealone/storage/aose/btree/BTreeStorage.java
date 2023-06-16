@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
@@ -20,6 +21,8 @@ import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.aose.btree.page.Page.SavedPage;
+import org.lealone.storage.aose.btree.page.PageInfo;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.fs.FilePath;
@@ -149,7 +152,7 @@ public class BTreeStorage {
 
     // ChunkCompactor在重写chunk中的page时会用到
     public void markDirtyLeafPage(long pos) {
-        Page leaf = readPage(null, pos, false);
+        Page leaf = readPage(null, new PageReference(pos), pos, false);
         Object key = leaf.getKey(0);
         Page p = map.getRootPage();
         while (p.isNode()) {
@@ -171,19 +174,18 @@ public class BTreeStorage {
         leaf.markDirty(true);
     }
 
-    public Page readPage(long pos) {
-        return readPage(null, pos);
+    public Page readPage(PageInfo pInfoOld, PageReference ref) {
+        return readPage(pInfoOld, ref, ref.getPos(), true);
     }
 
-    public Page readPage(PageReference ref) {
-        return readPage(ref, ref.getPos());
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos) {
+        return readPage(pInfoOld, ref, pos, true);
     }
 
-    public Page readPage(PageReference ref, long pos) {
-        return readPage(ref, pos, true);
-    }
-
-    private Page readPage(PageReference ref, long pos, boolean gc) {
+    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc) {
+        if (ref == null) {
+            DbException.throwInternalError();
+        }
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
@@ -195,23 +197,34 @@ public class BTreeStorage {
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        Page p = readPage(ref, pos, buff, pageLength);
+        Page p = readPage(pInfoOld, ref, pos, buff, pageLength);
         if (gc)
             gcIfNeeded(p.getTotalMemory());
         return p;
     }
 
-    public Page readPage(PageReference ref, long pos, ByteBuffer buff, int pageLength) {
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff,
+            int pageLength) {
         int type = PageUtils.getPageType(pos);
-        Page p = Page.create(map, pos, buff, pageLength, type);
-        p.setRef(ref);
-        p.updateTime();
+        Page p = Page.create(map, type);
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, pageLength, false);
+
+        PageInfo pInfo = new PageInfo();
+        pInfo.page = p;
+        pInfo.pos = pos;
+        pInfo.buff = buff;
+        pInfo.pageLength = pageLength;
+
+        p.read(pInfo, buff, chunkId, offset, pageLength, false);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();
-        return p;
+
+        if (ref.replacePage(pInfoOld, pInfo)) {
+            p.setRef(ref);
+        }
+        ref.updateTime();
+        return ref.getPage();
     }
 
     public void gcIfNeeded(long delta) {
@@ -220,6 +233,10 @@ public class BTreeStorage {
 
     public void gc() {
         bgc.gc();
+    }
+
+    public void addDirtyMemory(int mem) {
+        bgc.addDirtyMemory(mem);
     }
 
     /**
@@ -281,12 +298,16 @@ public class BTreeStorage {
         bgc.setMaxMemory(mb * 1024 * 1024);
     }
 
+    public long getDiskSpaceUsed() {
+        return FileUtils.folderSize(new File(mapBaseDir));
+    }
+
     public long getMemorySpaceUsed() {
         return bgc.getUsedMemory();
     }
 
-    public long getDiskSpaceUsed() {
-        return FileUtils.folderSize(new File(mapBaseDir));
+    public long getDirtyMemorySpaceUsed() {
+        return bgc.getDirtyMemory();
     }
 
     synchronized void clear() {
@@ -348,6 +369,10 @@ public class BTreeStorage {
         hasUnsavedChanges = b;
     }
 
+    public boolean hasUnsavedChanges() {
+        return hasUnsavedChanges;
+    }
+
     /**
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
@@ -376,14 +401,21 @@ public class BTreeStorage {
             c.fileStorage = getFileStorage(c.fileName);
             c.mapSize = map.size();
 
+            LinkedList<SavedPage> savedPages = new LinkedList<>();
+
             Page p = map.getRootPage();
-            p.writeUnsavedRecursive(c, chunkBody);
+            p.writeUnsavedRecursive(c, chunkBody, savedPages);
             c.rootPagePos = p.getPos();
 
             c.write(chunkBody, chunkManager.getRemovedPages());
 
             chunkManager.addChunk(c);
             chunkManager.setLastChunk(c);
+
+            // 保存数据后再释放资源
+            for (SavedPage savedPage : savedPages) {
+                savedPage.release();
+            }
         } catch (IllegalStateException e) {
             throw panic(e);
         } finally {

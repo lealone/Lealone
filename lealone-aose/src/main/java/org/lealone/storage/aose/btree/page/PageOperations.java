@@ -85,7 +85,7 @@ public abstract class PageOperations {
 
         @SuppressWarnings("unchecked")
         private void writeLocal(PageOperationHandler poHandler) {
-            p = pRef.page; // 使用最新的page
+            p = pRef.getPage(); // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
 
@@ -430,14 +430,14 @@ public abstract class PageOperations {
         }
 
         private static void setParentRef(TmpNodePage tmpNodePage) {
-            PageReference lRef = tmpNodePage.left.page.getRef();
-            PageReference rRef = tmpNodePage.right.page.getRef();
-            for (PageReference ref : tmpNodePage.left.page.getChildren()) {
-                if (ref.page != null) // 没有加载的子节点直接忽略
+            PageReference lRef = tmpNodePage.left.getPage().getRef();
+            PageReference rRef = tmpNodePage.right.getPage().getRef();
+            for (PageReference ref : tmpNodePage.left.getPage().getChildren()) {
+                if (ref.getPage() != null) // 没有加载的子节点直接忽略
                     ref.setParentRef(lRef);
             }
-            for (PageReference ref : tmpNodePage.right.page.getChildren()) {
-                if (ref.page != null)
+            for (PageReference ref : tmpNodePage.right.getPage().getChildren()) {
+                if (ref.getPage() != null)
                     ref.setParentRef(rRef);
             }
         }

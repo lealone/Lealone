@@ -150,7 +150,13 @@ public abstract class LocalPage extends Page {
     }
 
     protected void addMemory(int mem) {
+        addMemory(mem, true);
+    }
+
+    protected void addMemory(int mem, boolean addToMemoryManager) {
         memory += mem;
+        if (addToMemoryManager)
+            map.getBTreeStorage().addDirtyMemory(mem);
     }
 
     @Override

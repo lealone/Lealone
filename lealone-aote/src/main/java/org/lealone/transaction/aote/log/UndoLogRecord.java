@@ -58,6 +58,7 @@ public class UndoLogRecord {
             newTV.commit(true);
         } else if (newTV != null && newTV.getValue() == null) { // delete
             if (!te.containsRepeatableReadTransactions()) {
+                newTV.setValue(oldValue); // 用于计算内存
                 map.remove(key);
             } else {
                 map.decrementSize(); // 要减去1
@@ -94,7 +95,6 @@ public class UndoLogRecord {
         if (map == null) {
             return;
         }
-        int lastPosition = writeBuffer.position();
 
         ValueString.type.write(writeBuffer, mapName);
         int keyValueLengthStartPos = writeBuffer.position();
@@ -109,9 +109,5 @@ public class UndoLogRecord {
             ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newTV.getValue());
         }
         writeBuffer.putInt(keyValueLengthStartPos, writeBuffer.position() - keyValueLengthStartPos - 4);
-
-        // 预估一下内存占用大小，当到达一个阈值时方便其他服务线程刷数据到硬盘
-        int memory = writeBuffer.position() - lastPosition;
-        te.incrementEstimatedMemory(mapName, memory);
     }
 }

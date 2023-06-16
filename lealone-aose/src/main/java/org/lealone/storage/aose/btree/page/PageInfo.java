@@ -9,10 +9,20 @@ import java.nio.ByteBuffer;
 
 public class PageInfo {
 
+    public Page page;
+    public long pos;
+
     public ByteBuffer buff;
     public int pageLength;
     public long lastTime;
     public int hits; // 只是一个预估值，不需要精确
+
+    public PageInfo() {
+    }
+
+    public PageInfo(long pos) {
+        this.pos = pos;
+    }
 
     public void updateTime() {
         lastTime = System.currentTimeMillis();

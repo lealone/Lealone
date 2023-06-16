@@ -24,6 +24,7 @@ public class MemoryManager {
 
     private long maxMemory;
     private final AtomicLong usedMemory = new AtomicLong(0);
+    private final AtomicLong dirtyMemory = new AtomicLong(0);
 
     public MemoryManager(long maxMemory) {
         this.maxMemory = maxMemory;
@@ -41,12 +42,29 @@ public class MemoryManager {
         return usedMemory.get();
     }
 
+    public long getDirtyMemory() {
+        return dirtyMemory.get();
+    }
+
     public void incrementMemory(long delta) {
         usedMemory.addAndGet(delta);
     }
 
     public void decrementMemory(long delta) {
         usedMemory.addAndGet(-delta);
+    }
+
+    public void addUsedMemoryOnly(long delta) { // 正负都有可能
+        usedMemory.addAndGet(delta);
+    }
+
+    public void addDirtyMemory(long delta) { // 正负都有可能
+        usedMemory.addAndGet(delta);
+        dirtyMemory.addAndGet(delta);
+    }
+
+    public void addDirtyMemoryOnly(long delta) { // 正负都有可能
+        dirtyMemory.addAndGet(delta);
     }
 
     public boolean needGc(long delta) {
@@ -59,5 +77,6 @@ public class MemoryManager {
 
     public void reset() {
         usedMemory.set(0);
+        dirtyMemory.set(0);
     }
 }

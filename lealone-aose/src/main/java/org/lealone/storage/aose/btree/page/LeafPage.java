@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -16,18 +17,8 @@ import org.lealone.storage.type.StorageDataType;
 public class LeafPage extends LocalPage {
 
     private Object[] values;
-
-    private ColumnPageReference[] columnPages;
+    private PageReference[] columnPages;
     private volatile long totalCount;
-
-    private static class ColumnPageReference {
-        ColumnPage page;
-        long pos;
-
-        ColumnPageReference(long pos) {
-            this.pos = pos;
-        }
-    }
 
     public LeafPage(BTreeMap<?, ?> map) {
         super(map);
@@ -52,7 +43,7 @@ public class LeafPage extends LocalPage {
     public Object getValue(int index, int[] columnIndexes) {
         if (columnPages != null && columnIndexes != null) {
             for (int columnIndex : columnIndexes) {
-                if (columnPages[columnIndex].page == null) {
+                if (columnPages[columnIndex].getPage() == null) {
                     readColumnPage(columnIndex);
                 }
             }
@@ -64,7 +55,7 @@ public class LeafPage extends LocalPage {
     public Object getValue(int index, boolean allColumns) {
         if (columnPages != null && allColumns) {
             for (int columnIndex = 0, len = columnPages.length; columnIndex < len; columnIndex++) {
-                if (columnPages[columnIndex].page == null) {
+                if (columnPages[columnIndex].getPage() == null) {
                     readColumnPage(columnIndex);
                 }
             }
@@ -75,9 +66,6 @@ public class LeafPage extends LocalPage {
     @Override
     public Object setValue(int index, Object value) {
         Object old = values[index];
-        // this is slightly slower:
-        // values = Arrays.copyOf(values, values.length);
-        // values = values.clone(); // 在我的电脑上实测，copyOf实际上要比clone快一点点
         StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         values[index] = value;
@@ -150,7 +138,7 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         int mode = buff.get(buff.position() + 4);
         switch (PageStorageMode.values()[mode]) {
@@ -193,12 +181,12 @@ public class LeafPage extends LocalPage {
 
         int keyLength = DataUtils.readVarInt(buff);
         int columnCount = DataUtils.readVarInt(buff);
-        columnPages = new ColumnPageReference[columnCount];
+        columnPages = new PageReference[columnCount];
         keys = new Object[keyLength];
         int type = buff.get();
         for (int i = 0; i < columnCount; i++) {
             long pos = buff.getLong();
-            columnPages[i] = new ColumnPageReference(pos);
+            columnPages[i] = new PageReference(pos);
         }
         buff = expandPage(buff, type, start, pageLength);
 
@@ -215,10 +203,10 @@ public class LeafPage extends LocalPage {
     }
 
     private void readColumnPage(int columnIndex) {
-        ColumnPage page = (ColumnPage) map.getBTreeStorage().readPage(columnPages[columnIndex].pos);
+        PageReference ref = columnPages[columnIndex];
+        ColumnPage page = (ColumnPage) getChildPage(ref);
         if (page.values == null) {
-            columnPages[columnIndex].page = page;
-            page.readColumn(values, columnIndex);
+            page.readColumn(ref.getPageInfo(), values, columnIndex);
             map.getBTreeStorage().gcIfNeeded(page.getTotalMemory());
         } else {
             // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
@@ -227,11 +215,12 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
         if (pos != 0) {
             // already stored before
             return;
         }
+        addMemory(-memory);
         write(chunk, buff);
     }
 
@@ -325,7 +314,7 @@ public class LeafPage extends LocalPage {
         for (int i = 0; i < keys.length; i++) {
             mem += valueType.getMemory(values[i]);
         }
-        addMemory(mem - memory);
+        addMemory(mem - memory, false);
     }
 
     @Override
@@ -364,7 +353,7 @@ public class LeafPage extends LocalPage {
         if (memory == 0) {
             p.recalculateMemory();
         } else {
-            p.addMemory(memory);
+            p.addMemory(memory, false);
         }
         return p;
     }

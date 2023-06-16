@@ -94,7 +94,7 @@ public class TransactionEngineTest extends AoteTestBase {
     @Test
     public void testCheckpoint() {
         Map<String, String> config = getDefaultConfig();
-        config.put("committed_data_cache_size_in_mb", "1");
+        config.put("dirty_page_cache_size_in_mb", "1");
         config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
         te = getTransactionEngine(config);
@@ -114,7 +114,7 @@ public class TransactionEngineTest extends AoteTestBase {
         assertEquals(50000, map.size());
 
         // 在进行集成测试时可能在其他地方已经初始化TransactionEngine了
-        String v = te.getConfig().get("committed_data_cache_size_in_mb");
+        String v = te.getConfig().get("dirty_page_cache_size_in_mb");
         if (v != null && v.equals("1")) {
             try {
                 Thread.sleep(2000); // 等待后端检查点线程完成数据保存

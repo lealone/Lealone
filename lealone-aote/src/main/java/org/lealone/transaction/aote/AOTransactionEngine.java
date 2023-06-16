@@ -38,24 +38,18 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private static final Logger logger = LoggerFactory.getLogger(AOTransactionEngine.class);
 
-    private static final class MapInfo {
-        final StorageMap<Object, TransactionalValue> map;
-        final AtomicInteger estimatedMemory = new AtomicInteger(0);
-
-        MapInfo(StorageMap<Object, TransactionalValue> map) {
-            this.map = map;
-        }
-    }
-
     // key: mapName
-    private final ConcurrentHashMap<String, MapInfo> maps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps //
+            = new ConcurrentHashMap<>();
+
     // key: transactionId
     private final ConcurrentSkipListMap<Long, AOTransaction> currentTransactions //
             = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastTransactionId = new AtomicLong();
+
     private final ConcurrentHashMap<TransactionalValue, TransactionalValue.OldValue> tValues //
             = new ConcurrentHashMap<>();
 
+    private final AtomicLong lastTransactionId = new AtomicLong();
     // repeatable read 事务数
     private final AtomicInteger rrTransactionCount = new AtomicInteger();
 
@@ -86,7 +80,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
-        if (maps.putIfAbsent(map.getName(), new MapInfo(map)) == null) {
+        if (maps.putIfAbsent(map.getName(), map) == null) {
             map.getStorage().registerEventListener(this);
         }
     }
@@ -109,14 +103,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     ///////////////////// 以下方法在UndoLogRecord中有用途 /////////////////////
 
     public StorageMap<Object, TransactionalValue> getStorageMap(String mapName) {
-        MapInfo mapInfo = maps.get(mapName);
-        return mapInfo != null ? mapInfo.map : null;
-    }
-
-    public void incrementEstimatedMemory(String mapName, int memory) {
-        MapInfo mapInfo = maps.get(mapName);
-        if (mapInfo != null)
-            mapInfo.estimatedMemory.addAndGet(memory);
+        return maps.get(mapName);
     }
 
     public boolean containsRepeatableReadTransactions() {
@@ -213,11 +200,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public TransactionMap<?, ?> getTransactionMap(String mapName, Transaction transaction) {
-        MapInfo mapInfo = maps.get(mapName);
-        if (mapInfo == null)
+        StorageMap<Object, TransactionalValue> map = maps.get(mapName);
+        if (map == null)
             return null;
         else
-            return new AOTransactionMap<>((AOTransaction) transaction, mapInfo.map);
+            return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 
     @Override
@@ -251,8 +238,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private void gc() {
         if (MemoryManager.getGlobalMemoryManager().needGc()) {
-            for (MapInfo mapInfo : maps.values()) {
-                StorageMap<?, ?> map = mapInfo.map;
+            for (StorageMap<?, ?> map : maps.values()) {
                 if (!map.isClosed())
                     map.gc();
             }
@@ -292,7 +278,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         // 关闭CheckpointService时等待它结束
         private final CountDownLatch latch = new CountDownLatch(1);
         private final Semaphore semaphore = new Semaphore(1);
-        private final int committedDataCacheSize;
+
+        private final long dirtyPageCacheSize;
         private final long checkpointPeriod;
         private final long loopInterval;
 
@@ -302,13 +289,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         CheckpointService(Map<String, String> config) {
             // 默认32M
-            committedDataCacheSize = MapUtils.getIntMB(config, "committed_data_cache_size_in_mb",
+            dirtyPageCacheSize = MapUtils.getLongMB(config, "dirty_page_cache_size_in_mb",
                     32 * 1024 * 1024);
             // 默认1小时
             checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", 1 * 60 * 60 * 1000);
-            // 默认1分钟
-            long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval",
-                    1 * 60 * 1000);
+            // 默认3秒钟
+            long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval", 3 * 1000);
             if (checkpointPeriod < loopInterval)
                 loopInterval = checkpointPeriod;
             this.loopInterval = loopInterval;
@@ -335,24 +321,18 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
             // 如果上面的条件都不满足，那么再看看已经提交的数据占用的预估总内存大小是否大于阈值
             if (!executeCheckpoint) {
-                long totalEstimatedMemory = 0;
-                for (MapInfo mapInfo : maps.values()) {
-                    totalEstimatedMemory += mapInfo.estimatedMemory.get();
-                }
-                executeCheckpoint = totalEstimatedMemory > committedDataCacheSize;
+                executeCheckpoint = MemoryManager.getGlobalMemoryManager()
+                        .getDirtyMemory() > dirtyPageCacheSize;
             }
             if (executeCheckpoint) {
                 // 1.先切换redo log chunk文件
                 logSyncService.checkpoint(false);
                 try {
-                    for (MapInfo mapInfo : maps.values()) {
-                        StorageMap<?, ?> map = mapInfo.map;
+                    for (StorageMap<?, ?> map : maps.values()) {
                         if (map.isClosed())
                             continue;
-                        AtomicInteger counter = mapInfo.estimatedMemory;
-                        if (force || counter != null && counter.getAndSet(0) > 0) {
+                        if (force || map.hasUnsavedChanges())
                             map.save();
-                        }
                     }
                     lastSavedAt = now;
                     // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件

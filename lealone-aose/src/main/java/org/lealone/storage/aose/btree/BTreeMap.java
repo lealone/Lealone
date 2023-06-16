@@ -101,7 +101,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
-            Page root = btreeStorage.readPage(rootRef, lastChunk.rootPagePos);
+            Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos);
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             rootRef.replacePage(root);
             setMaxKey(lastKey());
@@ -412,7 +412,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 break;
             }
         }
-        leaf.markDirty(true);
+        if (leaf != null) // 可能为null
+            leaf.markDirty(true);
     }
 
     public int getChildPageCount(Page p) {
@@ -450,6 +451,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return btreeStorage.getMemorySpaceUsed();
+    }
+
+    @Override
+    public long getDirtyMemorySpaceUsed() {
+        return btreeStorage.getDirtyMemorySpaceUsed();
+    }
+
+    @Override
+    public boolean hasUnsavedChanges() {
+        return btreeStorage.hasUnsavedChanges();
     }
 
     public Page gotoLeafPage(Object key) {

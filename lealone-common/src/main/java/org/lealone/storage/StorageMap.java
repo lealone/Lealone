@@ -224,9 +224,21 @@ public interface StorageMap<K, V> {
      */
     void save();
 
-    long getDiskSpaceUsed();
+    default long getDiskSpaceUsed() {
+        return 0;
+    }
 
-    long getMemorySpaceUsed();
+    default long getMemorySpaceUsed() {
+        return 0;
+    }
+
+    default long getDirtyMemorySpaceUsed() {
+        return 0;
+    }
+
+    default boolean hasUnsavedChanges() {
+        return false;
+    }
 
     default void gc() {
     }

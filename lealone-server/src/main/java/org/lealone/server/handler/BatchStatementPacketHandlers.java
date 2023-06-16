@@ -49,6 +49,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 };
                 subTasks[i] = subTask;
             }
+            packet.batchStatements.clear();
             task.si.submitTasks(subTasks);
             return null;
         }
@@ -81,6 +82,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 };
                 subTasks[i] = subTask;
             }
+            packet.batchParameters.clear();
             task.si.submitTasks(subTasks);
             return null;
         }

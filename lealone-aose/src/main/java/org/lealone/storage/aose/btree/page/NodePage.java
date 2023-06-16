@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -44,23 +45,7 @@ public class NodePage extends LocalPage {
 
     @Override
     public Page getChildPage(int index) {
-        PageReference ref = children[index];
-        Page p = ref.page; // 先取出来，GC线程可能置null
-        if (p != null) {
-            p.updateTime();
-            return p;
-        } else {
-            PageInfo pInfo = ref.pInfo;
-            if (pInfo != null && pInfo.buff != null) {
-                p = map.getBTreeStorage().readPage(ref, ref.pos, pInfo.buff, pInfo.pageLength);
-                map.getBTreeStorage().gcIfNeeded(p.getMemory());
-            } else {
-                p = map.getBTreeStorage().readPage(ref);
-                ref.pInfo = p.pInfo;
-            }
-            ref.replacePage(p);
-            return p;
-        }
+        return getChildPage(children[index]);
     }
 
     @Override
@@ -87,9 +72,9 @@ public class NodePage extends LocalPage {
     @Override
     public long getTotalCount() {
         long totalCount = 0;
-        for (PageReference x : children) {
-            if (x.page != null)
-                totalCount += x.page.getTotalCount();
+        for (PageReference ref : children) {
+            if (ref.getPage() != null)
+                totalCount += ref.getPage().getTotalCount();
         }
         return totalCount;
     }
@@ -124,7 +109,7 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
             boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
@@ -143,7 +128,7 @@ public class NodePage extends LocalPage {
             int pageType = buff.get();
             if (pageType == 0)
                 buff.getInt(); // replicationHostIds
-            children[i] = new PageReference(null, p[i]);
+            children[i] = new PageReference(p[i]);
             children[i].setParentRef(getRef());
         }
         buff = expandPage(buff, type, start, pageLength);
@@ -196,26 +181,24 @@ public class NodePage extends LocalPage {
 
     private void writeChildrenPositions(DataBuffer buff) {
         for (int i = 0, len = keys.length; i <= len; i++) {
-            buff.putLong(children[i].pos); // pos通常是个很大的long，所以不值得用VarLong
+            buff.putLong(children[i].getPos()); // pos通常是个很大的long，所以不值得用VarLong
         }
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
         if (pos != 0) {
             // already stored before
             return;
         }
         int patch = write(chunk, buff);
         for (int i = 0, len = children.length; i < len; i++) {
-            Page p = children[i].page;
+            PageInfo pInfo = children[i].getPageInfo();
+            Page p = pInfo.page;
             if (p != null) {
-                p.writeUnsavedRecursive(chunk, buff);
-                children[i].pos = p.pos;
+                p.writeUnsavedRecursive(chunk, buff, savedPages);
+                savedPages.add(new SavedPage(children[i], pInfo));
             }
-            // 释放资源
-            children[i].page = null;
-            children[i].pInfo = null;
         }
         int old = buff.position();
         buff.position(patch);
@@ -232,7 +215,7 @@ public class NodePage extends LocalPage {
     protected void recalculateMemory() {
         int mem = recalculateKeysMemory();
         mem += this.getRawChildPageCount() * PageUtils.PAGE_MEMORY_CHILD;
-        addMemory(mem - memory);
+        addMemory(mem - memory, false);
     }
 
     @Override
@@ -263,7 +246,7 @@ public class NodePage extends LocalPage {
         if (memory == 0) {
             p.recalculateMemory();
         } else {
-            p.addMemory(memory);
+            p.addMemory(memory, false);
         }
         return p;
     }
@@ -274,11 +257,11 @@ public class NodePage extends LocalPage {
             buff.append(indent).append("children: ").append(keys.length + 1).append('\n');
             for (int i = 0, len = keys.length; i <= len; i++) {
                 buff.append('\n');
-                if (children[i].page != null) {
-                    children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
+                if (children[i].getPage() != null) {
+                    children[i].getPage().getPrettyPageInfoRecursive(indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        map.getBTreeStorage().readPage(children[i])
+                        map.getBTreeStorage().readPage(children[i].getPageInfo(), children[i])
                                 .getPrettyPageInfoRecursive(indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");

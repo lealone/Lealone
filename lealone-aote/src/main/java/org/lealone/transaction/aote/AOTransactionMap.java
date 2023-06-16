@@ -419,6 +419,16 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return map.getMemorySpaceUsed();
     }
 
+    @Override
+    public long getDirtyMemorySpaceUsed() {
+        return map.getDirtyMemorySpaceUsed();
+    }
+
+    @Override
+    public boolean hasUnsavedChanges() {
+        return map.hasUnsavedChanges();
+    }
+
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
 
     @Override

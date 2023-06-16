@@ -67,93 +67,104 @@ public class PageReference {
         return false;
     }
 
-    Page page;
-    long pos;
-    public PageInfo pInfo;
+    private static final AtomicReferenceFieldUpdater<PageReference, PageInfo> //
+    pageInfoUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageInfo.class,
+            "pInfo");
+
+    private volatile PageInfo pInfo; // 已近确保不会为null
 
     public PageReference() {
+        pInfo = new PageInfo();
     }
 
     public PageReference(long pos) {
-        this.pos = pos;
-    }
-
-    public PageReference(Page page, long pos) {
-        this.page = page;
-        this.pos = pos;
-        if (page != null)
-            pInfo = page.pInfo;
+        this();
+        pInfo.pos = pos;
     }
 
     public PageReference(Page page) {
-        this.page = page;
-        if (page != null) {
-            pos = page.getPos();
-            pInfo = page.pInfo;
-        }
+        this();
+        pInfo.page = page;
     }
 
     public long getPos() {
-        return pos;
+        return pInfo.pos;
     }
 
     public Page getPage() {
-        return page;
+        return pInfo.page;
+    }
+
+    public PageInfo getPageInfo() {
+        return pInfo;
+    }
+
+    public boolean replacePage(PageInfo expect, PageInfo update) {
+        return pageInfoUpdater.compareAndSet(this, expect, update);
     }
 
     public void replacePage(Page page) {
-        this.page = page;
+        if (this.pInfo.page == page)
+            return;
+        PageInfo pInfo;
         if (page != null) {
-            pos = page.getPos();
-            pInfo = page.pInfo;
+            pInfo = new PageInfo();
+            pInfo.pos = page.getPos();
+            pInfo.page = page;
+        } else {
+            pInfo = new PageInfo();
         }
+        this.pInfo = pInfo;
+    }
+
+    public boolean isLeafPage() {
+        if (pInfo.page != null)
+            return pInfo.page.isLeaf();
+        else
+            return PageUtils.isLeafPage(pInfo.pos);
+    }
+
+    public boolean isNodePage() {
+        if (pInfo.page != null)
+            return pInfo.page.isNode();
+        else
+            return PageUtils.isNodePage(pInfo.pos);
+    }
+
+    public int getBuffMemory() {
+        return pInfo.getBuffMemory();
+    }
+
+    public long getLastTime() {
+        return pInfo.lastTime;
+    }
+
+    public int getHits() {
+        return pInfo.hits;
+    }
+
+    public void resetHits() {
+        pInfo.hits = 0;
+    }
+
+    public void updateTime() {
+        pInfo.updateTime();
+    }
+
+    public void release() {
+        pInfo = new PageInfo(); // 释放掉旧点，创建一个新的
+    }
+
+    public void releaseBuff() {
+        pInfo.buff = null;
+    }
+
+    public void releasePage() {
+        pInfo.page = null;
     }
 
     @Override
     public String toString() {
-        return "PageReference[ pos=" + pos + "]";
-    }
-
-    public boolean isLeafPage() {
-        if (page != null)
-            return page.isLeaf();
-        else
-            return PageUtils.isLeafPage(pos);
-    }
-
-    public boolean isNodePage() {
-        if (page != null)
-            return page.isNode();
-        else
-            return PageUtils.isNodePage(pos);
-    }
-
-    public int getBuffMemory() {
-        return pInfo == null ? 0 : pInfo.getBuffMemory();
-    }
-
-    public void clearBuff() {
-        pInfo = null;
-    }
-
-    public long getLastTime() {
-        if (page != null)
-            return page.getPageInfo().lastTime;
-        else
-            return pInfo.lastTime;
-    }
-
-    public int getHits() {
-        if (page != null)
-            return page.getPageInfo().hits;
-        else
-            return pInfo.hits;
-    }
-
-    public void resetHits() {
-        if (page != null)
-            page.getPageInfo().hits = 0;
-        else
-            pInfo.hits = 0;
+        return "PageReference[" + pInfo.pos + "]";
     }
 }
