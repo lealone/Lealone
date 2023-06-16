@@ -44,6 +44,8 @@ public class TableAlterHistory {
                     "insert into INFORMATION_SCHEMA.table_alter_history values(?,?,?,?)");
             psDeleteRecords = conn
                     .prepareStatement("delete from INFORMATION_SCHEMA.table_alter_history where id = ?");
+            // 嵌入式执行prepareStatement会产生新的事务，所以这里需要提交一下
+            conn.commit();
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
