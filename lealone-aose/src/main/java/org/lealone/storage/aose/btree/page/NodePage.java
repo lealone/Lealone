@@ -143,7 +143,7 @@ public class NodePage extends LocalPage {
         int typePos = buff.position();
         int type = PageUtils.PAGE_TYPE_NODE;
         buff.put((byte) type);
-        writeChildrenPositions(buff);
+        writeChildrenPositions(buff, null);
         for (int i = 0; i <= keyLength; i++) {
             if (children[i].isLeafPage()) {
                 buff.put((byte) 0);
@@ -169,9 +169,15 @@ public class NodePage extends LocalPage {
         return typePos + 1;
     }
 
-    private void writeChildrenPositions(DataBuffer buff) {
-        for (int i = 0, len = keys.length; i <= len; i++) {
-            buff.putLong(children[i].getPos()); // pos通常是个很大的long，所以不值得用VarLong
+    private void writeChildrenPositions(DataBuffer buff, long[] positions) {
+        if (positions == null) {
+            for (int i = 0, len = keys.length; i <= len; i++) {
+                buff.putLong(0);
+            }
+        } else {
+            for (int i = 0, len = keys.length; i <= len; i++) {
+                buff.putLong(positions[i]); // pos通常是个很大的long，所以不值得用VarLong
+            }
         }
     }
 
@@ -182,17 +188,22 @@ public class NodePage extends LocalPage {
             return;
         }
         int patch = write(chunk, buff);
+        long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
-            PageInfo pInfo = children[i].getPageInfo();
+            PageReference pRef = children[i];
+            PageInfo pInfo = pRef.getPageInfo();
             Page p = pInfo.page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff, savedPages);
-                savedPages.add(new SavedPage(children[i], pInfo));
+                savedPages.add(new SavedPage(pRef, pInfo));
+                positions[i] = p.pos;
+            } else {
+                positions[i] = pInfo.pos;
             }
         }
         int old = buff.position();
         buff.position(patch);
-        writeChildrenPositions(buff);
+        writeChildrenPositions(buff, positions);
         buff.position(old);
     }
 

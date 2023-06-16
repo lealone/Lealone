@@ -44,9 +44,14 @@ public class BTreeGC {
         return memoryManager.getDirtyMemory();
     }
 
-    public void addDirtyMemory(int mem) {
+    public void addDirtyMemory(long mem) {
         memoryManager.addDirtyMemory(mem);
         GMM().addDirtyMemory(mem);
+    }
+
+    public void resetDirtyMemory() {
+        long mem = memoryManager.getDirtyMemory();
+        addDirtyMemory(-mem);
     }
 
     public void close() {

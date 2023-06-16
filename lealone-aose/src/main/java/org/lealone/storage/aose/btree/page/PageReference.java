@@ -151,10 +151,6 @@ public class PageReference {
         pInfo.updateTime();
     }
 
-    public void release() {
-        pInfo = new PageInfo(); // 释放掉旧点，创建一个新的
-    }
-
     public void releaseBuff() {
         pInfo.buff = null;
     }

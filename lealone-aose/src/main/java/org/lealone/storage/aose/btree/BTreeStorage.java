@@ -385,6 +385,7 @@ public class BTreeStorage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "This storage is read-only");
         }
+        bgc.resetDirtyMemory();
         hasUnsavedChanges = false;
         try {
             executeSave();
