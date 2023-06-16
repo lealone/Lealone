@@ -19,8 +19,6 @@ import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 
 public class Page {
 
-    public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
-
     public static Page create(BTreeMap<?, ?> map, int type) {
         switch (type) {
         case PageUtils.PAGE_TYPE_LEAF:
@@ -35,7 +33,7 @@ public class Page {
     }
 
     protected final BTreeMap<?, ?> map;
-    protected long pos;
+    protected long pos; // the position of the page
 
     private PageReference ref;
 
@@ -51,11 +49,6 @@ public class Page {
         return ref;
     }
 
-    /**
-     * Get the position of the page
-     * 
-     * @return the position
-     */
     public long getPos() {
         return pos;
     }
@@ -103,19 +96,6 @@ public class Page {
 
     public boolean isEmpty() {
         throw ie();
-    }
-
-    public boolean isNotEmpty() {
-        return !isEmpty();
-    }
-
-    /**
-    * Get the total number of key-value pairs, including child pages.
-    *
-    * @return the number of key-value pairs
-    */
-    public long getTotalCount() {
-        return 0;
     }
 
     public PageReference[] getChildren() {
@@ -199,16 +179,6 @@ public class Page {
      * @return the page with the entries after the split index
      */
     Page split(int at) {
-        throw ie();
-    }
-
-    /**
-     * Replace the key at an index in this page.
-     * 
-     * @param index the index
-     * @param key the new key
-     */
-    public void setKey(int index, Object key) {
         throw ie();
     }
 
@@ -318,21 +288,6 @@ public class Page {
         while (parentRef != null) {
             parentRef.getPage().markDirty(false);
             parentRef = parentRef.getParentRef();
-        }
-    }
-
-    // 返回key所在的leaf page
-    public Page binarySearchLeafPage(Object key) {
-        Page p = this;
-        while (true) {
-            if (p.isLeaf()) {
-                int index = p.binarySearch(key);
-                // 如果找不到，是返回null还是throw new AssertionError()，由调用者确保key总是存在
-                return index >= 0 ? p : null;
-            } else {
-                int index = p.getPageIndex(key);
-                p = p.getChildPage(index);
-            }
         }
     }
 

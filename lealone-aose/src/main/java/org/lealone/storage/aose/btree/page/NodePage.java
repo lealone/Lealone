@@ -70,16 +70,6 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public long getTotalCount() {
-        long totalCount = 0;
-        for (PageReference ref : children) {
-            if (ref.getPage() != null)
-                totalCount += ref.getPage().getTotalCount();
-        }
-        return totalCount;
-    }
-
-    @Override
     Page copyAndInsertChild(TmpNodePage tmpNodePage) {
         int index = getPageIndex(tmpNodePage.key);
         Object[] newKeys = new Object[keys.length + 1];

@@ -100,21 +100,6 @@ public abstract class LocalPage extends Page {
     }
 
     @Override
-    public void setKey(int index, Object key) {
-        // this is slightly slower:
-        // keys = Arrays.copyOf(keys, keys.length);
-        keys = keys.clone();
-        Object old = keys[index];
-        StorageDataType keyType = map.getKeyType();
-        int mem = keyType.getMemory(key);
-        if (old != null) {
-            mem -= keyType.getMemory(old);
-        }
-        addMemory(mem);
-        keys[index] = key;
-    }
-
-    @Override
     public void remove(int index) {
         int keyLength = keys.length;
         int keyIndex = index >= keyLength ? index - 1 : index;

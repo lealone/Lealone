@@ -18,7 +18,6 @@ public class LeafPage extends LocalPage {
 
     private Object[] values;
     private PageReference[] columnPages;
-    private volatile long totalCount;
 
     public LeafPage(BTreeMap<?, ?> map) {
         super(map);
@@ -31,7 +30,7 @@ public class LeafPage extends LocalPage {
 
     @Override
     public boolean isEmpty() {
-        return totalCount < 1;
+        return values == null || values.length == 0;
     }
 
     @Override
@@ -87,22 +86,9 @@ public class LeafPage extends LocalPage {
         System.arraycopy(values, a, bValues, 0, b);
         values = aValues;
 
-        totalCount = a;
-        LeafPage newPage = create(map, bKeys, bValues, bKeys.length, 0);
+        LeafPage newPage = create(map, bKeys, bValues, 0);
         recalculateMemory();
         return newPage;
-    }
-
-    @Override
-    public long getTotalCount() {
-        if (ASSERT) {
-            long check = keys.length;
-            if (check != totalCount) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
-                        "Expected: {0} got: {1}", check, totalCount);
-            }
-        }
-        return totalCount;
     }
 
     @Override
@@ -116,7 +102,7 @@ public class LeafPage extends LocalPage {
         newValues[index] = value;
         map.incrementSize();// 累加全局计数器
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-        LeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory());
+        LeafPage newPage = create(map, newKeys, newValues, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.setRef(getRef());
         // mark the old as deleted
@@ -133,7 +119,6 @@ public class LeafPage extends LocalPage {
         Object[] newValues = new Object[keyLength - 1];
         DataUtils.copyExcept(values, newValues, keyLength, index);
         values = newValues;
-        totalCount--;
         map.decrementSize(); // 递减全局计数器
     }
 
@@ -166,7 +151,6 @@ public class LeafPage extends LocalPage {
         map.getKeyType().read(buff, keys, keyLength);
         values = new Object[keyLength];
         map.getValueType().read(buff, values, keyLength);
-        totalCount = keyLength;
         buff.getInt(); // replicationHostIds
         recalculateMemory();
     }
@@ -197,9 +181,8 @@ public class LeafPage extends LocalPage {
             values[row] = valueType.readMeta(buff, columnCount);
         }
         buff.getInt(); // replicationHostIds
-        // 延迟加载列
-        totalCount = keyLength;
         recalculateMemory();
+        // 延迟加载列
     }
 
     private void readColumnPage(int columnIndex) {
@@ -323,7 +306,7 @@ public class LeafPage extends LocalPage {
     }
 
     private LeafPage copy(boolean removePage) {
-        LeafPage newPage = create(map, keys, values, totalCount, getMemory());
+        LeafPage newPage = create(map, keys, values, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.setRef(getRef());
         if (removePage) {
@@ -340,16 +323,14 @@ public class LeafPage extends LocalPage {
      * @return the new page
      */
     public static LeafPage createEmpty(BTreeMap<?, ?> map) {
-        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, 0, PageUtils.PAGE_MEMORY);
+        return create(map, new Object[0], new Object[0], PageUtils.PAGE_MEMORY);
     }
 
-    static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount,
-            int memory) {
+    static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, int memory) {
         LeafPage p = new LeafPage(map);
         // the position is 0
         p.keys = keys;
         p.values = values;
-        p.totalCount = totalCount;
         if (memory == 0) {
             p.recalculateMemory();
         } else {
