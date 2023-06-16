@@ -196,65 +196,6 @@ public abstract class LocalPage extends Page {
 
     @Override
     public String toString() {
-        return getPrettyPageInfo(false);
+        return PrettyPagePrinter.getPrettyPageInfo(this, false);
     }
-
-    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
-
-    @Override
-    public String getPrettyPageInfo(boolean readOffLinePage) {
-        StringBuilder buff = new StringBuilder();
-        PrettyPageInfo info = new PrettyPageInfo();
-        info.readOffLinePage = readOffLinePage;
-
-        getPrettyPageInfoRecursive("", info);
-
-        buff.append("PrettyPageInfo:").append('\n');
-        buff.append("--------------").append('\n');
-        buff.append("pageCount: ").append(info.pageCount).append('\n');
-        buff.append("leafPageCount: ").append(info.leafPageCount).append('\n');
-        buff.append("nodePageCount: ").append(info.nodePageCount).append('\n');
-        buff.append("levelCount: ").append(info.levelCount).append('\n');
-        buff.append('\n');
-        buff.append("pages:").append('\n');
-        buff.append("--------------------------------").append('\n');
-
-        buff.append(info.buff).append('\n');
-
-        return buff.toString();
-    }
-
-    @Override
-    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
-        StringBuilder buff = info.buff;
-        info.pageCount++;
-        if (isLeaf())
-            info.leafPageCount++;
-        else
-            info.nodePageCount++;
-        int levelCount = indent.length() / 2 + 1;
-        if (levelCount > info.levelCount)
-            info.levelCount = levelCount;
-
-        buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
-        buff.append(indent).append("pos: ").append(pos).append('\n');
-        buff.append(indent).append("chunkId: ").append(PageUtils.getPageChunkId(pos)).append('\n');
-        // buff.append(indent).append("totalCount: ").append(getTotalCount()).append('\n');
-        buff.append(indent).append("memory: ").append(memory).append('\n');
-        buff.append(indent).append("keyLength: ").append(keys.length).append('\n');
-
-        if (keys.length > 0) {
-            buff.append(indent).append("keys: ");
-            for (int i = 0, len = keys.length; i < len; i++) {
-                if (i > 0)
-                    buff.append(", ");
-                buff.append(keys[i]);
-            }
-            buff.append('\n');
-            getPrettyPageInfoRecursive(buff, indent, info);
-        }
-    }
-
-    protected abstract void getPrettyPageInfoRecursive(StringBuilder buff, String indent,
-            PrettyPageInfo info);
 }

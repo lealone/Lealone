@@ -441,24 +441,6 @@ public class Page {
                     chunk.sumOfPageLength);
     }
 
-    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
-
-    public String getPrettyPageInfo(boolean readOffLinePage) {
-        throw ie();
-    }
-
-    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
-    }
-
-    static class PrettyPageInfo {
-        StringBuilder buff = new StringBuilder();
-        int pageCount;
-        int leafPageCount;
-        int nodePageCount;
-        int levelCount;
-        boolean readOffLinePage;
-    }
-
     public static class SavedPage {
 
         public final PageReference pRef;

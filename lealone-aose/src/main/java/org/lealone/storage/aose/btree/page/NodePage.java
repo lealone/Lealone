@@ -250,25 +250,4 @@ public class NodePage extends LocalPage {
         }
         return p;
     }
-
-    @Override
-    protected void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info) {
-        if (children != null) {
-            buff.append(indent).append("children: ").append(keys.length + 1).append('\n');
-            for (int i = 0, len = keys.length; i <= len; i++) {
-                buff.append('\n');
-                if (children[i].getPage() != null) {
-                    children[i].getPage().getPrettyPageInfoRecursive(indent + "  ", info);
-                } else {
-                    if (info.readOffLinePage) {
-                        map.getBTreeStorage().readPage(children[i].getPageInfo(), children[i])
-                                .getPrettyPageInfoRecursive(indent + "  ", info);
-                    } else {
-                        buff.append(indent).append("  ");
-                        buff.append("*** off-line *** ").append(children[i]).append('\n');
-                    }
-                }
-            }
-        }
-    }
 }

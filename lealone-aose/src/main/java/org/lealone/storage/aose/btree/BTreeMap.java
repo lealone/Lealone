@@ -29,6 +29,7 @@ import org.lealone.storage.aose.btree.page.PageOperations.Replace;
 import org.lealone.storage.aose.btree.page.PageOperations.WriteOperation;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
+import org.lealone.storage.aose.btree.page.PrettyPagePrinter;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
@@ -440,7 +441,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void printPage(boolean readOffLinePage) {
-        System.out.println(getRootPage().getPrettyPageInfo(readOffLinePage));
+        PrettyPagePrinter.printPage(getRootPage(), readOffLinePage);
     }
 
     @Override

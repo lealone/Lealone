@@ -357,15 +357,4 @@ public class LeafPage extends LocalPage {
         }
         return p;
     }
-
-    @Override
-    protected void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info) {
-        buff.append(indent).append("values: ");
-        for (int i = 0, len = keys.length; i < len; i++) {
-            if (i > 0)
-                buff.append(", ");
-            buff.append(values[i]);
-        }
-        buff.append('\n');
-    }
 }
