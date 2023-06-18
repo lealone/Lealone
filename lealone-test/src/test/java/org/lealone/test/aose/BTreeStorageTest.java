@@ -32,4 +32,22 @@ public class BTreeStorageTest extends AoseTestBase {
 
         map.remove();
     }
+
+    @Test
+    public void testClear() {
+        init();
+
+        openMap();
+        map.clear();
+
+        map.put(10, "a");
+        map.close();
+
+        openMap();
+        map.clear();
+        map.close();
+
+        openMap();
+        assertNull(map.get(10));
+    }
 }

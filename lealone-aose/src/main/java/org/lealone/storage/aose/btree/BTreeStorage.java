@@ -315,6 +315,7 @@ public class BTreeStorage {
             return;
         bgc.close();
         chunkManager.close();
+        hasUnsavedChanges = true;
         // FileUtils.deleteRecursive(mapBaseDir, true);
     }
 
