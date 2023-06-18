@@ -354,6 +354,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void remove() {
+        clear(); // 及早释放内存，上层的数据库对象模型可能会引用到，容易产生OOM
         try {
             acquireExclusiveLock();
             btreeStorage.remove();
