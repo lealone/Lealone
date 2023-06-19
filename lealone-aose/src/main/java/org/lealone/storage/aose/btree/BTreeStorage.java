@@ -152,7 +152,8 @@ public class BTreeStorage {
 
     // ChunkCompactor在重写chunk中的page时会用到
     public void markDirtyLeafPage(long pos) {
-        Page leaf = readPage(null, new PageReference(pos), pos, false);
+        PageReference tmpRef = new PageReference(pos);
+        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
         Page p = map.getRootPage();
         while (p.isNode()) {
@@ -172,6 +173,25 @@ public class BTreeStorage {
             }
         }
         leaf.markDirty(true);
+    }
+
+    // 多线程读page也是线程安全的
+    public Page getPage(PageReference ref) {
+        PageInfo pInfo = ref.getPageInfo(); // 先取出来，GC线程可能把pInfo.page置null
+        Page p = pInfo.page;
+        if (p != null) {
+            ref.updateTime();
+            return p;
+        } else {
+            if (pInfo.buff != null) {
+                p = readPage(pInfo, ref, ref.getPos(), pInfo.buff, pInfo.pageLength);
+                gcIfNeeded(p.getMemory());
+            } else {
+                p = readPage(pInfo, ref);
+            }
+            // 如果另一个线程执行save，此时p有可能为null，那就再读一次
+            return p != null ? p : getPage(ref);
+        }
     }
 
     public Page readPage(PageInfo pInfoOld, PageReference ref) {
@@ -207,6 +227,7 @@ public class BTreeStorage {
             int pageLength) {
         int type = PageUtils.getPageType(pos);
         Page p = Page.create(map, type);
+        p.setPos(pos);
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
 
@@ -227,16 +248,16 @@ public class BTreeStorage {
         return ref.getPage();
     }
 
+    public BTreeGC getBTreeGC() {
+        return bgc;
+    }
+
     public void gcIfNeeded(long delta) {
         bgc.gcIfNeeded(delta);
     }
 
     public void gc() {
         bgc.gc();
-    }
-
-    public void addDirtyMemory(int mem) {
-        bgc.addDirtyMemory(mem);
     }
 
     /**
@@ -404,6 +425,8 @@ public class BTreeStorage {
             c.mapSize = map.size();
 
             LinkedList<SavedPage> savedPages = new LinkedList<>();
+            PageReference ref = map.getRootPageRef();
+            savedPages.add(new SavedPage(ref, ref.getPageInfo()));
 
             Page p = map.getRootPage();
             p.writeUnsavedRecursive(c, chunkBody, savedPages);

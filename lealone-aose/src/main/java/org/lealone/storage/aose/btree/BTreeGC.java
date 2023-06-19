@@ -44,19 +44,29 @@ public class BTreeGC {
         return memoryManager.getDirtyMemory();
     }
 
-    public void addDirtyMemory(long mem) {
-        memoryManager.addDirtyMemory(mem);
-        GMM().addDirtyMemory(mem);
+    public void addDirtyMemory(long delta) {
+        memoryManager.addDirtyMemory(delta);
+        GMM().addDirtyMemory(delta);
+    }
+
+    public void addUsedMemory(long delta) {
+        memoryManager.addUsedMemory(delta);
+        GMM().addUsedMemory(delta);
+    }
+
+    public void addUsedAndDirtyMemory(long delta) {
+        memoryManager.addUsedAndDirtyMemory(delta);
+        GMM().addUsedAndDirtyMemory(delta);
     }
 
     public void resetDirtyMemory() {
         long mem = memoryManager.getDirtyMemory();
-        addDirtyMemory(-mem);
+        addUsedAndDirtyMemory(-mem);
     }
 
     public void close() {
-        GMM().addDirtyMemoryOnly(-memoryManager.getDirtyMemory());
-        GMM().addUsedMemoryOnly(-memoryManager.getUsedMemory());
+        GMM().addDirtyMemory(-memoryManager.getDirtyMemory());
+        GMM().addUsedMemory(-memoryManager.getUsedMemory());
         memoryManager.reset();
     }
 
@@ -75,8 +85,8 @@ public class BTreeGC {
                 }
             }
         }
-        memoryManager.incrementMemory(delta);
-        globalMemoryManager.incrementMemory(delta);
+        memoryManager.addUsedMemory(delta);
+        globalMemoryManager.addUsedMemory(delta);
     }
 
     public void gc() {
@@ -107,8 +117,8 @@ public class BTreeGC {
             Page p = ref.getPage();
             long memory = p.getMemory();
             ref.releasePage();
-            memoryManager.decrementMemory(memory);
-            globalMemoryManager.decrementMemory(memory);
+            memoryManager.decrementUsedMemory(memory);
+            globalMemoryManager.decrementUsedMemory(memory);
             if (size-- == 0)
                 break;
         }
@@ -121,8 +131,8 @@ public class BTreeGC {
         for (PageReference ref : set) {
             long memory = ref.getBuffMemory();
             ref.releaseBuff();
-            memoryManager.decrementMemory(memory);
-            globalMemoryManager.decrementMemory(memory);
+            memoryManager.decrementUsedMemory(memory);
+            globalMemoryManager.decrementUsedMemory(memory);
             if (size-- == 0)
                 break;
         }
@@ -177,8 +187,8 @@ public class BTreeGC {
                                 ref.releasePage();
                                 if (gcAll)
                                     ref.releaseBuff();
-                                memoryManager.decrementMemory(memory);
-                                GMM().decrementMemory(memory);
+                                memoryManager.decrementUsedMemory(memory);
+                                GMM().decrementUsedMemory(memory);
                             }
                         }
                     }

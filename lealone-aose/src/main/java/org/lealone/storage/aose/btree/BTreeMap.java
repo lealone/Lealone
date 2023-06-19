@@ -113,7 +113,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public Page getRootPage() {
-        return rootRef.getPage();
+        return btreeStorage.getPage(rootRef);
     }
 
     public PageReference getRootPageRef() {

@@ -45,7 +45,9 @@ public class NodePage extends LocalPage {
 
     @Override
     public Page getChildPage(int index) {
-        return getChildPage(children[index]);
+        Page p = getChildPage(children[index]);
+        p.getRef().setParentRef(getRef());
+        return p;
     }
 
     @Override
@@ -83,15 +85,16 @@ public class NodePage extends LocalPage {
 
         tmpNodePage.left.setParentRef(getRef());
         tmpNodePage.right.setParentRef(getRef());
-        int memory = map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD;
-        return copy(newKeys, newChildren, getMemory() + memory, true);
+        NodePage p = copy(newKeys, newChildren);
+        p.addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD, false);
+        return p;
     }
 
     @Override
     public void remove(int index) {
         if (keys.length > 0) // 删除最后一个children时，keys已经空了
             super.remove(index);
-        addMemory(-PageUtils.PAGE_MEMORY_CHILD);
+        addMemory(-PageUtils.PAGE_MEMORY_CHILD, false);
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];
         DataUtils.copyExcept(children, newChildren, childCount, index);
@@ -221,21 +224,12 @@ public class NodePage extends LocalPage {
 
     @Override
     public NodePage copy() {
-        return copy(true);
+        return copy(keys, children);
     }
 
-    private NodePage copy(boolean removePage) {
-        return copy(keys, children, getMemory(), removePage);
-    }
-
-    private NodePage copy(Object[] keys, PageReference[] children, int memory, boolean removePage) {
-        NodePage newPage = create(map, keys, children, memory);
-        newPage.cachedCompare = cachedCompare;
-        newPage.setRef(getRef());
-        if (removePage) {
-            // mark the old as deleted
-            removePage();
-        }
+    private NodePage copy(Object[] keys, PageReference[] children) {
+        NodePage newPage = create(map, keys, children, getMemory());
+        super.copy(newPage);
         return newPage;
     }
 

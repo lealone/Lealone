@@ -104,7 +104,7 @@ public abstract class LocalPage extends Page {
         int keyLength = keys.length;
         int keyIndex = index >= keyLength ? index - 1 : index;
         Object old = keys[keyIndex];
-        addMemory(-map.getKeyType().getMemory(old));
+        addMemory(-map.getKeyType().getMemory(old), isLeaf());
         Object[] newKeys = new Object[keyLength - 1];
         DataUtils.copyExcept(keys, newKeys, keyLength, keyIndex);
         keys = newKeys;
@@ -141,13 +141,24 @@ public abstract class LocalPage extends Page {
     protected void addMemory(int mem, boolean addToMemoryManager) {
         memory += mem;
         if (addToMemoryManager)
-            map.getBTreeStorage().addDirtyMemory(mem);
+            map.getBTreeStorage().getBTreeGC().addUsedAndDirtyMemory(mem);
+    }
+
+    protected void copy(LocalPage newPage) {
+        newPage.cachedCompare = cachedCompare;
+        newPage.setRef(getRef());
+        // mark the old as deleted
+        removePage();
     }
 
     @Override
     public void removePage() {
         if (pos == 0) {
             removedInMemory = true;
+        } else {
+            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
+            if (isLeaf())
+                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
         }
         map.getBTreeStorage().removePage(pos, memory);
     }

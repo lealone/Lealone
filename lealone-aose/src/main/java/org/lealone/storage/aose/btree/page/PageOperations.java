@@ -107,7 +107,7 @@ public abstract class PageOperations {
 
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
-            p = p.copyLeaf(index, key, value); // copy之后Ref还是一样的
+            p = p.copyAndInsertLeaf(index, key, value); // copy之后Ref还是一样的
             pRef.replacePage(p);
             map.setMaxKey(key);
         }
@@ -215,8 +215,7 @@ public abstract class PageOperations {
                 key = (K) Long.valueOf(k);
             else
                 key = (K) ValueLong.get(k);
-            p.markDirty(true);
-            insertLeaf(index, value);
+            insertLeaf(index, value); // 执行insertLeaf的过程中已经把当前页标记为脏页了
             return key;
         }
     }

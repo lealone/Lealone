@@ -46,24 +46,20 @@ public class MemoryManager {
         return dirtyMemory.get();
     }
 
-    public void incrementMemory(long delta) {
-        usedMemory.addAndGet(delta);
-    }
-
-    public void decrementMemory(long delta) {
+    public void decrementUsedMemory(long delta) {
         usedMemory.addAndGet(-delta);
     }
 
-    public void addUsedMemoryOnly(long delta) { // 正负都有可能
-        usedMemory.addAndGet(delta);
-    }
-
     public void addDirtyMemory(long delta) { // 正负都有可能
-        usedMemory.addAndGet(delta);
         dirtyMemory.addAndGet(delta);
     }
 
-    public void addDirtyMemoryOnly(long delta) { // 正负都有可能
+    public void addUsedMemory(long delta) { // 正负都有可能
+        usedMemory.addAndGet(delta);
+    }
+
+    public void addUsedAndDirtyMemory(long delta) {
+        usedMemory.addAndGet(delta);
         dirtyMemory.addAndGet(delta);
     }
 

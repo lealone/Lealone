@@ -53,6 +53,10 @@ public class Page {
         return pos;
     }
 
+    public void setPos(long pos) {
+        this.pos = pos;
+    }
+
     private static RuntimeException ie() {
         return DbException.throwInternalError();
     }
@@ -116,24 +120,8 @@ public class Page {
         throw ie();
     }
 
-    // 多线程读page也是线程安全的
     protected Page getChildPage(PageReference ref) {
-        PageInfo pInfo = ref.getPageInfo(); // 先取出来，GC线程可能把pInfo.page置null
-        Page p = pInfo.page;
-        if (p != null) {
-            ref.updateTime();
-            return p;
-        } else {
-            BTreeStorage bs = map.getBTreeStorage();
-            if (pInfo.buff != null) {
-                p = bs.readPage(pInfo, ref, ref.getPos(), pInfo.buff, pInfo.pageLength);
-                bs.gcIfNeeded(p.getMemory());
-            } else {
-                p = bs.readPage(pInfo, ref);
-            }
-            // 如果另一个线程执行save，此时p有可能为null，那就再读一次
-            return p != null ? p : getChildPage(ref);
-        }
+        return map.getBTreeStorage().getPage(ref);
     }
 
     /**
@@ -197,7 +185,7 @@ public class Page {
         throw ie();
     }
 
-    public Page copyLeaf(int index, Object key, Object value) {
+    public Page copyAndInsertLeaf(int index, Object key, Object value) {
         throw ie();
     }
 
@@ -408,7 +396,13 @@ public class Page {
 
         public void release() {
             if (pRef.getPageInfo() == pInfo) {
-                pRef.replacePage(pInfo, new PageInfo(pInfo.page.pos));
+                PageInfo pInfoNew = new PageInfo(pInfo.page.pos);
+                if (pRef.isRoot()) { // root page还是继续缓存为好
+                    Page p = pInfo.page;
+                    pInfoNew.page = p;
+                    p.map.getBTreeStorage().getBTreeGC().addUsedMemory(p.getMemory());
+                }
+                pRef.replacePage(pInfo, pInfoNew);
             }
         }
     }

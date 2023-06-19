@@ -92,7 +92,7 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public Page copyLeaf(int index, Object key, Object value) {
+    public Page copyAndInsertLeaf(int index, Object key, Object value) {
         int len = keys.length + 1;
         Object[] newKeys = new Object[len];
         DataUtils.copyWithGap(keys, newKeys, len - 1, index);
@@ -100,14 +100,10 @@ public class LeafPage extends LocalPage {
         DataUtils.copyWithGap(values, newValues, len - 1, index);
         newKeys[index] = key;
         newValues[index] = value;
+        LeafPage p = copy(newKeys, newValues);
+        p.addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
         map.incrementSize();// 累加全局计数器
-        addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-        LeafPage newPage = create(map, newKeys, newValues, getMemory());
-        newPage.cachedCompare = cachedCompare;
-        newPage.setRef(getRef());
-        // mark the old as deleted
-        removePage();
-        return newPage;
+        return p;
     }
 
     @Override
@@ -203,7 +199,6 @@ public class LeafPage extends LocalPage {
             // already stored before
             return;
         }
-        addMemory(-memory);
         write(chunk, buff);
     }
 
@@ -302,17 +297,12 @@ public class LeafPage extends LocalPage {
 
     @Override
     public LeafPage copy() {
-        return copy(true);
+        return copy(keys, values);
     }
 
-    private LeafPage copy(boolean removePage) {
+    private LeafPage copy(Object[] keys, Object[] values) {
         LeafPage newPage = create(map, keys, values, getMemory());
-        newPage.cachedCompare = cachedCompare;
-        newPage.setRef(getRef());
-        if (removePage) {
-            // mark the old as deleted
-            removePage();
-        }
+        super.copy(newPage);
         return newPage;
     }
 
