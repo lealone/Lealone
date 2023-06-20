@@ -162,10 +162,8 @@ public class NodePage extends LocalPage {
 
         int pageLength = buff.position() - start;
         buff.putInt(start, pageLength);
-        int chunkId = chunk.id;
 
-        writeCheckValue(buff, chunkId, start, pageLength, checkPos);
-
+        writeCheckValue(buff, chunk, start, pageLength, checkPos);
         updateChunkAndPage(chunk, start, pageLength, type);
 
         removeIfInMemory();

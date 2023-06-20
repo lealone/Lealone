@@ -77,7 +77,7 @@ public class BTreeStorage {
             cacheSize = pageSplitSize * 2;
         bgc = new BTreeGC(map, cacheSize);
 
-        // 默认128M
+        // 默认256M
         int chunkMaxSize = getIntValue(StorageSetting.CHUNK_MAX_SIZE.name(), 256 * 1024 * 1024);
         if (chunkMaxSize > Chunk.MAX_SIZE)
             chunkMaxSize = Chunk.MAX_SIZE;
@@ -429,10 +429,10 @@ public class BTreeStorage {
     }
 
     public synchronized void executeSave(boolean appendModeEnabled) {
-        long dirtyMemory = (long) (bgc.getDirtyMemory() * 1.5);
+        int dirtyMemory = (int) (bgc.getDirtyMemory() * 1.5);
         bgc.resetDirtyMemory();
 
-        DataBuffer chunkBody = null;
+        DataBuffer chunkBody = DataBuffer.getOrCreate(dirtyMemory);
         boolean appendMode = false;
         try {
             Chunk c;
@@ -441,12 +441,9 @@ public class BTreeStorage {
                     && lastChunk.fileStorage.size() + dirtyMemory < chunkMaxSize) {
                 c = lastChunk;
                 appendMode = true;
-                chunkBody = DataBuffer.create((int) (lastChunk.fileStorage.size() + dirtyMemory));
-                chunkBody.position(lastChunk.getOffset());
             } else {
                 c = chunkManager.createChunk();
                 c.fileStorage = getFileStorage(c.fileName);
-                chunkBody = DataBuffer.create();
             }
             c.mapSize = map.size();
 
@@ -457,10 +454,8 @@ public class BTreeStorage {
             Page p = map.getRootPage();
             p.writeUnsavedRecursive(c, chunkBody, savedPages);
             c.rootPagePos = p.getPos();
-            if (appendMode) {
-                c.append(chunkBody, chunkManager.getRemovedPages());
-            } else {
-                c.write(chunkBody, chunkManager.getRemovedPages());
+            c.write(chunkBody, chunkManager.getRemovedPages(), appendMode);
+            if (!appendMode) {
                 chunkManager.addChunk(c);
                 chunkManager.setLastChunk(c);
             }
@@ -472,8 +467,7 @@ public class BTreeStorage {
         } catch (IllegalStateException e) {
             throw panic(e);
         } finally {
-            if (!appendMode)
-                chunkBody.close();
+            chunkBody.close();
         }
     }
 

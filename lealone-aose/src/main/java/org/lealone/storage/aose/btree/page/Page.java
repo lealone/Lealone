@@ -307,8 +307,9 @@ public class Page {
         }
     }
 
-    static void writeCheckValue(DataBuffer buff, int chunkId, int start, int pageLength, int checkPos) {
-        int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
+    static void writeCheckValue(DataBuffer buff, Chunk chunk, int start, int pageLength, int checkPos) {
+        int check = DataUtils.getCheckValue(chunk.id)
+                ^ DataUtils.getCheckValue(chunk.getOffset() + start)
                 ^ DataUtils.getCheckValue(pageLength);
         buff.putShort(checkPos, (short) check);
     }
@@ -374,7 +375,7 @@ public class Page {
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
-        pos = PageUtils.getPagePos(chunk.id, start, type);
+        pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;

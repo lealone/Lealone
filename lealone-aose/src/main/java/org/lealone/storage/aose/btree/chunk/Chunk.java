@@ -145,7 +145,7 @@ public class Chunk {
     }
 
     private void writePagePositions(DataBuffer buff) {
-        pagePositionAndLengthOffset = buff.position();
+        pagePositionAndLengthOffset = getOffset() + buff.position();
         for (Entry<Long, Integer> e : pagePositionToLengthMap.entrySet()) {
             buff.putLong(e.getKey()).putInt(e.getValue());
         }
@@ -161,7 +161,7 @@ public class Chunk {
     }
 
     private void writeRemovedPages(DataBuffer buff, TreeSet<Long> removedPages) {
-        removedPageOffset = buff.position();
+        removedPageOffset = getOffset() + buff.position();
         removedPageCount = removedPages.size();
         for (long pos : removedPages) {
             buff.putLong(pos);
@@ -271,22 +271,26 @@ public class Chunk {
         return buff;
     }
 
-    public void write(DataBuffer body, TreeSet<Long> removedPages) {
+    public void write(DataBuffer body, TreeSet<Long> removedPages, boolean appendMode) {
         writePagePositions(body);
         writeRemovedPages(body, removedPages);
 
-        int chunkBodyLength = body.position();
-        chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
-        // body.limit(chunkBodyLength);
-        body.limit(body.position());
-        body.position(0);
+        ByteBuffer buffer = body.getAndFlipBuffer();
+        int blockCount = MathUtils.roundUpInt(buffer.limit(), BLOCK_SIZE) / BLOCK_SIZE;
 
-        blockCount = chunkBodyLength / BLOCK_SIZE + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
+        long bodyPos;
+        if (appendMode) {
+            bodyPos = fileStorage.size();
+            this.blockCount += blockCount;
+        } else {
+            bodyPos = CHUNK_HEADER_SIZE;
+            this.blockCount = blockCount + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
+        }
 
         // chunk header
         writeHeader();
         // chunk body
-        fileStorage.writeFully(CHUNK_HEADER_SIZE, body.getBuffer());
+        fileStorage.writeFully(bodyPos, buffer);
         fileStorage.sync();
     }
 
@@ -304,25 +308,6 @@ public class Chunk {
                 buff.close();
             }
         }
-        fileStorage.sync();
-    }
-
-    public void append(DataBuffer body, TreeSet<Long> removedPages) {
-        writePagePositions(body);
-        writeRemovedPages(body, removedPages);
-
-        int chunkBodyLength = body.position() - getOffset();
-        chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
-        // body.limit(chunkBodyLength + getOffset());
-        body.limit(body.position() + getOffset());
-        body.position(getOffset());
-
-        blockCount += chunkBodyLength / BLOCK_SIZE;
-
-        // chunk header
-        writeHeader();
-        // chunk body
-        fileStorage.writeFully(fileStorage.size(), body.getBuffer());
         fileStorage.sync();
     }
 }
