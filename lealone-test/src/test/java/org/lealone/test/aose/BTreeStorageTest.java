@@ -11,24 +11,28 @@ public class BTreeStorageTest extends AoseTestBase {
     @Test
     public void run() {
         init();
-        testChunkMetaData();
+        testChunk();
     }
 
-    private void testChunkMetaData() {
-        int count = 500;
-        for (int i = 1; i <= count; i++) {
+    private void put(int start, int end) {
+        for (int i = start; i <= end; i++) {
             Integer key = i;
             String value = "value-" + i;
             map.put(key, value);
         }
         map.save();
+    }
 
-        for (int i = count / 2; i <= count; i++) {
-            Integer key = i;
-            String value = "value-" + i;
-            map.put(key, value);
+    private void testChunk() {
+        int count = 500;
+        put(1, 100);
+        put(101, 200);
+        put(201, count);
+        put(count / 2, count);
+
+        for (int i = 1; i <= count; i++) {
+            assertNotNull(map.get(i));
         }
-        map.save();
 
         map.remove();
     }

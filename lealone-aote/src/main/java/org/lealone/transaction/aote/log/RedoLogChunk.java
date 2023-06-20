@@ -122,6 +122,7 @@ class RedoLogChunk {
         while (logQueueSize.get() > 0) {
             LinkedList<RedoLogRecord> list = new LinkedList<>();
             logQueue.drainTo(list); // 性能比逐个poll要好
+            logQueueSize.addAndGet(-list.size());
             long chunkLength = 0;
             for (RedoLogRecord r : list) {
                 if (r.isCheckpoint()) {
@@ -132,7 +133,6 @@ class RedoLogChunk {
                     if (buff.position() > BUFF_SIZE)
                         chunkLength += write(buff);
                 }
-                logQueueSize.decrementAndGet();
             }
             chunkLength += write(buff);
             if (chunkLength > 0) {

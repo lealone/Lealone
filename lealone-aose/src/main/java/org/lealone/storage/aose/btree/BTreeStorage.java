@@ -152,10 +152,15 @@ public class BTreeStorage {
 
     // ChunkCompactor在重写chunk中的page时会用到
     public void markDirtyLeafPage(long pos) {
+        Page p = map.getRootPage();
+        // 刚保存过然后接着被重写
+        if (p.getPos() == pos) {
+            p.markDirty(true);
+            return;
+        }
         PageReference tmpRef = new PageReference(pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
-        Page p = map.getRootPage();
         while (p.isNode()) {
             p.markDirty(false);
             int index = p.getPageIndex(key);
@@ -407,21 +412,35 @@ public class BTreeStorage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "This storage is read-only");
         }
-        bgc.resetDirtyMemory();
         hasUnsavedChanges = false;
         try {
-            executeSave();
+            executeSave(true);
             new ChunkCompactor(this, chunkManager).executeCompact();
         } catch (IllegalStateException e) {
             throw panic(e);
         }
     }
 
-    public synchronized void executeSave() {
-        DataBuffer chunkBody = DataBuffer.create();
+    public synchronized void executeSave(boolean appendModeEnabled) {
+        long dirtyMemory = (long) (bgc.getDirtyMemory() * 1.5);
+        bgc.resetDirtyMemory();
+
+        DataBuffer chunkBody = null;
+        boolean appendMode = false;
         try {
-            Chunk c = chunkManager.createChunk();
-            c.fileStorage = getFileStorage(c.fileName);
+            Chunk c;
+            Chunk lastChunk = chunkManager.getLastChunk();
+            if (appendModeEnabled && lastChunk != null
+                    && lastChunk.fileStorage.size() + dirtyMemory < Chunk.MAX_SIZE) {
+                c = lastChunk;
+                appendMode = true;
+                chunkBody = DataBuffer.create((int) (lastChunk.fileStorage.size() + dirtyMemory));
+                chunkBody.position(lastChunk.getOffset());
+            } else {
+                c = chunkManager.createChunk();
+                c.fileStorage = getFileStorage(c.fileName);
+                chunkBody = DataBuffer.create();
+            }
             c.mapSize = map.size();
 
             LinkedList<SavedPage> savedPages = new LinkedList<>();
@@ -431,11 +450,13 @@ public class BTreeStorage {
             Page p = map.getRootPage();
             p.writeUnsavedRecursive(c, chunkBody, savedPages);
             c.rootPagePos = p.getPos();
-
-            c.write(chunkBody, chunkManager.getRemovedPages());
-
-            chunkManager.addChunk(c);
-            chunkManager.setLastChunk(c);
+            if (appendMode) {
+                c.append(chunkBody, chunkManager.getRemovedPages());
+            } else {
+                c.write(chunkBody, chunkManager.getRemovedPages());
+                chunkManager.addChunk(c);
+                chunkManager.setLastChunk(c);
+            }
 
             // 保存数据后再释放资源
             for (SavedPage savedPage : savedPages) {
@@ -444,7 +465,8 @@ public class BTreeStorage {
         } catch (IllegalStateException e) {
             throw panic(e);
         } finally {
-            chunkBody.close();
+            if (!appendMode)
+                chunkBody.close();
         }
     }
 

@@ -124,6 +124,13 @@ public class Chunk {
         return asStringBuilder().toString();
     }
 
+    public int getOffset() {
+        int bc = blockCount - 2;
+        if (bc <= 0)
+            bc = 0;
+        return bc * BLOCK_SIZE;
+    }
+
     private void readPagePositions() {
         if (!pagePositionToLengthMap.isEmpty())
             return;
@@ -295,6 +302,24 @@ public class Chunk {
                 buff.close();
             }
         }
+        fileStorage.sync();
+    }
+
+    public void append(DataBuffer body, TreeSet<Long> removedPages) {
+        writePagePositions(body);
+        writeRemovedPages(body, removedPages);
+
+        int chunkBodyLength = body.position() - getOffset();
+        chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
+        body.limit(chunkBodyLength + getOffset());
+        body.position(getOffset());
+
+        blockCount += chunkBodyLength / BLOCK_SIZE;
+
+        // chunk header
+        writeHeader();
+        // chunk body
+        fileStorage.writeFully(fileStorage.size(), body.getBuffer());
         fileStorage.sync();
     }
 }

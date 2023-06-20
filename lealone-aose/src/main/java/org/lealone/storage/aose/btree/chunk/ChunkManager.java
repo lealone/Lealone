@@ -120,6 +120,7 @@ public class ChunkManager {
             if (c.fileStorage != null)
                 c.fileStorage.close();
         }
+        lastChunk = null;
         chunks.clear();
         removedPages.clear();
         idToChunkFileNameMap.clear();
