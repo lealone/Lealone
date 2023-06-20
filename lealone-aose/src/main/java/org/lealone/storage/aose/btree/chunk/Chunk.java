@@ -125,10 +125,11 @@ public class Chunk {
     }
 
     public int getOffset() {
-        int bc = blockCount - 2;
-        if (bc <= 0)
-            bc = 0;
-        return bc * BLOCK_SIZE;
+        int size = (int) fileStorage.size();
+        if (size <= 0)
+            return 0;
+        else
+            return size - 2 * BLOCK_SIZE;
     }
 
     private void readPagePositions() {
@@ -276,7 +277,8 @@ public class Chunk {
 
         int chunkBodyLength = body.position();
         chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
-        body.limit(chunkBodyLength);
+        // body.limit(chunkBodyLength);
+        body.limit(body.position());
         body.position(0);
 
         blockCount = chunkBodyLength / BLOCK_SIZE + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
@@ -311,7 +313,8 @@ public class Chunk {
 
         int chunkBodyLength = body.position() - getOffset();
         chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
-        body.limit(chunkBodyLength + getOffset());
+        // body.limit(chunkBodyLength + getOffset());
+        body.limit(body.position() + getOffset());
         body.position(getOffset());
 
         blockCount += chunkBodyLength / BLOCK_SIZE;
