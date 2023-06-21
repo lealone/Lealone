@@ -63,8 +63,7 @@ public class RedoLog {
         return ids;
     }
 
-    public long init() {
-        long lastTransactionId = 0;
+    public void init() {
         List<Integer> ids = getAllChunkIds();
         if (ids.isEmpty()) {
             currentChunk = new RedoLogChunk(0, config);
@@ -87,7 +86,6 @@ public class RedoLog {
                 }
             }
         }
-        return lastTransactionId;
     }
 
     // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
@@ -127,8 +125,15 @@ public class RedoLog {
         currentChunk.save();
         if (currentChunk.logChunkSize() > logChunkSize) {
             currentChunk.close();
-            currentChunk = new RedoLogChunk(currentChunk.getId() + 1, config);
+            currentChunk = new RedoLogChunk(nextId(), config);
         }
+    }
+
+    private int nextId() {
+        int id = currentChunk.getId() + 1;
+        if (id < 0)
+            id = 0; // log chunk id用完之后从0开始
+        return id;
     }
 
     public void ignoreCheckpoint() {

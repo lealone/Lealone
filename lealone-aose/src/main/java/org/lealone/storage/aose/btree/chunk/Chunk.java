@@ -129,7 +129,7 @@ public class Chunk {
         if (size <= 0)
             return 0;
         else
-            return size - 2 * BLOCK_SIZE;
+            return size - CHUNK_HEADER_SIZE;
     }
 
     private void readPagePositions() {
