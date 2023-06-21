@@ -37,6 +37,7 @@ import org.lealone.db.index.hash.UniqueHashIndex;
 import org.lealone.db.index.standard.StandardDelegateIndex;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.index.standard.StandardSecondaryIndex;
+import org.lealone.db.index.standard.VersionedValue;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
@@ -232,6 +233,12 @@ public class StandardTable extends Table {
     @Override
     public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
         return primaryIndex.getRow(session, key, oldTransactionalValue);
+    }
+
+    @Override
+    public boolean isRowChanged(Row row) {
+        VersionedValue v = (VersionedValue) primaryIndex.getDataMap().getValue(row.getTValue());
+        return v.columns != row.getValueList();
     }
 
     @Override
@@ -432,7 +439,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns) {
+    public int tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         // 只锁主索引即可
         return primaryIndex.tryLock(session, row, lockColumns);
     }

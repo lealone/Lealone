@@ -609,7 +609,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
         // 提前调用tryLock的场景直接跳过
-        if (!isLockedBySelf && !tv.tryLock(transaction)) {
+        if (!isLockedBySelf && tv.tryLock(transaction) != 1) {
             // 当前行已经被其他事务锁住了
             return addWaitingTransaction(key, tv);
         }
@@ -639,19 +639,18 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes) {
+    public int tryLock(K key, Object oldTValue, int[] columnIndexes) {
         DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
 
-        if (tv.tryLock(transaction)) {
-            return true;
-        } else {
+        int ret = tv.tryLock(transaction);
+        if (ret == 0) {
             // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
             // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
             addWaitingTransaction(key, tv);
-            return false;
         }
+        return ret;
     }
 
     @Override

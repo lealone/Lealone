@@ -233,7 +233,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns) {
+    public int tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         throw newUnsupportedException();
     }
 
@@ -1088,6 +1088,10 @@ public abstract class Table extends SchemaObjectBase {
 
     public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
         return null;
+    }
+
+    public boolean isRowChanged(Row row) {
+        return false;
     }
 
     public Map<String, String> getParameters() {

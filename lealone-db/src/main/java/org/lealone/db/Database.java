@@ -687,7 +687,7 @@ public class Database implements DataHandler, DbObject {
         Row row = findMeta(session, id);
         if (row == null)
             throw DbException.get(errorCode, obj.getName());
-        if (meta.tryLockRow(session, row, null))
+        if (meta.tryLockRow(session, row, null) > 0)
             return row;
         else
             return null;

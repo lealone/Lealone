@@ -274,7 +274,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryLock(ServerSession session, Row row, int[] lockColumns) {
+    public int tryLock(ServerSession session, Row row, int[] lockColumns) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         return map.tryLock(ValueLong.get(row.getKey()), row.getTValue(), lockColumns);
     }
@@ -446,6 +446,10 @@ public class StandardPrimaryIndex extends StandardIndex {
             return dataMap;
         }
         return dataMap.getInstance(session.getTransaction());
+    }
+
+    public TransactionMap<Value, VersionedValue> getDataMap() {
+        return dataMap;
     }
 
     @Override

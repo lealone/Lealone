@@ -60,6 +60,7 @@ public class UndoLogRecord {
             if (!te.containsRepeatableReadTransactions()) {
                 newTV.setValue(oldValue); // 用于计算内存
                 map.remove(key);
+                newTV.setValue(null);
             } else {
                 map.decrementSize(); // 要减去1
                 newTV.commit(false);

@@ -930,16 +930,6 @@ public class TableFilter extends ColumnResolverBase {
         return false;
     }
 
-    /**
-     * Lock the current row.
-     */
-    public boolean lockRow() {
-        if (state == FOUND) {
-            return table.tryLockRow(session, get(), null);
-        }
-        return false;
-    }
-
     public TableFilter getNestedJoin() {
         return nestedJoin;
     }

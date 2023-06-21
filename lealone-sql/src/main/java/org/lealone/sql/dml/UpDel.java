@@ -156,13 +156,21 @@ public abstract class UpDel extends ManipulationStatement {
                 }
                 if (conditionEvaluator.getBooleanValue()) {
                     Row oldRow = tableFilter.get();
-                    if (oldRow == null) { // 有可能已经删除了
+                    if (oldRow == null) { // 已经删除了
                         hasNext = next();
                         continue;
                     }
-                    if (!table.tryLockRow(session, oldRow, getUpdateColumnIndexes())) {
+                    int ret = table.tryLockRow(session, oldRow, getUpdateColumnIndexes());
+                    if (ret < 0) { // 已经删除了
+                        hasNext = next();
+                        continue;
+                    } else if (ret == 0) { // 被其他事务锁住了
                         this.oldRow = oldRow;
                         return;
+                    }
+                    if (table.isRowChanged(oldRow)) {
+                        tableFilter.rebuildSearchRow(session, oldRow);
+                        continue;
                     }
                     if (upDelRow(oldRow)) {
                         if (limitRows > 0 && updateCount.get() >= limitRows) {

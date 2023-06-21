@@ -149,16 +149,23 @@ public class TransactionalValue {
         return rl == null ? 0 : rl.t.transactionId;
     }
 
-    public boolean tryLock(AOTransaction t) {
+    // 小于0：已经删除
+    // 等于0：加锁失败
+    // 大于0：加锁成功
+    public int tryLock(AOTransaction t) {
         RowLock rl = rowLock;
         if (rl != null && t == rl.t)
-            return true;
+            return 1;
+        if (value == null && rl == null) // 已经删除了
+            return -1;
         rl = new RowLock(t, value);
         if (rowLockUpdater.compareAndSet(this, null, rl)) {
+            if (value == null) // 已经删除了
+                return -1;
             t.addLock(this);
-            return true;
+            return 1;
         }
-        return false;
+        return 0;
     }
 
     public void unlock() {
