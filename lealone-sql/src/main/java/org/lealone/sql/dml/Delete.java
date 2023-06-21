@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.sql.dml;
 
@@ -19,9 +19,6 @@ import org.lealone.sql.executor.YieldableBase;
 /**
  * This class represents the statement
  * DELETE
- * 
- * @author H2 Group
- * @author zhh
  */
 public class Delete extends UpDel {
 
@@ -56,12 +53,6 @@ public class Delete extends UpDel {
     }
 
     @Override
-    public int update() {
-        YieldableDelete yieldable = new YieldableDelete(this, null);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableBase<Integer> createYieldableUpdate(
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableDelete(this, asyncHandler);
@@ -75,45 +66,25 @@ public class Delete extends UpDel {
         }
 
         @Override
-        protected boolean startInternal() {
-            if (!table.trySharedLock(session))
-                return true;
-            session.getUser().checkRight(table, Right.DELETE);
-            table.fire(session, Trigger.DELETE, true);
-            return super.startInternal();
+        protected int getRightMask() {
+            return Right.DELETE;
         }
 
         @Override
-        protected void stopInternal() {
-            table.fire(session, Trigger.DELETE, false);
+        protected int getTriggerType() {
+            return Trigger.DELETE;
         }
 
         @Override
-        protected void executeLoopUpdate() {
-            rebuildSearchRowIfNeeded();
-            while (hasNext && pendingException == null) {
-                if (yieldIfNeeded(++loopCount)) {
-                    return;
-                }
-                if (conditionEvaluator.getBooleanValue()) {
-                    Row row = tableFilter.get();
-                    if (!tryLockRow(row, null))
-                        return;
-                    boolean done = false;
-                    if (table.fireRow()) {
-                        done = table.fireBeforeRow(session, row, null);
-                    }
-                    if (!done) {
-                        removeRow(row);
-                        if (limitRows > 0 && updateCount.get() >= limitRows) {
-                            onLoopEnd();
-                            return;
-                        }
-                    }
-                }
-                hasNext = next();
+        protected boolean upDelRow(Row oldRow) {
+            boolean done = false;
+            if (table.fireRow()) {
+                done = table.fireBeforeRow(session, oldRow, null);
             }
-            onLoopEnd();
+            if (!done) {
+                removeRow(oldRow);
+            }
+            return !done;
         }
 
         private void removeRow(Row row) {

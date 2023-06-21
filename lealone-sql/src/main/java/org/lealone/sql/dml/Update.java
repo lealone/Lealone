@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.sql.dml;
 
@@ -31,9 +31,6 @@ import org.lealone.sql.expression.ValueExpression;
 /**
  * This class represents the statement
  * UPDATE
- * 
- * @author H2 Group
- * @author zhh
  */
 public class Update extends UpDel {
 
@@ -106,12 +103,6 @@ public class Update extends UpDel {
     }
 
     @Override
-    public int update() {
-        YieldableUpdate yieldable = new YieldableUpdate(this, null);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableBase<Integer> createYieldableUpdate(
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableUpdate(this, asyncHandler);
@@ -139,47 +130,32 @@ public class Update extends UpDel {
         }
 
         @Override
-        protected boolean startInternal() {
-            if (!table.trySharedLock(session))
-                return true;
-            session.getUser().checkRight(table, Right.UPDATE);
-            table.fire(session, Trigger.UPDATE, true);
-            return super.startInternal();
+        protected int getRightMask() {
+            return Right.UPDATE;
         }
 
         @Override
-        protected void stopInternal() {
-            table.fire(session, Trigger.UPDATE, false);
+        protected int getTriggerType() {
+            return Trigger.UPDATE;
         }
 
         @Override
-        protected void executeLoopUpdate() {
-            rebuildSearchRowIfNeeded();
-            while (hasNext && pendingException == null) {
-                if (yieldIfNeeded(++loopCount)) {
-                    return;
-                }
-                if (conditionEvaluator.getBooleanValue()) {
-                    Row oldRow = tableFilter.get();
-                    if (!tryLockRow(oldRow, updateColumnIndexes))
-                        return;
-                    Row newRow = createNewRow(oldRow);
-                    table.validateConvertUpdateSequence(session, newRow);
-                    boolean done = false;
-                    if (table.fireRow()) {
-                        done = table.fireBeforeRow(session, oldRow, newRow);
-                    }
-                    if (!done) {
-                        updateRow(oldRow, newRow);
-                        if (limitRows > 0 && updateCount.get() >= limitRows) {
-                            onLoopEnd();
-                            return;
-                        }
-                    }
-                }
-                hasNext = next();
+        public int[] getUpdateColumnIndexes() {
+            return updateColumnIndexes;
+        }
+
+        @Override
+        protected boolean upDelRow(Row oldRow) {
+            Row newRow = createNewRow(oldRow);
+            table.validateConvertUpdateSequence(session, newRow);
+            boolean done = false;
+            if (table.fireRow()) {
+                done = table.fireBeforeRow(session, oldRow, newRow);
             }
-            onLoopEnd();
+            if (!done) {
+                updateRow(oldRow, newRow);
+            }
+            return !done;
         }
 
         private Row createNewRow(Row oldRow) {

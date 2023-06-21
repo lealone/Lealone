@@ -63,6 +63,11 @@ public abstract class UpDel extends ManipulationStatement {
         return priority;
     }
 
+    @Override
+    public int update() {
+        return syncExecute(createYieldableUpdate(null));
+    }
+
     protected void appendPlanSQL(StatementBuilder buff) {
         if (condition != null) {
             buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
@@ -74,27 +79,46 @@ public abstract class UpDel extends ManipulationStatement {
 
     protected static abstract class YieldableUpDel extends YieldableLoopUpdateBase {
 
-        protected final TableFilter tableFilter;
         protected final Table table;
-        protected final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
-        protected final ExpressionEvaluator conditionEvaluator;
-        protected boolean hasNext;
-        protected Row oldRow;
+        private final TableFilter tableFilter;
+        private final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
+        private final ExpressionEvaluator conditionEvaluator;
+        private boolean hasNext;
+        private Row oldRow;
 
         public YieldableUpDel(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler,
                 TableFilter tableFilter, Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
             this.tableFilter = tableFilter;
             table = tableFilter.getTable();
-            limitRows = getLimitRows(limitExpr, session);
+
+            int limitRows = -1;
+            if (limitExpr != null) {
+                Value v = limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    limitRows = v.getInt();
+                }
+            }
+            this.limitRows = limitRows;
+
             if (condition == null)
                 conditionEvaluator = new AlwaysTrueEvaluator();
             else
                 conditionEvaluator = new ExpressionInterpreter(session, condition);
         }
 
+        protected abstract int getRightMask();
+
+        protected abstract int getTriggerType();
+
+        protected abstract boolean upDelRow(Row oldRow);
+
         @Override
         protected boolean startInternal() {
+            if (!table.trySharedLock(session))
+                return true;
+            session.getUser().checkRight(table, getRightMask());
+            table.fire(session, getTriggerType(), true);
             tableFilter.startQuery(session);
             tableFilter.reset();
             statement.setCurrentRowNumber(0);
@@ -105,36 +129,50 @@ public abstract class UpDel extends ManipulationStatement {
             return false;
         }
 
-        protected boolean next() {
+        @Override
+        protected void stopInternal() {
+            table.fire(session, getTriggerType(), false);
+        }
+
+        protected int[] getUpdateColumnIndexes() {
+            return null;
+        }
+
+        private boolean next() {
             return tableFilter.next();
         }
 
-        protected void rebuildSearchRowIfNeeded() {
+        @Override
+        protected void executeLoopUpdate() {
             if (oldRow != null) {
                 // 如果oldRow已经删除了那么移到下一行
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                     hasNext = next();
                 oldRow = null;
             }
-        }
-
-        protected boolean tryLockRow(Row row, int[] lockColumns) {
-            if (!table.tryLockRow(session, row, lockColumns)) {
-                oldRow = row;
-                return false;
-            }
-            return true;
-        }
-
-        private static int getLimitRows(Expression limitExpr, ServerSession session) {
-            int limitRows = -1;
-            if (limitExpr != null) {
-                Value v = limitExpr.getValue(session);
-                if (v != ValueNull.INSTANCE) {
-                    limitRows = v.getInt();
+            while (hasNext && pendingException == null) {
+                if (yieldIfNeeded(++loopCount)) {
+                    return;
                 }
+                if (conditionEvaluator.getBooleanValue()) {
+                    Row oldRow = tableFilter.get();
+                    if (oldRow == null) { // 有可能已经删除了
+                        hasNext = next();
+                        continue;
+                    }
+                    if (!table.tryLockRow(session, oldRow, getUpdateColumnIndexes())) {
+                        this.oldRow = oldRow;
+                        return;
+                    }
+                    if (upDelRow(oldRow)) {
+                        if (limitRows > 0 && updateCount.get() >= limitRows) {
+                            break;
+                        }
+                    }
+                }
+                hasNext = next();
             }
-            return limitRows;
+            onLoopEnd();
         }
     }
 }

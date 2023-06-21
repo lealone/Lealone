@@ -87,6 +87,10 @@ abstract class QOperator implements Operator {
 
     protected boolean tryLockRow() {
         Row row = getRow();
+        if (row == null) { // 有可能已经删除了
+            hasNext = next();
+            return false;
+        }
         if (!topTableFilter.getTable().tryLockRow(session, row, null)) {
             oldRow = row;
             return false;
