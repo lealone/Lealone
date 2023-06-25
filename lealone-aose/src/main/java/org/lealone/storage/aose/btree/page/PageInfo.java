@@ -29,7 +29,31 @@ public class PageInfo {
         hits++;
     }
 
+    public Page getPage() {
+        return page;
+    }
+
     public int getBuffMemory() {
         return buff == null ? 0 : buff.limit();
+    }
+
+    public long getLastTime() {
+        return lastTime;
+    }
+
+    public int getHits() {
+        return hits;
+    }
+
+    public void resetHits() {
+        hits = 0;
+    }
+
+    public void releaseBuff() {
+        buff = null;
+    }
+
+    public void releasePage() {
+        page = null;
     }
 }

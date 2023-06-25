@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -183,7 +182,7 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
@@ -191,13 +190,12 @@ public class NodePage extends LocalPage {
         int patch = write(chunk, buff);
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
-            PageReference pRef = children[i];
-            PageInfo pInfo = pRef.getPageInfo();
+            PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
             if (p != null) {
-                p.writeUnsavedRecursive(chunk, buff, savedPages);
-                savedPages.add(new SavedPage(pRef, pInfo));
+                p.writeUnsavedRecursive(chunk, buff);
                 positions[i] = p.pos;
+                pInfo.pos = p.pos;
             } else {
                 positions[i] = pInfo.pos;
             }

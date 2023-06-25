@@ -71,7 +71,7 @@ public class PageReference {
     pageInfoUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageInfo.class,
             "pInfo");
 
-    private volatile PageInfo pInfo; // 已近确保不会为null
+    private volatile PageInfo pInfo; // 已经确保不会为null
 
     public PageReference() {
         pInfo = new PageInfo();
@@ -118,45 +118,19 @@ public class PageReference {
     }
 
     public boolean isLeafPage() {
-        if (pInfo.page != null)
-            return pInfo.page.isLeaf();
+        Page p = pInfo.page;
+        if (p != null)
+            return p.isLeaf();
         else
             return PageUtils.isLeafPage(pInfo.pos);
     }
 
     public boolean isNodePage() {
-        if (pInfo.page != null)
-            return pInfo.page.isNode();
+        Page p = pInfo.page;
+        if (p != null)
+            return p.isNode();
         else
             return PageUtils.isNodePage(pInfo.pos);
-    }
-
-    public int getBuffMemory() {
-        return pInfo.getBuffMemory();
-    }
-
-    public long getLastTime() {
-        return pInfo.lastTime;
-    }
-
-    public int getHits() {
-        return pInfo.hits;
-    }
-
-    public void resetHits() {
-        pInfo.hits = 0;
-    }
-
-    public void updateTime() {
-        pInfo.updateTime();
-    }
-
-    public void releaseBuff() {
-        pInfo.buff = null;
-    }
-
-    public void releasePage() {
-        pInfo.page = null;
     }
 
     @Override

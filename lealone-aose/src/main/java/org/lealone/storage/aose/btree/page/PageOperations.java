@@ -146,7 +146,7 @@ public abstract class PageOperations {
 
         @Override
         protected Object writeLocal(int index, PageOperationHandler poHandler) {
-            p.markDirty(true);
+            p.markDirty();
             if (index < 0) {
                 insertLeaf(index, value);
                 return null;

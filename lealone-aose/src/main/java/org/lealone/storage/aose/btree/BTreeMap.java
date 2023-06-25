@@ -396,7 +396,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void gc() {
-        btreeStorage.gc();
+        btreeStorage.getBTreeGC().gc();
     }
 
     @Override
@@ -404,7 +404,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Page p = getRootPage();
         Page leaf = p;
         while (p.isNode()) {
-            p.markDirty(false);
+            p.markDirty();
             int index = p.getPageIndex(key);
             PageReference ref = p.getChildPageReference(index);
             if (ref.isNodePage()) {
@@ -415,7 +415,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
         }
         if (leaf != null) // 可能为null
-            leaf.markDirty(true);
+            leaf.markDirty();
     }
 
     public int getChildPageCount(Page p) {
@@ -462,7 +462,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public boolean hasUnsavedChanges() {
-        return btreeStorage.hasUnsavedChanges();
+        return getRootPage().getPos() == 0;
     }
 
     public Page gotoLeafPage(Object key) {

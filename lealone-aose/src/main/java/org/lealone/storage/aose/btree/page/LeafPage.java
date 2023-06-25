@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -194,7 +193,7 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;

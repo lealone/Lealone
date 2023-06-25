@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -219,7 +218,7 @@ public class Page {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff, LinkedList<SavedPage> savedPages) {
+    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         throw ie();
     }
 
@@ -256,25 +255,17 @@ public class Page {
     }
 
     public void markDirty() {
-        markDirty(false);
-    }
-
-    public void markDirty(boolean hasUnsavedChanges) {
         if (pos != 0) {
             removePage();
             pos = 0;
-        } else {
-            // 频繁设置volatile类型的hasUnsavedChanges字段也影响性能
-            if (hasUnsavedChanges)
-                map.getBTreeStorage().setUnsavedChanges(true);
         }
     }
 
     public void markDirtyRecursive() {
-        markDirty(true);
+        markDirty();
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
-            parentRef.getPage().markDirty(false);
+            parentRef.getPage().markDirty();
             parentRef = parentRef.getParentRef();
         }
     }
@@ -383,28 +374,5 @@ public class Page {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
-    }
-
-    public static class SavedPage {
-
-        public final PageReference pRef;
-        public final PageInfo pInfo;
-
-        public SavedPage(PageReference pRef, PageInfo pInfo) {
-            this.pRef = pRef;
-            this.pInfo = pInfo;
-        }
-
-        public void release() {
-            if (pRef.getPageInfo() == pInfo) {
-                PageInfo pInfoNew = new PageInfo(pInfo.page.pos);
-                if (pRef.isRoot()) { // root page还是继续缓存为好
-                    Page p = pInfo.page;
-                    pInfoNew.page = p;
-                    p.map.getBTreeStorage().getBTreeGC().addUsedMemory(p.getMemory());
-                }
-                pRef.replacePage(pInfo, pInfoNew);
-            }
-        }
     }
 }
