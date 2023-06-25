@@ -110,29 +110,29 @@ public class BTreeGC {
     }
 
     private TreeSet<PageInfo> lru1() {
-        MemoryManager globalMemoryManager = GMM();
         Comparator<PageInfo> comparator = (pi1, pi2) -> (int) (pi1.getLastTime() - pi2.getLastTime());
         TreeSet<PageInfo> set = new TreeSet<>(comparator);
-        collect(set, map.getRootPage());
-        int size = set.size() / 3 + 1;
-        for (PageInfo pInfo : set) {
-            Page p = pInfo.getPage();
-            long memory = p.getMemory();
-            pInfo.releasePage();
-            memoryManager.decrementUsedMemory(memory);
-            globalMemoryManager.decrementUsedMemory(memory);
-            if (size-- == 0)
-                break;
-        }
+        collect(set, map.getRootPageRef().getPageInfo());
+        release(set, true);
         return set;
     }
 
     private void lru2(TreeSet<PageInfo> set) {
+        release(set, false);
+    }
+
+    private void release(TreeSet<PageInfo> set, boolean releasePage) {
         MemoryManager globalMemoryManager = GMM();
         int size = set.size() / 3 + 1;
         for (PageInfo pInfo : set) {
-            long memory = pInfo.getBuffMemory();
-            pInfo.releaseBuff();
+            long memory;
+            if (releasePage) {
+                memory = pInfo.getPage().getMemory();
+                pInfo.releasePage();
+            } else {
+                memory = pInfo.getBuffMemory();
+                pInfo.releaseBuff();
+            }
             memoryManager.decrementUsedMemory(memory);
             globalMemoryManager.decrementUsedMemory(memory);
             if (size-- == 0)
@@ -140,23 +140,21 @@ public class BTreeGC {
         }
     }
 
-    private void collect(TreeSet<PageInfo> set, Page parent) {
-        if (parent.isNode()) {
-            PageReference[] children = parent.getChildren();
+    private void collect(TreeSet<PageInfo> set, PageInfo pInfo) {
+        Page p = pInfo.page;
+        if (p == null)
+            return;
+        if (p.isNode()) {
+            PageReference[] children = p.getChildren();
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    PageInfo pInfo = ref.getPageInfo();
-                    Page p = pInfo.page;
-                    if (p != null && p.getPos() > 0) { // pos为0时说明page被修改了，不能回收
-                        if (p.isNode()) {
-                            collect(set, p);
-                        } else {
-                            set.add(pInfo);
-                        }
-                    }
+                    collect(set, ref.getPageInfo());
                 }
             }
+        } else {
+            if (p.getPos() > 0) // pos为0时说明page被修改了，不能回收
+                set.add(pInfo);
         }
     }
 
@@ -166,9 +164,8 @@ public class BTreeGC {
 
     private void gc(PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll) {
         Page p = pInfo.page;
-        if (p == null || p.getPos() == 0) { // pos为0时说明page被修改了，不能回收
+        if (p == null)
             return;
-        }
         if (p.isNode()) {
             PageReference[] children = p.getChildren();
             for (int i = 0, len = children.length; i < len; i++) {
@@ -183,6 +180,8 @@ public class BTreeGC {
     }
 
     private void gcLeafPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll) {
+        if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
+            return;
         boolean gc = false;
         if (hitsOrIdleTime < 0) {
             int hits = (int) -hitsOrIdleTime;

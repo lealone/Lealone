@@ -68,7 +68,7 @@ public class MemoryManager {
     }
 
     public boolean needGc() {
-        return maxMemory > 0 && usedMemory.get() > (maxMemory / 10 * 9);
+        return maxMemory > 0 && usedMemory.get() > (maxMemory / 10 * 7);
     }
 
     public void reset() {
