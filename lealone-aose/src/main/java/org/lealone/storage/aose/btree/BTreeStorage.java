@@ -433,7 +433,7 @@ public class BTreeStorage {
             p.writeUnsavedRecursive(c, chunkBody);
             c.rootPagePos = p.getPos();
             pInfo.pos = c.rootPagePos;
-            c.write(chunkBody, chunkManager.getRemovedPages(), appendMode);
+            c.write(chunkBody, chunkManager.getRemovedPagesCopy(), appendMode);
             if (!appendMode) {
                 chunkManager.addChunk(c);
                 chunkManager.setLastChunk(c);

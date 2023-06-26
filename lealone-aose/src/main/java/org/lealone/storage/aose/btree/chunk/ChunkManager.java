@@ -97,7 +97,7 @@ public class ChunkManager {
         return ++maxSeq;
     }
 
-    synchronized TreeSet<Long> getRemovedPagesCopy() {
+    public synchronized TreeSet<Long> getRemovedPagesCopy() {
         return new TreeSet<>(removedPages);
     }
 
