@@ -33,6 +33,7 @@ public class ConditionInSelect extends Condition {
     private final Query query;
     private final boolean all;
     private final int compareType;
+    private SubQueryResult rows;
 
     public ConditionInSelect(Database database, Expression left, Query query, boolean all,
             int compareType) {
@@ -53,9 +54,13 @@ public class ConditionInSelect extends Condition {
 
     @Override
     public Value getValue(ServerSession session) {
-        query.setSession(session);
-        SubQueryResult rows = new SubQueryResult(query, 0);
-        session.addTemporaryResult(rows);
+        if (rows == null) {
+            query.setSession(session);
+            rows = new SubQueryResult(query, 0);
+            session.addTemporaryResult(rows);
+        } else {
+            rows.reset();
+        }
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
             return ValueBoolean.get(all);
