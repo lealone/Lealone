@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.query;
 
-// 比如 limit子句为0时
+// 比如limit子句为0时
 class QEmpty extends QOperator {
 
     QEmpty(Select select) {
