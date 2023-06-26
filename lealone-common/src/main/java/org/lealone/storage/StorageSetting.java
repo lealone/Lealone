@@ -18,5 +18,5 @@ public enum StorageSetting {
     MAP_TYPE,
     POH_FACTORY,
     USE_TABLE_LOB_STORAGE,
-    CHUNK_MAX_SIZE,
+    MAX_CHUNK_SIZE,
 }

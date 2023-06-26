@@ -39,7 +39,7 @@ public class BTreeStorage {
 
     private final int pageSplitSize;
     private final int minFillRate;
-    private final int chunkMaxSize;
+    private final int maxChunkSize;
 
     private final BTreeGC bgc;
 
@@ -75,10 +75,10 @@ public class BTreeStorage {
         bgc = new BTreeGC(map, cacheSize);
 
         // 默认256M
-        int chunkMaxSize = getIntValue(StorageSetting.CHUNK_MAX_SIZE.name(), 256 * 1024 * 1024);
-        if (chunkMaxSize > Chunk.MAX_SIZE)
-            chunkMaxSize = Chunk.MAX_SIZE;
-        this.chunkMaxSize = chunkMaxSize;
+        int maxChunkSize = getIntValue(StorageSetting.MAX_CHUNK_SIZE.name(), 256 * 1024 * 1024);
+        if (maxChunkSize > Chunk.MAX_SIZE)
+            maxChunkSize = Chunk.MAX_SIZE;
+        this.maxChunkSize = maxChunkSize;
 
         chunkManager = new ChunkManager(this);
         if (map.isInMemory()) {
@@ -419,7 +419,7 @@ public class BTreeStorage {
             Chunk c;
             Chunk lastChunk = chunkManager.getLastChunk();
             if (appendModeEnabled && lastChunk != null
-                    && lastChunk.fileStorage.size() + dirtyMemory < chunkMaxSize) {
+                    && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
                 c = lastChunk;
                 appendMode = true;
             } else {
