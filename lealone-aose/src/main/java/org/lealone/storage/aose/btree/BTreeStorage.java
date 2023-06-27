@@ -162,7 +162,7 @@ public class BTreeStorage {
             p.markDirty();
             return;
         }
-        PageReference tmpRef = new PageReference(pos);
+        PageReference tmpRef = new PageReference(this, pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
         while (p.isNode()) {
@@ -184,27 +184,8 @@ public class BTreeStorage {
         leaf.markDirty();
     }
 
-    // 多线程读page也是线程安全的
-    public Page getPage(PageReference ref) {
-        PageInfo pInfo = ref.getPageInfo(); // 先取出来，GC线程可能把pInfo.page置null
-        Page p = pInfo.page;
-        if (p != null) {
-            pInfo.updateTime();
-            return p;
-        } else {
-            if (pInfo.buff != null) {
-                p = readPage(pInfo, ref, ref.getPos(), pInfo.buff, pInfo.pageLength);
-                gcIfNeeded(p.getMemory());
-            } else {
-                p = readPage(pInfo, ref);
-            }
-            // 如果另一个线程执行save，此时p有可能为null，那就再读一次
-            return p != null ? p : getPage(ref);
-        }
-    }
-
     public Page readPage(PageInfo pInfoOld, PageReference ref) {
-        return readPage(pInfoOld, ref, ref.getPos(), true);
+        return readPage(pInfoOld, ref, pInfoOld.pos, true);
     }
 
     public Page readPage(PageInfo pInfoOld, PageReference ref, long pos) {
@@ -224,7 +205,7 @@ public class BTreeStorage {
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
         Page p = readPage(pInfoOld, ref, pos, buff, pageLength);
-        if (gc)
+        if (gc && p != null)
             gcIfNeeded(p.getTotalMemory());
         return p;
     }

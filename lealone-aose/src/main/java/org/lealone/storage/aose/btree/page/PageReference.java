@@ -5,8 +5,10 @@
  */
 package org.lealone.storage.aose.btree.page;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.page.PageOperationHandler;
 
 public class PageReference {
@@ -63,6 +65,10 @@ public class PageReference {
         }
     }
 
+    public boolean isLocked() {
+        return lockOwner != null;
+    }
+
     public boolean isRoot() {
         return false;
     }
@@ -71,32 +77,51 @@ public class PageReference {
     pageInfoUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageInfo.class,
             "pInfo");
 
+    private final BTreeStorage bs;
     private volatile PageInfo pInfo; // 已经确保不会为null
 
-    public PageReference() {
+    public PageReference(BTreeStorage bs) {
+        this.bs = bs;
         pInfo = new PageInfo();
     }
 
-    public PageReference(long pos) {
-        this();
+    public PageReference(BTreeStorage bs, long pos) {
+        this(bs);
         pInfo.pos = pos;
     }
 
-    public PageReference(Page page) {
-        this();
+    public PageReference(BTreeStorage bs, Page page) {
+        this(bs);
         pInfo.page = page;
     }
 
-    public long getPos() {
-        return pInfo.pos;
+    public PageInfo getPageInfo() {
+        return pInfo;
     }
 
     public Page getPage() {
         return pInfo.page;
     }
 
-    public PageInfo getPageInfo() {
-        return pInfo;
+    // 多线程读page也是线程安全的
+    public Page getOrReadPage() {
+        PageInfo pInfo = this.pInfo;
+        Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
+        if (p != null) {
+            if (lockOwner == null) // 避免反复调用
+                pInfo.updateTime();
+            return p;
+        } else {
+            ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
+            if (buff != null) {
+                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
+                bs.gcIfNeeded(p.getMemory());
+            } else {
+                p = bs.readPage(pInfo, this);
+            }
+            // p有可能为null，那就再读一次
+            return p != null ? p : getOrReadPage();
+        }
     }
 
     public boolean replacePage(PageInfo expect, PageInfo update) {

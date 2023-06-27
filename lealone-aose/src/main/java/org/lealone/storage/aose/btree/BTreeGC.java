@@ -127,7 +127,10 @@ public class BTreeGC {
         for (PageInfo pInfo : set) {
             long memory;
             if (releasePage) {
-                memory = pInfo.getPage().getMemory();
+                Page p = pInfo.page;
+                if (p == null)
+                    continue;
+                memory = p.getMemory();
                 pInfo.releasePage();
             } else {
                 memory = pInfo.getBuffMemory();
@@ -181,6 +184,8 @@ public class BTreeGC {
 
     private void gcLeafPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll) {
         if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
+            return;
+        if (p.getRef().isLocked()) // 其他事务准备更新page，所以没必要回收
             return;
         boolean gc = false;
         if (hitsOrIdleTime < 0) {

@@ -44,9 +44,10 @@ public class NodePage extends LocalPage {
 
     @Override
     public Page getChildPage(int index) {
-        Page p = getChildPage(children[index]);
-        p.getRef().setParentRef(getRef());
-        return p;
+        PageReference ref = children[index];
+        if (ref.getParentRef() == null)
+            ref.setParentRef(getRef());
+        return ref.getOrReadPage();
     }
 
     @Override
@@ -120,7 +121,7 @@ public class NodePage extends LocalPage {
             int pageType = buff.get();
             if (pageType == 0)
                 buff.getInt(); // replicationHostIds
-            children[i] = new PageReference(p[i]);
+            children[i] = new PageReference(map.getBTreeStorage(), p[i]);
             children[i].setParentRef(getRef());
         }
         buff = expandPage(buff, type, start, pageLength);

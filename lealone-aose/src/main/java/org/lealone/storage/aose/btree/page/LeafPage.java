@@ -173,7 +173,7 @@ public class LeafPage extends LocalPage {
         int type = buff.get();
         for (int i = 0; i < columnCount; i++) {
             long pos = buff.getLong();
-            columnPages[i] = new PageReference(pos);
+            columnPages[i] = new PageReference(map.getBTreeStorage(), pos);
         }
         buff = expandPage(buff, type, start, pageLength);
 
@@ -190,7 +190,7 @@ public class LeafPage extends LocalPage {
 
     private void readColumnPage(int columnIndex) {
         PageReference ref = columnPages[columnIndex];
-        ColumnPage page = (ColumnPage) getChildPage(ref);
+        ColumnPage page = (ColumnPage) ref.getOrReadPage();
         if (page.values == null) {
             page.readColumn(ref.getPageInfo(), values, columnIndex);
             map.getBTreeStorage().gcIfNeeded(page.getTotalMemory());

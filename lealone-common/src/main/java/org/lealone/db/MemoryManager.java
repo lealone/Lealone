@@ -64,11 +64,11 @@ public class MemoryManager {
     }
 
     public boolean needGc(long delta) {
-        return maxMemory > 0 && usedMemory.get() + delta > maxMemory;
+        return maxMemory > 0 && usedMemory.get() + delta > (maxMemory / 10 * 5);
     }
 
     public boolean needGc() {
-        return maxMemory > 0 && usedMemory.get() > (maxMemory / 10 * 7);
+        return maxMemory > 0 && usedMemory.get() > (maxMemory / 10 * 5);
     }
 
     public void reset() {

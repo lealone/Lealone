@@ -119,10 +119,6 @@ public class Page {
         throw ie();
     }
 
-    protected Page getChildPage(PageReference ref) {
-        return map.getBTreeStorage().getPage(ref);
-    }
-
     /**
      * Check whether this is a leaf page.
      * 
@@ -265,7 +261,10 @@ public class Page {
         markDirty();
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
-            parentRef.getPage().markDirty();
+            Page p = parentRef.getPage();
+            if (p == null)
+                break;
+            p.markDirty();
             parentRef = parentRef.getParentRef();
         }
     }
@@ -374,5 +373,7 @@ public class Page {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
+        if (getRef() != null)
+            getRef().getPageInfo().updateTime();
     }
 }

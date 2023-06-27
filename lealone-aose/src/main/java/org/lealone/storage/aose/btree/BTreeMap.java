@@ -62,6 +62,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     private static class RootPageReference extends PageReference {
+
+        public RootPageReference(BTreeStorage bs) {
+            super(bs);
+        }
+
         @Override
         public void replacePage(Page newRoot) {
             newRoot.setRef(this);
@@ -81,7 +86,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     // btree的root page引用，最开始是一个leaf page，随时都会指向新的page
-    private final RootPageReference rootRef = new RootPageReference();
+    private final RootPageReference rootRef;
 
     public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, Object> config, AOStorage aoStorage) {
@@ -99,6 +104,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
 
         btreeStorage = new BTreeStorage(this);
+        rootRef = new RootPageReference(btreeStorage);
         Chunk lastChunk = btreeStorage.getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
@@ -113,7 +119,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public Page getRootPage() {
-        return btreeStorage.getPage(rootRef);
+        return rootRef.getOrReadPage();
     }
 
     public PageReference getRootPageRef() {

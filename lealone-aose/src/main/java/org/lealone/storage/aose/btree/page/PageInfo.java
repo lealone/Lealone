@@ -27,6 +27,8 @@ public class PageInfo {
     public void updateTime() {
         lastTime = System.currentTimeMillis();
         hits++;
+        if (hits < 0)
+            hits = 1;
     }
 
     public Page getPage() {

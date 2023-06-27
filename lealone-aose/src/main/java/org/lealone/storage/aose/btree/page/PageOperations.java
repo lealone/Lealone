@@ -85,7 +85,7 @@ public abstract class PageOperations {
 
         @SuppressWarnings("unchecked")
         private void writeLocal(PageOperationHandler poHandler) {
-            p = pRef.getPage(); // 使用最新的page
+            p = pRef.getOrReadPage(); // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
 
@@ -346,7 +346,7 @@ public abstract class PageOperations {
 
         @Override
         protected PageOperationResult runLocked(PageOperationHandler poHandler) {
-            Page p = pRef.getPage(); // 获得最新的
+            Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root node page，那么直接替换
             if (pRef.isRoot()) {
                 p.map.newRoot(LeafPage.createEmpty(p.map));
@@ -354,7 +354,7 @@ public abstract class PageOperations {
                 if (!tryLockParentRef(pRef, poHandler))
                     return PageOperationResult.LOCKED;
                 PageReference parentRef = pRef.getParentRef();
-                Page parent = parentRef.getPage();
+                Page parent = parentRef.getOrReadPage();
                 int index = parent.getPageIndex(key);
                 parent = parent.copy();
                 parent.remove(index);
@@ -379,7 +379,7 @@ public abstract class PageOperations {
 
         @Override
         protected PageOperationResult runLocked(PageOperationHandler poHandler) {
-            Page p = pRef.getPage(); // 获得最新的
+            Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root page，那么直接替换
             if (pRef.isRoot()) {
                 TmpNodePage tmpNodePage = splitPage(p);
@@ -391,7 +391,7 @@ public abstract class PageOperations {
                     return PageOperationResult.LOCKED;
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
-                Page newParent = parentRef.getPage().copyAndInsertChild(tmpNodePage);
+                Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
                 parentRef.replacePage(newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
@@ -415,12 +415,12 @@ public abstract class PageOperations {
             // 对页面进行切割后，会返回右边的新页面，而copy后的当前被切割页面变成左边的新页面
             Page rightChildPage = p.split(at);
             Page leftChildPage = p;
-            PageReference leftRef = new PageReference(leftChildPage);
-            PageReference rightRef = new PageReference(rightChildPage);
+            PageReference leftRef = new PageReference(p.map.getBTreeStorage(), leftChildPage);
+            PageReference rightRef = new PageReference(p.map.getBTreeStorage(), rightChildPage);
             Object[] keys = { k };
             PageReference[] children = { leftRef, rightRef };
             Page parent = NodePage.create(p.map, keys, children, 0);
-            PageReference parentRef = new PageReference(parent);
+            PageReference parentRef = new PageReference(p.map.getBTreeStorage(), parent);
             parent.setRef(parentRef);
             // 它俩的ParentRef不在这里设置，调用者根据自己的情况设置
             leftChildPage.setRef(leftRef);
