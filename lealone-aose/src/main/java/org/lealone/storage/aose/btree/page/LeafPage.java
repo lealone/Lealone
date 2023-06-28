@@ -307,6 +307,8 @@ public class LeafPage extends LocalPage {
      * @return the new page
      */
     public static LeafPage createEmpty(BTreeMap<?, ?> map) {
+        // 创建empty leaf page需要记录UsedAndDirtyMemory
+        map.getBTreeStorage().getBTreeGC().addUsedAndDirtyMemory(PageUtils.PAGE_MEMORY);
         return create(map, new Object[0], new Object[0], PageUtils.PAGE_MEMORY);
     }
 
