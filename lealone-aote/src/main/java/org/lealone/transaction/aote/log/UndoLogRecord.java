@@ -56,7 +56,7 @@ public class UndoLogRecord {
         }
         if (oldValue == null) { // insert
             newTV.commit(true);
-            map.markDirty(key); // 需要再标记一下，否则前面的save可能刷的是未提交的数据，已近提交的数据反而没有刷到硬盘
+            map.markDirty(key); // 需要再标记一下，否则前面的save可能刷的是未提交的数据，已经提交的数据反而没有刷到硬盘
         } else if (newTV != null && newTV.getValue() == null) { // delete
             if (!te.containsRepeatableReadTransactions()) {
                 newTV.setValue(oldValue); // 用于计算内存

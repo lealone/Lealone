@@ -243,18 +243,11 @@ public class BTreeStorage {
         bgc.gcIfNeeded(delta);
     }
 
-    /**
-     * Remove a page.
-     * 
-     * @param pos the position of the page
-     * @param memory the memory usage
-     */
-    public void removePage(long pos, int memory) {
-        // we need to keep temporary pages
-        if (pos == 0) {
-            return;
+    // 并不会立刻删除page，只是记录被删除的page的pos，在compact阶段才会删除page
+    public void removePage(long pos) {
+        if (pos > 0) {
+            chunkManager.addRemovedPage(pos);
         }
-        chunkManager.addRemovedPage(pos);
     }
 
     public int getCompressionLevel() {
@@ -411,9 +404,9 @@ public class BTreeStorage {
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
             Page p = pInfo.page;
-            p.writeUnsavedRecursive(c, chunkBody);
-            c.rootPagePos = p.getPos();
-            pInfo.pos = c.rootPagePos;
+            long pos = p.writeUnsavedRecursive(c, chunkBody);
+            c.rootPagePos = pos;
+            pInfo.pos = pos;
             c.write(chunkBody, chunkManager.getRemovedPagesCopy(), appendMode);
             if (!appendMode) {
                 chunkManager.addChunk(c);

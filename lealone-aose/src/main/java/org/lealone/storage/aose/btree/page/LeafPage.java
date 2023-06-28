@@ -201,26 +201,20 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
-            return;
+            return pos;
         }
-        write(chunk, buff);
-    }
-
-    private void write(Chunk chunk, DataBuffer buff) {
         switch (map.getPageStorageMode()) {
         case COLUMN_STORAGE:
-            writeColumnStorage(chunk, buff);
-            return;
+            return writeColumnStorage(chunk, buff);
         default:
-            writeRowStorage(chunk, buff);
-            return;
+            return writeRowStorage(chunk, buff);
         }
     }
 
-    private void writeRowStorage(Chunk chunk, DataBuffer buff) {
+    private long writeRowStorage(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -241,11 +235,10 @@ public class LeafPage extends LocalPage {
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
 
-        updateChunkAndPage(chunk, start, pageLength, type);
-        removeIfInMemory();
+        return updateChunkAndPage(chunk, start, pageLength, type);
     }
 
-    private void writeColumnStorage(Chunk chunk, DataBuffer buff) {
+    private long writeColumnStorage(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -286,8 +279,7 @@ public class LeafPage extends LocalPage {
         }
         buff.position(oldPos);
 
-        updateChunkAndPage(chunk, start, pageLength, type);
-        removeIfInMemory();
+        return updateChunkAndPage(chunk, start, pageLength, type);
     }
 
     @Override

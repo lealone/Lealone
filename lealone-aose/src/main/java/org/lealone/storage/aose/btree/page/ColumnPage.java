@@ -87,7 +87,6 @@ public class ColumnPage extends Page {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        updateChunkAndPage(chunk, start, pageLength, type);
-        return pos;
+        return updateChunkAndPage(chunk, start, pageLength, type);
     }
 }

@@ -137,7 +137,7 @@ public class NodePage extends LocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private int write(Chunk chunk, DataBuffer buff) {
+    private long[] write(Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -164,10 +164,8 @@ public class NodePage extends LocalPage {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        updateChunkAndPage(chunk, start, pageLength, type);
-
-        removeIfInMemory();
-        return typePos + 1;
+        long pos = updateChunkAndPage(chunk, start, pageLength, type);
+        return new long[] { typePos + 1, pos };
     }
 
     private void writeChildrenPositions(DataBuffer buff, long[] positions) {
@@ -183,20 +181,21 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
-            return;
+            return pos;
         }
-        int patch = write(chunk, buff);
+        long ret[] = write(chunk, buff);
+        int patch = (int) ret[0];
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
             if (p != null) {
-                p.writeUnsavedRecursive(chunk, buff);
-                positions[i] = p.pos;
-                pInfo.pos = p.pos;
+                long pos = p.writeUnsavedRecursive(chunk, buff);
+                positions[i] = pos;
+                pInfo.pos = pos;
             } else {
                 positions[i] = pInfo.pos;
             }
@@ -205,6 +204,7 @@ public class NodePage extends LocalPage {
         buff.position(patch);
         writeChildrenPositions(buff, positions);
         buff.position(old);
+        return ret[1];
     }
 
     @Override

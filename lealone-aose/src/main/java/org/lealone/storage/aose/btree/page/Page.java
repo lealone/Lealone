@@ -35,6 +35,7 @@ public class Page {
     protected long pos; // the position of the page
 
     private PageReference ref;
+    private boolean removedInMemory; // 如果正在执行save操作，然后其他线程又把page删了，需要用这个字段记录下来
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -214,7 +215,7 @@ public class Page {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
         throw ie();
     }
 
@@ -247,13 +248,27 @@ public class Page {
      * Remove the page.
      */
     public void removePage() {
-        throw ie();
+        removePage(pos);
+    }
+
+    private void removePage(long pos) {
+        if (pos == 0) {
+            removedInMemory = true;
+        } else {
+            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
+            if (isLeaf())
+                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
+            map.getBTreeStorage().removePage(pos);
+            this.pos = 0;
+            removedInMemory = false;
+        }
     }
 
     public void markDirty() {
         if (pos != 0) {
-            removePage();
-            pos = 0;
+            removePage(pos);
+        } else {
+            removedInMemory = true;
         }
     }
 
@@ -361,11 +376,12 @@ public class Page {
         return buff;
     }
 
-    void updateChunkAndPage(Chunk chunk, int start, int pageLength, int type) {
+    long updateChunkAndPage(Chunk chunk, int start, int pageLength, int type) {
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
-        pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
+        removedInMemory = false;
+        long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
@@ -375,5 +391,11 @@ public class Page {
                     chunk.sumOfPageLength);
         if (getRef() != null)
             getRef().getPageInfo().updateTime();
+        this.pos = pos;
+
+        if (removedInMemory) { // 执行save之后，page已经被标记为删除
+            removePage(pos);
+        }
+        return pos;
     }
 }

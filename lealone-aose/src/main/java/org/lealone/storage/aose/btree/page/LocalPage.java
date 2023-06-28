@@ -33,14 +33,6 @@ public abstract class LocalPage extends Page {
      */
     protected Object[] keys;
 
-    /**
-     * Whether the page is an in-memory (not stored, or not yet stored) page,
-     * and it is removed. This is to keep track of pages that concurrently
-     * changed while they are being stored, in which case the live bookkeeping
-     * needs to be aware of such cases.
-     */
-    protected volatile boolean removedInMemory;
-
     protected LocalPage(BTreeMap<?, ?> map) {
         super(map);
     }
@@ -149,27 +141,6 @@ public abstract class LocalPage extends Page {
         newPage.setRef(getRef());
         // mark the old as deleted
         removePage();
-    }
-
-    @Override
-    public void removePage() {
-        if (pos == 0) {
-            removedInMemory = true;
-        } else {
-            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-            if (isLeaf())
-                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
-        }
-        map.getBTreeStorage().removePage(pos, memory);
-    }
-
-    protected void removeIfInMemory() {
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
-        }
     }
 
     @Override
