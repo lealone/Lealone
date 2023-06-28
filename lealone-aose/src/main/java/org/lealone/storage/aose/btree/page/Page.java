@@ -18,6 +18,11 @@ import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 
 public class Page {
 
+    /**
+     * Whether assertions are enabled.
+     */
+    public static final boolean ASSERT = false;
+
     public static Page create(BTreeMap<?, ?> map, int type) {
         switch (type) {
         case PageUtils.PAGE_TYPE_LEAF:
@@ -32,10 +37,11 @@ public class Page {
     }
 
     protected final BTreeMap<?, ?> map;
-    protected long pos; // the position of the page
+    protected volatile long pos; // the position of the page
 
     private PageReference ref;
-    private boolean removedInMemory; // 如果正在执行save操作，然后其他线程又把page删了，需要用这个字段记录下来
+    private volatile boolean writing;
+    private volatile boolean removedInMemory; // 如果正在执行write操作，然后其他线程又把page删了，需要用这个字段记录下来
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -219,6 +225,64 @@ public class Page {
         throw ie();
     }
 
+    protected void beforeWrite() {
+        if (ASSERT) {
+            if (pos != 0) {
+                // already stored before
+                DbException.throwInternalError();
+            }
+        }
+        writing = true;
+    }
+
+    protected void afterWrite() {
+        if (removedInMemory) { // 执行write之后，page已经被标记为删除
+            removePage(pos);
+        }
+        writing = false;
+    }
+
+    /**
+     * Remove the page.
+     */
+    public void removePage() {
+        removePage(pos);
+    }
+
+    private void removePage(long pos) {
+        if (pos == 0) {
+            if (writing)
+                removedInMemory = true;
+        } else {
+            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
+            if (isLeaf())
+                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
+            map.getBTreeStorage().removePage(pos);
+            this.pos = 0;
+            removedInMemory = false;
+        }
+    }
+
+    public void markDirty() {
+        if (pos != 0) {
+            removePage(pos);
+        } else if (writing) {
+            removedInMemory = true;
+        }
+    }
+
+    public void markDirtyRecursive() {
+        markDirty();
+        PageReference parentRef = getRef().getParentRef();
+        while (parentRef != null) {
+            Page p = parentRef.getPage();
+            if (p == null)
+                break;
+            p.markDirty();
+            parentRef = parentRef.getParentRef();
+        }
+    }
+
     public int getRawChildPageCount() {
         return 0;
     }
@@ -242,46 +306,6 @@ public class Page {
      */
     public Page copy() {
         throw ie();
-    }
-
-    /**
-     * Remove the page.
-     */
-    public void removePage() {
-        removePage(pos);
-    }
-
-    private void removePage(long pos) {
-        if (pos == 0) {
-            removedInMemory = true;
-        } else {
-            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-            if (isLeaf())
-                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
-            map.getBTreeStorage().removePage(pos);
-            this.pos = 0;
-            removedInMemory = false;
-        }
-    }
-
-    public void markDirty() {
-        if (pos != 0) {
-            removePage(pos);
-        } else {
-            removedInMemory = true;
-        }
-    }
-
-    public void markDirtyRecursive() {
-        markDirty();
-        PageReference parentRef = getRef().getParentRef();
-        while (parentRef != null) {
-            Page p = parentRef.getPage();
-            if (p == null)
-                break;
-            p.markDirty();
-            parentRef = parentRef.getParentRef();
-        }
     }
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
@@ -380,7 +404,6 @@ public class Page {
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
-        removedInMemory = false;
         long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
@@ -393,9 +416,7 @@ public class Page {
             getRef().getPageInfo().updateTime();
         this.pos = pos;
 
-        if (removedInMemory) { // 执行save之后，page已经被标记为删除
-            removePage(pos);
-        }
+        afterWrite();
         return pos;
     }
 }

@@ -202,10 +202,7 @@ public class LeafPage extends LocalPage {
 
     @Override
     public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
-        if (pos != 0) {
-            // already stored before
-            return pos;
-        }
+        beforeWrite();
         switch (map.getPageStorageMode()) {
         case COLUMN_STORAGE:
             return writeColumnStorage(chunk, buff);

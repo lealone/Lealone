@@ -12,11 +12,6 @@ import org.lealone.storage.type.StorageDataType;
 public abstract class LocalPage extends Page {
 
     /**
-     * Whether assertions are enabled.
-     */
-    public static final boolean ASSERT = false;
-
-    /**
      * The last result of a find operation is cached.
      */
     protected int cachedCompare;

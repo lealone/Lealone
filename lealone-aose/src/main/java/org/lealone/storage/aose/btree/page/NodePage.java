@@ -182,17 +182,14 @@ public class NodePage extends LocalPage {
 
     @Override
     public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
-        if (pos != 0) {
-            // already stored before
-            return pos;
-        }
+        beforeWrite();
         long ret[] = write(chunk, buff);
         int patch = (int) ret[0];
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
-            if (p != null) {
+            if (p != null && p.pos == 0) {
                 long pos = p.writeUnsavedRecursive(chunk, buff);
                 positions[i] = pos;
                 pInfo.pos = pos;
