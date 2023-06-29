@@ -7,8 +7,8 @@ package org.lealone.storage.aose.btree.chunk;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.TreeSet;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
@@ -82,8 +82,9 @@ public class Chunk {
     public String fileName;
     public long mapSize;
 
-    public int removedPageOffset;
-    public int removedPageCount;
+    private int removedPageOffset;
+    private int removedPageCount;
+    private HashSet<Long> removedPages;
 
     public Chunk(int id) {
         this.id = id;
@@ -151,16 +152,33 @@ public class Chunk {
         }
     }
 
-    public void readRemovedPages(TreeSet<Long> removedPages) {
-        if (removedPageCount > 0) {
-            ByteBuffer buff = fileStorage.readFully(getFilePos(removedPageOffset), removedPageCount * 8);
-            for (int i = 0; i < removedPageCount; i++) {
-                removedPages.add(buff.getLong());
-            }
-        }
+    public void setRemovedPages(HashSet<Long> removedPages) {
+        this.removedPages = removedPages;
     }
 
-    private void writeRemovedPages(DataBuffer buff, TreeSet<Long> removedPages) {
+    public HashSet<Long> getRemovedPages() {
+        return removedPages;
+    }
+
+    public void addRemovedPage(long pos) {
+        removedPages.add(pos);
+    }
+
+    public HashSet<Long> readRemovedPages() {
+        if (removedPages == null) {
+            removedPages = new HashSet<>(removedPageCount);
+            if (removedPageCount > 0) {
+                ByteBuffer buff = fileStorage.readFully(getFilePos(removedPageOffset),
+                        removedPageCount * 8);
+                for (int i = 0; i < removedPageCount; i++) {
+                    removedPages.add(buff.getLong());
+                }
+            }
+        }
+        return removedPages;
+    }
+
+    private void writeRemovedPages(DataBuffer buff) {
         removedPageOffset = getOffset() + buff.position();
         removedPageCount = removedPages.size();
         for (long pos : removedPages) {
@@ -271,9 +289,9 @@ public class Chunk {
         return buff;
     }
 
-    public void write(DataBuffer body, TreeSet<Long> removedPages, boolean appendMode) {
+    public void write(DataBuffer body, boolean appendMode) {
         writePagePositions(body);
-        writeRemovedPages(body, removedPages);
+        writeRemovedPages(body);
 
         ByteBuffer buffer = body.getAndFlipBuffer();
         int blockCount = MathUtils.roundUpInt(buffer.limit(), BLOCK_SIZE) / BLOCK_SIZE;
@@ -294,8 +312,9 @@ public class Chunk {
         fileStorage.sync();
     }
 
-    public void updateRemovedPages(TreeSet<Long> removedPages) {
+    public void updateRemovedPages(HashSet<Long> removedPages) {
         removedPageCount = removedPages.size();
+        this.removedPages = removedPages;
         writeHeader();
         if (removedPageCount > 0) {
             DataBuffer buff = DataBuffer.create();

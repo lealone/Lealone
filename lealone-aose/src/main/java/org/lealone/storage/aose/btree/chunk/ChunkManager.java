@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
@@ -24,7 +23,6 @@ import org.lealone.storage.fs.FilePath;
 public class ChunkManager {
 
     private final BTreeStorage btreeStorage;
-    private final TreeSet<Long> removedPages = new TreeSet<>();
     private final ConcurrentHashMap<Integer, String> idToChunkFileNameMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Chunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
@@ -61,7 +59,6 @@ public class ChunkManager {
         try {
             if (lastChunkId > 0) {
                 lastChunk = readChunk(lastChunkId);
-                lastChunk.readRemovedPages(removedPages);
             } else {
                 lastChunk = null;
             }
@@ -97,24 +94,6 @@ public class ChunkManager {
         return ++maxSeq;
     }
 
-    public synchronized TreeSet<Long> getRemovedPagesCopy() {
-        return new TreeSet<>(removedPages);
-    }
-
-    public synchronized TreeSet<Long> getRemovedPages() {
-        return removedPages;
-    }
-
-    public synchronized void addRemovedPage(long pagePos) {
-        removedPages.add(pagePos);
-    }
-
-    synchronized void updateRemovedPages(TreeSet<Long> removedPages) {
-        this.removedPages.clear();
-        this.removedPages.addAll(removedPages);
-        getLastChunk().updateRemovedPages(removedPages);
-    }
-
     public synchronized void close() {
         for (Chunk c : chunks.values()) {
             if (c.fileStorage != null)
@@ -122,7 +101,6 @@ public class ChunkManager {
         }
         lastChunk = null;
         chunks.clear();
-        removedPages.clear();
         idToChunkFileNameMap.clear();
     }
 
@@ -169,6 +147,8 @@ public class ChunkManager {
         chunkIds.clear(c.id);
         chunks.remove(c.id);
         idToChunkFileNameMap.remove(c.id);
+        if (c == lastChunk)
+            lastChunk = null;
     }
 
     List<Chunk> readChunks(HashSet<Integer> chunkIds) {
