@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -36,12 +37,17 @@ public class Page {
         }
     }
 
-    protected final BTreeMap<?, ?> map;
-    protected volatile long pos; // the position of the page
+    protected static class PagePos {
+        final long v;
 
+        PagePos(long v) {
+            this.v = v;
+        }
+    }
+
+    protected final BTreeMap<?, ?> map;
+    protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
     private PageReference ref;
-    private volatile boolean writing;
-    private volatile boolean removedInMemory; // 如果正在执行write操作，然后其他线程又把page删了，需要用这个字段记录下来
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -56,11 +62,11 @@ public class Page {
     }
 
     public long getPos() {
-        return pos;
+        return posRef.get().v;
     }
 
     public void setPos(long pos) {
-        this.pos = pos;
+        posRef.set(new PagePos(pos));
     }
 
     private static RuntimeException ie() {
@@ -227,48 +233,33 @@ public class Page {
 
     protected void beforeWrite() {
         if (ASSERT) {
-            if (pos != 0) {
+            if (getPos() != 0) {
                 // already stored before
                 DbException.throwInternalError();
             }
         }
-        writing = true;
     }
 
-    protected void afterWrite() {
-        if (removedInMemory) { // 执行write之后，page已经被标记为删除
-            removePage(pos);
-        }
-        writing = false;
-    }
-
-    /**
-     * Remove the page.
-     */
     public void removePage() {
-        removePage(pos);
+        PagePos old = posRef.get();
+        if (posRef.compareAndSet(old, new PagePos(0))) {
+            if (old.v != 0) {
+                addRemovedPage(old.v);
+            }
+        } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
+            removePage();
+        }
     }
 
-    private void removePage(long pos) {
-        if (pos == 0) {
-            if (writing)
-                removedInMemory = true;
-        } else {
-            // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-            if (isLeaf())
-                map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
-            map.getBTreeStorage().removePage(pos);
-            this.pos = 0;
-            removedInMemory = false;
-        }
+    private void addRemovedPage(long pos) {
+        // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
+        if (isLeaf())
+            map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
+        map.getBTreeStorage().addRemovedPage(pos);
     }
 
     public void markDirty() {
-        if (pos != 0) {
-            removePage(pos);
-        } else if (writing) {
-            removedInMemory = true;
-        }
+        removePage();
     }
 
     public void markDirtyRecursive() {
@@ -400,8 +391,8 @@ public class Page {
         return buff;
     }
 
-    long updateChunkAndPage(Chunk chunk, int start, int pageLength, int type) {
-        if (pos != 0) {
+    long updateChunkAndPage(PagePos oldPagePos, Chunk chunk, int start, int pageLength, int type) {
+        if (getPos() != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
         long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
@@ -412,11 +403,15 @@ public class Page {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
-        if (getRef() != null)
-            getRef().getPageInfo().updateTime();
-        this.pos = pos;
+        PageReference ref = getRef();
+        if (ref != null)
+            ref.getPageInfo().updateTime();
 
-        afterWrite();
+        // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
+        if ((ref != null && ref.getPage() != this)
+                || !posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
+            addRemovedPage(pos);
+        }
         return pos;
     }
 }

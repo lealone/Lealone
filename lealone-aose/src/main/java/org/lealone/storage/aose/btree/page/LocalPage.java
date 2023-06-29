@@ -144,7 +144,8 @@ public abstract class LocalPage extends Page {
             return true;
         }
         if (other instanceof LocalPage) {
-            if (pos != 0 && ((LocalPage) other).pos == pos) {
+            long pos = getPos();
+            if (pos != 0 && ((LocalPage) other).getPos() == pos) {
                 return true;
             }
         }
@@ -153,6 +154,7 @@ public abstract class LocalPage extends Page {
 
     @Override
     public int hashCode() {
+        long pos = getPos();
         return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
     }
 

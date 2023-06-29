@@ -244,7 +244,7 @@ public class BTreeStorage {
     }
 
     // 并不会立刻删除page，只是记录被删除的page的pos，在compact阶段才会删除page
-    public void removePage(long pos) {
+    public void addRemovedPage(long pos) {
         if (pos > 0) {
             chunkManager.addRemovedPage(pos);
         }

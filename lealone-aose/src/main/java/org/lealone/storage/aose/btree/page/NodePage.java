@@ -138,6 +138,7 @@ public class NodePage extends LocalPage {
     * @return the position of the buffer just after the type
     */
     private long[] write(Chunk chunk, DataBuffer buff) {
+        PagePos oldPagePos = posRef.get();
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -164,7 +165,7 @@ public class NodePage extends LocalPage {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        long pos = updateChunkAndPage(chunk, start, pageLength, type);
+        long pos = updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
         return new long[] { typePos + 1, pos };
     }
 
@@ -189,7 +190,7 @@ public class NodePage extends LocalPage {
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
-            if (p != null && p.pos == 0) {
+            if (p != null && p.getPos() == 0) {
                 long pos = p.writeUnsavedRecursive(chunk, buff);
                 positions[i] = pos;
                 pInfo.pos = pos;

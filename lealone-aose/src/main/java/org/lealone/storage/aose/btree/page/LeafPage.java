@@ -212,6 +212,7 @@ public class LeafPage extends LocalPage {
     }
 
     private long writeRowStorage(Chunk chunk, DataBuffer buff) {
+        PagePos oldPagePos = posRef.get();
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -232,10 +233,11 @@ public class LeafPage extends LocalPage {
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
 
-        return updateChunkAndPage(chunk, start, pageLength, type);
+        return updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
     }
 
     private long writeColumnStorage(Chunk chunk, DataBuffer buff) {
+        PagePos oldPagePos = posRef.get();
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -276,7 +278,7 @@ public class LeafPage extends LocalPage {
         }
         buff.position(oldPos);
 
-        return updateChunkAndPage(chunk, start, pageLength, type);
+        return updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
     }
 
     @Override

@@ -68,6 +68,7 @@ public class ColumnPage extends Page {
 
     long write(Chunk chunk, DataBuffer buff) {
         beforeWrite();
+        PagePos oldPagePos = posRef.get();
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_COLUMN;
         buff.putInt(0); // 回填pageLength
@@ -88,6 +89,6 @@ public class ColumnPage extends Page {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        return updateChunkAndPage(chunk, start, pageLength, type);
+        return updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
     }
 }
