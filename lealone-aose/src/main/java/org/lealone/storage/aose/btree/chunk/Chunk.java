@@ -167,10 +167,13 @@ public class Chunk {
     }
 
     private void writeRemovedPages(DataBuffer buff, ChunkManager chunkManager) {
+        // 使用老的removedPageOffset读
+        HashSet<Long> oldRemovedPages = getRemovedPages();
         HashSet<Long> newRemovedPages = new HashSet<>(chunkManager.getRemovedPages());
+        // 更新removedPageOffset
         removedPageOffset = getOffset() + buff.position();
-        removedPageCount = getRemovedPages().size() + newRemovedPages.size();
-        for (long pos : getRemovedPages()) {
+        removedPageCount = oldRemovedPages.size() + newRemovedPages.size();
+        for (long pos : oldRemovedPages) {
             buff.putLong(pos);
         }
         for (long pos : newRemovedPages) {
