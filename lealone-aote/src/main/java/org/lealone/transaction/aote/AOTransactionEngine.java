@@ -338,6 +338,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件
                     logSyncService.checkpoint(true);
                 } catch (Throwable t) {
+                    logger.error("Failed to execute checkpoint", t);
                     logSyncService.getRedoLog().ignoreCheckpoint();
                 }
             }

@@ -134,8 +134,7 @@ public abstract class LocalPage extends Page {
     protected void copy(LocalPage newPage) {
         newPage.cachedCompare = cachedCompare;
         newPage.setRef(getRef());
-        PagePos pos = removePage();
-        newPage.setPos(pos);
+        markDirty();
     }
 
     @Override

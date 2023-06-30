@@ -39,16 +39,14 @@ public class Page {
 
     protected static class PagePos {
         final long v;
-        final long old;
 
-        PagePos(long v, long old) {
+        PagePos(long v) {
             this.v = v;
-            this.old = old;
         }
     }
 
     protected final BTreeMap<?, ?> map;
-    protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0, 0));
+    protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
     private PageReference ref;
 
     protected Page(BTreeMap<?, ?> map) {
@@ -68,11 +66,7 @@ public class Page {
     }
 
     public void setPos(long pos) {
-        posRef.set(new PagePos(pos, 0));
-    }
-
-    public void setPos(PagePos pos) {
-        posRef.set(pos);
+        posRef.set(new PagePos(pos));
     }
 
     private static RuntimeException ie() {
@@ -246,29 +240,23 @@ public class Page {
         }
     }
 
-    public PagePos removePage() {
-        PagePos old = posRef.get();
-        long v = old.v != 0 ? old.v : old.old;
-        PagePos newPagePos = new PagePos(0, v);
-        if (posRef.compareAndSet(old, newPagePos)) {
-            if (old.v != 0) {
-                addDirtyMemory();
-            }
-            return newPagePos;
-        } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
-            return removePage();
-        }
-        return posRef.get();
-    }
-
-    private void addDirtyMemory() {
+    protected void addRemovedPage(long pos) {
+        map.getBTreeStorage().getChunkManager().addRemovedPage(pos);
         // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
         if (isLeaf())
             map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
     }
 
     public void markDirty() {
-        removePage();
+        PagePos old = posRef.get();
+        PagePos newPagePos = new PagePos(0);
+        if (posRef.compareAndSet(old, newPagePos)) {
+            if (old.v != 0) {
+                addRemovedPage(old.v);
+            }
+        } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
+            markDirty();
+        }
     }
 
     public void markDirtyRecursive() {
@@ -415,15 +403,10 @@ public class Page {
         PageReference ref = getRef();
         if (ref != null)
             ref.getPageInfo().updateTime();
-
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
         if ((ref != null && ref.getPage() != this)
-                || !posRef.compareAndSet(oldPagePos, new PagePos(pos, 0))) {
-            addDirtyMemory();
-            chunk.addRemovedPage(pos);
-        } else {
-            if (oldPagePos.old > 0)
-                chunk.addRemovedPage(oldPagePos.old);
+                || !posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
+            addRemovedPage(pos);
         }
         return pos;
     }

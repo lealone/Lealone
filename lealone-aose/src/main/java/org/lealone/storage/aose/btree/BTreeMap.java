@@ -105,7 +105,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
         btreeStorage = new BTreeStorage(this);
         rootRef = new RootPageReference(btreeStorage);
-        Chunk lastChunk = btreeStorage.getLastChunk();
+        Chunk lastChunk = btreeStorage.getChunkManager().getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
             Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos);
@@ -407,21 +407,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void markDirty(Object key) {
-        Page p = getRootPage();
-        Page leaf = p;
-        while (p.isNode()) {
-            p.markDirty();
-            int index = p.getPageIndex(key);
-            PageReference ref = p.getChildPageReference(index);
-            if (ref.isNodePage()) {
-                p = p.getChildPage(index);
-            } else {
-                leaf = ref.getPage();
-                break;
-            }
-        }
-        if (leaf != null) // 可能为null
-            leaf.markDirty();
+        Page leaf = gotoLeafPage(key);
+        leaf.markDirtyRecursive();
     }
 
     public int getChildPageCount(Page p) {

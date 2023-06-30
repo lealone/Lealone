@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
@@ -23,6 +25,7 @@ import org.lealone.storage.fs.FilePath;
 public class ChunkManager {
 
     private final BTreeStorage btreeStorage;
+    private final ConcurrentSkipListSet<Long> removedPages = new ConcurrentSkipListSet<>();
     private final ConcurrentHashMap<Integer, String> idToChunkFileNameMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Chunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
@@ -147,6 +150,7 @@ public class ChunkManager {
         chunkIds.clear(c.id);
         chunks.remove(c.id);
         idToChunkFileNameMap.remove(c.id);
+        removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         if (c == lastChunk)
             lastChunk = null;
     }
@@ -172,5 +176,20 @@ public class ChunkManager {
             return getChunk(chunkId).fileStorage.getInputStream();
         }
         return null;
+    }
+
+    public void addRemovedPage(long pos) {
+        removedPages.add(pos);
+    }
+
+    public Set<Long> getRemovedPages() {
+        return removedPages;
+    }
+
+    public HashSet<Long> getAllRemovedPages() {
+        HashSet<Long> removedPages = new HashSet<>(this.removedPages);
+        if (lastChunk != null)
+            removedPages.addAll(lastChunk.getRemovedPages());
+        return removedPages;
     }
 }

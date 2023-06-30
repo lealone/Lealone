@@ -8,7 +8,6 @@ package org.lealone.storage.aose.btree;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
@@ -141,18 +140,8 @@ public class BTreeStorage {
         return e;
     }
 
-    Chunk getLastChunk() {
-        return chunkManager.getLastChunk();
-    }
-
-    /**
-     * Get the chunk for the given position.
-     * 
-     * @param pos the position
-     * @return the chunk
-     */
-    public Chunk getChunk(long pos) {
-        return chunkManager.getChunk(pos);
+    public ChunkManager getChunkManager() {
+        return chunkManager;
     }
 
     // ChunkCompactor在重写chunk中的page时会用到
@@ -166,23 +155,25 @@ public class BTreeStorage {
         PageReference tmpRef = new PageReference(this, pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
-        while (p.isNode()) {
-            p.markDirty();
-            int index = p.getPageIndex(key);
-            PageReference ref = p.getChildPageReference(index);
-            if (ref.isNodePage()) {
-                p = p.getChildPage(index);
-            } else {
-                if (ref.getPage() == null) {
-                    ref.replacePage(leaf);
-                    leaf.setRef(ref);
-                } else {
-                    leaf = ref.getPage();
-                }
-                break;
-            }
-        }
-        leaf.markDirty();
+        leaf = map.gotoLeafPage(key, false);
+        leaf.markDirtyRecursive();
+        // while (p.isNode()) {
+        // p.markDirty();
+        // int index = p.getPageIndex(key);
+        // PageReference ref = p.getChildPageReference(index);
+        // if (ref.isNodePage()) {
+        // p = p.getChildPage(index);
+        // } else {
+        // if (ref.getPage() == null) {
+        // ref.replacePage(leaf);
+        // leaf.setRef(ref);
+        // } else {
+        // leaf = ref.getPage();
+        // }
+        // break;
+        // }
+        // }
+        // leaf.markDirty();
     }
 
     public Page readPage(PageInfo pInfoOld, PageReference ref) {
@@ -197,7 +188,7 @@ public class BTreeStorage {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
-        Chunk c = getChunk(pos);
+        Chunk c = chunkManager.getChunk(pos);
         long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
         int pageLength = c.getPageLength(pos);
         if (pageLength < 0) {
@@ -368,8 +359,8 @@ public class BTreeStorage {
                     "This storage is read-only");
         }
         try {
-            HashSet<Long> removedPages = executeSave(true);
-            new ChunkCompactor(this, chunkManager).executeCompact(removedPages);
+            executeSave(true);
+            new ChunkCompactor(this, chunkManager).executeCompact();
         } catch (IllegalStateException e) {
             throw panic(e);
         } finally {
@@ -377,7 +368,7 @@ public class BTreeStorage {
         }
     }
 
-    public synchronized HashSet<Long> executeSave(boolean appendModeEnabled) {
+    public synchronized void executeSave(boolean appendModeEnabled) {
         int dirtyMemory = (int) (bgc.getDirtyMemory() * 1.5);
         bgc.resetDirtyMemory();
 
@@ -393,23 +384,19 @@ public class BTreeStorage {
             } else {
                 c = chunkManager.createChunk();
                 c.fileStorage = getFileStorage(c.fileName);
-                if (lastChunk != null)
-                    c.setRemovedPages(lastChunk.readRemovedPages());
             }
             c.mapSize = map.size();
-            c.readRemovedPages();
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
             Page p = pInfo.page;
             long pos = p.writeUnsavedRecursive(c, chunkBody);
             c.rootPagePos = pos;
             pInfo.pos = pos;
-            c.write(chunkBody, appendMode);
+            c.write(chunkBody, appendMode, chunkManager);
             if (!appendMode) {
                 chunkManager.addChunk(c);
                 chunkManager.setLastChunk(c);
             }
-            return c.getRemovedPages();
         } catch (IllegalStateException e) {
             throw panic(e);
         } finally {

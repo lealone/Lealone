@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.storage.aose.btree.BTreeStorage;
+import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
 
 /**
@@ -30,7 +31,8 @@ public class ChunkCompactor {
         this.chunkManager = chunkManager;
     }
 
-    public void executeCompact(HashSet<Long> removedPages) {
+    public void executeCompact() {
+        HashSet<Long> removedPages = chunkManager.getAllRemovedPages();
         if (removedPages.isEmpty())
             return;
 
@@ -80,6 +82,12 @@ public class ChunkCompactor {
             return;
         int size = removedPages.size();
         for (Chunk c : unusedChunks) {
+            if (Page.ASSERT) {
+                for (Long pos : c.pagePositionToLengthMap.keySet()) {
+                    if (!chunkManager.getRemovedPages().contains(pos))
+                        System.out.println("not dirty: " + pos);
+                }
+            }
             chunkManager.removeUnusedChunk(c);
             removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         }
@@ -103,11 +111,18 @@ public class ChunkCompactor {
                     // 直接标记为脏页即可，不用更新元素
                     btreeStorage.markDirtyLeafPage(pos);
                     saveIfNeeded = true;
+                    if (Page.ASSERT) {
+                        // System.out.println("rewrite: " + pos);
+                        if (!chunkManager.getRemovedPages().contains(pos)) {
+                            System.out.println("not dirty: " + pos);
+                            btreeStorage.markDirtyLeafPage(pos);
+                        }
+                    }
                 }
             }
         }
         if (saveIfNeeded) {
-            removedPages.addAll(btreeStorage.executeSave(false));
+            btreeStorage.executeSave(false);
             removeUnusedChunks(old, removedPages);
         }
     }

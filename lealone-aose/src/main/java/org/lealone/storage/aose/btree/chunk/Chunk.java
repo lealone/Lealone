@@ -152,19 +152,7 @@ public class Chunk {
         }
     }
 
-    public void setRemovedPages(HashSet<Long> removedPages) {
-        this.removedPages = removedPages;
-    }
-
     public HashSet<Long> getRemovedPages() {
-        return removedPages;
-    }
-
-    public void addRemovedPage(long pos) {
-        removedPages.add(pos);
-    }
-
-    public HashSet<Long> readRemovedPages() {
         if (removedPages == null) {
             removedPages = new HashSet<>(removedPageCount);
             if (removedPageCount > 0) {
@@ -178,10 +166,14 @@ public class Chunk {
         return removedPages;
     }
 
-    private void writeRemovedPages(DataBuffer buff) {
+    private void writeRemovedPages(DataBuffer buff, ChunkManager chunkManager) {
+        HashSet<Long> newRemovedPages = new HashSet<>(chunkManager.getRemovedPages());
         removedPageOffset = getOffset() + buff.position();
-        removedPageCount = removedPages.size();
-        for (long pos : removedPages) {
+        removedPageCount = getRemovedPages().size() + newRemovedPages.size();
+        for (long pos : getRemovedPages()) {
+            buff.putLong(pos);
+        }
+        for (long pos : newRemovedPages) {
             buff.putLong(pos);
         }
     }
@@ -289,9 +281,9 @@ public class Chunk {
         return buff;
     }
 
-    public void write(DataBuffer body, boolean appendMode) {
+    public void write(DataBuffer body, boolean appendMode, ChunkManager chunkManager) {
         writePagePositions(body);
-        writeRemovedPages(body);
+        writeRemovedPages(body, chunkManager);
 
         ByteBuffer buffer = body.getAndFlipBuffer();
         int blockCount = MathUtils.roundUpInt(buffer.limit(), BLOCK_SIZE) / BLOCK_SIZE;
@@ -313,8 +305,8 @@ public class Chunk {
     }
 
     public void updateRemovedPages(HashSet<Long> removedPages) {
-        removedPageCount = removedPages.size();
         this.removedPages = removedPages;
+        removedPageCount = removedPages.size();
         writeHeader();
         if (removedPageCount > 0) {
             DataBuffer buff = DataBuffer.create();
