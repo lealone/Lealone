@@ -110,14 +110,6 @@ public abstract class LocalPage extends Page {
 
     @Override
     public int getMemory() {
-        if (ASSERT) {
-            int mem = memory;
-            recalculateMemory();
-            if (mem != memory) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
-                        "Memory calculation error");
-            }
-        }
         return memory;
     }
 

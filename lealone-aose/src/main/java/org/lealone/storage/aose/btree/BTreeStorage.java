@@ -155,25 +155,22 @@ public class BTreeStorage {
         PageReference tmpRef = new PageReference(this, pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
-        leaf = map.gotoLeafPage(key, false);
+        while (p.isNode()) {
+            int index = p.getPageIndex(key);
+            PageReference ref = p.getChildPageReference(index);
+            if (ref.isNodePage()) {
+                p = p.getChildPage(index);
+            } else {
+                if (ref.getPage() == null) {
+                    ref.replacePage(leaf);
+                    leaf.setRef(ref);
+                } else {
+                    leaf = ref.getPage();
+                }
+                break;
+            }
+        }
         leaf.markDirtyRecursive();
-        // while (p.isNode()) {
-        // p.markDirty();
-        // int index = p.getPageIndex(key);
-        // PageReference ref = p.getChildPageReference(index);
-        // if (ref.isNodePage()) {
-        // p = p.getChildPage(index);
-        // } else {
-        // if (ref.getPage() == null) {
-        // ref.replacePage(leaf);
-        // leaf.setRef(ref);
-        // } else {
-        // leaf = ref.getPage();
-        // }
-        // break;
-        // }
-        // }
-        // leaf.markDirty();
     }
 
     public Page readPage(PageInfo pInfoOld, PageReference ref) {
@@ -296,7 +293,6 @@ public class BTreeStorage {
             return;
         bgc.close();
         chunkManager.close();
-        // FileUtils.deleteRecursive(mapBaseDir, true);
     }
 
     /**

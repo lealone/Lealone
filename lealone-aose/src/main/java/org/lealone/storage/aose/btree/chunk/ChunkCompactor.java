@@ -84,16 +84,19 @@ public class ChunkCompactor {
         for (Chunk c : unusedChunks) {
             if (Page.ASSERT) {
                 for (Long pos : c.pagePositionToLengthMap.keySet()) {
-                    if (!chunkManager.getRemovedPages().contains(pos))
+                    if (!chunkManager.getRemovedPages().contains(pos)) {
                         System.out.println("not dirty: " + pos);
+                    }
                 }
             }
             chunkManager.removeUnusedChunk(c);
             removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         }
         if (size > removedPages.size()) {
-            if (chunkManager.getLastChunk() != null)
+            if (chunkManager.getLastChunk() != null) {
+                removedPages.addAll(chunkManager.getRemovedPages());
                 chunkManager.getLastChunk().updateRemovedPages(removedPages);
+            }
         }
     }
 
@@ -112,12 +115,12 @@ public class ChunkCompactor {
                     btreeStorage.markDirtyLeafPage(pos);
                     saveIfNeeded = true;
                     if (Page.ASSERT) {
-                        // System.out.println("rewrite: " + pos);
                         if (!chunkManager.getRemovedPages().contains(pos)) {
                             System.out.println("not dirty: " + pos);
-                            btreeStorage.markDirtyLeafPage(pos);
                         }
                     }
+                    // copy page时可能会错失标记脏页的机会，这里补上
+                    chunkManager.addRemovedPage(pos);
                 }
             }
         }

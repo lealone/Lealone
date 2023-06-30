@@ -102,9 +102,14 @@ public class ChunkManager {
             if (c.fileStorage != null)
                 c.fileStorage.close();
         }
-        lastChunk = null;
+        // maxSeq = 0;
+        // for (Integer id : idToChunkFileNameMap.keySet()) {
+        // chunkIds.clear(id);
+        // }
         chunks.clear();
         idToChunkFileNameMap.clear();
+        removedPages.clear();
+        lastChunk = null;
     }
 
     private synchronized Chunk readChunk(int chunkId) {

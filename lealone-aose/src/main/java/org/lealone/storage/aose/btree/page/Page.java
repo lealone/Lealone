@@ -249,8 +249,7 @@ public class Page {
 
     public void markDirty() {
         PagePos old = posRef.get();
-        PagePos newPagePos = new PagePos(0);
-        if (posRef.compareAndSet(old, newPagePos)) {
+        if (posRef.compareAndSet(old, new PagePos(0))) {
             if (old.v != 0) {
                 addRemovedPage(old.v);
             }
