@@ -63,7 +63,7 @@ public class LealoneClient {
     private final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
     private final ArrayList<String> history = new ArrayList<>();
     private final String[] args;
-    private Connection conn;
+    private JdbcConnection conn;
     private Statement stat;
     private boolean listMode;
     private int maxColumnSize = 100;
@@ -79,6 +79,7 @@ public class LealoneClient {
     }
 
     public static void main(LealoneClient client) {
+        System.setProperty("client_logger_enabled", "false");
         try {
             client.run();
         } catch (Exception e) {
@@ -177,7 +178,7 @@ public class LealoneClient {
     }
 
     private void connect() throws Exception {
-        conn = getConnection();
+        conn = (JdbcConnection) getConnection();
         stat = conn.createStatement();
     }
 
@@ -424,8 +425,11 @@ public class LealoneClient {
         if (sql.isEmpty()) {
             return;
         }
-        long time = System.nanoTime();
         try {
+            if (conn.isClosed()) {
+                reconnect();
+            }
+            long time = System.nanoTime();
             ResultSet rs = null;
             try {
                 if (sql.startsWith("select")) {
@@ -448,7 +452,7 @@ public class LealoneClient {
             } finally {
                 JdbcUtils.closeSilently(rs);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             if (listMode) {
                 e.printStackTrace(err);
             } else {

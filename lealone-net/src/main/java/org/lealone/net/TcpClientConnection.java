@@ -71,6 +71,14 @@ public class TcpClientConnection extends TransferConnection {
             }
         }
         super.close();
+
+        for (Session s : sessions.values()) {
+            try {
+                s.close();
+            } catch (Exception e) { // 忽略异常
+            }
+        }
+        sessions.clear();
     }
 
     public void addSession(int sessionId, Session session) {

@@ -24,6 +24,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
+import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
@@ -44,12 +45,18 @@ class NioEventLoop implements NetEventLoop {
     private int maxPacketSize;
     private Object owner;
 
+    private final boolean isLoggerEnabled;
+    private final boolean isDebugEnabled;
+
     public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval)
             throws IOException {
         loopInterval = MapUtils.getLong(config, loopIntervalKey, defaultLoopInterval);
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 20);
         maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
         selector = Selector.open();
+
+        isLoggerEnabled = SystemPropertyUtils.getBoolean("client_logger_enabled", true);
+        isDebugEnabled = logger.isDebugEnabled() && isLoggerEnabled;
     }
 
     @Override
@@ -170,7 +177,6 @@ class NioEventLoop implements NetEventLoop {
 
     private long totalReadBytes;
     private long totalWrittenBytes;
-    private final boolean isDebugEnabled = logger.isDebugEnabled();
     private final EOFException endException = new EOFException();
     private String endExceptionMsg;
 
@@ -236,7 +242,8 @@ class NioEventLoop implements NetEventLoop {
                 if (isDebugEnabled)
                     logger.debug((conn.isServer() ? "Client " : "\r\nServer ") + endExceptionMsg);
             } else {
-                logger.warn("Failed to read", e);
+                if (isLoggerEnabled)
+                    logger.warn("Failed to read", e);
             }
             conn.handleException(e);
             closeChannel(channel);
