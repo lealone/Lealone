@@ -155,21 +155,7 @@ public class BTreeStorage {
         PageReference tmpRef = new PageReference(this, pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
-        while (p.isNode()) {
-            int index = p.getPageIndex(key);
-            PageReference ref = p.getChildPageReference(index);
-            if (ref.isNodePage()) {
-                p = p.getChildPage(index);
-            } else {
-                if (ref.getPage() == null) {
-                    ref.replacePage(leaf);
-                    leaf.setRef(ref);
-                } else {
-                    leaf = ref.getPage();
-                }
-                break;
-            }
-        }
+        leaf = map.gotoLeafPage(key, false);
         leaf.markDirtyRecursive();
     }
 

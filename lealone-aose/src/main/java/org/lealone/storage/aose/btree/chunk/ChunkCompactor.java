@@ -82,19 +82,12 @@ public class ChunkCompactor {
             return;
         int size = removedPages.size();
         for (Chunk c : unusedChunks) {
-            if (Page.ASSERT) {
-                for (Long pos : c.pagePositionToLengthMap.keySet()) {
-                    if (!chunkManager.getRemovedPages().contains(pos)) {
-                        System.out.println("not dirty: " + pos);
-                    }
-                }
-            }
             chunkManager.removeUnusedChunk(c);
             removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         }
         if (size > removedPages.size()) {
             if (chunkManager.getLastChunk() != null) {
-                removedPages.addAll(chunkManager.getRemovedPages());
+                removedPages = chunkManager.getAllRemovedPages();
                 chunkManager.getLastChunk().updateRemovedPages(removedPages);
             }
         }
@@ -110,17 +103,21 @@ public class ChunkCompactor {
         for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
                 long pos = e.getKey();
-                if (PageUtils.isLeafPage(pos) && !removedPages.contains(pos)) {
-                    // 直接标记为脏页即可，不用更新元素
-                    btreeStorage.markDirtyLeafPage(pos);
-                    saveIfNeeded = true;
-                    if (Page.ASSERT) {
-                        if (!chunkManager.getRemovedPages().contains(pos)) {
-                            System.out.println("not dirty: " + pos);
+                if (!removedPages.contains(pos)) {
+                    if (PageUtils.isNodePage(pos)) {
+                        chunkManager.addRemovedPage(pos);
+                    } else {
+                        // 直接标记为脏页即可，不用更新元素
+                        btreeStorage.markDirtyLeafPage(pos);
+                        saveIfNeeded = true;
+                        if (Page.ASSERT) {
+                            if (!chunkManager.getRemovedPages().contains(pos)) {
+                                System.out.println("not dirty: " + pos);
+                            }
                         }
+                        // copy page时可能会错失标记脏页的机会，这里补上
+                        // chunkManager.addRemovedPage(pos);
                     }
-                    // copy page时可能会错失标记脏页的机会，这里补上
-                    chunkManager.addRemovedPage(pos);
                 }
             }
         }

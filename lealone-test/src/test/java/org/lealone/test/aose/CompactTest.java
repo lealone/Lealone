@@ -23,25 +23,25 @@ public class CompactTest extends AoseTestBase {
         for (int i = 1; i <= 200; i++)
             map.put(i, "value" + i);
         map.save();
-        map.printPage();
+        // map.printPage();
 
         for (int i = 1; i <= 50; i++)
             map.put(i, "value" + i);
 
         map.save();
-        map.printPage();
+        // map.printPage();
 
         for (int i = 100; i <= 150; i++)
             map.put(i, "value" + i);
 
         map.save();
-        map.printPage();
+        // map.printPage();
 
         for (int i = 50; i <= 150; i++)
             map.put(i, "value" + i);
 
         map.save();
-        map.printPage();
+        // map.printPage();
 
         assertEquals(map.cursor(), 200);
 

@@ -107,7 +107,7 @@ public class ChunkManager {
         // chunkIds.clear(id);
         // }
         chunks.clear();
-        idToChunkFileNameMap.clear();
+        // idToChunkFileNameMap.clear();
         removedPages.clear();
         lastChunk = null;
     }

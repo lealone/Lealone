@@ -129,7 +129,8 @@ public class PageReference {
     }
 
     public void replacePage(Page page) {
-        if (this.pInfo.page == page)
+        Page oldPage = this.pInfo.page;
+        if (oldPage == page)
             return;
         PageInfo pInfo;
         if (page != null) {
@@ -140,6 +141,10 @@ public class PageReference {
             pInfo = new PageInfo();
         }
         this.pInfo = pInfo;
+        if (oldPage != null)
+            oldPage.markDirty();
+        if (page != null)
+            page.markDirty();
     }
 
     public boolean isLeafPage() {
