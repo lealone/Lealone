@@ -5,7 +5,6 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
@@ -108,21 +107,13 @@ public abstract class PageOperations {
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
             p = p.copyAndInsertLeaf(index, key, value); // copy之后Ref还是一样的
-            pRef.replacePage(p);
             map.setMaxKey(key);
+            pRef.replacePage(p);
         }
-
-        protected void markDirtyPages() {
-            p.markDirtyRecursive();
-        }
-
-        // 一些像Put这样的操作可以一边定位leaf page一边把父节点标记为脏页
-        // 还有一些像Remove这类操作就不需要，因为元素可能不存在
-        protected abstract boolean isMarkDirtyEnabled();
 
         // 以下两个API允许子类覆盖，比如Append操作可以做自己的特殊优化
         protected Page gotoLeafPage() {
-            return map.gotoLeafPage(key, isMarkDirtyEnabled());
+            return map.gotoLeafPage(key);
         }
 
         protected int getKeyIndex() {
@@ -140,18 +131,14 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected boolean isMarkDirtyEnabled() {
-            return true;
-        }
-
-        @Override
         protected Object writeLocal(int index, PageOperationHandler poHandler) {
-            p.markDirty();
             if (index < 0) {
                 insertLeaf(index, value);
                 return null;
             } else {
-                return p.setValue(index, value);
+                Object obj = p.setValue(index, value);
+                p.markDirtyBottomUp();
+                return obj;
             }
         }
     }
@@ -164,14 +151,8 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected boolean isMarkDirtyEnabled() {
-            return false;
-        }
-
-        @Override
         protected Object writeLocal(int index, PageOperationHandler poHandler) {
             if (index < 0) {
-                markDirtyPages();
                 insertLeaf(index, value);
                 return null;
             }
@@ -186,18 +167,12 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected boolean isMarkDirtyEnabled() { // 已经自己实现gotoLeafPage了，所以不可能调用到
-            throw DbException.getInternalError();
-        }
-
-        @Override
         protected Page gotoLeafPage() { // 直接定位到最后一页
             Page p = map.getRootPage();
             while (true) {
                 if (p.isLeaf()) {
                     return p;
                 }
-                p.markDirty();
                 p = p.getChildPage(map.getChildPageCount(p) - 1);
             }
         }
@@ -231,11 +206,6 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected boolean isMarkDirtyEnabled() {
-            return false;
-        }
-
-        @Override
         protected Boolean writeLocal(int index, PageOperationHandler poHandler) {
             // 对应的key不存在，直接返回false
             if (index < 0) {
@@ -243,8 +213,8 @@ public abstract class PageOperations {
             }
             Object old = p.getValue(index);
             if (map.areValuesEqual(old, oldValue)) {
-                markDirtyPages();
                 p.setValue(index, value);
+                p.markDirtyBottomUp();
                 return Boolean.TRUE;
             }
             return Boolean.FALSE;
@@ -258,16 +228,10 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected boolean isMarkDirtyEnabled() {
-            return false;
-        }
-
-        @Override
         protected Object writeLocal(int index, PageOperationHandler poHandler) {
             if (index < 0) {
                 return null;
             }
-            markDirtyPages();
             Object oldValue = p.getValue(index);
             Page newPage = p.copy(); // 删除元素需要先copy，否则会产生get和remove的并发问题
             newPage.remove(index);

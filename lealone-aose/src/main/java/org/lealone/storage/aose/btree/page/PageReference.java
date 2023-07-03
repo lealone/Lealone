@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree.page;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.page.PageOperationHandler;
 
@@ -132,6 +133,10 @@ public class PageReference {
         Page oldPage = this.pInfo.page;
         if (oldPage == page)
             return;
+        if (Page.ASSERT) {
+            if (!isRoot() && !isLocked())
+                DbException.throwInternalError("not locked");
+        }
         PageInfo pInfo;
         if (page != null) {
             pInfo = new PageInfo();
@@ -142,9 +147,7 @@ public class PageReference {
         }
         this.pInfo = pInfo;
         if (oldPage != null)
-            oldPage.markDirty();
-        if (page != null)
-            page.markDirty();
+            oldPage.markDirtyBottomUp();
     }
 
     public boolean isLeafPage() {

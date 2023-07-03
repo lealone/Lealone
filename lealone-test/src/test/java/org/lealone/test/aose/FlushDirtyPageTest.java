@@ -7,28 +7,50 @@ package org.lealone.test.aose;
 
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 //这个类用于测试标记脏页和刷脏页算法的正确性，如果异常退出就说明算法有bug
-public class FlushDirtyPageTest {
+public abstract class FlushDirtyPageTest {
 
-    static int count = 20000;
-
+    // 用CAS的方案要比synchronized好
     public static void main(String[] args) {
-        FlushDirtyPageTest test = new FlushDirtyPageTest();
+        run(new CASFlushDirtyPageTest());
+        run(new SyncFlushDirtyPageTest());
+    }
+
+    public static void run(FlushDirtyPageTest test) {
+        int count = 2000;
+        long t1 = System.nanoTime();
         for (int i = 1; i <= count; i++) {
-            if (i == 1 || i % 100 == 0 || i == count)
-                System.out.println("loop: " + i);
+            if (i % 100 == 0 || i == count) {
+                long t2 = System.nanoTime();
+                System.out.println(test.getClass().getSimpleName() + " loop: " + i + ", time = "
+                        + (t2 - t1) / 1000 / 1000 + " ms");
+                t1 = t2;
+            }
             test.run();
         }
     }
 
+    protected final ConcurrentSkipListSet<Long> removedPages = new ConcurrentSkipListSet<>();
+    protected final ConcurrentSkipListSet<Long> savedPages = new ConcurrentSkipListSet<>();
+
+    protected void addRemovedPage(long pos) {
+        removedPages.add(pos);
+    }
+
+    abstract void init();
+
+    abstract void write(long pos);
+
+    abstract void markDirty();
+
+    abstract void replacePage();
+
     public void run() {
+        init();
         removedPages.clear();
         savedPages.clear();
-        Page page = new Page();
-        // page.posRef.set(new PagePos(-1));
-        PageReference ref = new PageReference();
-        ref.page = page;
 
         // int count = 1;
         // int threadCount = 201;
@@ -39,19 +61,7 @@ public class FlushDirtyPageTest {
         // 刷脏页线程，只有一个
         threads[0] = new Thread(() -> {
             for (int i = 1; i <= count; i++) {
-                Page p = ref.getPage();
-                PagePos oldPagePos = p.posRef.get();
-                if (oldPagePos.v != 0) // 为0时才说明是脏页
-                    continue;
-                p.write();
-                long pos = i;
-                savedPages.add(pos);
-                if (ref.getPage() != p) { // page复制过了
-                    addRemovedPage(pos);
-                }
-                if (!p.posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
-                    addRemovedPage(pos);
-                }
+                write(i);
             }
         });
         threads[0].setName("write");
@@ -60,8 +70,7 @@ public class FlushDirtyPageTest {
         for (int t = 1; t < (threadCount / 2) + 1; t++) {
             threads[t] = new Thread(() -> {
                 for (int i = 0; i < count; i++) {
-                    Page p = ref.getPage();
-                    p.markDirty();
+                    markDirty();
                 }
             });
             threads[t].setName("markDirty-" + t);
@@ -71,8 +80,7 @@ public class FlushDirtyPageTest {
         for (int t = (threadCount / 2) + 1; t < threadCount; t++) {
             threads[t] = new Thread(() -> {
                 for (int i = 0; i < count; i++) {
-                    Page p = new Page();
-                    ref.replacePage(p);
+                    replacePage();
                 }
             });
             threads[t].setName("replacePage-" + t);
@@ -93,65 +101,173 @@ public class FlushDirtyPageTest {
         // System.out.println("removedPages size: " + removedPages.size());
 
         // 以下代码断言所有保存过的page都被标记为删除了，如果还有没被标记为删除的page，那说明算法还有bug
-        ref.getPage().markDirty();
+        markDirty();
         savedPages.removeAll(removedPages);
         if (!savedPages.isEmpty()) {
-            System.out.println("error, savedPages size: " + savedPages.size());
+            System.out.println("error, saved pages size: " + savedPages.size());
             System.exit(-1);
         }
     }
 
-    private final ConcurrentSkipListSet<Long> removedPages = new ConcurrentSkipListSet<>();
-    private final ConcurrentSkipListSet<Long> savedPages = new ConcurrentSkipListSet<>();
+    private static class CASFlushDirtyPageTest extends FlushDirtyPageTest {
 
-    private void addRemovedPage(long pos) {
-        removedPages.add(pos);
-    }
+        final PageReference ref = new PageReference();
 
-    private class PagePos {
-        final long v;
-
-        PagePos(long v) {
-            this.v = v;
+        @Override
+        void init() {
+            Page page = new Page();
+            // page.posRef.set(new PagePos(-1));
+            ref.page = page;
         }
-    }
 
-    private class Page {
-
-        final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
-
-        void markDirty() {
-            PagePos old = posRef.get();
-            if (posRef.compareAndSet(old, new PagePos(0))) {
-                if (old.v != 0) {
-                    addRemovedPage(old.v);
-                }
-            } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
-                markDirty();
+        @Override
+        void write(long pos) {
+            Page p = ref.getPage();
+            PagePos oldPagePos = p.posRef.get();
+            if (oldPagePos.v != 0) // 为0时才说明是脏页
+                return;
+            p.write();
+            savedPages.add(pos);
+            if (ref.getPage() != p) { // page复制过了
+                addRemovedPage(pos);
+            }
+            if (!p.posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
+                addRemovedPage(pos);
             }
         }
 
-        void write() {
+        @Override
+        void markDirty() {
+            Page p = ref.getPage();
+            p.markDirty();
+        }
+
+        @Override
+        void replacePage() {
+            Page p = new Page();
+            ref.replacePage(p);
+        }
+
+        private class PagePos {
+            final long v;
+
+            PagePos(long v) {
+                this.v = v;
+            }
+        }
+
+        private class Page {
+
+            final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
+
+            void markDirty() {
+                PagePos old = posRef.get();
+                if (posRef.compareAndSet(old, new PagePos(0))) {
+                    if (old.v != 0) {
+                        addRemovedPage(old.v);
+                    }
+                } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
+                    markDirty();
+                }
+            }
+
+            void write() {
+            }
+        }
+
+        private static final AtomicReferenceFieldUpdater<PageReference, Page> //
+        pageUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, Page.class, "page");
+
+        private class PageReference {
+
+            volatile Page page;
+
+            Page getPage() {
+                return page;
+            }
+
+            void replacePage(Page newPage) {
+                Page oldPage = this.page;
+                if (oldPage == newPage)
+                    return;
+                if (pageUpdater.compareAndSet(this, oldPage, newPage)) {
+                    if (oldPage != null)
+                        oldPage.markDirty();
+                }
+            }
+
         }
     }
 
-    private class PageReference {
+    private static class SyncFlushDirtyPageTest extends FlushDirtyPageTest {
 
-        volatile Page page;
+        final Object lcok = new Object();
+        final PageReference ref = new PageReference();
 
-        Page getPage() {
-            return page;
+        @Override
+        void init() {
+            ref.page = new Page();
         }
 
-        void replacePage(Page newPage) {
-            Page oldPage = this.page;
-            if (oldPage == newPage)
-                return;
-            this.page = newPage;
-            if (oldPage != null)
-                oldPage.markDirty();
-            if (newPage != null)
-                newPage.markDirty();
+        @Override
+        void write(long pos) {
+            synchronized (lcok) {
+                Page p = ref.getPage();
+                if (p.pos != 0) // 为0时才说明是脏页
+                    return;
+                p.write();
+                savedPages.add(pos);
+                p.pos = pos;
+            }
+        }
+
+        @Override
+        void markDirty() {
+            Page p = ref.getPage();
+            p.markDirty();
+        }
+
+        @Override
+        void replacePage() {
+            Page p = new Page();
+            ref.replacePage(p);
+        }
+
+        private class Page {
+
+            volatile long pos;
+
+            void markDirty() {
+                synchronized (lcok) {
+                    if (pos != 0) {
+                        addRemovedPage(pos);
+                    }
+                    pos = 0;
+                }
+            }
+
+            void write() {
+            }
+        }
+
+        private class PageReference {
+
+            volatile Page page;
+
+            Page getPage() {
+                return page;
+            }
+
+            void replacePage(Page newPage) {
+                synchronized (lcok) {
+                    Page oldPage = this.page;
+                    if (oldPage == newPage)
+                        return;
+                    this.page = newPage;
+                    if (oldPage != null)
+                        oldPage.markDirty();
+                }
+            }
         }
     }
 }

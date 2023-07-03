@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageUtils;
@@ -112,11 +113,9 @@ public class ChunkCompactor {
                         saveIfNeeded = true;
                         if (Page.ASSERT) {
                             if (!chunkManager.getRemovedPages().contains(pos)) {
-                                System.out.println("not dirty: " + pos);
+                                DbException.throwInternalError("not dirty: " + pos);
                             }
                         }
-                        // copy page时可能会错失标记脏页的机会，这里补上
-                        // chunkManager.addRemovedPage(pos);
                     }
                 }
             }

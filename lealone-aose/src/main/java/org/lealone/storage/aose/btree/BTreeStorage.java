@@ -155,8 +155,7 @@ public class BTreeStorage {
         PageReference tmpRef = new PageReference(this, pos);
         Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
-        leaf = map.gotoLeafPage(key, false);
-        leaf.markDirtyRecursive();
+        map.markDirty(key);
     }
 
     public Page readPage(PageInfo pInfoOld, PageReference ref) {

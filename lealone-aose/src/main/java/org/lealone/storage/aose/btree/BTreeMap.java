@@ -407,8 +407,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void markDirty(Object key) {
-        Page leaf = gotoLeafPage(key);
-        leaf.markDirtyRecursive();
+        gotoLeafPage(key).markDirtyBottomUp();
     }
 
     public int getChildPageCount(Page p) {
@@ -460,10 +459,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public Page gotoLeafPage(Object key) {
         return getRootPage().gotoLeafPage(key);
-    }
-
-    public Page gotoLeafPage(Object key, boolean markDirty) {
-        return getRootPage().gotoLeafPage(key, markDirty);
     }
 
     // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null

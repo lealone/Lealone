@@ -233,10 +233,8 @@ public class Page {
 
     protected void beforeWrite() {
         if (ASSERT) {
-            if (getPos() != 0) {
-                // already stored before
-                DbException.throwInternalError();
-            }
+            if (getPos() != 0)
+                DbException.throwInternalError("already stored before");
         }
     }
 
@@ -258,14 +256,13 @@ public class Page {
         }
     }
 
-    public void markDirtyRecursive() {
+    // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
+    // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
+    public void markDirtyBottomUp() {
         markDirty();
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
-            Page p = parentRef.getPage();
-            if (p == null)
-                break;
-            p.markDirty();
+            parentRef.getOrReadPage().markDirty();
             parentRef = parentRef.getParentRef();
         }
     }
@@ -297,14 +294,8 @@ public class Page {
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     public Page gotoLeafPage(Object key) {
-        return gotoLeafPage(key, false);
-    }
-
-    public Page gotoLeafPage(Object key, boolean markDirty) {
         Page p = this;
         while (p.isNode()) {
-            if (markDirty)
-                p.markDirty();
             int index = p.getPageIndex(key);
             p = p.getChildPage(index);
         }
@@ -399,12 +390,18 @@ public class Page {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
-        PageReference ref = getRef();
-        if (ref != null)
-            ref.getPageInfo().updateTime();
+
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
-        if ((ref != null && ref.getPage() != this)
-                || !posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
+        PageReference ref = getRef();
+        if (ref != null) {
+            ref.getPageInfo().updateTime();
+            // 如果page被split了，刷脏页时要标记为删除
+            if (ref.isDataStructureChanged() || ref.getPage() != this) {
+                addRemovedPage(pos);
+                return pos;
+            }
+        }
+        if (!posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
             addRemovedPage(pos);
         }
         return pos;
