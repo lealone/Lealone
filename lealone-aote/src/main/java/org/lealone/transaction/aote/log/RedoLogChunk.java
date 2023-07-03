@@ -64,6 +64,8 @@ class RedoLogChunk {
     private final int archiveMaxFiles;
     private final String archiveDir;
 
+    private final long logChunkSize;
+
     RedoLogChunk(int id, Map<String, String> config) {
         this.id = id;
         this.config = config;
@@ -73,19 +75,13 @@ class RedoLogChunk {
         // 按每小时执行一次checkpoint算，一天24小时，保留3天的归档文件
         archiveMaxFiles = MapUtils.getInt(config, "archive_max_files", 24 * 3);
         archiveDir = getArchiveDir(config);
+
+        logChunkSize = MapUtils.getLong(config, "log_chunk_size", 32 * 1024 * 1024); // 默认32M
     }
 
     private static FileStorage getFileStorage(int id, Map<String, String> config) {
         String chunkFileName = getChunkFileName(config, id);
         return FileStorage.open(chunkFileName, config);
-    }
-
-    int getId() {
-        return id;
-    }
-
-    long logChunkSize() {
-        return pos;
     }
 
     int logQueueSize() {
@@ -144,6 +140,9 @@ class RedoLogChunk {
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)
                 buff = DataBuffer.create(BUFF_SIZE);
+
+            if (pos > logChunkSize)
+                nextChunk(true);
         }
     }
 
@@ -155,6 +154,18 @@ class RedoLogChunk {
             buff.clear(); // flip后要clear，避免grow时导致OOM问题
         }
         return length;
+    }
+
+    // 写满一个RedoLogChunk后不必创建新的RedoLogChunk实例，创建FileStorage实例即可
+    // 这样可以有效避免不必要的并发问题
+    private void nextChunk(boolean closeFileStorage) {
+        if (closeFileStorage)
+            fileStorage.close();
+        ++id;
+        if (id < 0)
+            id = 0; // log chunk id用完之后从0开始
+        fileStorage = getFileStorage(id, config);
+        pos = 0;
     }
 
     private boolean checkpoint(RedoLogRecord r) {
@@ -173,8 +184,7 @@ class RedoLogChunk {
             write(buff);
             checkpointChunk = fileStorage;
             checkpointChunkId = id;
-            fileStorage = getFileStorage(++id, config);
-            pos = 0;
+            nextChunk(false);
             r.onSynced();
             return false;
         }

@@ -335,7 +335,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                             map.save();
                     }
                     lastSavedAt = now;
-                    // 2. 最后再把checkpoint这件redo log放到最后那个chunk文件
+                    // 2. 最后再把checkpoint对应的redo log放到最后那个chunk文件
                     logSyncService.checkpoint(true);
                 } catch (Throwable t) {
                     logger.error("Failed to execute checkpoint", t);

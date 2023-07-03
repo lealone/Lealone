@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.common.util.MapUtils;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
@@ -27,14 +26,11 @@ public class RedoLog {
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
     private final Map<String, String> config;
-    private final long logChunkSize;
 
     private RedoLogChunk currentChunk;
 
     RedoLog(Map<String, String> config) {
         this.config = config;
-        logChunkSize = MapUtils.getLong(config, "log_chunk_size", 32 * 1024 * 1024); // 默认32M
-
         String baseDir = config.get("base_dir");
         String logDir = config.get("redo_log_dir");
         String storagePath = baseDir + File.separator + logDir;
@@ -117,23 +113,11 @@ public class RedoLog {
     }
 
     void close() {
-        save();
         currentChunk.close();
     }
 
     void save() {
         currentChunk.save();
-        if (currentChunk.logChunkSize() > logChunkSize) {
-            currentChunk.close();
-            currentChunk = new RedoLogChunk(nextId(), config);
-        }
-    }
-
-    private int nextId() {
-        int id = currentChunk.getId() + 1;
-        if (id < 0)
-            id = 0; // log chunk id用完之后从0开始
-        return id;
     }
 
     public void ignoreCheckpoint() {
