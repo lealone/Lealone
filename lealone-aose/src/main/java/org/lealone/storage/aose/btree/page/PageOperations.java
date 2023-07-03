@@ -331,6 +331,7 @@ public abstract class PageOperations {
                 pRef.setDataStructureChanged(true);
                 parentRef.unlock();
             }
+            p.markDirtyBottomUp();
             return PageOperationResult.SUCCEEDED;
         }
     }
@@ -367,6 +368,7 @@ public abstract class PageOperations {
                     setParentRef(tmpNodePage);
                 parentRef.unlock();
             }
+            p.markDirtyBottomUp();
             return PageOperationResult.SUCCEEDED;
         }
 

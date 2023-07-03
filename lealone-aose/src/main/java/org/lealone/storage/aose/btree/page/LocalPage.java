@@ -126,7 +126,6 @@ public abstract class LocalPage extends Page {
     protected void copy(LocalPage newPage) {
         newPage.cachedCompare = cachedCompare;
         newPage.setRef(getRef());
-        // markDirty();
     }
 
     @Override
