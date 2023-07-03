@@ -39,7 +39,7 @@ public class Constants {
 
     public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
 
-    public static final int DEFAULT_NETWORK_TIMEOUT = 5000; // 默认5秒无响应就超时
+    public static final int DEFAULT_NETWORK_TIMEOUT = 15000; // 默认15秒无响应就超时
 
     public static final String DEFAULT_NET_FACTORY_NAME = "nio";
 
