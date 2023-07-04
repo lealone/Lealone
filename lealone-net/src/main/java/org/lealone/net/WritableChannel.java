@@ -25,4 +25,11 @@ public interface WritableChannel {
 
     default void setEventLoop(NetEventLoop eventLoop) {
     }
+
+    default boolean isBio() {
+        return false;
+    }
+
+    default void read(AsyncConnection conn) {
+    }
 }

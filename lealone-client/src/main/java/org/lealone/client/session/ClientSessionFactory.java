@@ -11,6 +11,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -89,6 +90,10 @@ public class ClientSessionFactory implements SessionFactory {
             AsyncCallback<ClientSession> ac) {
         NetNode node = NetNode.createTCP(server);
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+        if (ci.getNetFactoryName() != null)
+            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), ci.getNetFactoryName());
+        if (ci.getNetworkTimeout() > 0)
+            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(ci.getNetworkTimeout()));
         NetFactory factory = NetFactoryManager.getFactory(config, true);
         // 多个客户端session会共用同一条TCP连接
         factory.getNetClient().createConnection(config, node).onComplete(ar -> {

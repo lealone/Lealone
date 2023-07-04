@@ -12,7 +12,11 @@ public interface DataBufferFactory {
 
     DataBuffer create();
 
-    DataBuffer create(int capacity);
+    default DataBuffer create(int capacity) {
+        return create(capacity, true);
+    }
+
+    DataBuffer create(int capacity, boolean direct);
 
     void recycle(DataBuffer buffer);
 
@@ -40,14 +44,14 @@ public interface DataBufferFactory {
         }
 
         @Override
-        public DataBuffer create(int capacity) {
+        public DataBuffer create(int capacity, boolean direct) {
             DataBuffer buffer = null;
             for (int i = 0, size = poolSize.get(); i < size; i++) {
                 buffer = queue.poll();
                 if (buffer == null) {
                     break;
                 }
-                if (buffer.capacity() < capacity) {
+                if (buffer.getDirect() != direct || buffer.capacity() < capacity) {
                     queue.offer(buffer); // 放到队列末尾
                 } else {
                     buffer.clear();
@@ -55,7 +59,7 @@ public interface DataBufferFactory {
                     return buffer;
                 }
             }
-            return DataBuffer.create(capacity);
+            return DataBuffer.create(null, capacity, direct);
         }
 
         @Override

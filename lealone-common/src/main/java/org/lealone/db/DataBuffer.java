@@ -143,6 +143,10 @@ public class DataBuffer implements AutoCloseable {
         return handler;
     }
 
+    public boolean getDirect() {
+        return direct;
+    }
+
     /**
      * Set the position to 0.
      */
@@ -934,6 +938,10 @@ public class DataBuffer implements AutoCloseable {
     }
 
     public static DataBuffer getOrCreate(int capacity) {
-        return DataBufferFactory.getConcurrentFactory().create(capacity);
+        return getOrCreate(capacity, true);
+    }
+
+    public static DataBuffer getOrCreate(int capacity, boolean direct) {
+        return DataBufferFactory.getConcurrentFactory().create(capacity, direct);
     }
 }
