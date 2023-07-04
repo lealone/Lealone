@@ -505,6 +505,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         yieldable.disableYield();
         while (!yieldable.isStopped()) {
             yieldable.run();
+            // 如果在存储引擎层面没有顺利结束，需要执行其他语句
+            if (executor != null && !yieldable.isStopped())
+                executor.executeNextStatement();
             while (session.getStatus() == SessionStatus.WAITING) {
                 try {
                     Thread.sleep(100);
