@@ -27,24 +27,24 @@ import org.lealone.net.nio.NioBufferFactory;
 
 public class BioWritableChannel implements WritableChannel {
 
-    private final Socket socket;
     private final String host;
     private final int port;
+    private final int maxPacketSize;
 
+    private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
 
-    private int maxPacketSize;
-
     public BioWritableChannel(Map<String, String> config, Socket socket, InetSocketAddress address)
             throws IOException {
-        this.socket = socket;
         host = address.getHostString();
         port = address.getPort();
+        maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
+
+        this.socket = socket;
         in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
         out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 64 * 1024));
 
-        maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
     }
 
     @Override
@@ -74,6 +74,9 @@ public class BioWritableChannel implements WritableChannel {
                 socket.close();
             } catch (Throwable t) {
             }
+            socket = null;
+            in = null;
+            out = null;
         }
     }
 

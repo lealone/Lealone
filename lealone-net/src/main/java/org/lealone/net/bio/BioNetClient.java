@@ -34,22 +34,15 @@ class BioNetClient extends NetClientBase {
 
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager, int maxSharedSize,
-            AsyncCallback<AsyncConnection> ac) {
+            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        int socketRecvBuffer = MapUtils.getInt(config, "socket_recv_buffer_size", 16 * 1024);
-        int socketSendBuffer = MapUtils.getInt(config, "socket_send_buffer_size", 8 * 1024);
         int networkTimeout = MapUtils.getInt(config, ConnectionSetting.NETWORK_TIMEOUT.name(),
                 Constants.DEFAULT_NETWORK_TIMEOUT);
         Socket socket = null;
         try {
             socket = new Socket();
             socket.setSoTimeout(networkTimeout);
-            socket.setReceiveBufferSize(socketRecvBuffer);
-            socket.setSendBufferSize(socketSendBuffer);
-            socket.setTcpNoDelay(true);
-            socket.setKeepAlive(true);
-            socket.setReuseAddress(true);
+            initSocket(socket, config);
             socket.connect(inetSocketAddress, networkTimeout);
 
             AsyncConnection conn;

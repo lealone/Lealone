@@ -41,8 +41,8 @@ class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private final long loopInterval;
-    private int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
-    private int maxPacketSize;
+    private final int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
+    private final int maxPacketSize;
     private Object owner;
 
     private final boolean isLoggerEnabled;

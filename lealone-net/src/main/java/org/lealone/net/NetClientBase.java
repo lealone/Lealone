@@ -6,10 +6,13 @@
 package org.lealone.net;
 
 import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -31,8 +34,7 @@ public abstract class NetClientBase implements NetClient {
     protected abstract void closeInternal();
 
     protected abstract void createConnectionInternal(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager, int maxSharedSize,
-            AsyncCallback<AsyncConnection> ac);
+            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac);
 
     @Override
     public Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node) {
@@ -60,8 +62,7 @@ public abstract class NetClientBase implements NetClient {
         AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
             AsyncCallback<AsyncConnection> ac = new AsyncCallback<>();
-            createConnectionInternal(config, node, connectionManager,
-                    AsyncConnectionPool.getMaxSharedSize(config), ac);
+            createConnectionInternal(config, node, connectionManager, ac);
             return ac;
         } else {
             return Future.succeededFuture(asyncConnection);
@@ -128,5 +129,15 @@ public abstract class NetClientBase implements NetClient {
         for (AsyncConnectionPool pool : asyncConnections.values()) {
             pool.checkTimeout(currentTime);
         }
+    }
+
+    protected void initSocket(Socket socket, Map<String, String> config) throws SocketException {
+        int socketRecvBuffer = MapUtils.getInt(config, "socket_recv_buffer_size", 16 * 1024);
+        int socketSendBuffer = MapUtils.getInt(config, "socket_send_buffer_size", 8 * 1024);
+        socket.setReceiveBufferSize(socketRecvBuffer);
+        socket.setSendBufferSize(socketSendBuffer);
+        socket.setTcpNoDelay(true);
+        socket.setKeepAlive(true);
+        socket.setReuseAddress(true);
     }
 }

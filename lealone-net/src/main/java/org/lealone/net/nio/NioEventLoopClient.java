@@ -7,7 +7,6 @@ package org.lealone.net.nio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
@@ -15,11 +14,11 @@ import java.util.Set;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
+import org.lealone.net.AsyncConnectionPool;
 import org.lealone.net.NetClientBase;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
@@ -149,28 +148,19 @@ class NioEventLoopClient extends NetClientBase {
 
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager, int maxSharedSize,
-            AsyncCallback<AsyncConnection> ac) {
+            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        int socketRecvBuffer = MapUtils.getInt(config, "socket_recv_buffer_size", 16 * 1024);
-        int socketSendBuffer = MapUtils.getInt(config, "socket_send_buffer_size", 8 * 1024);
         SocketChannel channel = null;
         try {
             channel = SocketChannel.open();
             channel.configureBlocking(false);
-
-            Socket socket = channel.socket();
-            socket.setReceiveBufferSize(socketRecvBuffer);
-            socket.setSendBufferSize(socketSendBuffer);
-            socket.setTcpNoDelay(true);
-            socket.setKeepAlive(true);
-            socket.setReuseAddress(true);
+            initSocket(channel.socket(), config);
 
             ClientAttachment attachment = new ClientAttachment();
             attachment.connectionManager = connectionManager;
             attachment.inetSocketAddress = inetSocketAddress;
             attachment.ac = ac;
-            attachment.maxSharedSize = maxSharedSize;
+            attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
 
             nioEventLoop.register(channel, SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
