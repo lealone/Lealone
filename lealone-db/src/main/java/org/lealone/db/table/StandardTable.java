@@ -276,11 +276,14 @@ public class StandardTable extends Table {
             } else {
                 index = new StandardSecondaryIndex(session, this, indexId, indexName, indexType, cols);
             }
-            if (index.needRebuild()) {
-                new IndexRebuilder(session, this, index).rebuild();
-            }
         }
+        // 先加到indexesExcludeDelegate中，新记录可以直接写入，但是不能通过它查询
+        if (!(index instanceof StandardDelegateIndex))
+            indexesExcludeDelegate.add(index);
         index.setTemporary(isTemporary());
+        if (index.needRebuild()) {
+            new IndexRebuilder(session, this, index).rebuild();
+        }
         if (index.getCreateSQL() != null) {
             index.setComment(indexComment);
             boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
@@ -290,9 +293,7 @@ public class StandardTable extends Table {
                 schema.add(session, index, lock);
             }
         }
-        indexes.add(index);
-        if (!(index instanceof StandardDelegateIndex))
-            indexesExcludeDelegate.add(index);
+        indexes.add(index); // 索引rebuild完成后再加入indexes，此时可以通过索引查询了
         setModified();
         return index;
     }

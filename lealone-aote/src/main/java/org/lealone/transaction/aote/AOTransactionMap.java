@@ -16,6 +16,7 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
+import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -522,7 +523,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         final TransactionalValue newTV;
         final UndoLogRecord r;
-        if (transaction.getSession().isUndoLogEnabled()) {
+        Session session = transaction.getSession();
+        if (session == null || session.isUndoLogEnabled()) {
             newTV = new TransactionalValue(value, transaction);
             r = transaction.undoLog.add(getName(), key, null, newTV);
         } else {
