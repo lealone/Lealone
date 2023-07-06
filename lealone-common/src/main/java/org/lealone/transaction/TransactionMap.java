@@ -37,15 +37,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
     /**
-     * Update the value for the given key, without adding an undo log entry.
-     *
-     * @param key the key
-     * @param value the value
-     * @return the old value
-     */
-    public V putCommitted(K key, V value);
-
-    /**
      * Iterate over entries.
      *
      * @param from the first key to return

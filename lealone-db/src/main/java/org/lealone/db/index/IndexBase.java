@@ -5,14 +5,11 @@
  */
 package org.lealone.db.index;
 
-import java.util.List;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
@@ -23,7 +20,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
 
 /**
@@ -335,63 +331,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     /**
-     * Check if one of the columns is NULL and multiple rows with NULL are
-     * allowed using the current compatibility mode for unique indexes. Note:
-     * NULL behavior is complicated in SQL.
-     *
-     * @param newRow the row to check
-     * @return true if one of the columns is null and multiple nulls in unique
-     *         indexes are allowed
-     */
-    protected boolean containsNullAndAllowMultipleNull(SearchRow newRow) {
-        Mode mode = database.getMode();
-        if (mode.uniqueIndexSingleNull) {
-            // 1. 对于唯一索引，必须完全唯一，适用于Derby/HSQLDB/MSSQLServer
-            // 不允许出现:
-            // (x, null)
-            // (x, null)
-            // 也不允许出现:
-            // (null, null)
-            // (null, null)
-            return false;
-        } else if (mode.uniqueIndexSingleNullExceptAllColumnsAreNull) {
-            // 2. 对于唯一索引，索引记录可以全为null，适用于Oracle
-
-            // 不允许出现:
-            // (x, null)
-            // (x, null)
-            // 但是允许出现:
-            // (null, null)
-            // (null, null)
-            for (int index : columnIds) {
-                Value v = newRow.getValue(index);
-                if (v != ValueNull.INSTANCE) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        // 3. 对于唯一索引，只要一个为null，就是合法的，适用于REGULAR(即H2)/DB2/MySQL/PostgreSQL
-
-        // 允许出现:
-        // (x, null)
-        // (x, null)
-        // 也允许出现:
-        // (null, null)
-        // (null, null)
-
-        // 也就是说，只要相同的两条索引记录包含null即可
-        for (int index : columnIds) {
-            Value v = newRow.getValue(index);
-            if (v == ValueNull.INSTANCE) {
-                return true;
-            }
-        }
-        // 4. 对于唯一索引，没有null时是不允许出现两条相同的索引记录的
-        return false;
-    }
-
-    /**
      * Check that the index columns are not CLOB or BLOB.
      *
      * @param columns the columns
@@ -439,16 +378,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public boolean isInMemory() {
         return false;
-    }
-
-    @Override
-    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        throw DbException.getUnsupportedException("addRowsToBuffer");
-    }
-
-    @Override
-    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        throw DbException.getUnsupportedException("addBufferedRows");
     }
 
     // 以下是DbObject和SchemaObject接口的api实现

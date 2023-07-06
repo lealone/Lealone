@@ -52,7 +52,7 @@ public class TransactionalValue {
     private Object value;
     private volatile RowLock rowLock;
 
-    private TransactionalValue(Object value) {
+    public TransactionalValue(Object value) {
         this.value = value;
     }
 

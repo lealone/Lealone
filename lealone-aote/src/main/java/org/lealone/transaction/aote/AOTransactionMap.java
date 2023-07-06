@@ -446,15 +446,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public V putCommitted(K key, V value) {
-        DataUtils.checkNotNull(value, "value");
-        TransactionalValue newValue = TransactionalValue.createCommitted(value);
-        TransactionalValue oldValue = map.put(key, newValue);
-        return (V) (oldValue == null ? null : oldValue.getValue());
-    }
-
     // 子类在hasNext()中取出下一行，这样能保证不会多读一行
     private abstract class TIterator<E> implements Iterator<E> {
 
@@ -529,8 +520,15 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
-        TransactionalValue newTV = new TransactionalValue(value, transaction);
-        final UndoLogRecord r = transaction.undoLog.add(getName(), key, null, newTV);
+        final TransactionalValue newTV;
+        final UndoLogRecord r;
+        if (transaction.getSession().isUndoLogEnabled()) {
+            newTV = new TransactionalValue(value, transaction);
+            r = transaction.undoLog.add(getName(), key, null, newTV);
+        } else {
+            newTV = new TransactionalValue(value);
+            r = null;
+        }
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
@@ -538,11 +536,13 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                 TransactionalValue old = ar.getResult();
                 if (old != null) {
                     // 在提交或回滚时直接忽略即可
-                    r.setUndone(true);
+                    if (r != null)
+                        r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
                     if (old.getValue() == null) {
                         old.setValue(value);
-                        transaction.undoLog.add(getName(), key, old.getOldValue(), old);
+                        if (r != null)
+                            transaction.undoLog.add(getName(), key, old.getOldValue(), old);
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
                         ac.setAsyncResult((Throwable) null);
@@ -551,7 +551,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                 }
             } else {
-                r.setUndone(true);
+                if (r != null)
+                    r.setUndone(true);
                 ac.setAsyncResult(ar.getCause());
             }
         };

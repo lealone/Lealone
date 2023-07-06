@@ -5,8 +5,6 @@
  */
 package org.lealone.db.index;
 
-import java.util.List;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -269,21 +267,4 @@ public interface Index extends SchemaObject {
     boolean needRebuild();
 
     boolean isInMemory();
-
-    /**
-     * Add the rows to a temporary storage (not to the index yet). The rows are
-     * sorted by the index columns. This is to more quickly build the index.
-     *
-     * @param rows the rows
-     * @param bufferName the name of the temporary storage
-     */
-    void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName);
-
-    /**
-     * Add all the index data from the buffers to the index. The index will
-     * typically use merge sort to add the data more quickly in sorted order.
-     *
-     * @param bufferNames the names of the temporary storage
-     */
-    void addBufferedRows(ServerSession session, List<String> bufferNames);
 }

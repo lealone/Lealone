@@ -8,9 +8,7 @@ package org.lealone.db.index.standard;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
@@ -270,100 +268,6 @@ public class StandardSecondaryIndex extends StandardIndex {
     @Override
     public boolean isInMemory() {
         return dataMap.isInMemory();
-    }
-
-    @Override
-    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        TransactionMap<IndexKey, Value> map = openMap(session, bufferName);
-        for (Row row : rows) {
-            IndexKey key = convertToKey(row);
-            map.put(key, ValueNull.INSTANCE);
-        }
-    }
-
-    @Override
-    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        /**
-         * A source of keys.
-         */
-        class Source implements Comparable<Source> {
-            IndexKey key;
-            Iterator<IndexKey> next;
-            int sourceId;
-
-            @Override
-            public int compareTo(Source o) {
-                int comp = dataMap.getKeyType().compare(key, o.key);
-                if (comp == 0) {
-                    comp = sourceId - o.sourceId;
-                }
-                return comp;
-            }
-        }
-        TreeSet<Source> sources = new TreeSet<>();
-        for (int i = 0; i < bufferNames.size(); i++) {
-            TransactionMap<IndexKey, Value> map = openMap(session, bufferNames.get(i));
-            Iterator<IndexKey> it = map.keyIterator(null, true);
-            if (it.hasNext()) {
-                Source s = new Source();
-                s.key = it.next();
-                s.next = it;
-                s.sourceId = i;
-                sources.add(s);
-            }
-        }
-        try {
-            while (true) {
-                Source s = sources.first();
-                IndexKey k = s.key;
-
-                if (indexType.isUnique()) {
-                    Value[] array = k.columns;
-                    // don't change the original value
-                    array = array.clone();
-                    array[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-                    IndexKey unique = new IndexKey(array);
-                    SearchRow row = convertToSearchRow(k);
-                    checkUnique(row, dataMap, unique);
-                }
-
-                dataMap.putCommitted(k, ValueNull.INSTANCE);
-
-                Iterator<IndexKey> it = s.next;
-                if (!it.hasNext()) {
-                    sources.remove(s);
-                    if (sources.isEmpty()) {
-                        break;
-                    }
-                } else {
-                    IndexKey nextKey = it.next();
-                    sources.remove(s);
-                    s.key = nextKey;
-                    sources.add(s);
-                }
-            }
-        } finally {
-            for (String tempMapName : bufferNames) {
-                TransactionMap<IndexKey, Value> map = openMap(session, tempMapName);
-                map.remove();
-            }
-        }
-    }
-
-    private void checkUnique(SearchRow row, TransactionMap<IndexKey, Value> map, IndexKey unique) {
-        Iterator<IndexKey> it = map.keyIterator(unique, true);
-        while (it.hasNext()) {
-            IndexKey k = it.next();
-            SearchRow r2 = convertToSearchRow(k);
-            if (compareRows(row, r2) != 0) {
-                break;
-            }
-            if (map.get(k) != null) {
-                if (!containsNullAndAllowMultipleNull(r2)) {
-                    throw getDuplicateKeyException(k.toString());
-                }
-            }
-        }
     }
 
     /**

@@ -277,7 +277,7 @@ public class StandardTable extends Table {
                 index = new StandardSecondaryIndex(session, this, indexId, indexName, indexType, cols);
             }
             if (index.needRebuild()) {
-                new IndexRebuilder(session, storageEngine, this, index).rebuild();
+                new IndexRebuilder(session, this, index).rebuild();
             }
         }
         index.setTemporary(isTemporary());

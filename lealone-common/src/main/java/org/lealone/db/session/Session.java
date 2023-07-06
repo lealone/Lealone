@@ -141,4 +141,8 @@ public interface Session extends Closeable {
     default boolean isQueryCommand() {
         return false;
     }
+
+    default boolean isUndoLogEnabled() {
+        return true;
+    }
 }

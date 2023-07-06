@@ -5,8 +5,6 @@
  */
 package org.lealone.db.index.standard;
 
-import java.util.List;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
@@ -115,15 +113,5 @@ public class StandardDelegateIndex extends StandardIndex {
     @Override
     public boolean isInMemory() {
         return mainIndex.isInMemory();
-    }
-
-    @Override
-    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        throw DbException.getInternalError();
-    }
-
-    @Override
-    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        throw DbException.getInternalError();
     }
 }
