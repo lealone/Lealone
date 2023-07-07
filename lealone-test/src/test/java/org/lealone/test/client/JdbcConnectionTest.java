@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
+import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
@@ -21,6 +22,7 @@ public class JdbcConnectionTest extends ClientTestBase {
         testTransactionIsolationLevel();
         testNetworkTimeout();
         testSetAndGetSchema();
+        testAsyncCommitAndRollback();
 
         int count = 1;
         count = 1;
@@ -67,6 +69,41 @@ public class JdbcConnectionTest extends ClientTestBase {
         conn.setSchema("testSetAndGetSchema");
         assertEquals("testSetAndGetSchema".toUpperCase(), conn.getSchema().toUpperCase());
         conn.setSchema(Constants.SCHEMA_MAIN);
+    }
+
+    void testAsyncCommitAndRollback() throws Exception {
+        stmt.executeUpdate("DROP TABLE IF EXISTS testAsyncCommitAndRollback");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS testAsyncCommitAndRollback (f1 int)");
+
+        boolean autoCommit = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        stmt.executeUpdate("INSERT INTO testAsyncCommitAndRollback(f1) VALUES(1)");
+        ((JdbcConnection) conn).commitAsync().onComplete(ar -> {
+            if (ar.isSucceeded()) {
+                sql = "SELECT count(*) FROM testAsyncCommitAndRollback WHERE f1 = 1";
+                try {
+                    assertEquals(1, getIntValue(1, true));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).get();
+        stmt.executeUpdate("INSERT INTO testAsyncCommitAndRollback(f1) VALUES(2)");
+        ((JdbcConnection) conn).rollbackAsync().onComplete(ar -> {
+            if (ar.isSucceeded()) {
+                sql = "SELECT count(*) FROM testAsyncCommitAndRollback WHERE f1 = 2";
+                try {
+                    assertEquals(0, getIntValue(1, true));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).get();
+        stmt.executeUpdate("INSERT INTO testAsyncCommitAndRollback(f1) VALUES(3)");
+        conn.commit();
+        sql = "SELECT count(*) FROM testAsyncCommitAndRollback WHERE f1 = 3";
+        assertEquals(1, getIntValue(1, true));
+        conn.setAutoCommit(autoCommit);
     }
 
     public void run2() throws Exception {

@@ -37,6 +37,8 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.CompareMode;
@@ -505,17 +507,28 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
      * @throws SQLException if the connection is closed
      */
     @Override
-    public synchronized void commit() throws SQLException {
-        try {
-            debugCodeCall("commit");
-            checkClosed();
-            commit = prepareSQLCommand("COMMIT", commit);
-            commit.executeUpdate().get();
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        } finally {
-            session.reconnectIfNeeded();
-        }
+    public void commit() throws SQLException {
+        debugCodeCall("commit");
+        commitInternal().get();
+    }
+
+    public Future<Boolean> commitAsync() throws SQLException {
+        debugCodeCall("commitAsync");
+        return commitInternal();
+    }
+
+    private Future<Boolean> commitInternal() throws SQLException {
+        checkClosed();
+        AsyncCallback<Boolean> ac = new AsyncCallback<>();
+        commit = prepareSQLCommand("COMMIT", commit);
+        commit.executeUpdate().onComplete(ar -> {
+            if (ar.isFailed()) {
+                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
+            } else {
+                ac.setAsyncResult(true);
+            }
+        });
+        return ac;
     }
 
     /**
@@ -525,16 +538,28 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
      * @throws SQLException if the connection is closed
      */
     @Override
-    public synchronized void rollback() throws SQLException {
-        try {
-            debugCodeCall("rollback");
-            checkClosed();
-            rollbackInternal();
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        } finally {
-            session.reconnectIfNeeded();
-        }
+    public void rollback() throws SQLException {
+        debugCodeCall("rollback");
+        rollbackInternal().get();
+    }
+
+    public Future<Boolean> rollbackAsync() throws SQLException {
+        debugCodeCall("rollbackAsync");
+        return rollbackInternal();
+    }
+
+    private Future<Boolean> rollbackInternal() throws SQLException {
+        checkClosed();
+        AsyncCallback<Boolean> ac = new AsyncCallback<>();
+        rollback = prepareSQLCommand("ROLLBACK", rollback);
+        rollback.executeUpdate().onComplete(ar -> {
+            if (ar.isFailed()) {
+                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
+            } else {
+                ac.setAsyncResult(true);
+            }
+        });
+        return ac;
     }
 
     /**
@@ -1000,8 +1025,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
-        } finally {
-            session.reconnectIfNeeded();
         }
     }
 
@@ -1311,11 +1334,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     String getUser() {
         checkClosed();
         return user;
-    }
-
-    private void rollbackInternal() {
-        rollback = prepareSQLCommand("ROLLBACK", rollback);
-        rollback.executeUpdate();
     }
 
     /**

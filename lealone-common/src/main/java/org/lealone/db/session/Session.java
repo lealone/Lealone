@@ -116,9 +116,6 @@ public interface Session extends Closeable {
 
     ConnectionInfo getConnectionInfo();
 
-    default void reconnectIfNeeded() {
-    }
-
     default void setLobMacSalt(byte[] lobMacSalt) {
     }
 
