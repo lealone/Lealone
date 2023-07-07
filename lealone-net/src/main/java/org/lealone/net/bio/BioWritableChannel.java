@@ -35,6 +35,8 @@ public class BioWritableChannel implements WritableChannel {
     private DataInputStream in;
     private DataOutputStream out;
 
+    private DataBuffer dataBuffer;
+
     public BioWritableChannel(Map<String, String> config, Socket socket, InetSocketAddress address)
             throws IOException {
         host = address.getHostString();
@@ -44,7 +46,15 @@ public class BioWritableChannel implements WritableChannel {
         this.socket = socket;
         in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
         out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 64 * 1024));
+    }
 
+    public DataBuffer getDataBuffer(int capacity) {
+        if (dataBuffer == null) {
+            dataBuffer = DataBuffer.create(null, capacity, false);
+        } else if (dataBuffer.capacity() > 8096)
+            dataBuffer = DataBuffer.create(null, 8096, false);
+        dataBuffer.reset();
+        return dataBuffer;
     }
 
     @Override
@@ -109,14 +119,13 @@ public class BioWritableChannel implements WritableChannel {
             if (packetLength > maxPacketSize)
                 throw new IOException("packet too large, maxPacketSize: " + maxPacketSize + ", receive: "
                         + packetLength);
-            DataBuffer dataBuffer = DataBuffer.getOrCreate(packetLength, false);
+            DataBuffer dataBuffer = getDataBuffer(packetLength);
             // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
             dataBuffer.limit(packetLength);
             ByteBuffer buffer = dataBuffer.getBuffer();
             in.read(buffer.array(), buffer.arrayOffset(), packetLength);
             NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
             conn.handle(nioBuffer);
-            dataBuffer.close();
         } catch (Exception e) {
             conn.handleException(e);
         }
