@@ -1476,7 +1476,7 @@ public class ServerSession extends SessionBase {
         return currentCommand != null && currentCommand.isQuery();
     }
 
-    private boolean undoLogEnabled;
+    private boolean undoLogEnabled = true;
 
     @Override
     public boolean isUndoLogEnabled() {
