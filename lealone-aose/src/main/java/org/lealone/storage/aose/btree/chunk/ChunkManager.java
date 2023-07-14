@@ -113,6 +113,8 @@ public class ChunkManager {
     }
 
     private synchronized Chunk readChunk(int chunkId) {
+        if (chunks.containsKey(chunkId))
+            return chunks.get(chunkId);
         Chunk chunk = new Chunk(chunkId);
         chunk.read(btreeStorage);
         chunks.put(chunk.id, chunk);

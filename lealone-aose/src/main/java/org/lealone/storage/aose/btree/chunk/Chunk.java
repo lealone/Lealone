@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
@@ -76,7 +77,8 @@ public class Chunk {
     public long sumOfLivePageLength;
 
     public int pagePositionAndLengthOffset;
-    public final HashMap<Long, Integer> pagePositionToLengthMap = new HashMap<>();
+    // 会有多个线程读写，不能直接用HashMap
+    public final ConcurrentHashMap<Long, Integer> pagePositionToLengthMap = new ConcurrentHashMap<>();
 
     public FileStorage fileStorage;
     public String fileName;
