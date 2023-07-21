@@ -307,9 +307,9 @@ public class ValueLob extends Value {
      * Mark any underlying resource as 'not linked to any table'. For values
      * that are kept fully in memory this method has no effect.
      */
-    public void unlink(DataHandler database) {
+    public void unlink(DataHandler dh) {
         if (small == null && tableId != LobStorage.TABLE_ID_SESSION_VARIABLE) {
-            database.getLobStorage().setTable(this, LobStorage.TABLE_ID_SESSION_VARIABLE);
+            dh.getLobStorage().setTable(this, LobStorage.TABLE_ID_SESSION_VARIABLE);
             tableId = LobStorage.TABLE_ID_SESSION_VARIABLE;
         }
     }
@@ -320,20 +320,20 @@ public class ValueLob extends Value {
      *
      * @return the new value or itself
      */
-    public ValueLob link(DataHandler database, int tabId) {
+    public ValueLob link(DataHandler dh, int tabId) {
         if (small == null) {
             if (tableId == LobStorage.TABLE_TEMP) {
-                database.getLobStorage().setTable(this, tabId);
+                dh.getLobStorage().setTable(this, tabId);
                 tableId = tabId;
             }
-        } else if (small.length > database.getMaxLengthInplaceLob()) {
+        } else if (small.length > dh.getMaxLengthInplaceLob()) {
             ValueLob v;
             if (type == Value.BLOB) {
-                v = database.getLobStorage().createBlob(getInputStream(), getPrecision());
+                v = dh.getLobStorage().createBlob(getInputStream(), getPrecision());
             } else {
-                v = database.getLobStorage().createClob(getReader(), getPrecision());
+                v = dh.getLobStorage().createClob(getReader(), getPrecision());
             }
-            return v.link(database, tabId);
+            return v.link(dh, tabId);
         }
         return this;
     }

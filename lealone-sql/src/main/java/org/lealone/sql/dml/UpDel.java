@@ -134,6 +134,7 @@ public abstract class UpDel extends ManipulationStatement {
 
         @Override
         protected void executeLoopUpdate() {
+            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
             tableIterator.rebuildSearchRowIfNeeded();
             while (tableIterator.hasNext() && pendingException == null) {
                 if (yieldIfNeeded(++loopCount)) {

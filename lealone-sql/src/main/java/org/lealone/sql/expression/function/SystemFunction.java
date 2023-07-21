@@ -346,7 +346,7 @@ public class SystemFunction extends BuiltInFunction {
             try {
                 try (InputStream in = FileUtils.newInputStream(fileName)) {
                     if (blob) {
-                        result = database.getLobStorage().createBlob(in, -1);
+                        result = session.getDataHandler().getLobStorage().createBlob(in, -1);
                     } else {
                         Reader reader;
                         if (v1 == ValueNull.INSTANCE) {
@@ -354,7 +354,7 @@ public class SystemFunction extends BuiltInFunction {
                         } else {
                             reader = new InputStreamReader(in, v1.getString());
                         }
-                        result = database.getLobStorage().createClob(reader, -1);
+                        result = session.getDataHandler().getLobStorage().createClob(reader, -1);
                     }
                 }
             } catch (IOException e) {

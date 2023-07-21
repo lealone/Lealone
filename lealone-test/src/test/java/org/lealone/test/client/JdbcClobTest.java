@@ -5,6 +5,7 @@
  */
 package org.lealone.test.client;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -27,6 +28,8 @@ public class JdbcClobTest extends ClientTestBase {
 
         addClob(stmt, clobStr);
         unique(conn, stmt, clobStr);
+
+        test_FILE_READ(conn, stmt, clobStr);
 
         // stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
 
@@ -114,5 +117,23 @@ public class JdbcClobTest extends ClientTestBase {
             ps.executeUpdate();
         }
         ps.close();
+    }
+
+    static void test_FILE_READ(Connection conn, Statement stmt, String clobStr) throws Exception {
+        stmt.executeUpdate("DROP TABLE IF EXISTS test_FILE_READ");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test_FILE_READ (f1 int, f2 clob)");
+
+        String file = "/lealone-test.yaml";
+        file = new File(JdbcClobTest.class.getResource(file).toURI()).getCanonicalPath();
+        stmt.executeUpdate(
+                "INSERT INTO test_FILE_READ(f1, f2) VALUES(1, FILE_READ('" + file + "', NULL))");
+        int count = stmt.executeUpdate("UPDATE test_FILE_READ SET f2 = FILE_READ('" + file + "', NULL)");
+        assertEquals(1, count);
+        ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM test_FILE_READ");
+        assertTrue(rs.next());
+        assertEquals(1, rs.getInt(1));
+        JdbcClob clob = (JdbcClob) rs.getClob(2);
+        assertNotNull(clob);
+        rs.close();
     }
 }

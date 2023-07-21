@@ -89,6 +89,7 @@ public class ServerSession extends SessionBase {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
+    private DataHandler currentDataHandler;
     private HashMap<Integer, DataHandler> dataHandlers;
     private HashMap<String, ValueLob> unlinkLobMapAtCommit;
     private HashMap<String, ValueLob> unlinkLobMapAtRollback;
@@ -924,7 +925,11 @@ public class ServerSession extends SessionBase {
 
     @Override
     public DataHandler getDataHandler() {
-        return database;
+        return currentDataHandler != null ? currentDataHandler : database;
+    }
+
+    public void setDataHandler(DataHandler dh) {
+        currentDataHandler = dh;
     }
 
     public void addDataHandler(int tableId, DataHandler dataHandler) {

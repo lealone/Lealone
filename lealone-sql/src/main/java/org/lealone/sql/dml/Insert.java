@@ -87,6 +87,7 @@ public class Insert extends MerSert {
 
         @Override
         protected void executeLoopUpdate() {
+            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
             if (yieldableQuery == null) {
                 while (pendingException == null && index < listSize) {
                     addRowInternal(createNewRow());
