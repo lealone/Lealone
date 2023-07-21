@@ -193,7 +193,7 @@ public class LeafPage extends LocalPage {
         ColumnPage page = (ColumnPage) ref.getOrReadPage();
         if (page.values == null) {
             page.readColumn(ref.getPageInfo(), values, columnIndex);
-            map.getBTreeStorage().gcIfNeeded(page.getTotalMemory());
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(page.getTotalMemory());
         } else {
             // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
             values = page.values;

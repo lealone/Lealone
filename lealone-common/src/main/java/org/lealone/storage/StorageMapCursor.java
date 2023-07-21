@@ -7,6 +7,8 @@ package org.lealone.storage;
 
 import java.util.Iterator;
 
+import org.lealone.storage.page.IPage;
+
 public interface StorageMapCursor<K, V> extends Iterator<K> {
 
     /**
@@ -22,5 +24,7 @@ public interface StorageMapCursor<K, V> extends Iterator<K> {
      * @return the value or null
      */
     V getValue();
+
+    IPage getPage();
 
 }

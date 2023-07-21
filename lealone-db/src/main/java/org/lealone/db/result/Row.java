@@ -7,6 +7,8 @@ package org.lealone.db.result;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.page.IPage;
+import org.lealone.transaction.ITransactionalValue;
 
 /**
  * Represents a row in a table.
@@ -15,7 +17,8 @@ public class Row extends SimpleRow {
 
     public static final int MEMORY_CALCULATE = -1;
 
-    private Object tv;
+    private ITransactionalValue tv;
+    private IPage page;
 
     public Row(Value[] data, int memory) {
         super(data);
@@ -26,11 +29,11 @@ public class Row extends SimpleRow {
         return data;
     }
 
-    public Object getTValue() {
+    public ITransactionalValue getTValue() {
         return tv;
     }
 
-    public void setTValue(Object tv) {
+    public void setTValue(ITransactionalValue tv) {
         this.tv = tv;
     }
 
@@ -46,5 +49,13 @@ public class Row extends SimpleRow {
         } else {
             data[i] = v;
         }
+    }
+
+    public IPage getPage() {
+        return page;
+    }
+
+    public void setPage(IPage page) {
+        this.page = page;
     }
 }

@@ -5,7 +5,6 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 
@@ -51,13 +50,4 @@ public interface Cursor {
      */
     boolean next();
 
-    /**
-     * Skip to the previous row if one is available.
-     * No filtering is made here.
-     *
-     * @return true if another row is available
-     */
-    default boolean previous() {
-        throw DbException.getUnsupportedException("previous");
-    }
 }

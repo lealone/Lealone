@@ -7,7 +7,6 @@ package org.lealone.sql.query;
 
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
-import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
@@ -16,18 +15,15 @@ import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 import org.lealone.sql.operator.Operator;
-import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.optimizer.TableIterator;
 
 // 由子类实现具体的查询操作
 abstract class QOperator implements Operator {
 
     protected final Select select;
-    protected final TableFilter topTableFilter;
     protected final ServerSession session;
     protected final ExpressionEvaluator conditionEvaluator;
-
-    protected boolean hasNext;
-    protected Row oldRow;
+    protected final TableIterator tableIterator;
 
     int columnCount;
     ResultTarget target;
@@ -44,8 +40,8 @@ abstract class QOperator implements Operator {
 
     QOperator(Select select) {
         this.select = select;
-        topTableFilter = select.getTopTableFilter();
         session = select.getSession();
+        tableIterator = new TableIterator(session, select.getTopTableFilter());
         Expression c = select.condition;
         // 没有查询条件或者查询条件是常量时看看是否能演算为true,false在IndexCursor.isAlwaysFalse()中已经处理了
         if (c == null || (c instanceof ValueExpression && c.getValue(session).getBoolean())) {
@@ -77,41 +73,19 @@ abstract class QOperator implements Operator {
     }
 
     protected void rebuildSearchRowIfNeeded() {
-        if (oldRow != null) {
-            // 如果oldRow已经删除了那么移到下一行
-            if (topTableFilter.rebuildSearchRow(session, oldRow) == null)
-                hasNext = next();
-            oldRow = null;
-        }
+        tableIterator.rebuildSearchRowIfNeeded();
     }
 
-    protected boolean tryLockRow() {
-        Row row = getRow();
-        if (row == null) { // 已经删除了
-            hasNext = next();
-            return false;
-        }
-        int ret = topTableFilter.getTable().tryLockRow(session, row, null);
-        if (ret < 0) { // 已经删除了
-            hasNext = next();
-            return false;
-        } else if (ret == 0) { // 被其他事务锁住了
-            oldRow = row;
-            return false;
-        }
-        if (topTableFilter.getTable().isRowChanged(row)) {
-            oldRow = row;
-            return false;
-        }
-        return true;
-    }
-
-    protected Row getRow() {
-        return topTableFilter.get();
+    protected boolean hasNext() {
+        return tableIterator.hasNext();
     }
 
     protected boolean next() {
-        return topTableFilter.next();
+        return tableIterator.next();
+    }
+
+    protected boolean tryLockRow() {
+        return tableIterator.tryLockRow(null) > 0;
     }
 
     @Override
@@ -135,11 +109,7 @@ abstract class QOperator implements Operator {
         rowCount = 0;
         select.setCurrentRowNumber(0);
         sampleSize = select.getSampleSizeValue(session);
-
-        if (limitRows == 0)
-            hasNext = false;
-        else
-            hasNext = next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
+        tableIterator.start(limitRows);
     }
 
     @Override

@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.page.IPage;
 
 /**
  * A cursor to iterate over elements in ascending order.
@@ -22,6 +23,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
     private final CursorParameters<K> parameters;
+    private final int markType;
     private CursorPos pos;
 
     private K key;
@@ -30,8 +32,9 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     public BTreeCursor(BTreeMap<K, ?> map, CursorParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
+        this.markType = parameters.forUpdate ? 2 : 0;
         // 定位到>=from的第一个leaf page
-        min(map.getRootPage(), parameters.from);
+        min(map.getRootPage(markType), parameters.from);
     }
 
     @Override
@@ -45,6 +48,11 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     }
 
     @Override
+    public IPage getPage() {
+        return pos.page;
+    }
+
+    @Override
     public boolean hasNext() {
         while (pos != null) {
             if (pos.index < pos.page.getKeyCount()) {
@@ -55,7 +63,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
                 return false;
             }
             if (pos.index < map.getChildPageCount(pos.page)) {
-                min(pos.page.getChildPage(pos.index++), null);
+                min(pos.page.getChildPage(pos.index++, markType), null);
             }
         }
         return false;
@@ -96,7 +104,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
             }
             int x = from == null ? 0 : p.getPageIndex(from);
             pos = new CursorPos(p, x + 1, pos);
-            p = p.getChildPage(x);
+            p = p.getChildPage(x, markType);
         }
     }
 

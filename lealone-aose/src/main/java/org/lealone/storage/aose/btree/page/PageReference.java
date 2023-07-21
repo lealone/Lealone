@@ -104,21 +104,27 @@ public class PageReference {
         return pInfo.page;
     }
 
-    // 多线程读page也是线程安全的
     public Page getOrReadPage() {
+        return getOrReadPage(0);
+    }
+
+    // 多线程读page也是线程安全的
+    public Page getOrReadPage(int markType) {
         PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
             if (lockOwner == null) // 避免反复调用
                 pInfo.updateTime();
+            // if (markType == 1)
+            // p.markType = markType;
             return p;
         } else {
             ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
             if (buff != null) {
-                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
-                bs.gcIfNeeded(p.getMemory());
+                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength, markType);
+                bs.getBTreeGC().addUsedMemory(p.getMemory());
             } else {
-                p = bs.readPage(pInfo, this);
+                p = bs.readPage(pInfo, this, markType);
             }
             // p有可能为null，那就再读一次
             return p != null ? p : getOrReadPage();
@@ -147,7 +153,7 @@ public class PageReference {
         }
         this.pInfo = pInfo;
         if (oldPage != null)
-            oldPage.markDirtyBottomUp();
+            oldPage.markDirty();
     }
 
     public boolean isLeafPage() {

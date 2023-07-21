@@ -108,7 +108,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Chunk lastChunk = btreeStorage.getChunkManager().getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
-            Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos);
+            Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos, 0);
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             rootRef.replacePage(root);
             setMaxKey(lastKey());
@@ -120,6 +120,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public Page getRootPage() {
         return rootRef.getOrReadPage();
+    }
+
+    public Page getRootPage(int markType) {
+        return rootRef.getOrReadPage(markType);
     }
 
     public PageReference getRootPageRef() {
@@ -180,12 +184,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public V get(K key, int columnIndex) {
-        return binarySearch(key, new int[] { columnIndex });
+        return binarySearch(key, new int[] { columnIndex }, 0);
     }
 
     @Override
-    public V get(K key, int[] columnIndexes) {
-        return binarySearch(key, columnIndexes);
+    public V get(K key, int[] columnIndexes, int markType) {
+        return binarySearch(key, columnIndexes, markType);
     }
 
     @SuppressWarnings("unchecked")
@@ -196,8 +200,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @SuppressWarnings("unchecked")
-    private V binarySearch(Object key, int[] columnIndexes) {
-        Page p = getRootPage().gotoLeafPage(key);
+    private V binarySearch(Object key, int[] columnIndexes, int markType) {
+        Page p = getRootPage(markType).gotoLeafPage(key, markType);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }

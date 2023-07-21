@@ -153,42 +153,47 @@ public class BTreeStorage {
             return;
         }
         PageReference tmpRef = new PageReference(this, pos);
-        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
+        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false, 0);
         Object key = leaf.getKey(0);
         map.markDirty(key);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref) {
-        return readPage(pInfoOld, ref, pInfoOld.pos, true);
+    public Page readPage(PageInfo pInfoOld, PageReference ref, int markType) {
+        return readPage(pInfoOld, ref, pInfoOld.pos, true, markType);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos) {
-        return readPage(pInfoOld, ref, pos, true);
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, int markType) {
+        return readPage(pInfoOld, ref, pos, true, markType);
     }
 
-    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc) {
+    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc, int markType) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
         Chunk c = chunkManager.getChunk(pos);
         long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
+        if (!c.pagePositionToLengthMap.containsKey(pos)) {
+            c.pagePositionToLengthMap.containsKey(pos);
+        }
         int pageLength = c.getPageLength(pos);
         if (pageLength < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        Page p = readPage(pInfoOld, ref, pos, buff, pageLength);
+        Page p = readPage(pInfoOld, ref, pos, buff, pageLength, markType);
         if (gc && p != null)
-            gcIfNeeded(p.getTotalMemory());
+            bgc.addUsedMemory(p.getTotalMemory());
         return p;
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff,
-            int pageLength) {
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff, int pageLength,
+            int markType) {
         int type = PageUtils.getPageType(pos);
         Page p = Page.create(map, type);
         p.setPos(pos);
+        if (markType == 1)
+            p.markType = markType;
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
 
@@ -201,20 +206,14 @@ public class BTreeStorage {
         p.read(pInfo, buff, chunkId, offset, pageLength, false);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();
-
-        if (ref.replacePage(pInfoOld, pInfo)) {
-            p.setRef(ref);
-        }
+        p.setRef(ref);
+        ref.replacePage(pInfoOld, pInfo);
         ref.getPageInfo().updateTime();
         return ref.getPage();
     }
 
     public BTreeGC getBTreeGC() {
         return bgc;
-    }
-
-    public void gcIfNeeded(long delta) {
-        bgc.gcIfNeeded(delta);
     }
 
     public int getCompressionLevel() {

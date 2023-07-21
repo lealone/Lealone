@@ -49,6 +49,7 @@ import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
+import org.lealone.storage.page.IPage;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 
@@ -113,6 +114,8 @@ public class ServerSession extends SessionBase {
     private boolean containsDatabaseStatement;
 
     private Transaction transaction;
+    private HashSet<IPage> dirtyPages;
+    private HashSet<IPage> lockedPages;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -633,6 +636,7 @@ public class ServerSession extends SessionBase {
             }
         }
         unlockAll(true);
+        markDirtyPages();
         endTransaction();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -1476,6 +1480,11 @@ public class ServerSession extends SessionBase {
         return currentCommand != null && currentCommand.isQuery();
     }
 
+    @Override
+    public boolean isForUpdate() {
+        return currentCommand != null && (!currentCommand.isQuery() || currentCommand.isForUpdate());
+    }
+
     private boolean undoLogEnabled = true;
 
     @Override
@@ -1485,5 +1494,40 @@ public class ServerSession extends SessionBase {
 
     public void setUndoLogEnabled(boolean enabled) {
         undoLogEnabled = enabled;
+    }
+
+    @Override
+    public void addDirtyPage(IPage page) {
+        if (dirtyPages == null)
+            dirtyPages = new HashSet<>();
+        dirtyPages.add(page);
+    }
+
+    private void markDirtyPages() {
+        if (dirtyPages != null) {
+            for (IPage page : dirtyPages)
+                page.markDirtyBottomUp();
+            dirtyPages = null;
+        }
+        if (lockedPages != null) {
+            for (IPage page : lockedPages)
+                page.removeLockOnwer(this);
+            lockedPages = null;
+        }
+    }
+
+    public boolean addLockedPage(IPage page) {
+        if (page.addLockOnwer(this)) {
+            if (lockedPages == null)
+                lockedPages = new HashSet<>();
+            lockedPages.add(page);
+            return true;
+        }
+        return false;
+    }
+
+    public void removeLockedPage(IPage page) {
+        lockedPages.remove(page);
+        page.removeLockOnwer(this);
     }
 }

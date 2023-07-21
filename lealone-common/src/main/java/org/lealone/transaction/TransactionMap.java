@@ -54,15 +54,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<K> keyIterator(K from);
 
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @param includeUncommitted whether uncommitted entries should be included
-     * @return the iterator
-     */
-    public Iterator<K> keyIterator(K from, boolean includeUncommitted);
-
     public Future<Integer> addIfAbsent(K key, V value);
 
     public default int tryUpdate(K key, V newValue) {
@@ -101,9 +92,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
 
-    public Object[] getValueAndRef(K key, int[] columnIndexes);
-
-    public Object getValue(Object oldTValue);
+    public Object[] getValueAndTv(K key, int[] columnIndexes);
 
     public Object getTransactionalValue(K key);
 

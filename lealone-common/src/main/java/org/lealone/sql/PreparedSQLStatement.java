@@ -47,6 +47,10 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         return false;
     }
 
+    default boolean isForUpdate() {
+        return false;
+    }
+
     Result query(int maxRows);
 
     int update();

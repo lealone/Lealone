@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.compress.Compressor;
@@ -16,8 +17,9 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
+import org.lealone.storage.page.IPage;
 
-public class Page {
+public class Page implements IPage {
 
     /**
      * Whether assertions are enabled.
@@ -48,6 +50,7 @@ public class Page {
     protected final BTreeMap<?, ?> map;
     protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
     private PageReference ref;
+    public int markType;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -129,6 +132,10 @@ public class Page {
      * @return the child page
      */
     public Page getChildPage(int index) {
+        throw ie();
+    }
+
+    public Page getChildPage(int index, int markType) {
         throw ie();
     }
 
@@ -248,6 +255,7 @@ public class Page {
     public void markDirty() {
         PagePos old = posRef.get();
         if (posRef.compareAndSet(old, new PagePos(0))) {
+            markType = 0;
             if (old.v != 0) {
                 addRemovedPage(old.v);
             }
@@ -258,6 +266,7 @@ public class Page {
 
     // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
     // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
+    @Override
     public void markDirtyBottomUp() {
         markDirty();
         PageReference parentRef = getRef().getParentRef();
@@ -294,10 +303,14 @@ public class Page {
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     public Page gotoLeafPage(Object key) {
+        return gotoLeafPage(key, 0);
+    }
+
+    public Page gotoLeafPage(Object key, int markType) {
         Page p = this;
         while (p.isNode()) {
             int index = p.getPageIndex(key);
-            p = p.getChildPage(index);
+            p = p.getChildPage(index, markType);
         }
         return p;
     }
@@ -405,5 +418,26 @@ public class Page {
             addRemovedPage(pos);
         }
         return pos;
+    }
+
+    private final ConcurrentHashMap<Object, Object> lockOnwers = new ConcurrentHashMap<>();
+
+    @Override
+    public boolean addLockOnwer(Object onwer) {
+        PageReference ref = getRef();
+        if (ref.isDataStructureChanged() || ref.getPage() != this) {
+            return false;
+        }
+        lockOnwers.put(onwer, onwer);
+        return true;
+    }
+
+    @Override
+    public void removeLockOnwer(Object onwer) {
+        lockOnwers.remove(onwer);
+    }
+
+    public boolean canGC() {
+        return lockOnwers.isEmpty();
     }
 }

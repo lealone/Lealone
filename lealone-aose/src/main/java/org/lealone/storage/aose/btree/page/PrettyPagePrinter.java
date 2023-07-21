@@ -86,7 +86,7 @@ public class PrettyPagePrinter {
                     getPrettyPageInfoRecursive(children[i].getPage(), indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        Page child = bs.readPage(children[i].getPageInfo(), children[i]);
+                        Page child = bs.readPage(children[i].getPageInfo(), children[i], 0);
                         getPrettyPageInfoRecursive(child, indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");

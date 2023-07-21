@@ -47,7 +47,7 @@ public interface StorageMap<K, V> {
      */
     V get(K key);
 
-    default V get(K key, int[] columnIndexes) {
+    default V get(K key, int[] columnIndexes, int markType) {
         return get(key);
     }
 

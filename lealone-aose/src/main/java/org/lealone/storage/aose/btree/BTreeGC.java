@@ -72,30 +72,7 @@ public class BTreeGC {
         memoryManager.reset();
     }
 
-    public void gcIfNeeded(long delta) {
-        MemoryManager globalMemoryManager = GMM();
-        if (globalMemoryManager.needGc()) {
-            gc(false);
-        }
-        if (memoryManager.needGc(delta)) {
-            long now = System.currentTimeMillis();
-            gc(now, -2, true); // 全表扫描的场景
-            if (memoryManager.needGc(delta)) {
-                TreeSet<PageInfo> set = lru1();
-                if (memoryManager.needGc(delta)) {
-                    lru2(set);
-                }
-            }
-        }
-        memoryManager.addUsedMemory(delta);
-        globalMemoryManager.addUsedMemory(delta);
-    }
-
     public void gc() {
-        gc(true);
-    }
-
-    private void gc(boolean lru) {
         long now = System.currentTimeMillis();
         MemoryManager globalMemoryManager = GMM();
         gc(now, 30 * 60 * 1000, true);
@@ -105,20 +82,36 @@ public class BTreeGC {
             gc(now, 5 * 60 * 1000, false);
         if (globalMemoryManager.needGc())
             gc(now, -2, true); // 全表扫描的场景
-        if (lru && globalMemoryManager.needGc())
-            lru2(lru1());
+        if (globalMemoryManager.needGc())
+            lru();
     }
 
-    private TreeSet<PageInfo> lru1() {
+    private TreeSet<PageInfo> lru() {
         Comparator<PageInfo> comparator = (pi1, pi2) -> (int) (pi1.getLastTime() - pi2.getLastTime());
         TreeSet<PageInfo> set = new TreeSet<>(comparator);
         collect(set, map.getRootPageRef().getPageInfo());
         release(set, true);
+        if (GMM().needGc())
+            release(set, false);
         return set;
     }
 
-    private void lru2(TreeSet<PageInfo> set) {
-        release(set, false);
+    private void collect(TreeSet<PageInfo> set, PageInfo pInfo) {
+        Page p = pInfo.page;
+        if (p == null)
+            return;
+        if (p.isNode()) {
+            PageReference[] children = p.getChildren();
+            for (int i = 0, len = children.length; i < len; i++) {
+                PageReference ref = children[i];
+                if (ref != null) {
+                    collect(set, ref.getPageInfo());
+                }
+            }
+        } else {
+            if (p.getPos() > 0 && p.markType != 1 && p.canGC()) // pos为0时说明page被修改了，不能回收
+                set.add(pInfo);
+        }
     }
 
     private void release(TreeSet<PageInfo> set, boolean releasePage) {
@@ -140,24 +133,6 @@ public class BTreeGC {
             globalMemoryManager.decrementUsedMemory(memory);
             if (size-- == 0)
                 break;
-        }
-    }
-
-    private void collect(TreeSet<PageInfo> set, PageInfo pInfo) {
-        Page p = pInfo.page;
-        if (p == null)
-            return;
-        if (p.isNode()) {
-            PageReference[] children = p.getChildren();
-            for (int i = 0, len = children.length; i < len; i++) {
-                PageReference ref = children[i];
-                if (ref != null) {
-                    collect(set, ref.getPageInfo());
-                }
-            }
-        } else {
-            if (p.getPos() > 0) // pos为0时说明page被修改了，不能回收
-                set.add(pInfo);
         }
     }
 
@@ -186,6 +161,8 @@ public class BTreeGC {
         if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
             return;
         if (p.getRef().isLocked()) // 其他事务准备更新page，所以没必要回收
+            return;
+        if (p.markType > 0 && !p.canGC())
             return;
         boolean gc = false;
         if (hitsOrIdleTime < 0) {

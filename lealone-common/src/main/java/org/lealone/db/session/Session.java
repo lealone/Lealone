@@ -14,6 +14,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.sql.SQLCommand;
+import org.lealone.storage.page.IPage;
 
 /**
  * A client or server session. A session represents a database connection.
@@ -139,7 +140,14 @@ public interface Session extends Closeable {
         return false;
     }
 
+    default boolean isForUpdate() {
+        return false;
+    }
+
     default boolean isUndoLogEnabled() {
         return true;
+    }
+
+    default void addDirtyPage(IPage page) {
     }
 }

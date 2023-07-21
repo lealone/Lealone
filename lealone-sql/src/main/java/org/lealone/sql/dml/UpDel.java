@@ -21,6 +21,7 @@ import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.optimizer.TableIterator;
 
 // update和delete的基类
 public abstract class UpDel extends ManipulationStatement {
@@ -80,17 +81,15 @@ public abstract class UpDel extends ManipulationStatement {
     protected static abstract class YieldableUpDel extends YieldableLoopUpdateBase {
 
         protected final Table table;
-        private final TableFilter tableFilter;
         private final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
         private final ExpressionEvaluator conditionEvaluator;
-        private boolean hasNext;
-        private Row oldRow;
+        private final TableIterator tableIterator;
 
         public YieldableUpDel(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler,
                 TableFilter tableFilter, Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
-            this.tableFilter = tableFilter;
             table = tableFilter.getTable();
+            tableIterator = new TableIterator(session, tableFilter);
 
             int limitRows = -1;
             if (limitExpr != null) {
@@ -119,13 +118,8 @@ public abstract class UpDel extends ManipulationStatement {
                 return true;
             session.getUser().checkRight(table, getRightMask());
             table.fire(session, getTriggerType(), true);
-            tableFilter.startQuery(session);
-            tableFilter.reset();
             statement.setCurrentRowNumber(0);
-            if (limitRows == 0)
-                hasNext = false;
-            else
-                hasNext = next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
+            tableIterator.start(limitRows);
             return false;
         }
 
@@ -138,47 +132,28 @@ public abstract class UpDel extends ManipulationStatement {
             return null;
         }
 
-        private boolean next() {
-            return tableFilter.next();
-        }
-
         @Override
         protected void executeLoopUpdate() {
-            if (oldRow != null) {
-                // 如果oldRow已经删除了那么移到下一行
-                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
-                    hasNext = next();
-                oldRow = null;
-            }
-            while (hasNext && pendingException == null) {
+            tableIterator.rebuildSearchRowIfNeeded();
+            while (tableIterator.hasNext() && pendingException == null) {
                 if (yieldIfNeeded(++loopCount)) {
                     return;
                 }
                 if (conditionEvaluator.getBooleanValue()) {
-                    Row oldRow = tableFilter.get();
-                    if (oldRow == null) { // 已经删除了
-                        hasNext = next();
-                        continue;
-                    }
-                    int ret = table.tryLockRow(session, oldRow, getUpdateColumnIndexes());
-                    if (ret < 0) { // 已经删除了
-                        hasNext = next();
+                    int ret = tableIterator.tryLockRow(getUpdateColumnIndexes());
+                    if (ret < 0) {
                         continue;
                     } else if (ret == 0) { // 被其他事务锁住了
-                        this.oldRow = oldRow;
                         return;
                     }
-                    if (table.isRowChanged(oldRow)) {
-                        tableFilter.rebuildSearchRow(session, oldRow);
-                        continue;
-                    }
-                    if (upDelRow(oldRow)) {
+                    Row row = tableIterator.getRow();
+                    if (upDelRow(row)) {
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
                             break;
                         }
                     }
                 }
-                hasNext = next();
+                tableIterator.next();
             }
             onLoopEnd();
         }

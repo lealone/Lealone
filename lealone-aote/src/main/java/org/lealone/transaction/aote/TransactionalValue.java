@@ -12,10 +12,11 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
 
 //每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段
-public class TransactionalValue {
+public class TransactionalValue implements ITransactionalValue {
 
     public static class OldValue {
         final long tid;

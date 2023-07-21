@@ -16,7 +16,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.operator.Operator;
 import org.lealone.sql.operator.OperatorFactory;
-import org.lealone.sql.optimizer.TableFilter;
 
 public class YieldableSelect extends YieldableQueryBase {
 
@@ -73,10 +72,7 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected boolean startInternal() {
-        TableFilter topTableFilter = select.getTopTableFilter();
-        // topTableFilter.lock(session, select.isForUpdate);
-        topTableFilter.startQuery(session);
-        topTableFilter.reset();
+        // select.getTopTableFilter().lock(session, select.isForUpdate);
         select.fireBeforeSelectTriggers();
         queryOperator = createQueryOperator();
         queryOperator.start();
@@ -112,7 +108,6 @@ public class YieldableSelect extends YieldableQueryBase {
                 return;
             }
         }
-
     }
 
     private QOperator createQueryOperator() {

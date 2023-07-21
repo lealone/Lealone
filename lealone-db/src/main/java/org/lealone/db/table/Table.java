@@ -41,6 +41,7 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
+import org.lealone.transaction.ITransactionalValue;
 
 /**
  * This is the base class for most tables.
@@ -1086,7 +1087,7 @@ public abstract class Table extends SchemaObjectBase {
         return null;
     }
 
-    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+    public Row getRow(ServerSession session, long key, ITransactionalValue oldTransactionalValue) {
         return null;
     }
 

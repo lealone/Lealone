@@ -56,7 +56,7 @@ public class UndoLogRecord {
         }
         if (oldValue == null) { // insert
             newTV.commit(true);
-            map.markDirty(key); // 需要再标记一下，否则前面的save可能刷的是未提交的数据，已经提交的数据反而没有刷到硬盘
+            // map.markDirty(key); // 需要再标记一下，否则前面的save可能刷的是未提交的数据，已经提交的数据反而没有刷到硬盘
         } else if (newTV != null && newTV.getValue() == null) { // delete
             if (!te.containsRepeatableReadTransactions()) {
                 newTV.setValue(oldValue); // 用于计算内存
@@ -65,11 +65,11 @@ public class UndoLogRecord {
             } else {
                 map.decrementSize(); // 要减去1
                 newTV.commit(false);
-                map.markDirty(key);
+                // map.markDirty(key);
             }
         } else { // update
             newTV.commit(false);
-            map.markDirty(key); // 无需put回去，标记一下脏页即可
+            // map.markDirty(key); // 无需put回去，标记一下脏页即可
         }
     }
 

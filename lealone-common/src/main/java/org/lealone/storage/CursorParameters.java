@@ -11,6 +11,7 @@ public class CursorParameters<K> {
     public final K to;
     public final int[] columnIndexes;
     public final boolean allColumns;
+    public boolean forUpdate;
 
     public CursorParameters(K from, K to, int[] columnIndexes) {
         this(from, to, columnIndexes, false);

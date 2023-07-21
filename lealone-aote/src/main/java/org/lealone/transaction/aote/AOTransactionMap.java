@@ -6,7 +6,6 @@
 package org.lealone.transaction.aote;
 
 import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -21,6 +20,8 @@ import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.page.DirtyPageHandler;
+import org.lealone.storage.page.IPage;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
@@ -53,8 +54,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public V get(K key, int[] columnIndexes) {
-        TransactionalValue ref = map.get(key, columnIndexes);
+    public V get(K key, int[] columnIndexes, int markType) {
+        TransactionalValue ref = map.get(key, columnIndexes, markType);
         return getUnwrapValue(key, ref);
     }
 
@@ -312,7 +313,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     public StorageMapCursor<K, V> cursor(K from) {
         final Iterator<TransactionMapEntry<K, V>> i = entryIterator(from);
         return new StorageMapCursor<K, V>() {
-            Entry<K, V> e;
+            TransactionMapEntry<K, V> e;
 
             @Override
             public boolean hasNext() {
@@ -338,6 +339,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             @Override
             public V getValue() {
                 return e.getValue();
+            }
+
+            @Override
+            public IPage getPage() {
+                return e.getPage();
             }
         };
     }
@@ -472,6 +478,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters) {
+        if (transaction.getSession() != null)
+            parameters.forUpdate = transaction.getSession().isForUpdate();
         return new TIterator<TransactionMapEntry<K, V>>(parameters) {
             @Override
             @SuppressWarnings("unchecked")
@@ -483,7 +491,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     TransactionalValue tv = cursor.getValue();
                     Object v = getValue(key, tv);
                     if (v != null) {
-                        current = new TransactionMapEntry<>(key, (V) v, tv);
+                        current = new TransactionMapEntry<>(key, (V) v, tv, cursor.getPage());
                         return true;
                     }
                 }
@@ -495,19 +503,17 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<K> keyIterator(K from) {
-        return keyIterator(from, false);
-    }
-
-    @Override
-    public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
-        return new TIterator<K>(CursorParameters.create(from)) {
+        CursorParameters<K> parameters = CursorParameters.create(from);
+        if (transaction.getSession() != null)
+            parameters.forUpdate = transaction.getSession().isForUpdate();
+        return new TIterator<K>(parameters) {
             @Override
             public boolean hasNext() {
                 if (current != null)
                     return true;
                 while (cursor.hasNext()) {
                     current = cursor.next();
-                    if (includeUncommitted || containsKey(current)) {
+                    if (containsKey(current)) {
                         return true;
                     }
                 }
@@ -523,7 +529,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         transaction.checkNotClosed();
         final TransactionalValue newTV;
         final UndoLogRecord r;
-        Session session = transaction.getSession();
+        final Session session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
             newTV = new TransactionalValue(value, transaction);
             r = transaction.undoLog.add(getName(), key, null, newTV);
@@ -533,31 +539,42 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         }
 
         AsyncCallback<Integer> ac = new AsyncCallback<>();
-        AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
-            if (ar.isSucceeded()) {
-                TransactionalValue old = ar.getResult();
-                if (old != null) {
-                    // 在提交或回滚时直接忽略即可
-                    if (r != null)
-                        r.setUndone(true);
-                    // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                    if (old.getValue() == null) {
-                        old.setValue(value);
-                        if (r != null)
-                            transaction.undoLog.add(getName(), key, old.getOldValue(), old);
-                        ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                    } else {
-                        ac.setAsyncResult((Throwable) null);
+        DirtyPageHandler<AsyncResult<TransactionalValue>> handler = //
+                new DirtyPageHandler<AsyncResult<TransactionalValue>>() {
+                    @Override
+                    public void handle(AsyncResult<TransactionalValue> ar) {
+                        if (ar.isSucceeded()) {
+                            TransactionalValue old = ar.getResult();
+                            if (old != null) {
+                                // 在提交或回滚时直接忽略即可
+                                if (r != null)
+                                    r.setUndone(true);
+                                // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
+                                if (old.getValue() == null) {
+                                    old.setValue(value);
+                                    if (r != null)
+                                        transaction.undoLog.add(getName(), key, old.getOldValue(), old);
+                                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                                } else {
+                                    ac.setAsyncResult((Throwable) null);
+                                }
+                            } else {
+                                ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                            }
+                        } else {
+                            if (r != null)
+                                r.setUndone(true);
+                            ac.setAsyncResult(ar.getCause());
+                        }
                     }
-                } else {
-                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                }
-            } else {
-                if (r != null)
-                    r.setUndone(true);
-                ac.setAsyncResult(ar.getCause());
-            }
-        };
+
+                    @Override
+                    public void addDirtyPage(IPage page) {
+                        if (session != null) {
+                            session.addDirtyPage(page);
+                        }
+                    }
+                };
         map.putIfAbsent(key, newTV, handler);
         return ac;
     }
@@ -575,11 +592,24 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     private K append0(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
         TransactionalValue newTV = new TransactionalValue(value, transaction);
         if (handler != null) {
-            map.append(newTV, ar -> {
-                if (ar.isSucceeded())
-                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
-                handler.handle(ar);
-            });
+            final Session session = transaction.getSession();
+            DirtyPageHandler<AsyncResult<K>> dirtyPageHandler = //
+                    new DirtyPageHandler<AsyncResult<K>>() {
+                        @Override
+                        public void handle(AsyncResult<K> ar) {
+                            if (ar.isSucceeded())
+                                transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
+                            handler.handle(ar);
+                        }
+
+                        @Override
+                        public void addDirtyPage(IPage page) {
+                            if (session != null) {
+                                session.addDirtyPage(page);
+                            }
+                        }
+                    };
+            map.append(newTV, dirtyPageHandler);
             return null;
         } else {
             K key = map.append(newTV);
@@ -663,18 +693,20 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public Object[] getValueAndRef(K key, int[] columnIndexes) {
-        TransactionalValue tv = map.get(key, columnIndexes);
+    public Object[] getValueAndTv(K key, int[] columnIndexes) {
+        TransactionalValue tv = map.get(key, columnIndexes, getMarkType());
         return new Object[] { getUnwrapValue(key, tv), tv };
-    }
-
-    @Override
-    public Object getValue(Object oldTValue) {
-        return ((TransactionalValue) oldTValue).getValue();
     }
 
     @Override
     public Object getTransactionalValue(K key) {
         return map.get(key);
+    }
+
+    private int getMarkType() {
+        if (transaction.getSession() != null && transaction.getSession().isForUpdate())
+            return 1;
+        else
+            return 0;
     }
 }

@@ -17,7 +17,7 @@ class QFlat extends QOperator {
     @Override
     public void run() {
         rebuildSearchRowIfNeeded();
-        while (hasNext) {
+        while (hasNext()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !tryLockRow()) {
@@ -32,7 +32,7 @@ class QFlat extends QOperator {
             }
             if (yield)
                 return;
-            hasNext = next();
+            next();
         }
         loopEnd = true;
     }

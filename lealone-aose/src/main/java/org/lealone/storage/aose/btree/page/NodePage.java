@@ -44,10 +44,15 @@ public class NodePage extends LocalPage {
 
     @Override
     public Page getChildPage(int index) {
+        return getChildPage(index, 0);
+    }
+
+    @Override
+    public Page getChildPage(int index, int markType) {
         PageReference ref = children[index];
         if (ref.getParentRef() == null)
             ref.setParentRef(getRef());
-        return ref.getOrReadPage();
+        return ref.getOrReadPage(markType);
     }
 
     @Override

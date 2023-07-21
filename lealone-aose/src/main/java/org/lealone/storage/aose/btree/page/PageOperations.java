@@ -9,6 +9,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.page.DirtyPageHandler;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -96,8 +97,11 @@ public abstract class PageOperations {
             }
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
-            if (resultHandler != null)
+            if (resultHandler != null) {
+                if (resultHandler instanceof DirtyPageHandler)
+                    ((DirtyPageHandler<?>) resultHandler).addDirtyPage(p);
                 resultHandler.handle(new AsyncResult<>(result));
+            }
         }
 
         // 这里的index是key所在的leaf page的索引，
@@ -137,7 +141,7 @@ public abstract class PageOperations {
                 return null;
             } else {
                 Object obj = p.setValue(index, value);
-                p.markDirtyBottomUp();
+                p.markDirty();
                 return obj;
             }
         }
@@ -214,7 +218,7 @@ public abstract class PageOperations {
             Object old = p.getValue(index);
             if (map.areValuesEqual(old, oldValue)) {
                 p.setValue(index, value);
-                p.markDirtyBottomUp();
+                p.markDirty();
                 return Boolean.TRUE;
             }
             return Boolean.FALSE;
@@ -331,7 +335,7 @@ public abstract class PageOperations {
                 pRef.setDataStructureChanged(true);
                 parentRef.unlock();
             }
-            p.markDirtyBottomUp();
+            p.markDirty();
             return PageOperationResult.SUCCEEDED;
         }
     }
@@ -368,7 +372,7 @@ public abstract class PageOperations {
                     setParentRef(tmpNodePage);
                 parentRef.unlock();
             }
-            p.markDirtyBottomUp();
+            p.markDirty();
             return PageOperationResult.SUCCEEDED;
         }
 

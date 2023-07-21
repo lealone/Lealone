@@ -33,6 +33,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
+import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -248,6 +249,8 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
+        if (oldRow.getPage() != null)
+            session.addDirtyPage(oldRow.getPage());
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), newRow.getValueList());
         Value key = ValueLong.get(newRow.getKey());
         int ret = map.tryUpdate(key, newValue, updateColumns, oldRow.getTValue(), isLockedBySelf);
@@ -270,6 +273,8 @@ public class StandardPrimaryIndex extends StandardIndex {
                 unlinkLargeObject(session, v);
             }
         }
+        if (row.getPage() != null)
+            session.addDirtyPage(row.getPage());
         return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf));
     }
 
@@ -311,20 +316,20 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public Row getRow(ServerSession session, long key) {
-        return getRow(session, key, null);
+        return getRow(session, key, (int[]) null);
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        Object[] valueAndRef = getMap(session).getValueAndRef(ValueLong.get(key), columnIndexes);
-        return getRow(key, valueAndRef[0], valueAndRef[1]);
+        Object[] valueAndTv = getMap(session).getValueAndTv(ValueLong.get(key), columnIndexes);
+        return getRow(key, valueAndTv[0], (ITransactionalValue) valueAndTv[1]);
     }
 
-    public Row getRow(ServerSession session, long key, Object oldTValue) {
-        Object value = getMap(session).getValue(oldTValue);
+    public Row getRow(ServerSession session, long key, ITransactionalValue oldTValue) {
+        Object value = oldTValue.getValue();
         return getRow(key, value, oldTValue);
     }
 
-    private Row getRow(long key, Object value, Object oldTValue) {
+    private Row getRow(long key, Object value, ITransactionalValue oldTValue) {
         if (value == null) // 已经删除了
             return null;
         VersionedValue v = (VersionedValue) value;
@@ -448,10 +453,6 @@ public class StandardPrimaryIndex extends StandardIndex {
         return dataMap.getInstance(session.getTransaction());
     }
 
-    public TransactionMap<Value, VersionedValue> getDataMap() {
-        return dataMap;
-    }
-
     @Override
     public boolean isInMemory() {
         return dataMap.isInMemory();
@@ -518,7 +519,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
 
         private void createRow(TransactionMapEntry<Value, VersionedValue> current) {
-            Object tv = current.getTValue();
+            ITransactionalValue tv = current.getTValue();
             VersionedValue value = current.getValue();
             Value[] data = value.columns;
             int version = value.version;
@@ -526,6 +527,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             row.setKey(current.getKey().getLong());
             row.setVersion(version);
             row.setTValue(tv);
+            row.setPage(current.getPage());
 
             if (table.getVersion() != version) {
                 ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
@@ -540,6 +542,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                     row.setKey(current.getKey().getLong());
                     row.setVersion(table.getVersion());
                     row.setTValue(tv);
+                    row.setPage(current.getPage());
                     index.add(session, row);
                 }
             }

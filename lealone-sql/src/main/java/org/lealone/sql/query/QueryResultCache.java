@@ -35,8 +35,12 @@ class QueryResultCache {
         noCache = true;
     }
 
+    boolean isNotCachable() {
+        return noCache || !session.getDatabase().getOptimizeReuseResults();
+    }
+
     void setResult(LocalResult r) {
-        if (noCache)
+        if (isNotCachable())
             return;
         if (!isDeterministic())
             disable();
@@ -45,7 +49,7 @@ class QueryResultCache {
     }
 
     LocalResult getResult(int limit) {
-        if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
+        if (isNotCachable()) {
             return null;
         } else {
             Value[] params = getParameterValues();
