@@ -49,14 +49,14 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public V get(K key) {
-        TransactionalValue ref = map.get(key);
-        return getUnwrapValue(key, ref);
+        TransactionalValue tv = map.get(key);
+        return getUnwrapValue(key, tv);
     }
 
     @Override
     public V get(K key, int[] columnIndexes, int markType) {
-        TransactionalValue ref = map.get(key, columnIndexes, markType);
-        return getUnwrapValue(key, ref);
+        TransactionalValue tv = map.get(key, columnIndexes, markType);
+        return getUnwrapValue(key, tv);
     }
 
     // 外部传进来的值被包装成TransactionalValue了，所以需要拆出来

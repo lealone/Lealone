@@ -80,6 +80,7 @@ public class TransactionalValue implements ITransactionalValue {
         this.value = value;
     }
 
+    @Override
     public Object getValue() {
         return value;
     }

@@ -153,7 +153,7 @@ public class PageReference {
         }
         this.pInfo = pInfo;
         if (oldPage != null)
-            oldPage.markDirty();
+            oldPage.markDirtyBottomUp();
     }
 
     public boolean isLeafPage() {

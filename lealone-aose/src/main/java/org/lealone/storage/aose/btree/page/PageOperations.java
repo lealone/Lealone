@@ -141,7 +141,7 @@ public abstract class PageOperations {
                 return null;
             } else {
                 Object obj = p.setValue(index, value);
-                p.markDirty();
+                p.markDirtyBottomUp();
                 return obj;
             }
         }
@@ -218,7 +218,7 @@ public abstract class PageOperations {
             Object old = p.getValue(index);
             if (map.areValuesEqual(old, oldValue)) {
                 p.setValue(index, value);
-                p.markDirty();
+                p.markDirtyBottomUp();
                 return Boolean.TRUE;
             }
             return Boolean.FALSE;
@@ -335,7 +335,7 @@ public abstract class PageOperations {
                 pRef.setDataStructureChanged(true);
                 parentRef.unlock();
             }
-            p.markDirty();
+            p.markDirtyBottomUp();
             return PageOperationResult.SUCCEEDED;
         }
     }
@@ -372,7 +372,7 @@ public abstract class PageOperations {
                     setParentRef(tmpNodePage);
                 parentRef.unlock();
             }
-            p.markDirty();
+            p.markDirtyBottomUp();
             return PageOperationResult.SUCCEEDED;
         }
 

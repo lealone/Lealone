@@ -172,9 +172,6 @@ public class BTreeStorage {
         }
         Chunk c = chunkManager.getChunk(pos);
         long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
-        if (!c.pagePositionToLengthMap.containsKey(pos)) {
-            c.pagePositionToLengthMap.containsKey(pos);
-        }
         int pageLength = c.getPageLength(pos);
         if (pageLength < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
