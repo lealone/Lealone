@@ -127,7 +127,7 @@ public class PageReference {
                 p = bs.readPage(pInfo, this, markType);
             }
             // p有可能为null，那就再读一次
-            return p != null ? p : getOrReadPage();
+            return p != null ? p : getOrReadPage(markType);
         }
     }
 

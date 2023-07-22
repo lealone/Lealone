@@ -192,6 +192,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return binarySearch(key, columnIndexes, markType);
     }
 
+    @Override
+    public Object[] getObjects(K key, int[] columnIndexes, int markType) {
+        Page p = getRootPage(markType).gotoLeafPage(key, markType);
+        int index = p.binarySearch(key);
+        Object v = index >= 0 ? p.getValue(index, columnIndexes) : null;
+        return new Object[] { p, v };
+    }
+
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, boolean allColumns) {
         Page p = getRootPage().gotoLeafPage(key);

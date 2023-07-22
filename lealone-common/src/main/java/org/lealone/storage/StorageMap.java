@@ -51,6 +51,10 @@ public interface StorageMap<K, V> {
         return get(key);
     }
 
+    default Object[] getObjects(K key, int[] columnIndexes, int markType) {
+        return null;
+    }
+
     /**
      * Add or replace a key-value pair.
      *

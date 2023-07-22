@@ -693,9 +693,10 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public Object[] getValueAndTv(K key, int[] columnIndexes) {
-        TransactionalValue tv = map.get(key, columnIndexes, getMarkType());
-        return new Object[] { getUnwrapValue(key, tv), tv };
+    public Object[] getObjects(K key, int[] columnIndexes) {
+        Object[] objects = map.getObjects(key, columnIndexes, getMarkType());
+        TransactionalValue tv = (TransactionalValue) objects[1];
+        return new Object[] { objects[0], tv, getUnwrapValue(key, tv) };
     }
 
     @Override

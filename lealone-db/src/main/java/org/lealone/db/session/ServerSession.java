@@ -598,6 +598,7 @@ public class ServerSession extends SessionBase {
         transaction.wakeUpWaitingTransactions();
         transactionStart = 0;
         transaction = null;
+        executingStatements = 0; // 无论是正常提交还是回滚都置0，否则出现锁超时异常时会导致严重错误
     }
 
     private void unlinkLob(HashMap<String, ValueLob> lobMap) {

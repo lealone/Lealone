@@ -92,7 +92,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
 
-    public Object[] getValueAndTv(K key, int[] columnIndexes);
+    public Object[] getObjects(K key, int[] columnIndexes);
 
     public Object getTransactionalValue(K key);
 

@@ -832,7 +832,7 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     public Row rebuildSearchRow(ServerSession session, Row oldRow) {
-        Row newRow = table.getRow(session, oldRow.getKey(), oldRow.getTValue());
+        Row newRow = table.getRow(oldRow);
         current = newRow;
         currentSearchRow = newRow;
         return newRow;

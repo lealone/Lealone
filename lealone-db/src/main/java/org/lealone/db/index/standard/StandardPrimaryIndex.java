@@ -33,6 +33,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
+import org.lealone.storage.page.IPage;
 import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
@@ -316,26 +317,22 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public Row getRow(ServerSession session, long key) {
-        return getRow(session, key, (int[]) null);
+        return getRow(session, key, null);
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        Object[] valueAndTv = getMap(session).getValueAndTv(ValueLong.get(key), columnIndexes);
-        return getRow(key, valueAndTv[0], (ITransactionalValue) valueAndTv[1]);
+        Object[] objects = getMap(session).getObjects(ValueLong.get(key), columnIndexes);
+        return getRow((IPage) objects[0], (ITransactionalValue) objects[1], key, objects[2]);
     }
 
-    public Row getRow(ServerSession session, long key, ITransactionalValue oldTValue) {
-        Object value = oldTValue.getValue();
-        return getRow(key, value, oldTValue);
-    }
-
-    private Row getRow(long key, Object value, ITransactionalValue oldTValue) {
+    public Row getRow(IPage page, ITransactionalValue oldTValue, long key, Object value) {
         if (value == null) // 已经删除了
             return null;
         VersionedValue v = (VersionedValue) value;
         Row row = new Row(v.columns, 0);
         row.setKey(key);
         row.setVersion(v.version);
+        row.setPage(page);
         row.setTValue(oldTValue);
         return row;
     }

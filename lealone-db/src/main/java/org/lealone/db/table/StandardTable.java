@@ -47,7 +47,6 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageSetting;
-import org.lealone.transaction.ITransactionalValue;
 
 /**
  * @author H2 Group
@@ -232,8 +231,9 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Row getRow(ServerSession session, long key, ITransactionalValue oldTransactionalValue) {
-        return primaryIndex.getRow(session, key, oldTransactionalValue);
+    public Row getRow(Row oldRow) {
+        return primaryIndex.getRow(oldRow.getPage(), oldRow.getTValue(), oldRow.getKey(),
+                oldRow.getTValue().getValue());
     }
 
     @Override
