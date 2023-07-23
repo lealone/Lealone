@@ -116,7 +116,6 @@ public class ServerSession extends SessionBase {
 
     private Transaction transaction;
     private HashSet<IPage> dirtyPages;
-    private HashSet<IPage> lockedPages;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -1515,25 +1514,5 @@ public class ServerSession extends SessionBase {
                 page.markDirtyBottomUp();
             dirtyPages = null;
         }
-        if (lockedPages != null) {
-            for (IPage page : lockedPages)
-                page.removeLockOnwer(this);
-            lockedPages = null;
-        }
-    }
-
-    public boolean addLockedPage(IPage page) {
-        if (page.addLockOnwer(this)) {
-            if (lockedPages == null)
-                lockedPages = new HashSet<>();
-            lockedPages.add(page);
-            return true;
-        }
-        return false;
-    }
-
-    public void removeLockedPage(IPage page) {
-        lockedPages.remove(page);
-        page.removeLockOnwer(this);
     }
 }

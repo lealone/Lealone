@@ -7,11 +7,15 @@ package org.lealone.storage.aose.btree;
 
 import java.util.Comparator;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.lealone.db.MemoryManager;
+import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageInfo;
 import org.lealone.storage.aose.btree.page.PageReference;
+import org.lealone.transaction.Transaction;
 
 public class BTreeGC {
 
@@ -73,30 +77,36 @@ public class BTreeGC {
     }
 
     public void gc() {
-        long now = System.currentTimeMillis();
-        MemoryManager globalMemoryManager = GMM();
-        gc(now, 30 * 60 * 1000, true);
-        if (globalMemoryManager.needGc())
-            gc(now, 15 * 60 * 1000, true);
-        if (globalMemoryManager.needGc())
-            gc(now, 5 * 60 * 1000, false);
-        if (globalMemoryManager.needGc())
-            gc(now, -2, true); // 全表扫描的场景
-        if (globalMemoryManager.needGc())
-            lru();
+        gc(new ConcurrentSkipListMap<>());
     }
 
-    private TreeSet<PageInfo> lru() {
+    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        long now = System.currentTimeMillis();
+        MemoryManager globalMemoryManager = GMM();
+        gc(now, 30 * 60 * 1000, true, currentTransactions);
+        if (globalMemoryManager.needGc())
+            gc(now, 15 * 60 * 1000, true, currentTransactions);
+        if (globalMemoryManager.needGc())
+            gc(now, 5 * 60 * 1000, false, currentTransactions);
+        if (globalMemoryManager.needGc())
+            gc(now, -2, true, currentTransactions); // 全表扫描的场景
+        if (globalMemoryManager.needGc())
+            lru(currentTransactions);
+    }
+
+    private TreeSet<PageInfo> lru(
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         Comparator<PageInfo> comparator = (pi1, pi2) -> (int) (pi1.getLastTime() - pi2.getLastTime());
         TreeSet<PageInfo> set = new TreeSet<>(comparator);
-        collect(set, map.getRootPageRef().getPageInfo());
+        collect(set, map.getRootPageRef().getPageInfo(), currentTransactions);
         release(set, true);
         if (GMM().needGc())
             release(set, false);
         return set;
     }
 
-    private void collect(TreeSet<PageInfo> set, PageInfo pInfo) {
+    private void collect(TreeSet<PageInfo> set, PageInfo pInfo,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         Page p = pInfo.page;
         if (p == null)
             return;
@@ -105,11 +115,11 @@ public class BTreeGC {
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    collect(set, ref.getPageInfo());
+                    collect(set, ref.getPageInfo(), currentTransactions);
                 }
             }
         } else {
-            if (p.getPos() > 0 && p.markType != 1 && p.canGC()) // pos为0时说明page被修改了，不能回收
+            if (p.getPos() > 0 && canGC(p, currentTransactions)) // pos为0时说明page被修改了，不能回收
                 set.add(pInfo);
         }
     }
@@ -136,11 +146,13 @@ public class BTreeGC {
         }
     }
 
-    private void gc(long now, long hitsOrIdleTime, boolean gcAll) {
-        gc(map.getRootPageRef().getPageInfo(), now, hitsOrIdleTime, gcAll);
+    private void gc(long now, long hitsOrIdleTime, boolean gcAll,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        gc(map.getRootPageRef().getPageInfo(), now, hitsOrIdleTime, gcAll, currentTransactions);
     }
 
-    private void gc(PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll) {
+    private void gc(PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         Page p = pInfo.page;
         if (p == null)
             return;
@@ -149,20 +161,21 @@ public class BTreeGC {
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    gc(ref.getPageInfo(), now, hitsOrIdleTime, gcAll);
+                    gc(ref.getPageInfo(), now, hitsOrIdleTime, gcAll, currentTransactions);
                 }
             }
         } else {
-            gcLeafPage(pInfo, p, now, hitsOrIdleTime, gcAll);
+            gcLeafPage(pInfo, p, now, hitsOrIdleTime, gcAll, currentTransactions);
         }
     }
 
-    private void gcLeafPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll) {
+    private void gcLeafPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
             return;
         if (p.getRef().isLocked()) // 其他事务准备更新page，所以没必要回收
             return;
-        if (p.markType > 0 && !p.canGC())
+        if (!canGC(p, currentTransactions))
             return;
         boolean gc = false;
         if (hitsOrIdleTime < 0) {
@@ -186,5 +199,26 @@ public class BTreeGC {
             memoryManager.decrementUsedMemory(memory);
             GMM().decrementUsedMemory(memory);
         }
+    }
+
+    private boolean canGC(Page p,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        ConcurrentSkipListSet<Long> tids = p.getRef().getTids();
+        for (Long tid : tids) {
+            if (!currentTransactions.containsKey(tid))
+                tids.remove(tid);
+        }
+        boolean isReadOnly = true;
+        for (Long tid : tids) {
+            Transaction t = currentTransactions.get(tid);
+            if (t != null) {
+                Session s = t.getSession();
+                if (s != null && s.isForUpdate()) {
+                    isReadOnly = false;
+                    break;
+                }
+            }
+        }
+        return tids.isEmpty() || isReadOnly;
     }
 }

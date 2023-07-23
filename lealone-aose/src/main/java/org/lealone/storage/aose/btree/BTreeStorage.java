@@ -153,20 +153,20 @@ public class BTreeStorage {
             return;
         }
         PageReference tmpRef = new PageReference(this, pos);
-        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false, 0);
+        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
         Object key = leaf.getKey(0);
         map.markDirty(key);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, int markType) {
-        return readPage(pInfoOld, ref, pInfoOld.pos, true, markType);
+    public Page readPage(PageInfo pInfoOld, PageReference ref) {
+        return readPage(pInfoOld, ref, pInfoOld.pos, true);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, int markType) {
-        return readPage(pInfoOld, ref, pos, true, markType);
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos) {
+        return readPage(pInfoOld, ref, pos, true);
     }
 
-    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc, int markType) {
+    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
@@ -178,19 +178,17 @@ public class BTreeStorage {
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        Page p = readPage(pInfoOld, ref, pos, buff, pageLength, markType);
+        Page p = readPage(pInfoOld, ref, pos, buff, pageLength);
         if (gc && p != null)
             bgc.addUsedMemory(p.getTotalMemory());
         return p;
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff, int pageLength,
-            int markType) {
+    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff,
+            int pageLength) {
         int type = PageUtils.getPageType(pos);
         Page p = Page.create(map, type);
         p.setPos(pos);
-        if (markType == 1)
-            p.markType = markType;
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
 

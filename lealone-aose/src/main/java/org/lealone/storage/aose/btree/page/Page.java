@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.compress.Compressor;
@@ -50,7 +49,6 @@ public class Page implements IPage {
     protected final BTreeMap<?, ?> map;
     protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
     private PageReference ref;
-    public int markType;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
@@ -135,7 +133,7 @@ public class Page implements IPage {
         throw ie();
     }
 
-    public Page getChildPage(int index, int markType) {
+    public Page getChildPage(int index, long tid) {
         throw ie();
     }
 
@@ -255,7 +253,6 @@ public class Page implements IPage {
     public void markDirty() {
         PagePos old = posRef.get();
         if (posRef.compareAndSet(old, new PagePos(0))) {
-            markType = 0;
             if (old.v != 0) {
                 addRemovedPage(old.v);
             }
@@ -306,11 +303,11 @@ public class Page implements IPage {
         return gotoLeafPage(key, 0);
     }
 
-    public Page gotoLeafPage(Object key, int markType) {
+    public Page gotoLeafPage(Object key, long tid) {
         Page p = this;
         while (p.isNode()) {
             int index = p.getPageIndex(key);
-            p = p.getChildPage(index, markType);
+            p = p.getChildPage(index, tid);
         }
         return p;
     }
@@ -418,26 +415,5 @@ public class Page implements IPage {
             addRemovedPage(pos);
         }
         return pos;
-    }
-
-    private final ConcurrentHashMap<Object, Object> lockOnwers = new ConcurrentHashMap<>();
-
-    @Override
-    public boolean addLockOnwer(Object onwer) {
-        PageReference ref = getRef();
-        if (ref.isDataStructureChanged() || ref.getPage() != this) {
-            return false;
-        }
-        lockOnwers.put(onwer, onwer);
-        return true;
-    }
-
-    @Override
-    public void removeLockOnwer(Object onwer) {
-        lockOnwers.remove(onwer);
-    }
-
-    public boolean canGC() {
-        return lockOnwers.isEmpty();
     }
 }

@@ -10,7 +10,6 @@ import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
-import org.lealone.storage.page.IPage;
 
 public class TableIterator {
 
@@ -76,24 +75,16 @@ public class TableIterator {
             next();
             return -1;
         }
-        IPage page = oldRow.getPage();
-        if (page != null) {
-            if (!session.addLockedPage(page))
-                return 0;
-        }
         int ret = table.tryLockRow(session, oldRow, lockColumns);
         if (ret < 0) { // 已经删除了
             next();
-            session.removeLockedPage(page);
             return -1;
         } else if (ret == 0) { // 被其他事务锁住了
             this.oldRow = oldRow;
-            session.removeLockedPage(page);
             return 0;
         }
         if (table.isRowChanged(oldRow)) {
             tableFilter.rebuildSearchRow(session, oldRow);
-            session.removeLockedPage(page);
             return -1;
         }
         return 1;

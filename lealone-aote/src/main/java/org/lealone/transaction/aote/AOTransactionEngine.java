@@ -240,7 +240,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         if (MemoryManager.getGlobalMemoryManager().needGc()) {
             for (StorageMap<?, ?> map : maps.values()) {
                 if (!map.isClosed())
-                    map.gc();
+                    map.gc(currentTransactions);
             }
         }
         if (tValues.isEmpty())

@@ -7,6 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.io.InputStream;
 import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -36,6 +37,7 @@ import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.Transaction;
 
 /**
  * 支持同步和异步风格的BTree.
@@ -108,7 +110,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Chunk lastChunk = btreeStorage.getChunkManager().getLastChunk();
         if (lastChunk != null) {
             size.set(lastChunk.mapSize);
-            Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos, 0);
+            Page root = btreeStorage.readPage(rootRef.getPageInfo(), rootRef, lastChunk.rootPagePos);
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             rootRef.replacePage(root);
             setMaxKey(lastKey());
@@ -122,8 +124,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return rootRef.getOrReadPage();
     }
 
-    public Page getRootPage(int markType) {
-        return rootRef.getOrReadPage(markType);
+    public Page getRootPage(long tid) {
+        return rootRef.getOrReadPage(tid);
     }
 
     public PageReference getRootPageRef() {
@@ -184,17 +186,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public V get(K key, int columnIndex) {
-        return binarySearch(key, new int[] { columnIndex }, 0);
+        return binarySearch(key, new int[] { columnIndex });
     }
 
     @Override
-    public V get(K key, int[] columnIndexes, int markType) {
-        return binarySearch(key, columnIndexes, markType);
-    }
-
-    @Override
-    public Object[] getObjects(K key, int[] columnIndexes, int markType) {
-        Page p = getRootPage(markType).gotoLeafPage(key, markType);
+    public Object[] getObjects(K key, int[] columnIndexes, long tid) {
+        Page p = getRootPage(tid).gotoLeafPage(key, tid);
         int index = p.binarySearch(key);
         Object v = index >= 0 ? p.getValue(index, columnIndexes) : null;
         return new Object[] { p, v };
@@ -208,8 +205,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @SuppressWarnings("unchecked")
-    private V binarySearch(Object key, int[] columnIndexes, int markType) {
-        Page p = getRootPage(markType).gotoLeafPage(key, markType);
+    private V binarySearch(Object key, int[] columnIndexes) {
+        Page p = getRootPage().gotoLeafPage(key);
         int index = p.binarySearch(key);
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
@@ -413,8 +410,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void gc() {
-        btreeStorage.getBTreeGC().gc();
+    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        btreeStorage.getBTreeGC().gc(currentTransactions);
     }
 
     @Override

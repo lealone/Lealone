@@ -7,8 +7,4 @@ package org.lealone.storage.page;
 
 public interface IPage {
     void markDirtyBottomUp();
-
-    boolean addLockOnwer(Object onwer);
-
-    void removeLockOnwer(Object onwer);
 }

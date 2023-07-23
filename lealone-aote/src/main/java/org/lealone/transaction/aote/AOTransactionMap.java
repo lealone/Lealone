@@ -53,12 +53,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return getUnwrapValue(key, tv);
     }
 
-    @Override
-    public V get(K key, int[] columnIndexes, int markType) {
-        TransactionalValue tv = map.get(key, columnIndexes, markType);
-        return getUnwrapValue(key, tv);
-    }
-
     // 外部传进来的值被包装成TransactionalValue了，所以需要拆出来
     @SuppressWarnings("unchecked")
     private V getUnwrapValue(K key, TransactionalValue tv) {
@@ -478,8 +472,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters) {
-        if (transaction.getSession() != null)
-            parameters.forUpdate = transaction.getSession().isForUpdate();
+        parameters.tid = transaction.getTransactionId();
         return new TIterator<TransactionMapEntry<K, V>>(parameters) {
             @Override
             @SuppressWarnings("unchecked")
@@ -504,8 +497,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Iterator<K> keyIterator(K from) {
         CursorParameters<K> parameters = CursorParameters.create(from);
-        if (transaction.getSession() != null)
-            parameters.forUpdate = transaction.getSession().isForUpdate();
+        parameters.tid = transaction.getTransactionId();
         return new TIterator<K>(parameters) {
             @Override
             public boolean hasNext() {
@@ -694,7 +686,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Object[] getObjects(K key, int[] columnIndexes) {
-        Object[] objects = map.getObjects(key, columnIndexes, getMarkType());
+        Object[] objects = map.getObjects(key, columnIndexes, transaction.getTransactionId());
         TransactionalValue tv = (TransactionalValue) objects[1];
         return new Object[] { objects[0], tv, getUnwrapValue(key, tv) };
     }
@@ -702,12 +694,5 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Object getTransactionalValue(K key) {
         return map.get(key);
-    }
-
-    private int getMarkType() {
-        if (transaction.getSession() != null && transaction.getSession().isForUpdate())
-            return 1;
-        else
-            return 0;
     }
 }

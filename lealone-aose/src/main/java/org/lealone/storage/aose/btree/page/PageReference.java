@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
@@ -37,6 +38,13 @@ public class PageReference {
 
     public PageReference getParentRef() {
         return parentRef;
+    }
+
+    // 记录访问过page的事务id，如果这些事务都结束了那就可以回收page了
+    private final ConcurrentSkipListSet<Long> tids = new ConcurrentSkipListSet<>();
+
+    public ConcurrentSkipListSet<Long> getTids() {
+        return tids;
     }
 
     public boolean tryLock(PageOperationHandler newLockOwner) {
@@ -109,25 +117,25 @@ public class PageReference {
     }
 
     // 多线程读page也是线程安全的
-    public Page getOrReadPage(int markType) {
+    public Page getOrReadPage(long tid) {
+        if (tid > 0)
+            tids.add(tid);
         PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
             if (lockOwner == null) // 避免反复调用
                 pInfo.updateTime();
-            // if (markType == 1)
-            // p.markType = markType;
             return p;
         } else {
             ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
             if (buff != null) {
-                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength, markType);
+                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
                 bs.getBTreeGC().addUsedMemory(p.getMemory());
             } else {
-                p = bs.readPage(pInfo, this, markType);
+                p = bs.readPage(pInfo, this);
             }
             // p有可能为null，那就再读一次
-            return p != null ? p : getOrReadPage(markType);
+            return p != null ? p : getOrReadPage(tid);
         }
     }
 
