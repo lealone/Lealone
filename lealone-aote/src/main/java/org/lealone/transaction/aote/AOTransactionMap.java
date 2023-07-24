@@ -6,6 +6,7 @@
 package org.lealone.transaction.aote;
 
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -398,6 +399,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void save() {
         map.save();
+    }
+
+    @Override
+    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        map.gc(currentTransactions);
     }
 
     @Override

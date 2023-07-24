@@ -338,8 +338,6 @@ public class BTreeStorage {
             new ChunkCompactor(this, chunkManager).executeCompact();
         } catch (IllegalStateException e) {
             throw panic(e);
-        } finally {
-            bgc.gc();
         }
     }
 

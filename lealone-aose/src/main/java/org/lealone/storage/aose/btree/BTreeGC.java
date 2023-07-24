@@ -76,10 +76,6 @@ public class BTreeGC {
         memoryManager.reset();
     }
 
-    public void gc() {
-        gc(new ConcurrentSkipListMap<>());
-    }
-
     public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         long now = System.currentTimeMillis();
         MemoryManager globalMemoryManager = GMM();

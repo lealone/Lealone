@@ -243,6 +243,10 @@ public interface StorageMap<K, V> {
         return false;
     }
 
+    default void gc() {
+        gc(new ConcurrentSkipListMap<>());
+    }
+
     default void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
     }
 
