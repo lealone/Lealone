@@ -22,20 +22,23 @@ public class MemoryManager {
         return globalMemoryManager;
     }
 
-    private long maxMemory;
     private final AtomicLong usedMemory = new AtomicLong(0);
     private final AtomicLong dirtyMemory = new AtomicLong(0);
 
+    private long maxGCMemory;
+
     public MemoryManager(long maxMemory) {
-        this.maxMemory = maxMemory;
+        setMaxMemory(maxMemory);
     }
 
     public void setMaxMemory(long maxMemory) {
-        this.maxMemory = maxMemory;
+        if (maxMemory <= 0)
+            maxMemory = getGlobalMaxMemory();
+        maxGCMemory = maxMemory / 2; // 占用内存超过一半时就可以触发GC
     }
 
     public long getMaxMemory() {
-        return maxMemory;
+        return maxGCMemory * 2;
     }
 
     public long getUsedMemory() {
@@ -44,10 +47,6 @@ public class MemoryManager {
 
     public long getDirtyMemory() {
         return dirtyMemory.get();
-    }
-
-    public void decrementUsedMemory(long delta) {
-        usedMemory.addAndGet(-delta);
     }
 
     public void addDirtyMemory(long delta) { // 正负都有可能
@@ -63,12 +62,8 @@ public class MemoryManager {
         dirtyMemory.addAndGet(delta);
     }
 
-    public boolean needGc(long delta) {
-        return maxMemory > 0 && usedMemory.get() + delta > (maxMemory / 10 * 5);
-    }
-
     public boolean needGc() {
-        return maxMemory > 0 && usedMemory.get() > (maxMemory / 10 * 5);
+        return usedMemory.get() > maxGCMemory;
     }
 
     public void reset() {

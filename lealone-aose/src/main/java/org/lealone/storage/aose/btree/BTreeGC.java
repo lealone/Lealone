@@ -135,8 +135,8 @@ public class BTreeGC {
                 memory = pInfo.getBuffMemory();
                 pInfo.releaseBuff();
             }
-            memoryManager.decrementUsedMemory(memory);
-            globalMemoryManager.decrementUsedMemory(memory);
+            memoryManager.addUsedMemory(-memory);
+            globalMemoryManager.addUsedMemory(-memory);
             if (size-- == 0)
                 break;
         }
@@ -192,8 +192,8 @@ public class BTreeGC {
             pInfo.releasePage();
             if (gcAll)
                 pInfo.releaseBuff();
-            memoryManager.decrementUsedMemory(memory);
-            GMM().decrementUsedMemory(memory);
+            memoryManager.addUsedMemory(-memory);
+            GMM().addUsedMemory(-memory);
         }
     }
 
