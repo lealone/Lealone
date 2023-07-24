@@ -5,12 +5,14 @@
  */
 package org.lealone.transaction.aote;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -287,6 +289,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         private volatile boolean isClosed;
         private volatile boolean isRunning;
 
+        private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
+
         CheckpointService(Map<String, String> config) {
             // 默认32M
             dirtyPageCacheSize = MapUtils.getLongMB(config, "dirty_page_cache_size_in_mb",
@@ -311,7 +315,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         void checkpoint() {
             if (isClosed)
                 return;
-            checkpoint(true);
+            // 异步执行checkpoint命令
+            forceCheckpointTasks.add(() -> checkpoint(true));
+            semaphore.release();
         }
 
         // 按周期自动触发
@@ -356,7 +362,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 }
                 try {
                     gc();
-                    checkpoint(false);
+                    if (!forceCheckpointTasks.isEmpty()) {
+                        ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
+                        forceCheckpointTasks.removeAll(tasks);
+                        for (Runnable task : tasks)
+                            task.run();
+                    } else {
+                        checkpoint(false);
+                    }
                 } catch (Exception e) {
                     logger.error("Failed to execute checkpoint", e);
                 }
