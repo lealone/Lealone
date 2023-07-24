@@ -124,10 +124,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return rootRef.getOrReadPage();
     }
 
-    public Page getRootPage(long tid) {
-        return rootRef.getOrReadPage(tid);
-    }
-
     public PageReference getRootPageRef() {
         return rootRef;
     }
@@ -190,8 +186,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object[] getObjects(K key, int[] columnIndexes, long tid) {
-        Page p = getRootPage(tid).gotoLeafPage(key, tid);
+    public Object[] getObjects(K key, int[] columnIndexes) {
+        Page p = getRootPage().gotoLeafPage(key);
         int index = p.binarySearch(key);
         Object v = index >= 0 ? p.getValue(index, columnIndexes) : null;
         return new Object[] { p, v };

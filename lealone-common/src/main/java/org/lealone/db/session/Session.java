@@ -150,4 +150,8 @@ public interface Session extends Closeable {
 
     default void addDirtyPage(IPage page) {
     }
+
+    default long getCurrentTid() {
+        return 0;
+    }
 }

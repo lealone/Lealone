@@ -85,6 +85,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     @Override
+    public ServerSession getSession() {
+        return session;
+    }
+
+    @Override
     public void setExecutor(SQLStatementExecutor executor) {
         statement.setExecutor(executor);
     }

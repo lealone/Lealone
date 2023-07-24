@@ -54,6 +54,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     private volatile boolean end;
     private YieldableCommand nextBestCommand;
     private NetEventLoop netEventLoop;
+    private Session currentSession;
 
     public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
         super(id, "ScheduleService-" + id, waitingQueueSize);
@@ -61,6 +62,15 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         loopInterval = MapUtils.getLong(config, key, 100);
         netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval);
         netEventLoop.setOwner(this);
+    }
+
+    @Override
+    public Session getSession() {
+        return currentSession;
+    }
+
+    public void setCurrentSession(Session currentSession) {
+        this.currentSession = currentSession;
     }
 
     public NetEventLoop getNetEventLoop() {
@@ -227,6 +237,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 }
             }
             try {
+                currentSession = c.getSession();
                 c.run();
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {

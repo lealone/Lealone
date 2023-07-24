@@ -5,6 +5,8 @@
  */
 package org.lealone.storage.page;
 
+import org.lealone.db.session.Session;
+
 public interface PageOperationHandler {
 
     // 没有用getId，考虑到实现类可能继承自java.lang.Thread，它里面也有一个getId，会导致冲突
@@ -19,6 +21,10 @@ public interface PageOperationHandler {
     void wakeUpWaitingHandlers();
 
     void wakeUp();
+
+    default Session getSession() {
+        return null;
+    }
 
     class DummyPageOperationHandler implements PageOperationHandler {
         @Override

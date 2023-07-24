@@ -478,7 +478,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters) {
-        parameters.tid = transaction.getTransactionId();
         return new TIterator<TransactionMapEntry<K, V>>(parameters) {
             @Override
             @SuppressWarnings("unchecked")
@@ -503,7 +502,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Iterator<K> keyIterator(K from) {
         CursorParameters<K> parameters = CursorParameters.create(from);
-        parameters.tid = transaction.getTransactionId();
         return new TIterator<K>(parameters) {
             @Override
             public boolean hasNext() {
@@ -692,7 +690,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public Object[] getObjects(K key, int[] columnIndexes) {
-        Object[] objects = map.getObjects(key, columnIndexes, transaction.getTransactionId());
+        Object[] objects = map.getObjects(key, columnIndexes);
         TransactionalValue tv = (TransactionalValue) objects[1];
         return new Object[] { objects[0], tv, getUnwrapValue(key, tv) };
     }

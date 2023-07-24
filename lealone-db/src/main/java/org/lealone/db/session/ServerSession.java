@@ -1210,6 +1210,10 @@ public class ServerSession extends SessionBase {
             return sessionId;
         }
 
+        public Session getSession() {
+            return yieldable.getSession();
+        }
+
         public int getPriority() {
             return yieldable.getPriority();
         }
@@ -1514,5 +1518,10 @@ public class ServerSession extends SessionBase {
                 page.markDirtyBottomUp();
             dirtyPages = null;
         }
+    }
+
+    @Override
+    public long getCurrentTid() {
+        return transaction != null ? transaction.getTransactionId() : 0;
     }
 }

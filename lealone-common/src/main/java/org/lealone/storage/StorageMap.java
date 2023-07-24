@@ -50,7 +50,7 @@ public interface StorageMap<K, V> {
      */
     V get(K key);
 
-    default Object[] getObjects(K key, int[] columnIndexes, long tid) {
+    default Object[] getObjects(K key, int[] columnIndexes) {
         return null;
     }
 

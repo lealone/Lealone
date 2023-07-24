@@ -90,6 +90,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     }
 
     private void runTask(AsyncTask task) {
+        scheduler.setCurrentSession(session);
         try {
             task.run();
         } catch (Throwable e) {

@@ -23,7 +23,6 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
     private final CursorParameters<K> parameters;
-    private final long tid;
     private CursorPos pos;
 
     private K key;
@@ -32,9 +31,8 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     public BTreeCursor(BTreeMap<K, ?> map, CursorParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
-        this.tid = parameters.tid;
         // 定位到>=from的第一个leaf page
-        min(map.getRootPage(tid), parameters.from);
+        min(map.getRootPage(), parameters.from);
     }
 
     @Override
@@ -63,7 +61,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
                 return false;
             }
             if (pos.index < map.getChildPageCount(pos.page)) {
-                min(pos.page.getChildPage(pos.index++, tid), null);
+                min(pos.page.getChildPage(pos.index++), null);
             }
         }
         return false;
@@ -104,7 +102,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
             }
             int x = from == null ? 0 : p.getPageIndex(from);
             pos = new CursorPos(p, x + 1, pos);
-            p = p.getChildPage(x, tid);
+            p = p.getChildPage(x);
         }
     }
 

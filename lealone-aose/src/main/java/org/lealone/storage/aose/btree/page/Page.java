@@ -133,10 +133,6 @@ public class Page implements IPage {
         throw ie();
     }
 
-    public Page getChildPage(int index, long tid) {
-        throw ie();
-    }
-
     /**
      * Check whether this is a leaf page.
      * 
@@ -300,14 +296,10 @@ public class Page implements IPage {
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     public Page gotoLeafPage(Object key) {
-        return gotoLeafPage(key, 0);
-    }
-
-    public Page gotoLeafPage(Object key, long tid) {
         Page p = this;
         while (p.isNode()) {
             int index = p.getPageIndex(key);
-            p = p.getChildPage(index, tid);
+            p = p.getChildPage(index);
         }
         return p;
     }

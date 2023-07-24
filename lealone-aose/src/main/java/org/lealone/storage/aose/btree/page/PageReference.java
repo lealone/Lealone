@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.page.PageOperationHandler;
 
@@ -112,12 +113,19 @@ public class PageReference {
         return pInfo.page;
     }
 
-    public Page getOrReadPage() {
-        return getOrReadPage(0);
+    private long getTid() {
+        Object t = Thread.currentThread();
+        if (t instanceof PageOperationHandler) {
+            Session s = ((PageOperationHandler) t).getSession();
+            if (s != null)
+                return s.getCurrentTid();
+        }
+        return 0;
     }
 
     // 多线程读page也是线程安全的
-    public Page getOrReadPage(long tid) {
+    public Page getOrReadPage() {
+        long tid = getTid();
         if (tid > 0)
             tids.add(tid);
         PageInfo pInfo = this.pInfo;
@@ -135,7 +143,7 @@ public class PageReference {
                 p = bs.readPage(pInfo, this);
             }
             // p有可能为null，那就再读一次
-            return p != null ? p : getOrReadPage(tid);
+            return p != null ? p : getOrReadPage();
         }
     }
 
