@@ -25,6 +25,7 @@ public interface StorageMapCursor<K, V> extends Iterator<K> {
      */
     V getValue();
 
-    IPage getPage();
-
+    default IPage getPage() {
+        return null;
+    }
 }

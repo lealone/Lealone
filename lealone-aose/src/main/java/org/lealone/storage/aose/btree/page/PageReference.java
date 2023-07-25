@@ -125,10 +125,12 @@ public class PageReference {
 
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
-        long tid = getTid();
-        if (tid > 0) {
-            if (tids.add(tid))
-                bs.getBTreeGC().addUsedMemory(32);
+        if (lockOwner == null) {
+            long tid = getTid();
+            if (tid > 0) {
+                if (tids.add(tid))
+                    bs.getBTreeGC().addUsedMemory(32);
+            }
         }
         PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
