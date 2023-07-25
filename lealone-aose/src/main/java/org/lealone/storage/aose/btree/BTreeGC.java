@@ -121,7 +121,6 @@ public class BTreeGC {
     }
 
     private void release(TreeSet<PageInfo> set, boolean releasePage) {
-        MemoryManager globalMemoryManager = GMM();
         int size = set.size() / 3 + 1;
         for (PageInfo pInfo : set) {
             long memory;
@@ -135,8 +134,7 @@ public class BTreeGC {
                 memory = pInfo.getBuffMemory();
                 pInfo.releaseBuff();
             }
-            memoryManager.addUsedMemory(-memory);
-            globalMemoryManager.addUsedMemory(-memory);
+            addUsedMemory(-memory);
             if (size-- == 0)
                 break;
         }
@@ -192,8 +190,7 @@ public class BTreeGC {
             pInfo.releasePage();
             if (gcAll)
                 pInfo.releaseBuff();
-            memoryManager.addUsedMemory(-memory);
-            GMM().addUsedMemory(-memory);
+            addUsedMemory(-memory);
         }
     }
 
@@ -201,8 +198,10 @@ public class BTreeGC {
             ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         ConcurrentSkipListSet<Long> tids = p.getRef().getTids();
         for (Long tid : tids) {
-            if (!currentTransactions.containsKey(tid))
+            if (!currentTransactions.containsKey(tid)) {
                 tids.remove(tid);
+                addUsedMemory(-32);
+            }
         }
         boolean isReadOnly = true;
         for (Long tid : tids) {

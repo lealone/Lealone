@@ -354,6 +354,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         checkWrite();
         try {
             acquireExclusiveLock();
+            getRootPageRef().getTids().clear();
             btreeStorage.clear();
             size.set(0);
             maxKey.set(0);
