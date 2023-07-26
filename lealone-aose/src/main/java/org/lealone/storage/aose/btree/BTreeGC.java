@@ -77,8 +77,13 @@ public class BTreeGC {
     }
 
     public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        long now = System.currentTimeMillis();
         MemoryManager globalMemoryManager = GMM();
+        if (!globalMemoryManager.needGc()) {
+            if (!map.getRootPageRef().getTids().isEmpty())
+                gcTids(currentTransactions);
+            return;
+        }
+        long now = System.currentTimeMillis();
         gc(now, 30 * 60 * 1000, true, currentTransactions);
         if (globalMemoryManager.needGc())
             gc(now, 15 * 60 * 1000, true, currentTransactions);
@@ -114,10 +119,9 @@ public class BTreeGC {
                     collect(set, ref.getPageInfo(), currentTransactions);
                 }
             }
-        } else {
-            if (p.getPos() > 0 && canGC(p, currentTransactions)) // pos为0时说明page被修改了，不能回收
-                set.add(pInfo);
         }
+        if (p.getPos() > 0 && canGC(p, currentTransactions)) // pos为0时说明page被修改了，不能回收
+            set.add(pInfo);
     }
 
     private void release(TreeSet<PageInfo> set, boolean releasePage) {
@@ -158,12 +162,11 @@ public class BTreeGC {
                     gc(ref.getPageInfo(), now, hitsOrIdleTime, gcAll, currentTransactions);
                 }
             }
-        } else {
-            gcLeafPage(pInfo, p, now, hitsOrIdleTime, gcAll, currentTransactions);
         }
+        gcPage(pInfo, p, now, hitsOrIdleTime, gcAll, currentTransactions);
     }
 
-    private void gcLeafPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll,
+    private void gcPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll,
             ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
             return;
@@ -196,13 +199,7 @@ public class BTreeGC {
 
     private boolean canGC(Page p,
             ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        ConcurrentSkipListSet<Long> tids = p.getRef().getTids();
-        for (Long tid : tids) {
-            if (!currentTransactions.containsKey(tid)) {
-                tids.remove(tid);
-                addUsedMemory(-32);
-            }
-        }
+        ConcurrentSkipListSet<Long> tids = gcTids(p, currentTransactions);
         boolean isReadOnly = true;
         for (Long tid : tids) {
             Transaction t = currentTransactions.get(tid);
@@ -215,5 +212,38 @@ public class BTreeGC {
             }
         }
         return tids.isEmpty() || isReadOnly;
+    }
+
+    private void gcTids(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        gcTids(map.getRootPageRef().getPageInfo(), currentTransactions);
+    }
+
+    private void gcTids(PageInfo pInfo,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        Page p = pInfo.page;
+        if (p == null)
+            return;
+        if (p.isNode()) {
+            PageReference[] children = p.getChildren();
+            for (int i = 0, len = children.length; i < len; i++) {
+                PageReference ref = children[i];
+                if (ref != null) {
+                    gcTids(ref.getPageInfo(), currentTransactions);
+                }
+            }
+        }
+        gcTids(p, currentTransactions);
+    }
+
+    private ConcurrentSkipListSet<Long> gcTids(Page p,
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        ConcurrentSkipListSet<Long> tids = p.getRef().getTids();
+        for (Long tid : tids) {
+            if (!currentTransactions.containsKey(tid)) {
+                tids.remove(tid);
+                addUsedMemory(-32);
+            }
+        }
+        return tids;
     }
 }

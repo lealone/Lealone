@@ -232,19 +232,19 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    private void removeTValues() {
-        for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
-            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
+    private void gc() {
+        gcMaps();
+        gcTValues();
+    }
+
+    private void gcMaps() {
+        for (StorageMap<?, ?> map : maps.values()) {
+            if (!map.isClosed())
+                map.gc(currentTransactions);
         }
     }
 
-    private void gc() {
-        if (MemoryManager.getGlobalMemoryManager().needGc()) {
-            for (StorageMap<?, ?> map : maps.values()) {
-                if (!map.isClosed())
-                    map.gc(currentTransactions);
-            }
-        }
+    private void gcTValues() {
         if (tValues.isEmpty())
             return;
         if (!containsRepeatableReadTransactions()) {
@@ -273,6 +273,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             }
         } else {
             removeTValues();
+        }
+    }
+
+    private void removeTValues() {
+        for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
+            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
         }
     }
 
