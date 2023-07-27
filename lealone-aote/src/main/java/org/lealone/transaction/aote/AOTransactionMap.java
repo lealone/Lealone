@@ -493,6 +493,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     K key = cursor.next();
                     TransactionalValue tv = cursor.getValue();
                     Object v = getValue(key, tv);
+                    // 过滤掉已标记为删除的记录
                     if (v != null) {
                         current = new TransactionMapEntry<>(key, (V) v, tv, cursor.getPage());
                         return true;
@@ -514,7 +515,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     return true;
                 while (cursor.hasNext()) {
                     current = cursor.next();
-                    if (containsKey(current)) {
+                    // 过滤掉已标记为删除的记录
+                    if (getValue(current, cursor.getValue()) != null) {
                         return true;
                     }
                 }
