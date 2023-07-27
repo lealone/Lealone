@@ -6,7 +6,6 @@
 package org.lealone.db.index.hash;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexConditionType;
@@ -94,7 +93,7 @@ public abstract class HashIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         throw DbException.getUnsupportedException("HASH");
     }
 

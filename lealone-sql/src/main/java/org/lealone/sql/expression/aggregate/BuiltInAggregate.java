@@ -10,7 +10,6 @@ import java.util.HashMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -148,8 +147,7 @@ public abstract class BuiltInAggregate extends Aggregate {
                 if ((sortType & SortOrder.DESCENDING) != 0) {
                     first = !first;
                 }
-                Cursor cursor = index.findFirstOrLast(session, first);
-                SearchRow row = cursor.getSearchRow();
+                SearchRow row = index.findFirstOrLast(session, first);
                 Value v;
                 if (row == null) {
                     v = ValueNull.INSTANCE;

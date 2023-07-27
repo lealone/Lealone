@@ -137,15 +137,14 @@ public interface Index extends SchemaObject {
     boolean canGetFirstOrLast();
 
     /**
-     * Find the first (or last) value of this index. The cursor returned is
-     * positioned on the correct row, or on null if no row has been found.
+     * Find the first (or last) value of this index.
      *
      * @param session the session
      * @param first true if the first (lowest for ascending indexes) or last
      *            value should be returned
-     * @return a cursor (never null)
+     * @return a SearchRow or null
      */
-    Cursor findFirstOrLast(ServerSession session, boolean first);
+    SearchRow findFirstOrLast(ServerSession session, boolean first);
 
     /**
      * Check if the index supports distinct query.

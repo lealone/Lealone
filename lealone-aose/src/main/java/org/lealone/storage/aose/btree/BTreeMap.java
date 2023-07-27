@@ -343,11 +343,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(K from) {
-        return cursor(CursorParameters.create(from));
-    }
-
-    @Override
     public StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
         return new BTreeCursor<>(this, parameters);
     }

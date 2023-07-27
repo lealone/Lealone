@@ -69,9 +69,9 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         long pos = first ? rangeTable.getMin(session) : rangeTable.getMax(session);
-        return new RangeCursor(pos, pos);
+        return new Row(new Value[] { ValueLong.get(pos) }, 1);
     }
 
     @Override
@@ -103,10 +103,6 @@ public class RangeIndex extends IndexBase {
         private boolean beforeFirst;
         private long current;
         private Row currentRow;
-
-        RangeCursor(long start, long end) {
-            this(start, end, 1);
-        }
 
         RangeCursor(long start, long end, long step) {
             this.start = start;

@@ -5,9 +5,7 @@
  */
 package org.lealone.db.index.standard;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
@@ -15,7 +13,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -31,6 +28,7 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.StorageSetting;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.TransactionMapCursor;
 
 /**
  * @author H2 Group
@@ -146,7 +144,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (min != null) {
             min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        return new StandardSecondaryIndexRegularCursor(session, getMap(session).keyIterator(min), last);
+        return new StandardSecondaryIndexRegularCursor(session, getMap(session).cursor(min), last);
     }
 
     private IndexKey convertToKey(SearchRow r) {
@@ -176,24 +174,19 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         TransactionMap<IndexKey, Value> map = getMap(session);
         IndexKey key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
-                return EmptyCursor.INSTANCE;
+                return null;
             }
             if (key.columns[0] != ValueNull.INSTANCE) {
                 break;
             }
             key = first ? map.higherKey(key) : map.lowerKey(key);
         }
-        ArrayList<IndexKey> list = new ArrayList<>(1);
-        list.add(key);
-        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexRegularCursor(session,
-                list.iterator(), null);
-        cursor.next();
-        return cursor;
+        return convertToSearchRow(key);
     }
 
     @Override
@@ -338,21 +331,26 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     private class StandardSecondaryIndexRegularCursor extends StandardSecondaryIndexCursor {
 
-        private final Iterator<IndexKey> iterator;
+        private final TransactionMapCursor<IndexKey, ?> tmCursor;
         private final SearchRow last;
 
-        public StandardSecondaryIndexRegularCursor(ServerSession session, Iterator<IndexKey> iterator,
-                SearchRow last) {
+        public StandardSecondaryIndexRegularCursor(ServerSession session,
+                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last) {
             super(session);
-            this.iterator = iterator;
+            this.tmCursor = tmCursor;
             this.last = last;
         }
 
         @Override
         protected SearchRow nextSearchRow() {
-            IndexKey current = iterator.hasNext() ? iterator.next() : null;
-            SearchRow searchRow = createSearchRow(current);
-            if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+            SearchRow searchRow;
+            if (tmCursor.hasNext()) {
+                IndexKey current = tmCursor.next();
+                searchRow = createSearchRow(current);
+                if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+                    searchRow = null;
+                }
+            } else {
                 searchRow = null;
             }
             return searchRow;

@@ -189,15 +189,15 @@ public interface StorageMap<K, V> {
      * @param from the first key to return
      * @return the cursor
      */
-    StorageMapCursor<K, V> cursor(K from);
+    default StorageMapCursor<K, V> cursor(K from) {
+        return cursor(CursorParameters.create(from));
+    }
 
     default StorageMapCursor<K, V> cursor() {
-        return cursor((K) null);
+        return cursor(CursorParameters.create(null));
     }
 
-    default StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
-        return cursor(parameters.from);
-    }
+    StorageMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
     /**
      * Remove all entries.

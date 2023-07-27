@@ -5,8 +5,6 @@
  */
 package org.lealone.transaction;
 
-import java.util.Iterator;
-
 import org.lealone.db.async.Future;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMap;
@@ -36,23 +34,18 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
-    /**
-     * Iterate over entries.
-     *
-     * @param from the first key to return
-     * @return the iterator
-     */
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(K from);
+    @Override
+    public default TransactionMapCursor<K, V> cursor(K from) {
+        return cursor(CursorParameters.create(from));
+    }
 
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters);
+    @Override
+    public default TransactionMapCursor<K, V> cursor() {
+        return cursor(CursorParameters.create(null));
+    }
 
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @return the iterator
-     */
-    public Iterator<K> keyIterator(K from);
+    @Override
+    public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
     public Future<Integer> addIfAbsent(K key, V value);
 
@@ -91,8 +84,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public int tryLock(K key, Object oldTValue, int[] columnIndexes);
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
-
-    public Object[] getObjects(K key, int[] columnIndexes);
 
     public Object getTransactionalValue(K key);
 

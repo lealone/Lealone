@@ -5,7 +5,6 @@
  */
 package org.lealone.transaction.aote;
 
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,7 +27,7 @@ import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.TransactionMapEntry;
+import org.lealone.transaction.TransactionMapCursor;
 import org.lealone.transaction.aote.log.UndoLogRecord;
 
 public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
@@ -157,8 +156,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public K firstKey() {
-        Iterator<K> it = keyIterator(null);
-        return it.hasNext() ? it.next() : null;
+        TransactionMapCursor<K, V> cursor = cursor();
+        return cursor.hasNext() ? cursor.next() : null;
     }
 
     @Override
@@ -305,40 +304,59 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(K from) {
-        final Iterator<TransactionMapEntry<K, V>> i = entryIterator(from);
-        return new StorageMapCursor<K, V>() {
-            TransactionMapEntry<K, V> e;
-
-            @Override
-            public boolean hasNext() {
-                return i.hasNext();
-            }
-
-            @Override
-            public K next() {
-                e = i.next();
-                return e.getKey();
-            }
-
-            @Override
-            public void remove() {
-                i.remove();
-            }
+    public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters) {
+        return new TransactionMapCursor<K, V>() {
+            final StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
+            K key;
+            V value;
+            TransactionalValue tv;
+            boolean n = true;
 
             @Override
             public K getKey() {
-                return e.getKey();
+                return key;
             }
 
             @Override
             public V getValue() {
-                return e.getValue();
+                return value;
+            }
+
+            @Override
+            public TransactionalValue getTValue() {
+                return tv;
             }
 
             @Override
             public IPage getPage() {
-                return e.getPage();
+                return cursor.getPage();
+            }
+
+            @Override
+            public K next() {
+                n = true;
+                return key;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public boolean hasNext() {
+                if (!n)
+                    return true;
+                while (cursor.hasNext()) {
+                    n = false;
+                    key = cursor.next();
+                    TransactionalValue tv = cursor.getValue();
+                    Object v = AOTransactionMap.this.getValue(key, tv);
+                    // 过滤掉已标记为删除的记录
+                    if (v != null) {
+                        this.tv = tv;
+                        value = (V) v;
+                        return true;
+                    }
+                }
+                key = null;
+                return false;
             }
         };
     }
@@ -456,74 +474,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public AOTransactionMap<K, V> getInstance(Transaction transaction) {
         return new AOTransactionMap<>((AOTransaction) transaction, map);
-    }
-
-    // 子类在hasNext()中取出下一行，这样能保证不会多读一行
-    private abstract class TIterator<E> implements Iterator<E> {
-
-        final StorageMapCursor<K, TransactionalValue> cursor;
-        E current;
-
-        TIterator(CursorParameters<K> parameters) {
-            cursor = map.cursor(parameters);
-        }
-
-        @Override
-        public E next() {
-            E e = current;
-            current = null;
-            return e;
-        }
-    }
-
-    @Override
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(K from) {
-        return entryIterator(CursorParameters.create(from));
-    }
-
-    @Override
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters) {
-        return new TIterator<TransactionMapEntry<K, V>>(parameters) {
-            @Override
-            @SuppressWarnings("unchecked")
-            public boolean hasNext() {
-                if (current != null)
-                    return true;
-                while (cursor.hasNext()) {
-                    K key = cursor.next();
-                    TransactionalValue tv = cursor.getValue();
-                    Object v = getValue(key, tv);
-                    // 过滤掉已标记为删除的记录
-                    if (v != null) {
-                        current = new TransactionMapEntry<>(key, (V) v, tv, cursor.getPage());
-                        return true;
-                    }
-                }
-                current = null;
-                return false;
-            }
-        };
-    }
-
-    @Override
-    public Iterator<K> keyIterator(K from) {
-        CursorParameters<K> parameters = CursorParameters.create(from);
-        return new TIterator<K>(parameters) {
-            @Override
-            public boolean hasNext() {
-                if (current != null)
-                    return true;
-                while (cursor.hasNext()) {
-                    current = cursor.next();
-                    // 过滤掉已标记为删除的记录
-                    if (getValue(current, cursor.getValue()) != null) {
-                        return true;
-                    }
-                }
-                current = null;
-                return false;
-            }
-        };
     }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get

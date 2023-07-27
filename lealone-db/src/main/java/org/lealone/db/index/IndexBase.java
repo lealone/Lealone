@@ -142,7 +142,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         throw DbException.getUnsupportedException("findFirstOrLast");
     }
 

@@ -6,9 +6,6 @@
 package org.lealone.db.index.standard;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
@@ -17,7 +14,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -38,7 +34,7 @@ import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.TransactionMapEntry;
+import org.lealone.transaction.TransactionMapCursor;
 
 /**
  * @author H2 Group
@@ -296,23 +292,28 @@ public class StandardPrimaryIndex extends StandardIndex {
         ValueLong to = getPK(parameters.to);
         CursorParameters<Value> newParameters = parameters.copy(from, to);
         return new StandardPrimaryIndexCursor(session, table, this,
-                getMap(session).entryIterator(newParameters), to);
+                getMap(session).cursor(newParameters), to);
+    }
+
+    /**
+     * Search for a specific row or a set of rows.
+     *
+     * @param session the session
+     * @param first the key of the first row
+     * @param last the key of the last row
+     * @return the cursor
+     */
+    Cursor find(ServerSession session, ValueLong first, ValueLong last) {
+        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).cursor(first), last);
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
-        if (v == null) {
-            return EmptyCursor.INSTANCE;
-        }
-        VersionedValue value = map.get(v);
-        TransactionMapEntry<Value, VersionedValue> e = new TransactionMapEntry<>(v, value);
-        List<TransactionMapEntry<Value, VersionedValue>> list = Arrays.asList(e);
-        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this,
-                list.iterator(), v);
-        c.next();
-        return c;
+        if (v == null)
+            return null;
+        return getRow(session, v.getLong());
     }
 
     @Override
@@ -423,19 +424,6 @@ public class StandardPrimaryIndex extends StandardIndex {
         return (ValueLong) v.convertTo(Value.LONG);
     }
 
-    /**
-     * Search for a specific row or a set of rows.
-     *
-     * @param session the session
-     * @param first the key of the first row
-     * @param last the key of the last row
-     * @return the cursor
-     */
-    Cursor find(ServerSession session, ValueLong first, ValueLong last) {
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(first),
-                last);
-    }
-
     @Override
     public boolean isRowIdIndex() {
         return true;
@@ -484,17 +472,17 @@ public class StandardPrimaryIndex extends StandardIndex {
         private final ServerSession session;
         private final StandardTable table;
         private final StandardPrimaryIndex index;
-        private final Iterator<TransactionMapEntry<Value, VersionedValue>> iterator;
+        private final TransactionMapCursor<Value, VersionedValue> tmCursor;
         private final ValueLong last;
         private Row row;
 
         public StandardPrimaryIndexCursor(ServerSession session, StandardTable table,
-                StandardPrimaryIndex index,
-                Iterator<TransactionMapEntry<Value, VersionedValue>> iterator, ValueLong last) {
+                StandardPrimaryIndex index, TransactionMapCursor<Value, VersionedValue> tmCursor,
+                ValueLong last) {
             this.session = session;
             this.table = table;
             this.index = index;
-            this.iterator = iterator;
+            this.tmCursor = tmCursor;
             this.last = last;
         }
 
@@ -505,30 +493,28 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         @Override
         public boolean next() {
-            TransactionMapEntry<Value, VersionedValue> current = iterator.hasNext() ? iterator.next()
-                    : null;
-            if (last != null && current != null && current.getKey().getLong() > last.getLong()) {
-                current = null;
-            }
-            if (current != null) {
-                createRow(current);
+            if (tmCursor.hasNext()) {
+                tmCursor.next();
+                if (last != null && tmCursor.getKey().getLong() > last.getLong()) {
+                    row = null;
+                    return false;
+                }
+                createRow();
                 return true;
-            } else {
-                row = null;
-                return false;
             }
+            return false;
         }
 
-        private void createRow(TransactionMapEntry<Value, VersionedValue> current) {
-            ITransactionalValue tv = current.getTValue();
-            VersionedValue value = current.getValue();
+        private void createRow() {
+            ITransactionalValue tv = tmCursor.getTValue();
+            VersionedValue value = tmCursor.getValue();
             Value[] data = value.columns;
             int version = value.version;
             row = new Row(data, 0);
-            row.setKey(current.getKey().getLong());
+            row.setKey(tmCursor.getKey().getLong());
             row.setVersion(version);
             row.setTValue(tv);
-            row.setPage(current.getPage());
+            row.setPage(tmCursor.getPage());
 
             if (table.getVersion() != version) {
                 ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
@@ -540,10 +526,10 @@ public class StandardPrimaryIndex extends StandardIndex {
                 if (newValues != data) {
                     index.remove(session, row, false);
                     row = new Row(newValues, 0);
-                    row.setKey(current.getKey().getLong());
+                    row.setKey(tmCursor.getKey().getLong());
                     row.setVersion(table.getVersion());
                     row.setTValue(tv);
-                    row.setPage(current.getPage());
+                    row.setPage(tmCursor.getPage());
                     index.add(session, row);
                 }
             }

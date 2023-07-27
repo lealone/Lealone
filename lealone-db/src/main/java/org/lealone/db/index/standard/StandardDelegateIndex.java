@@ -58,7 +58,7 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         return mainIndex.findFirstOrLast(session, first);
     }
 
