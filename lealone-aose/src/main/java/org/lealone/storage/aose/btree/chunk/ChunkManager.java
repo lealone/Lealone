@@ -199,4 +199,8 @@ public class ChunkManager {
             removedPages.addAll(lastChunk.getRemovedPages());
         return removedPages;
     }
+
+    public Set<Integer> getAllChunkIds() {
+        return idToChunkFileNameMap.keySet();
+    }
 }

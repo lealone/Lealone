@@ -227,6 +227,9 @@ public interface StorageMap<K, V> {
      */
     void save();
 
+    default void repair() {
+    }
+
     default long getDiskSpaceUsed() {
         return 0;
     }

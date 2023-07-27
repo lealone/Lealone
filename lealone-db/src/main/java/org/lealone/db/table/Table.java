@@ -246,6 +246,10 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
+    public void repair(ServerSession session) {
+        throw newUnsupportedException();
+    }
+
     /**
      * Check if this table supports ALTER TABLE.
      *

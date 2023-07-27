@@ -460,6 +460,12 @@ public class StandardTable extends Table {
     }
 
     @Override
+    public void repair(ServerSession session) {
+        lastModificationId = database.getNextModificationDataId();
+        primaryIndex.repair(session);
+    }
+
+    @Override
     public void checkSupportAlter() {
         // ok
     }

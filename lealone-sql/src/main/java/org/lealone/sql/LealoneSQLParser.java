@@ -113,6 +113,7 @@ import org.lealone.sql.ddl.DropUserDataType;
 import org.lealone.sql.ddl.DropView;
 import org.lealone.sql.ddl.GrantRevoke;
 import org.lealone.sql.ddl.PrepareProcedure;
+import org.lealone.sql.ddl.RepairTable;
 import org.lealone.sql.ddl.SetComment;
 import org.lealone.sql.ddl.TruncateTable;
 import org.lealone.sql.dml.Backup;
@@ -436,6 +437,8 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseRunScript();
                 } else if (readIf("RELEASE")) {
                     s = parseReleaseSavepoint();
+                } else if (readIf("REPAIR")) {
+                    s = parseRepair();
                 }
                 break;
             case 's':
@@ -1100,6 +1103,14 @@ public class LealoneSQLParser implements SQLParser {
         read("TABLE");
         Table table = readTableOrView();
         TruncateTable command = new TruncateTable(session, table.getSchema());
+        command.setTable(table);
+        return command;
+    }
+
+    private StatementBase parseRepair() {
+        read("TABLE");
+        Table table = readTableOrView();
+        RepairTable command = new RepairTable(session, table.getSchema());
         command.setTable(table);
         return command;
     }

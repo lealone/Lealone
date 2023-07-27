@@ -93,7 +93,13 @@ public class Chunk {
     }
 
     public int getPageLength(long pagePosition) {
-        return pagePositionToLengthMap.get(pagePosition);
+        Integer length = pagePositionToLengthMap.get(pagePosition);
+        if (length == null) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "File corrupted in chunk {0}, not found page {1}", fileStorage.getFileName(),
+                    pagePosition);
+        }
+        return length.intValue();
     }
 
     /**

@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree;
 
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -20,6 +21,7 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
+import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.LeafPage;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageOperations.Append;
@@ -30,6 +32,7 @@ import org.lealone.storage.aose.btree.page.PageOperations.Replace;
 import org.lealone.storage.aose.btree.page.PageOperations.WriteOperation;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageStorageMode;
+import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.aose.btree.page.PrettyPagePrinter;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.page.PageOperation;
@@ -612,5 +615,33 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public InputStream getInputStream(FilePath file) {
         return btreeStorage.getInputStream(file);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void repair() {
+        synchronized (btreeStorage) {
+            ChunkManager chunkManager = btreeStorage.getChunkManager();
+            HashSet<Long> removedPages = new HashSet<>();
+            HashSet<Long> pages = new HashSet<>();
+            for (Integer id : chunkManager.getAllChunkIds()) {
+                Chunk c = chunkManager.getChunk(id);
+                removedPages.addAll(c.getRemovedPages());
+                pages.addAll(c.pagePositionToLengthMap.keySet());
+            }
+            clear();
+            pages.removeAll(removedPages);
+            for (Long p : pages) {
+                if (PageUtils.isNodePage(p))
+                    continue;
+                PageReference tmpRef = new PageReference(btreeStorage, p);
+                Page leaf = btreeStorage.readPage(tmpRef.getPageInfo(), tmpRef, p);
+                int keys = leaf.getKeyCount();
+                for (int i = 0; i < keys; i++) {
+                    put((K) leaf.getKey(i), (V) leaf.getValue(i));
+                }
+            }
+            btreeStorage.save();
+        }
     }
 }

@@ -402,6 +402,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
+    public void repair() {
+        map.repair();
+    }
+
+    @Override
     public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
         map.gc(currentTransactions);
     }

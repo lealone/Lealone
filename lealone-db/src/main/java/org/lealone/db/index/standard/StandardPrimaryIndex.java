@@ -365,6 +365,10 @@ public class StandardPrimaryIndex extends StandardIndex {
         getMap(session).clear();
     }
 
+    public void repair(ServerSession session) {
+        dataMap.repair();
+    }
+
     @Override
     public long getRowCount(ServerSession session) {
         return getMap(session).size();

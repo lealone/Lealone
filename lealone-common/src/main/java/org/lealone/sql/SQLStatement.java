@@ -469,5 +469,10 @@ public interface SQLStatement extends SQLCommand {
      */
     int SHUTDOWN_SERVER = 144;
 
+    /**
+     * The type of a REPAIR TABLE statement.
+     */
+    int REPAIR_TABLE = 145;
+
     String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 }

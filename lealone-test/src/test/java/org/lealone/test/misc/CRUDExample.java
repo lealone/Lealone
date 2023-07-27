@@ -46,8 +46,15 @@ public class CRUDExample {
         rs = stmt.executeQuery("SELECT * FROM test");
         Assert.assertFalse(rs.next());
         rs.close();
+
+        // batch(stmt);
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.close();
         conn.close();
+    }
+
+    public static void batch(Statement stmt) throws Exception {
+        for (int i = 1; i <= 30000; i++)
+            stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
     }
 }
