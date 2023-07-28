@@ -26,8 +26,7 @@ class QGroupSorted extends QOperator {
 
     @Override
     public void run() {
-        rebuildSearchRowIfNeeded();
-        while (hasNext()) {
+        while (next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !tryLockRow()) {
@@ -47,7 +46,6 @@ class QGroupSorted extends QOperator {
                 QGroup.updateAggregate(select, columnCount);
                 if (yield)
                     return;
-                next();
             }
         }
         if (previousKeyValues != null) {

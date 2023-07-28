@@ -20,8 +20,7 @@ class QAggregate extends QOperator {
 
     @Override
     public void run() {
-        rebuildSearchRowIfNeeded();
-        while (hasNext()) {
+        while (next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !tryLockRow()) {
@@ -39,7 +38,6 @@ class QAggregate extends QOperator {
             }
             if (yield)
                 return;
-            next();
         }
         // 最后把聚合后的结果增加到结果集中
         Value[] row = createRow();

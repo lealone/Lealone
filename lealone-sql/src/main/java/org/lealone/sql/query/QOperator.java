@@ -72,14 +72,6 @@ abstract class QOperator implements Operator {
         return false;
     }
 
-    protected void rebuildSearchRowIfNeeded() {
-        tableIterator.rebuildSearchRowIfNeeded();
-    }
-
-    protected boolean hasNext() {
-        return tableIterator.hasNext();
-    }
-
     protected boolean next() {
         return tableIterator.next();
     }
@@ -109,7 +101,7 @@ abstract class QOperator implements Operator {
         rowCount = 0;
         select.setCurrentRowNumber(0);
         sampleSize = select.getSampleSizeValue(session);
-        tableIterator.start(limitRows);
+        tableIterator.start();
     }
 
     @Override

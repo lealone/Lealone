@@ -32,8 +32,7 @@ class QGroup extends QOperator {
 
     @Override
     public void run() {
-        rebuildSearchRowIfNeeded();
-        while (hasNext()) {
+        while (next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
                 if (select.isForUpdate && !tryLockRow()) {
@@ -50,7 +49,6 @@ class QGroup extends QOperator {
             }
             if (yield)
                 return;
-            next();
         }
         // 把分组后的记录放到result中
         addGroupRows(groups, select, columnCount, result);

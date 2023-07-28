@@ -89,8 +89,6 @@ public abstract class UpDel extends ManipulationStatement {
                 TableFilter tableFilter, Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
             table = tableFilter.getTable();
-            tableIterator = new TableIterator(session, tableFilter);
-
             int limitRows = -1;
             if (limitExpr != null) {
                 Value v = limitExpr.getValue(session);
@@ -99,6 +97,17 @@ public abstract class UpDel extends ManipulationStatement {
                 }
             }
             this.limitRows = limitRows;
+
+            if (limitRows == 0) {
+                tableIterator = new TableIterator(session, tableFilter) {
+                    @Override
+                    public boolean next() {
+                        return false;
+                    }
+                };
+            } else {
+                tableIterator = new TableIterator(session, tableFilter);
+            }
 
             if (condition == null)
                 conditionEvaluator = new AlwaysTrueEvaluator();
@@ -119,7 +128,7 @@ public abstract class UpDel extends ManipulationStatement {
             session.getUser().checkRight(table, getRightMask());
             table.fire(session, getTriggerType(), true);
             statement.setCurrentRowNumber(0);
-            tableIterator.start(limitRows);
+            tableIterator.start();
             return false;
         }
 
@@ -135,8 +144,7 @@ public abstract class UpDel extends ManipulationStatement {
         @Override
         protected void executeLoopUpdate() {
             session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
-            tableIterator.rebuildSearchRowIfNeeded();
-            while (tableIterator.hasNext() && pendingException == null) {
+            while (tableIterator.next() && pendingException == null) {
                 if (yieldIfNeeded(++loopCount)) {
                     return;
                 }
@@ -154,7 +162,6 @@ public abstract class UpDel extends ManipulationStatement {
                         }
                     }
                 }
-                tableIterator.next();
             }
             onLoopEnd();
         }

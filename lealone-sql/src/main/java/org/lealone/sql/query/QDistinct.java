@@ -35,8 +35,7 @@ class QDistinct extends QOperator {
 
     @Override
     public void run() {
-        rebuildSearchRowIfNeeded();
-        while (hasNext()) {
+        while (next()) {
             if (select.isForUpdate && !tryLockRow()) {
                 return; // 锁记录失败
             }
@@ -53,7 +52,6 @@ class QDistinct extends QOperator {
             }
             if (yield)
                 return;
-            next();
         }
         loopEnd = true;
     }

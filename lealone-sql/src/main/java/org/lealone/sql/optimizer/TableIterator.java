@@ -17,7 +17,6 @@ public class TableIterator {
     private final TableFilter tableFilter;
     private final Table table;
     private Row oldRow;
-    private boolean hasNext;
     private Cursor cursor;
 
     public TableIterator(ServerSession session, TableFilter tableFilter) {
@@ -30,33 +29,23 @@ public class TableIterator {
         this.cursor = cursor;
     }
 
-    public void start(long limitRows) {
+    public void start() {
         tableFilter.startQuery(session);
         tableFilter.reset();
-        if (limitRows == 0)
-            hasNext = false;
-        else
-            next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
-    }
-
-    public boolean hasNext() {
-        return hasNext;
     }
 
     public boolean next() {
-        if (cursor == null) {
-            return hasNext = tableFilter.next();
-        } else {
-            return hasNext = cursor.next();
-        }
-    }
-
-    public void rebuildSearchRowIfNeeded() {
         if (oldRow != null) {
-            // 如果oldRow已经删除了那么移到下一行
-            if (tableFilter.rebuildSearchRow(session, oldRow) == null)
-                hasNext = tableFilter.next();
+            Row r = oldRow;
             oldRow = null;
+            // 当发生行锁时可以直接用tableFilter的当前值重试
+            if (tableFilter.rebuildSearchRow(session, r) != null)
+                return true;
+        }
+        if (cursor == null) {
+            return tableFilter.next();
+        } else {
+            return cursor.next();
         }
     }
 
