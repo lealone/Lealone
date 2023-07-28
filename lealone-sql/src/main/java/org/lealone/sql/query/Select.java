@@ -512,6 +512,7 @@ public class Select extends Query {
         // 优化单表查询
         if (filters.size() == 1) {
             topTableFilter = filters.get(0);
+            setEvaluatableRecursive(topTableFilter);
             PlanItem item = topTableFilter.preparePlan(session, 1);
             return item.getCost();
         }

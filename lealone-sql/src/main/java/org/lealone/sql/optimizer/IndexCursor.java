@@ -38,6 +38,7 @@ public class IndexCursor implements Cursor {
 
     private SearchRow start, end;
     private Cursor cursor;
+
     private Column inColumn;
     private int inListIndex;
     private Value[] inList;
@@ -65,13 +66,22 @@ public class IndexCursor implements Cursor {
     }
 
     /**
+     * Check if the result is empty for sure.
+     *
+     * @return true if it is
+     */
+    public boolean isAlwaysFalse() {
+        return alwaysFalse;
+    }
+
+    /**
      * Re-evaluate the start and end values of the index search for rows.
      *
-     * @param s the session
+     * @param session the session
      * @param indexConditions the index conditions
      */
-    public void find(ServerSession s, ArrayList<IndexCondition> indexConditions) {
-        parseIndexConditions(s, indexConditions);
+    public void find(ServerSession session, ArrayList<IndexCondition> indexConditions) {
+        parseIndexConditions(session, indexConditions);
         if (inColumn != null) {
             return;
         }
@@ -88,7 +98,7 @@ public class IndexCursor implements Cursor {
         }
     }
 
-    public void parseIndexConditions(ServerSession session, ArrayList<IndexCondition> indexConditions) {
+    private void parseIndexConditions(ServerSession session, ArrayList<IndexCondition> indexConditions) {
         alwaysFalse = false;
         start = end = null;
         inList = null;
@@ -220,33 +230,24 @@ public class IndexCursor implements Cursor {
         return comp > 0 ? a : b;
     }
 
-    /**
-     * Check if the result is empty for sure.
-     *
-     * @return true if it is
-     */
-    public boolean isAlwaysFalse() {
-        return alwaysFalse;
-    }
-
     @Override
     public Row get() {
-        if (cursor == null) {
+        if (cursor == null)
             return null;
-        }
         return cursor.get();
     }
 
     @Override
     public Row get(int[] columnIndexes) {
-        if (cursor == null) {
+        if (cursor == null)
             return null;
-        }
         return cursor.get(columnIndexes);
     }
 
     @Override
     public SearchRow getSearchRow() {
+        if (cursor == null)
+            return null;
         return cursor.getSearchRow();
     }
 
@@ -271,6 +272,7 @@ public class IndexCursor implements Cursor {
             while (inListIndex < inList.length) {
                 Value v = inList[inListIndex++];
                 if (v != ValueNull.INSTANCE) {
+                    v = inColumn.convert(v);
                     find(v);
                     break;
                 }
@@ -281,7 +283,7 @@ public class IndexCursor implements Cursor {
                 if (v != ValueNull.INSTANCE) {
                     v = inColumn.convert(v);
                     if (inResultTested == null) {
-                        inResultTested = new HashSet<Value>();
+                        inResultTested = new HashSet<>();
                     }
                     if (inResultTested.add(v)) {
                         find(v);
@@ -293,7 +295,6 @@ public class IndexCursor implements Cursor {
     }
 
     private void find(Value v) {
-        v = inColumn.convert(v);
         int id = inColumn.getColumnId();
         if (start == null) {
             start = table.getTemplateRow();

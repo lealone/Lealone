@@ -27,7 +27,7 @@ public class ConditionInConstantSetTest extends SqlTestBase {
         assertEquals(0, getIntValue(1, true));
         sql = "select count(*) from ConditionInConstantSetTest where id in(3,2)";
         assertEquals(4, getIntValue(1, true));
-        // 后面的id = 1会进行优化，直接加了in列表中
+        // 后面的id = 1会进行优化，直接加到in列表中
         sql = "select count(*) from ConditionInConstantSetTest where id in(3,2) or id = 1";
         assertEquals(6, getIntValue(1, true));
     }
