@@ -344,8 +344,8 @@ public class StandardSecondaryIndex extends StandardIndex {
         @Override
         protected SearchRow nextSearchRow() {
             SearchRow searchRow;
-            if (tmCursor.hasNext()) {
-                IndexKey current = tmCursor.next();
+            if (tmCursor.next()) {
+                IndexKey current = tmCursor.getKey();
                 searchRow = createSearchRow(current);
                 if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
                     searchRow = null;

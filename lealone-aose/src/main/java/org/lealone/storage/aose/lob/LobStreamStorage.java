@@ -237,8 +237,7 @@ public class LobStreamStorage implements LobStorage {
         // to speed it up, we would need yet another map
         ArrayList<Long> list = new ArrayList<>();
         StorageMapCursor<Long, Object[]> cursor = lobMap.cursor();
-        while (cursor.hasNext()) {
-            cursor.next();
+        while (cursor.next()) {
             Object[] value = cursor.getValue();
             int t = (Integer) value[1];
             if (t == tableId) {

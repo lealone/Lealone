@@ -493,8 +493,7 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         @Override
         public boolean next() {
-            if (tmCursor.hasNext()) {
-                tmCursor.next();
+            if (tmCursor.next()) {
                 if (last != null && tmCursor.getKey().getLong() > last.getLong()) {
                     row = null;
                     return false;

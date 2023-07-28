@@ -51,7 +51,21 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     }
 
     @Override
-    public boolean hasNext() {
+    @SuppressWarnings("unchecked")
+    public boolean next() {
+        if (hasNext()) {
+            int index = pos.index++;
+            key = (K) pos.page.getKey(index);
+            if (parameters.allColumns)
+                value = (V) pos.page.getValue(index, true);
+            else
+                value = (V) pos.page.getValue(index, parameters.columnIndexes);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasNext() {
         while (pos != null) {
             if (pos.index < pos.page.getKeyCount()) {
                 return true;
@@ -65,22 +79,6 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
             }
         }
         return false;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public K next() {
-        // 不再检测了，让调用者自己先调用hasNext()再调用next()
-        // if (!hasNext()) {
-        // throw new NoSuchElementException();
-        // }
-        int index = pos.index++;
-        key = (K) pos.page.getKey(index);
-        if (parameters.allColumns)
-            value = (V) pos.page.getValue(index, true);
-        else
-            value = (V) pos.page.getValue(index, parameters.columnIndexes);
-        return key;
     }
 
     /**

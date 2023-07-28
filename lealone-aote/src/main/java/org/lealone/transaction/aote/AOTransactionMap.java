@@ -157,7 +157,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public K firstKey() {
         TransactionMapCursor<K, V> cursor = cursor();
-        return cursor.hasNext() ? cursor.next() : null;
+        return cursor.next() ? cursor.getKey() : null;
     }
 
     @Override
@@ -239,14 +239,9 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            StorageMapCursor<K, TransactionalValue> cursor = map.cursor();
-            while (cursor.hasNext()) {
-                K key = cursor.next();
-                TransactionalValue tv = cursor.getValue();
-                Object value = getValue(key, tv);
-                if (value != null) {
-                    size++;
-                }
+            TransactionMapCursor<?, ?> cursor = cursor();
+            while (cursor.next()) {
+                size++;
             }
             return size;
         }
@@ -307,14 +302,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters) {
         return new TransactionMapCursor<K, V>() {
             final StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
-            K key;
             V value;
-            TransactionalValue tv;
-            boolean n = true;
 
             @Override
             public K getKey() {
-                return key;
+                return cursor.getKey();
             }
 
             @Override
@@ -324,7 +316,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
             @Override
             public TransactionalValue getTValue() {
-                return tv;
+                return cursor.getValue();
             }
 
             @Override
@@ -333,29 +325,14 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             }
 
             @Override
-            public K next() {
-                n = true;
-                return key;
-            }
-
-            @Override
             @SuppressWarnings("unchecked")
-            public boolean hasNext() {
-                if (!n)
-                    return true;
-                while (cursor.hasNext()) {
-                    n = false;
-                    key = cursor.next();
-                    TransactionalValue tv = cursor.getValue();
-                    Object v = AOTransactionMap.this.getValue(key, tv);
+            public boolean next() {
+                while (cursor.next()) {
                     // 过滤掉已标记为删除的记录
-                    if (v != null) {
-                        this.tv = tv;
-                        value = (V) v;
+                    value = (V) AOTransactionMap.this.getValue(cursor.getKey(), cursor.getValue());
+                    if (value != null)
                         return true;
-                    }
                 }
-                key = null;
                 return false;
             }
         };

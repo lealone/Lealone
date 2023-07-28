@@ -97,8 +97,7 @@ public class PageStorageModeTest extends AoseTestBase {
         ValueLong from = ValueLong.get(2000);
         StorageMapCursor<ValueLong, TransactionalValue> cursor = map
                 .cursor(CursorParameters.create(from, columnIndex));
-        while (cursor.hasNext()) {
-            cursor.next();
+        while (cursor.next()) {
             rows++;
         }
         assertEquals(rowCount - 2000 + 1, rows);

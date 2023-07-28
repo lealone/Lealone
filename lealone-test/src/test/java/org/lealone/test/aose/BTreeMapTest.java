@@ -84,16 +84,14 @@ public class BTreeMapTest extends AoseTestBase {
 
         StorageMapCursor<?, ?> cursor = map.cursor();
         int count = 0;
-        while (cursor.hasNext()) {
-            cursor.next();
+        while (cursor.next()) {
             count++;
         }
         assertEquals(size, count);
 
         cursor = map.cursor(151);
         count = 0;
-        while (cursor.hasNext()) {
-            cursor.next();
+        while (cursor.next()) {
             count++;
         }
         assertEquals(50, count);
