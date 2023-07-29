@@ -528,10 +528,12 @@ public class StandardTable extends Table {
     @Override
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         if (containsLargeObject()) {
-            if (dataHandler.isTableLobStorage())
+            if (dataHandler.isTableLobStorage()) {
+                getDatabase().getTransactionEngine().removeLobStorage(dataHandler.getLobStorage());
                 dataHandler.getLobStorage().close();
-            else
+            } else {
                 dataHandler.getLobStorage().removeAllForTable(getId());
+            }
         }
         super.removeChildrenAndResources(session, lock);
         // go backwards because database.removeIndex will

@@ -29,6 +29,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
@@ -39,6 +40,8 @@ import org.lealone.transaction.aote.log.RedoLogRecord;
 public class AOTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(AOTransactionEngine.class);
+
+    private final CopyOnWriteArrayList<LobStorage> lobStorages = new CopyOnWriteArrayList<>();
 
     // key: mapName
     private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps //
@@ -219,6 +222,16 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return checkpointService;
     }
 
+    @Override
+    public void addLobStorage(LobStorage lobStorage) {
+        lobStorages.add(lobStorage);
+    }
+
+    @Override
+    public void removeLobStorage(LobStorage lobStorage) {
+        lobStorages.remove(lobStorage);
+    }
+
     ///////////////////// 实现StorageEventListener接口 /////////////////////
 
     @Override
@@ -234,6 +247,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private void gc() {
         gcMaps();
+        gcLobStorages();
         gcTValues();
     }
 
@@ -241,6 +255,12 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed())
                 map.gc(currentTransactions);
+        }
+    }
+
+    private void gcLobStorages() {
+        for (LobStorage lobStorage : lobStorages) {
+            lobStorage.gc(currentTransactions);
         }
     }
 

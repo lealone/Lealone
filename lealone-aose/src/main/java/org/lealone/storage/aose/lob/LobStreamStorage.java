@@ -16,6 +16,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.common.exceptions.DbException;
@@ -30,6 +31,7 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.lob.LobStorage;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class stores LOB objects in the database, in maps.
@@ -73,6 +75,14 @@ public class LobStreamStorage implements LobStorage {
         if (lobMap != null) {
             lobMap.save();
             lobStreamMap.save();
+        }
+    }
+
+    @Override
+    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+        if (lobMap != null) {
+            lobMap.gc(currentTransactions);
+            lobStreamMap.gc(currentTransactions);
         }
     }
 

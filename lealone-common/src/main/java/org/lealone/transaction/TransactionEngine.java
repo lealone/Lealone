@@ -6,6 +6,7 @@
 package org.lealone.transaction;
 
 import org.lealone.db.PluggableEngine;
+import org.lealone.storage.lob.LobStorage;
 
 public interface TransactionEngine extends PluggableEngine {
 
@@ -23,5 +24,11 @@ public interface TransactionEngine extends PluggableEngine {
 
     default Runnable getRunnable() {
         return null;
+    }
+
+    default void addLobStorage(LobStorage lobStorage) {
+    }
+
+    default void removeLobStorage(LobStorage lobStorage) {
     }
 }

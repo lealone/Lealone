@@ -8,9 +8,11 @@ package org.lealone.storage.lob;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.db.value.ValueLob;
+import org.lealone.transaction.Transaction;
 
 /**
  * A mechanism to store and retrieve lob data.
@@ -31,6 +33,9 @@ public interface LobStorage {
     int TABLE_TEMP = -2;
 
     default void save() {
+    }
+
+    default void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
     }
 
     default void close() {

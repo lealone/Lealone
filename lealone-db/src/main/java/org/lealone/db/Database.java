@@ -1864,8 +1864,10 @@ public class Database implements DataHandler, DbObject {
         String storagePath = persistent ? getStoragePath() : null;
         storage = getStorageBuilder(storageEngine, storagePath).openStorage();
         storages.put(storageEngine.getName(), storage);
-        if (persistent && lobStorage == null)
+        if (persistent && lobStorage == null) {
             setLobStorage(storageEngine.getLobStorage(this, storage));
+            transactionEngine.addLobStorage(lobStorage);
+        }
         return storage;
     }
 
@@ -2040,6 +2042,9 @@ public class Database implements DataHandler, DbObject {
     }
 
     public void drop() {
+        if (lobStorage != null) {
+            getTransactionEngine().removeLobStorage(lobStorage);
+        }
         if (getSessionCount() > 0) {
             setDeleteFilesOnDisconnect(true);
             return;
