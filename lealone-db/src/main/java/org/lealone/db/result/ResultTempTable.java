@@ -144,18 +144,24 @@ public class ResultTempTable implements ResultExternal {
 
     @Override
     public int addRow(Value[] values) {
-        Row row = convertToRow(values);
-        if (distinct) {
-            Cursor cursor = find(row);
-            if (cursor == null) {
+        // 写入临时表的记录不写undoLog
+        session.setUndoLogEnabled(false);
+        try {
+            Row row = convertToRow(values);
+            if (distinct) {
+                Cursor cursor = find(row);
+                if (cursor == null) {
+                    table.addRow(session, row);
+                    rowCount++;
+                }
+            } else {
                 table.addRow(session, row);
                 rowCount++;
             }
-        } else {
-            table.addRow(session, row);
-            rowCount++;
+            return rowCount;
+        } finally {
+            session.setUndoLogEnabled(true);
         }
-        return rowCount;
     }
 
     @Override

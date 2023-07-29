@@ -78,7 +78,7 @@ public class StandardTable extends Table {
         }
         globalTemporary = data.globalTemporary;
 
-        if (data.isMemoryTable())
+        if (!data.persistData && data.isMemoryTable())
             parameters.put(StorageSetting.IN_MEMORY.name(), "1");
 
         isHidden = data.isHidden;

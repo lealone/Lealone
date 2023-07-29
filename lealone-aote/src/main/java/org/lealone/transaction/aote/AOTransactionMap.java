@@ -520,14 +520,15 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     private K append0(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
+        final Session session = transaction.getSession();
+        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
         TransactionalValue newTV = new TransactionalValue(value, transaction);
         if (handler != null) {
-            final Session session = transaction.getSession();
             DirtyPageHandler<AsyncResult<K>> dirtyPageHandler = //
                     new DirtyPageHandler<AsyncResult<K>>() {
                         @Override
                         public void handle(AsyncResult<K> ar) {
-                            if (ar.isSucceeded())
+                            if (ar.isSucceeded() && isUndoLogEnabled)
                                 transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
                             handler.handle(ar);
                         }
@@ -545,7 +546,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             K key = map.append(newTV);
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-            transaction.undoLog.add(getName(), key, null, newTV);
+            if (isUndoLogEnabled)
+                transaction.undoLog.add(getName(), key, null, newTV);
             return key;
         }
     }
