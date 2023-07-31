@@ -135,7 +135,6 @@ public class YieldableSelect extends YieldableQueryBase {
                         } else {
                             queryOperator = new QGroup(select);
                         }
-                        to = result;
                     }
                 } else if (select.isDistinctQuery) {
                     queryOperator = new QDistinct(select);
@@ -186,10 +185,6 @@ public class YieldableSelect extends YieldableQueryBase {
         if (select.distinct && !select.isDistinctQuery) {
             result = createLocalResult(result);
             result.setDistinct();
-        }
-        if (select.randomAccessResult) {
-            result = createLocalResult(result);
-            // result.setRandomAccess(); //见H2的Mainly MVStore improvements的提交记录
         }
         if (select.isGroupQuery && !select.isGroupSortedQuery) {
             result = createLocalResult(result);

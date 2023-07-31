@@ -65,11 +65,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     protected boolean distinct;
 
-    /**
-     * Whether the result needs to support random access.
-     */
-    protected boolean randomAccessResult;
-
     // 存放原始表达式的Alias和ColumnName，用于给客户端返回最原始的信息
     protected ArrayList<String[]> rawExpressionInfoList;
     protected ArrayList<Expression> expressions;
@@ -219,15 +214,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
 
     public boolean isDistinct() {
         return distinct;
-    }
-
-    /**
-     * Whether results need to support random access.
-     *
-     * @param b the new value
-     */
-    public void setRandomAccessResult(boolean b) {
-        randomAccessResult = b;
     }
 
     @Override

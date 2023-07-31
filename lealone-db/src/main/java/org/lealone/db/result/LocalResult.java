@@ -42,7 +42,6 @@ public class LocalResult implements Result, ResultTarget {
     private ResultExternal external;
     private int diskOffset;
     private boolean distinct;
-    private boolean randomAccess;
     private boolean closed;
 
     /**
@@ -108,7 +107,6 @@ public class LocalResult implements Result, ResultTarget {
         copy.sort = this.sort;
         copy.distinctRows = this.distinctRows;
         copy.distinct = distinct;
-        copy.randomAccess = randomAccess;
         copy.currentRow = null;
         copy.offset = 0;
         copy.limit = -1;
@@ -132,13 +130,6 @@ public class LocalResult implements Result, ResultTarget {
     public void setDistinct() {
         distinct = true;
         distinctRows = ValueHashMap.newInstance();
-    }
-
-    /**
-     * Random access is required (containsDistinct).
-     */
-    public void setRandomAccess() {
-        this.randomAccess = true;
     }
 
     /**

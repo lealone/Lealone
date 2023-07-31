@@ -502,6 +502,7 @@ public class ServerSession extends SessionBase {
             AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
         if (--executingStatements > 0) {
             statement.close();
+            setStatus(SessionStatus.STATEMENT_RUNNING); // 切回RUNNING状态
             return;
         }
         boolean asyncCommit = false;
