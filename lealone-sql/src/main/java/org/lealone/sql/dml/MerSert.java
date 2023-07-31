@@ -13,6 +13,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
@@ -30,7 +31,6 @@ public abstract class MerSert extends ManipulationStatement {
     protected Table table;
     protected Column[] columns;
     protected Query query;
-    protected boolean insertFromSelect;
     protected final ArrayList<Expression[]> list = new ArrayList<>();
 
     public MerSert(ServerSession session) {
@@ -52,10 +52,6 @@ public abstract class MerSert extends ManipulationStatement {
 
     public void setQuery(Query query) {
         this.query = query;
-    }
-
-    public void setInsertFromSelect(boolean value) {
-        this.insertFromSelect = value;
     }
 
     public void addRow(Expression[] expr) {
@@ -138,14 +134,14 @@ public abstract class MerSert extends ManipulationStatement {
         return this;
     }
 
-    protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase {
+    protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase
+            implements ResultTarget {
 
         final MerSert statement;
         final Table table;
         final int listSize;
 
         int index;
-        Result rows;
         YieldableBase<Result> yieldableQuery;
 
         public YieldableMerSert(MerSert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
@@ -153,6 +149,34 @@ public abstract class MerSert extends ManipulationStatement {
             this.statement = statement;
             table = statement.table;
             listSize = statement.list.size();
+        }
+
+        @Override
+        protected boolean startInternal() {
+            statement.setCurrentRowNumber(0);
+            if (statement.query != null) {
+                yieldableQuery = statement.query.createYieldableQuery(0, false, null, this);
+            }
+            return false;
+        }
+
+        @Override
+        protected void executeLoopUpdate() {
+            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
+            if (yieldableQuery == null) {
+                while (pendingException == null && index < listSize) {
+                    merSert(createNewRow());
+                    if (yieldIfNeeded(++index)) {
+                        return;
+                    }
+                }
+                onLoopEnd();
+            } else {
+                yieldableQuery.run();
+                if (yieldableQuery.isStopped()) {
+                    onLoopEnd();
+                }
+            }
         }
 
         protected Row createNewRow() {
@@ -209,6 +233,23 @@ public abstract class MerSert extends ManipulationStatement {
                     onPendingOperationComplete(ar);
                 });
             }
+        }
+
+        protected abstract void merSert(Row row);
+
+        // 以下实现ResultTarget接口，可以在执行查询时，边查边增加新记录
+        @Override
+        public boolean addRow(Value[] values) {
+            merSert(createNewRow(values));
+            if (yieldIfNeeded(updateCount.get() + 1)) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public int getRowCount() {
+            return updateCount.get();
         }
     }
 }

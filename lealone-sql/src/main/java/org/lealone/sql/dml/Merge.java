@@ -132,11 +132,7 @@ public class Merge extends MerSert {
             session.getUser().checkRight(table, Right.INSERT);
             session.getUser().checkRight(table, Right.UPDATE);
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
-            statement.setCurrentRowNumber(0);
-            if (statement.query != null) {
-                yieldableQuery = statement.query.createYieldableQuery(0, false, null, null);
-            }
-            return false;
+            return super.startInternal();
         }
 
         @Override
@@ -145,36 +141,7 @@ public class Merge extends MerSert {
         }
 
         @Override
-        protected void executeLoopUpdate() {
-            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
-            if (yieldableQuery == null) {
-                while (pendingException == null && index < listSize) {
-                    merge(createNewRow());
-                    if (yieldIfNeeded(++index)) {
-                        return;
-                    }
-                }
-                onLoopEnd();
-            } else {
-                if (rows == null) {
-                    yieldableQuery.run();
-                    if (!yieldableQuery.isStopped()) {
-                        return;
-                    }
-                    rows = yieldableQuery.getResult();
-                }
-                while (pendingException == null && rows.next()) {
-                    merge(createNewRow(rows.currentRow()));
-                    if (yieldIfNeeded(++index)) {
-                        return;
-                    }
-                }
-                rows.close();
-                onLoopEnd();
-            }
-        }
-
-        private void merge(Row row) {
+        protected void merSert(Row row) {
             ArrayList<Parameter> k = mergeStatement.update.getParameters();
             for (int i = 0; i < statement.columns.length; i++) {
                 Column col = statement.columns[i];

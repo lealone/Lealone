@@ -10,10 +10,9 @@ import org.lealone.db.api.Trigger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
-import org.lealone.db.result.ResultTarget;
+import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -43,9 +42,6 @@ public class Insert extends MerSert {
             buff.append(c.getSQL());
         }
         buff.append(")\n");
-        if (insertFromSelect) {
-            buff.append("DIRECT ");
-        }
         getValuesPlanSQL(buff);
         return buff.toString();
     }
@@ -61,7 +57,7 @@ public class Insert extends MerSert {
         return new YieldableInsert(this, asyncHandler);
     }
 
-    private static class YieldableInsert extends YieldableMerSert implements ResultTarget {
+    private static class YieldableInsert extends YieldableMerSert {
         public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
         }
@@ -72,12 +68,7 @@ public class Insert extends MerSert {
                 return true;
             session.getUser().checkRight(table, Right.INSERT);
             table.fire(session, Trigger.INSERT, true);
-            statement.setCurrentRowNumber(0);
-            if (statement.query != null) {
-                yieldableQuery = statement.query.createYieldableQuery(0, false, null,
-                        statement.insertFromSelect ? this : null);
-            }
-            return false;
+            return super.startInternal();
         }
 
         @Override
@@ -86,55 +77,8 @@ public class Insert extends MerSert {
         }
 
         @Override
-        protected void executeLoopUpdate() {
-            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
-            if (yieldableQuery == null) {
-                while (pendingException == null && index < listSize) {
-                    addRowInternal(createNewRow());
-                    if (yieldIfNeeded(++index)) {
-                        return;
-                    }
-                }
-                onLoopEnd();
-            } else {
-                if (statement.insertFromSelect) {
-                    yieldableQuery.run();
-                    if (yieldableQuery.isStopped()) {
-                        onLoopEnd();
-                    }
-                } else {
-                    if (rows == null) {
-                        yieldableQuery.run();
-                        if (!yieldableQuery.isStopped()) {
-                            return;
-                        }
-                        rows = yieldableQuery.getResult();
-                    }
-                    while (pendingException == null && rows.next()) {
-                        Value[] values = rows.currentRow();
-                        if (addRow(values)) {
-                            return;
-                        }
-                    }
-                    rows.close();
-                    onLoopEnd();
-                }
-            }
-        }
-
-        // 以下实现ResultTarget接口，可以在执行查询时，边查边增加新记录
-        @Override
-        public boolean addRow(Value[] values) {
-            addRowInternal(createNewRow(values));
-            if (yieldIfNeeded(updateCount.get() + 1)) {
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public int getRowCount() {
-            return updateCount.get();
+        protected void merSert(Row row) {
+            addRowInternal(row);
         }
     }
 }

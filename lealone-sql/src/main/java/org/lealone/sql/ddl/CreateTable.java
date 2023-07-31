@@ -221,7 +221,6 @@ public class CreateTable extends SchemaStatement {
                 Insert insert = new Insert(session);
                 insert.setQuery(asQuery);
                 insert.setTable(table);
-                insert.setInsertFromSelect(true);
                 insert.prepare();
                 insert.update();
             }
