@@ -268,7 +268,7 @@ public class SelectUnion extends Query implements ISelectUnion {
 
     @Override
     public int getPriority() {
-        return Math.min(left.getPriority(), left.getPriority());
+        return Math.min(left.getPriority(), right.getPriority());
     }
 
     @Override
