@@ -7,6 +7,7 @@ package org.lealone.sql.dml;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.DataHandler;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Row;
@@ -143,7 +144,20 @@ public abstract class UpDel extends ManipulationStatement {
 
         @Override
         protected void executeLoopUpdate() {
-            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
+            if (table.containsLargeObject()) {
+                DataHandler dh = session.getDataHandler();
+                session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
+                try {
+                    executeLoopUpdate0();
+                } finally {
+                    session.setDataHandler(dh);
+                }
+            } else {
+                executeLoopUpdate0();
+            }
+        }
+
+        private void executeLoopUpdate0() {
             while (tableIterator.next() && pendingException == null) {
                 if (yieldIfNeeded(++loopCount)) {
                     return;

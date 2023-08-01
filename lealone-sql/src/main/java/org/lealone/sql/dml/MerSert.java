@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
+import org.lealone.db.DataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -162,7 +163,20 @@ public abstract class MerSert extends ManipulationStatement {
 
         @Override
         protected void executeLoopUpdate() {
-            session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
+            if (table.containsLargeObject()) {
+                DataHandler dh = session.getDataHandler();
+                session.setDataHandler(table.getDataHandler()); // lob字段通过FILE_READ函数赋值时会用到
+                try {
+                    executeLoopUpdate0();
+                } finally {
+                    session.setDataHandler(dh);
+                }
+            } else {
+                executeLoopUpdate0();
+            }
+        }
+
+        private void executeLoopUpdate0() {
             if (yieldableQuery == null) {
                 while (pendingException == null && index < listSize) {
                     merSert(createNewRow());

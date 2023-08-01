@@ -125,6 +125,7 @@ public class ServerSession extends SessionBase {
         this.id = id;
         this.lockTimeout = database.getSettings().defaultLockTimeout;
         this.currentSchemaName = Constants.SCHEMA_MAIN;
+        currentDataHandler = database;
     }
 
     @Override
@@ -926,7 +927,7 @@ public class ServerSession extends SessionBase {
 
     @Override
     public DataHandler getDataHandler() {
-        return currentDataHandler != null ? currentDataHandler : database;
+        return currentDataHandler;
     }
 
     public void setDataHandler(DataHandler dh) {
