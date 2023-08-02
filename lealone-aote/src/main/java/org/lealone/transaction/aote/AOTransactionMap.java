@@ -20,7 +20,6 @@ import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.page.DirtyPageHandler;
 import org.lealone.storage.page.IPage;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
@@ -198,15 +197,13 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public K higherKey(K key) {
-        // TODO 处理事务
-        // while (true) {
-        // K k = map.higherKey(key);
-        // if (k == null || get(k) != null) {
-        // return k;
-        // }
-        // key = k;
-        // }
-        return map.higherKey(key);
+        while (true) {
+            K k = map.higherKey(key);
+            if (k == null || get(k) != null) {
+                return k;
+            }
+            key = k;
+        }
     }
 
     @Override
@@ -352,7 +349,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public void clear() {
-        // TODO 可以rollback吗?
         map.clear();
     }
 
@@ -457,54 +453,42 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
-        final TransactionalValue newTV;
-        final UndoLogRecord r;
-        final Session session = transaction.getSession();
+        TransactionalValue newTV;
+        UndoLogRecord r;
+        Session session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
-            newTV = new TransactionalValue(value, transaction);
+            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
             r = transaction.undoLog.add(getName(), key, null, newTV);
         } else {
-            newTV = new TransactionalValue(value);
+            newTV = new TransactionalValue(value); // 内部没有增加行锁
             r = null;
         }
-
         AsyncCallback<Integer> ac = new AsyncCallback<>();
-        DirtyPageHandler<AsyncResult<TransactionalValue>> handler = //
-                new DirtyPageHandler<AsyncResult<TransactionalValue>>() {
-                    @Override
-                    public void handle(AsyncResult<TransactionalValue> ar) {
-                        if (ar.isSucceeded()) {
-                            TransactionalValue old = ar.getResult();
-                            if (old != null) {
-                                // 在提交或回滚时直接忽略即可
-                                if (r != null)
-                                    r.setUndone(true);
-                                // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                                if (old.getValue() == null) {
-                                    old.setValue(value);
-                                    if (r != null)
-                                        transaction.undoLog.add(getName(), key, old.getOldValue(), old);
-                                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                                } else {
-                                    ac.setAsyncResult((Throwable) null);
-                                }
-                            } else {
-                                ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
-                            }
-                        } else {
-                            if (r != null)
-                                r.setUndone(true);
-                            ac.setAsyncResult(ar.getCause());
-                        }
+        AsyncHandler<AsyncResult<TransactionalValue>> handler = ar -> {
+            if (ar.isSucceeded()) {
+                TransactionalValue old = ar.getResult();
+                if (old != null) {
+                    // 在提交或回滚时直接忽略即可
+                    if (r != null)
+                        r.setUndone(true);
+                    // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
+                    if (old.getValue() == null) {
+                        old.setValue(value);
+                        if (r != null)
+                            transaction.undoLog.add(getName(), key, old.getOldValue(), old);
+                        ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                    } else {
+                        ac.setAsyncResult((Throwable) null);
                     }
-
-                    @Override
-                    public void addDirtyPage(IPage page) {
-                        if (session != null) {
-                            session.addDirtyPage(page);
-                        }
-                    }
-                };
+                } else {
+                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                }
+            } else {
+                if (r != null)
+                    r.setUndone(true);
+                ac.setAsyncResult(ar.getCause());
+            }
+        };
         map.putIfAbsent(key, newTV, handler);
         return ac;
     }
@@ -520,27 +504,19 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     private K append0(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
-        final Session session = transaction.getSession();
+        Session session = transaction.getSession();
         boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
-        TransactionalValue newTV = new TransactionalValue(value, transaction);
+        TransactionalValue newTV;
+        if (isUndoLogEnabled)
+            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
+        else
+            newTV = new TransactionalValue(value); // 内部没有增加行锁
         if (handler != null) {
-            DirtyPageHandler<AsyncResult<K>> dirtyPageHandler = //
-                    new DirtyPageHandler<AsyncResult<K>>() {
-                        @Override
-                        public void handle(AsyncResult<K> ar) {
-                            if (ar.isSucceeded() && isUndoLogEnabled)
-                                transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
-                            handler.handle(ar);
-                        }
-
-                        @Override
-                        public void addDirtyPage(IPage page) {
-                            if (session != null) {
-                                session.addDirtyPage(page);
-                            }
-                        }
-                    };
-            map.append(newTV, dirtyPageHandler);
+            map.append(newTV, ar -> {
+                if (isUndoLogEnabled && ar.isSucceeded())
+                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
+                handler.handle(ar);
+            });
             return null;
         } else {
             K key = map.append(newTV);

@@ -7,9 +7,9 @@ package org.lealone.storage.aose.btree.page;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.page.DirtyPageHandler;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -98,8 +98,10 @@ public abstract class PageOperations {
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
             if (resultHandler != null) {
-                if (resultHandler instanceof DirtyPageHandler)
-                    ((DirtyPageHandler<?>) resultHandler).addDirtyPage(p);
+                Session s = poHandler.getSession();
+                if (s != null) {
+                    s.addDirtyPage(p);
+                }
                 resultHandler.handle(new AsyncResult<>(result));
             }
         }
