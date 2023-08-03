@@ -501,9 +501,12 @@ public class ServerSession extends SessionBase {
 
     public <T> void stopCurrentCommand(PreparedSQLStatement statement,
             AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
-        if (--executingStatements > 0) {
+        // 执行rollback命令时executingStatements会置0，然后再执行stopCurrentCommand
+        // 此时executingStatements不需要再减了
+        if (executingStatements > 0 && --executingStatements > 0) {
             statement.close();
-            setStatus(SessionStatus.STATEMENT_RUNNING); // 切回RUNNING状态
+            // 增加记录时，如果触发TableAnalyzer，下面的语句会导致错误
+            // setStatus(SessionStatus.STATEMENT_RUNNING); // 切回RUNNING状态
             return;
         }
         boolean asyncCommit = false;

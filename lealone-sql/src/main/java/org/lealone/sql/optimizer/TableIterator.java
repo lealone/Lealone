@@ -61,19 +61,17 @@ public class TableIterator {
     public int tryLockRow(int[] lockColumns) {
         Row oldRow = getRow();
         if (oldRow == null) { // 已经删除了
-            next();
             return -1;
         }
         int ret = table.tryLockRow(session, oldRow, lockColumns);
         if (ret < 0) { // 已经删除了
-            next();
             return -1;
         } else if (ret == 0) { // 被其他事务锁住了
             this.oldRow = oldRow;
             return 0;
         }
         if (table.isRowChanged(oldRow)) {
-            tableFilter.rebuildSearchRow(session, oldRow);
+            this.oldRow = oldRow;
             return -1;
         }
         return 1;

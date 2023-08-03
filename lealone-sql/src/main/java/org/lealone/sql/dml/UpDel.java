@@ -159,9 +159,8 @@ public abstract class UpDel extends ManipulationStatement {
 
         private void executeLoopUpdate0() {
             while (tableIterator.next() && pendingException == null) {
-                if (yieldIfNeeded(++loopCount)) {
-                    return;
-                }
+                // 不能直接return，执行完一次后再return，否则执行next()得到的记录被跳过了，会产生严重的问题
+                boolean yield = yieldIfNeeded(++loopCount);
                 if (conditionEvaluator.getBooleanValue()) {
                     int ret = tableIterator.tryLockRow(getUpdateColumnIndexes());
                     if (ret < 0) {
@@ -176,6 +175,8 @@ public abstract class UpDel extends ManipulationStatement {
                         }
                     }
                 }
+                if (yield)
+                    return;
             }
             onLoopEnd();
         }
