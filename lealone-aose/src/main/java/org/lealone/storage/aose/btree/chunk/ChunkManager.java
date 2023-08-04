@@ -151,7 +151,7 @@ public class ChunkManager {
         idToChunkFileNameMap.put(c.id, c.fileName);
     }
 
-    void removeUnusedChunk(Chunk c) {
+    synchronized void removeUnusedChunk(Chunk c) {
         c.fileStorage.close();
         c.fileStorage.delete();
         chunkIds.clear(c.id);
