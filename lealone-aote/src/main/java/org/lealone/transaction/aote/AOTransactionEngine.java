@@ -383,11 +383,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 try {
                     semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                     semaphore.drainPermits();
-                } catch (InterruptedException e) {
-                    throw new AssertionError();
+                } catch (Throwable t) {
+                    logger.warn("Semaphore tryAcquire exception", t);
                 }
+
                 try {
-                    gc();
                     if (!forceCheckpointTasks.isEmpty()) {
                         ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
                         forceCheckpointTasks.removeAll(tasks);
@@ -396,8 +396,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     } else {
                         checkpoint(false);
                     }
-                } catch (Exception e) {
-                    logger.error("Failed to execute checkpoint", e);
+                } catch (Throwable t) {
+                    logger.error("Failed to execute checkpoint", t);
+                }
+
+                try {
+                    gc();
+                } catch (Throwable t) {
+                    logger.error("Failed to execute gc", t);
                 }
             }
             isRunning = false;
