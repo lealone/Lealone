@@ -147,7 +147,17 @@ public class PageReference {
                 p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
                 bs.getBTreeGC().addUsedMemory(p.getMemory());
             } else {
-                p = bs.readPage(pInfo, this);
+                try {
+                    p = bs.readPage(pInfo, this);
+                } catch (RuntimeException e) {
+                    // 执行Compact时如果被重写的chunk文件已经删除了，此时正好用老的pos读page会导致异常
+                    // 直接用Compact线程读好的page即可
+                    p = this.pInfo.page;
+                    if (p != null)
+                        return p;
+                    else
+                        throw e;
+                }
             }
             // p有可能为null，那就再读一次
             return p != null ? p : getOrReadPage();
