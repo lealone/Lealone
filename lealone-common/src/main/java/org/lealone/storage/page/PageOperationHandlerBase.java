@@ -87,6 +87,7 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
                         this.size.decrementAndGet();
                     }
                 } catch (Throwable e) {
+                    this.size.decrementAndGet();
                     getLogger().warn("Failed to run page operation: " + po, e);
                 }
                 break;

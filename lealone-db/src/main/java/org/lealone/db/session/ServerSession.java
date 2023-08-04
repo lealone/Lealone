@@ -1491,12 +1491,14 @@ public class ServerSession extends SessionBase {
 
     @Override
     public boolean isQueryCommand() {
-        return currentCommand != null && currentCommand.isQuery();
+        PreparedSQLStatement c = currentCommand;
+        return c != null && c.isQuery();
     }
 
     @Override
     public boolean isForUpdate() {
-        return currentCommand != null && (!currentCommand.isQuery() || currentCommand.isForUpdate());
+        PreparedSQLStatement c = currentCommand;
+        return c != null && (!c.isQuery() || c.isForUpdate());
     }
 
     private boolean undoLogEnabled = true;

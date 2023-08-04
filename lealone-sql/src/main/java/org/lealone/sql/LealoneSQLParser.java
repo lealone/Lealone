@@ -4074,19 +4074,19 @@ public class LealoneSQLParser implements SQLParser {
         if (readIf("LOCAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, false, cached);
+            return parseCreateTable(true, false, cached, !memory);
         } else if (readIf("GLOBAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, !memory);
         } else if (readIf("TEMP") || readIf("TEMPORARY")) {
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, !memory);
         } else if (readIf("TABLE")) {
             if (!cached && !memory) {
                 cached = database.getDefaultTableType() == Table.TYPE_CACHED;
             }
-            return parseCreateTable(false, false, cached);
+            return parseCreateTable(false, false, cached, !memory);
         } else {
             boolean hash = false, primaryKey = false, unique = false;
             String indexName = null;
@@ -5773,7 +5773,8 @@ public class LealoneSQLParser implements SQLParser {
         } while (readIfMore());
     }
 
-    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
+    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
+            boolean persistData) {
         boolean ifNotExists = readIfNotExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {
@@ -5785,6 +5786,7 @@ public class LealoneSQLParser implements SQLParser {
         Schema schema = getSchema();
         CreateTable command = new CreateTable(session, schema);
         command.setPersistIndexes(persistIndexes);
+        command.setPersistData(persistData);
         command.setTemporary(temp);
         command.setGlobalTemporary(globalTemp);
         command.setIfNotExists(ifNotExists);

@@ -88,10 +88,12 @@ public class PageReference {
             "pInfo");
 
     private final BTreeStorage bs;
+    private final boolean inMemory;
     private volatile PageInfo pInfo; // 已经确保不会为null
 
     public PageReference(BTreeStorage bs) {
         this.bs = bs;
+        inMemory = bs.isInMemory();
         pInfo = new PageInfo();
     }
 
@@ -125,7 +127,8 @@ public class PageReference {
 
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
-        if (lockOwner == null) {
+        boolean ok = lockOwner == null && !inMemory;
+        if (ok) {
             long tid = getTid();
             if (tid > 0) {
                 if (tids.add(tid))
@@ -135,7 +138,7 @@ public class PageReference {
         PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
-            if (lockOwner == null) // 避免反复调用
+            if (ok) // 避免反复调用
                 pInfo.updateTime();
             return p;
         } else {

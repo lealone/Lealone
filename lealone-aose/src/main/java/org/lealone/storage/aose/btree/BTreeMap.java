@@ -406,7 +406,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        btreeStorage.getBTreeGC().gc(currentTransactions);
+        if (!inMemory)
+            btreeStorage.getBTreeGC().gc(currentTransactions);
     }
 
     @Override

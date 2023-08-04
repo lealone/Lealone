@@ -377,6 +377,10 @@ public class BTreeStorage {
         }
     }
 
+    public boolean isInMemory() {
+        return map.isInMemory();
+    }
+
     public FileStorage getFileStorage(int chunkId) {
         String chunkFileName = mapBaseDir + File.separator + chunkManager.getChunkFileName(chunkId);
         return openFileStorage(chunkFileName);
