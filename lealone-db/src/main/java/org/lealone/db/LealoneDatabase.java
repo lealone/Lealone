@@ -15,14 +15,17 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * 最顶层的数据库，用于管理所有应用创建的数据库
  * 
  * @author zhh
  */
-public class LealoneDatabase extends Database {
+public class LealoneDatabase extends Database
+        implements org.lealone.transaction.TransactionEngine.GcTask {
 
     // ID固定为0
     public static final int ID = 0;
@@ -54,6 +57,7 @@ public class LealoneDatabase extends Database {
 
         init();
         createRootUserIfNotExists();
+        getTransactionEngine().addGcTask(this);
     }
 
     public synchronized Database createEmbeddedDatabase(String name, ConnectionInfo ci) {
@@ -118,6 +122,7 @@ public class LealoneDatabase extends Database {
     @Override
     public synchronized Database copy() {
         INSTANCE = new LealoneDatabase();
+        getTransactionEngine().removeGcTask(this);
         return INSTANCE;
     }
 
@@ -125,5 +130,21 @@ public class LealoneDatabase extends Database {
     public static void checkAdminRight(ServerSession session, String stmt) {
         if (!(LealoneDatabase.getInstance() == session.getDatabase() && session.getUser().isAdmin()))
             throw DbException.get(ErrorCode.LEALONE_DATABASE_ADMIN_RIGHT_1, stmt);
+    }
+
+    @Override
+    public void gc(TransactionEngine te) {
+        for (Database db : getDatabasesMap().values()) {
+            for (TransactionalDbObjects tObjects : db.getTransactionalDbObjectsArray()) {
+                if (tObjects != null)
+                    tObjects.gc(te);
+            }
+            for (Schema schema : db.getAllSchemas()) {
+                for (TransactionalDbObjects tObjects : schema.getTransactionalDbObjectsArray()) {
+                    if (tObjects != null)
+                        tObjects.gc(te);
+                }
+            }
+        }
     }
 }

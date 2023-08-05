@@ -751,4 +751,8 @@ public class Schema extends DbObjectBase {
         }
         throw DbException.convert(new NullPointerException("table engine is null"));
     }
+
+    public TransactionalDbObjects[] getTransactionalDbObjectsArray() {
+        return dbObjectsArray;
+    }
 }

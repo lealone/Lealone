@@ -529,7 +529,7 @@ public class StandardTable extends Table {
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         if (containsLargeObject()) {
             if (dataHandler.isTableLobStorage()) {
-                getDatabase().getTransactionEngine().removeLobStorage(dataHandler.getLobStorage());
+                getDatabase().getTransactionEngine().removeGcTask(dataHandler.getLobStorage());
                 dataHandler.getLobStorage().close();
             } else {
                 dataHandler.getLobStorage().removeAllForTable(getId());

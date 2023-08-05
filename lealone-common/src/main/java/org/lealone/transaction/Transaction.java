@@ -32,6 +32,10 @@ public interface Transaction {
 
     int getIsolationLevel();
 
+    default boolean isRepeatableRead() {
+        return getIsolationLevel() >= Transaction.IL_REPEATABLE_READ;
+    }
+
     long getTransactionId();
 
     boolean isAutoCommit();

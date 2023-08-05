@@ -5,8 +5,9 @@
  */
 package org.lealone.transaction;
 
+import java.util.concurrent.ConcurrentSkipListMap;
+
 import org.lealone.db.PluggableEngine;
-import org.lealone.storage.lob.LobStorage;
 
 public interface TransactionEngine extends PluggableEngine {
 
@@ -26,9 +27,21 @@ public interface TransactionEngine extends PluggableEngine {
         return null;
     }
 
-    default void addLobStorage(LobStorage lobStorage) {
+    default boolean containsRepeatableReadTransactions() {
+        return false;
     }
 
-    default void removeLobStorage(LobStorage lobStorage) {
+    default ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
+        return null;
+    }
+
+    default void addGcTask(GcTask gcTask) {
+    }
+
+    default void removeGcTask(GcTask gcTask) {
+    }
+
+    interface GcTask {
+        void gc(TransactionEngine te);
     }
 }

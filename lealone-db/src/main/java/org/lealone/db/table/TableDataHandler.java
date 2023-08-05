@@ -29,7 +29,7 @@ public class TableDataHandler implements DataHandler {
         StorageBuilder storageBuilder = db.getStorageBuilder(storageEngine, storagePath);
         Storage storage = storageBuilder.openStorage();
         lobStorage = storageEngine.getLobStorage(this, storage);
-        db.getTransactionEngine().addLobStorage(lobStorage);
+        db.getTransactionEngine().addGcTask(lobStorage);
     }
 
     @Override

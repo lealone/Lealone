@@ -29,7 +29,6 @@ import org.lealone.db.SysProperties;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
@@ -41,7 +40,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private static final Logger logger = LoggerFactory.getLogger(AOTransactionEngine.class);
 
-    private final CopyOnWriteArrayList<LobStorage> lobStorages = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<GcTask> gcTasks = new CopyOnWriteArrayList<>();
 
     // key: mapName
     private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps //
@@ -111,6 +110,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return maps.get(mapName);
     }
 
+    @Override
     public boolean containsRepeatableReadTransactions() {
         return rrTransactionCount.get() > 0;
     }
@@ -122,6 +122,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 maxTid = t.getTransactionId();
         }
         return maxTid;
+    }
+
+    @Override
+    public ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
+        return currentTransactions;
     }
 
     ///////////////////// 实现TransactionEngine接口 /////////////////////
@@ -223,13 +228,13 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public void addLobStorage(LobStorage lobStorage) {
-        lobStorages.add(lobStorage);
+    public void addGcTask(GcTask gcTask) {
+        gcTasks.add(gcTask);
     }
 
     @Override
-    public void removeLobStorage(LobStorage lobStorage) {
-        lobStorages.remove(lobStorage);
+    public void removeGcTask(GcTask gcTask) {
+        gcTasks.remove(gcTask);
     }
 
     ///////////////////// 实现StorageEventListener接口 /////////////////////
@@ -247,8 +252,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private void gc() {
         gcMaps();
-        gcLobStorages();
         gcTValues();
+        executeGcTasks();
     }
 
     private void gcMaps() {
@@ -258,9 +263,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    private void gcLobStorages() {
-        for (LobStorage lobStorage : lobStorages) {
-            lobStorage.gc(currentTransactions);
+    private void executeGcTasks() {
+        for (GcTask gcTask : gcTasks) {
+            gcTask.gc(this);
         }
     }
 

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.session.ServerSession;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 //只存放同一种DbObject的多个实例，支持多版本
 //需要配合DbObjectLock使用，只允许一个事务修改
@@ -110,5 +111,33 @@ public class TransactionalDbObjects {
             old = old.old;
         }
         version = 0;
+    }
+
+    public void gc(TransactionEngine te) {
+        if (old == null)
+            return;
+        if (!te.containsRepeatableReadTransactions()) {
+            old = null;
+            return;
+        }
+        long minTid = Long.MAX_VALUE;
+        for (Transaction t : te.currentTransactions().values()) {
+            if (t.isRepeatableRead() && t.getTransactionId() < minTid)
+                minTid = t.getTransactionId();
+        }
+        if (minTid != Long.MAX_VALUE) {
+            TransactionalDbObjects last = this;
+            TransactionalDbObjects old = this.old;
+            while (old != null) {
+                if (old.version < minTid) {
+                    last.old = null;
+                    break;
+                }
+                last = old;
+                old = old.old;
+            }
+        } else {
+            old = null;
+        }
     }
 }

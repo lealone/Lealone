@@ -8,11 +8,10 @@ package org.lealone.storage.lob;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.db.value.ValueLob;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A mechanism to store and retrieve lob data.
@@ -20,7 +19,7 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public interface LobStorage {
+public interface LobStorage extends org.lealone.transaction.TransactionEngine.GcTask {
 
     /**
      * The table id for session variables (LOBs not assigned to a table).
@@ -35,7 +34,8 @@ public interface LobStorage {
     default void save() {
     }
 
-    default void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    @Override
+    default void gc(TransactionEngine te) {
     }
 
     default void close() {

@@ -102,10 +102,6 @@ public class AOTransaction implements Transaction {
         return isolationLevel;
     }
 
-    public boolean isRepeatableRead() {
-        return isolationLevel >= Transaction.IL_REPEATABLE_READ;
-    }
-
     @Override
     public long getTransactionId() {
         return transactionId;

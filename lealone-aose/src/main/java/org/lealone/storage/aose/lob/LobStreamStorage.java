@@ -32,6 +32,7 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * This class stores LOB objects in the database, in maps.
@@ -79,8 +80,10 @@ public class LobStreamStorage implements LobStorage {
     }
 
     @Override
-    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    public void gc(TransactionEngine te) {
         if (lobMap != null) {
+            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions = te
+                    .currentTransactions();
             lobMap.gc(currentTransactions);
             lobStreamMap.gc(currentTransactions);
         }

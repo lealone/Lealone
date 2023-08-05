@@ -1866,7 +1866,7 @@ public class Database implements DataHandler, DbObject {
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null) {
             setLobStorage(storageEngine.getLobStorage(this, storage));
-            transactionEngine.addLobStorage(lobStorage);
+            transactionEngine.addGcTask(lobStorage);
         }
         return storage;
     }
@@ -2043,7 +2043,7 @@ public class Database implements DataHandler, DbObject {
 
     public void drop() {
         if (lobStorage != null) {
-            getTransactionEngine().removeLobStorage(lobStorage);
+            getTransactionEngine().removeGcTask(lobStorage);
         }
         if (getSessionCount() > 0) {
             setDeleteFilesOnDisconnect(true);
@@ -2069,5 +2069,9 @@ public class Database implements DataHandler, DbObject {
 
     public void removeDataHandler(int tableId) {
         dataHandlers.remove(tableId);
+    }
+
+    public TransactionalDbObjects[] getTransactionalDbObjectsArray() {
+        return dbObjectsArray;
     }
 }
