@@ -6,7 +6,6 @@
 package org.lealone.transaction.aote;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -79,10 +78,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return currentTransactions.containsKey(tid);
     }
 
-    Collection<AOTransaction> getCurrentTransactions() {
-        return currentTransactions.values();
-    }
-
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
         if (maps.putIfAbsent(map.getName(), map) == null) {
             map.getStorage().registerEventListener(this);
@@ -125,7 +120,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
+    public ConcurrentSkipListMap<Long, ? extends AOTransaction> currentTransactions() {
         return currentTransactions;
     }
 

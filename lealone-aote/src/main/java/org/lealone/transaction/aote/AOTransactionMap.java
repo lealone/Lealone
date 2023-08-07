@@ -21,12 +21,12 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.page.IPage;
-import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapCursor;
+import org.lealone.transaction.aote.log.UndoLog;
 import org.lealone.transaction.aote.log.UndoLogRecord;
 
 public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
@@ -222,60 +222,23 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
      *
      * @return the size
      */
+    // 最初的实现方案是遍历UndoLog的记录来确定size，但是UndoLog是为单线程设计的，所以存在并发bug，
+    // 新的方案当存在多个事务时虽然慢了一些，但是实现不用搞得很复杂，能减少错误
     @Override
     public long size() {
-        long sizeRaw = map.size();
         long undoLogSize = 0;
-        for (AOTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-            undoLogSize += t.undoLog.size();
+        for (AOTransaction t : transaction.transactionEngine.currentTransactions().values()) {
+            UndoLog ul = t.undoLog;
+            if (ul != null)
+                undoLogSize += ul.size();
         }
-        if (undoLogSize == 0) {
-            return sizeRaw;
-        }
-        if (undoLogSize > sizeRaw) {
-            // the undo log is larger than the map -
-            // count the entries of the map
-            long size = 0;
-            TransactionMapCursor<?, ?> cursor = cursor();
-            while (cursor.next()) {
-                size++;
-            }
-            return size;
-        }
-        // the undo log is smaller than the map -
-        // scan the undo log and subtract invisible entries
-        // re-fetch in case any transaction was committed now
-        long size = map.size();
-        String mapName = getName();
-        Storage storage = map.getStorage();
-        String tmpMapName = storage.nextTemporaryMapName();
-        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(),
-                new ObjectDataType(), null);
-        try {
-            for (AOTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-                UndoLogRecord r = t.undoLog.getFirst();
-                while (r != null) {
-                    String m = r.getMapName();
-                    if (!mapName.equals(m)) {
-                        r = r.getNext();
-                        // a different map - ignore
-                        continue;
-                    }
-                    @SuppressWarnings("unchecked")
-                    K key = (K) r.getKey();
-                    if (get(key) == null) {
-                        Integer old = temp.put(key, 1);
-                        // count each key only once (there might be multiple
-                        // changes for the same key)
-                        if (old == null) {
-                            size--;
-                        }
-                    }
-                    r = r.getNext();
-                }
-            }
-        } finally {
-            temp.remove();
+        if (undoLogSize == 0)
+            return map.size(); // 存在的多个事务都是只读操作时可以安全返回原表的size
+
+        long size = 0;
+        TransactionMapCursor<?, ?> cursor = cursor();
+        while (cursor.next()) {
+            size++;
         }
         return size;
     }
