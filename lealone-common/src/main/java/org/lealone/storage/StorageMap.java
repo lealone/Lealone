@@ -5,12 +5,10 @@
  */
 package org.lealone.storage;
 
-import java.util.concurrent.ConcurrentSkipListMap;
-
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 public interface StorageMap<K, V> {
 
@@ -247,10 +245,10 @@ public interface StorageMap<K, V> {
     }
 
     default void gc() {
-        gc(new ConcurrentSkipListMap<>());
+        gc(null);
     }
 
-    default void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    default void gc(TransactionEngine te) {
     }
 
     default void markDirty(Object key) {

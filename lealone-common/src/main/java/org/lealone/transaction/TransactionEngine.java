@@ -31,6 +31,14 @@ public interface TransactionEngine extends PluggableEngine {
         return false;
     }
 
+    default boolean containsTransaction(Long tid) {
+        return false;
+    }
+
+    default Transaction getTransaction(Long tid) {
+        return null;
+    }
+
     default ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
         return null;
     }

@@ -8,7 +8,6 @@ package org.lealone.storage.aose.btree;
 import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -40,7 +39,7 @@ import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * 支持同步和异步风格的BTree.
@@ -405,9 +404,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    public void gc(TransactionEngine te) {
         if (!inMemory)
-            btreeStorage.getBTreeGC().gc(currentTransactions);
+            btreeStorage.getBTreeGC().gc(te);
     }
 
     @Override

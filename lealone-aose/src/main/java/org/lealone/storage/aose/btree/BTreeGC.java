@@ -7,7 +7,6 @@ package org.lealone.storage.aose.btree;
 
 import java.util.Comparator;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.lealone.db.MemoryManager;
@@ -16,6 +15,7 @@ import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageInfo;
 import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 public class BTreeGC {
 
@@ -76,38 +76,34 @@ public class BTreeGC {
         memoryManager.reset();
     }
 
-    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    public void gc(TransactionEngine te) {
         MemoryManager globalMemoryManager = GMM();
         if (!globalMemoryManager.needGc()) {
             if (!map.getRootPageRef().getTids().isEmpty())
-                gcTids(currentTransactions);
+                gcTids(te);
             return;
         }
         long now = System.currentTimeMillis();
-        gc(now, 30 * 60 * 1000, true, currentTransactions);
+        gc(now, 15 * 60 * 1000, true, te);
         if (globalMemoryManager.needGc())
-            gc(now, 15 * 60 * 1000, true, currentTransactions);
+            gc(now, 5 * 60 * 1000, false, te);
         if (globalMemoryManager.needGc())
-            gc(now, 5 * 60 * 1000, false, currentTransactions);
+            gc(now, -2, true, te); // 全表扫描的场景
         if (globalMemoryManager.needGc())
-            gc(now, -2, true, currentTransactions); // 全表扫描的场景
-        if (globalMemoryManager.needGc())
-            lru(currentTransactions);
+            lru(te);
     }
 
-    private TreeSet<PageInfo> lru(
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    private TreeSet<PageInfo> lru(TransactionEngine te) {
         Comparator<PageInfo> comparator = (pi1, pi2) -> (int) (pi1.getLastTime() - pi2.getLastTime());
         TreeSet<PageInfo> set = new TreeSet<>(comparator);
-        collect(set, map.getRootPageRef().getPageInfo(), currentTransactions);
+        collect(set, map.getRootPageRef().getPageInfo(), te);
         release(set, true);
         if (GMM().needGc())
             release(set, false);
         return set;
     }
 
-    private void collect(TreeSet<PageInfo> set, PageInfo pInfo,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    private void collect(TreeSet<PageInfo> set, PageInfo pInfo, TransactionEngine te) {
         Page p = pInfo.page;
         if (p == null)
             return;
@@ -116,11 +112,11 @@ public class BTreeGC {
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    collect(set, ref.getPageInfo(), currentTransactions);
+                    collect(set, ref.getPageInfo(), te);
                 }
             }
         }
-        if (p.getPos() > 0 && canGC(p, currentTransactions)) // pos为0时说明page被修改了，不能回收
+        if (p.getPos() > 0 && canGC(p, te)) // pos为0时说明page被修改了，不能回收
             set.add(pInfo);
     }
 
@@ -144,13 +140,11 @@ public class BTreeGC {
         }
     }
 
-    private void gc(long now, long hitsOrIdleTime, boolean gcAll,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        gc(map.getRootPageRef().getPageInfo(), now, hitsOrIdleTime, gcAll, currentTransactions);
+    private void gc(long now, long hitsOrIdleTime, boolean gcAll, TransactionEngine te) {
+        gc(map.getRootPageRef().getPageInfo(), now, hitsOrIdleTime, gcAll, te);
     }
 
-    private void gc(PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    private void gc(PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll, TransactionEngine te) {
         Page p = pInfo.page;
         if (p == null)
             return;
@@ -159,20 +153,20 @@ public class BTreeGC {
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    gc(ref.getPageInfo(), now, hitsOrIdleTime, gcAll, currentTransactions);
+                    gc(ref.getPageInfo(), now, hitsOrIdleTime, gcAll, te);
                 }
             }
         }
-        gcPage(pInfo, p, now, hitsOrIdleTime, gcAll, currentTransactions);
+        gcPage(pInfo, p, now, hitsOrIdleTime, gcAll, te);
     }
 
     private void gcPage(PageInfo pInfo, Page p, long now, long hitsOrIdleTime, boolean gcAll,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+            TransactionEngine te) {
         if (p.getPos() == 0) // pos为0时说明page被修改了，不能回收
             return;
         if (p.getRef().isLocked()) // 其他事务准备更新page，所以没必要回收
             return;
-        if (!canGC(p, currentTransactions))
+        if (!canGC(p, te))
             return;
         boolean gc = false;
         if (hitsOrIdleTime < 0) {
@@ -197,12 +191,13 @@ public class BTreeGC {
         }
     }
 
-    private boolean canGC(Page p,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        ConcurrentSkipListSet<Long> tids = gcTids(p, currentTransactions);
+    private boolean canGC(Page p, TransactionEngine te) {
+        if (te == null)
+            return true;
+        ConcurrentSkipListSet<Long> tids = gcTids(p, te);
         boolean isReadOnly = true;
         for (Long tid : tids) {
-            Transaction t = currentTransactions.get(tid);
+            Transaction t = te.getTransaction(tid);
             if (t != null) {
                 Session s = t.getSession();
                 if (s != null && s.isForUpdate()) {
@@ -214,12 +209,11 @@ public class BTreeGC {
         return tids.isEmpty() || isReadOnly;
     }
 
-    private void gcTids(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        gcTids(map.getRootPageRef().getPageInfo(), currentTransactions);
+    private void gcTids(TransactionEngine te) {
+        gcTids(map.getRootPageRef().getPageInfo(), te);
     }
 
-    private void gcTids(PageInfo pInfo,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    private void gcTids(PageInfo pInfo, TransactionEngine te) {
         Page p = pInfo.page;
         if (p == null)
             return;
@@ -228,18 +222,21 @@ public class BTreeGC {
             for (int i = 0, len = children.length; i < len; i++) {
                 PageReference ref = children[i];
                 if (ref != null) {
-                    gcTids(ref.getPageInfo(), currentTransactions);
+                    gcTids(ref.getPageInfo(), te);
                 }
             }
         }
-        gcTids(p, currentTransactions);
+        gcTids(p, te);
     }
 
-    private ConcurrentSkipListSet<Long> gcTids(Page p,
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
+    private ConcurrentSkipListSet<Long> gcTids(Page p, TransactionEngine te) {
         ConcurrentSkipListSet<Long> tids = p.getRef().getTids();
+        if (te == null) {
+            tids.clear();
+            return tids;
+        }
         for (Long tid : tids) {
-            if (!currentTransactions.containsKey(tid)) {
+            if (!te.containsTransaction(tid)) {
                 tids.remove(tid);
                 addUsedMemory(-32);
             }

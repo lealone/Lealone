@@ -11,12 +11,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A facility to store streams in a map. Streams are split into blocks, which
@@ -51,8 +50,8 @@ public class LobStreamMap {
         map.save();
     }
 
-    public void gc(ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions) {
-        map.gc(currentTransactions);
+    public void gc(TransactionEngine te) {
+        map.gc(te);
     }
 
     public void clear() {

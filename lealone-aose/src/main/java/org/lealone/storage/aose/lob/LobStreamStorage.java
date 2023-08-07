@@ -16,7 +16,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.common.exceptions.DbException;
@@ -31,7 +30,6 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.lob.LobStorage;
-import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 
 /**
@@ -82,10 +80,8 @@ public class LobStreamStorage implements LobStorage {
     @Override
     public void gc(TransactionEngine te) {
         if (lobMap != null) {
-            ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions = te
-                    .currentTransactions();
-            lobMap.gc(currentTransactions);
-            lobStreamMap.gc(currentTransactions);
+            lobMap.gc(te);
+            lobStreamMap.gc(te);
         }
     }
 

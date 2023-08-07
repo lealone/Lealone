@@ -74,10 +74,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return t;
     }
 
-    boolean containsTransaction(long tid) {
-        return currentTransactions.containsKey(tid);
-    }
-
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
         if (maps.putIfAbsent(map.getName(), map) == null) {
             map.getStorage().registerEventListener(this);
@@ -117,6 +113,16 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 maxTid = t.getTransactionId();
         }
         return maxTid;
+    }
+
+    @Override
+    public boolean containsTransaction(Long tid) {
+        return currentTransactions.containsKey(tid);
+    }
+
+    @Override
+    public AOTransaction getTransaction(Long tid) {
+        return currentTransactions.get(tid);
     }
 
     @Override
@@ -254,7 +260,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private void gcMaps() {
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed())
-                map.gc(currentTransactions);
+                map.gc(this);
         }
     }
 
