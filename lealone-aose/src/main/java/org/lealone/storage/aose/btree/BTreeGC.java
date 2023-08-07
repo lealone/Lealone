@@ -128,13 +128,16 @@ public class BTreeGC {
                 Page p = pInfo.page;
                 if (p == null)
                     continue;
+                PageInfo pInfoNew = pInfo.copy(true);
+                pInfoNew.releasePage();
                 memory = p.getMemory();
-                pInfo.releasePage();
+                if (p.getRef().replacePage(pInfo, pInfoNew))
+                    addUsedMemory(-memory);
             } else {
                 memory = pInfo.getBuffMemory();
                 pInfo.releaseBuff();
+                addUsedMemory(-memory);
             }
-            addUsedMemory(-memory);
             if (size-- == 0)
                 break;
         }
@@ -179,15 +182,17 @@ public class BTreeGC {
             gc = true;
         }
         if (gc) {
+            PageInfo pInfoNew = pInfo.copy(true);
             long memory;
             if (gcAll)
                 memory = p.getTotalMemory();
             else
                 memory = p.getMemory();
-            pInfo.releasePage();
+            pInfoNew.releasePage();
             if (gcAll)
-                pInfo.releaseBuff();
-            addUsedMemory(-memory);
+                pInfoNew.releaseBuff();
+            if (p.getRef().replacePage(pInfo, pInfoNew))
+                addUsedMemory(-memory);
         }
     }
 

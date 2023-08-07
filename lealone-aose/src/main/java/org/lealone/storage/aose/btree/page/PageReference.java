@@ -138,9 +138,16 @@ public class PageReference {
         PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
-            if (ok) // 避免反复调用
+            if (ok) {// 避免反复调用
                 pInfo.updateTime();
-            return p;
+                PageInfo pInfoNew = pInfo.copy(false);
+                if (replacePage(pInfo, pInfoNew))
+                    return p;
+                else
+                    return getOrReadPage();
+            } else {
+                return p;
+            }
         } else {
             ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
             if (buff != null) {

@@ -58,4 +58,17 @@ public class PageInfo {
     public void releasePage() {
         page = null;
     }
+
+    public PageInfo copy(boolean gc) {
+        PageInfo pInfoNew = new PageInfo();
+        pInfoNew.page = page;
+        pInfoNew.pos = pos;
+        pInfoNew.pageLength = pageLength;
+        pInfoNew.buff = buff;
+        if (!gc) {
+            pInfoNew.lastTime = lastTime;
+            pInfoNew.hits = hits;
+        }
+        return pInfoNew;
+    }
 }
