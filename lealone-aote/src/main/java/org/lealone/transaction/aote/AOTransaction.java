@@ -155,7 +155,11 @@ public class AOTransaction implements Transaction {
 
     @Override
     public int getSavepointId() {
-        return undoLog.getLogId();
+        UndoLog ul = undoLog;
+        if (ul == null)
+            return 0;
+        else
+            return ul.getLogId();
     }
 
     private Runnable lobTask;
@@ -215,6 +219,9 @@ public class AOTransaction implements Transaction {
             return;
         commitTimestamp = transactionEngine.nextTransactionId();
         undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
+        // 在删除事务前标记脏页，这样GC线程看到事务没结束就不会对脏页进行GC
+        if (session != null)
+            session.markDirtyPages();
         endTransaction();
         // wakeUpWaitingTransactions(); //在session级调用
     }

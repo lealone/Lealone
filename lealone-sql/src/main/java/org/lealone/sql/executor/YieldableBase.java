@@ -21,6 +21,7 @@ import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.sql.StatementBase;
@@ -87,6 +88,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     @Override
     public ServerSession getSession() {
         return session;
+    }
+
+    @Override
+    public PreparedSQLStatement getStatement() {
+        return statement;
     }
 
     @Override

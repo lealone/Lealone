@@ -74,6 +74,8 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
         Session getSession();
 
+        PreparedSQLStatement getStatement();
+
         void setExecutor(SQLStatementExecutor executor);
 
     }

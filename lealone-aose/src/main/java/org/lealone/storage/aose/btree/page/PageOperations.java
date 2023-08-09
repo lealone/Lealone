@@ -379,6 +379,7 @@ public abstract class PageOperations {
         }
 
         private static TmpNodePage splitPage(Page p) {
+            PageReference ref = p.getRef();
             // 注意: 在这里被切割的页面可能是node page或leaf page
             int at = p.getKeyCount() / 2;
             Object k = p.getKey(at);
@@ -389,8 +390,11 @@ public abstract class PageOperations {
             Page leftChildPage = p;
             PageReference leftRef = new PageReference(p.map.getBTreeStorage(), leftChildPage);
             PageReference rightRef = new PageReference(p.map.getBTreeStorage(), rightChildPage);
-            Object[] keys = { k };
+            // 传递tid到新的page，避免GC线程回收新page
+            leftRef.getTids().addAll(ref.getTids());
+            rightRef.getTids().addAll(ref.getTids());
             PageReference[] children = { leftRef, rightRef };
+            Object[] keys = { k };
             Page parent = NodePage.create(p.map, keys, children, 0);
             PageReference parentRef = new PageReference(p.map.getBTreeStorage(), parent);
             parent.setRef(parentRef);

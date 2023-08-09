@@ -641,7 +641,6 @@ public class ServerSession extends SessionBase {
             }
         }
         unlockAll(true);
-        markDirtyPages();
         endTransaction();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -1497,7 +1496,16 @@ public class ServerSession extends SessionBase {
 
     @Override
     public boolean isForUpdate() {
+        Transaction t = transaction;
+        if (t != null && t.getSavepointId() > 0)
+            return true;
         PreparedSQLStatement c = currentCommand;
+        if (c == null) {
+            YieldableCommand yc = yieldableCommand;
+            if (yc != null) {
+                c = yc.yieldable.getStatement();
+            }
+        }
         return c != null && (!c.isQuery() || c.isForUpdate());
     }
 
@@ -1519,7 +1527,8 @@ public class ServerSession extends SessionBase {
         dirtyPages.add(page);
     }
 
-    private void markDirtyPages() {
+    @Override
+    public void markDirtyPages() {
         if (dirtyPages != null) {
             for (IPage page : dirtyPages)
                 page.markDirtyBottomUp();

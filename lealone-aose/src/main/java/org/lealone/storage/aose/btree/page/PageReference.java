@@ -141,10 +141,14 @@ public class PageReference {
             if (ok) {// 避免反复调用
                 pInfo.updateTime();
                 PageInfo pInfoNew = pInfo.copy(false);
-                if (replacePage(pInfo, pInfoNew))
+                if (replacePage(pInfo, pInfoNew)) {
                     return p;
-                else
-                    return getOrReadPage();
+                } else {
+                    if (this.pInfo.page != null)
+                        return this.pInfo.page;
+                    else
+                        return getOrReadPage();
+                }
             } else {
                 return p;
             }
@@ -152,6 +156,8 @@ public class PageReference {
             ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
             if (buff != null) {
                 p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
+                if (p == null)
+                    return getOrReadPage();
                 bs.getBTreeGC().addUsedMemory(p.getMemory());
             } else {
                 try {

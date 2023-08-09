@@ -151,6 +151,9 @@ public interface Session extends Closeable {
     default void addDirtyPage(IPage page) {
     }
 
+    default void markDirtyPages() {
+    }
+
     default long getCurrentTid() {
         return 0;
     }
