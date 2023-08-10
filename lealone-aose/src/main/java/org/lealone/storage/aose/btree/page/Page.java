@@ -396,7 +396,14 @@ public class Page implements IPage {
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
         PageReference ref = getRef();
         if (ref != null) {
-            ref.getPageInfo().updateTime();
+            PageInfo pInfo = ref.getPageInfo();
+            pInfo.updateTime();
+            // 旧page被更新再保存时需要把buff释放，否则GC线程把page字段置null后会用到旧的buff字段
+            if (pInfo.buff != null) {
+                int memory = pInfo.getBuffMemory();
+                map.getBTreeStorage().getBTreeGC().addUsedMemory(-memory);
+                pInfo.releaseBuff();
+            }
             // 如果page被split了，刷脏页时要标记为删除
             if (ref.isDataStructureChanged() || ref.getPage() != this) {
                 addRemovedPage(pos);

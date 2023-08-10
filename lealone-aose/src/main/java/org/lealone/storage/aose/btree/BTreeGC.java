@@ -251,18 +251,18 @@ public class BTreeGC {
         if (te == null)
             return true;
         ConcurrentSkipListSet<Long> tids = gcTids(ref, te);
-        boolean isReadOnly = true;
-        for (Long tid : tids) {
-            Transaction t = te.getTransaction(tid);
-            if (t != null) {
-                Session s = t.getSession();
-                if (s != null && s.isForUpdate()) {
-                    isReadOnly = false;
-                    break;
+        if (!tids.isEmpty()) {
+            for (Long tid : tids) {
+                Transaction t = te.getTransaction(tid);
+                if (t != null) {
+                    Session s = t.getSession();
+                    if (s != null && s.isForUpdate()) {
+                        return false;
+                    }
                 }
             }
         }
-        return isReadOnly || tids.isEmpty();
+        return true;
     }
 
     private void forEachPage(Page p, Consumer<PageReference> action) {
