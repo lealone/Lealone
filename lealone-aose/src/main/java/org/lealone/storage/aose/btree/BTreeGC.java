@@ -79,23 +79,24 @@ public class BTreeGC {
 
     public void gc(TransactionEngine te) {
         MemoryManager globalMemoryManager = GMM();
-        if (!globalMemoryManager.needGc() && !map.getRootPageRef().getTids().isEmpty()) {
-            gcTids(te); // 删除已经结束的事务的tid
+        if (!globalMemoryManager.needGc()) {
+            gcTids(te); // 已使用内存未达到阈值时只删除已经结束的事务的tid
             return;
         }
         long now = System.currentTimeMillis();
-        gcPages(now, 15 * 60 * 1000, true, te); // 15+分钟都没再访问过的page直接回收
+        gcPages(now, 15 * 60 * 1000, true, te); // 15+分钟都没再访问过，释放page字段和buff字段
         if (globalMemoryManager.needGc())
-            gcPages(now, 5 * 60 * 1000, false, te); // 5+分钟都没再访问过，释放page变量保留buff变量
+            gcPages(now, 5 * 60 * 1000, false, te); // 5+分钟都没再访问过，释放page字段保留buff字段
         if (globalMemoryManager.needGc())
-            gcPages(now, -2, true, te); // 全表扫描的场景
+            gcPages(now, -2, true, te); // 全表扫描的场景，释放page字段和buff字段
         if (globalMemoryManager.needGc())
             lru(te); // 按LRU算法回收
     }
 
     private void gcTids(TransactionEngine te) {
         PageReference ref = map.getRootPageRef();
-        gcTids(ref, ref.getPageInfo(), te);
+        if (!ref.getTids().isEmpty())
+            gcTids(ref, ref.getPageInfo(), te);
     }
 
     private void gcTids(PageReference ref, PageInfo pInfo, TransactionEngine te) {
