@@ -135,6 +135,9 @@ public class LealoneDatabase extends Database
     @Override
     public void gc(TransactionEngine te) {
         for (Database db : getDatabasesMap().values()) {
+            // 数据库没有进行初始化时不进行GC
+            if (!db.isInitialized())
+                continue;
             for (TransactionalDbObjects tObjects : db.getTransactionalDbObjectsArray()) {
                 if (tObjects != null)
                     tObjects.gc(te);
