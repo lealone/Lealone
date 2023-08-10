@@ -22,6 +22,21 @@ public class MemoryManager {
         return globalMemoryManager;
     }
 
+    public static interface MemoryListener {
+        void wakeUp();
+    }
+
+    private static MemoryListener globalMemoryListener;
+
+    public static void setGlobalMemoryListener(MemoryListener globalMemoryListener) {
+        MemoryManager.globalMemoryListener = globalMemoryListener;
+    }
+
+    private static void wakeUpGlobalMemoryListener(long delta) {
+        if (delta > 0 && globalMemoryListener != null && globalMemoryManager.needGc())
+            globalMemoryListener.wakeUp();
+    }
+
     private final AtomicLong usedMemory = new AtomicLong(0);
     private final AtomicLong dirtyMemory = new AtomicLong(0);
 
@@ -55,11 +70,13 @@ public class MemoryManager {
 
     public void addUsedMemory(long delta) { // 正负都有可能
         usedMemory.addAndGet(delta);
+        wakeUpGlobalMemoryListener(delta);
     }
 
     public void addUsedAndDirtyMemory(long delta) {
         usedMemory.addAndGet(delta);
         dirtyMemory.addAndGet(delta);
+        wakeUpGlobalMemoryListener(delta);
     }
 
     public boolean needGc() {

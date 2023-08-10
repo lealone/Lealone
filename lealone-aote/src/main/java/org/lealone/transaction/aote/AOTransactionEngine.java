@@ -308,7 +308,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    private class CheckpointService implements Runnable {
+    private class CheckpointService implements Runnable, MemoryManager.MemoryListener {
         // 关闭CheckpointService时等待它结束
         private final CountDownLatch latch = new CountDownLatch(1);
         private final Semaphore semaphore = new Semaphore(1);
@@ -320,6 +320,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
         private volatile boolean isRunning;
+        private boolean isWaiting;
 
         private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
 
@@ -385,13 +386,16 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         @Override
         public void run() {
             isRunning = true;
+            MemoryManager.setGlobalMemoryListener(this);
             while (!isClosed) {
+                isWaiting = true;
                 try {
                     semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                     semaphore.drainPermits();
                 } catch (Throwable t) {
                     logger.warn("Semaphore tryAcquire exception", t);
                 }
+                isWaiting = false;
 
                 try {
                     if (!forceCheckpointTasks.isEmpty()) {
@@ -413,7 +417,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 }
             }
             isRunning = false;
+            MemoryManager.setGlobalMemoryListener(null);
             latch.countDown();
+        }
+
+        @Override
+        public void wakeUp() {
+            if (isWaiting)
+                semaphore.release();
         }
     }
 }
