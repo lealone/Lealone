@@ -145,10 +145,11 @@ public class PageReference {
                 if (replacePage(pInfo, pInfoNew)) {
                     return p;
                 } else {
-                    p = this.pInfo.page;
+                    pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
+                    p = pInfoNew.page;
                     if (p != null) {
-                        if (this.pInfo instanceof SplitPageInfo) { // 发生 split 了
-                            SplitPageInfo spInfo = (SplitPageInfo) this.pInfo;
+                        if (pInfoNew instanceof SplitPageInfo) { // 发生 split 了
+                            SplitPageInfo spInfo = (SplitPageInfo) pInfoNew;
                             spInfo.lRef.getOrReadPage();
                             spInfo.rRef.getOrReadPage();
                             return pInfo.page; // 依然返回老的page
