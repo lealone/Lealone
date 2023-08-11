@@ -24,6 +24,17 @@ public class PageInfo {
         this.pos = pos;
     }
 
+    public PageInfo(boolean gc, PageInfo old) {
+        page = old.page;
+        pos = old.pos;
+        pageLength = old.pageLength;
+        buff = old.buff;
+        if (!gc) {
+            lastTime = old.lastTime;
+            hits = old.hits;
+        }
+    }
+
     public void updateTime() {
         lastTime = System.currentTimeMillis();
         hits++;
@@ -60,15 +71,17 @@ public class PageInfo {
     }
 
     public PageInfo copy(boolean gc) {
-        PageInfo pInfoNew = new PageInfo();
-        pInfoNew.page = page;
-        pInfoNew.pos = pos;
-        pInfoNew.pageLength = pageLength;
-        pInfoNew.buff = buff;
-        if (!gc) {
-            pInfoNew.lastTime = lastTime;
-            pInfoNew.hits = hits;
+        return new PageInfo(gc, this);
+    }
+
+    public static class SplitPageInfo extends PageInfo {
+        PageReference lRef;
+        PageReference rRef;
+
+        public SplitPageInfo(boolean gc, PageInfo old, PageReference lRef, PageReference rRef) {
+            super(gc, old);
+            this.lRef = lRef;
+            this.rRef = rRef;
         }
-        return pInfoNew;
     }
 }

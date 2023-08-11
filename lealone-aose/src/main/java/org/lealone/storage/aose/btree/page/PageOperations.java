@@ -10,6 +10,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.page.PageInfo.SplitPageInfo;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -354,7 +355,10 @@ public abstract class PageOperations {
             // 如果是root page，那么直接替换
             if (pRef.isRoot()) {
                 TmpNodePage tmpNodePage = splitPage(p);
-                p.map.newRoot(tmpNodePage.parent);
+                tmpNodePage.parent.setRef(pRef);
+                tmpNodePage.left.setParentRef(pRef);
+                tmpNodePage.right.setParentRef(pRef);
+                replacePage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
@@ -363,7 +367,7 @@ public abstract class PageOperations {
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
-                parentRef.replacePage(newParent);
+                replacePage(tmpNodePage, parentRef, pRef, newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
                     asyncSplitPage(poHandler, parentRef);
@@ -379,7 +383,6 @@ public abstract class PageOperations {
         }
 
         private static TmpNodePage splitPage(Page p) {
-            PageReference ref = p.getRef();
             // 注意: 在这里被切割的页面可能是node page或leaf page
             int at = p.getKeyCount() / 2;
             Object k = p.getKey(at);
@@ -390,9 +393,6 @@ public abstract class PageOperations {
             Page leftChildPage = p;
             PageReference leftRef = new PageReference(p.map.getBTreeStorage(), leftChildPage);
             PageReference rightRef = new PageReference(p.map.getBTreeStorage(), rightChildPage);
-            // 传递tid到新的page，避免GC线程回收新page
-            leftRef.getTids().addAll(ref.getTids());
-            rightRef.getTids().addAll(ref.getTids());
             PageReference[] children = { leftRef, rightRef };
             Object[] keys = { k };
             Page parent = NodePage.create(p.map, keys, children, 0);
@@ -414,6 +414,22 @@ public abstract class PageOperations {
             for (PageReference ref : tmpNodePage.right.getPage().getChildren()) {
                 if (ref.getPage() != null)
                     ref.setParentRef(rRef);
+            }
+        }
+
+        private static void replacePage(TmpNodePage tmpNodePage, PageReference parentRef,
+                PageReference ref, Page newPage) {
+            while (true) {
+                PageInfo pInfoOld = parentRef.getPageInfo();
+                PageReference lRef = tmpNodePage.left;
+                PageReference rRef = tmpNodePage.right;
+                // 传递tid到新的page，避免GC线程回收新page
+                lRef.getTids().addAll(ref.getTids());
+                rRef.getTids().addAll(ref.getTids());
+                SplitPageInfo pInfoNew = new SplitPageInfo(false, pInfoOld, lRef, rRef);
+                pInfoNew.page = newPage;
+                if (parentRef.replacePage(pInfoOld, pInfoNew))
+                    break;
             }
         }
     }

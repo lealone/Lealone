@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
+import org.lealone.storage.aose.btree.page.PageInfo.SplitPageInfo;
 import org.lealone.storage.page.PageOperationHandler;
 
 public class PageReference {
@@ -127,7 +128,8 @@ public class PageReference {
 
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
-        boolean ok = lockOwner == null && !inMemory;
+        PageInfo pInfo = this.pInfo;
+        boolean ok = lockOwner != Thread.currentThread() && !inMemory;
         if (ok) {
             long tid = getTid();
             if (tid > 0) {
@@ -135,7 +137,6 @@ public class PageReference {
                     bs.getBTreeGC().addUsedMemory(32);
             }
         }
-        PageInfo pInfo = this.pInfo;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
             if (ok) {// 避免反复调用
@@ -144,10 +145,18 @@ public class PageReference {
                 if (replacePage(pInfo, pInfoNew)) {
                     return p;
                 } else {
-                    if (this.pInfo.page != null)
-                        return this.pInfo.page;
-                    else
+                    p = this.pInfo.page;
+                    if (p != null) {
+                        if (this.pInfo instanceof SplitPageInfo) { // 发生 split 了
+                            SplitPageInfo spInfo = (SplitPageInfo) this.pInfo;
+                            spInfo.lRef.getOrReadPage();
+                            spInfo.rRef.getOrReadPage();
+                            return pInfo.page; // 依然返回老的page
+                        }
+                        return p;
+                    } else {
                         return getOrReadPage();
+                    }
                 }
             } else {
                 return p;
