@@ -403,6 +403,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
+    public boolean needGc() {
+        return !inMemory && btreeStorage.getBTreeGC().needGc();
+    }
+
+    @Override
     public void gc(TransactionEngine te) {
         if (!inMemory)
             btreeStorage.getBTreeGC().gc(te);

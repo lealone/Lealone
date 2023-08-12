@@ -37,6 +37,11 @@ public class MemoryManager {
             globalMemoryListener.wakeUp();
     }
 
+    public static void wakeUpGlobalMemoryListener() {
+        if (globalMemoryListener != null)
+            globalMemoryListener.wakeUp();
+    }
+
     private final AtomicLong usedMemory = new AtomicLong(0);
     private final AtomicLong dirtyMemory = new AtomicLong(0);
 

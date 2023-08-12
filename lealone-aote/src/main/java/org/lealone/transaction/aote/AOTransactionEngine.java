@@ -363,6 +363,16 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 executeCheckpoint = MemoryManager.getGlobalMemoryManager()
                         .getDirtyMemory() > dirtyPageCacheSize;
             }
+            if (!executeCheckpoint) {
+                for (StorageMap<?, ?> map : maps.values()) {
+                    if (map.isClosed())
+                        continue;
+                    if (map.needGc()) {
+                        executeCheckpoint = true;
+                        break;
+                    }
+                }
+            }
             if (executeCheckpoint) {
                 // 1.先切换redo log chunk文件
                 logSyncService.checkpoint(false);

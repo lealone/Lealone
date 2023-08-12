@@ -68,8 +68,8 @@ public class BTreeStorage {
         this.minFillRate = minFillRate;
         compressionLevel = parseCompressionLevel();
 
-        // 原先是16M (16 * 1024 * 1024)，改用动态回收page后默认就不需要了
-        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), -1);
+        // 32M (32 * 1024 * 1024)，到达一半时就启用GC
+        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 32 * 1024 * 1024);
         if (cacheSize > 0 && cacheSize < pageSplitSize)
             cacheSize = pageSplitSize * 2;
         bgc = new BTreeGC(map, cacheSize);

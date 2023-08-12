@@ -19,6 +19,8 @@ import org.lealone.transaction.TransactionEngine;
 
 public class BTreeGC {
 
+    public static final boolean DEBUG = false;
+
     private static MemoryManager GMM() {
         return MemoryManager.getGlobalMemoryManager();
     }
@@ -52,16 +54,22 @@ public class BTreeGC {
     public void addDirtyMemory(long delta) {
         memoryManager.addDirtyMemory(delta);
         GMM().addDirtyMemory(delta);
+        if (delta > 0 && needGc())
+            MemoryManager.wakeUpGlobalMemoryListener();
     }
 
     public void addUsedMemory(long delta) {
         memoryManager.addUsedMemory(delta);
         GMM().addUsedMemory(delta);
+        if (delta > 0 && needGc())
+            MemoryManager.wakeUpGlobalMemoryListener();
     }
 
     public void addUsedAndDirtyMemory(long delta) {
         memoryManager.addUsedAndDirtyMemory(delta);
         GMM().addUsedAndDirtyMemory(delta);
+        if (delta > 0 && needGc())
+            MemoryManager.wakeUpGlobalMemoryListener();
     }
 
     public void resetDirtyMemory() {
@@ -76,18 +84,34 @@ public class BTreeGC {
         memoryManager.reset();
     }
 
+    public boolean needGc() {
+        return memoryManager.needGc();
+    }
+
     public void gc(TransactionEngine te) {
+        gc(te, memoryManager);
+    }
+
+    public void gcGlobal(TransactionEngine te) {
         MemoryManager globalMemoryManager = GMM();
-        if (!globalMemoryManager.needGc())
+        gc(te, globalMemoryManager);
+    }
+
+    private void gc(TransactionEngine te, MemoryManager memoryManager) {
+        if (!memoryManager.needGc())
             return;
+        long size1 = memoryManager.getUsedMemory();
         long now = System.currentTimeMillis();
         gcPages(now, 15 * 60 * 1000, true, te); // 15+分钟都没再访问过，释放page字段和buff字段
-        if (globalMemoryManager.needGc())
+        if (memoryManager.needGc())
             gcPages(now, 5 * 60 * 1000, false, te); // 5+分钟都没再访问过，释放page字段保留buff字段
-        if (globalMemoryManager.needGc())
+        if (memoryManager.needGc())
             gcPages(now, -2, true, te); // 全表扫描的场景，释放page字段和buff字段
-        if (globalMemoryManager.needGc())
-            lru(te); // 按LRU算法回收
+        if (memoryManager.needGc())
+            lru(te, memoryManager); // 按LRU算法回收
+        long size2 = memoryManager.getUsedMemory();
+        if (DEBUG)
+            System.out.println("Map: " + map.getName() + ", GC: " + size1 + " -> " + size2);
     }
 
     private void gcPages(long now, long hitsOrIdleTime, boolean gcAll, TransactionEngine te) {
@@ -153,12 +177,12 @@ public class BTreeGC {
         }
     }
 
-    private void lru(TransactionEngine te) {
+    private void lru(TransactionEngine te, MemoryManager memoryManager) {
         Comparator<GcingPage> comparator = (p1, p2) -> (int) (p1.getLastTime() - p2.getLastTime());
         TreeSet<GcingPage> set = new TreeSet<>(comparator);
         collect(set, map.getRootPageRef(), te);
         release(set, true); // 先释放page
-        if (GMM().needGc())
+        if (memoryManager.needGc())
             release(set, false); // 如果内存依然紧张再释放buff
     }
 
