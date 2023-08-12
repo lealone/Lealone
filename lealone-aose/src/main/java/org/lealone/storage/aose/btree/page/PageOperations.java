@@ -5,6 +5,8 @@
  */
 package org.lealone.storage.aose.btree.page;
 
+import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
@@ -14,6 +16,8 @@ import org.lealone.storage.aose.btree.page.PageInfo.SplitPageInfo;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
+import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 public abstract class PageOperations {
 
@@ -419,17 +423,27 @@ public abstract class PageOperations {
 
         private static void replacePage(TmpNodePage tmpNodePage, PageReference parentRef,
                 PageReference ref, Page newPage) {
+            PageReference lRef = tmpNodePage.left;
+            PageReference rRef = tmpNodePage.right;
             while (true) {
                 PageInfo pInfoOld = parentRef.getPageInfo();
-                PageReference lRef = tmpNodePage.left;
-                PageReference rRef = tmpNodePage.right;
-                // 传递tid到新的page，避免GC线程回收新page
-                lRef.getTids().addAll(ref.getTids());
-                rRef.getTids().addAll(ref.getTids());
                 SplitPageInfo pInfoNew = new SplitPageInfo(false, pInfoOld, lRef, rRef);
                 pInfoNew.page = newPage;
                 if (parentRef.replacePage(pInfoOld, pInfoNew))
                     break;
+            }
+            addPageReference(ref, lRef, rRef);
+        }
+
+        private static void addPageReference(PageReference oldRef, PageReference lRef,
+                PageReference rRef) {
+            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
+                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+            for (Transaction t : te.currentTransactions().values()) {
+                Session s = t.getSession();
+                if (s != null) {
+                    s.addPageReference(oldRef, lRef, rRef);
+                }
             }
         }
     }

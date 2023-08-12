@@ -7,7 +7,6 @@ package org.lealone.storage.aose.btree;
 
 import java.util.Comparator;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Consumer;
 
 import org.lealone.db.MemoryManager;
@@ -79,10 +78,8 @@ public class BTreeGC {
 
     public void gc(TransactionEngine te) {
         MemoryManager globalMemoryManager = GMM();
-        if (!globalMemoryManager.needGc()) {
-            gcTids(te); // 已使用内存未达到阈值时只删除已经结束的事务的tid
+        if (!globalMemoryManager.needGc())
             return;
-        }
         long now = System.currentTimeMillis();
         gcPages(now, 15 * 60 * 1000, true, te); // 15+分钟都没再访问过，释放page字段和buff字段
         if (globalMemoryManager.needGc())
@@ -91,37 +88,6 @@ public class BTreeGC {
             gcPages(now, -2, true, te); // 全表扫描的场景，释放page字段和buff字段
         if (globalMemoryManager.needGc())
             lru(te); // 按LRU算法回收
-    }
-
-    private void gcTids(TransactionEngine te) {
-        PageReference ref = map.getRootPageRef();
-        if (!ref.getTids().isEmpty())
-            gcTids(ref, ref.getPageInfo(), te);
-    }
-
-    private void gcTids(PageReference ref, PageInfo pInfo, TransactionEngine te) {
-        Page p = pInfo.page;
-        if (p != null && p.isNode()) {
-            forEachPage(p, childRef -> {
-                gcTids(childRef, childRef.getPageInfo(), te);
-            });
-        }
-        gcTids(ref, te);
-    }
-
-    private ConcurrentSkipListSet<Long> gcTids(PageReference ref, TransactionEngine te) {
-        ConcurrentSkipListSet<Long> tids = ref.getTids();
-        if (te == null) {
-            tids.clear();
-            return tids;
-        }
-        for (Long tid : tids) {
-            if (!te.containsTransaction(tid)) {
-                tids.remove(tid);
-                addUsedMemory(-32);
-            }
-        }
-        return tids;
     }
 
     private void gcPages(long now, long hitsOrIdleTime, boolean gcAll, TransactionEngine te) {
@@ -251,16 +217,10 @@ public class BTreeGC {
             return false;
         if (te == null)
             return true;
-        ConcurrentSkipListSet<Long> tids = gcTids(ref, te);
-        if (!tids.isEmpty()) {
-            for (Long tid : tids) {
-                Transaction t = te.getTransaction(tid);
-                if (t != null) {
-                    Session s = t.getSession();
-                    if (s != null && s.isForUpdate()) {
-                        return false;
-                    }
-                }
+        for (Transaction t : te.currentTransactions().values()) {
+            Session s = t.getSession();
+            if (s != null && s.containsPageReference(ref) && s.isForUpdate()) {
+                return false;
             }
         }
         return true;

@@ -148,6 +148,16 @@ public interface Session extends Closeable {
         return true;
     }
 
+    default void addPageReference(Object ref) {
+    }
+
+    default void addPageReference(Object oldRef, Object lRef, Object rRef) {
+    }
+
+    default boolean containsPageReference(Object ref) {
+        return false;
+    }
+
     default void addDirtyPage(IPage page) {
     }
 

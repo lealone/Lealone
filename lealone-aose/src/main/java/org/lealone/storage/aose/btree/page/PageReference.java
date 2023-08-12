@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
@@ -40,13 +39,6 @@ public class PageReference {
 
     public PageReference getParentRef() {
         return parentRef;
-    }
-
-    // 记录访问过page的事务id，如果这些事务都结束了那就可以回收page了
-    private final ConcurrentSkipListSet<Long> tids = new ConcurrentSkipListSet<>();
-
-    public ConcurrentSkipListSet<Long> getTids() {
-        return tids;
     }
 
     public boolean tryLock(PageOperationHandler newLockOwner) {
@@ -116,25 +108,17 @@ public class PageReference {
         return pInfo.page;
     }
 
-    private long getTid() {
-        Object t = Thread.currentThread();
-        if (t instanceof PageOperationHandler) {
-            Session s = ((PageOperationHandler) t).getSession();
-            if (s != null)
-                return s.getCurrentTid();
-        }
-        return 0;
-    }
-
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
-        boolean ok = lockOwner != Thread.currentThread() && !inMemory;
+        Object t = Thread.currentThread();
+        boolean ok = lockOwner != t && !inMemory;
         if (ok) {
-            long tid = getTid();
-            if (tid > 0) {
-                if (tids.add(tid))
-                    bs.getBTreeGC().addUsedMemory(32);
+            if (t instanceof PageOperationHandler) {
+                Session s = ((PageOperationHandler) t).getSession();
+                if (s != null) {
+                    s.addPageReference(this);
+                }
             }
         }
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
