@@ -117,6 +117,7 @@ public class ServerSession extends SessionBase {
     private Transaction transaction;
     private HashSet<IPage> dirtyPages;
     private HashSet<Object> pageRefs;
+    private final Object pageRefsLock = new Object();
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -1523,27 +1524,35 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public synchronized void addPageReference(Object ref) {
-        if (pageRefs == null)
-            pageRefs = new HashSet<>();
-        pageRefs.add(ref);
+    public void addPageReference(Object ref) {
+        synchronized (pageRefsLock) {
+            if (pageRefs == null)
+                pageRefs = new HashSet<>();
+            pageRefs.add(ref);
+        }
     }
 
     @Override
-    public synchronized void addPageReference(Object oldRef, Object lRef, Object rRef) {
-        if (pageRefs != null && pageRefs.contains(oldRef)) {
-            pageRefs.add(lRef);
-            pageRefs.add(rRef);
+    public void addPageReference(Object oldRef, Object lRef, Object rRef) {
+        synchronized (pageRefsLock) {
+            if (pageRefs != null && pageRefs.contains(oldRef)) {
+                pageRefs.add(lRef);
+                pageRefs.add(rRef);
+            }
         }
     }
 
     @Override
     public synchronized boolean containsPageReference(Object ref) {
-        return pageRefs != null && pageRefs.contains(ref);
+        synchronized (pageRefsLock) {
+            return pageRefs != null && pageRefs.contains(ref);
+        }
     }
 
     public synchronized void clearPageReference() {
-        pageRefs = null;
+        synchronized (pageRefsLock) {
+            pageRefs = null;
+        }
     }
 
     @Override

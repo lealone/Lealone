@@ -426,13 +426,28 @@ public abstract class PageOperations {
             PageReference lRef = tmpNodePage.left;
             PageReference rRef = tmpNodePage.right;
             while (true) {
-                PageInfo pInfoOld = parentRef.getPageInfo();
-                SplitPageInfo pInfoNew = new SplitPageInfo(false, pInfoOld, lRef, rRef);
-                pInfoNew.page = newPage;
-                if (parentRef.replacePage(pInfoOld, pInfoNew))
+                addPageReference(ref, lRef, rRef);
+                if (ref == parentRef) {
+                    PageInfo pInfoOld = ref.getPageInfo();
+                    PageInfo pInfoNew = new PageInfo();
+                    pInfoNew.page = newPage;
+                    if (!ref.replacePage(pInfoOld, pInfoNew))
+                        continue;
                     break;
+                } else {
+                    PageInfo pInfoOld1 = parentRef.getPageInfo();
+                    PageInfo pInfoOld2 = ref.getPageInfo();
+                    PageInfo pInfoNew = new PageInfo();
+                    pInfoNew.page = newPage;
+                    if (!parentRef.replacePage(pInfoOld1, pInfoNew))
+                        continue;
+                    pInfoNew = new SplitPageInfo(parentRef);
+                    pInfoNew.page = newPage;
+                    if (!ref.replacePage(pInfoOld2, pInfoNew))
+                        continue;
+                    break;
+                }
             }
-            addPageReference(ref, lRef, rRef);
         }
 
         private static void addPageReference(PageReference oldRef, PageReference lRef,

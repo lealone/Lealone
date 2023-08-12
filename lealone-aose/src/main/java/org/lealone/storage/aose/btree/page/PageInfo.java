@@ -74,14 +74,30 @@ public class PageInfo {
         return new PageInfo(gc, this);
     }
 
-    public static class SplitPageInfo extends PageInfo {
-        PageReference lRef;
-        PageReference rRef;
+    public boolean isSplited() {
+        return false;
+    }
 
-        public SplitPageInfo(boolean gc, PageInfo old, PageReference lRef, PageReference rRef) {
-            super(gc, old);
-            this.lRef = lRef;
-            this.rRef = rRef;
+    public PageReference getNewRef() {
+        return null;
+    }
+
+    public static class SplitPageInfo extends PageInfo {
+
+        private final PageReference pRefNew;
+
+        public SplitPageInfo(PageReference pRefNew) {
+            this.pRefNew = pRefNew;
+        }
+
+        @Override
+        public boolean isSplited() {
+            return true;
+        }
+
+        @Override
+        public PageReference getNewRef() {
+            return pRefNew;
         }
     }
 }

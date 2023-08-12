@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
-import org.lealone.storage.aose.btree.page.PageInfo.SplitPageInfo;
 import org.lealone.storage.page.PageOperationHandler;
 
 public class PageReference {
@@ -111,6 +110,9 @@ public class PageReference {
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
+        if (pInfo.isSplited()) { // 发生 split 了
+            return pInfo.getNewRef().getOrReadPage();
+        }
         Object t = Thread.currentThread();
         boolean ok = lockOwner != t && !inMemory;
         if (ok) {
@@ -132,11 +134,8 @@ public class PageReference {
                     pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
                     p = pInfoNew.page;
                     if (p != null) {
-                        if (pInfoNew instanceof SplitPageInfo) { // 发生 split 了
-                            SplitPageInfo spInfo = (SplitPageInfo) pInfoNew;
-                            spInfo.lRef.getOrReadPage();
-                            spInfo.rRef.getOrReadPage();
-                            return pInfo.page; // 依然返回老的page
+                        if (pInfoNew.isSplited()) { // 发生 split 了
+                            return pInfoNew.getNewRef().getOrReadPage();
                         }
                         return p;
                     } else {
