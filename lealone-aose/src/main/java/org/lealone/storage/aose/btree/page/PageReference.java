@@ -114,7 +114,7 @@ public class PageReference {
             return pInfo.getNewRef().getOrReadPage();
         }
         Object t = Thread.currentThread();
-        boolean ok = lockOwner != t && !inMemory;
+        boolean ok = lockOwner != t && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
         if (ok) {
             if (t instanceof PageOperationHandler) {
                 Session s = ((PageOperationHandler) t).getSession();
@@ -131,24 +131,26 @@ public class PageReference {
                 if (replacePage(pInfo, pInfoNew)) {
                     return p;
                 } else {
-                    pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
-                    p = pInfoNew.page;
-                    if (p != null) {
-                        if (pInfoNew.isSplitted()) { // 发生 split 了
-                            return pInfoNew.getNewRef().getOrReadPage();
-                        }
-                        return p;
-                    } else {
-                        return getOrReadPage();
-                    }
+                    return getPage(this.pInfo);
                 }
             } else {
                 return p;
             }
         } else {
-            p = readPage(pInfo);
-            p.setRef(this);
-            return p;
+            return readPage(pInfo);
+        }
+    }
+
+    // 不能一直用this.pInfo，避免类型转换错误
+    private Page getPage(PageInfo pInfoNew) {
+        Page p = pInfoNew.page;
+        if (p != null) {
+            if (pInfoNew.isSplitted()) { // 发生 split 了
+                return pInfoNew.getNewRef().getOrReadPage();
+            }
+            return p; // 另一个事务也在读，可以安全返回
+        } else {
+            return getOrReadPage(); // 刚刚GC完，page为null了，重新读
         }
     }
 
@@ -171,6 +173,7 @@ public class PageReference {
                     throw e;
             }
         }
+        pInfoNew.page.setRef(this);
         if (replacePage(pInfoOld, pInfoNew)) {
             p = pInfoNew.page;
             int memory = p.getMemory();
@@ -179,16 +182,7 @@ public class PageReference {
             bs.getBTreeGC().addUsedMemory(memory);
             return p;
         } else {
-            pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
-            p = pInfoNew.page;
-            if (p != null) {
-                if (pInfoNew.isSplitted()) { // 发生 split 了
-                    return pInfoNew.getNewRef().getOrReadPage();
-                }
-                return p;
-            } else {
-                return getOrReadPage();
-            }
+            return getPage(this.pInfo);
         }
     }
 

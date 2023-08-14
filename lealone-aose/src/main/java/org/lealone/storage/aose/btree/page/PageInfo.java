@@ -82,11 +82,11 @@ public class PageInfo {
         return null;
     }
 
-    public static class SplitPageInfo extends PageInfo {
+    public static class SplittedPageInfo extends PageInfo {
 
         private final PageReference pRefNew;
 
-        public SplitPageInfo(PageReference pRefNew) {
+        public SplittedPageInfo(PageReference pRefNew) {
             this.pRefNew = pRefNew;
         }
 
