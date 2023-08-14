@@ -425,35 +425,31 @@ public abstract class PageOperations {
                 PageReference ref, Page newPage) {
             PageReference lRef = tmpNodePage.left;
             PageReference rRef = tmpNodePage.right;
+            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
+                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
             while (true) {
-                addPageReference(ref, lRef, rRef);
-                if (ref == parentRef) {
-                    PageInfo pInfoOld = ref.getPageInfo();
-                    PageInfo pInfoNew = new PageInfo();
-                    pInfoNew.page = newPage;
+                addPageReference(ref, lRef, rRef, te);
+                PageInfo pInfoOld = parentRef.getPageInfo();
+                PageInfo pInfoNew = new PageInfo();
+                pInfoNew.page = newPage;
+                if (!parentRef.replacePage(pInfoOld, pInfoNew))
+                    continue;
+                if (ref != parentRef) {
+                    // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
+                    PageReference tmpRef = tmpNodePage.parent.getRef();
+                    tmpRef.setParentRef(parentRef);
+                    pInfoOld = ref.getPageInfo();
+                    pInfoNew = new SplitPageInfo(tmpRef);
+                    pInfoNew.page = tmpNodePage.parent;
                     if (!ref.replacePage(pInfoOld, pInfoNew))
                         continue;
-                    break;
-                } else {
-                    PageInfo pInfoOld1 = parentRef.getPageInfo();
-                    PageInfo pInfoOld2 = ref.getPageInfo();
-                    PageInfo pInfoNew = new PageInfo();
-                    pInfoNew.page = newPage;
-                    if (!parentRef.replacePage(pInfoOld1, pInfoNew))
-                        continue;
-                    pInfoNew = new SplitPageInfo(parentRef);
-                    pInfoNew.page = newPage;
-                    if (!ref.replacePage(pInfoOld2, pInfoNew))
-                        continue;
-                    break;
                 }
+                break;
             }
         }
 
         private static void addPageReference(PageReference oldRef, PageReference lRef,
-                PageReference rRef) {
-            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                PageReference rRef, TransactionEngine te) {
             for (Transaction t : te.currentTransactions().values()) {
                 Session s = t.getSession();
                 if (s != null) {
