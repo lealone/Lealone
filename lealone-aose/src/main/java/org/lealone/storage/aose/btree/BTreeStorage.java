@@ -21,7 +21,6 @@ import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import org.lealone.storage.aose.btree.chunk.ChunkManager;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageInfo;
-import org.lealone.storage.aose.btree.page.PageReference;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
@@ -152,21 +151,12 @@ public class BTreeStorage {
             p.markDirty();
             return;
         }
-        PageReference tmpRef = new PageReference(this, pos);
-        Page leaf = readPage(tmpRef.getPageInfo(), tmpRef, pos, false);
+        Page leaf = readPage(pos).page;
         Object key = leaf.getKey(0);
         map.markDirty(key);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref) {
-        return readPage(pInfoOld, ref, pInfoOld.pos, true);
-    }
-
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos) {
-        return readPage(pInfoOld, ref, pos, true);
-    }
-
-    private Page readPage(PageInfo pInfoOld, PageReference ref, long pos, boolean gc) {
+    public PageInfo readPage(long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
@@ -178,14 +168,10 @@ public class BTreeStorage {
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        Page p = readPage(pInfoOld, ref, pos, buff, pageLength);
-        if (gc && p != null)
-            bgc.addUsedMemory(p.getTotalMemory());
-        return p;
+        return readPage(pos, buff, pageLength);
     }
 
-    public Page readPage(PageInfo pInfoOld, PageReference ref, long pos, ByteBuffer buff,
-            int pageLength) {
+    public PageInfo readPage(long pos, ByteBuffer buff, int pageLength) {
         int type = PageUtils.getPageType(pos);
         Page p = Page.create(map, type);
         p.setPos(pos);
@@ -197,14 +183,12 @@ public class BTreeStorage {
         pInfo.pos = pos;
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
+        pInfo.updateTime();
 
         p.read(pInfo, buff, chunkId, offset, pageLength, false);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();
-        p.setRef(ref);
-        ref.replacePage(pInfoOld, pInfo);
-        ref.getPageInfo().updateTime();
-        return ref.getPage();
+        return pInfo;
     }
 
     public BTreeGC getBTreeGC() {

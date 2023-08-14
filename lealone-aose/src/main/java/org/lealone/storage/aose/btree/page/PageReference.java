@@ -146,27 +146,49 @@ public class PageReference {
                 return p;
             }
         } else {
-            ByteBuffer buff = pInfo.buff; // 先取出来，GC线程可能把pInfo.buff置null
-            if (buff != null) {
-                p = bs.readPage(pInfo, this, pInfo.pos, buff, pInfo.pageLength);
-                if (p == null)
-                    return getOrReadPage();
-                bs.getBTreeGC().addUsedMemory(p.getMemory());
-            } else {
-                try {
-                    p = bs.readPage(pInfo, this);
-                } catch (RuntimeException e) {
-                    // 执行Compact时如果被重写的chunk文件已经删除了，此时正好用老的pos读page会导致异常
-                    // 直接用Compact线程读好的page即可
-                    p = this.pInfo.page;
-                    if (p != null)
-                        return p;
-                    else
-                        throw e;
-                }
+            p = readPage(pInfo);
+            p.setRef(this);
+            return p;
+        }
+    }
+
+    private Page readPage(PageInfo pInfoOld) {
+        Page p;
+        PageInfo pInfoNew;
+        ByteBuffer buff = pInfoOld.buff; // 先取出来，GC线程可能把pInfo.buff置null
+        if (buff != null) {
+            pInfoNew = bs.readPage(pInfoOld.pos, buff, pInfoOld.pageLength);
+        } else {
+            try {
+                pInfoNew = bs.readPage(pInfoOld.pos);
+            } catch (RuntimeException e) {
+                // 执行Compact时如果被重写的chunk文件已经删除了，此时正好用老的pos读page会导致异常
+                // 直接用Compact线程读好的page即可
+                p = this.pInfo.page;
+                if (p != null)
+                    return p;
+                else
+                    throw e;
             }
-            // p有可能为null，那就再读一次
-            return p != null ? p : getOrReadPage();
+        }
+        if (replacePage(pInfoOld, pInfoNew)) {
+            p = pInfoNew.page;
+            int memory = p.getMemory();
+            if (buff == null)
+                memory += pInfoNew.getBuffMemory();
+            bs.getBTreeGC().addUsedMemory(memory);
+            return p;
+        } else {
+            pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
+            p = pInfoNew.page;
+            if (p != null) {
+                if (pInfoNew.isSplitted()) { // 发生 split 了
+                    return pInfoNew.getNewRef().getOrReadPage();
+                }
+                return p;
+            } else {
+                return getOrReadPage();
+            }
         }
     }
 

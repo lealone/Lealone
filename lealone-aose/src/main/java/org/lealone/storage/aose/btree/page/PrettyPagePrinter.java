@@ -5,8 +5,6 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import org.lealone.storage.aose.btree.BTreeStorage;
-
 // 打印出漂亮的由page组成的btree
 public class PrettyPagePrinter {
 
@@ -78,7 +76,6 @@ public class PrettyPagePrinter {
             PrettyPageInfo info) {
         PageReference[] children = p.getChildren();
         if (children != null) {
-            BTreeStorage bs = p.map.getBTreeStorage();
             buff.append(indent).append("children: ").append(children.length).append('\n');
             for (int i = 0, len = children.length; i < len; i++) {
                 buff.append('\n');
@@ -86,7 +83,7 @@ public class PrettyPagePrinter {
                     getPrettyPageInfoRecursive(children[i].getPage(), indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        Page child = bs.readPage(children[i].getPageInfo(), children[i], 0);
+                        Page child = children[i].getOrReadPage();
                         getPrettyPageInfoRecursive(child, indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");
