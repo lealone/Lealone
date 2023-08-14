@@ -110,7 +110,7 @@ public class PageReference {
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
-        if (pInfo.isSplited()) { // 发生 split 了
+        if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
         Object t = Thread.currentThread();
@@ -134,7 +134,7 @@ public class PageReference {
                     pInfoNew = this.pInfo; // 不能一直用this.pInfo，避免类型转换错误
                     p = pInfoNew.page;
                     if (p != null) {
-                        if (pInfoNew.isSplited()) { // 发生 split 了
+                        if (pInfoNew.isSplitted()) { // 发生 split 了
                             return pInfoNew.getNewRef().getOrReadPage();
                         }
                         return p;

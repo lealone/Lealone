@@ -74,7 +74,7 @@ public class PageInfo {
         return new PageInfo(gc, this);
     }
 
-    public boolean isSplited() {
+    public boolean isSplitted() {
         return false;
     }
 
@@ -91,7 +91,7 @@ public class PageInfo {
         }
 
         @Override
-        public boolean isSplited() {
+        public boolean isSplitted() {
             return true;
         }
 
