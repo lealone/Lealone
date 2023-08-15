@@ -102,12 +102,11 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
-            boolean disableCheck) {
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
-        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+        readCheckValue(buff, chunkId, offset, pageLength);
 
         int keyLength = DataUtils.readVarInt(buff);
         keys = new Object[keyLength];

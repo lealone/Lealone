@@ -214,10 +214,8 @@ public class Page implements IPage {
      * @param chunkId the chunk id
      * @param offset the offset within the chunk
      * @param expectedPageLength the expected page length
-     * @param disableCheck disable check
      */
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
-            boolean disableCheck) {
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         throw ie();
     }
 
@@ -304,12 +302,11 @@ public class Page implements IPage {
         return p;
     }
 
-    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength,
-            boolean disableCheck) {
+    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength) {
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
-        if (!disableCheck && check != (short) checkTest) {
+        if (check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest,
                     check);

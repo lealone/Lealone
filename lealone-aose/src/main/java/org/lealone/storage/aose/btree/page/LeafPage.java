@@ -126,25 +126,23 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
-            boolean disableCheck) {
+    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int mode = buff.get(buff.position() + 4);
         switch (PageStorageMode.values()[mode]) {
         case COLUMN_STORAGE:
-            readColumnStorage(buff, chunkId, offset, expectedPageLength, disableCheck);
+            readColumnStorage(buff, chunkId, offset, expectedPageLength);
             break;
         default:
-            readRowStorage(buff, chunkId, offset, expectedPageLength, disableCheck);
+            readRowStorage(buff, chunkId, offset, expectedPageLength);
         }
     }
 
-    private void readRowStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
-            boolean disableCheck) {
+    private void readRowStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
         buff.get(); // mode
-        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+        readCheckValue(buff, chunkId, offset, pageLength);
 
         int keyLength = DataUtils.readVarInt(buff);
         keys = new Object[keyLength];
@@ -158,13 +156,12 @@ public class LeafPage extends LocalPage {
         recalculateMemory();
     }
 
-    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
-            boolean disableCheck) {
+    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
         buff.get(); // mode
-        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+        readCheckValue(buff, chunkId, offset, pageLength);
 
         int keyLength = DataUtils.readVarInt(buff);
         int columnCount = DataUtils.readVarInt(buff);

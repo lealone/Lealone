@@ -141,7 +141,6 @@ public class PageReference {
         }
     }
 
-    // 不能一直用this.pInfo，避免类型转换错误
     private Page getPage(PageInfo pInfoNew) {
         Page p = pInfoNew.page;
         if (p != null) {

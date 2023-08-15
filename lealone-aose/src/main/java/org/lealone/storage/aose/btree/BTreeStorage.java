@@ -185,7 +185,7 @@ public class BTreeStorage {
         pInfo.pageLength = pageLength;
         pInfo.updateTime();
 
-        p.read(pInfo, buff, chunkId, offset, pageLength, false);
+        p.read(pInfo, buff, chunkId, offset, pageLength);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();
         return pInfo;
