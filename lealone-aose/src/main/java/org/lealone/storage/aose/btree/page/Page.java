@@ -215,7 +215,7 @@ public class Page implements IPage {
      * @param offset the offset within the chunk
      * @param expectedPageLength the expected page length
      */
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         throw ie();
     }
 

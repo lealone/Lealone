@@ -184,9 +184,8 @@ public class BTreeStorage {
 
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
-        p.read(pInfo, buff, chunkId, offset, pageLength);
-        if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
-            buff.flip();
+        // buff要复用，并且要支持多线程同时读，所以直接用slice
+        p.read(buff.slice(), chunkId, offset, pageLength);
         return pInfo;
     }
 

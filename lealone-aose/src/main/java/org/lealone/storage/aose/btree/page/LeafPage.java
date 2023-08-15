@@ -126,7 +126,7 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int mode = buff.get(buff.position() + 4);
         switch (PageStorageMode.values()[mode]) {
         case COLUMN_STORAGE:
@@ -188,13 +188,9 @@ public class LeafPage extends LocalPage {
     private void readColumnPage(int columnIndex) {
         PageReference ref = columnPages[columnIndex];
         ColumnPage page = (ColumnPage) ref.getOrReadPage();
-        if (page.values == null) {
-            page.readColumn(ref.getPageInfo(), values, columnIndex);
-            map.getBTreeStorage().getBTreeGC().addUsedMemory(page.getTotalMemory());
-        } else {
-            // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
-            values = page.values;
-        }
+        page.readColumn(values, columnIndex);
+        // buff内存大小在getOrReadPage中加了，这里只加列占用的内存大小
+        map.getBTreeStorage().getBTreeGC().addUsedMemory(page.getMemory());
     }
 
     @Override
@@ -265,8 +261,8 @@ public class LeafPage extends LocalPage {
 
         long[] posArray = new long[columnCount];
         for (int col = 0; col < columnCount; col++) {
-            ColumnPage page = new ColumnPage(map, values, col);
-            posArray[col] = page.write(chunk, buff);
+            ColumnPage page = new ColumnPage(map);
+            posArray[col] = page.write(chunk, buff, values, col);
         }
         int oldPos = buff.position();
         buff.position(columnPageStartPos);

@@ -14,34 +14,20 @@ import org.lealone.storage.type.StorageDataType;
 
 public class ColumnPage extends Page {
 
-    Object[] values; // 每个元素指向一条记录，并不是字段值
-    private int columnIndex;
+    private int memory;
+    private ByteBuffer buff;
 
     ColumnPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
-    ColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
-        super(map);
-        this.values = values;
-        this.columnIndex = columnIndex;
-    }
-
     @Override
     public int getMemory() {
-        int memory = 0;
-        // 延迟计算
-        if (values != null) {
-            StorageDataType valueType = map.getValueType();
-            for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-                memory += valueType.getMemory(values[row], columnIndex);
-            }
-        }
         return memory;
     }
 
     @Override
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -51,21 +37,22 @@ public class ColumnPage extends Page {
         int compressType = buff.get();
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
-        pInfo.buff = expandPage(buff, compressType, start, pageLength);
+        this.buff = expandPage(buff, compressType, start, pageLength);
     }
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
-    void readColumn(PageInfo pInfo, Object[] values, int columnIndex) {
-        this.values = values;
-        this.columnIndex = columnIndex;
+    void readColumn(Object[] values, int columnIndex) {
+        int memory = 0;
+        ByteBuffer buff = this.buff.slice(); // 要支持多线程同时读，所以直接用slice
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-            valueType.readColumn(pInfo.buff, values[row], columnIndex);
+            valueType.readColumn(buff, values[row], columnIndex);
+            memory += valueType.getMemory(values[row], columnIndex);
         }
-        pInfo.buff.flip(); // 可以复用
+        this.memory = memory;
     }
 
-    long write(Chunk chunk, DataBuffer buff) {
+    long write(Chunk chunk, DataBuffer buff, Object[] values, int columnIndex) {
         beforeWrite();
         PagePos oldPagePos = posRef.get();
         int start = buff.position();

@@ -102,7 +102,7 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void read(PageInfo pInfo, ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
