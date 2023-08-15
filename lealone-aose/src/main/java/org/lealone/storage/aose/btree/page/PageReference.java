@@ -172,6 +172,7 @@ public class PageReference {
                     throw e;
             }
         }
+        pInfoNew.updateTime();
         pInfoNew.page.setRef(this);
         if (replacePage(pInfoOld, pInfoNew)) {
             p = pInfoNew.page;

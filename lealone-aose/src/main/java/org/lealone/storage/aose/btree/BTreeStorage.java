@@ -175,16 +175,15 @@ public class BTreeStorage {
         int type = PageUtils.getPageType(pos);
         Page p = Page.create(map, type);
         p.setPos(pos);
-        int chunkId = PageUtils.getPageChunkId(pos);
-        int offset = PageUtils.getPageOffset(pos);
 
         PageInfo pInfo = new PageInfo();
         pInfo.page = p;
         pInfo.pos = pos;
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
-        pInfo.updateTime();
 
+        int chunkId = PageUtils.getPageChunkId(pos);
+        int offset = PageUtils.getPageOffset(pos);
         p.read(pInfo, buff, chunkId, offset, pageLength);
         if (type != PageUtils.PAGE_TYPE_COLUMN) // ColumnPage还没有读完
             buff.flip();

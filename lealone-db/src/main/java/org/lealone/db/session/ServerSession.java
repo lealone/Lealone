@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -116,8 +117,7 @@ public class ServerSession extends SessionBase {
 
     private Transaction transaction;
     private HashSet<IPage> dirtyPages;
-    private HashSet<Object> pageRefs;
-    private final Object pageRefsLock = new Object();
+    private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -1525,34 +1525,24 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void addPageReference(Object ref) {
-        synchronized (pageRefsLock) {
-            if (pageRefs == null)
-                pageRefs = new HashSet<>();
-            pageRefs.add(ref);
-        }
+        pageRefs.put(ref, ref);
     }
 
     @Override
     public void addPageReference(Object oldRef, Object lRef, Object rRef) {
-        synchronized (pageRefsLock) {
-            if (pageRefs != null && pageRefs.contains(oldRef)) {
-                pageRefs.add(lRef);
-                pageRefs.add(rRef);
-            }
+        if (pageRefs.containsKey(oldRef)) {
+            pageRefs.put(lRef, lRef);
+            pageRefs.put(rRef, rRef);
         }
     }
 
     @Override
-    public synchronized boolean containsPageReference(Object ref) {
-        synchronized (pageRefsLock) {
-            return pageRefs != null && pageRefs.contains(ref);
-        }
+    public boolean containsPageReference(Object ref) {
+        return pageRefs.containsKey(ref);
     }
 
-    public synchronized void clearPageReference() {
-        synchronized (pageRefsLock) {
-            pageRefs = null;
-        }
+    public void clearPageReference() {
+        pageRefs = new ConcurrentHashMap<>();
     }
 
     @Override
