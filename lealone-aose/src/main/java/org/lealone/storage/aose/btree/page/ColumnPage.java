@@ -6,6 +6,7 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -14,7 +15,7 @@ import org.lealone.storage.type.StorageDataType;
 
 public class ColumnPage extends Page {
 
-    private int memory;
+    private final AtomicInteger memory = new AtomicInteger(0);
     private ByteBuffer buff;
 
     ColumnPage(BTreeMap<?, ?> map) {
@@ -23,7 +24,7 @@ public class ColumnPage extends Page {
 
     @Override
     public int getMemory() {
-        return memory;
+        return memory.get();
     }
 
     @Override
@@ -49,7 +50,10 @@ public class ColumnPage extends Page {
             valueType.readColumn(buff, values[row], columnIndex);
             memory += valueType.getMemory(values[row], columnIndex);
         }
-        this.memory = memory;
+        if (this.memory.compareAndSet(0, memory)) {
+            // buff内存大小在getOrReadPage中加了，这里只加列占用的内存大小
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(memory);
+        }
     }
 
     long write(Chunk chunk, DataBuffer buff, Object[] values, int columnIndex) {

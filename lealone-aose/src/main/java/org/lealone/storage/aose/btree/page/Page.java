@@ -240,7 +240,7 @@ public class Page implements IPage {
     protected void addRemovedPage(long pos) {
         map.getBTreeStorage().getChunkManager().addRemovedPage(pos);
         // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-        if (isLeaf())
+        if (!isNode())
             map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
     }
 

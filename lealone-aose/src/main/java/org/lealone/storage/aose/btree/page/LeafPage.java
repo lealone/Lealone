@@ -17,6 +17,7 @@ public class LeafPage extends LocalPage {
 
     private Object[] values;
     private PageReference[] columnPages;
+    private boolean isAllColumnPagesRead;
 
     public LeafPage(BTreeMap<?, ?> map) {
         super(map);
@@ -39,11 +40,9 @@ public class LeafPage extends LocalPage {
 
     @Override
     public Object getValue(int index, int[] columnIndexes) {
-        if (columnPages != null && columnIndexes != null) {
+        if (columnPages != null && columnIndexes != null && !isAllColumnPagesRead) {
             for (int columnIndex : columnIndexes) {
-                if (columnPages[columnIndex].getPage() == null) {
-                    readColumnPage(columnIndex);
-                }
+                readColumnPage(columnIndex);
             }
         }
         return values[index];
@@ -51,18 +50,54 @@ public class LeafPage extends LocalPage {
 
     @Override
     public Object getValue(int index, boolean allColumns) {
-        if (columnPages != null && allColumns) {
-            for (int columnIndex = 0, len = columnPages.length; columnIndex < len; columnIndex++) {
-                if (columnPages[columnIndex].getPage() == null) {
-                    readColumnPage(columnIndex);
-                }
-            }
+        if (columnPages != null && allColumns && !isAllColumnPagesRead) {
+            readAllColumnPages();
         }
         return values[index];
     }
 
+    private void readAllColumnPages() {
+        for (int columnIndex = 0, len = columnPages.length; columnIndex < len; columnIndex++) {
+            readColumnPage(columnIndex);
+        }
+        isAllColumnPagesRead = true;
+    }
+
+    private void readColumnPage(int columnIndex) {
+        PageReference ref = columnPages[columnIndex];
+        ColumnPage page = (ColumnPage) ref.getOrReadPage();
+        if (page.getMemory() <= 0)
+            page.readColumn(values, columnIndex);
+    }
+
+    private void markAllColumnPagesDirty() {
+        if (columnPages != null) {
+            if (!isAllColumnPagesRead) {
+                readAllColumnPages();
+            }
+            for (PageReference ref : columnPages) {
+                if (ref != null) {
+                    Page p = ref.getPage();
+                    if (p != null) {
+                        p.markDirty();
+                    }
+                }
+            }
+            columnPages = null;
+        }
+    }
+
+    @Override
+    public void markDirty() {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
+        super.markDirty();
+    }
+
     @Override
     public Object setValue(int index, Object value) {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
         Object old = values[index];
         StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
@@ -100,6 +135,8 @@ public class LeafPage extends LocalPage {
 
     @Override
     public Page copyAndInsertLeaf(int index, Object key, Object value) {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
         int len = keys.length + 1;
         Object[] newKeys = new Object[len];
         DataUtils.copyWithGap(keys, newKeys, len - 1, index);
@@ -115,6 +152,8 @@ public class LeafPage extends LocalPage {
 
     @Override
     public void remove(int index) {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
         int keyLength = keys.length;
         super.remove(index);
         Object old = values[index];
@@ -183,14 +222,6 @@ public class LeafPage extends LocalPage {
         buff.getInt(); // replicationHostIds
         recalculateMemory();
         // 延迟加载列
-    }
-
-    private void readColumnPage(int columnIndex) {
-        PageReference ref = columnPages[columnIndex];
-        ColumnPage page = (ColumnPage) ref.getOrReadPage();
-        page.readColumn(values, columnIndex);
-        // buff内存大小在getOrReadPage中加了，这里只加列占用的内存大小
-        map.getBTreeStorage().getBTreeGC().addUsedMemory(page.getMemory());
     }
 
     @Override
@@ -307,7 +338,7 @@ public class LeafPage extends LocalPage {
         return create(map, new Object[0], new Object[0], PageUtils.PAGE_MEMORY);
     }
 
-    static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, int memory) {
+    private static LeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, int memory) {
         LeafPage p = new LeafPage(map);
         // the position is 0
         p.keys = keys;
