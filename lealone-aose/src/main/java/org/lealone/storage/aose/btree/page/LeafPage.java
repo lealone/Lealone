@@ -225,18 +225,17 @@ public class LeafPage extends LocalPage {
     }
 
     @Override
-    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
-        beforeWrite();
+    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
+        beforeWrite(pInfoOld);
         switch (map.getPageStorageMode()) {
         case COLUMN_STORAGE:
-            return writeColumnStorage(chunk, buff);
+            return writeColumnStorage(pInfoOld, chunk, buff);
         default:
-            return writeRowStorage(chunk, buff);
+            return writeRowStorage(pInfoOld, chunk, buff);
         }
     }
 
-    private long writeRowStorage(Chunk chunk, DataBuffer buff) {
-        PagePos oldPagePos = posRef.get();
+    private long writeRowStorage(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -257,11 +256,10 @@ public class LeafPage extends LocalPage {
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
 
-        return updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type);
     }
 
-    private long writeColumnStorage(Chunk chunk, DataBuffer buff) {
-        PagePos oldPagePos = posRef.get();
+    private long writeColumnStorage(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -293,6 +291,7 @@ public class LeafPage extends LocalPage {
         long[] posArray = new long[columnCount];
         for (int col = 0; col < columnCount; col++) {
             ColumnPage page = new ColumnPage(map);
+            page.setRef(new PageReference(map.getBTreeStorage(), 0));
             posArray[col] = page.write(chunk, buff, values, col);
         }
         int oldPos = buff.position();
@@ -302,7 +301,7 @@ public class LeafPage extends LocalPage {
         }
         buff.position(oldPos);
 
-        return updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type);
     }
 
     @Override

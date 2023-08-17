@@ -136,8 +136,7 @@ public class NodePage extends LocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private long[] write(Chunk chunk, DataBuffer buff) {
-        PagePos oldPagePos = posRef.get();
+    private long[] write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -164,7 +163,7 @@ public class NodePage extends LocalPage {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        long pos = updateChunkAndPage(oldPagePos, chunk, start, pageLength, type);
+        long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type);
         return new long[] { typePos + 1, pos };
     }
 
@@ -181,18 +180,17 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
-        beforeWrite();
-        long ret[] = write(chunk, buff);
+    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
+        beforeWrite(pInfoOld);
+        long ret[] = write(pInfoOld, chunk, buff);
         int patch = (int) ret[0];
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
-            if (p != null && p.getPos() == 0) {
-                long pos = p.writeUnsavedRecursive(chunk, buff);
+            if (p != null && pInfo.getPos() == 0) {
+                long pos = p.writeUnsavedRecursive(pInfo, chunk, buff);
                 positions[i] = pos;
-                pInfo.pos = pos;
             } else {
                 positions[i] = pInfo.pos;
             }

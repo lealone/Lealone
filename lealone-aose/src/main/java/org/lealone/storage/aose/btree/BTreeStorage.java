@@ -173,19 +173,15 @@ public class BTreeStorage {
 
     public PageInfo readPage(long pos, ByteBuffer buff, int pageLength) {
         int type = PageUtils.getPageType(pos);
-        Page p = Page.create(map, type);
-        p.setPos(pos);
-
-        PageInfo pInfo = new PageInfo();
-        pInfo.page = p;
-        pInfo.pos = pos;
-        pInfo.buff = buff;
-        pInfo.pageLength = pageLength;
-
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
+        Page p = Page.create(map, type);
         // buff要复用，并且要支持多线程同时读，所以直接用slice
         p.read(buff.slice(), chunkId, offset, pageLength);
+
+        PageInfo pInfo = new PageInfo(p, pos);
+        pInfo.buff = buff;
+        pInfo.pageLength = pageLength;
         return pInfo;
     }
 
@@ -343,10 +339,8 @@ public class BTreeStorage {
             c.mapSize = map.size();
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
-            Page p = pInfo.page;
-            long pos = p.writeUnsavedRecursive(c, chunkBody);
+            long pos = pInfo.page.writeUnsavedRecursive(pInfo, c, chunkBody);
             c.rootPagePos = pos;
-            pInfo.pos = pos;
             c.write(chunkBody, appendMode, chunkManager);
             if (!appendMode) {
                 chunkManager.addChunk(c);

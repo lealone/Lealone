@@ -6,7 +6,6 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -38,16 +37,7 @@ public class Page implements IPage {
         }
     }
 
-    protected static class PagePos {
-        final long v;
-
-        PagePos(long v) {
-            this.v = v;
-        }
-    }
-
     protected final BTreeMap<?, ?> map;
-    protected final AtomicReference<PagePos> posRef = new AtomicReference<>(new PagePos(0));
     private PageReference ref;
 
     protected Page(BTreeMap<?, ?> map) {
@@ -63,11 +53,7 @@ public class Page implements IPage {
     }
 
     public long getPos() {
-        return posRef.get().v;
-    }
-
-    public void setPos(long pos) {
-        posRef.set(new PagePos(pos));
+        return ref.getPos();
     }
 
     private static RuntimeException ie() {
@@ -226,14 +212,17 @@ public class Page implements IPage {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public long writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         throw ie();
     }
 
-    protected void beforeWrite() {
+    protected void beforeWrite(PageInfo pInfoOld) {
         if (ASSERT) {
-            if (getPos() != 0)
-                DbException.throwInternalError("already stored before");
+            if (pInfoOld.getPos() != 0)
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
+                        "Page already stored");
+            if (pInfoOld.buff != null)
+                DbException.throwInternalError();
         }
     }
 
@@ -245,21 +234,35 @@ public class Page implements IPage {
     }
 
     public void markDirty() {
-        PagePos old = posRef.get();
-        if (posRef.compareAndSet(old, new PagePos(0))) {
-            if (old.v != 0) {
-                addRemovedPage(old.v);
+        markDirty(this);
+    }
+
+    public void markDirty(Page newPage) {
+        PageInfo pInfoOld = ref.getPageInfo();
+        PageInfo pInfoNew = new PageInfo(newPage, 0);
+        if (ref.replacePage(pInfoOld, pInfoNew)) {
+            if (pInfoOld.getPos() != 0) {
+                addRemovedPage(pInfoOld.getPos());
             }
-        } else if (posRef.get().v != 0) { // 刷脏页线程刚写完，需要重试
-            markDirty();
+        } else if (ref.getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
+            markDirty(newPage);
         }
+    }
+
+    @Override
+    public void markDirtyBottomUp() {
+        if (ref.isDataStructureChanged())
+            return;
+        if (ref.getPage() != this)
+            markDirtyBottomUp(ref.getPage());
+        else
+            markDirtyBottomUp(this);
     }
 
     // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
     // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
-    @Override
-    public void markDirtyBottomUp() {
-        markDirty();
+    public void markDirtyBottomUp(Page newPage) {
+        markDirty(newPage);
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
             parentRef.getOrReadPage().markDirty();
@@ -377,39 +380,38 @@ public class Page implements IPage {
         return buff;
     }
 
-    long updateChunkAndPage(PagePos oldPagePos, Chunk chunk, int start, int pageLength, int type) {
-        if (getPos() != 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
-        }
+    long updateChunkAndPage(PageInfo pInfoOld, Chunk chunk, int start, int pageLength, int type) {
         long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
-        if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
+        if (chunk.sumOfPageLength > Chunk.MAX_SIZE) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
-
+        }
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
         PageReference ref = getRef();
-        if (ref != null) {
-            PageInfo pInfo = ref.getPageInfo();
-            pInfo.updateTime();
-            // 旧page被更新再保存时需要把buff释放，否则GC线程把page字段置null后会用到旧的buff字段
-            if (pInfo.buff != null) {
-                int memory = pInfo.getBuffMemory();
-                map.getBTreeStorage().getBTreeGC().addUsedMemory(-memory);
-                pInfo.releaseBuff();
-            }
+        while (true) {
             // 如果page被split了，刷脏页时要标记为删除
             if (ref.isDataStructureChanged() || ref.getPage() != this) {
                 addRemovedPage(pos);
                 return pos;
             }
+            PageInfo pInfoNew = new PageInfo(this, pos);
+            if (ref.replacePage(pInfoOld, pInfoNew)) {
+                return pos;
+            } else {
+                pInfoOld = ref.getPageInfo();
+                if (pInfoOld.getPage() != this) {
+                    addRemovedPage(pos);
+                    return pos;
+                } else {
+                    // 读操作调用PageReference.getOrReadPage()时会用新的PageInfo替换，
+                    // 但是page还是相同的，此时不能删除pos
+                    continue;
+                }
+            }
         }
-        if (!posRef.compareAndSet(oldPagePos, new PagePos(pos))) {
-            addRemovedPage(pos);
-        }
-        return pos;
     }
 }

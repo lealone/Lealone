@@ -107,6 +107,10 @@ public class PageReference {
         return pInfo.page;
     }
 
+    public long getPos() {
+        return pInfo.pos;
+    }
+
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
@@ -198,17 +202,10 @@ public class PageReference {
             if (!isRoot() && !isLocked())
                 DbException.throwInternalError("not locked");
         }
-        PageInfo pInfo;
-        if (page != null) {
-            pInfo = new PageInfo();
-            pInfo.pos = page.getPos();
-            pInfo.page = page;
-        } else {
-            pInfo = new PageInfo();
-        }
-        this.pInfo = pInfo;
         if (oldPage != null)
-            oldPage.markDirtyBottomUp();
+            oldPage.markDirtyBottomUp(page);
+        else
+            this.pInfo.page = page;
     }
 
     public boolean isLeafPage() {

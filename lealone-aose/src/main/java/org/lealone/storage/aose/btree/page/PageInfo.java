@@ -20,7 +20,8 @@ public class PageInfo {
     public PageInfo() {
     }
 
-    public PageInfo(long pos) {
+    public PageInfo(Page page, long pos) {
+        this.page = page;
         this.pos = pos;
     }
 
@@ -44,6 +45,10 @@ public class PageInfo {
 
     public Page getPage() {
         return page;
+    }
+
+    public long getPos() {
+        return pos;
     }
 
     public int getBuffMemory() {
