@@ -149,4 +149,9 @@ abstract class QOperator implements Operator {
         }
         return row;
     }
+
+    @Override
+    public void onLockedException() {
+        tableIterator.onLockedException();
+    }
 }

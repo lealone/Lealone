@@ -1091,7 +1091,7 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public Row getRow(Row oldRow) {
-        return null;
+        return oldRow;
     }
 
     public boolean isRowChanged(Row row) {

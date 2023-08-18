@@ -8,6 +8,7 @@ package org.lealone.sql.query;
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
@@ -90,7 +91,15 @@ public class YieldableSelect extends YieldableQueryBase {
     protected void executeInternal() {
         while (true) {
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
-            queryOperator.run();
+            try {
+                queryOperator.run();
+            } catch (RuntimeException e) {
+                if (DbObjectLock.LOCKED_EXCEPTION == e) {
+                    queryOperator.onLockedException();
+                } else {
+                    throw e;
+                }
+            }
             if (queryOperator.isStopped()) {
                 // 查询结果已经增加到target了
                 if (target != null) {

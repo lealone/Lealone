@@ -76,4 +76,8 @@ public class TableIterator {
         }
         return 1;
     }
+
+    public void onLockedException() {
+        oldRow = getRow();
+    }
 }

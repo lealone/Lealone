@@ -22,4 +22,6 @@ public interface Operator {
     default void copyStatus(Operator old) {
     }
 
+    default void onLockedException() {
+    }
 }
