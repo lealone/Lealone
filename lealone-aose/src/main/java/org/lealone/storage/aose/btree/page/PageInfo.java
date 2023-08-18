@@ -51,8 +51,16 @@ public class PageInfo {
         return pos;
     }
 
+    public int getPageMemory() {
+        return page == null ? 0 : page.getMemory();
+    }
+
     public int getBuffMemory() {
         return buff == null ? 0 : buff.limit();
+    }
+
+    public int getTotalMemory() {
+        return getPageMemory() + getBuffMemory();
     }
 
     public long getLastTime() {
@@ -63,16 +71,18 @@ public class PageInfo {
         return hits;
     }
 
-    public void resetHits() {
-        hits = 0;
-    }
-
     public void releaseBuff() {
         buff = null;
     }
 
     public void releasePage() {
         page = null;
+    }
+
+    public PageInfo copy(long newPos) {
+        PageInfo pInfo = copy(false);
+        pInfo.pos = newPos;
+        return pInfo;
     }
 
     public PageInfo copy(boolean gc) {

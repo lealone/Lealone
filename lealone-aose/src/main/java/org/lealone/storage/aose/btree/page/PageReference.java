@@ -9,9 +9,15 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
+import org.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
+import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import org.lealone.storage.page.PageOperationHandler;
+import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 public class PageReference {
 
@@ -111,6 +117,27 @@ public class PageReference {
         return pInfo.pos;
     }
 
+    public boolean isLeafPage() {
+        Page p = pInfo.page;
+        if (p != null)
+            return p.isLeaf();
+        else
+            return PageUtils.isLeafPage(pInfo.pos);
+    }
+
+    public boolean isNodePage() {
+        Page p = pInfo.page;
+        if (p != null)
+            return p.isNode();
+        else
+            return PageUtils.isNodePage(pInfo.pos);
+    }
+
+    @Override
+    public String toString() {
+        return "PageReference[" + pInfo.pos + "]";
+    }
+
     // 多线程读page也是线程安全的
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
@@ -190,42 +217,179 @@ public class PageReference {
         }
     }
 
-    public boolean replacePage(PageInfo expect, PageInfo update) {
+    private boolean replacePage(PageInfo expect, PageInfo update) {
         return pageInfoUpdater.compareAndSet(this, expect, update);
     }
 
-    public void replacePage(Page page) {
-        Page oldPage = this.pInfo.page;
-        if (oldPage == page)
-            return;
-        if (Page.ASSERT) {
-            if (!isRoot() && !isLocked())
-                DbException.throwInternalError("not locked");
+    // 强制改变page和pos
+    public void replacePage(Page newPage) {
+        while (true) {
+            PageInfo pInfoOld = this.pInfo;
+            Page oldPage = pInfoOld.page;
+            if (oldPage == newPage)
+                return;
+            if (Page.ASSERT) {
+                if (!isRoot() && !isLocked())
+                    DbException.throwInternalError("not locked");
+            }
+            if (oldPage != null) {
+                PageInfo pInfoNew = new PageInfo(newPage, 0);
+                if (replacePage(pInfoOld, pInfoNew)) {
+                    if (pInfoOld.getPos() != 0) {
+                        addRemovedPage(pInfoOld.getPos(), pInfoOld);
+                    }
+                    return;
+                } else {
+                    continue;
+                }
+            } else {
+                this.pInfo.page = newPage;
+                return;
+            }
         }
-        if (oldPage != null)
-            oldPage.markDirtyBottomUp(page);
-        else
-            this.pInfo.page = page;
     }
 
-    public boolean isLeafPage() {
-        Page p = pInfo.page;
-        if (p != null)
-            return p.isLeaf();
-        else
-            return PageUtils.isLeafPage(pInfo.pos);
+    // 不改变page，只是改变pos
+    public void markDirtyPage() {
+        while (true) {
+            PageInfo pInfoOld = this.pInfo;
+            PageInfo pInfoNew = pInfoOld.copy(0);
+            if (replacePage(pInfoOld, pInfoNew)) {
+                if (pInfoOld.getPos() != 0) {
+                    addRemovedPage(pInfoOld.getPos(), pInfoOld);
+                }
+                return;
+            } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
+                continue;
+            } else {
+                return; // 如果pos为0就不需要试了
+            }
+        }
     }
 
-    public boolean isNodePage() {
-        Page p = pInfo.page;
-        if (p != null)
-            return p.isNode();
-        else
-            return PageUtils.isNodePage(pInfo.pos);
+    private void addRemovedPage(long pos, PageInfo pInfoOld) {
+        bs.getChunkManager().addRemovedPage(pos);
+        Page p = pInfoOld.page;
+        // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
+        if (p != null && !p.isNode())
+            bs.getBTreeGC().addDirtyMemory(pInfoOld.getTotalMemory());
     }
 
-    @Override
-    public String toString() {
-        return "PageReference[" + pInfo.pos + "]";
+    // 刷完脏页后需要用新的位置更新，如果当前page不是oldPage了，那么把oldPage标记为删除
+    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved) {
+        PageInfo pInfoOld = pInfoSaved;
+        // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
+        while (true) {
+            // 如果page被split了，刷脏页时要标记为删除
+            if (isDataStructureChanged() || getPage() != oldPage) {
+                addRemovedPage(newPos, pInfoSaved);
+                return;
+            }
+            PageInfo pInfoNew = pInfoOld.copy(newPos);
+            if (replacePage(pInfoOld, pInfoNew)) {
+                return;
+            } else {
+                pInfoOld = getPageInfo();
+                if (pInfoOld.getPage() != oldPage) {
+                    addRemovedPage(newPos, pInfoSaved);
+                    return;
+                } else {
+                    // 读操作调用PageReference.getOrReadPage()时会用新的PageInfo替换，
+                    // 但是page还是相同的，此时不能删除pos
+                    continue;
+                }
+            }
+        }
+    }
+
+    public boolean canGc(TransactionEngine te) {
+        PageInfo pInfo = this.pInfo;
+        if (pInfo.page == null && pInfo.buff == null)
+            return false;
+        if (pInfo.pos == 0) // pos为0时说明page被修改了，不能回收
+            return false;
+        if (isLocked()) // 其他事务准备更新page，所以没必要回收
+            return false;
+        if (te == null)
+            return true;
+        for (Transaction t : te.currentTransactions().values()) {
+            Session s = t.getSession();
+            if (s != null && s.containsPageReference(this) && s.isForUpdate()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // gcType: 0释放page和buff、1释放page、2释放buff
+    public PageInfo gcPage(PageInfo pInfoOld, int gcType) {
+        if (getPageInfo() != pInfoOld) // 发生变动了，不需要进一步的操作
+            return null;
+        long memory = 0;
+        boolean gc = false;
+        Page p = pInfoOld.page;
+        ByteBuffer buff = pInfoOld.buff;
+        PageInfo pInfoNew = null;
+        if (gcType == 0 && (p != null || buff != null)) {
+            memory = pInfoOld.getTotalMemory();
+            pInfoNew = pInfoOld.copy(true);
+            pInfoNew.releasePage();
+            pInfoNew.releaseBuff();
+            gc = true;
+        } else if (gcType == 1 && p != null) {
+            memory = pInfoOld.getPageMemory();
+            pInfoNew = pInfoOld.copy(true);
+            pInfoNew.releasePage();
+            gc = true;
+        } else if (gcType == 2 && buff != null) {
+            memory = pInfoOld.getBuffMemory();
+            pInfoNew = pInfoOld.copy(true);
+            pInfoNew.releaseBuff();
+            gc = true;
+        }
+        if (gc && replacePage(pInfoOld, pInfoNew)) {
+            bs.getBTreeGC().addUsedMemory(-memory);
+            if (gcType == 1)
+                return pInfoNew;
+        }
+        return null;
+    }
+
+    public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
+            PageReference ref, Page newPage) {
+        PageReference lRef = tmpNodePage.left;
+        PageReference rRef = tmpNodePage.right;
+        TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
+                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        while (true) {
+            // 先取出旧值再进行addPageReference，否则会有并发问题
+            PageInfo pInfoOld1 = parentRef.getPageInfo();
+            PageInfo pInfoOld2 = ref.getPageInfo();
+            addPageReference(ref, lRef, rRef, te);
+            PageInfo pInfoNew = new PageInfo();
+            pInfoNew.page = newPage;
+            if (!parentRef.replacePage(pInfoOld1, pInfoNew))
+                continue;
+            if (ref != parentRef) {
+                // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
+                PageReference tmpRef = tmpNodePage.parent.getRef();
+                tmpRef.setParentRef(parentRef);
+                pInfoNew = new SplittedPageInfo(tmpRef);
+                pInfoNew.page = tmpNodePage.parent;
+                if (!ref.replacePage(pInfoOld2, pInfoNew))
+                    continue;
+            }
+            break;
+        }
+    }
+
+    private static void addPageReference(PageReference oldRef, PageReference lRef, PageReference rRef,
+            TransactionEngine te) {
+        for (Transaction t : te.currentTransactions().values()) {
+            Session s = t.getSession();
+            if (s != null) {
+                s.addPageReference(oldRef, lRef, rRef);
+            }
+        }
     }
 }

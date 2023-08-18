@@ -5,19 +5,14 @@
  */
 package org.lealone.storage.aose.btree.page;
 
-import org.lealone.db.Constants;
-import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 
 public abstract class PageOperations {
 
@@ -362,7 +357,7 @@ public abstract class PageOperations {
                 tmpNodePage.parent.setRef(pRef);
                 tmpNodePage.left.setParentRef(pRef);
                 tmpNodePage.right.setParentRef(pRef);
-                replacePage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
+                PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
@@ -371,7 +366,7 @@ public abstract class PageOperations {
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
-                replacePage(tmpNodePage, parentRef, pRef, newParent);
+                PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
                     asyncSplitPage(poHandler, parentRef);
@@ -418,44 +413,6 @@ public abstract class PageOperations {
             for (PageReference ref : tmpNodePage.right.getPage().getChildren()) {
                 if (ref.getPage() != null)
                     ref.setParentRef(rRef);
-            }
-        }
-
-        private static void replacePage(TmpNodePage tmpNodePage, PageReference parentRef,
-                PageReference ref, Page newPage) {
-            PageReference lRef = tmpNodePage.left;
-            PageReference rRef = tmpNodePage.right;
-            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-            while (true) {
-                // 先取出旧值再进行addPageReference，否则会有并发问题
-                PageInfo pInfoOld1 = parentRef.getPageInfo();
-                PageInfo pInfoOld2 = ref.getPageInfo();
-                addPageReference(ref, lRef, rRef, te);
-                PageInfo pInfoNew = new PageInfo();
-                pInfoNew.page = newPage;
-                if (!parentRef.replacePage(pInfoOld1, pInfoNew))
-                    continue;
-                if (ref != parentRef) {
-                    // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
-                    PageReference tmpRef = tmpNodePage.parent.getRef();
-                    tmpRef.setParentRef(parentRef);
-                    pInfoNew = new SplittedPageInfo(tmpRef);
-                    pInfoNew.page = tmpNodePage.parent;
-                    if (!ref.replacePage(pInfoOld2, pInfoNew))
-                        continue;
-                }
-                break;
-            }
-        }
-
-        private static void addPageReference(PageReference oldRef, PageReference lRef,
-                PageReference rRef, TransactionEngine te) {
-            for (Transaction t : te.currentTransactions().values()) {
-                Session s = t.getSession();
-                if (s != null) {
-                    s.addPageReference(oldRef, lRef, rRef);
-                }
             }
         }
     }

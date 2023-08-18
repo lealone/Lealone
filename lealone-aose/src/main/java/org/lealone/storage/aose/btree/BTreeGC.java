@@ -5,16 +5,14 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.util.Comparator;
-import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.function.Consumer;
 
 import org.lealone.db.MemoryManager;
-import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageInfo;
 import org.lealone.storage.aose.btree.page.PageReference;
-import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 
 public class BTreeGC {
@@ -102,11 +100,11 @@ public class BTreeGC {
             return;
         long size1 = memoryManager.getUsedMemory();
         long now = System.currentTimeMillis();
-        gcPages(now, 15 * 60 * 1000, true, te); // 15+分钟都没再访问过，释放page字段和buff字段
+        gcPages(now, 15 * 60 * 1000, 0, te); // 15+分钟都没再访问过，释放page字段和buff字段
         if (memoryManager.needGc())
-            gcPages(now, 5 * 60 * 1000, false, te); // 5+分钟都没再访问过，释放page字段保留buff字段
+            gcPages(now, 5 * 60 * 1000, 1, te); // 5+分钟都没再访问过，释放page字段保留buff字段
         if (memoryManager.needGc())
-            gcPages(now, -2, true, te); // 全表扫描的场景，释放page字段和buff字段
+            gcPages(now, -2, 0, te); // 全表扫描的场景，释放page字段和buff字段
         if (memoryManager.needGc())
             lru(te, memoryManager); // 按LRU算法回收
         long size2 = memoryManager.getUsedMemory();
@@ -114,56 +112,38 @@ public class BTreeGC {
             System.out.println("Map: " + map.getName() + ", GC: " + size1 + " -> " + size2);
     }
 
-    private void gcPages(long now, long hitsOrIdleTime, boolean gcAll, TransactionEngine te) {
+    // gcType: 0释放page和buff、1释放page、2释放buff
+    private void gcPages(long now, long hitsOrIdleTime, int gcType, TransactionEngine te) {
         PageReference ref = map.getRootPageRef();
-        gcPages(ref, ref.getPageInfo(), now, hitsOrIdleTime, gcAll, te);
+        gcPages(ref, now, hitsOrIdleTime, gcType, te);
     }
 
-    private void gcPages(PageReference ref, PageInfo pInfo, long now, long hitsOrIdleTime, boolean gcAll,
+    private void gcPages(PageReference ref, long now, long hitsOrIdleTime, int gcType,
             TransactionEngine te) {
+        PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                gcPages(childRef, childRef.getPageInfo(), now, hitsOrIdleTime, gcAll, te);
+                gcPages(childRef, now, hitsOrIdleTime, gcType, te);
             });
         }
-        if (canGC(ref, pInfo, p, te)) {
-            gcPage(ref, pInfo, p, now, hitsOrIdleTime, gcAll);
-        }
-    }
-
-    private void gcPage(PageReference ref, PageInfo pInfo, Page p, long now, long hitsOrIdleTime,
-            boolean gcAll) {
-        boolean gc = false;
-        if (hitsOrIdleTime < 0) {
-            int hits = (int) -hitsOrIdleTime;
-            if (pInfo.getHits() < hits) {
+        if (ref.canGc(te)) {
+            boolean gc = false;
+            if (hitsOrIdleTime < 0) {
+                int hits = (int) -hitsOrIdleTime;
+                if (pInfo.getHits() < hits) {
+                    gc = true;
+                }
+            } else if (now - pInfo.getLastTime() > hitsOrIdleTime) {
                 gc = true;
-                pInfo.resetHits();
             }
-        } else if (now - pInfo.getLastTime() > hitsOrIdleTime) {
-            gc = true;
-        }
-        if (gc) {
-            PageInfo pInfoNew = pInfo.copy(true);
-            long memory;
-            if (p != null) {
-                if (gcAll)
-                    memory = p.getTotalMemory();
-                else
-                    memory = p.getMemory();
-                pInfoNew.releasePage();
-            } else {
-                memory = pInfo.getBuffMemory();
+            if (gc) {
+                ref.gcPage(pInfo, gcType);
             }
-            if (gcAll)
-                pInfoNew.releaseBuff();
-            if (ref.replacePage(pInfo, pInfoNew))
-                addUsedMemory(-memory);
         }
     }
 
-    private static class GcingPage {
+    private static class GcingPage implements Comparable<GcingPage> {
         PageReference ref;
         PageInfo pInfo;
 
@@ -175,79 +155,44 @@ public class BTreeGC {
         long getLastTime() {
             return pInfo.getLastTime();
         }
+
+        @Override
+        public int compareTo(GcingPage o) {
+            return (int) (getLastTime() - o.getLastTime());
+        }
     }
 
     private void lru(TransactionEngine te, MemoryManager memoryManager) {
-        Comparator<GcingPage> comparator = (p1, p2) -> (int) (p1.getLastTime() - p2.getLastTime());
-        TreeSet<GcingPage> set = new TreeSet<>(comparator);
-        collect(set, map.getRootPageRef(), te);
-        release(set, true); // 先释放page
+        ArrayList<GcingPage> list = new ArrayList<>();
+        collect(list, map.getRootPageRef(), te);
+        Collections.sort(list);
+        release(list, 1); // 先释放page
         if (memoryManager.needGc())
-            release(set, false); // 如果内存依然紧张再释放buff
+            release(list, 2); // 如果内存依然紧张再释放buff
     }
 
-    private void collect(TreeSet<GcingPage> set, PageReference ref, TransactionEngine te) {
+    private void collect(ArrayList<GcingPage> list, PageReference ref, TransactionEngine te) {
         PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                collect(set, childRef, te);
+                collect(list, childRef, te);
             });
         }
-        if (canGC(ref, pInfo, p, te)) {
-            set.add(new GcingPage(ref, pInfo));
+        if (ref.canGc(te)) {
+            list.add(new GcingPage(ref, pInfo));
         }
     }
 
-    private void release(TreeSet<GcingPage> set, boolean releasePage) {
-        int size = set.size() / 2 + 1;
-        for (GcingPage gp : set) {
-            PageInfo pInfo = gp.pInfo;
-            PageReference ref = gp.ref;
-            if (ref.getPageInfo() != pInfo) // 发生变动了，不需要进一步的操作
-                continue;
-            long memory;
-            if (releasePage) {
-                Page p = pInfo.page;
-                if (p == null)
-                    continue;
-                PageInfo pInfoNew = pInfo.copy(true);
-                pInfoNew.releasePage();
-                memory = p.getMemory();
-                if (ref.replacePage(pInfo, pInfoNew)) {
-                    addUsedMemory(-memory);
-                    gp.pInfo = pInfoNew;
-                }
-            } else {
-                if (pInfo.buff == null)
-                    continue;
-                memory = pInfo.getBuffMemory();
-                PageInfo pInfoNew = pInfo.copy(true);
-                pInfo.releaseBuff();
-                if (ref.replacePage(pInfo, pInfoNew))
-                    addUsedMemory(-memory);
-            }
+    private void release(ArrayList<GcingPage> list, int gcType) {
+        int size = list.size() / 2 + 1;
+        for (GcingPage gp : list) {
+            PageInfo pInfoNew = gp.ref.gcPage(gp.pInfo, gcType);
+            if (pInfoNew != null)
+                gp.pInfo = pInfoNew;
             if (size-- == 0)
                 break;
         }
-    }
-
-    private boolean canGC(PageReference ref, PageInfo pInfo, Page p, TransactionEngine te) {
-        if (p == null && pInfo.buff == null)
-            return false;
-        if (p != null && p.getPos() == 0) // pos为0时说明page被修改了，不能回收
-            return false;
-        if (ref.isLocked()) // 其他事务准备更新page，所以没必要回收
-            return false;
-        if (te == null)
-            return true;
-        for (Transaction t : te.currentTransactions().values()) {
-            Session s = t.getSession();
-            if (s != null && s.containsPageReference(ref) && s.isForUpdate()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private void forEachPage(Page p, Consumer<PageReference> action) {

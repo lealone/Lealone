@@ -226,46 +226,18 @@ public class Page implements IPage {
         }
     }
 
-    protected void addRemovedPage(long pos) {
-        map.getBTreeStorage().getChunkManager().addRemovedPage(pos);
-        // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-        if (!isNode())
-            map.getBTreeStorage().getBTreeGC().addDirtyMemory(getTotalMemory());
-    }
-
     public void markDirty() {
-        markDirty(this);
-    }
-
-    public void markDirty(Page newPage) {
-        PageInfo pInfoOld = ref.getPageInfo();
-        PageInfo pInfoNew = new PageInfo(newPage, 0);
-        if (ref.replacePage(pInfoOld, pInfoNew)) {
-            if (pInfoOld.getPos() != 0) {
-                addRemovedPage(pInfoOld.getPos());
-            }
-        } else if (ref.getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
-            markDirty(newPage);
-        }
-    }
-
-    @Override
-    public void markDirtyBottomUp() {
-        if (ref.isDataStructureChanged())
-            return;
-        if (ref.getPage() != this)
-            markDirtyBottomUp(ref.getPage());
-        else
-            markDirtyBottomUp(this);
+        ref.markDirtyPage();
     }
 
     // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
     // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
-    public void markDirtyBottomUp(Page newPage) {
-        markDirty(newPage);
+    @Override
+    public void markDirtyBottomUp() {
+        markDirty();
         PageReference parentRef = getRef().getParentRef();
         while (parentRef != null) {
-            parentRef.getOrReadPage().markDirty();
+            parentRef.markDirtyPage();
             parentRef = parentRef.getParentRef();
         }
     }
@@ -276,14 +248,6 @@ public class Page implements IPage {
 
     public int getMemory() {
         return 0;
-    }
-
-    public int getBuffMemory() {
-        return ref.getPageInfo().getBuffMemory();
-    }
-
-    public int getTotalMemory() {
-        return getMemory() + getBuffMemory();
     }
 
     /**
@@ -390,28 +354,7 @@ public class Page implements IPage {
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
         }
-        // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
-        PageReference ref = getRef();
-        while (true) {
-            // 如果page被split了，刷脏页时要标记为删除
-            if (ref.isDataStructureChanged() || ref.getPage() != this) {
-                addRemovedPage(pos);
-                return pos;
-            }
-            PageInfo pInfoNew = new PageInfo(this, pos);
-            if (ref.replacePage(pInfoOld, pInfoNew)) {
-                return pos;
-            } else {
-                pInfoOld = ref.getPageInfo();
-                if (pInfoOld.getPage() != this) {
-                    addRemovedPage(pos);
-                    return pos;
-                } else {
-                    // 读操作调用PageReference.getOrReadPage()时会用新的PageInfo替换，
-                    // 但是page还是相同的，此时不能删除pos
-                    continue;
-                }
-            }
-        }
+        ref.updatePage(pos, this, pInfoOld);
+        return pos;
     }
 }
