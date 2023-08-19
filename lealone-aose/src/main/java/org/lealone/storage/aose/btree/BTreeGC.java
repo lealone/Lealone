@@ -108,6 +108,7 @@ public class BTreeGC {
         if (memoryManager.needGc())
             lru(te, memoryManager); // 按LRU算法回收
         long size2 = memoryManager.getUsedMemory();
+        memoryManager.resetUsedMemory();
         if (DEBUG)
             System.out.println("Map: " + map.getName() + ", GC: " + size1 + " -> " + size2);
     }

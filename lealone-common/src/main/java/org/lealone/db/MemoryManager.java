@@ -96,4 +96,8 @@ public class MemoryManager {
     public void resetDirtyMemory() {
         dirtyMemory.set(0);
     }
+
+    public void resetUsedMemory() {
+        usedMemory.set(0);
+    }
 }
