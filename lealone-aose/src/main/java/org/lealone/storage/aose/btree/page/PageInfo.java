@@ -25,17 +25,6 @@ public class PageInfo {
         this.pos = pos;
     }
 
-    public PageInfo(boolean gc, PageInfo old) {
-        page = old.page;
-        pos = old.pos;
-        pageLength = old.pageLength;
-        buff = old.buff;
-        if (!gc) {
-            lastTime = old.lastTime;
-            hits = old.hits;
-        }
-    }
-
     public void updateTime() {
         lastTime = System.currentTimeMillis();
         hits++;
@@ -86,7 +75,16 @@ public class PageInfo {
     }
 
     public PageInfo copy(boolean gc) {
-        return new PageInfo(gc, this);
+        PageInfo pInfo = new PageInfo();
+        pInfo.page = page;
+        pInfo.pos = pos;
+        pInfo.pageLength = pageLength;
+        pInfo.buff = buff;
+        if (!gc) {
+            pInfo.lastTime = lastTime;
+            pInfo.hits = hits;
+        }
+        return pInfo;
     }
 
     public boolean isSplitted() {
@@ -97,12 +95,24 @@ public class PageInfo {
         return null;
     }
 
+    public PageReference getLeftRef() {
+        return null;
+    }
+
+    public PageReference getRightRef() {
+        return null;
+    }
+
     public static class SplittedPageInfo extends PageInfo {
 
         private final PageReference pRefNew;
+        private final PageReference lRef;
+        private final PageReference rRef;
 
-        public SplittedPageInfo(PageReference pRefNew) {
+        public SplittedPageInfo(PageReference pRefNew, PageReference lRef, PageReference rRef) {
             this.pRefNew = pRefNew;
+            this.lRef = lRef;
+            this.rRef = rRef;
         }
 
         @Override
@@ -113,6 +123,16 @@ public class PageInfo {
         @Override
         public PageReference getNewRef() {
             return pRefNew;
+        }
+
+        @Override
+        public PageReference getLeftRef() {
+            return lRef;
+        }
+
+        @Override
+        public PageReference getRightRef() {
+            return rRef;
         }
     }
 }

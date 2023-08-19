@@ -233,7 +233,9 @@ public class PageReference {
                     DbException.throwInternalError("not locked");
             }
             if (oldPage != null) {
-                PageInfo pInfoNew = new PageInfo(newPage, 0);
+                PageInfo pInfoNew = pInfoOld.copy(0);
+                pInfoNew.page = newPage;
+                pInfoNew.buff = null;
                 if (replacePage(pInfoOld, pInfoNew)) {
                     if (pInfoOld.getPos() != 0) {
                         addRemovedPage(pInfoOld.getPos(), pInfoOld);
@@ -253,6 +255,11 @@ public class PageReference {
     public void markDirtyPage() {
         while (true) {
             PageInfo pInfoOld = this.pInfo;
+            if (pInfoOld.isSplitted()) {
+                pInfoOld.getLeftRef().markDirtyPage();
+                pInfoOld.getRightRef().markDirtyPage();
+                break;
+            }
             PageInfo pInfoNew = pInfoOld.copy(0);
             if (replacePage(pInfoOld, pInfoNew)) {
                 if (pInfoOld.getPos() != 0) {
@@ -286,6 +293,7 @@ public class PageReference {
                 return;
             }
             PageInfo pInfoNew = pInfoOld.copy(newPos);
+            pInfoNew.buff = null; // 废弃了
             if (replacePage(pInfoOld, pInfoNew)) {
                 return;
             } else {
@@ -374,7 +382,7 @@ public class PageReference {
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
                 PageReference tmpRef = tmpNodePage.parent.getRef();
                 tmpRef.setParentRef(parentRef);
-                pInfoNew = new SplittedPageInfo(tmpRef);
+                pInfoNew = new SplittedPageInfo(tmpRef, lRef, rRef);
                 pInfoNew.page = tmpNodePage.parent;
                 if (!ref.replacePage(pInfoOld2, pInfoNew))
                     continue;
