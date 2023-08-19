@@ -14,6 +14,8 @@ public class PageInfo {
 
     public ByteBuffer buff;
     public int pageLength;
+    public long markDirtyCount;
+
     public long lastTime;
     public int hits; // 只是一个预估值，不需要精确
 
@@ -78,8 +80,9 @@ public class PageInfo {
         PageInfo pInfo = new PageInfo();
         pInfo.page = page;
         pInfo.pos = pos;
-        pInfo.pageLength = pageLength;
         pInfo.buff = buff;
+        pInfo.pageLength = pageLength;
+        pInfo.markDirtyCount = markDirtyCount;
         if (!gc) {
             pInfo.lastTime = lastTime;
             pInfo.hits = hits;

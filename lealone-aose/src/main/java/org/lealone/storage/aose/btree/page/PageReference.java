@@ -24,7 +24,7 @@ public class PageReference {
     private static final AtomicReferenceFieldUpdater<PageReference, PageOperationHandler> //
     lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageOperationHandler.class,
             "lockOwner");
-    protected volatile PageOperationHandler lockOwner;
+    private volatile PageOperationHandler lockOwner;
 
     private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
 
@@ -261,6 +261,7 @@ public class PageReference {
                 break;
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
+            pInfoNew.markDirtyCount++;
             if (replacePage(pInfoOld, pInfoNew)) {
                 if (pInfoOld.getPos() != 0) {
                     addRemovedPage(pInfoOld.getPos(), pInfoOld);
@@ -282,13 +283,24 @@ public class PageReference {
             bs.getBTreeGC().addDirtyMemory(pInfoOld.getTotalMemory());
     }
 
+    private boolean isDirtyPage(Page oldPage, long oldMarkDirtyCount) {
+        // 如果page被split了，刷脏页时要标记为删除
+        if (isDataStructureChanged())
+            return true;
+        PageInfo pInfo = this.pInfo;
+        if (pInfo.page != oldPage)
+            return true;
+        if (pInfo.pos == 0 && pInfo.markDirtyCount != oldMarkDirtyCount)
+            return true;
+        return false;
+    }
+
     // 刷完脏页后需要用新的位置更新，如果当前page不是oldPage了，那么把oldPage标记为删除
     public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved) {
         PageInfo pInfoOld = pInfoSaved;
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
         while (true) {
-            // 如果page被split了，刷脏页时要标记为删除
-            if (isDataStructureChanged() || getPage() != oldPage) {
+            if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
                 addRemovedPage(newPos, pInfoSaved);
                 return;
             }
@@ -297,11 +309,11 @@ public class PageReference {
             if (replacePage(pInfoOld, pInfoNew)) {
                 return;
             } else {
-                pInfoOld = getPageInfo();
-                if (pInfoOld.getPage() != oldPage) {
+                if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
                     addRemovedPage(newPos, pInfoSaved);
                     return;
                 } else {
+                    pInfoOld = getPageInfo();
                     // 读操作调用PageReference.getOrReadPage()时会用新的PageInfo替换，
                     // 但是page还是相同的，此时不能删除pos
                     continue;
