@@ -261,6 +261,7 @@ public class PageReference {
                 break;
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
+            pInfoNew.buff = null; // 废弃了
             pInfoNew.markDirtyCount++;
             if (replacePage(pInfoOld, pInfoNew)) {
                 if (pInfoOld.getPos() != 0) {
@@ -277,10 +278,8 @@ public class PageReference {
 
     private void addRemovedPage(long pos, PageInfo pInfoOld) {
         bs.getChunkManager().addRemovedPage(pos);
-        Page p = pInfoOld.page;
         // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-        if (p != null && !p.isNode())
-            bs.getBTreeGC().addDirtyMemory(pInfoOld.getTotalMemory());
+        bs.getBTreeGC().addDirtyMemory(pInfoOld.getTotalMemory());
     }
 
     private boolean isDirtyPage(Page oldPage, long oldMarkDirtyCount) {

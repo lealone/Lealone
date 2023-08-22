@@ -102,14 +102,6 @@ public class LeafPage extends LocalPage {
         StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         values[index] = value;
-
-        // 执行setValue并不会copy leaf page，所以可以释放Buff
-        PageInfo pInfo = getRef().getPageInfo();
-        if (pInfo.pos > 0) {
-            map.getBTreeStorage().getBTreeGC().addUsedMemory(-pInfo.getBuffMemory());
-            pInfo.releaseBuff();
-            pInfo.pos = 0;
-        }
         return old;
     }
 
