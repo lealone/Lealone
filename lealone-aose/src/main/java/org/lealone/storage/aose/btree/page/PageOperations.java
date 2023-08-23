@@ -97,11 +97,12 @@ public abstract class PageOperations {
             }
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
+
+            Session s = poHandler.getSession();
+            if (s != null) {
+                s.addDirtyPage(p);
+            }
             if (resultHandler != null) {
-                Session s = poHandler.getSession();
-                if (s != null) {
-                    s.addDirtyPage(p);
-                }
                 resultHandler.handle(new AsyncResult<>(result));
             }
         }
@@ -319,7 +320,8 @@ public abstract class PageOperations {
             Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root node page，那么直接替换
             if (pRef.isRoot()) {
-                p.map.newRoot(LeafPage.createEmpty(p.map));
+                // 新的空页面占用的内存大小不必再计入，原页面已经算在内了
+                p.map.newRoot(LeafPage.createEmpty(p.map, false));
             } else {
                 if (!tryLockParentRef(pRef, poHandler))
                     return PageOperationResult.LOCKED;
@@ -357,6 +359,11 @@ public abstract class PageOperations {
                 tmpNodePage.parent.setRef(pRef);
                 tmpNodePage.left.setParentRef(pRef);
                 tmpNodePage.right.setParentRef(pRef);
+
+                int mem = p.map.getKeyType().getMemory(tmpNodePage.key);
+                mem += 2 * PageUtils.PAGE_MEMORY_CHILD;
+                p.map.getBTreeStorage().getBTreeGC().addUsedAndDirtyMemory(mem);
+
                 PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
                 if (p.isNode())
                     setParentRef(tmpNodePage);

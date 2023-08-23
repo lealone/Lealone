@@ -222,6 +222,7 @@ public class PageReference {
     }
 
     // 强制改变page和pos
+    // 在这里不需要把父节点标记为脏页，事务提交前会调用markDirtyBottomUp把涉及的所有节点标记为脏页
     public void replacePage(Page newPage) {
         while (true) {
             PageInfo pInfoOld = this.pInfo;

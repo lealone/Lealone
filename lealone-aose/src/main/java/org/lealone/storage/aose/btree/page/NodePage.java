@@ -86,7 +86,7 @@ public class NodePage extends LocalPage {
         tmpNodePage.left.setParentRef(getRef());
         tmpNodePage.right.setParentRef(getRef());
         NodePage p = copy(newKeys, newChildren);
-        p.addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD, false);
+        p.addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
         return p;
     }
 
@@ -94,7 +94,7 @@ public class NodePage extends LocalPage {
     public void remove(int index) {
         if (keys.length > 0) // 删除最后一个children时，keys已经空了
             super.remove(index);
-        addMemory(-PageUtils.PAGE_MEMORY_CHILD, false);
+        addMemory(-PageUtils.PAGE_MEMORY_CHILD);
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];
         DataUtils.copyExcept(children, newChildren, childCount, index);
