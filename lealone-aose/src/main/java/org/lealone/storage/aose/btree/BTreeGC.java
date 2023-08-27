@@ -156,16 +156,19 @@ public class BTreeGC {
         // 收集所有可以回收的page并按LastTime从小到大排序
         ArrayList<GcingPage> list = new ArrayList<>();
         collect(te, list, map.getRootPageRef());
+        int size = list.size();
+        if (size == 0)
+            return;
         Collections.sort(list);
 
-        int index = list.size() / 2 + 1;
+        int index = size / 2 + 1;
         // 先释放前一半的page字段和buff字段
         release(list, 0, index, 0);
         // 再释放后一半
         if (memoryManager.needGc()) {
-            release(list, index, list.size(), 1); // 先释放page字段
+            release(list, index, size, 1); // 先释放page字段
             if (memoryManager.needGc())
-                release(list, index, list.size(), 2); // 如果内存依然紧张再释放buff字段
+                release(list, index, size, 2); // 如果内存依然紧张再释放buff字段
         }
     }
 
