@@ -26,6 +26,13 @@ public interface PageOperationHandler {
         return null;
     }
 
+    default void setCurrentSession(Session currentSession) {
+    }
+
+    default boolean isScheduler() {
+        return false;
+    }
+
     class DummyPageOperationHandler implements PageOperationHandler {
         @Override
         public int getHandlerId() {

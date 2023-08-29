@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.common.logging.Logger;
+import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 
 public abstract class PageOperationHandlerBase extends Thread implements PageOperationHandler {
@@ -77,6 +78,8 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
         for (int i = 0; i < size; i++) {
             PageOperation po = pageOperations.poll();
             while (true) {
+                Session old = getSession();
+                setCurrentSession(po.getSession());
                 try {
                     PageOperationResult result = po.run(this);
                     if (result == PageOperationResult.LOCKED) {
@@ -89,6 +92,8 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
                 } catch (Throwable e) {
                     this.size.decrementAndGet();
                     getLogger().warn("Failed to run page operation: " + po, e);
+                } finally {
+                    setCurrentSession(old);
                 }
                 break;
             }

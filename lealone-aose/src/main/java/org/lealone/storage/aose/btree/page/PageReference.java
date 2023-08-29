@@ -148,17 +148,23 @@ public class PageReference {
         boolean ok = lockOwner != t && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
         if (ok) {
             if (t instanceof PageOperationHandler) {
+                PageOperationHandler poHandler = (PageOperationHandler) t;
                 Session s = ((PageOperationHandler) t).getSession();
                 if (s != null) {
                     s.addPageReference(this);
+                } else {
+                    if (Page.ASSERT) {
+                        if (poHandler.isScheduler())
+                            DbException.throwInternalError();
+                    }
                 }
             }
         }
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
             if (ok) {// 避免反复调用
-                pInfo.updateTime();
                 PageInfo pInfoNew = pInfo.copy(false);
+                pInfoNew.updateTime();
                 if (replacePage(pInfo, pInfoNew)) {
                     return p;
                 } else {
@@ -252,6 +258,12 @@ public class PageReference {
         }
     }
 
+    private void checkPageInfo(PageInfo pInfoNew) {
+        if (pInfoNew.page == null && pInfoNew.pos == 0) {
+            DbException.throwInternalError();
+        }
+    }
+
     // 不改变page，只是改变pos
     public void markDirtyPage() {
         while (true) {
@@ -265,6 +277,9 @@ public class PageReference {
             pInfoNew.buff = null; // 废弃了
             pInfoNew.markDirtyCount++;
             if (replacePage(pInfoOld, pInfoNew)) {
+                if (Page.ASSERT) {
+                    checkPageInfo(pInfoNew);
+                }
                 if (pInfoOld.getPos() != 0) {
                     addRemovedPage(pInfoOld.getPos(), pInfoOld);
                 }
@@ -307,6 +322,9 @@ public class PageReference {
             PageInfo pInfoNew = pInfoOld.copy(newPos);
             pInfoNew.buff = null; // 废弃了
             if (replacePage(pInfoOld, pInfoNew)) {
+                if (Page.ASSERT) {
+                    checkPageInfo(pInfoNew);
+                }
                 return;
             } else {
                 if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
@@ -334,9 +352,8 @@ public class PageReference {
             return true;
         for (Transaction t : te.currentTransactions().values()) {
             Session s = t.getSession();
-            if (s != null && s.containsPageReference(this) && s.isForUpdate()) {
+            if (s != null && s.containsPageReference(this) && s.isForUpdate())
                 return false;
-            }
         }
         return true;
     }
@@ -368,6 +385,9 @@ public class PageReference {
             gc = true;
         }
         if (gc && replacePage(pInfoOld, pInfoNew)) {
+            if (Page.ASSERT) {
+                checkPageInfo(pInfoNew);
+            }
             bs.getBTreeGC().addUsedMemory(-memory);
             if (gcType == 1)
                 return pInfoNew;

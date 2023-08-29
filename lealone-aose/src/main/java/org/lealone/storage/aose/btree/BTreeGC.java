@@ -105,9 +105,11 @@ public class BTreeGC {
             gcPages(te, -2, 0); // 全表扫描的场景，释放page字段和buff字段
         if (memoryManager.needGc())
             lru(te, memoryManager); // 按LRU算法回收
-        if (DEBUG)
+        if (DEBUG) {
             System.out.println(
                     "Map: " + map.getName() + ", GC: " + used + " -> " + memoryManager.getUsedMemory());
+        }
+        memoryManager.resetUsedMemory();
     }
 
     // gcType: 0释放page和buff、1释放page、2释放buff
@@ -148,7 +150,8 @@ public class BTreeGC {
 
         @Override
         public int compareTo(GcingPage o) {
-            return (int) (getLastTime() - o.getLastTime());
+            // 不能直接相减，否则可能抛异常: Comparison method violates its general contract!
+            return Long.compare(getLastTime(), o.getLastTime());
         }
     }
 

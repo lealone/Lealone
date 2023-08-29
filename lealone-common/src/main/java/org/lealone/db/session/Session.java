@@ -163,8 +163,4 @@ public interface Session extends Closeable {
 
     default void markDirtyPages() {
     }
-
-    default long getCurrentTid() {
-        return 0;
-    }
 }

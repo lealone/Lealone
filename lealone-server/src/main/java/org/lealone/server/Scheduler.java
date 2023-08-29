@@ -69,8 +69,14 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         return currentSession;
     }
 
+    @Override
     public void setCurrentSession(Session currentSession) {
         this.currentSession = currentSession;
+    }
+
+    @Override
+    public boolean isScheduler() {
+        return true;
     }
 
     public NetEventLoop getNetEventLoop() {

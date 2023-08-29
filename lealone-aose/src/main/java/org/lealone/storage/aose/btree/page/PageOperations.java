@@ -30,6 +30,8 @@ public abstract class PageOperations {
         PageReference pRef;
         R result;
 
+        Session session;
+
         public WriteOperation(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
             this.map = map;
             this.key = key;
@@ -49,6 +51,11 @@ public abstract class PageOperations {
             return result;
         }
 
+        @Override
+        public Session getSession() {
+            return session;
+        }
+
         private boolean isPageChanged() {
             // leaf page被切割了或者root page从leaf page变成node page
             return pRef.isDataStructureChanged() || pRef.isNodePage();
@@ -60,6 +67,7 @@ public abstract class PageOperations {
                 // 事先定位到leaf page，当加轻量级锁失败后再次运行时不用再定位leaf page
                 p = gotoLeafPage();
                 pRef = p.getRef();
+                session = poHandler.getSession();
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
@@ -85,6 +93,7 @@ public abstract class PageOperations {
 
         @SuppressWarnings("unchecked")
         private void writeLocal(PageOperationHandler poHandler) {
+            session = poHandler.getSession();
             p = pRef.getOrReadPage(); // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
@@ -98,7 +107,7 @@ public abstract class PageOperations {
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
 
-            Session s = poHandler.getSession();
+            Session s = session;
             if (s != null) {
                 s.addDirtyPage(p);
             }
@@ -414,12 +423,10 @@ public abstract class PageOperations {
             PageReference lRef = tmpNodePage.left.getPage().getRef();
             PageReference rRef = tmpNodePage.right.getPage().getRef();
             for (PageReference ref : tmpNodePage.left.getPage().getChildren()) {
-                if (ref.getPage() != null) // 没有加载的子节点直接忽略
-                    ref.setParentRef(lRef);
+                ref.setParentRef(lRef);
             }
             for (PageReference ref : tmpNodePage.right.getPage().getChildren()) {
-                if (ref.getPage() != null)
-                    ref.setParentRef(rRef);
+                ref.setParentRef(rRef);
             }
         }
     }

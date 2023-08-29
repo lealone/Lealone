@@ -144,8 +144,9 @@ public abstract class LocalPage extends Page {
 
     @Override
     public int hashCode() {
-        long pos = getPos();
-        return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
+        return super.hashCode();
+        // long pos = getPos();
+        // return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
     }
 
     @Override

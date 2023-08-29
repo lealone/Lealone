@@ -9,6 +9,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
 
 public interface PageOperation {
 
@@ -20,6 +21,10 @@ public interface PageOperation {
 
     default PageOperationResult run(PageOperationHandler currentHandler) {
         return PageOperationResult.SUCCEEDED;
+    }
+
+    default Session getSession() {
+        return null;
     }
 
     interface Listener<V> extends AsyncHandler<AsyncResult<V>> {

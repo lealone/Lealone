@@ -599,7 +599,6 @@ public class ServerSession extends SessionBase {
     }
 
     private void endTransaction() {
-        clearPageReference();
         containsDDL = false;
         containsDatabaseStatement = false;
         transaction.wakeUpWaitingTransactions();
@@ -657,6 +656,7 @@ public class ServerSession extends SessionBase {
             return;
         checkCommitRollback();
         transaction.rollback();
+        clearDirtyPages();
         cleanTempTables(false);
         unlockAll(false);
         endTransaction();
@@ -1541,10 +1541,6 @@ public class ServerSession extends SessionBase {
         return pageRefs.containsKey(ref);
     }
 
-    public void clearPageReference() {
-        pageRefs = new ConcurrentHashMap<>();
-    }
-
     @Override
     public void addDirtyPage(IPage page) {
         if (dirtyPages == null)
@@ -1557,12 +1553,12 @@ public class ServerSession extends SessionBase {
         if (dirtyPages != null) {
             for (IPage page : dirtyPages)
                 page.markDirtyBottomUp();
-            dirtyPages = null;
         }
+        clearDirtyPages();
     }
 
-    @Override
-    public long getCurrentTid() {
-        return transaction != null ? transaction.getTransactionId() : 0;
+    private void clearDirtyPages() {
+        dirtyPages = null;
+        pageRefs = new ConcurrentHashMap<>();
     }
 }
