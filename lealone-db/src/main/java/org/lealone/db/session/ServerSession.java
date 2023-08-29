@@ -471,8 +471,13 @@ public class ServerSession extends SessionBase {
     }
 
     private short executingStatements;
+    private boolean isForUpdate; // 记录当前事务执行过的语句是否带有更新语句(含select for update)
 
     public void startCurrentCommand(PreparedSQLStatement statement) {
+        if (!isForUpdate) {
+            isForUpdate = statement.isForUpdate()
+                    || (!statement.isQuery() && !statement.isTransactionStatement());
+        }
         if (executingStatements++ == 0) {
             currentCommand = statement;
             if (queryTimeout > 0) {
@@ -601,6 +606,7 @@ public class ServerSession extends SessionBase {
     private void endTransaction() {
         containsDDL = false;
         containsDatabaseStatement = false;
+        isForUpdate = false;
         transaction.wakeUpWaitingTransactions();
         transactionStart = 0;
         transaction = null;
@@ -1499,17 +1505,7 @@ public class ServerSession extends SessionBase {
 
     @Override
     public boolean isForUpdate() {
-        Transaction t = transaction;
-        if (t != null && t.getSavepointId() > 0)
-            return true;
-        PreparedSQLStatement c = currentCommand;
-        if (c == null) {
-            YieldableCommand yc = yieldableCommand;
-            if (yc != null) {
-                c = yc.yieldable.getStatement();
-            }
-        }
-        return c != null && (!c.isQuery() || c.isForUpdate());
+        return isForUpdate;
     }
 
     private boolean undoLogEnabled = true;
