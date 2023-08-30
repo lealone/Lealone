@@ -345,6 +345,10 @@ public class Sequence extends SchemaObjectBase {
     private Row oldRow;
     private Sequence oldSequence;
 
+    public void setOldSequence(Sequence oldSequence) {
+        this.oldSequence = oldSequence;
+    }
+
     public DbObjectLock getLock() {
         return lock;
     }
@@ -393,5 +397,14 @@ public class Sequence extends SchemaObjectBase {
         this.cacheSize = oldSequence.cacheSize;
         this.cycle = oldSequence.cycle;
         this.belongsToTable = oldSequence.belongsToTable;
+    }
+
+    @Override
+    public void onUpdateComplete() {
+        if (oldSequence != null) {
+            // 只需要把id变为-1即可，不需要调用invalidate，后续的操作可能还要用其他字段
+            oldSequence.id = -1;
+            oldSequence = null;
+        }
     }
 }

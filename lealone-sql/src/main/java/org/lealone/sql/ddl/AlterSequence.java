@@ -100,6 +100,7 @@ public class AlterSequence extends SchemaStatement {
             Long inc = getLong(increment);
             newSequence.modify(startValue, min, max, inc);
         }
+        newSequence.setOldSequence(sequence);
         schema.update(session, newSequence, sequence.getOldRow(), sequence.getLock());
         return 0;
     }

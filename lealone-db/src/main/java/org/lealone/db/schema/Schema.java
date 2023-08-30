@@ -263,6 +263,7 @@ public class Schema extends DbObjectBase {
             lock.addHandler(ar -> {
                 if (ar.isSucceeded() && ar.getResult()) {
                     dbObjects.commit();
+                    obj.onUpdateComplete();
                 } else {
                     dbObjects.rollback();
                 }
