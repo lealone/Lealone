@@ -407,4 +407,8 @@ public class Sequence extends SchemaObjectBase {
             oldSequence = null;
         }
     }
+
+    public Sequence getNewSequence(ServerSession session) {
+        return getSchema().findSequence(session, getName());
+    }
 }

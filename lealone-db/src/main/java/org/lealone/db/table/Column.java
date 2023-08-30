@@ -327,6 +327,8 @@ public class Column {
 
     private void updateSequenceIfRequired(ServerSession session, Value value) {
         if (sequence != null) {
+            if (sequence.isInvalid())
+                sequence = sequence.getNewSequence(session);
             long current = sequence.getCurrentValue(session);
             long inc = sequence.getIncrement();
             long now = value.getLong();

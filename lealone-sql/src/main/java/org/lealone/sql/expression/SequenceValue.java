@@ -30,7 +30,7 @@ public class SequenceValue extends Expression {
     @Override
     public Value getValue(ServerSession session) {
         if (sequence.isInvalid())
-            sequence = sequence.getSchema().findSequence(session, sequence.getName());
+            sequence = sequence.getNewSequence(session);
         long value = sequence.getNext(session);
         session.setLastIdentity(ValueLong.get(value));
         return ValueLong.get(value);
