@@ -167,10 +167,10 @@ public class Database implements DataHandler, DbObject {
 
     private boolean readOnly;
 
-    private int closeDelay = -1; // 不关闭
-    private DatabaseCloser delayedCloser;
+    private int closeDelay;
+    private long lastSessionRemovedAt = -1;
     private boolean deleteFilesOnDisconnect;
-    private DatabaseCloser closeOnExit;
+    private Thread closeOnExitHook;
 
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     private Mode mode = Mode.getDefaultMode();
@@ -212,6 +212,7 @@ public class Database implements DataHandler, DbObject {
             this.parameters = new CaseInsensitiveMap<>();
         }
         persistent = dbSettings.persistent;
+        closeDelay = dbSettings.dbCloseDelay; // 默认是-1不关闭
         compareMode = CompareMode.getInstance(null, 0, false);
         if (dbSettings.mode != null) {
             mode = Mode.getInstance(dbSettings.mode);
@@ -398,8 +399,7 @@ public class Database implements DataHandler, DbObject {
     private void addShutdownHook() {
         if (dbSettings.dbCloseOnExit) {
             try {
-                closeOnExit = new DatabaseCloser(this, 0, true);
-                ShutdownHookUtils.addShutdownHook(closeOnExit);
+                closeOnExitHook = ShutdownHookUtils.addShutdownHook(getName(), () -> close(true));
             } catch (IllegalStateException | SecurityException e) {
                 // shutdown in progress - just don't register the handler
                 // (maybe an application wants to write something into a
@@ -1006,10 +1006,7 @@ public class Database implements DataHandler, DbObject {
         userSessions.add(session);
         session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}",
                 session.getId(), name);
-        if (delayedCloser != null) {
-            delayedCloser.reset();
-            delayedCloser = null;
-        }
+        lastSessionRemovedAt = -1;
         return session;
     }
 
@@ -1041,10 +1038,7 @@ public class Database implements DataHandler, DbObject {
             } else if (closeDelay < 0) {
                 return;
             } else {
-                delayedCloser = new DatabaseCloser(this, closeDelay * 1000, false);
-                delayedCloser.setName(getShortName() + " database close delay");
-                delayedCloser.setDaemon(true);
-                delayedCloser.start();
+                lastSessionRemovedAt = System.currentTimeMillis();
             }
         }
     }
@@ -1066,23 +1060,36 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
+    public synchronized boolean closeIfNeeded() {
+        if (closeDelay < 0 || !userSessions.isEmpty())
+            return false;
+        if (closeDelay == 0 || lastSessionRemovedAt > 0
+                && System.currentTimeMillis() - lastSessionRemovedAt > closeDelay) {
+            close(false);
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Close the database.
      *
      * @param fromShutdownHook true if this method is called from the shutdown
      *            hook
      */
-    synchronized void close(boolean fromShutdownHook) {
+    private synchronized void close(boolean fromShutdownHook) {
         if (state == State.CLOSING || state == State.CLOSED) {
             return;
         }
-        state = State.CLOSING;
         if (userSessions.size() > 0) {
             if (!fromShutdownHook) {
                 return;
             }
+            state = State.CLOSING;
             trace.info("closing {0} from shutdown hook", name);
             closeAllSessionsException(null);
+        } else {
+            state = State.CLOSING;
         }
         trace.info("closing {0}", name);
         if (eventListener != null) {
@@ -1156,16 +1163,15 @@ public class Database implements DataHandler, DbObject {
         }
         trace.info("closed");
         traceSystem.close();
-        if (closeOnExit != null) {
-            closeOnExit.reset();
+        if (closeOnExitHook != null && !fromShutdownHook) {
             try {
-                ShutdownHookUtils.removeShutdownHook(closeOnExit);
+                ShutdownHookUtils.removeShutdownHook(closeOnExitHook);
             } catch (IllegalStateException e) {
                 // ignore
             } catch (SecurityException e) {
                 // applets may not do that - ignore
             }
-            closeOnExit = null;
+            closeOnExitHook = null;
         }
         LealoneDatabase.getInstance().closeDatabase(name);
 
@@ -1194,7 +1200,7 @@ public class Database implements DataHandler, DbObject {
     /**
      * Immediately close the database.
      */
-    public void shutdownImmediately() {
+    public synchronized void shutdownImmediately() {
         try {
             userSessions.clear();
             LealoneDatabase.getInstance().closeDatabase(name);
@@ -1478,6 +1484,10 @@ public class Database implements DataHandler, DbObject {
         this.compareMode = compareMode;
     }
 
+    public DatabaseEventListener getEventListener() {
+        return eventListener;
+    }
+
     public void setEventListener(DatabaseEventListener eventListener) {
         this.eventListener = eventListener;
     }
@@ -1604,7 +1614,7 @@ public class Database implements DataHandler, DbObject {
         return dbSettings.referentialIntegrity;
     }
 
-    public int getSessionCount() {
+    public synchronized int getSessionCount() {
         return userSessions.size();
     }
 
@@ -2028,7 +2038,9 @@ public class Database implements DataHandler, DbObject {
         return systemUser;
     }
 
-    public void drop() {
+    public synchronized void drop() {
+        state = State.CLOSED;
+        LealoneDatabase.getInstance().dropDatabase(getName());
         if (lobStorage != null) {
             getTransactionEngine().removeGcTask(lobStorage);
         }

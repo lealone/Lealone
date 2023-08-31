@@ -11,25 +11,27 @@ public class ShutdownHookUtils {
 
     private static final HashSet<Thread> hooks = new HashSet<>();
 
-    public static synchronized void addShutdownHook(Object object, Runnable hook) {
+    public static synchronized Thread addShutdownHook(Object object, Runnable hook) {
         String hookName = object.getClass().getSimpleName() + "-ShutdownHook-" + hooks.size();
-        addShutdownHook(hookName, hook, false);
+        return addShutdownHook(hookName, hook, false);
     }
 
-    public static synchronized void addShutdownHook(String hookName, Runnable hook) {
-        addShutdownHook(hookName, hook, true);
+    public static synchronized Thread addShutdownHook(String hookName, Runnable hook) {
+        return addShutdownHook(hookName, hook, true);
     }
 
-    public static synchronized void addShutdownHook(String hookName, Runnable hook, boolean addPostfix) {
+    public static synchronized Thread addShutdownHook(String hookName, Runnable hook,
+            boolean addPostfix) {
         if (addPostfix)
             hookName += "-ShutdownHook";
         Thread t = new Thread(hook, hookName);
-        addShutdownHook(t);
+        return addShutdownHook(t);
     }
 
-    public static synchronized void addShutdownHook(Thread hook) {
+    public static synchronized Thread addShutdownHook(Thread hook) {
         hooks.add(hook);
         Runtime.getRuntime().addShutdownHook(hook);
+        return hook;
     }
 
     public static synchronized void removeShutdownHook(Thread hook) {

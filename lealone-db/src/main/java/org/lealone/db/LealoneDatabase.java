@@ -47,6 +47,8 @@ public class LealoneDatabase extends Database
         return UNSUPPORTED_SCHEMA_MAP.containsKey(schemaName);
     }
 
+    private static final CaseInsensitiveMap<Object[]> CLOSED_DATABASES = new CaseInsensitiveMap<>();
+
     private LealoneDatabase() {
         super(ID, NAME, null);
 
@@ -87,8 +89,18 @@ public class LealoneDatabase extends Database
 
     void closeDatabase(String dbName) {
         Database db = findDatabase(dbName);
-        if (db != null)
+        if (db != null) {
             getDatabasesMap().remove(dbName);
+            synchronized (CLOSED_DATABASES) {
+                CLOSED_DATABASES.put(dbName, new Object[] { db.getCreateSQL(), db.getId() });
+            }
+        }
+    }
+
+    void dropDatabase(String dbName) {
+        synchronized (CLOSED_DATABASES) {
+            CLOSED_DATABASES.remove(dbName);
+        }
     }
 
     Map<String, Database> getDatabasesMap() {
@@ -114,6 +126,16 @@ public class LealoneDatabase extends Database
     public Database getDatabase(String dbName) {
         Database db = findDatabase(dbName);
         if (db == null) {
+            synchronized (CLOSED_DATABASES) {
+                Object[] a = CLOSED_DATABASES.remove(dbName);
+                if (a != null) {
+                    MetaRecord.execute(this, getSystemSession(), getEventListener(), (String) a[0],
+                            (int) a[1]);
+                    db = findDatabase(dbName);
+                }
+            }
+        }
+        if (db == null) {
             throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
         }
         return db;
@@ -134,9 +156,12 @@ public class LealoneDatabase extends Database
 
     @Override
     public void gc(TransactionEngine te) {
-        for (Database db : getDatabasesMap().values()) {
+        // getDatabases()会copy一份，因为closeIfNeeded()可能会关闭数据库，避免ConcurrentModificationException
+        for (Database db : getDatabases()) {
             // 数据库没有进行初始化时不进行GC
             if (!db.isInitialized())
+                continue;
+            if (db.getSessionCount() == 0 && db.closeIfNeeded())
                 continue;
             for (TransactionalDbObjects tObjects : db.getTransactionalDbObjectsArray()) {
                 if (tObjects != null)

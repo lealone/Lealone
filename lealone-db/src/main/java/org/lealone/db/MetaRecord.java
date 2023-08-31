@@ -57,6 +57,11 @@ public class MetaRecord implements Comparable<MetaRecord> {
      * @param listener the database event listener
      */
     public void execute(Database db, ServerSession systemSession, DatabaseEventListener listener) {
+        execute(db, systemSession, listener, sql, id);
+    }
+
+    public static void execute(Database db, ServerSession systemSession, DatabaseEventListener listener,
+            String sql, int id) {
         try {
             PreparedSQLStatement command = systemSession.prepareStatementLocal(sql);
             // 设置好数据库对象id，这样在执行create语句创建数据库对象时就能复用上一次得到的id了
