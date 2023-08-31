@@ -898,17 +898,6 @@ Commits a transaction.
 COMMIT
 "
 
-"Commands (Other)","COMMIT TRANSACTION","
-COMMIT TRANSACTION transactionName
-","
-Sets the resolution of an in-doubt transaction to 'commit'.
-
-Admin rights are required to execute this command.
-This command is part of the 2-phase-commit protocol.
-","
-COMMIT TRANSACTION XID_TEST
-"
-
 "Commands (Other)","GRANT RIGHT","
 GRANT { SELECT | INSERT | UPDATE | DELETE | ALL } [,...] ON
 tableName [,...] TO { PUBLIC | userName | roleName }
@@ -951,15 +940,6 @@ Displays the help pages of SQL commands or keywords.
 HELP SELECT
 "
 
-"Commands (Other)","PREPARE COMMIT","
-PREPARE COMMIT newTransactionName
-","
-Prepares committing a transaction.
-This command is part of the 2-phase-commit protocol.
-","
-PREPARE COMMIT XID_TEST
-"
-
 "Commands (Other)","REVOKE RIGHT","
 REVOKE { SELECT | INSERT | UPDATE | DELETE | ALL } [,...] ON
 tableName [,...] FROM { PUBLIC | userName | roleName }
@@ -990,17 +970,6 @@ Rolls back a transaction. If a savepoint name is used, the transaction is only
 rolled back to the specified savepoint.
 ","
 ROLLBACK
-"
-
-"Commands (Other)","ROLLBACK TRANSACTION","
-ROLLBACK TRANSACTION transactionName
-","
-Sets the resolution of an in-doubt transaction to 'rollback'.
-
-Admin rights are required to execute this command.
-This command is part of the 2-phase-commit protocol.
-","
-ROLLBACK TRANSACTION XID_TEST
 "
 
 "Commands (Other)","SAVEPOINT","
