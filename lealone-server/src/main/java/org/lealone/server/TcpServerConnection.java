@@ -49,6 +49,10 @@ public class TcpServerConnection extends TransferConnection {
         this.scheduler = scheduler;
     }
 
+    int getSessionCount() {
+        return sessions.size();
+    }
+
     @Override
     public void handleException(Exception e) {
         tcpServer.removeConnection(this);

@@ -127,4 +127,14 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     public void onTimeout(YieldableCommand c, Throwable e) {
         sendError(c.getPacketId(), e);
     }
+
+    boolean isMarkClosed() {
+        if (session.isMarkClosed()) {
+            conn.closeSession(this);
+            if (conn.getSessionCount() == 0)
+                conn.close();
+            return true;
+        }
+        return false;
+    }
 }

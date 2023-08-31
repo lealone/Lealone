@@ -130,6 +130,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         // 不适合使用普通for循环，sessions会随时新增或删除元素，
         // 只能每次创建一个迭代器包含元素数组的快照
         for (SessionInfo si : sessions) {
+            if (si.isMarkClosed())
+                continue;
             si.runSessionTasks();
         }
     }
@@ -306,6 +308,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
             return null;
         YieldableCommand best = null;
         for (SessionInfo si : sessions) {
+            if (si.isMarkClosed())
+                continue;
             // 执行yieldIfNeeded时，不需要检查当前session
             if (currentSession == si.getSession())
                 continue;

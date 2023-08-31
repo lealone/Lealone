@@ -1461,8 +1461,8 @@ This setting can be appended to the database URL: ""jdbc:lealone:embed:test;WRIT
 SET WRITE_DELAY 2000
 "
 
-"Commands (Other)","SHUTDOWN","
-SHUTDOWN [ IMMEDIATELY | COMPACT | DEFRAG ]
+"Commands (Other)","SHUTDOWN DATABASE","
+SHUTDOWN DATABASE dbName [ IMMEDIATELY ]
 ","
 This statement closes all open connections to the database and closes the
 database. This command is usually not required, as the database is
@@ -1471,17 +1471,22 @@ closed automatically when the last connection to it is closed.
 If no option is used, then the database is closed normally.
 All connections are closed, open transactions are rolled back.
 
-SHUTDOWN COMPACT fully compacts the database (re-creating the database may further reduce the database size).
-If the database is closed normally (using SHUTDOWN or by closing all connections), then the database is also compacted,
-but only for at most the time defined by the database setting ""lealone.maxCompactTime"" in milliseconds (see there).
-
-SHUTDOWN IMMEDIATELY closes the database files without any cleanup and without compacting.
-
-SHUTDOWN DEFRAG re-orders the pages when closing the database so that table scans are faster.
+SHUTDOWN IMMEDIATELY closes the database files without any cleanup.
 
 Admin rights are required to execute this command.
 ","
-SHUTDOWN COMPACT
+SHUTDOWN DATABASE mydb
+"
+
+"Commands (Other)","SHUTDOWN SERVER","
+SHUTDOWN SERVER [ port ]
+","
+This statement closes the server corresponding to the port,
+or closes all servers if the port is -1 or unspecified.
+
+Admin rights are required to execute this command.
+","
+SHUTDOWN SERVER 9210
 "
 
 "Other Grammar","Alias","

@@ -579,19 +579,11 @@ public class LealoneSQLParser implements SQLParser {
     }
 
     private StatementBase parseShutdown() {
-        int type = SQLStatement.SHUTDOWN;
-        if (readIf("IMMEDIATELY")) {
-            type = SQLStatement.SHUTDOWN_IMMEDIATELY;
-        } else if (readIf("COMPACT")) {
-            type = SQLStatement.SHUTDOWN_COMPACT;
-        } else if (readIf("DEFRAG")) {
-            type = SQLStatement.SHUTDOWN_DEFRAG;
-        } else if (readIf("SERVER")) {
+        if (readIf("SERVER")) {
             return parseShutdownServer();
         } else {
-            readIf("SCRIPT");
+            return parseShutdownDatabase();
         }
-        return new ShutdownDatabase(session, type);
     }
 
     private StatementBase parseShutdownServer() {
@@ -602,6 +594,14 @@ public class LealoneSQLParser implements SQLParser {
             port = readInt();
         }
         return new ShutdownServer(session, port);
+    }
+
+    private StatementBase parseShutdownDatabase() {
+        read("DATABASE");
+        String dbName = readUniqueIdentifier();
+        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+        boolean immediately = readIf("IMMEDIATELY");
+        return new ShutdownDatabase(session, db, immediately);
     }
 
     private TransactionStatement parseRollback() {

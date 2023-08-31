@@ -1559,4 +1559,14 @@ public class ServerSession extends SessionBase {
         dirtyPages = null;
         pageRefs = new ConcurrentHashMap<>();
     }
+
+    private boolean markClosed;
+
+    public void markClosed() {
+        markClosed = true;
+    }
+
+    public boolean isMarkClosed() {
+        return markClosed;
+    }
 }

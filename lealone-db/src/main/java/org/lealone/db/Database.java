@@ -175,7 +175,6 @@ public class Database implements DataHandler, DbObject {
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     private Mode mode = Mode.getDefaultMode();
     private CompareMode compareMode;
-    private int compactMode;
 
     private SourceCompiler compiler;
     private DatabaseEventListener eventListener;
@@ -1774,14 +1773,6 @@ public class Database implements DataHandler, DbObject {
      */
     public void setReadOnly(boolean readOnly) {
         this.readOnly = readOnly;
-    }
-
-    public void setCompactMode(int compactMode) {
-        this.compactMode = compactMode;
-    }
-
-    public int getCompactMode() {
-        return compactMode;
     }
 
     public SourceCompiler getCompiler() {
