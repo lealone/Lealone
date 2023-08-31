@@ -84,15 +84,10 @@ public class TransactionStatement extends ManipulationStatement {
             session.getUser().checkAdmin();
             session.getDatabase().checkpoint();
             break;
-        case SQLStatement.CHECKPOINT_SYNC:
-            session.getUser().checkAdmin();
-            session.getDatabase().sync();
-            break;
-        case SQLStatement.PREPARE_COMMIT: // 2PC语句已经废弃
-            break;
-        case SQLStatement.COMMIT_TRANSACTION: // 2PC语句已经废弃
-            break;
-        case SQLStatement.ROLLBACK_TRANSACTION: // 2PC语句已经废弃
+        // 以下三个是跟2PC相关的语句，已经废弃
+        case SQLStatement.PREPARE_COMMIT:
+        case SQLStatement.COMMIT_TRANSACTION:
+        case SQLStatement.ROLLBACK_TRANSACTION:
             break;
         default:
             DbException.throwInternalError("type=" + type);

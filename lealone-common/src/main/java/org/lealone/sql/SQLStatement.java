@@ -415,7 +415,7 @@ public interface SQLStatement extends SQLCommand {
     /**
      * The type of a CHECKPOINT SYNC statement.
      */
-    int CHECKPOINT_SYNC = 126;
+    // int CHECKPOINT_SYNC = 126; // 已经废弃，跟CHECKPOINT一样
 
     /**
      * The type of a SAVEPOINT statement.

@@ -883,22 +883,11 @@ TRUNCATE TABLE TEST
 "Commands (Other)","CHECKPOINT","
 CHECKPOINT
 ","
-Flushes the data to disk.
+Flushes the data to disk and open a new transaction log.
 
 Admin rights are required to execute this command.
 ","
 CHECKPOINT
-"
-
-"Commands (Other)","CHECKPOINT SYNC","
-CHECKPOINT SYNC
-","
-Flushes the data to disk and and forces all system buffers be written
-to the underlying device.
-
-Admin rights are required to execute this command.
-","
-CHECKPOINT SYNC
 "
 
 "Commands (Other)","COMMIT","

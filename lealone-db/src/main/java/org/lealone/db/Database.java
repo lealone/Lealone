@@ -1758,19 +1758,6 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Synchronize the files with the file system. This method is called when
-     * executing the SQL statement CHECKPOINT SYNC.
-     */
-    public synchronized void sync() {
-        if (readOnly) {
-            return;
-        }
-        for (Storage s : getStorages()) {
-            s.save();
-        }
-    }
-
-    /**
      * Switch the database to read-only mode.
      *
      * @param readOnly the new value
