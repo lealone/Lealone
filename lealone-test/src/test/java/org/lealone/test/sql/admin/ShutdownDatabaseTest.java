@@ -8,6 +8,7 @@ package org.lealone.test.sql.admin;
 import java.sql.Connection;
 
 import org.junit.Test;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.test.sql.SqlTestBase;
@@ -25,8 +26,11 @@ public class ShutdownDatabaseTest extends SqlTestBase {
         executeUpdate("CREATE DATABASE IF NOT EXISTS ShutdownDatabaseTest3");
 
         ShutdownTest t1 = new ShutdownTest("ShutdownDatabaseTest1");
+        // 用专有连接测试，否则集成测试时有问题
+        t1.addConnectionParameter(ConnectionSetting.IS_SHARED, "false");
         Connection c1 = t1.getConnection();
         ShutdownTest t2 = new ShutdownTest("ShutdownDatabaseTest2");
+        t2.addConnectionParameter(ConnectionSetting.IS_SHARED, "false");
         Connection c2 = t2.getConnection();
 
         executeUpdate("SHUTDOWN DATABASE ShutdownDatabaseTest1");
