@@ -721,6 +721,8 @@ public class ServerSession extends SessionBase {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(name);
+            // 清空语句缓存，否则重复执行之前的select语句依然能读到旧的
+            clearQueryCache();
         }
     }
 
