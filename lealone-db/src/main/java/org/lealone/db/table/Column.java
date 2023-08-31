@@ -16,7 +16,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
-import org.lealone.db.SQLEngineHolder;
+import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
@@ -38,6 +38,7 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.sql.IExpression;
+import org.lealone.sql.SQLEngine;
 
 /**
  * This class represents a column in a table.
@@ -221,7 +222,7 @@ public class Column {
     }
 
     public String getSQL() {
-        return SQLEngineHolder.quoteIdentifier(name);
+        return quoteIdentifier(name);
     }
 
     public String getName() {
@@ -406,7 +407,7 @@ public class Column {
     public String getCreateSQL(boolean exceptName) {
         StringBuilder buff = new StringBuilder();
         if (!exceptName && name != null) {
-            buff.append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
+            buff.append(quoteIdentifier(name)).append(' ');
         }
         if (originalSQL != null) {
             buff.append(originalSQL);
@@ -786,5 +787,14 @@ public class Column {
             vm.convertComponent(key.type, value.type);
             return vm;
         }
+    }
+
+    private String quoteIdentifier(String identifier) {
+        return getSQLEngine().quoteIdentifier(identifier);
+    }
+
+    private SQLEngine getSQLEngine() {
+        return table != null ? table.getDatabase().getSQLEngine()
+                : PluginManager.getPlugin(SQLEngine.class, Constants.DEFAULT_SQL_ENGINE_NAME);
     }
 }
