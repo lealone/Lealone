@@ -557,27 +557,6 @@ public class LealoneSQLParser implements SQLParser {
         return command;
     }
 
-    private TransactionStatement parseBegin() {
-        TransactionStatement command;
-        if (!readIf("WORK")) {
-            readIf("TRANSACTION");
-        }
-        command = new TransactionStatement(session, SQLStatement.BEGIN);
-        return command;
-    }
-
-    private TransactionStatement parseCommit() {
-        TransactionStatement command;
-        if (readIf("TRANSACTION")) {
-            command = new TransactionStatement(session, SQLStatement.COMMIT_TRANSACTION);
-            command.setTransactionName(readUniqueIdentifier());
-            return command;
-        }
-        command = new TransactionStatement(session, SQLStatement.COMMIT);
-        readIf("WORK");
-        return command;
-    }
-
     private StatementBase parseShutdown() {
         if (readIf("SERVER")) {
             return parseShutdownServer();
@@ -599,9 +578,33 @@ public class LealoneSQLParser implements SQLParser {
     private StatementBase parseShutdownDatabase() {
         read("DATABASE");
         String dbName = readUniqueIdentifier();
-        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         boolean immediately = readIf("IMMEDIATELY");
+        // 如果已经关闭了什么都不做
+        if (LealoneDatabase.getInstance().isClosed(dbName))
+            return new NoOperation(session);
+        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         return new ShutdownDatabase(session, db, immediately);
+    }
+
+    private TransactionStatement parseBegin() {
+        TransactionStatement command;
+        if (!readIf("WORK")) {
+            readIf("TRANSACTION");
+        }
+        command = new TransactionStatement(session, SQLStatement.BEGIN);
+        return command;
+    }
+
+    private TransactionStatement parseCommit() {
+        TransactionStatement command;
+        if (readIf("TRANSACTION")) {
+            command = new TransactionStatement(session, SQLStatement.COMMIT_TRANSACTION);
+            command.setTransactionName(readUniqueIdentifier());
+            return command;
+        }
+        command = new TransactionStatement(session, SQLStatement.COMMIT);
+        readIf("WORK");
+        return command;
     }
 
     private TransactionStatement parseRollback() {

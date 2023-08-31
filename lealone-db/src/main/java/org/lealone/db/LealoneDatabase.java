@@ -31,8 +31,9 @@ public class LealoneDatabase extends Database
     public static final int ID = 0;
     public static final String NAME = Constants.PROJECT_NAME;
 
-    // 仅用于支持bats项目
+    // 仅用于支持qinsql项目
     private static final CaseInsensitiveMap<String> UNSUPPORTED_SCHEMA_MAP = new CaseInsensitiveMap<>();
+    private static final CaseInsensitiveMap<Object[]> CLOSED_DATABASES = new CaseInsensitiveMap<>();
     private static LealoneDatabase INSTANCE = new LealoneDatabase();
 
     public static LealoneDatabase getInstance() {
@@ -47,7 +48,9 @@ public class LealoneDatabase extends Database
         return UNSUPPORTED_SCHEMA_MAP.containsKey(schemaName);
     }
 
-    private static final CaseInsensitiveMap<Object[]> CLOSED_DATABASES = new CaseInsensitiveMap<>();
+    public static boolean isMe(String dbName) {
+        return LealoneDatabase.NAME.equalsIgnoreCase(dbName);
+    }
 
     private LealoneDatabase() {
         super(ID, NAME, null);
@@ -116,9 +119,9 @@ public class LealoneDatabase extends Database
     }
 
     /**
-     * Get database with the given name. This method throws an exception if the database
-     * does not exist.
-     *
+     * Get database with the given name.
+     * This method throws an exception if the database does not exist.
+     * 
      * @param name the database name
      * @return the database
      * @throws DbException if the database does not exist
@@ -139,6 +142,12 @@ public class LealoneDatabase extends Database
             throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
         }
         return db;
+    }
+
+    public boolean isClosed(String dbName) {
+        synchronized (CLOSED_DATABASES) {
+            return CLOSED_DATABASES.containsKey(dbName);
+        }
     }
 
     @Override

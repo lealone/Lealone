@@ -43,7 +43,7 @@ public class CreateDatabase extends DatabaseStatement {
         if (lock == null)
             return -1;
 
-        if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+        if (LealoneDatabase.isMe(dbName) || lealoneDB.findDatabase(dbName) != null) {
             if (ifNotExists) {
                 return 0;
             }

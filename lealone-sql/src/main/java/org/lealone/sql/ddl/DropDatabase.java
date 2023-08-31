@@ -42,7 +42,7 @@ public class DropDatabase extends DatabaseStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "drop database");
-        if (LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+        if (LealoneDatabase.isMe(dbName)) {
             throw DbException.get(ErrorCode.CANNOT_DROP_LEALONE_DATABASE);
         }
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();

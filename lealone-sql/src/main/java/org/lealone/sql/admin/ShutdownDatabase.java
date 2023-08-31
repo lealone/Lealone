@@ -34,6 +34,9 @@ public class ShutdownDatabase extends AdminStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "shutdown database");
+        // 如果是LealoneDatabase什么都不做
+        if (LealoneDatabase.isMe(db.getName()))
+            return 0;
         DbObjectLock lock = LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session);
         if (lock == null)
             return -1;
