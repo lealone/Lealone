@@ -79,7 +79,7 @@ import org.lealone.transaction.TransactionEngine;
  * @author H2 Group
  * @author zhh
  */
-public class Database implements DataHandler, DbObject {
+public class Database extends DbObjectBase implements DataHandler {
 
     /**
      * The default name of the system user. This name is only used as long as
@@ -166,8 +166,6 @@ public class Database implements DataHandler, DbObject {
     private DatabaseEventListener eventListener;
     private QueryStatisticsData queryStatisticsData;
 
-    private final int id;
-    private final String name;
     private final boolean persistent;
     private final Map<String, String> parameters;
     private volatile DbSettings dbSettings;
@@ -186,8 +184,7 @@ public class Database implements DataHandler, DbObject {
     private final ConcurrentHashMap<Integer, DataHandler> dataHandlers = new ConcurrentHashMap<>();
 
     public Database(int id, String name, Map<String, String> parameters) {
-        this.id = id;
-        this.name = name;
+        super(id, name);
         storagePath = getStoragePath();
         if (parameters != null) {
             dbSettings = DbSettings.getInstance(parameters);
@@ -212,6 +209,7 @@ public class Database implements DataHandler, DbObject {
                 dbObjectsArray[type.value] = new TransactionalDbObjects();
             }
         }
+        setDatabase(this);
     }
 
     private static <E extends PluggableEngine> E getEngine(Class<E> engineClass, String engineName,
@@ -230,15 +228,87 @@ public class Database implements DataHandler, DbObject {
         return engine;
     }
 
+    // ----------- 以下是 DbObjectBase API 实现 -----------
+
     @Override
-    public int getId() {
-        return id;
+    public DbObjectType getType() {
+        return DbObjectType.DATABASE;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public List<? extends DbObject> getChildren() {
+        return getAllSchemaObjects();
     }
+
+    @Override
+    public String getCreateSQL() {
+        return getCreateSQL(quoteIdentifier(name), parameters, runMode);
+    }
+
+    @Override
+    public boolean isTemporary() {
+        return !persistent || super.isTemporary();
+    }
+
+    // ----------- 以下是 DataHandler API 实现 -----------
+
+    @Override
+    public String getDatabasePath() {
+        return persistent ? getStoragePath() : null;
+    }
+
+    @Override
+    public FileStorage openFile(String name, String openMode, boolean mustExist) {
+        if (mustExist && !FileUtils.exists(name)) {
+            throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
+        }
+        return FileStorage.open(this, name, openMode, dbSettings.cipher, dbSettings.filePasswordHash);
+    }
+
+    @Override
+    public TempFileDeleter getTempFileDeleter() {
+        return tempFileDeleter;
+    }
+
+    @Override
+    public void checkPowerOff() {
+        if (state == State.POWER_OFF)
+            throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
+    }
+
+    public boolean isPowerOff() {
+        return state == State.POWER_OFF;
+    }
+
+    @Override
+    public void checkWritingAllowed() {
+        if (readOnly) {
+            throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
+        }
+    }
+
+    @Override
+    public int getMaxLengthInplaceLob() {
+        return persistent ? dbSettings.maxLengthInplaceLob : Integer.MAX_VALUE;
+    }
+
+    @Override
+    public String getLobCompressionAlgorithm(int type) {
+        return dbSettings.lobCompressionAlgorithm;
+    }
+
+    @Override
+    public LobStorage getLobStorage() {
+        return lobStorage;
+    }
+
+    public void setLobStorage(LobStorage lobStorage) {
+        if (lobStorage != null) {
+            this.lobStorage = lobStorage;
+        }
+    }
+
+    // ----------- END -----------
 
     public String getShortName() {
         return getName();
@@ -564,14 +634,6 @@ public class Database implements DataHandler, DbObject {
      */
     public Trace getTrace(TraceModuleType traceModuleType) {
         return traceSystem.getTrace(traceModuleType);
-    }
-
-    @Override
-    public FileStorage openFile(String name, String openMode, boolean mustExist) {
-        if (mustExist && !FileUtils.exists(name)) {
-            throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
-        }
-        return FileStorage.open(this, name, openMode, dbSettings.cipher, dbSettings.filePasswordHash);
     }
 
     /**
@@ -1156,23 +1218,6 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    @Override
-    public void checkPowerOff() {
-        if (state == State.POWER_OFF)
-            throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
-    }
-
-    public boolean isPowerOff() {
-        return state == State.POWER_OFF;
-    }
-
-    @Override
-    public void checkWritingAllowed() {
-        if (readOnly) {
-            throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
-        }
-    }
-
     public boolean isReadOnly() {
         return readOnly;
     }
@@ -1265,14 +1310,6 @@ public class Database implements DataHandler, DbObject {
 
     public CompareMode getCompareMode() {
         return compareMode;
-    }
-
-    @Override
-    public String getDatabasePath() {
-        if (persistent) {
-            return getStoragePath();
-        }
-        return null;
     }
 
     /**
@@ -1460,27 +1497,6 @@ public class Database implements DataHandler, DbObject {
         return systemSession;
     }
 
-    @Override
-    public int getMaxLengthInplaceLob() {
-        return persistent ? dbSettings.maxLengthInplaceLob : Integer.MAX_VALUE;
-    }
-
-    @Override
-    public String getLobCompressionAlgorithm(int type) {
-        return dbSettings.lobCompressionAlgorithm;
-    }
-
-    @Override
-    public LobStorage getLobStorage() {
-        return lobStorage;
-    }
-
-    public void setLobStorage(LobStorage lobStorage) {
-        if (lobStorage != null) {
-            this.lobStorage = lobStorage;
-        }
-    }
-
     public boolean getIgnoreCase() {
         if (isStarting()) {
             // tables created at startup must not be converted to ignorecase
@@ -1608,16 +1624,6 @@ public class Database implements DataHandler, DbObject {
             waitingSessions = new LinkedList<>();
         waitingSessions.add(session);
         return true;
-    }
-
-    @Override
-    public String toString() {
-        return name + ":" + super.toString();
-    }
-
-    @Override
-    public TempFileDeleter getTempFileDeleter() {
-        return tempFileDeleter;
     }
 
     /**
@@ -1796,11 +1802,6 @@ public class Database implements DataHandler, DbObject {
         return storageBuilder;
     }
 
-    @Override
-    public String getSQL() {
-        return quoteIdentifier(name);
-    }
-
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
             RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
@@ -1825,61 +1826,6 @@ public class Database implements DataHandler, DbObject {
             sql.append(e.getKey()).append('=').append("'").append(e.getValue()).append("'");
         }
         sql.append(')');
-    }
-
-    @Override
-    public List<? extends DbObject> getChildren() {
-        return getAllSchemaObjects();
-    }
-
-    @Override
-    public Database getDatabase() {
-        return this;
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, runMode);
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
-    public DbObjectType getType() {
-        return DbObjectType.DATABASE;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
-    }
-
-    @Override
-    public void checkRename() {
-    }
-
-    @Override
-    public void rename(String newName) {
-    }
-
-    @Override
-    public boolean isTemporary() {
-        return !persistent;
-    }
-
-    @Override
-    public void setTemporary(boolean temporary) {
-    }
-
-    @Override
-    public void setComment(String comment) {
-    }
-
-    @Override
-    public String getComment() {
-        return null;
     }
 
     public void createRootUserIfNotExists() {

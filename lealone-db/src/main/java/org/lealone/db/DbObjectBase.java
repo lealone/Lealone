@@ -31,9 +31,17 @@ public abstract class DbObjectBase implements DbObject {
      * @param name the object name
      */
     protected DbObjectBase(Database database, int id, String name) {
-        this.database = database;
+        this(id, name);
+        setDatabase(database);
+    }
+
+    protected DbObjectBase(int id, String name) {
         this.id = id;
         this.name = name;
+    }
+
+    public void setDatabase(Database database) {
+        this.database = database;
         this.modificationId = database.getModificationMetaId();
     }
 
