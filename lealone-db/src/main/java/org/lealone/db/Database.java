@@ -318,13 +318,13 @@ public class Database extends DbObjectBase implements DataHandler {
         return dbSettings;
     }
 
-    public boolean setDbSetting(DbSetting key, String value) {
+    public boolean setDbSetting(ServerSession session, DbSetting key, String value) {
         Map<String, String> newSettings = new CaseInsensitiveMap<>(1);
         newSettings.put(key.getName(), value);
-        return setDbSettings(newSettings);
+        return updateDbSettings(session, newSettings);
     }
 
-    public boolean setDbSettings(Map<String, String> newSettings) {
+    public boolean updateDbSettings(ServerSession session, Map<String, String> newSettings) {
         boolean changed = false;
         Map<String, String> oldSettings = new CaseInsensitiveMap<>(dbSettings.getSettings());
         for (Map.Entry<String, String> e : newSettings.entrySet()) {
@@ -339,8 +339,7 @@ public class Database extends DbObjectBase implements DataHandler {
         if (changed) {
             dbSettings = DbSettings.getInstance(oldSettings);
             parameters.putAll(newSettings);
-            LealoneDatabase.getInstance().updateMeta(systemSession, this);
-            systemSession.commit();
+            LealoneDatabase.getInstance().updateMeta(session, this);
         }
         return changed;
     }
@@ -371,10 +370,6 @@ public class Database extends DbObjectBase implements DataHandler {
 
     public Map<String, String> getParameters() {
         return parameters;
-    }
-
-    public void alterParameters(Map<String, String> newParameters) {
-        parameters.putAll(newParameters);
     }
 
     public void setRunMode(RunMode runMode) {

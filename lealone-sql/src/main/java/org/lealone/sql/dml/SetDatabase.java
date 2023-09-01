@@ -287,14 +287,14 @@ public class SetDatabase extends SetStatement {
     }
 
     private void setDbSetting(int v) {
-        changed = database.setDbSetting(setting, String.valueOf(v));
-    }
-
-    private void setDbSetting(String v) {
-        changed = database.setDbSetting(setting, v);
+        setDbSetting(String.valueOf(v));
     }
 
     private void setDbSetting(boolean v) {
-        changed = database.setDbSetting(setting, String.valueOf(v));
+        setDbSetting(String.valueOf(v));
+    }
+
+    private void setDbSetting(String v) {
+        changed = database.setDbSetting(session, setting, v);
     }
 }

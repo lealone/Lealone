@@ -25,6 +25,7 @@ public class AlterDatabase extends DatabaseStatement {
             CaseInsensitiveMap<String> parameters) {
         super(session, db.getName());
         this.db = db;
+        this.parameters = parameters;
         validateParameters();
     }
 
@@ -36,13 +37,13 @@ public class AlterDatabase extends DatabaseStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "alter database");
+        if (parameters == null || parameters.isEmpty())
+            return 0;
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
         DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
         if (lock == null)
             return -1;
-        if (parameters != null)
-            db.alterParameters(parameters);
-        lealoneDB.updateMeta(session, db);
+        db.updateDbSettings(session, parameters);
         return 0;
     }
 }
