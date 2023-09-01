@@ -261,11 +261,6 @@ public class SetDatabase extends SetStatement {
             setDbSetting(value);
             break;
         }
-        case WRITE_DELAY: {
-            int value = getAndValidateIntValue();
-            setDbSetting(value);
-            break;
-        }
         case QUERY_CACHE_SIZE: {
             int value = getAndValidateIntValue();
             setDbSetting(value);

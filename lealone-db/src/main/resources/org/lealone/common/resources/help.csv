@@ -1443,19 +1443,6 @@ This setting can be appended to the database URL: ""jdbc:lealone:embed:test;TRAC
 SET TRACE_MAX_FILE_SIZE 10
 "
 
-"Commands (Other)","SET WRITE_DELAY","
-SET WRITE_DELAY int
-","
-Set the maximum delay between a commit and flushing the log, in milliseconds.
-This setting is persistent. The default is 500 ms.
-
-Admin rights are required to execute this command, as it affects all connections.
-
-This setting can be appended to the database URL: ""jdbc:lealone:embed:test;WRITE_DELAY=0""
-","
-SET WRITE_DELAY 2000
-"
-
 "Commands (Other)","SHUTDOWN DATABASE","
 SHUTDOWN DATABASE dbName [ IMMEDIATELY ]
 ","

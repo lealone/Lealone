@@ -158,11 +158,6 @@ public class Constants {
     public static final String DEFAULT_HOST = "localhost";
 
     /**
-     * The default delay in milliseconds before the transaction log is written.
-     */
-    public static final int DEFAULT_WRITE_DELAY = 500;
-
-    /**
      * The password is hashed this many times
      * to slow down dictionary attacks.
      */

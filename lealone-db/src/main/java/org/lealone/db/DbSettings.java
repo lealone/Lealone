@@ -316,8 +316,6 @@ public class DbSettings extends SettingsBase {
     public final int queryStatisticsMaxEntries = get(DbSetting.QUERY_STATISTICS_MAX_ENTRIES,
             Constants.QUERY_STATISTICS_MAX_ENTRIES);
 
-    public final int writeDelay = get(DbSetting.WRITE_DELAY, Constants.DEFAULT_WRITE_DELAY);
-
     /**
      * Get the setting for the given key.
      *

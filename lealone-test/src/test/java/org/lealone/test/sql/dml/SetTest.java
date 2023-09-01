@@ -144,7 +144,5 @@ public class SetTest extends SqlTestBase {
         executeUpdate("SET TRACE_LEVEL_SYSTEM_OUT 0");
         executeUpdate("SET TRACE_LEVEL_FILE 0");
         executeUpdate("SET TRACE_MAX_FILE_SIZE 1000");
-
-        executeUpdate("SET WRITE_DELAY 1000");
     }
 }

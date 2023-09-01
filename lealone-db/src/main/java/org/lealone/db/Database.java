@@ -1217,10 +1217,6 @@ public class Database extends DbObjectBase implements DataHandler {
         return readOnly;
     }
 
-    public int getWriteDelay() {
-        return dbSettings.writeDelay;
-    }
-
     public ArrayList<Comment> getAllComments() {
         HashMap<String, Comment> map = getDbObjects(DbObjectType.COMMENT);
         return new ArrayList<>(map.values());
