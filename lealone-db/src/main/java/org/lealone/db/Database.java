@@ -416,16 +416,10 @@ public class Database implements DataHandler, DbObject {
                 e.fillInStackTrace();
             }
             if (traceSystem != null) {
-                if (e instanceof SQLException) {
-                    SQLException e2 = (SQLException) e;
-                    if (e2.getErrorCode() != ErrorCode.DATABASE_ALREADY_OPEN_1) {
-                        // only write if the database is not already in use
-                        trace.error(e, "opening {0}", name);
-                    }
-                }
+                trace.error(e, "opening {0}", name);
                 traceSystem.close();
             }
-            closeOpenFilesAndUnlock(false);
+            closeSystemSession();
             throw DbException.convert(e);
         }
     }
@@ -1112,20 +1106,14 @@ public class Database implements DataHandler, DbObject {
             trace.error(e, "close");
         }
         tempFileDeleter.deleteAll();
-        try {
-            closeOpenFilesAndUnlock(true);
-        } catch (DbException e) {
-            trace.error(e, "close");
-        }
+        closeSystemSession();
         trace.info("closed");
         traceSystem.close();
         if (closeOnExitHook != null && !fromShutdownHook) {
             try {
                 ShutdownHookUtils.removeShutdownHook(closeOnExitHook);
-            } catch (IllegalStateException e) {
+            } catch (Exception e) {
                 // ignore
-            } catch (SecurityException e) {
-                // applets may not do that - ignore
             }
             closeOnExitHook = null;
         }
@@ -1134,21 +1122,16 @@ public class Database implements DataHandler, DbObject {
         for (Storage s : getStorages()) {
             s.close();
         }
-
         state = State.CLOSED;
     }
 
-    /**
-     * Close all open files and unlock the database.
-     *
-     * @param flush whether writing is allowed
-     */
-    private synchronized void closeOpenFilesAndUnlock(boolean flush) {
-        if (persistent) {
-            deleteOldTempFiles();
-        }
+    private synchronized void closeSystemSession() {
         if (systemSession != null) {
-            systemSession.close();
+            try {
+                systemSession.close();
+            } catch (DbException e) {
+                trace.error(e, "close system session");
+            }
             systemSession = null;
         }
     }
@@ -1313,34 +1296,6 @@ public class Database implements DataHandler, DbObject {
         ServerSession[] array = new ServerSession[list.size()];
         list.toArray(array);
         return array;
-    }
-
-    /**
-     * Create a temporary file in the database folder.
-     *
-     * @return the file name
-     */
-    public String createTempFile() {
-        try {
-            boolean inTempDir = readOnly;
-            String name = getStoragePath();
-            if (!persistent) {
-                name = "memFS:" + name;
-            }
-            return FileUtils.createTempFile(name, Constants.SUFFIX_TEMP_FILE, true, inTempDir);
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, getStoragePath());
-        }
-    }
-
-    private void deleteOldTempFiles() {
-        String path = FileUtils.getParent(getStoragePath());
-        for (String name : FileUtils.newDirectoryStream(path)) {
-            if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(getStoragePath())) {
-                // can't always delete the files, they may still be open
-                FileUtils.tryDelete(name);
-            }
-        }
     }
 
     /**
