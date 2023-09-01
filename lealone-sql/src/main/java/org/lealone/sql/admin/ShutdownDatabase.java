@@ -40,11 +40,7 @@ public class ShutdownDatabase extends AdminStatement {
         DbObjectLock lock = LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session);
         if (lock == null)
             return -1;
-        db.setCloseDelay(0);
-        for (ServerSession s : db.getSessions(false)) {
-            // 先标记为关闭状态，然后由调度器优雅关闭
-            s.markClosed();
-        }
+        db.markClosed();
         if (immediately) {
             db.shutdownImmediately();
         } else if (db.getSessionCount() == 0) {

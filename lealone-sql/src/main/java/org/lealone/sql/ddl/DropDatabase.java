@@ -20,7 +20,6 @@ import org.lealone.sql.SQLStatement;
 public class DropDatabase extends DatabaseStatement {
 
     private boolean ifExists;
-    private boolean deleteFiles;
 
     public DropDatabase(ServerSession session, String dbName) {
         super(session, dbName);
@@ -33,10 +32,6 @@ public class DropDatabase extends DatabaseStatement {
 
     public void setIfExists(boolean ifExists) {
         this.ifExists = ifExists;
-    }
-
-    public void setDeleteFiles(boolean deleteFiles) {
-        this.deleteFiles = deleteFiles;
     }
 
     @Override
@@ -59,12 +54,8 @@ public class DropDatabase extends DatabaseStatement {
             // Lealone不同于H2数据库，在H2的一个数据库中可以访问另一个数据库的对象，而Lealone不允许，
             // 所以在H2中需要一个对象一个对象地删除，这样其他数据库中的对象对他们的引用才能解除，
             // 而Lealone只要在LealoneDatabase中删除对当前数据库的引用然后删除底层的文件即可。
-            if (deleteFiles) {
-                db.setDeleteFilesOnDisconnect(true);
-            }
-            if (db.getSessionCount() == 0) {
-                db.drop();
-            }
+            db.markClosed();
+            db.drop();
         }
         return 0;
     }

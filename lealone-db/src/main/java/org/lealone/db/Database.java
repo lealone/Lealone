@@ -169,7 +169,6 @@ public class Database implements DataHandler, DbObject {
 
     private int closeDelay;
     private long lastSessionRemovedAt = -1;
-    private boolean deleteFilesOnDisconnect;
     private Thread closeOnExitHook;
 
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
@@ -1015,11 +1014,6 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      */
     public synchronized void removeSession(ServerSession session) {
-        if (deleteFilesOnDisconnect) {
-            userSessions.clear();
-            drop();
-            return;
-        }
         if (session != null) {
             if (exclusiveSession == session) {
                 setExclusiveSession(null, false);
@@ -1597,14 +1591,6 @@ public class Database implements DataHandler, DbObject {
         return dbSettings.ignoreCase;
     }
 
-    public synchronized void setDeleteFilesOnDisconnect(boolean b) {
-        this.deleteFilesOnDisconnect = b;
-    }
-
-    public boolean getDeleteFilesOnDisconnect() {
-        return deleteFilesOnDisconnect;
-    }
-
     public boolean getOptimizeReuseResults() {
         return dbSettings.optimizeReuseResults;
     }
@@ -2035,10 +2021,6 @@ public class Database implements DataHandler, DbObject {
         if (lobStorage != null) {
             getTransactionEngine().removeGcTask(lobStorage);
         }
-        if (getSessionCount() > 0) {
-            setDeleteFilesOnDisconnect(true);
-            return;
-        }
         for (Storage storage : getStorages()) {
             storage.drop();
         }
@@ -2063,5 +2045,13 @@ public class Database implements DataHandler, DbObject {
 
     public TransactionalDbObjects[] getTransactionalDbObjectsArray() {
         return dbObjectsArray;
+    }
+
+    public void markClosed() {
+        setCloseDelay(0);
+        for (ServerSession s : getSessions(false)) {
+            // 先标记为关闭状态，然后由调度器优雅关闭
+            s.markClosed();
+        }
     }
 }

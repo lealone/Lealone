@@ -1321,9 +1321,8 @@ public class LealoneSQLParser implements SQLParser {
         String dbName = readUniqueIdentifier();
         DropDatabase command = new DropDatabase(session, dbName);
         command.setIfExists(ifExists);
-        if (readIf("DELETE")) {
+        if (readIf("DELETE")) { // 保持兼容
             read("FILES");
-            command.setDeleteFiles(true);
         }
         return command;
     }

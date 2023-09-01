@@ -45,14 +45,10 @@ SELECT * FROM (SELECT ID, COUNT(*) FROM TEST
 "Commands (DML)","INSERT","
 INSERT INTO tableName
 { [ ( columnName [,...] ) ]
-    { VALUES { ( { DEFAULT | expression } [,...] ) } [,...] | [ DIRECT ] [ SORTED ] select } } |
+    { VALUES { ( { DEFAULT | expression } [,...] ) } [,...] | select } } |
     { SET { columnName = { DEFAULT | expression } } [,...] }
 ","
 Inserts a new row / new rows into a table.
-
-When using DIRECT, then the results from the query are directly applied in the target table without any intermediate step.
-
-When using SORTED, b-tree pages are split at the insertion point. This can improve performance and reduce disk usage.
 ","
 INSERT INTO TEST VALUES(1, 'Hello')
 "
@@ -722,12 +718,11 @@ CREATE VIEW TEST_VIEW AS SELECT * FROM TEST WHERE ID < 100
 "
 
 "Commands (DDL)","DROP DATABASE","
-DROP DATABASE  [ IF EXISTS ] dbName [ DELETE FILES ]
+DROP DATABASE  [ IF EXISTS ] dbName
 ","
 Drops all existing views, tables, sequences, schemas, function aliases, roles,
 user-defined aggregate functions, domains, and users (except the current user).
-If DELETE FILES is specified, the database files will be removed when the last
-user disconnects from the database. Warning: this command can not be rolled
+Warning: this command can not be rolled
 back.
 
 Admin rights are required to execute this command.
