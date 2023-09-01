@@ -1024,8 +1024,8 @@ SET AUTOCOMMIT OFF
 "Commands (Other)","SET CACHE_SIZE","
 SET CACHE_SIZE int
 ","
-Sets the size of the cache in KB (each KB being 1024 bytes) for the current database.
-The default value is 16384 (16 MB). The value is rounded to the next higher power of two.
+Sets the size of the cache in MB (each MB being 1024*1024 bytes) for the current database.
+The default value is 32 MB. The value is rounded to the next higher power of two.
 Depending on the virtual machine, the actual memory required may be higher.
 
 This setting is persistent and affects all connections as there is only one cache per database.
@@ -1036,9 +1036,9 @@ It has no effect for in-memory databases.
 Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:lealone:embed:test;CACHE_SIZE=8192""
+This setting can be appended to the database URL: ""jdbc:lealone:embed:test;CACHE_SIZE=8""
 ","
-SET CACHE_SIZE 8192
+SET CACHE_SIZE 8
 "
 
 "Commands (Other)","SET BINARY_COLLATION","
@@ -1077,19 +1077,6 @@ Admin rights are required to execute this command.
 This setting is persistent.
 ","
 SET COLLATION ENGLISH
-"
-
-"Commands (Other)","SET COMPRESS_LOB","
-SET COMPRESS_LOB { NO | LZF | DEFLATE }
-","
-Sets the compression algorithm for BLOB and CLOB data. Compression is usually
-slower, but needs less disk space. LZF is faster but uses more space.
-
-Admin rights are required to execute this command, as it affects all connections.
-
-This setting is persistent.
-","
-SET COMPRESS_LOB LZF
 "
 
 "Commands (Other)","SET DATABASE_EVENT_LISTENER","
@@ -1189,25 +1176,18 @@ This setting can be appended to the database URL: ""jdbc:lealone:embed:test;IGNO
 SET IGNORECASE TRUE
 "
 
-"Commands (Other)","SET JAVA_OBJECT_SERIALIZER","
-SET JAVA_OBJECT_SERIALIZER
-{ null | className }
+"Commands (Other)","SET LOB_COMPRESSION_ALGORITHM","
+SET LOB_COMPRESSION_ALGORITHM { NO | LZF | DEFLATE }
 ","
-Sets the object used to serialize and deserialize java objects being stored in column of type OTHER.
-The serializer class must be public and implement ""org.lealone.db.api.JavaObjectSerializer"".
-Inner classes are not supported.
-The class must be available in the classpath of the database engine
-(when using the server mode, it must be both in the classpath of the server and the client).
-This command can only be executed if there are no tables defined.
+Sets the compression algorithm for BLOB and CLOB data. Compression is usually
+slower, but needs less disk space. LZF is faster but uses more space.
 
-Admin rights are required to execute this command.
+Admin rights are required to execute this command, as it affects all connections.
 
 This setting is persistent.
-This setting can be appended to the database URL: ""jdbc:lealone:embed:test;JAVA_OBJECT_SERIALIZER='com.acme.SerializerClassName'""
 ","
-SET JAVA_OBJECT_SERIALIZER 'com.acme.SerializerClassName'
+SET LOB_COMPRESSION_ALGORITHM LZF
 "
-
 
 "Commands (Other)","SET LOCK_TIMEOUT","
 SET LOCK_TIMEOUT int
@@ -1285,7 +1265,7 @@ SET MAX_OPERATION_MEMORY 0
 "
 
 "Commands (Other)","SET MODE","
-SET MODE { REGULAR | DB2 | DERBY | HSQLDB | MSSQLSERVER | MYSQL | ORACLE | POSTGRESQL }
+SET MODE { REGULAR | MYSQL | POSTGRESQL }
 ","
 Changes to another database compatibility mode. For details, see Compatibility
 Modes in the feature section.
@@ -1295,7 +1275,7 @@ Admin rights are required to execute this command, as it affects all connections
 
 This setting can be appended to the database URL: ""jdbc:lealone:embed:test;MODE=MYSQL""
 ","
-SET MODE HSQLDB
+SET MODE MYSQL
 "
 
 "Commands (Other)","SET OPTIMIZE_REUSE_RESULTS","
