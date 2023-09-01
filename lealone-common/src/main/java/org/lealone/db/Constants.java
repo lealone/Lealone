@@ -96,16 +96,6 @@ public class Constants {
     public static final boolean BLOB_SEARCH = false;
 
     /**
-     * The minimum number of entries to keep in the cache.
-     */
-    public static final int CACHE_MIN_RECORDS = 16;
-
-    /**
-     * The default cache size in KB.
-     */
-    public static final int DEFAULT_CACHE_SIZE = 16 * 1024;
-
-    /**
      * The cost is calculated on rowcount + this offset,
      * to avoid using the wrong or no index if the table
      * contains no rows _currently_ (when preparing the statement)
@@ -138,6 +128,11 @@ public class Constants {
      * The default for the setting MAX_OPERATION_MEMORY.
      */
     public static final int DEFAULT_MAX_OPERATION_MEMORY = 100000;
+
+    /**
+     * The default cache size in MB.
+     */
+    public static final int DEFAULT_CACHE_SIZE = 32;
 
     /**
      * The default page size to use for new databases.

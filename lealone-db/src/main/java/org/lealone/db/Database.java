@@ -109,35 +109,23 @@ public class Database implements DataHandler, DbObject {
     private final DbObjectLock databasesLock = new DbObjectLockImpl(DbObjectType.DATABASE);
 
     public DbObjectLock tryExclusiveAuthLock(ServerSession session) {
-        if (authLock.tryExclusiveLock(session)) {
-            return authLock;
-        } else {
-            return null;
-        }
+        return tryExclusiveLock(session, authLock);
     }
 
     public DbObjectLock tryExclusiveSchemaLock(ServerSession session) {
-        if (schemasLock.tryExclusiveLock(session)) {
-            return schemasLock;
-        } else {
-            return null;
-        }
+        return tryExclusiveLock(session, schemasLock);
     }
 
     public DbObjectLock tryExclusiveCommentLock(ServerSession session) {
-        if (commentsLock.tryExclusiveLock(session)) {
-            return commentsLock;
-        } else {
-            return null;
-        }
+        return tryExclusiveLock(session, commentsLock);
     }
 
     public DbObjectLock tryExclusiveDatabaseLock(ServerSession session) {
-        if (databasesLock.tryExclusiveLock(session)) {
-            return databasesLock;
-        } else {
-            return null;
-        }
+        return tryExclusiveLock(session, databasesLock);
+    }
+
+    private DbObjectLock tryExclusiveLock(ServerSession session, DbObjectLock lock) {
+        return lock.tryExclusiveLock(session) ? lock : null;
     }
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
@@ -145,14 +133,13 @@ public class Database implements DataHandler, DbObject {
     private ServerSession exclusiveSession;
     private ServerSession systemSession;
     private User systemUser;
+    private Role publicRole;
     private Schema mainSchema;
     private Schema infoSchema;
     private Schema perfSchema;
     private volatile boolean infoSchemaMetaTablesInitialized;
-    private Role publicRole;
 
     private int nextSessionId;
-    private int nextTempTableId;
 
     private final BitField objectIds = new BitField();
 
@@ -181,9 +168,9 @@ public class Database implements DataHandler, DbObject {
 
     private final int id;
     private final String name;
+    private final boolean persistent;
     private final Map<String, String> parameters;
     private volatile DbSettings dbSettings;
-    private final boolean persistent;
 
     // 每个数据库只有一个SQL引擎和一个事务引擎
     private final SQLEngine sqlEngine;
@@ -201,7 +188,7 @@ public class Database implements DataHandler, DbObject {
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
         this.name = name;
-        this.storagePath = getStoragePath();
+        storagePath = getStoragePath();
         if (parameters != null) {
             dbSettings = DbSettings.getInstance(parameters);
             this.parameters = parameters;
@@ -216,40 +203,31 @@ public class Database implements DataHandler, DbObject {
             mode = Mode.getInstance(dbSettings.mode);
         }
 
-        String engineName = dbSettings.defaultSQLEngine;
-        SQLEngine sqlEngine = PluginManager.getPlugin(SQLEngine.class, engineName);
-        if (sqlEngine == null) {
-            try {
-                sqlEngine = Utils.newInstance(engineName);
-                PluginManager.register(sqlEngine);
-            } catch (Exception e) {
-                e = new RuntimeException("Fatal error: the sql engine '" + engineName + "' not found",
-                        e);
-                throw DbException.convert(e);
-            }
-        }
-        this.sqlEngine = sqlEngine;
-
-        engineName = dbSettings.defaultTransactionEngine;
-        TransactionEngine transactionEngine = PluginManager.getPlugin(TransactionEngine.class,
-                engineName);
-        if (transactionEngine == null) {
-            try {
-                transactionEngine = Utils.newInstance(engineName);
-                PluginManager.register(transactionEngine);
-            } catch (Exception e) {
-                e = new RuntimeException(
-                        "Fatal error: the transaction engine '" + engineName + "' not found", e);
-                throw DbException.convert(e);
-            }
-        }
-        this.transactionEngine = transactionEngine;
+        sqlEngine = getEngine(SQLEngine.class, dbSettings.defaultSQLEngine, "sql");
+        transactionEngine = getEngine(TransactionEngine.class, dbSettings.defaultTransactionEngine,
+                "transaction");
 
         for (DbObjectType type : DbObjectType.TYPES) {
             if (!type.isSchemaObject) {
                 dbObjectsArray[type.value] = new TransactionalDbObjects();
             }
         }
+    }
+
+    private static <E extends PluggableEngine> E getEngine(Class<E> engineClass, String engineName,
+            String engineType) {
+        E engine = PluginManager.getPlugin(engineClass, engineName);
+        if (engine == null) {
+            try {
+                engine = Utils.newInstance(engineName);
+                PluginManager.register(engine);
+            } catch (Exception e) {
+                e = new RuntimeException(
+                        "Fatal error: the " + engineType + " engine '" + engineName + "' not found", e);
+                throw DbException.convert(e);
+            }
+        }
+        return engine;
     }
 
     @Override
@@ -377,7 +355,9 @@ public class Database implements DataHandler, DbObject {
         for (Table t : mainSchema.getAllTablesAndViews())
             t.initVersion();
 
-        opened();
+        if (eventListener != null) {
+            eventListener.opened();
+        }
         state = State.OPENED;
     }
 
@@ -403,16 +383,6 @@ public class Database implements DataHandler, DbObject {
                 // (maybe an application wants to write something into a
                 // database at shutdown time)
             }
-        }
-    }
-
-    /**
-     * Called after the database has been opened and initialized. This method
-     * notifies the event listener if one has been set.
-     */
-    private void opened() {
-        if (eventListener != null) {
-            eventListener.opened();
         }
     }
 
@@ -552,26 +522,22 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Compare two values with the current comparison mode. The values may not
-     * be of the same type.
+     * Compare two values with the current comparison mode. The values may not be of the same type.
      *
      * @param a the first value
      * @param b the second value
-     * @return 0 if both values are equal, -1 if the first value is smaller, and
-     *         1 otherwise
+     * @return 0 if both values are equal, -1 if the first value is smaller, and 1 otherwise
      */
     public int compare(Value a, Value b) {
         return a.compareTo(b, compareMode);
     }
 
     /**
-     * Compare two values with the current comparison mode. The values must be
-     * of the same type.
+     * Compare two values with the current comparison mode. The values must be of the same type.
      *
      * @param a the first value
      * @param b the second value
-     * @return 0 if both values are equal, -1 if the first value is smaller, and
-     *         1 otherwise
+     * @return 0 if both values are equal, -1 if the first value is smaller, and 1 otherwise
      */
     public int compareTypeSafe(Value a, Value b) {
         return a.compareTypeSafe(b, compareMode);
@@ -897,8 +863,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Get the comment for the given database object if one exists, or null if
-     * not.
+     * Get the comment for the given database object if one exists, or null if not.
      *
      * @param object the database object
      * @return the comment or null
@@ -960,8 +925,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Get user with the given name. This method throws an exception if the user
-     * does not exist.
+     * Get user with the given name. This method throws an exception if the user does not exist.
      *
      * @param name the user name
      * @return the user
@@ -1067,8 +1031,7 @@ public class Database implements DataHandler, DbObject {
     /**
      * Close the database.
      *
-     * @param fromShutdownHook true if this method is called from the shutdown
-     *            hook
+     * @param fromShutdownHook true if this method is called from the shutdown hook
      */
     private synchronized void close(boolean fromShutdownHook) {
         if (state == State.CLOSING || state == State.CLOSED) {
@@ -1332,8 +1295,7 @@ public class Database implements DataHandler, DbObject {
     /**
      * Get all sessions that are currently connected to the database.
      *
-     * @param includingSystemSession if the system session should also be
-     *            included
+     * @param includingSystemSession if the system session should also be included
      * @return the list of sessions
      */
     public ServerSession[] getSessions(boolean includingSystemSession) {
@@ -1458,31 +1420,12 @@ public class Database implements DataHandler, DbObject {
         return publicRole;
     }
 
-    /**
-     * Get a unique temporary table name.
-     *
-     * @param baseName the prefix of the returned name
-     * @param session the session
-     * @return a unique name
-     */
-    public synchronized String getTempTableName(String baseName, ServerSession session) {
-        String tempName;
-        do {
-            tempName = baseName + "_COPY_" + session.getId() + "_" + nextTempTableId++;
-        } while (mainSchema.findTableOrView(session, tempName) != null);
-        return tempName;
-    }
-
     public void setCompareMode(CompareMode compareMode) {
         this.compareMode = compareMode;
     }
 
     public DatabaseEventListener getEventListener() {
         return eventListener;
-    }
-
-    public void setEventListener(DatabaseEventListener eventListener) {
-        this.eventListener = eventListener;
     }
 
     public void setEventListenerClass(String className) {
@@ -1872,6 +1815,7 @@ public class Database implements DataHandler, DbObject {
             storageBuilder.inMemory();
         } else {
             byte[] key = getFileEncryptionKey();
+            storageBuilder.cacheSize(getCacheSize());
             storageBuilder.pageSplitSize(getPageSize());
             storageBuilder.storagePath(storagePath);
             if (isReadOnly()) {
