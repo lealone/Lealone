@@ -81,10 +81,10 @@ public class AlterSequence extends SchemaStatement {
 
     @Override
     public int update() {
-        sequence.tryLock(session, false);
         if (table != null) {
             session.getUser().checkRight(table, Right.ALL);
         }
+        sequence.tryLock(session, false);
         Sequence newSequence = sequence.copy();
         if (cycle != null) {
             newSequence.setCycle(cycle);

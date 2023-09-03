@@ -28,6 +28,7 @@ public class CreateDatabase extends DatabaseStatement {
         super(session, dbName);
         this.ifNotExists = ifNotExists;
         this.parameters = parameters;
+        validateParameters();
     }
 
     @Override
@@ -49,7 +50,6 @@ public class CreateDatabase extends DatabaseStatement {
             }
             throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
         }
-        validateParameters();
         int id = getObjectId(lealoneDB);
         Database newDB = new Database(id, dbName, parameters);
         newDB.setRunMode(RunMode.CLIENT_SERVER);

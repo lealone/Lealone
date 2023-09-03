@@ -53,11 +53,11 @@ public class AlterTableRenameColumn extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(table, Right.ALL);
         DbObjectLock lock = tryAlterTable(table);
         if (lock == null)
             return -1;
 
-        session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
         // we need to update CHECK constraint
         // since it might reference the name of the column

@@ -47,6 +47,7 @@ public class AlterSchemaRename extends DefinitionStatement {
 
     @Override
     public int update() {
+        session.getUser().checkSchemaAdmin();
         Database db = session.getDatabase();
         DbObjectLock lock = db.tryExclusiveSchemaLock(session);
         if (lock == null)
@@ -58,7 +59,6 @@ public class AlterSchemaRename extends DefinitionStatement {
         if (db.findSchema(session, newSchemaName) != null || newSchemaName.equals(oldSchema.getName())) {
             throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, newSchemaName);
         }
-        session.getUser().checkSchemaAdmin();
         db.renameDatabaseObject(session, oldSchema, newSchemaName, lock);
         ArrayList<SchemaObject> all = db.getAllSchemaObjects();
         for (SchemaObject schemaObject : all) {

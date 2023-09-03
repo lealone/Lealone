@@ -73,8 +73,8 @@ public class SetComment extends DefinitionStatement {
 
     @Override
     public int update() {
-        Database db = session.getDatabase();
         session.getUser().checkAdmin();
+        Database db = session.getDatabase();
         DbObjectLock lock = db.tryExclusiveCommentLock(session);
         if (lock == null)
             return -1;

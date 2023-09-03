@@ -108,12 +108,12 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(table, Right.ALL);
         DbObjectLock lock = tryAlterTable(table);
         if (lock == null)
             return -1;
 
         Database db = session.getDatabase();
-        session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
         if (newColumn != null) {
             checkDefaultReferencesTable((Expression) newColumn.getDefaultExpression());

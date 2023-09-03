@@ -9,7 +9,6 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 
@@ -39,9 +38,7 @@ public class AlterDatabase extends DatabaseStatement {
         LealoneDatabase.checkAdminRight(session, "alter database");
         if (parameters == null || parameters.isEmpty())
             return 0;
-        LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
-        if (lock == null)
+        if (LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session) == null)
             return -1;
         db.updateDbSettings(session, parameters);
         return 0;

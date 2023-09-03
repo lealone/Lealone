@@ -46,6 +46,7 @@ public class AlterIndexRename extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(oldIndex.getTable(), Right.ALL);
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.INDEX, session);
         if (lock == null)
             return -1;
@@ -53,7 +54,6 @@ public class AlterIndexRename extends SchemaStatement {
         if (schema.findIndex(session, newIndexName) != null || newIndexName.equals(oldIndex.getName())) {
             throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, newIndexName);
         }
-        session.getUser().checkRight(oldIndex.getTable(), Right.ALL);
         schema.rename(session, oldIndex, newIndexName, lock);
         return 0;
     }
