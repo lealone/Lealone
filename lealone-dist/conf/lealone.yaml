@@ -34,7 +34,6 @@ protocol_server_engines:
     enabled: true
     parameters: {
         port: 9210,
-        trace: false,
         allow_others: true,
         daemon: false,
         ssl: false
