@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
@@ -32,7 +33,7 @@ public class RedoLog {
     RedoLog(Map<String, String> config) {
         this.config = config;
         String baseDir = config.get("base_dir");
-        String logDir = config.get("redo_log_dir");
+        String logDir = MapUtils.getString(config, "redo_log_dir", "redo_log");
         String storagePath = baseDir + File.separator + logDir;
         config.put(StorageSetting.STORAGE_PATH.name(), storagePath);
 

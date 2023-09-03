@@ -15,6 +15,7 @@ import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Constants;
+import org.lealone.server.TcpServerEngine;
 
 public class Config {
 
@@ -38,43 +39,28 @@ public class Config {
         if (!isDefault)
             return;
         storage_engines = new ArrayList<>(1);
-        PluggableEngineDef se = new PluggableEngineDef();
-        se.name = Constants.DEFAULT_STORAGE_ENGINE_NAME;
-        se.enabled = true;
-        se.is_default = true;
-        storage_engines.add(se);
+        storage_engines.add(createEngineDef(Constants.DEFAULT_STORAGE_ENGINE_NAME, true, true));
 
         transaction_engines = new ArrayList<>(1);
-        PluggableEngineDef te = new PluggableEngineDef();
-        te.name = Constants.DEFAULT_TRANSACTION_ENGINE_NAME;
-        te.enabled = true;
-        te.is_default = true;
-        te.parameters.put("redo_log_dir", "redo_log");
-        transaction_engines.add(te);
+        transaction_engines.add(createEngineDef(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, true, true));
 
         sql_engines = new ArrayList<>(1);
-        PluggableEngineDef sql = new PluggableEngineDef();
-        sql.name = Constants.DEFAULT_SQL_ENGINE_NAME;
-        sql.enabled = true;
-        sql.is_default = true;
-        sql_engines.add(sql);
+        sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(2);
-        PluggableEngineDef tcp = new PluggableEngineDef();
-        tcp.name = "TCP";
-        tcp.enabled = true;
-        tcp.is_default = true;
-        tcp.parameters.put("port", Constants.DEFAULT_TCP_PORT + "");
-        tcp.parameters.put("trace", "false");
-        tcp.parameters.put("allow_others", "true");
-        tcp.parameters.put("daemon", "false");
-        tcp.parameters.put("ssl", "false");
-
-        protocol_server_engines.add(tcp);
+        protocol_server_engines = new ArrayList<>(1);
+        protocol_server_engines.add(createEngineDef(TcpServerEngine.NAME, true, false));
 
         scheduler = new SchedulerDef();
         // scheduler.name = "ScheduleService";
         scheduler.parameters.put("scheduler_count", Runtime.getRuntime().availableProcessors() + "");
+    }
+
+    private static PluggableEngineDef createEngineDef(String name, boolean enabled, boolean isDefault) {
+        PluggableEngineDef e = new PluggableEngineDef();
+        e.name = name;
+        e.enabled = enabled;
+        e.is_default = isDefault;
+        return e;
     }
 
     public Map<String, String> getProtocolServerParameters(String name) {
@@ -114,7 +100,7 @@ public class Config {
         c.protocol_server_engines = mergeEngines(c.protocol_server_engines, d.protocol_server_engines);
         c.scheduler = mergeMap(d.scheduler, c.scheduler);
 
-        // 合并scheduler的参数到以下两种引擎，会用到
+        // 合并scheduler的参数到以下引擎，会用到
         for (PluggableEngineDef e : c.protocol_server_engines) {
             if (e.enabled)
                 e.parameters.putAll(c.scheduler.parameters);
