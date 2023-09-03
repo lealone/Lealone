@@ -16,8 +16,6 @@ import org.lealone.db.Constants;
 
 public abstract class ProtocolServerBase implements ProtocolServer {
 
-    public static final int DEFAULT_SESSION_TIMEOUT = 15 * 60 * 1000; // 如果session在15分钟内不活跃就会超时
-
     protected Map<String, String> config;
     protected String host = Constants.DEFAULT_HOST;
     protected int port;
@@ -27,24 +25,17 @@ public abstract class ProtocolServerBase implements ProtocolServer {
 
     protected boolean ssl;
     protected boolean allowOthers;
-    protected boolean isDaemon;
+    protected boolean daemon;
     protected boolean stopped;
     protected boolean started;
 
     // 如果allowOthers为false，那么可以指定具体的白名单，只有在白名单中的客户端才可以连进来
     protected HashSet<String> whiteList;
     protected ServerEncryptionOptions serverEncryptionOptions;
-    protected int sessionTimeout = DEFAULT_SESSION_TIMEOUT;
-
-    protected ProtocolServerBase() {
-    }
-
-    protected ProtocolServerBase(int port) {
-        this.port = port;
-    }
+    protected int sessionTimeout = 15 * 60 * 1000; // 如果session在15分钟内不活跃就会超时
 
     @Override
-    public void init(Map<String, String> config) { // TODO 对于不支持的参数直接报错
+    public void init(Map<String, String> config) {
         this.config = config;
         if (config.containsKey("host"))
             host = config.get("host");
@@ -54,9 +45,9 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         baseDir = config.get("base_dir");
         name = config.get("name");
 
-        ssl = Boolean.parseBoolean(config.get("ssl"));
+        ssl = MapUtils.getBoolean(config, "ssl", false);
         allowOthers = MapUtils.getBoolean(config, "allow_others", true);
-        isDaemon = Boolean.parseBoolean(config.get("daemon"));
+        daemon = MapUtils.getBoolean(config, "daemon", false);
 
         if (config.containsKey("white_list")) {
             String[] hosts = config.get("white_list").split(",");
@@ -82,8 +73,13 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     }
 
     @Override
-    public synchronized boolean isRunning(boolean traceError) {
-        return started && !stopped;
+    public boolean isStarted() {
+        return started;
+    }
+
+    @Override
+    public boolean isStopped() {
+        return stopped;
     }
 
     @Override
@@ -118,14 +114,9 @@ public abstract class ProtocolServerBase implements ProtocolServer {
 
     @Override
     public boolean isDaemon() {
-        return isDaemon;
+        return daemon;
     }
 
-    /**
-    * Get the configured base directory.
-    *
-    * @return the base directory
-    */
     @Override
     public String getBaseDir() {
         return baseDir;
@@ -149,16 +140,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     @Override
     public Map<String, String> getConfig() {
         return config;
-    }
-
-    @Override
-    public boolean isStarted() {
-        return started;
-    }
-
-    @Override
-    public boolean isStopped() {
-        return stopped;
     }
 
     @Override
