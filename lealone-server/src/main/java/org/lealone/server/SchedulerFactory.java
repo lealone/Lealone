@@ -8,6 +8,7 @@ package org.lealone.server;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.PluginManager;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.page.PageOperationHandlerFactory;
@@ -24,12 +25,7 @@ public class SchedulerFactory {
     public static synchronized void init(Map<String, String> config) {
         if (schedulers != null)
             return;
-        int schedulerCount;
-        if (config.containsKey("scheduler_count"))
-            schedulerCount = Math.max(1, Integer.parseInt(config.get("scheduler_count")));
-        else
-            schedulerCount = Runtime.getRuntime().availableProcessors();
-
+        int schedulerCount = MapUtils.getSchedulerCount(config);
         schedulers = new Scheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
             schedulers[i] = new Scheduler(i, schedulerCount, config);
