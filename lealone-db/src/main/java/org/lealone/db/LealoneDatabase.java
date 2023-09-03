@@ -93,8 +93,8 @@ public class LealoneDatabase extends Database
     void closeDatabase(String dbName) {
         Database db = findDatabase(dbName);
         if (db != null) {
-            getDatabasesMap().remove(dbName);
             synchronized (CLOSED_DATABASES) {
+                getDatabasesMap().remove(dbName); // 要放到同步块中
                 CLOSED_DATABASES.put(dbName, new Object[] { db.getCreateSQL(), db.getId() });
             }
         }
@@ -111,7 +111,9 @@ public class LealoneDatabase extends Database
     }
 
     public List<Database> getDatabases() {
-        return new ArrayList<>(getDatabasesMap().values());
+        synchronized (CLOSED_DATABASES) {
+            return new ArrayList<>(getDatabasesMap().values());
+        }
     }
 
     public Database findDatabase(String dbName) {
