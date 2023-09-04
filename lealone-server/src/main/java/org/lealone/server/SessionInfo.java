@@ -59,7 +59,10 @@ public class SessionInfo implements ServerSession.TimeoutListener {
 
     public void submitTask(PacketHandleTask task) {
         updateLastActiveTime();
-        taskQueue.add(task);
+        if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
+            runTask(task);
+        else
+            taskQueue.add(task);
     }
 
     public void submitTasks(AsyncTask... tasks) {
@@ -101,9 +104,13 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         }
     }
 
+    // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+    private boolean canHandleNextSessionTask() {
+        return session.getYieldableCommand() == null;
+    }
+
     void runSessionTasks() {
-        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-        if (session.getYieldableCommand() != null)
+        if (!canHandleNextSessionTask())
             return;
         AsyncTask task = taskQueue.poll();
         while (task != null) {
