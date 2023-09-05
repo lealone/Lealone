@@ -21,8 +21,11 @@ public class TransactionalValueType implements StorageDataType {
 
     @Override
     public int getMemory(Object obj) {
-        TransactionalValue v = (TransactionalValue) obj;
-        return 8 + valueType.getMemory(v.getValue());
+        TransactionalValue tv = (TransactionalValue) obj;
+        Object v = tv.getValue();
+        if (v == null) // 如果记录已经删除，看看从RowLock中是否还有
+            v = tv.getOldValue();
+        return 8 + valueType.getMemory(v);
     }
 
     @Override
