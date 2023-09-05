@@ -93,7 +93,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     }
 
     private void runTask(AsyncTask task) {
-        ServerSession old = (ServerSession) scheduler.getSession();
+        ServerSession old = (ServerSession) scheduler.getCurrentSession();
         scheduler.setCurrentSession(session);
         try {
             task.run();

@@ -149,7 +149,7 @@ public class PageReference {
         if (ok) {
             if (t instanceof PageOperationHandler) {
                 PageOperationHandler poHandler = (PageOperationHandler) t;
-                Session s = ((PageOperationHandler) t).getSession();
+                Session s = ((PageOperationHandler) t).getCurrentSession();
                 if (s != null) {
                     s.addPageReference(this);
                 } else {

@@ -78,7 +78,7 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
         for (int i = 0; i < size; i++) {
             PageOperation po = pageOperations.poll();
             while (true) {
-                Session old = getSession();
+                Session old = getCurrentSession();
                 setCurrentSession(po.getSession());
                 try {
                     PageOperationResult result = po.run(this);

@@ -65,7 +65,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     }
 
     @Override
-    public Session getSession() {
+    public Session getCurrentSession() {
         return currentSession;
     }
 

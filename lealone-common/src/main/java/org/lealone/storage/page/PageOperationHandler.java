@@ -22,7 +22,7 @@ public interface PageOperationHandler {
 
     void wakeUp();
 
-    default Session getSession() {
+    default Session getCurrentSession() {
         return null;
     }
 

@@ -67,7 +67,7 @@ public abstract class PageOperations {
                 // 事先定位到leaf page，当加轻量级锁失败后再次运行时不用再定位leaf page
                 p = gotoLeafPage();
                 pRef = p.getRef();
-                session = poHandler.getSession();
+                session = poHandler.getCurrentSession();
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
@@ -93,7 +93,7 @@ public abstract class PageOperations {
 
         @SuppressWarnings("unchecked")
         private void writeLocal(PageOperationHandler poHandler) {
-            session = poHandler.getSession();
+            session = poHandler.getCurrentSession();
             p = pRef.getOrReadPage(); // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
