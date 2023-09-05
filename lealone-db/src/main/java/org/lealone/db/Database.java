@@ -1768,7 +1768,7 @@ public class Database extends DbObjectBase implements DataHandler {
         } else {
             byte[] key = getFileEncryptionKey();
             storageBuilder.cacheSize(getCacheSize());
-            storageBuilder.pageSplitSize(getPageSize());
+            storageBuilder.pageSize(getPageSize());
             storageBuilder.storagePath(storagePath);
             if (isReadOnly()) {
                 storageBuilder.readOnly();
@@ -1787,7 +1787,7 @@ public class Database extends DbObjectBase implements DataHandler {
                 int compressPageSize = 64 * 1024;
                 if (pageSize > compressPageSize)
                     compressPageSize = pageSize;
-                storageBuilder.pageSplitSize(compressPageSize);
+                storageBuilder.pageSize(compressPageSize);
             }
         }
         return storageBuilder;

@@ -25,7 +25,7 @@ public class PageStorageModeTest extends AoseTestBase {
 
     private final int rowCount = 6000;
     private final int columnCount = 10;
-    private final int pageSplitSize = 1024 * 1024;
+    private final int pageSize = 1024 * 1024;
     private final int cacheSize = 100; // 100M
 
     @Test
@@ -64,7 +64,7 @@ public class PageStorageModeTest extends AoseTestBase {
 
     private void testStorage(ValueDataType keyType, TransactionalValueType tvType, PageStorageMode mode,
             String mapName) {
-        AOStorage storage = AOStorageTest.openStorage(pageSplitSize, cacheSize);
+        AOStorage storage = AOStorageTest.openStorage(pageSize, cacheSize);
         BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType,
                 null);
         map.setPageStorageMode(mode);

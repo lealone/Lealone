@@ -8,6 +8,7 @@ package org.lealone.storage;
 import java.util.HashMap;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.DbSetting;
 
 /**
  * A storage builder.
@@ -70,7 +71,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder readOnly() {
-        return set(StorageSetting.READ_ONLY.name(), 1);
+        return set(DbSetting.READ_ONLY.name(), 1);
     }
 
     /**
@@ -89,7 +90,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder cacheSize(int mb) {
-        return set(StorageSetting.CACHE_SIZE.name(), mb * 1024 * 1024);
+        return set(DbSetting.CACHE_SIZE.name(), mb * 1024 * 1024);
     }
 
     /**
@@ -104,7 +105,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder compress() {
-        return set(StorageSetting.COMPRESS.name(), 1);
+        return set(DbSetting.COMPRESS.name(), 1);
     }
 
     /**
@@ -119,7 +120,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder compressHigh() {
-        return set(StorageSetting.COMPRESS.name(), 2);
+        return set(DbSetting.COMPRESS.name(), 2);
     }
 
     /**
@@ -129,11 +130,11 @@ public abstract class StorageBuilder {
      * pages with one entry can get larger. It is just the point where pages
      * that contain more than one entry are split.
      * 
-     * @param pageSplitSize the page size
+     * @param pageSize the page size
      * @return this
      */
-    public StorageBuilder pageSplitSize(int pageSplitSize) {
-        return set(StorageSetting.PAGE_SPLIT_SIZE.name(), pageSplitSize);
+    public StorageBuilder pageSize(int pageSize) {
+        return set(DbSetting.PAGE_SIZE.name(), pageSize);
     }
 
     public StorageBuilder minFillRate(int minFillRate) {

@@ -14,7 +14,9 @@ import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.DbSetting;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
@@ -36,7 +38,7 @@ public class BTreeStorage {
 
     private final ChunkManager chunkManager;
 
-    private final int pageSplitSize;
+    private final int pageSize;
     private final int minFillRate;
     private final int maxChunkSize;
 
@@ -60,7 +62,7 @@ public class BTreeStorage {
      */
     BTreeStorage(BTreeMap<?, ?> map) {
         this.map = map;
-        pageSplitSize = getIntValue(StorageSetting.PAGE_SPLIT_SIZE.name(), 16 * 1024);
+        pageSize = getIntValue(DbSetting.PAGE_SIZE.name(), Constants.DEFAULT_PAGE_SIZE);
         int minFillRate = getIntValue(StorageSetting.MIN_FILL_RATE.name(), 30);
         if (minFillRate > 50) // 超过50没有实际意义
             minFillRate = 50;
@@ -68,9 +70,10 @@ public class BTreeStorage {
         compressionLevel = parseCompressionLevel();
 
         // 32M (32 * 1024 * 1024)，到达一半时就启用GC
-        int cacheSize = getIntValue(StorageSetting.CACHE_SIZE.name(), 32 * 1024 * 1024);
-        if (cacheSize > 0 && cacheSize < pageSplitSize)
-            cacheSize = pageSplitSize * 2;
+        int cacheSize = getIntValue(DbSetting.CACHE_SIZE.name(),
+                Constants.DEFAULT_CACHE_SIZE * 1024 * 1024);
+        if (cacheSize > 0 && cacheSize < pageSize)
+            cacheSize = pageSize * 2;
         bgc = new BTreeGC(map, cacheSize);
 
         // 默认256M
@@ -113,7 +116,7 @@ public class BTreeStorage {
     }
 
     private int parseCompressionLevel() {
-        Object value = map.getConfig(StorageSetting.COMPRESS.name());
+        Object value = map.getConfig(DbSetting.COMPRESS.name());
         if (value == null)
             return Compressor.NO;
         else {
@@ -207,8 +210,8 @@ public class BTreeStorage {
         return compressorHigh;
     }
 
-    public int getPageSplitSize() {
-        return pageSplitSize;
+    public int getPageSize() {
+        return pageSize;
     }
 
     public int getMinFillRate() {

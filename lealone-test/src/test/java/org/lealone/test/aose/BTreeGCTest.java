@@ -9,8 +9,8 @@ public class BTreeGCTest extends AoseTestBase {
     // @Test
     public void run() {
         int cacheSize = 16; // 单位是MB
-        pageSplitSize = 16 * 1024; // 16K
-        storage = AOStorageTest.openStorage(pageSplitSize, cacheSize);
+        pageSize = 16 * 1024; // 16K
+        storage = AOStorageTest.openStorage(pageSize, cacheSize);
         map = storage.openBTreeMap("BTreeGCTest");
         map.clear();
 

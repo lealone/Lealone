@@ -16,7 +16,7 @@ public abstract class AoseTestBase extends TestBase implements TestBase.Embedded
 
     protected AOStorage storage;
     protected BTreeMap<Integer, String> map;
-    protected int pageSplitSize = 1 * 1024;
+    protected int pageSize = 1 * 1024;
 
     protected void init() {
         init(false);
@@ -31,7 +31,7 @@ public abstract class AoseTestBase extends TestBase implements TestBase.Embedded
     }
 
     protected void init(String mapName, boolean clearMap) {
-        storage = AOStorageTest.openStorage(pageSplitSize);
+        storage = AOStorageTest.openStorage(pageSize);
         map = storage.openBTreeMap(mapName);
         if (clearMap)
             map.clear();

@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.DbSetting;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
@@ -46,7 +47,7 @@ public class AOStorage extends StorageBase {
     }
 
     public boolean isReadOnly() {
-        return config.containsKey(StorageSetting.READ_ONLY.name());
+        return config.containsKey(DbSetting.READ_ONLY.name());
     }
 
     @Override

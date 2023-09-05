@@ -5,6 +5,8 @@
  */
 package org.lealone.db;
 
+import java.util.HashSet;
+
 /**
  * The list of database setting for a SET statement.
  */
@@ -21,7 +23,6 @@ public enum DbSetting {
     ESTIMATED_FUNCTION_TABLE_ROWS,
     LARGE_RESULT_BUFFER_SIZE,
     // LARGE_TRANSACTIONS, //暂时用不到
-    // MAX_COMPACT_TIME, //暂时用不到
     MAX_QUERY_TIMEOUT,
     OPTIMIZE_DISTINCT,
     OPTIMIZE_EVALUATABLE_SUBQUERIES,
@@ -37,16 +38,12 @@ public enum DbSetting {
     DEFAULT_STORAGE_ENGINE,
     DEFAULT_SQL_ENGINE,
     DEFAULT_TRANSACTION_ENGINE,
-    COMPRESS,
     PERSISTENT,
-    PAGE_SIZE,
     CIPHER,
     FILE_PASSWORD_HASH,
     FILE_ENCRYPTION_KEY,
-    READ_ONLY,
 
     ALLOW_LITERALS,
-    CACHE_SIZE,
     COLLATION,
     BINARY_COLLATION,
     LOB_COMPRESSION_ALGORITHM,
@@ -69,7 +66,11 @@ public enum DbSetting {
     TRACE_LEVEL_FILE,
     TRACE_MAX_FILE_SIZE,
 
-    JSON_FORMAT;
+    // 在存储层也可用的参数
+    COMPRESS,
+    READ_ONLY,
+    PAGE_SIZE,
+    CACHE_SIZE;
 
     public String getName() {
         return name();
@@ -82,5 +83,14 @@ public enum DbSetting {
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    public static HashSet<String> getRecognizedStorageSetting() {
+        HashSet<String> set = new HashSet<String>();
+        set.add(COMPRESS.name());
+        set.add(READ_ONLY.name());
+        set.add(PAGE_SIZE.name());
+        set.add(CACHE_SIZE.name());
+        return set;
     }
 }

@@ -16,6 +16,7 @@ import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.DbSetting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.IndexColumn;
@@ -129,6 +130,7 @@ public class CreateTable extends SchemaStatement {
 
         HashSet<String> recognizedSettingOptions = new HashSet<>(
                 StorageSetting.values().length + TableSetting.values().length);
+        recognizedSettingOptions.addAll(DbSetting.getRecognizedStorageSetting());
         for (StorageSetting s : StorageSetting.values())
             recognizedSettingOptions.add(s.name());
         for (TableSetting s : TableSetting.values())
@@ -137,7 +139,7 @@ public class CreateTable extends SchemaStatement {
         parameters.removeAll(recognizedSettingOptions);
         if (!parameters.isEmpty()) {
             throw new ConfigException(String.format("Unrecognized parameters: %s for table %s, " //
-                    + "available setting options: %s", //
+                    + "recognized setting options: %s", //
                     parameters.keySet(), data.tableName, recognizedSettingOptions));
         }
     }

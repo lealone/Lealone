@@ -83,7 +83,7 @@ public abstract class LocalPage extends Page {
 
     @Override
     boolean needSplit() {
-        return memory > map.getBTreeStorage().getPageSplitSize() && keys.length > 1;
+        return memory > map.getBTreeStorage().getPageSize() && keys.length > 1;
     }
 
     @Override

@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.DbSetting;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.CursorParameters;
@@ -97,7 +98,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
         // 只要包含就为true
-        readOnly = config.containsKey(StorageSetting.READ_ONLY.name());
+        readOnly = config.containsKey(DbSetting.READ_ONLY.name());
         inMemory = config.containsKey(StorageSetting.IN_MEMORY.name());
 
         this.config = config;

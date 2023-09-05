@@ -27,7 +27,7 @@ public class AOStorageTest extends AoseTestBase {
     @Override
     protected void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
-        builder.pageSplitSize(1024);
+        builder.pageSize(1024);
         builder.encryptionKey("mykey".toCharArray());
         // builder.inMemory();
         // 弄个子目录，避免跟其他测试冲突，encryptionKey也会影响其他测试
@@ -85,15 +85,15 @@ public class AOStorageTest extends AoseTestBase {
         return openStorage(builder);
     }
 
-    public static AOStorage openStorage(int pageSplitSize) {
+    public static AOStorage openStorage(int pageSize) {
         AOStorageBuilder builder = new AOStorageBuilder();
-        builder.pageSplitSize(pageSplitSize);
+        builder.pageSize(pageSize);
         return openStorage(builder);
     }
 
-    public static AOStorage openStorage(int pageSplitSize, int cacheSize) {
+    public static AOStorage openStorage(int pageSize, int cacheSize) {
         AOStorageBuilder builder = new AOStorageBuilder();
-        builder.pageSplitSize(pageSplitSize);
+        builder.pageSize(pageSize);
         builder.cacheSize(cacheSize);
         return openStorage(builder);
     }
