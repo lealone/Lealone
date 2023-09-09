@@ -31,6 +31,7 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandlerBase;
+import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionListener;
 
 public class Scheduler extends PageOperationHandlerBase implements Runnable, SQLStatementExecutor,
@@ -210,12 +211,12 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     }
 
     private void gc() {
-        if (sessions.isEmpty())
-            return;
-        if (MemoryManager.getGlobalMemoryManager().needGc()) {
+        if (MemoryManager.needFullGc()) {
             for (SessionInfo si : sessions) {
                 si.getSession().clearQueryCache();
             }
+            TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
+            te.fullGc(SchedulerFactory.getSchedulerCount(), getHandlerId());
         }
     }
 

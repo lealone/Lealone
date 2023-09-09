@@ -170,8 +170,7 @@ public class Lealone {
 
             // 在主线程中运行，避免出现DestroyJavaVM线程
             Thread.currentThread().setName("CheckpointService");
-            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+            TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
             te.getRunnable().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
@@ -267,8 +266,7 @@ public class Lealone {
                             PluginManager.register(te);
                         }
                     } catch (Throwable e) {
-                        te = PluginManager.getPlugin(TransactionEngine.class,
-                                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                        te = TransactionEngine.getDefaultTransactionEngine();
                         if (te == null) {
                             throw e;
                         }

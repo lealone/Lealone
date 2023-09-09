@@ -9,8 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Constants;
-import org.lealone.db.PluginManager;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
@@ -245,7 +243,8 @@ public class PageReference {
                 pInfoNew.buff = null;
                 if (replacePage(pInfoOld, pInfoNew)) {
                     if (pInfoOld.getPos() != 0) {
-                        addRemovedPage(pInfoOld.getPos(), pInfoOld);
+                        addRemovedPage(pInfoOld.getPos());
+                        bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
                     }
                     return;
                 } else {
@@ -281,7 +280,8 @@ public class PageReference {
                     checkPageInfo(pInfoNew);
                 }
                 if (pInfoOld.getPos() != 0) {
-                    addRemovedPage(pInfoOld.getPos(), pInfoOld);
+                    addRemovedPage(pInfoOld.getPos());
+                    bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
                 }
                 return;
             } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
@@ -292,10 +292,8 @@ public class PageReference {
         }
     }
 
-    private void addRemovedPage(long pos, PageInfo pInfoOld) {
+    private void addRemovedPage(long pos) {
         bs.getChunkManager().addRemovedPage(pos);
-        // 第一次在一个已经持久化过的page上面增删改记录时，脏页大小需要算上page的原有大小
-        bs.getBTreeGC().addDirtyMemory(pInfoOld.getTotalMemory());
     }
 
     private boolean isDirtyPage(Page oldPage, long oldMarkDirtyCount) {
@@ -316,7 +314,7 @@ public class PageReference {
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
         while (true) {
             if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
-                addRemovedPage(newPos, pInfoSaved);
+                addRemovedPage(newPos);
                 return;
             }
             PageInfo pInfoNew = pInfoOld.copy(newPos);
@@ -325,10 +323,11 @@ public class PageReference {
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
                 }
+                bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
                 return;
             } else {
                 if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
-                    addRemovedPage(newPos, pInfoSaved);
+                    addRemovedPage(newPos);
                     return;
                 } else {
                     pInfoOld = getPageInfo();
@@ -399,8 +398,7 @@ public class PageReference {
             PageReference ref, Page newPage) {
         PageReference lRef = tmpNodePage.left;
         PageReference rRef = tmpNodePage.right;
-        TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
         while (true) {
             // 先取出旧值再进行addPageReference，否则会有并发问题
             PageInfo pInfoOld1 = parentRef.getPageInfo();

@@ -117,10 +117,10 @@ public abstract class LocalPage extends Page {
         addMemory(mem, true);
     }
 
-    protected void addMemory(int mem, boolean addToMemoryManager) {
+    protected void addMemory(int mem, boolean addToUsedMemory) {
         memory += mem;
-        if (addToMemoryManager)
-            map.getBTreeStorage().getBTreeGC().addUsedAndDirtyMemory(mem);
+        if (addToUsedMemory)
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(mem);
     }
 
     protected void copy(LocalPage newPage) {

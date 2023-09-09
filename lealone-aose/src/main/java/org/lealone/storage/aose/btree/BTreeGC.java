@@ -7,6 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.lealone.db.MemoryManager;
@@ -45,85 +46,68 @@ public class BTreeGC {
         return memoryManager.getUsedMemory();
     }
 
-    public long getDirtyMemory() {
-        return memoryManager.getDirtyMemory();
-    }
-
-    public void addDirtyMemory(long delta) {
-        memoryManager.addDirtyMemory(delta);
-        GMM().addDirtyMemory(delta);
-        if (delta > 0 && needGc())
-            MemoryManager.wakeUpGlobalMemoryListener();
-    }
-
     public void addUsedMemory(long delta) {
         memoryManager.addUsedMemory(delta);
         GMM().addUsedMemory(delta);
-        if (delta > 0 && needGc())
+        if (delta > 0 && needGc()) {
             MemoryManager.wakeUpGlobalMemoryListener();
-    }
-
-    public void addUsedAndDirtyMemory(long delta) {
-        memoryManager.addUsedAndDirtyMemory(delta);
-        GMM().addUsedAndDirtyMemory(delta);
-        if (delta > 0 && needGc())
-            MemoryManager.wakeUpGlobalMemoryListener();
-    }
-
-    public void resetDirtyMemory() {
-        long mem = memoryManager.getDirtyMemory();
-        memoryManager.resetDirtyMemory();
-        GMM().addDirtyMemory(-mem);
+        }
     }
 
     public void close() {
-        GMM().addDirtyMemory(-memoryManager.getDirtyMemory());
-        GMM().addUsedMemory(-memoryManager.getUsedMemory());
-        memoryManager.reset();
+        addUsedMemory(-memoryManager.getUsedMemory());
     }
 
     public boolean needGc() {
         return memoryManager.needGc();
     }
 
+    public void fullGc(TransactionEngine te) {
+        memoryManager.forceGc(true);
+        gc(te);
+        memoryManager.forceGc(false);
+    }
+
     public void gc(TransactionEngine te) {
         gc(te, memoryManager);
     }
 
-    public void gcGlobal(TransactionEngine te) {
-        gc(te, GMM());
+    public long collectDirtyMemory(TransactionEngine te) {
+        AtomicLong dirtyMemory = new AtomicLong();
+        gcPages(te, 15 * 60 * 1000, 0, dirtyMemory); // 15+分钟都没再访问过，释放page字段和buff字段
+        return dirtyMemory.get();
     }
 
     private void gc(TransactionEngine te, MemoryManager memoryManager) {
         if (!memoryManager.needGc())
             return;
         long used = memoryManager.getUsedMemory();
-        gcPages(te, 15 * 60 * 1000, 0); // 15+分钟都没再访问过，释放page字段和buff字段
+        // gcPages(te, 15 * 60 * 1000, 0, null); // 15+分钟都没再访问过，释放page字段和buff字段
         if (memoryManager.needGc())
-            gcPages(te, 5 * 60 * 1000, 1); // 5+分钟都没再访问过，释放page字段保留buff字段
+            gcPages(te, 5 * 60 * 1000, 1, null); // 5+分钟都没再访问过，释放page字段保留buff字段
         if (memoryManager.needGc())
-            gcPages(te, -2, 0); // 全表扫描的场景，释放page字段和buff字段
+            gcPages(te, -2, 0, null); // 全表扫描的场景，释放page字段和buff字段
         if (memoryManager.needGc())
             lru(te, memoryManager); // 按LRU算法回收
         if (DEBUG) {
             System.out.println(
                     "Map: " + map.getName() + ", GC: " + used + " -> " + memoryManager.getUsedMemory());
         }
-        memoryManager.resetUsedMemory();
     }
 
     // gcType: 0释放page和buff、1释放page、2释放buff
-    private void gcPages(TransactionEngine te, long hitsOrIdleTime, int gcType) {
-        gcPages(te, System.currentTimeMillis(), hitsOrIdleTime, gcType, map.getRootPageRef());
+    private void gcPages(TransactionEngine te, long hitsOrIdleTime, int gcType, AtomicLong dirtyMemory) {
+        gcPages(te, System.currentTimeMillis(), hitsOrIdleTime, gcType, map.getRootPageRef(),
+                dirtyMemory);
     }
 
     private void gcPages(TransactionEngine te, long now, long hitsOrIdleTime, int gcType,
-            PageReference ref) {
+            PageReference ref, AtomicLong dirtyMemory) {
         PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                gcPages(te, now, hitsOrIdleTime, gcType, childRef);
+                gcPages(te, now, hitsOrIdleTime, gcType, childRef, dirtyMemory);
             });
         }
         if (hitsOrIdleTime < 0) {
@@ -132,6 +116,9 @@ public class BTreeGC {
             }
         } else if (now - pInfo.getLastTime() > hitsOrIdleTime && ref.canGc(te)) {
             ref.gcPage(pInfo, gcType);
+        }
+        if (dirtyMemory != null && pInfo.getPos() == 0) {
+            dirtyMemory.addAndGet(pInfo.getPageMemory());
         }
     }
 

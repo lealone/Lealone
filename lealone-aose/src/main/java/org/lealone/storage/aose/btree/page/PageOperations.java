@@ -371,7 +371,7 @@ public abstract class PageOperations {
 
                 int mem = p.map.getKeyType().getMemory(tmpNodePage.key);
                 mem += 2 * PageUtils.PAGE_MEMORY_CHILD;
-                p.map.getBTreeStorage().getBTreeGC().addUsedAndDirtyMemory(mem);
+                p.map.getBTreeStorage().getBTreeGC().addUsedMemory(mem);
 
                 PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
                 if (p.isNode())

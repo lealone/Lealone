@@ -5,7 +5,10 @@
  */
 package org.lealone.transaction.aote;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -251,6 +254,47 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
+    @Override
+    public void fullGc(int schedulerCount, int schedulerId) {
+        ArrayList<String> names = new ArrayList<>(maps.keySet());
+        Collections.sort(names);
+        int size = names.size();
+        for (int i = 0; i < size; i++) {
+            int index = i;
+            if (i > schedulerCount)
+                index = i % schedulerCount;
+            if (index == schedulerId) {
+                StorageMap<?, ?> map = maps.get(names.get(i));
+                if (!map.isClosed())
+                    map.fullGc(this);
+            }
+        }
+    }
+
+    private static final boolean DEBUG = false;
+    private final HashMap<String, Long> dirtyMaps = new HashMap<>();
+    private final AtomicLong dirtyMemory = new AtomicLong();
+
+    private void collectDirtyMemory() {
+        dirtyMaps.clear();
+        dirtyMemory.set(0);
+        for (StorageMap<?, ?> map : maps.values()) {
+            if (!map.isClosed()) {
+                long dm = map.collectDirtyMemory(this);
+                if (dm > 0) {
+                    dirtyMemory.addAndGet(dm);
+                    dirtyMaps.put(map.getName(), dm);
+                }
+            }
+        }
+        if (DEBUG) {
+            logger.info("Dirty memory: " + dirtyMemory.get() / 1024 + "K");
+            logger.info("Dirty maps: " + dirtyMaps);
+            MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+            logger.info("Memory usage: " + mu);
+        }
+    }
+
     private void gc() {
         gcMaps();
         gcTValues();
@@ -355,13 +399,13 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         // 按周期自动触发
         private synchronized void checkpoint(boolean force) {
+            collectDirtyMemory();
             long now = System.currentTimeMillis();
             boolean executeCheckpoint = force || isClosed || (lastSavedAt + checkpointPeriod < now);
 
             // 如果上面的条件都不满足，那么再看看已经提交的数据占用的预估总内存大小是否大于阈值
             if (!executeCheckpoint) {
-                executeCheckpoint = MemoryManager.getGlobalMemoryManager()
-                        .getDirtyMemory() > dirtyPageCacheSize;
+                executeCheckpoint = dirtyMemory.get() > dirtyPageCacheSize;
             }
             if (executeCheckpoint) {
                 // 1.先切换redo log chunk文件
@@ -370,7 +414,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     for (StorageMap<?, ?> map : maps.values()) {
                         if (map.isClosed())
                             continue;
-                        if (force || map.hasUnsavedChanges())
+                        Long dirtyMemory = dirtyMaps.get(map.getName());
+                        if (dirtyMemory != null)
+                            map.save(dirtyMemory.longValue());
+                        else if (force || map.hasUnsavedChanges())
                             map.save();
                     }
                     lastSavedAt = now;

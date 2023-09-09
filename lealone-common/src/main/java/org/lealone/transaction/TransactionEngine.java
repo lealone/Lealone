@@ -7,9 +7,16 @@ package org.lealone.transaction;
 
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.lealone.db.Constants;
 import org.lealone.db.PluggableEngine;
+import org.lealone.db.PluginManager;
 
 public interface TransactionEngine extends PluggableEngine {
+
+    public static TransactionEngine getDefaultTransactionEngine() {
+        return PluginManager.getPlugin(TransactionEngine.class,
+                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+    }
 
     default Transaction beginTransaction(boolean autoCommit) {
         return beginTransaction(autoCommit, Transaction.IL_READ_COMMITTED);
@@ -41,6 +48,9 @@ public interface TransactionEngine extends PluggableEngine {
 
     default ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
         return null;
+    }
+
+    default void fullGc(int schedulerCount, int schedulerId) {
     }
 
     default void addGcTask(GcTask gcTask) {

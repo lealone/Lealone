@@ -22,6 +22,10 @@ public class SchedulerFactory {
         return schedulers[PageOperationHandlerFactory.getAndIncrementIndex(index) % schedulers.length];
     }
 
+    public static int getSchedulerCount() {
+        return schedulers.length;
+    }
+
     public static synchronized void init(Map<String, String> config) {
         if (schedulers != null)
             return;

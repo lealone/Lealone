@@ -225,6 +225,9 @@ public interface StorageMap<K, V> {
      */
     void save();
 
+    default void save(long dirtyMemory) {
+    }
+
     default void repair() {
     }
 
@@ -233,10 +236,6 @@ public interface StorageMap<K, V> {
     }
 
     default long getMemorySpaceUsed() {
-        return 0;
-    }
-
-    default long getDirtyMemorySpaceUsed() {
         return 0;
     }
 
@@ -253,6 +252,13 @@ public interface StorageMap<K, V> {
     }
 
     default void gc(TransactionEngine te) {
+    }
+
+    default void fullGc(TransactionEngine te) {
+    }
+
+    default long collectDirtyMemory(TransactionEngine te) {
+        return 0;
     }
 
     default void markDirty(Object key) {

@@ -48,8 +48,7 @@ public class TransactionEngineTest extends AoteTestBase {
 
     public static TransactionEngine getTransactionEngine(Map<String, String> config,
             boolean isDistributed) {
-        TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
         if (config == null)
             config = getDefaultConfig();

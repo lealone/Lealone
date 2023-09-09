@@ -27,6 +27,7 @@ import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A persistent storage for btree map.
@@ -244,10 +245,6 @@ public class BTreeStorage {
         return bgc.getUsedMemory();
     }
 
-    public long getDirtyMemorySpaceUsed() {
-        return bgc.getDirtyMemory();
-    }
-
     synchronized void clear() {
         if (map.isInMemory())
             return;
@@ -302,11 +299,25 @@ public class BTreeStorage {
         }
     }
 
+    private int collectDirtyMemory(TransactionEngine te) {
+        if (te == null)
+            te = TransactionEngine.getDefaultTransactionEngine();
+        return (int) map.collectDirtyMemory(te);
+    }
+
+    void save() {
+        save(true, collectDirtyMemory(null));
+    }
+
+    void save(int dirtyMemory) {
+        save(true, dirtyMemory);
+    }
+
     /**
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
      */
-    synchronized void save() {
+    synchronized void save(boolean compact, int dirtyMemory) {
         if (!map.hasUnsavedChanges() || closed || map.isInMemory()) {
             return;
         }
@@ -315,17 +326,19 @@ public class BTreeStorage {
                     "This storage is read-only");
         }
         try {
-            executeSave(true);
-            new ChunkCompactor(this, chunkManager).executeCompact();
+            executeSave(true, dirtyMemory);
+            if (compact)
+                new ChunkCompactor(this, chunkManager).executeCompact();
         } catch (IllegalStateException e) {
             throw panic(e);
         }
     }
 
     public synchronized void executeSave(boolean appendModeEnabled) {
-        int dirtyMemory = (int) (bgc.getDirtyMemory() * 1.5);
-        bgc.resetDirtyMemory();
+        executeSave(appendModeEnabled, collectDirtyMemory(null));
+    }
 
+    private synchronized void executeSave(boolean appendModeEnabled, int dirtyMemory) {
         DataBuffer chunkBody = DataBuffer.getOrCreate(dirtyMemory);
         boolean appendMode = false;
         try {

@@ -53,6 +53,12 @@ public class StatementList extends StatementBase {
     }
 
     @Override
+    public PreparedSQLStatement prepare() {
+        firstStatement.prepare();
+        return this;
+    }
+
+    @Override
     public boolean isQuery() {
         return firstStatement.isQuery();
     }

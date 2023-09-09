@@ -9,9 +9,18 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.common.util.SystemPropertyUtils;
+
 public class MemoryManager {
 
     private static final MemoryManager globalMemoryManager = new MemoryManager(getGlobalMaxMemory());
+
+    private static final long fullGcThreshold = SystemPropertyUtils
+            .getLong("lealone.memory.fullGcThreshold", getGlobalMaxMemory() / 10 * 6);
+
+    public static boolean needFullGc() {
+        return globalMemoryManager.getUsedMemory() > fullGcThreshold;
+    }
 
     private static long getGlobalMaxMemory() {
         MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
@@ -32,20 +41,14 @@ public class MemoryManager {
         MemoryManager.globalMemoryListener = globalMemoryListener;
     }
 
-    private static void wakeUpGlobalMemoryListener(long delta) {
-        if (delta > 0 && globalMemoryListener != null && globalMemoryManager.needGc())
-            globalMemoryListener.wakeUp();
-    }
-
     public static void wakeUpGlobalMemoryListener() {
         if (globalMemoryListener != null)
             globalMemoryListener.wakeUp();
     }
 
     private final AtomicLong usedMemory = new AtomicLong(0);
-    private final AtomicLong dirtyMemory = new AtomicLong(0);
-
-    private long maxGCMemory;
+    private long gcThreshold;
+    private boolean forceGc;
 
     public MemoryManager(long maxMemory) {
         setMaxMemory(maxMemory);
@@ -54,50 +57,33 @@ public class MemoryManager {
     public void setMaxMemory(long maxMemory) {
         if (maxMemory <= 0)
             maxMemory = getGlobalMaxMemory();
-        maxGCMemory = maxMemory / 2; // 占用内存超过一半时就可以触发GC
+        gcThreshold = maxMemory / 2; // 占用内存超过一半时就可以触发GC
     }
 
     public long getMaxMemory() {
-        return maxGCMemory * 2;
+        return gcThreshold * 2;
     }
 
     public long getUsedMemory() {
         return usedMemory.get();
     }
 
-    public long getDirtyMemory() {
-        return dirtyMemory.get();
-    }
-
-    public void addDirtyMemory(long delta) { // 正负都有可能
-        dirtyMemory.addAndGet(delta);
-    }
-
     public void addUsedMemory(long delta) { // 正负都有可能
         usedMemory.addAndGet(delta);
-        wakeUpGlobalMemoryListener(delta);
-    }
-
-    public void addUsedAndDirtyMemory(long delta) {
-        usedMemory.addAndGet(delta);
-        dirtyMemory.addAndGet(delta);
-        wakeUpGlobalMemoryListener(delta);
     }
 
     public boolean needGc() {
-        return usedMemory.get() > maxGCMemory;
+        if (forceGc)
+            return true;
+        if (usedMemory.get() > gcThreshold)
+            return true;
+        // 看看全部使用的内存是否超过阈值
+        if (this != globalMemoryManager && globalMemoryManager.needGc())
+            return true;
+        return false;
     }
 
-    public void reset() {
-        usedMemory.set(0);
-        dirtyMemory.set(0);
-    }
-
-    public void resetDirtyMemory() {
-        dirtyMemory.set(0);
-    }
-
-    public void resetUsedMemory() {
-        usedMemory.set(0);
+    public void forceGc(boolean b) {
+        forceGc = b;
     }
 }

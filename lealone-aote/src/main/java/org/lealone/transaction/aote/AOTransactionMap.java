@@ -386,11 +386,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public long getDirtyMemorySpaceUsed() {
-        return map.getDirtyMemorySpaceUsed();
-    }
-
-    @Override
     public boolean hasUnsavedChanges() {
         return map.hasUnsavedChanges();
     }
