@@ -5,6 +5,8 @@
  */
 package org.lealone.storage;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.type.StorageDataType;
@@ -257,7 +259,7 @@ public interface StorageMap<K, V> {
     default void fullGc(TransactionEngine te) {
     }
 
-    default long collectDirtyMemory(TransactionEngine te) {
+    default long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
         return 0;
     }
 

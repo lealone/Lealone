@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.aose.btree.BTreeGC;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
@@ -74,6 +75,15 @@ public class NodePage extends LocalPage {
     @Override
     Page copyAndInsertChild(TmpNodePage tmpNodePage) {
         int index = getPageIndex(tmpNodePage.key);
+
+        BTreeGC bgc = map.getBTreeStorage().getBTreeGC();
+        bgc.addUsedMemory(-children[index].getPageInfo().getTotalMemory());
+        // key + node
+        int mem = map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD;
+        bgc.addUsedMemory(mem);
+        bgc.addUsedMemory(tmpNodePage.left.getPageInfo().getTotalMemory());
+        bgc.addUsedMemory(tmpNodePage.right.getPageInfo().getTotalMemory());
+
         Object[] newKeys = new Object[keys.length + 1];
         DataUtils.copyWithGap(keys, newKeys, keys.length, index);
         newKeys[index] = tmpNodePage.key;
@@ -86,7 +96,7 @@ public class NodePage extends LocalPage {
         tmpNodePage.left.setParentRef(getRef());
         tmpNodePage.right.setParentRef(getRef());
         NodePage p = copy(newKeys, newChildren);
-        p.addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
+        p.addMemory(mem, false);
         return p;
     }
 
@@ -95,6 +105,9 @@ public class NodePage extends LocalPage {
         if (keys.length > 0) // 删除最后一个children时，keys已经空了
             super.remove(index);
         addMemory(-PageUtils.PAGE_MEMORY_CHILD);
+        // 空的子page也占用内存，删除后要减去它的内存
+        map.getBTreeStorage().getBTreeGC().addUsedMemory(-PageUtils.PAGE_MEMORY);
+
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];
         DataUtils.copyExcept(children, newChildren, childCount, index);

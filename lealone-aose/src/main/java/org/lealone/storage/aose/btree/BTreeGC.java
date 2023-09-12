@@ -72,9 +72,9 @@ public class BTreeGC {
         gc(te, memoryManager);
     }
 
-    public long collectDirtyMemory(TransactionEngine te) {
+    public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
         AtomicLong dirtyMemory = new AtomicLong();
-        gcPages(te, 15 * 60 * 1000, 0, dirtyMemory); // 15+分钟都没再访问过，释放page字段和buff字段
+        gcPages(te, 15 * 60 * 1000, 0, dirtyMemory, usedMemory); // 15+分钟都没再访问过，释放page字段和buff字段
         return dirtyMemory.get();
     }
 
@@ -82,11 +82,11 @@ public class BTreeGC {
         if (!memoryManager.needGc())
             return;
         long used = memoryManager.getUsedMemory();
-        // gcPages(te, 15 * 60 * 1000, 0, null); // 15+分钟都没再访问过，释放page字段和buff字段
+        // gcPages(te, 15 * 60 * 1000, 0, null, null); // 15+分钟都没再访问过，释放page字段和buff字段
         if (memoryManager.needGc())
-            gcPages(te, 5 * 60 * 1000, 1, null); // 5+分钟都没再访问过，释放page字段保留buff字段
+            gcPages(te, 5 * 60 * 1000, 1, null, null); // 5+分钟都没再访问过，释放page字段保留buff字段
         if (memoryManager.needGc())
-            gcPages(te, -2, 0, null); // 全表扫描的场景，释放page字段和buff字段
+            gcPages(te, -2, 0, null, null); // 全表扫描的场景，释放page字段和buff字段
         if (memoryManager.needGc())
             lru(te, memoryManager); // 按LRU算法回收
         if (DEBUG) {
@@ -96,18 +96,19 @@ public class BTreeGC {
     }
 
     // gcType: 0释放page和buff、1释放page、2释放buff
-    private void gcPages(TransactionEngine te, long hitsOrIdleTime, int gcType, AtomicLong dirtyMemory) {
+    private void gcPages(TransactionEngine te, long hitsOrIdleTime, int gcType, AtomicLong dirtyMemory,
+            AtomicLong usedMemory) {
         gcPages(te, System.currentTimeMillis(), hitsOrIdleTime, gcType, map.getRootPageRef(),
-                dirtyMemory);
+                dirtyMemory, usedMemory);
     }
 
     private void gcPages(TransactionEngine te, long now, long hitsOrIdleTime, int gcType,
-            PageReference ref, AtomicLong dirtyMemory) {
+            PageReference ref, AtomicLong dirtyMemory, AtomicLong usedMemory) {
         PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                gcPages(te, now, hitsOrIdleTime, gcType, childRef, dirtyMemory);
+                gcPages(te, now, hitsOrIdleTime, gcType, childRef, dirtyMemory, usedMemory);
             });
         }
         if (hitsOrIdleTime < 0) {
@@ -119,6 +120,9 @@ public class BTreeGC {
         }
         if (dirtyMemory != null && pInfo.getPos() == 0) {
             dirtyMemory.addAndGet(pInfo.getPageMemory());
+        }
+        if (usedMemory != null) {
+            usedMemory.addAndGet(pInfo.getTotalMemory());
         }
     }
 

@@ -9,6 +9,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.aose.btree.BTreeGC;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
@@ -364,16 +365,20 @@ public abstract class PageOperations {
             Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root page，那么直接替换
             if (pRef.isRoot()) {
+                BTreeGC bgc = p.map.getBTreeStorage().getBTreeGC();
+                bgc.addUsedMemory(-pRef.getPageInfo().getTotalMemory());
+
                 TmpNodePage tmpNodePage = splitPage(p);
                 tmpNodePage.parent.setRef(pRef);
                 tmpNodePage.left.setParentRef(pRef);
                 tmpNodePage.right.setParentRef(pRef);
 
-                int mem = p.map.getKeyType().getMemory(tmpNodePage.key);
-                mem += 2 * PageUtils.PAGE_MEMORY_CHILD;
-                p.map.getBTreeStorage().getBTreeGC().addUsedMemory(mem);
+                bgc.addUsedMemory(tmpNodePage.parent.getMemory());
+                bgc.addUsedMemory(tmpNodePage.left.getPageInfo().getTotalMemory());
+                bgc.addUsedMemory(tmpNodePage.right.getPageInfo().getTotalMemory());
 
                 PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
+
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
@@ -398,6 +403,7 @@ public abstract class PageOperations {
         }
 
         private static TmpNodePage splitPage(Page p) {
+            PageInfo pInfoOld = p.getRef().getPageInfo();
             // 注意: 在这里被切割的页面可能是node page或leaf page
             int at = p.getKeyCount() / 2;
             Object k = p.getKey(at);
@@ -416,7 +422,7 @@ public abstract class PageOperations {
             // 它俩的ParentRef不在这里设置，调用者根据自己的情况设置
             leftChildPage.setRef(leftRef);
             rightChildPage.setRef(rightRef);
-            return new TmpNodePage(parent, leftRef, rightRef, k);
+            return new TmpNodePage(parent, leftRef, rightRef, k, pInfoOld);
         }
 
         private static void setParentRef(TmpNodePage tmpNodePage) {
@@ -437,11 +443,15 @@ public abstract class PageOperations {
         final PageReference right;
         final Object key;
 
-        public TmpNodePage(Page parent, PageReference left, PageReference right, Object key) {
+        public TmpNodePage(Page parent, PageReference left, PageReference right, Object key,
+                PageInfo pInfoOld) {
             this.parent = parent;
             this.left = left;
             this.right = right;
             this.key = key;
+            parent.getRef().getPageInfo().updateTime(pInfoOld);
+            left.getPageInfo().updateTime(pInfoOld);
+            right.getPageInfo().updateTime(pInfoOld);
         }
     }
 }

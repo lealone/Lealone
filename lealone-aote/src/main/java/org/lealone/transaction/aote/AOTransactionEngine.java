@@ -256,31 +256,45 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public void fullGc(int schedulerCount, int schedulerId) {
-        ArrayList<String> names = new ArrayList<>(maps.keySet());
-        Collections.sort(names);
-        int size = names.size();
-        for (int i = 0; i < size; i++) {
-            int index = i;
-            if (i > schedulerCount)
-                index = i % schedulerCount;
-            if (index == schedulerId) {
-                StorageMap<?, ?> map = maps.get(names.get(i));
-                if (!map.isClosed())
-                    map.fullGc(this);
+        fullGcCounter.incrementAndGet();
+        try {
+            ArrayList<String> names = new ArrayList<>(maps.keySet());
+            Collections.sort(names);
+            int size = names.size();
+            for (int i = 0; i < size; i++) {
+                int index = i;
+                if (i > schedulerCount)
+                    index = i % schedulerCount;
+                if (index == schedulerId) {
+                    StorageMap<?, ?> map = maps.get(names.get(i));
+                    if (!map.isClosed())
+                        map.fullGc(this);
+                }
             }
+        } finally {
+            fullGcCounter.decrementAndGet();
         }
     }
 
     private static final boolean DEBUG = false;
     private final HashMap<String, Long> dirtyMaps = new HashMap<>();
     private final AtomicLong dirtyMemory = new AtomicLong();
+    private final AtomicInteger fullGcCounter = new AtomicInteger();
+
+    private static String toM(long v) {
+        return v + "(" + (v >> 10) + "K)";
+    }
 
     private void collectDirtyMemory() {
         dirtyMaps.clear();
         dirtyMemory.set(0);
+
+        AtomicLong usedMemory = null;
+        if (DEBUG)
+            usedMemory = new AtomicLong();
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                long dm = map.collectDirtyMemory(this);
+                long dm = map.collectDirtyMemory(this, usedMemory);
                 if (dm > 0) {
                     dirtyMemory.addAndGet(dm);
                     dirtyMaps.put(map.getName(), dm);
@@ -288,10 +302,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             }
         }
         if (DEBUG) {
-            logger.info("Dirty memory: " + dirtyMemory.get() / 1024 + "K");
             logger.info("Dirty maps: " + dirtyMaps);
+            logger.info("DB g_used: " + toM(MemoryManager.getGlobalMemoryManager().getUsedMemory()));
+            logger.info("DB c_used: " + toM(usedMemory.get()) + ", dirty: " + toM(dirtyMemory.get()));
             MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-            logger.info("Memory usage: " + mu);
+            logger.info("JVM used: " + toM(mu.getUsed()) + ", max: " + toM(mu.getMax()));
         }
     }
 
@@ -303,8 +318,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private void gcMaps() {
         for (StorageMap<?, ?> map : maps.values()) {
-            if (!map.isClosed())
+            if (!map.isClosed()) {
+                if (fullGcCounter.get() > 0)
+                    break;
                 map.gc(this);
+            }
         }
     }
 
@@ -443,6 +461,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     logger.warn("Semaphore tryAcquire exception", t);
                 }
                 isWaiting = false;
+
+                if (fullGcCounter.get() > 0)
+                    continue;
 
                 try {
                     if (!forceCheckpointTasks.isEmpty()) {

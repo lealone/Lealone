@@ -252,6 +252,7 @@ public class PageReference {
                 }
             } else {
                 this.pInfo.page = newPage;
+                this.pInfo.updateTime();
                 return;
             }
         }
@@ -406,6 +407,7 @@ public class PageReference {
             addPageReference(ref, lRef, rRef, te);
             PageInfo pInfoNew = new PageInfo();
             pInfoNew.page = newPage;
+            pInfoNew.updateTime(pInfoOld1);
             if (!parentRef.replacePage(pInfoOld1, pInfoNew))
                 continue;
             if (ref != parentRef) {

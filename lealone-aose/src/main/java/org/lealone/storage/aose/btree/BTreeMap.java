@@ -390,14 +390,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void fullGc(TransactionEngine te) {
         if (!inMemory) {
-            btreeStorage.save(false, (int) collectDirtyMemory(te));
+            btreeStorage.save(false, (int) collectDirtyMemory(te, null));
             btreeStorage.getBTreeGC().fullGc(te);
         }
     }
 
     @Override
-    public synchronized long collectDirtyMemory(TransactionEngine te) {
-        return inMemory ? 0 : btreeStorage.getBTreeGC().collectDirtyMemory(te);
+    public synchronized long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
+        return inMemory ? 0 : btreeStorage.getBTreeGC().collectDirtyMemory(te, usedMemory);
     }
 
     @Override

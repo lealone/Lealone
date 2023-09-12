@@ -302,7 +302,7 @@ public class BTreeStorage {
     private int collectDirtyMemory(TransactionEngine te) {
         if (te == null)
             te = TransactionEngine.getDefaultTransactionEngine();
-        return (int) map.collectDirtyMemory(te);
+        return (int) map.collectDirtyMemory(te, null);
     }
 
     void save() {

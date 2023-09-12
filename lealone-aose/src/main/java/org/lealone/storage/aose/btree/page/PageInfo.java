@@ -34,6 +34,11 @@ public class PageInfo {
             hits = 1;
     }
 
+    public void updateTime(PageInfo pInfoOld) {
+        lastTime = pInfoOld.lastTime;
+        hits = pInfoOld.hits;
+    }
+
     public Page getPage() {
         return page;
     }
