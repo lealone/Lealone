@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
@@ -56,6 +57,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // 只允许通过成员方法访问这个特殊的字段
     private final AtomicLong size = new AtomicLong(0);
+    private final ReentrantLock lock = new ReentrantLock();
 
     private final boolean readOnly;
     private final boolean inMemory;
@@ -331,19 +333,29 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void clear() {
-        checkWrite();
-        btreeStorage.clear();
-        size.set(0);
-        maxKey.set(0);
-        newRoot(LeafPage.createEmpty(this));
+    public void clear() {
+        lock.lock();
+        try {
+            checkWrite();
+            btreeStorage.clear();
+            size.set(0);
+            maxKey.set(0);
+            newRoot(LeafPage.createEmpty(this));
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
-    public synchronized void remove() {
-        clear(); // 及早释放内存，上层的数据库对象模型可能会引用到，容易产生OOM
-        btreeStorage.remove();
-        closeMap();
+    public void remove() {
+        lock.lock();
+        try {
+            clear(); // 及早释放内存，上层的数据库对象模型可能会引用到，容易产生OOM
+            btreeStorage.remove();
+            closeMap();
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -352,9 +364,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void close() {
-        closeMap();
-        btreeStorage.close();
+    public void close() {
+        lock.lock();
+        try {
+            closeMap();
+            btreeStorage.close();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private void closeMap() {
@@ -362,16 +379,26 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void save() {
+    public void save() {
         if (!inMemory) {
-            btreeStorage.save();
+            lock.lock();
+            try {
+                btreeStorage.save();
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
     @Override
-    public synchronized void save(long dirtyMemory) {
+    public void save(long dirtyMemory) {
         if (!inMemory) {
-            btreeStorage.save((int) dirtyMemory);
+            lock.lock();
+            try {
+                btreeStorage.save((int) dirtyMemory);
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
@@ -381,23 +408,40 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void gc(TransactionEngine te) {
+    public void gc(TransactionEngine te) {
         if (!inMemory) {
-            btreeStorage.getBTreeGC().gc(te);
+            lock.lock();
+            try {
+                btreeStorage.getBTreeGC().gc(te);
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
     @Override
-    public synchronized void fullGc(TransactionEngine te) {
+    public void fullGc(TransactionEngine te) {
         if (!inMemory) {
-            btreeStorage.save(false, (int) collectDirtyMemory(te, null));
-            btreeStorage.getBTreeGC().fullGc(te);
+            // 如果加锁失败可以直接返回
+            if (lock.tryLock()) {
+                try {
+                    btreeStorage.save(false, (int) collectDirtyMemory(te, null));
+                    btreeStorage.getBTreeGC().fullGc(te);
+                } finally {
+                    lock.unlock();
+                }
+            }
         }
     }
 
     @Override
-    public synchronized long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
-        return inMemory ? 0 : btreeStorage.getBTreeGC().collectDirtyMemory(te, usedMemory);
+    public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
+        lock.lock();
+        try {
+            return inMemory ? 0 : btreeStorage.getBTreeGC().collectDirtyMemory(te, usedMemory);
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -600,27 +644,32 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public synchronized void repair() {
-        ChunkManager chunkManager = btreeStorage.getChunkManager();
-        HashSet<Long> removedPages = new HashSet<>();
-        HashSet<Long> pages = new HashSet<>();
-        for (Integer id : chunkManager.getAllChunkIds()) {
-            Chunk c = chunkManager.getChunk(id);
-            removedPages.addAll(c.getRemovedPages());
-            pages.addAll(c.pagePositionToLengthMap.keySet());
-        }
-        clear();
-        pages.removeAll(removedPages);
-        for (Long p : pages) {
-            if (PageUtils.isNodePage(p))
-                continue;
-            PageReference tmpRef = new PageReference(btreeStorage, p);
-            Page leaf = tmpRef.getOrReadPage();
-            int keys = leaf.getKeyCount();
-            for (int i = 0; i < keys; i++) {
-                put((K) leaf.getKey(i), (V) leaf.getValue(i));
+    public void repair() {
+        lock.lock();
+        try {
+            ChunkManager chunkManager = btreeStorage.getChunkManager();
+            HashSet<Long> removedPages = new HashSet<>();
+            HashSet<Long> pages = new HashSet<>();
+            for (Integer id : chunkManager.getAllChunkIds()) {
+                Chunk c = chunkManager.getChunk(id);
+                removedPages.addAll(c.getRemovedPages());
+                pages.addAll(c.pagePositionToLengthMap.keySet());
             }
+            clear();
+            pages.removeAll(removedPages);
+            for (Long p : pages) {
+                if (PageUtils.isNodePage(p))
+                    continue;
+                PageReference tmpRef = new PageReference(btreeStorage, p);
+                Page leaf = tmpRef.getOrReadPage();
+                int keys = leaf.getKeyCount();
+                for (int i = 0; i < keys; i++) {
+                    put((K) leaf.getKey(i), (V) leaf.getValue(i));
+                }
+            }
+            btreeStorage.save();
+        } finally {
+            lock.unlock();
         }
-        btreeStorage.save();
     }
 }

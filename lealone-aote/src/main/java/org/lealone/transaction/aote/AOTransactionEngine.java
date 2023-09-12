@@ -256,30 +256,22 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public void fullGc(int schedulerCount, int schedulerId) {
-        fullGcCounter.incrementAndGet();
-        try {
-            ArrayList<String> names = new ArrayList<>(maps.keySet());
-            Collections.sort(names);
-            int size = names.size();
-            for (int i = 0; i < size; i++) {
-                int index = i;
-                if (i > schedulerCount)
-                    index = i % schedulerCount;
-                if (index == schedulerId) {
-                    StorageMap<?, ?> map = maps.get(names.get(i));
-                    if (!map.isClosed())
-                        map.fullGc(this);
-                }
+        ArrayList<String> names = new ArrayList<>(maps.keySet());
+        Collections.sort(names);
+        int size = names.size();
+        for (int i = 0; i < size; i++) {
+            int index = i % schedulerCount;
+            if (index == schedulerId) {
+                StorageMap<?, ?> map = maps.get(names.get(i));
+                if (!map.isClosed())
+                    map.fullGc(this);
             }
-        } finally {
-            fullGcCounter.decrementAndGet();
         }
     }
 
     private static final boolean DEBUG = false;
     private final HashMap<String, Long> dirtyMaps = new HashMap<>();
     private final AtomicLong dirtyMemory = new AtomicLong();
-    private final AtomicInteger fullGcCounter = new AtomicInteger();
 
     private static String toM(long v) {
         return v + "(" + (v >> 10) + "K)";
@@ -319,8 +311,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private void gcMaps() {
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                if (fullGcCounter.get() > 0)
-                    break;
                 map.gc(this);
             }
         }
@@ -461,9 +451,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                     logger.warn("Semaphore tryAcquire exception", t);
                 }
                 isWaiting = false;
-
-                if (fullGcCounter.get() > 0)
-                    continue;
 
                 try {
                     if (!forceCheckpointTasks.isEmpty()) {

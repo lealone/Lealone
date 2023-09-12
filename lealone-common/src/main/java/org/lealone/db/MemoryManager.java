@@ -15,11 +15,19 @@ public class MemoryManager {
 
     private static final MemoryManager globalMemoryManager = new MemoryManager(getGlobalMaxMemory());
 
-    private static final long fullGcThreshold = SystemPropertyUtils
-            .getLong("lealone.memory.fullGcThreshold", getGlobalMaxMemory() / 10 * 6);
+    private static final long fullGcThreshold = getFullGcThreshold();
 
     public static boolean needFullGc() {
         return globalMemoryManager.getUsedMemory() > fullGcThreshold;
+    }
+
+    private static long getFullGcThreshold() {
+        long max = getGlobalMaxMemory();
+        long gcThreshold = max / 10 * 6;
+        // 小于512M时把阈值调低一些
+        if (max < 512 * 1024 * 1024)
+            gcThreshold = max / 10 * 3;
+        return SystemPropertyUtils.getLong("lealone.memory.fullGcThreshold", gcThreshold);
     }
 
     private static long getGlobalMaxMemory() {
