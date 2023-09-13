@@ -272,6 +272,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private static final boolean DEBUG = false;
     private final HashMap<String, Long> dirtyMaps = new HashMap<>();
     private final AtomicLong dirtyMemory = new AtomicLong();
+    private long lastTime;
 
     private static String toM(long v) {
         return v + "(" + (v >> 10) + "K)";
@@ -294,6 +295,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             }
         }
         if (DEBUG) {
+            if (System.currentTimeMillis() - lastTime < 3000)
+                return;
+            lastTime = System.currentTimeMillis();
             logger.info("Dirty maps: " + dirtyMaps);
             logger.info("DB g_used: " + toM(MemoryManager.getGlobalMemoryManager().getUsedMemory()));
             logger.info("DB c_used: " + toM(usedMemory.get()) + ", dirty: " + toM(dirtyMemory.get()));

@@ -7,6 +7,7 @@ package org.lealone.storage.aose.btree;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -147,9 +148,51 @@ public class BTreeGC {
     }
 
     private void lru(TransactionEngine te, MemoryManager memoryManager) {
-        // 收集所有可以回收的page并按LastTime从小到大排序
-        ArrayList<GcingPage> list = new ArrayList<>();
-        collect(te, list, map.getRootPageRef());
+        // 按层级收集node page，单独收集leaf page
+        HashMap<Integer, ArrayList<GcingPage>> nodePageMap = new HashMap<>();
+        ArrayList<GcingPage> leafPages = new ArrayList<>();
+        collect(te, map.getRootPageRef(), leafPages, nodePageMap, 1);
+
+        // leaf page按LastTime从小到大释放
+        releaseLeafPages(leafPages, memoryManager);
+
+        // 从最下层的node page开始释放
+        if (!nodePageMap.isEmpty() && memoryManager.needGc()) {
+            ArrayList<Integer> levelList = new ArrayList<>(nodePageMap.keySet());
+            Collections.sort(levelList);
+            for (int i = levelList.size() - 1; i >= 0; i--) {
+                ArrayList<GcingPage> nodePages = nodePageMap.get(levelList.get(i));
+                releaseNodePages(nodePages, memoryManager);
+                if (!memoryManager.needGc())
+                    break;
+            }
+        }
+    }
+
+    private void collect(TransactionEngine te, PageReference ref, ArrayList<GcingPage> leafPages,
+            HashMap<Integer, ArrayList<GcingPage>> nodePageMap, int level) {
+        PageInfo pInfo = ref.getPageInfo();
+        Page p = pInfo.page;
+        if (p != null && p.isNode()) {
+            forEachPage(p, childRef -> {
+                collect(te, childRef, leafPages, nodePageMap, level + 1);
+            });
+        }
+        if (ref.canGc(te)) {
+            if (ref.isNodePage()) {
+                ArrayList<GcingPage> nodePages = nodePageMap.get(level);
+                if (nodePages == null) {
+                    nodePages = new ArrayList<>();
+                    nodePageMap.put(level, nodePages);
+                }
+                nodePages.add(new GcingPage(ref, pInfo));
+            } else {
+                leafPages.add(new GcingPage(ref, pInfo));
+            }
+        }
+    }
+
+    private void releaseLeafPages(ArrayList<GcingPage> list, MemoryManager memoryManager) {
         int size = list.size();
         if (size == 0)
             return;
@@ -166,16 +209,12 @@ public class BTreeGC {
         }
     }
 
-    private void collect(TransactionEngine te, ArrayList<GcingPage> list, PageReference ref) {
-        PageInfo pInfo = ref.getPageInfo();
-        Page p = pInfo.page;
-        if (p != null && p.isNode()) {
-            forEachPage(p, childRef -> {
-                collect(te, list, childRef);
-            });
-        }
-        if (ref.canGc(te)) {
-            list.add(new GcingPage(ref, pInfo));
+    private void releaseNodePages(ArrayList<GcingPage> list, MemoryManager memoryManager) {
+        int size = list.size();
+        if (size > 0) {
+            release(list, 0, size, 1); // 先释放page字段
+            if (memoryManager.needGc())
+                release(list, 0, size, 2); // 如果内存依然紧张再释放buff字段
         }
     }
 
