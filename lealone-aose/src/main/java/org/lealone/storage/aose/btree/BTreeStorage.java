@@ -184,8 +184,10 @@ public class BTreeStorage {
         p.read(buff.slice(), chunkId, offset, pageLength);
 
         PageInfo pInfo = new PageInfo(p, pos);
-        pInfo.buff = buff;
-        pInfo.pageLength = pageLength;
+        if (!p.isNode() || BTreeGC.gcNodePages) {
+            pInfo.buff = buff;
+            pInfo.pageLength = pageLength;
+        }
         return pInfo;
     }
 

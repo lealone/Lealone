@@ -22,7 +22,7 @@ public class BTreeGC {
 
     public static final boolean DEBUG = false;
 
-    private static final boolean gcNodePages = SystemPropertyUtils
+    public static final boolean gcNodePages = SystemPropertyUtils
             .getBoolean("lealone.memory.gcNodePages", false);
 
     private static MemoryManager GMM() {
