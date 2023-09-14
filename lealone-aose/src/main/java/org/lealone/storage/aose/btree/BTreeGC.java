@@ -69,8 +69,11 @@ public class BTreeGC {
 
     public void fullGc(TransactionEngine te) {
         memoryManager.forceGc(true);
-        gc(te);
-        memoryManager.forceGc(false);
+        try {
+            gc(te);
+        } finally {
+            memoryManager.forceGc(false);
+        }
     }
 
     public void gc(TransactionEngine te) {
