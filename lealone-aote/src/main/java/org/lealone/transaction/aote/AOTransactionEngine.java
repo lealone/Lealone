@@ -162,23 +162,27 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public synchronized void close() {
-        if (logSyncService == null)
-            return;
+    public void close() {
+        synchronized (this) {
+            if (logSyncService == null)
+                return;
+            checkpointService.close();
+        }
         // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
         try {
-            checkpointService.close();
             if (checkpointService.isRunning)
-                checkpointService.latch.await();
+                checkpointService.latch.await(); // 这一步不能放在synchronized中，否则会导致死锁
         } catch (Exception e) {
         }
-        try {
-            logSyncService.close();
-            logSyncService.join();
-        } catch (Exception e) {
+        synchronized (this) {
+            try {
+                logSyncService.close();
+                logSyncService.join();
+            } catch (Exception e) {
+            }
+            this.logSyncService = null;
+            this.checkpointService = null;
         }
-        this.logSyncService = null;
-        this.checkpointService = null;
     }
 
     @Override
