@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.MemoryManager;
 import org.lealone.storage.aose.btree.page.Page;
 import org.lealone.storage.aose.btree.page.PageInfo;
@@ -20,6 +21,9 @@ import org.lealone.transaction.TransactionEngine;
 public class BTreeGC {
 
     public static final boolean DEBUG = false;
+
+    private static final boolean gcNodePages = SystemPropertyUtils
+            .getBoolean("lealone.memory.gcNodePages", false);
 
     private static MemoryManager GMM() {
         return MemoryManager.getGlobalMemoryManager();
@@ -157,16 +161,8 @@ public class BTreeGC {
         releaseLeafPages(leafPages, memoryManager);
 
         // 从最下层的node page开始释放
-        if (!nodePageMap.isEmpty() && memoryManager.needGc()) {
-            ArrayList<Integer> levelList = new ArrayList<>(nodePageMap.keySet());
-            Collections.sort(levelList);
-            for (int i = levelList.size() - 1; i >= 0; i--) {
-                ArrayList<GcingPage> nodePages = nodePageMap.get(levelList.get(i));
-                releaseNodePages(nodePages, memoryManager);
-                if (!memoryManager.needGc())
-                    break;
-            }
-        }
+        if (gcNodePages)
+            releaseNodePages(nodePageMap, memoryManager);
     }
 
     private void collect(TransactionEngine te, PageReference ref, ArrayList<GcingPage> leafPages,
@@ -180,41 +176,53 @@ public class BTreeGC {
         }
         if (ref.canGc(te)) {
             if (ref.isNodePage()) {
-                ArrayList<GcingPage> nodePages = nodePageMap.get(level);
-                if (nodePages == null) {
-                    nodePages = new ArrayList<>();
-                    nodePageMap.put(level, nodePages);
+                if (gcNodePages) {
+                    ArrayList<GcingPage> nodePages = nodePageMap.get(level);
+                    if (nodePages == null) {
+                        nodePages = new ArrayList<>();
+                        nodePageMap.put(level, nodePages);
+                    }
+                    nodePages.add(new GcingPage(ref, pInfo));
                 }
-                nodePages.add(new GcingPage(ref, pInfo));
             } else {
                 leafPages.add(new GcingPage(ref, pInfo));
             }
         }
     }
 
-    private void releaseLeafPages(ArrayList<GcingPage> list, MemoryManager memoryManager) {
-        int size = list.size();
+    private void releaseLeafPages(ArrayList<GcingPage> leafPages, MemoryManager memoryManager) {
+        int size = leafPages.size();
         if (size == 0)
             return;
-        Collections.sort(list);
+        Collections.sort(leafPages);
 
         int index = size / 2 + 1;
         // 先释放前一半的page字段和buff字段
-        release(list, 0, index, 0);
+        release(leafPages, 0, index, 0);
         // 再释放后一半
         if (memoryManager.needGc()) {
-            release(list, index, size, 1); // 先释放page字段
+            release(leafPages, index, size, 1); // 先释放page字段
             if (memoryManager.needGc())
-                release(list, index, size, 2); // 如果内存依然紧张再释放buff字段
+                release(leafPages, index, size, 2); // 如果内存依然紧张再释放buff字段
         }
     }
 
-    private void releaseNodePages(ArrayList<GcingPage> list, MemoryManager memoryManager) {
-        int size = list.size();
-        if (size > 0) {
-            release(list, 0, size, 1); // 先释放page字段
-            if (memoryManager.needGc())
-                release(list, 0, size, 2); // 如果内存依然紧张再释放buff字段
+    private void releaseNodePages(HashMap<Integer, ArrayList<GcingPage>> nodePageMap,
+            MemoryManager memoryManager) {
+        if (!nodePageMap.isEmpty() && memoryManager.needGc()) {
+            ArrayList<Integer> levelList = new ArrayList<>(nodePageMap.keySet());
+            Collections.sort(levelList);
+            for (int i = levelList.size() - 1; i >= 0; i--) {
+                ArrayList<GcingPage> nodePages = nodePageMap.get(levelList.get(i));
+                int size = nodePages.size();
+                if (size > 0) {
+                    release(nodePages, 0, size, 1); // 先释放page字段
+                    if (memoryManager.needGc())
+                        release(nodePages, 0, size, 2); // 如果内存依然紧张再释放buff字段
+                }
+                if (!memoryManager.needGc())
+                    break;
+            }
         }
     }
 
