@@ -59,6 +59,7 @@
         <module>lealone-aote</module>
         <module>lealone-aose</module>
         <module>lealone-main</module>
+        <module>lealone-docdb</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
     </modules>

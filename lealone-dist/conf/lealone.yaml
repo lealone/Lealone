@@ -35,6 +35,12 @@ protocol_server_engines:
     parameters: {
         port: 9210,
         allow_others: true,
-        daemon: false,
+        ssl: false
+    }
+  - name: DocDB
+    enabled: true
+    parameters: {
+        port: 9610,
+        allow_others: true,
         ssl: false
     }

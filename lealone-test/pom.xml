@@ -29,6 +29,12 @@
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>4.3.0</version>
+            <scope>test</scope>
+        </dependency>
         <!--<dependency>
             <groupId>org.openjdk.jol</groupId>
             <artifactId>jol-core</artifactId>

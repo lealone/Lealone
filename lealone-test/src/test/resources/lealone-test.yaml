@@ -45,7 +45,13 @@ protocol_server_engines:
         port: 9210,
         allow_others: true,
         # white_list: "127.0.0.4,127.0.0.2",
-        daemon: false,
         ssl: false,
         session_timeout: -1
+    }
+  - name: DocDB
+    enabled: true
+    parameters: {
+        port: 9610,
+        allow_others: true,
+        ssl: false
     }
