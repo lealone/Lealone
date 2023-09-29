@@ -1,4 +1,4 @@
-## 用 MongoDB 客户端访问 Lealone-DocDB
+## 用 MongoDB 客户端访问 Lealone
 
 执行以下命令启动 MongoDB 客户端:
 
@@ -33,5 +33,5 @@ mydb>
 
 ## 在 IDE 中测试 CRUD 操作
 
-执行 [DocDBCrudTest](https://github.com/lealone/Lealone/blob/main/lealone-test/src/test/java/org/lealone/test/docdb/DocDBCrudTest.java)
+执行 [DocDBCrudTest](https://github.com/lealone/Lealone/blob/master/lealone-test/src/test/java/org/lealone/test/docdb/DocDBCrudTest.java)
 
