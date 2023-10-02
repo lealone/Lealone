@@ -5,9 +5,6 @@
  */
 package org.lealone.server.handler;
 
-import java.util.List;
-
-import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.PacketHandleTask;
@@ -35,26 +32,27 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
         register(PacketType.PREPARED_STATEMENT_CLOSE, new Close());
     }
 
+    private static PreparedSQLStatement prepareStatement(ServerSession session, int commandId,
+            String sql) {
+        PreparedSQLStatement command = session.prepareStatement(sql, -1);
+        command.setId(commandId);
+        session.addCache(commandId, command);
+        return command;
+    }
+
     private static class Prepare implements PacketHandler<PreparedStatementPrepare> {
         @Override
         public Packet handle(ServerSession session, PreparedStatementPrepare packet) {
-            PreparedSQLStatement command = session.prepareStatement(packet.sql, -1);
-            command.setId(packet.commandId);
-            session.addCache(packet.commandId, command);
-            boolean isQuery = command.isQuery();
-            return new PreparedStatementPrepareAck(isQuery);
+            PreparedSQLStatement command = prepareStatement(session, packet.commandId, packet.sql);
+            return new PreparedStatementPrepareAck(command.isQuery());
         }
     }
 
     private static class PrepareReadParams implements PacketHandler<PreparedStatementPrepareReadParams> {
         @Override
         public Packet handle(ServerSession session, PreparedStatementPrepareReadParams packet) {
-            PreparedSQLStatement command = session.prepareStatement(packet.sql, -1);
-            command.setId(packet.commandId);
-            session.addCache(packet.commandId, command);
-            boolean isQuery = command.isQuery();
-            List<? extends CommandParameter> params = command.getParameters();
-            return new PreparedStatementPrepareReadParamsAck(isQuery, params);
+            PreparedSQLStatement command = prepareStatement(session, packet.commandId, packet.sql);
+            return new PreparedStatementPrepareReadParamsAck(command.isQuery(), command.getParameters());
         }
     }
 

@@ -5,20 +5,27 @@
  */
 package org.lealone.storage.page;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.common.logging.Logger;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 
 public abstract class PageOperationHandlerBase extends Thread implements PageOperationHandler {
 
-    // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
-    protected final ConcurrentLinkedQueue<PageOperation> pageOperations = new ConcurrentLinkedQueue<>();
-    protected final AtomicLong size = new AtomicLong();
+    private static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
+        final PageOperation po;
+
+        public LinkablePageOperation(PageOperation po) {
+            this.po = po;
+        }
+    }
+
+    protected final LinkableList<LinkablePageOperation> lockedTasks = new LinkableList<>();
+
     protected final int handlerId;
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
@@ -39,14 +46,12 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
 
     @Override
     public long getLoad() {
-        return size.get();
+        return lockedTasks.size();
     }
 
     @Override
     public void handlePageOperation(PageOperation po) {
-        size.incrementAndGet();
-        pageOperations.add(po);
-        wakeUp();
+        lockedTasks.add(new LinkablePageOperation(po));
     }
 
     @Override
@@ -72,31 +77,44 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     }
 
     protected void runPageOperationTasks() {
-        if (size.get() <= 0)
+        if (lockedTasks.isEmpty())
             return;
-        long size = this.size.get();
-        for (int i = 0; i < size; i++) {
-            PageOperation po = pageOperations.poll();
-            while (true) {
+        while (lockedTasks.getHead() != null) {
+            int size = lockedTasks.size();
+            LinkablePageOperation task = lockedTasks.getHead();
+            LinkablePageOperation last = null;
+            while (task != null) {
                 Session old = getCurrentSession();
-                setCurrentSession(po.getSession());
+                setCurrentSession(task.po.getSession());
                 try {
-                    PageOperationResult result = po.run(this);
+                    PageOperationResult result = task.po.run(this);
                     if (result == PageOperationResult.LOCKED) {
-                        pageOperations.add(po);
+                        last = task;
+                        task = task.next;
+                        continue;
                     } else if (result == PageOperationResult.RETRY) {
                         continue;
-                    } else {
-                        this.size.decrementAndGet();
                     }
+                    task = task.next;
+                    if (last == null)
+                        lockedTasks.setHead(task);
+                    else
+                        last.next = task;
                 } catch (Throwable e) {
-                    this.size.decrementAndGet();
-                    getLogger().warn("Failed to run page operation: " + po, e);
+                    getLogger().warn("Failed to run page operation: " + task, e);
                 } finally {
                     setCurrentSession(old);
                 }
-                break;
+                lockedTasks.decrementSize();
             }
+            if (lockedTasks.getHead() == null)
+                lockedTasks.setTail(null);
+            else
+                lockedTasks.setTail(last);
+
+            // 全都锁住了，没必要再试了
+            if (size == lockedTasks.size())
+                break;
         }
     }
 }

@@ -5,6 +5,8 @@
  */
 package org.lealone.net;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -13,7 +15,11 @@ import org.lealone.db.ConnectionSetting;
 
 public class AsyncConnectionPool {
 
-    private final CopyOnWriteArrayList<AsyncConnection> list = new CopyOnWriteArrayList<>();
+    private final List<AsyncConnection> list;
+
+    public AsyncConnectionPool(boolean isThreadSafe) {
+        list = isThreadSafe ? new ArrayList<>() : new CopyOnWriteArrayList<>();
+    }
 
     public AsyncConnection getConnection(Map<String, String> config) {
         if (!isShared(config)) {
@@ -47,6 +53,10 @@ public class AsyncConnectionPool {
 
     public void removeConnection(AsyncConnection conn) {
         list.remove(conn);
+    }
+
+    public boolean isEmpty() {
+        return list.isEmpty();
     }
 
     public void close() {

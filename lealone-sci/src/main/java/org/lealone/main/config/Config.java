@@ -15,11 +15,11 @@ import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Constants;
-import org.lealone.server.TcpServerEngine;
 
 public class Config {
 
     public String base_dir = "." + File.separator + Constants.PROJECT_NAME + "_data";
+
     public String listen_address = "127.0.0.1";
 
     public List<PluggableEngineDef> storage_engines;
@@ -48,12 +48,13 @@ public class Config {
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
         protocol_server_engines = new ArrayList<>(2);
-        protocol_server_engines.add(createEngineDef(TcpServerEngine.NAME, true, false));
+        protocol_server_engines.add(createEngineDef("TCP", true, false));
         protocol_server_engines.add(createEngineDef("DOCDB", true, false));
 
         scheduler = new SchedulerDef();
         // scheduler.name = "ScheduleService";
         scheduler.parameters.put("scheduler_count", Runtime.getRuntime().availableProcessors() + "");
+        mergeSchedulerParametersToEngines();
     }
 
     private static PluggableEngineDef createEngineDef(String name, boolean enabled, boolean isDefault) {
@@ -62,6 +63,18 @@ public class Config {
         e.enabled = enabled;
         e.is_default = isDefault;
         return e;
+    }
+
+    // 合并scheduler的参数到以下两种引擎，会用到
+    public void mergeSchedulerParametersToEngines() {
+        for (PluggableEngineDef e : protocol_server_engines) {
+            if (e.enabled)
+                e.parameters.putAll(scheduler.parameters);
+        }
+        for (PluggableEngineDef e : transaction_engines) {
+            if (e.enabled)
+                e.parameters.putAll(scheduler.parameters);
+        }
     }
 
     public Map<String, String> getProtocolServerParameters(String name) {
@@ -93,29 +106,36 @@ public class Config {
 
     public static Config mergeDefaultConfig(Config c) { // c是custom config
         Config d = getDefaultConfig();
-        if (c == null)
+        if (c == null) {
+            initServerIds(d);
             return d;
+        }
         c.storage_engines = mergeEngines(c.storage_engines, d.storage_engines);
         c.transaction_engines = mergeEngines(c.transaction_engines, d.transaction_engines);
         c.sql_engines = mergeEngines(c.sql_engines, d.sql_engines);
         c.protocol_server_engines = mergeEngines(c.protocol_server_engines, d.protocol_server_engines);
-        c.scheduler = mergeMap(d.scheduler, c.scheduler);
 
-        // 合并scheduler的参数到以下引擎，会用到
-        for (PluggableEngineDef e : c.protocol_server_engines) {
-            if (e.enabled)
-                e.parameters.putAll(c.scheduler.parameters);
-        }
+        c.scheduler = mergeMap(d.scheduler, c.scheduler);
+        c.mergeSchedulerParametersToEngines();
+
+        initServerIds(c);
         return c;
     }
 
-    private static <T extends MapPropertyTypeDef> T mergeMap(T defaultMap, T newMap) {
-        if (defaultMap == null)
-            return newMap;
-        if (newMap == null)
-            return defaultMap;
-        defaultMap.parameters.putAll(newMap.parameters);
-        return defaultMap;
+    private static void initServerIds(Config c) {
+        int protocolServerCount = 0;
+        for (PluggableEngineDef e : c.protocol_server_engines) {
+            if (e.enabled) {
+                protocolServerCount++;
+            }
+        }
+        int id = 0;
+        for (PluggableEngineDef e : c.protocol_server_engines) {
+            if (e.enabled) {
+                e.parameters.put("server_id", (id++) + "");
+                e.parameters.put("protocol_server_count", protocolServerCount + "");
+            }
+        }
     }
 
     private static List<PluggableEngineDef> mergeEngines(List<PluggableEngineDef> newList,
@@ -138,6 +158,15 @@ public class Config {
             }
         }
         return new ArrayList<>(map.values());
+    }
+
+    private static <T extends MapPropertyTypeDef> T mergeMap(T defaultMap, T newMap) {
+        if (defaultMap == null)
+            return newMap;
+        if (newMap == null)
+            return defaultMap;
+        defaultMap.parameters.putAll(newMap.parameters);
+        return defaultMap;
     }
 
     public static abstract class MapPropertyTypeDef {

@@ -6,8 +6,6 @@
 package org.lealone.db;
 
 import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -330,19 +328,13 @@ public class SysProperties {
         Map<String, String> settings = new LinkedHashMap<>();
         settings.put("BASE_DIR", getBaseDir());
         settings.put("SCRIPT_DIRECTORY", getScriptDirectory());
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-                try {
-                    for (Field f : SysProperties.class.getDeclaredFields()) {
-                        Object v = f.get(null);
-                        settings.putIfAbsent(f.getName(), v == null ? "null" : v.toString());
-                    }
-                } catch (Exception e) {
-                }
-                return null;
+        try {
+            for (Field f : SysProperties.class.getDeclaredFields()) {
+                Object v = f.get(null);
+                settings.putIfAbsent(f.getName(), v == null ? "null" : v.toString());
             }
-        });
+        } catch (Exception e) {
+        }
         return settings;
     }
 }

@@ -24,13 +24,16 @@ public class CipherFactory {
      * @return a new cipher object
      */
     public static BlockCipher getBlockCipher(String algorithm) {
-        if ("XTEA".equalsIgnoreCase(algorithm)) {
+        algorithm = algorithm.toUpperCase();
+        switch (algorithm) {
+        case "XTEA":
             return new XTEA();
-        } else if ("AES".equalsIgnoreCase(algorithm)) {
+        case "AES":
             return new AES();
-        } else if ("FOG".equalsIgnoreCase(algorithm)) {
+        case "FOG":
             return new Fog();
+        default:
+            throw DbException.get(ErrorCode.UNSUPPORTED_CIPHER, algorithm);
         }
-        throw DbException.get(ErrorCode.UNSUPPORTED_CIPHER, algorithm);
     }
 }

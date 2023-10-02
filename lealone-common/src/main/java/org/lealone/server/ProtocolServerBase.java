@@ -34,6 +34,9 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     protected ServerEncryptionOptions serverEncryptionOptions;
     protected int sessionTimeout = 15 * 60 * 1000; // 如果session在15分钟内不活跃就会超时
 
+    protected ProtocolServerBase() {
+    }
+
     @Override
     public void init(Map<String, String> config) {
         this.config = config;

@@ -43,6 +43,11 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         return false;
     }
 
+    @Deprecated
+    default boolean isIfDDL() {
+        return false;
+    }
+
     default boolean isDatabaseStatement() {
         return false;
     }

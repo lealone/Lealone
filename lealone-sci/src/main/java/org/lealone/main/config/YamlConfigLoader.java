@@ -102,7 +102,6 @@ public class YamlConfigLoader implements ConfigLoader {
                     // getConfigURL should have ruled this out
                     throw new AssertionError(e);
                 }
-
                 YamlConstructor configConstructor = new YamlConstructor(Config.class);
                 addTypeDescription(configConstructor);
 

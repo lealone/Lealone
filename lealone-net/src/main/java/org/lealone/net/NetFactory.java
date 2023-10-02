@@ -15,7 +15,8 @@ public interface NetFactory extends Plugin {
 
     NetClient getNetClient();
 
-    default NetEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval) {
+    default NetEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval,
+            boolean isThreadSafe) {
         return null;
     }
 

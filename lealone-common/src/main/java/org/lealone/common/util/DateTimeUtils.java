@@ -42,13 +42,37 @@ public class DateTimeUtils {
     private static final int SHIFT_YEAR = 9;
     private static final int SHIFT_MONTH = 5;
 
-    private static final int[] NORMAL_DAYS_PER_MONTH = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30,
+    private static final int[] NORMAL_DAYS_PER_MONTH = {
+            0,
+            31,
+            28,
+            31,
+            30,
+            31,
+            30,
+            31,
+            31,
+            30,
+            31,
+            30,
             31 };
 
     /**
      * Offsets of month within a year, starting with March, April,...
      */
-    private static final int[] DAYS_OFFSET = { 0, 31, 61, 92, 122, 153, 184, 214, 245, 275, 306, 337,
+    private static final int[] DAYS_OFFSET = {
+            0,
+            31,
+            61,
+            92,
+            122,
+            153,
+            184,
+            214,
+            245,
+            275,
+            306,
+            337,
             366 };
 
     private static int zoneOffset;

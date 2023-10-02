@@ -56,14 +56,6 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return storage;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public K append(V value) {
-        K key = (K) ValueLong.get(maxKey.incrementAndGet());
-        put(key, value);
-        return key;
-    }
-
     // 如果新key比maxKey大就更新maxKey
     // 允许多线程并发更新
     @Override

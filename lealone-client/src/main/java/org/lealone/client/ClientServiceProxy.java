@@ -8,8 +8,8 @@ package org.lealone.client;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
@@ -17,7 +17,7 @@ import org.lealone.db.Constants;
 
 public class ClientServiceProxy {
 
-    private static HashMap<String, Connection> connMap = new HashMap<>(1);
+    private static ConcurrentHashMap<String, Connection> connMap = new ConcurrentHashMap<>(1);
 
     public static PreparedStatement prepareStatement(String url, String sql) {
         try {

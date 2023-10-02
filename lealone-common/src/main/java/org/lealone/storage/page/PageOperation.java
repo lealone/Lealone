@@ -20,6 +20,10 @@ public interface PageOperation {
     }
 
     default PageOperationResult run(PageOperationHandler currentHandler) {
+        return run(currentHandler, true);
+    }
+
+    default PageOperationResult run(PageOperationHandler currentHandler, boolean waitingIfLocked) {
         return PageOperationResult.SUCCEEDED;
     }
 

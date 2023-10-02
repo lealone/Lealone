@@ -5,26 +5,60 @@
  */
 package org.lealone.db.lock;
 
+import java.util.ArrayList;
+
 import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.Session;
 
-public interface DbObjectLock {
+//数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
+public class DbObjectLock extends Lock {
 
     public static final RuntimeException LOCKED_EXCEPTION = new RuntimeException();
 
-    DbObjectType getDbObjectType();
+    private final DbObjectType type;
+    private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
 
-    void addHandler(AsyncHandler<AsyncResult<Boolean>> handler);
+    public DbObjectLock(DbObjectType type) {
+        this.type = type;
+    }
 
-    boolean lock(ServerSession session, boolean exclusive);
+    @Override
+    public String getLockType() {
+        return type.name();
+    }
 
-    boolean trySharedLock(ServerSession session);
+    public boolean lock(ServerSession session, boolean exclusive) {
+        if (exclusive)
+            return tryExclusiveLock(session);
+        else
+            return trySharedLock(session);
+    }
 
-    boolean tryExclusiveLock(ServerSession session);
+    public boolean trySharedLock(ServerSession session) {
+        return true;
+    }
 
-    void unlock(ServerSession session, boolean succeeded);
+    public boolean tryExclusiveLock(ServerSession session) {
+        return tryLock(session.getTransaction(), this, null);
+    }
 
-    boolean isLockedExclusivelyBy(ServerSession session);
+    @Override
+    public void unlock(Session oldSession, boolean succeeded, Session newSession) {
+        if (handlers != null) {
+            handlers.forEach(h -> {
+                h.handle(new AsyncResult<>(succeeded));
+            });
+            handlers = null;
+        }
+        unlock(oldSession, newSession);
+    }
+
+    public void addHandler(AsyncHandler<AsyncResult<Boolean>> handler) {
+        if (handlers == null)
+            handlers = new ArrayList<>(1);
+        handlers.add(handler);
+    }
 }

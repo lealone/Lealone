@@ -25,7 +25,6 @@ import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
@@ -72,7 +71,7 @@ public class Schema extends DbObjectBase {
         for (DbObjectType type : DbObjectType.TYPES) {
             if (type.isSchemaObject) {
                 dbObjectsArray[type.value] = new TransactionalDbObjects();
-                locks[type.value] = new DbObjectLockImpl(type);
+                locks[type.value] = new DbObjectLock(type);
             }
         }
         this.owner = owner;

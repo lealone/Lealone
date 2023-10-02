@@ -36,6 +36,10 @@ public abstract class AsyncConnection {
         return writableChannel;
     }
 
+    public String getHostAndPort() {
+        return writableChannel.getHost() + ":" + writableChannel.getPort();
+    }
+
     public InetSocketAddress getInetSocketAddress() {
         return inetSocketAddress;
     }

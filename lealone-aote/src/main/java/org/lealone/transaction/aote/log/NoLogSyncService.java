@@ -7,6 +7,8 @@ package org.lealone.transaction.aote.log;
 
 import java.util.Map;
 
+import org.lealone.transaction.aote.AOTransaction;
+
 class NoLogSyncService extends LogSyncService {
 
     NoLogSyncService(Map<String, String> config) {
@@ -27,16 +29,22 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void asyncWrite(RedoLogRecord r) {
-        r.onSynced();
+    public void asyncWakeUp() {
     }
 
     @Override
-    public void syncWrite(RedoLogRecord r) {
-        r.onSynced();
+    public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        t.onSynced();
+        t.asyncCommitComplete();
     }
 
     @Override
-    public void checkpoint(boolean saved) {
+    public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        t.onSynced();
     }
+
+    @Override
+    public void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId) {
+    }
+
 }

@@ -20,6 +20,11 @@ import org.lealone.common.util.Utils;
  * @author zhh
  */
 public class Constants {
+
+    private Constants() {
+        // utility class
+    }
+
     /**
      * 项目名称.
      */
@@ -55,6 +60,11 @@ public class Constants {
     public static final int TCP_PROTOCOL_VERSION_1 = 1;
 
     /**
+     * The TCP protocol version number 6.
+     */
+    public static final int TCP_PROTOCOL_VERSION_6 = 6;
+
+    /**
      * The min TCP protocol version number.
      */
     public static final int TCP_PROTOCOL_VERSION_MIN = TCP_PROTOCOL_VERSION_1;
@@ -62,12 +72,12 @@ public class Constants {
     /**
      * The max TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_1;
+    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_6;
 
     /**
      * The current TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_1;
+    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_6;
 
     /**
      * The number of milliseconds after which to check for a deadlock if locking
@@ -158,12 +168,6 @@ public class Constants {
     public static final String DEFAULT_HOST = "localhost";
 
     /**
-     * The password is hashed this many times
-     * to slow down dictionary attacks.
-     */
-    public static final int ENCRYPTION_KEY_HASH_ITERATIONS = 1024;
-
-    /**
      * The block of a file. It is also the encryption block size.
      */
     public static final int FILE_BLOCK_SIZE = 16;
@@ -219,8 +223,7 @@ public class Constants {
     public static final String PREFIX_JOIN = "SYSTEM_JOIN_";
 
     /**
-     * The name prefix used for primary key constraints that are not explicitly
-     * named.
+     * The name prefix used for primary key constraints that are not explicitly named.
      */
     public static final String PREFIX_PRIMARY_KEY = "PRIMARY_KEY_";
 
@@ -266,14 +269,12 @@ public class Constants {
     public static final String JDBC_URL_KEY = "lealone.jdbc.url";
 
     /**
-     * The database URL used when calling a function if only the column list
-     * should be returned.
+     * The database URL used when calling a function if only the column list should be returned.
      */
     public static final String CONN_URL_COLUMNLIST = URL_PREFIX + "columnlist:connection";
 
     /**
-     * The database URL used when calling a function if the data should be
-     * returned.
+     * The database URL used when calling a function if the data should be returned.
      */
     public static final String CONN_URL_INTERNAL = URL_PREFIX + "default:connection";
 
@@ -334,10 +335,6 @@ public class Constants {
 
     // 为了避免模块之间在编译期存在依赖，有些地方会用到反射，在这里统一定义类名
     public static final String REFLECTION_JDBC_CONNECTION = "org.lealone.client.jdbc.JdbcConnection";
-
-    private Constants() {
-        // utility class
-    }
 
     /**
      * The major version of this database.

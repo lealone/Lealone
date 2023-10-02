@@ -13,6 +13,7 @@ public enum SessionStatus {
 
     WAITING,
     RETRYING,
+    RETRYING_RETURN_ACK,
 
     STATEMENT_RUNNING,
     STATEMENT_YIELDED,

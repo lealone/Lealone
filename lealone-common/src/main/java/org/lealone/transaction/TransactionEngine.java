@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.lealone.db.Constants;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
+import org.lealone.db.RunMode;
 
 public interface TransactionEngine extends PluggableEngine {
 
@@ -19,10 +20,18 @@ public interface TransactionEngine extends PluggableEngine {
     }
 
     default Transaction beginTransaction(boolean autoCommit) {
-        return beginTransaction(autoCommit, Transaction.IL_READ_COMMITTED);
+        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER);
     }
 
-    Transaction beginTransaction(boolean autoCommit, int isolationLevel);
+    default Transaction beginTransaction(boolean autoCommit, RunMode runMode) {
+        return beginTransaction(autoCommit, runMode, Transaction.IL_READ_COMMITTED);
+    }
+
+    default Transaction beginTransaction(boolean autoCommit, int isolationLevel) {
+        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER, isolationLevel);
+    }
+
+    Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel);
 
     boolean supportsMVCC();
 
@@ -30,8 +39,14 @@ public interface TransactionEngine extends PluggableEngine {
 
     void checkpoint();
 
-    default Runnable getRunnable() {
+    default CheckpointService getCheckpointService() {
         return null;
+    }
+
+    interface CheckpointService extends Runnable {
+        void executeCheckpoint();
+
+        long getLoopInterval();
     }
 
     default boolean containsRepeatableReadTransactions() {

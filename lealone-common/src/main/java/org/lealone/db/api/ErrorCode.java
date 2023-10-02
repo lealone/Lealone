@@ -909,7 +909,7 @@ public class ErrorCode {
      * the file header of a database files (*.db) does not match the
      * expected version, or if it is corrupted.
      */
-    public static final int FILE_VERSION_ERROR_1 = 90048;
+    // public static final int FILE_VERSION_ERROR_1 = 90048;
 
     /**
      * The error with code <code>90049</code> is thrown when

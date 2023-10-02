@@ -87,7 +87,7 @@ public interface Index extends SchemaObject {
 
     default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
             boolean isLockedBySelf) {
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         remove(session, oldRow, isLockedBySelf).onSuccess(v -> {
             add(session, newRow).onComplete(ar -> {
                 ac.setAsyncResult(ar);

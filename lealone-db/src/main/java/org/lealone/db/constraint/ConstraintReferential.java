@@ -98,7 +98,7 @@ public class ConstraintReferential extends Constraint {
      * @param forRefTable the referenced table
      * @param quotedName the name of this object (quoted if necessary)
      * @param internalIndex add the index name to the statement
-     * @return the SQL statement
+     * @return the SQL statement 
      */
     private String getCreateSQLForCopy(Table forTable, Table forRefTable, String quotedName,
             boolean internalIndex) {

@@ -31,5 +31,4 @@ public abstract class AggregateData {
      * @return the value
      */
     abstract Value getValue(ServerSession session);
-
 }

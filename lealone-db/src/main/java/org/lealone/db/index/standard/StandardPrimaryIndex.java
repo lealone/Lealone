@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -72,11 +73,14 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
-
-        Transaction t = transactionEngine.beginTransaction(false,
-                session.getTransactionIsolationLevel());
+        RunMode runMode = table.getRunMode();
+        Transaction t = transactionEngine.beginTransaction(false, runMode);
         dataMap = t.openMap(mapName, keyType, vvType, storage, table.getParameters());
         t.commit(); // 避免产生内部未提交的事务
+    }
+
+    public TransactionMap<Value, VersionedValue> getDataMap() {
+        return dataMap;
     }
 
     @Override
@@ -176,7 +180,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             row.setKey(k);
         }
 
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         TransactionMap<Value, VersionedValue> map = getMap(session);
         VersionedValue value = new VersionedValue(row.getVersion(), row.getValueList());
         if (checkDuplicateKey) {
@@ -190,6 +194,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                     DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
                     ac.setAsyncResult(e);
                 } else {
+                    session.setLastIdentity(key);
                     ac.setAsyncResult(ar);
                 }
             });

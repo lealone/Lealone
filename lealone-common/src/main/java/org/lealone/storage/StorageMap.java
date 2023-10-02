@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
+import org.lealone.db.session.Session;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngine;
 
@@ -273,9 +275,18 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
+    default Future<Object> get(Session session, K key) {
+        Object v = get(key);
+        return Future.succeededFuture(v);
+    }
+
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         V v = put(key, value);
         handleAsyncResult(handler, v);
+    }
+
+    default void put(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put(key, value, handler);
     }
 
     default void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
@@ -283,9 +294,17 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
+    default void putIfAbsent(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent(key, value, handler);
+    }
+
     default void append(V value, AsyncHandler<AsyncResult<K>> handler) {
         K k = append(value);
         handleAsyncResult(handler, k);
+    }
+
+    default void append(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+        append(value, handler);
     }
 
     default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
@@ -293,9 +312,18 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, b);
     }
 
+    default void replace(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace(key, oldValue, newValue, handler);
+    }
+
     default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
         V v = remove(key);
         handleAsyncResult(handler, v);
+    }
+
+    default void remove(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove(key, handler);
     }
 
     static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {

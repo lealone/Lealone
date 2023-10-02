@@ -28,6 +28,7 @@ import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
+import org.lealone.db.link.LinkableList;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
@@ -37,10 +38,14 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.TransactionalValue.OldValue;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
+import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
 
+//Async adaptive Optimization Transaction Engine
 public class AOTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(AOTransactionEngine.class);
+
+    private static final String NAME = "AOTE";
 
     private final CopyOnWriteArrayList<GcTask> gcTasks = new CopyOnWriteArrayList<>();
 
@@ -60,13 +65,17 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private final AtomicInteger rrTransactionCount = new AtomicInteger();
 
     private LogSyncService logSyncService;
-    private CheckpointService checkpointService;
+    private CheckpointServiceImpl checkpointService;
 
     public AOTransactionEngine() {
-        super("AOTE");
+        super(NAME);
     }
 
-    LogSyncService getLogSyncService() {
+    public AOTransactionEngine(String name) {
+        super(name);
+    }
+
+    public LogSyncService getLogSyncService() {
         return logSyncService;
     }
 
@@ -77,25 +86,31 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return t;
     }
 
+    AOTransaction getTransaction(long tid) {
+        return currentTransactions.get(tid);
+    }
+
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
         if (maps.putIfAbsent(map.getName(), map) == null) {
             map.getStorage().registerEventListener(this);
         }
     }
 
-    void removeStorageMap(String mapName) {
+    void removeStorageMap(AOTransaction transaction, String mapName) {
         if (maps.remove(mapName) != null) {
             RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
-            logSyncService.syncWrite(r);
+            logSyncService.syncWrite(transaction, r, logSyncService.nextLogId());
         }
     }
 
-    void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
-        tValues.put(tv, ov);
+    @Override
+    public void addGcTask(GcTask gcTask) {
+        gcTasks.add(gcTask);
     }
 
-    TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
-        return tValues.get(tv);
+    @Override
+    public void removeGcTask(GcTask gcTask) {
+        gcTasks.remove(gcTask);
     }
 
     ///////////////////// 以下方法在UndoLogRecord中有用途 /////////////////////
@@ -140,12 +155,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         if (logSyncService != null)
             return;
         super.init(config);
-        checkpointService = new CheckpointService(config);
+        checkpointService = new CheckpointServiceImpl(config);
         logSyncService = LogSyncService.create(config);
 
         // 先初始化redo log
         logSyncService.getRedoLog().init();
         lastTransactionId.set(0);
+
+        logSyncService.getRedoLog().setCheckpointService(checkpointService);
 
         // 再启动logSyncService
         logSyncService.start();
@@ -166,13 +183,21 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         synchronized (this) {
             if (logSyncService == null)
                 return;
-            checkpointService.close();
+            // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
+            if (checkpointService.isRunning) {
+                // 先close再等待
+                checkpointService.close();
+            } else {
+                // 当成周期性任务在调度器中执行时不用等它结束，执行一次checkpoint再close
+                checkpointService.executeCheckpoint();
+                checkpointService.close();
+            }
         }
-        // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
-        try {
-            if (checkpointService.isRunning)
-                checkpointService.latch.await(); // 这一步不能放在synchronized中，否则会导致死锁
-        } catch (Exception e) {
+        if (checkpointService.isRunning) {
+            try {
+                checkpointService.latch.await();
+            } catch (Exception e) {
+            }
         }
         synchronized (this) {
             try {
@@ -185,14 +210,18 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
+    public long nextTransactionId() {
+        return lastTransactionId.incrementAndGet();
+    }
+
     @Override
-    public AOTransaction beginTransaction(boolean autoCommit, int isolationLevel) {
+    public AOTransaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel) {
         if (logSyncService == null) {
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
         long tid = nextTransactionId();
-        AOTransaction t = new AOTransaction(this, tid, autoCommit, isolationLevel);
+        AOTransaction t = createTransaction(tid, autoCommit, runMode, isolationLevel);
         if (t.isRepeatableRead())
             rrTransactionCount.incrementAndGet();
         currentTransactions.put(tid, t);
@@ -207,8 +236,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return config;
     }
 
-    public long nextTransactionId() {
-        return lastTransactionId.incrementAndGet();
+    private AOTransaction createTransaction(long tid, boolean autoCommit, RunMode runMode,
+            int isolationLevel) {
+        return new AOTransaction(this, tid, autoCommit, runMode, isolationLevel);
     }
 
     @Override
@@ -225,24 +255,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 
+    protected TransactionMap<?, ?> getTransactionMap(Transaction transaction,
+            StorageMap<Object, TransactionalValue> map) {
+        return new AOTransactionMap<>((AOTransaction) transaction, map);
+    }
+
     @Override
     public synchronized void checkpoint() {
         checkpointService.checkpoint();
-    }
-
-    @Override
-    public Runnable getRunnable() {
-        return checkpointService;
-    }
-
-    @Override
-    public void addGcTask(GcTask gcTask) {
-        gcTasks.add(gcTask);
-    }
-
-    @Override
-    public void removeGcTask(GcTask gcTask) {
-        gcTasks.remove(gcTask);
     }
 
     ///////////////////// 实现StorageEventListener接口 /////////////////////
@@ -255,6 +275,20 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         checkpoint();
         for (String mapName : storage.getMapNames()) {
             maps.remove(mapName);
+        }
+    }
+
+    void addTransactionalValue(TransactionalValue tv, TransactionalValue.OldValue ov) {
+        tValues.put(tv, ov);
+    }
+
+    TransactionalValue.OldValue getOldValue(TransactionalValue tv) {
+        return tValues.get(tv);
+    }
+
+    private void removeTValues() {
+        for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
+            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
         }
     }
 
@@ -362,13 +396,15 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    private void removeTValues() {
-        for (Entry<TransactionalValue, OldValue> e : tValues.entrySet()) {
-            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
-        }
+    @Override
+    public CheckpointService getCheckpointService() {
+        return checkpointService;
     }
 
-    private class CheckpointService implements Runnable, MemoryManager.MemoryListener {
+    public class CheckpointServiceImpl implements CheckpointService, MemoryManager.MemoryListener {
+
+        private final LinkableList<PendingCheckpoint> pendingCheckpoints = new LinkableList<>();
+
         // 关闭CheckpointService时等待它结束
         private final CountDownLatch latch = new CountDownLatch(1);
         private final Semaphore semaphore = new Semaphore(1);
@@ -380,11 +416,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
         private volatile boolean isRunning;
-        private boolean isWaiting;
+        private volatile boolean waiting;
 
         private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
 
-        CheckpointService(Map<String, String> config) {
+        CheckpointServiceImpl(Map<String, String> config) {
             // 默认32M
             dirtyPageCacheSize = MapUtils.getLongMB(config, "dirty_page_cache_size_in_mb",
                     32 * 1024 * 1024);
@@ -424,25 +460,30 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 executeCheckpoint = dirtyMemory.get() > dirtyPageCacheSize;
             }
             if (executeCheckpoint) {
+                long logId = logSyncService.nextLogId();
                 // 1.先切换redo log chunk文件
-                logSyncService.checkpoint(false);
-                try {
-                    for (StorageMap<?, ?> map : maps.values()) {
-                        if (map.isClosed())
-                            continue;
-                        Long dirtyMemory = dirtyMaps.get(map.getName());
-                        if (dirtyMemory != null)
-                            map.save(dirtyMemory.longValue());
-                        else if (force || map.hasUnsavedChanges())
-                            map.save();
-                    }
-                    lastSavedAt = now;
-                    // 2. 最后再把checkpoint对应的redo log放到最后那个chunk文件
-                    logSyncService.checkpoint(true);
-                } catch (Throwable t) {
-                    logger.error("Failed to execute checkpoint", t);
-                    logSyncService.getRedoLog().ignoreCheckpoint();
+                addPendingCheckpoint(logId, false, force);
+            }
+        }
+
+        private void save(long logId, boolean force) {
+            long now = System.currentTimeMillis();
+            try {
+                for (StorageMap<?, ?> map : maps.values()) {
+                    if (map.isClosed())
+                        continue;
+                    Long dirtyMemory = dirtyMaps.get(map.getName());
+                    if (dirtyMemory != null)
+                        map.save(dirtyMemory.longValue());
+                    else if (force || map.hasUnsavedChanges())
+                        map.save();
                 }
+                lastSavedAt = now;
+                // 2. 最后再把checkpoint对应的redo log放到最后那个chunk文件
+                addPendingCheckpoint(logId, true, force);
+            } catch (Throwable t) {
+                logger.error("Failed to execute checkpoint", t);
+                logSyncService.getRedoLog().ignoreCheckpoint();
             }
         }
 
@@ -451,42 +492,85 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             isRunning = true;
             MemoryManager.setGlobalMemoryListener(this);
             while (!isClosed) {
-                isWaiting = true;
-                try {
-                    semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                    semaphore.drainPermits();
-                } catch (Throwable t) {
-                    logger.warn("Semaphore tryAcquire exception", t);
-                }
-                isWaiting = false;
-
-                try {
-                    if (!forceCheckpointTasks.isEmpty()) {
-                        ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
-                        forceCheckpointTasks.removeAll(tasks);
-                        for (Runnable task : tasks)
-                            task.run();
-                    } else {
-                        checkpoint(false);
-                    }
-                } catch (Throwable t) {
-                    logger.error("Failed to execute checkpoint", t);
-                }
-
+                await();
+                executeCheckpoint();
                 try {
                     gc();
                 } catch (Throwable t) {
                     logger.error("Failed to execute gc", t);
                 }
             }
+            // 关闭后确保再执行一次保存点
+            while (!pendingCheckpoints.isEmpty()) {
+                await();
+                gcPendingCheckpoints();
+            }
             isRunning = false;
             MemoryManager.setGlobalMemoryListener(null);
             latch.countDown();
         }
 
+        private void await() {
+            waiting = true;
+            try {
+                semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+                semaphore.drainPermits();
+            } catch (Throwable t) {
+                logger.warn("Semaphore tryAcquire exception", t);
+            } finally {
+                waiting = false;
+            }
+        }
+
+        @Override
+        public void executeCheckpoint() {
+            try {
+                gcPendingCheckpoints();
+                if (!forceCheckpointTasks.isEmpty()) {
+                    ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
+                    forceCheckpointTasks.removeAll(tasks);
+                    for (Runnable task : tasks)
+                        task.run();
+                } else {
+                    checkpoint(false);
+                }
+            } catch (Throwable t) {
+                logger.error("Failed to execute checkpoint", t);
+            }
+        }
+
+        @Override
+        public long getLoopInterval() {
+            return loopInterval;
+        }
+
+        public PendingCheckpoint getCheckpoint() {
+            return pendingCheckpoints.getHead();
+        }
+
+        private void addPendingCheckpoint(long logId, boolean saved, boolean force) {
+            pendingCheckpoints.add(RedoLogRecord.createPendingCheckpoint(logId, saved, force));
+            logSyncService.asyncWakeUp();
+        }
+
+        private void gcPendingCheckpoints() {
+            if (pendingCheckpoints.isEmpty())
+                return;
+            PendingCheckpoint pc = pendingCheckpoints.getHead();
+            while (pc != null && pc.isSynced()) {
+                if (!pc.isSaved())
+                    save(pc.getCheckpointId(), pc.isForce());
+                pc = pc.getNext();
+                pendingCheckpoints.decrementSize();
+                pendingCheckpoints.setHead(pc);
+            }
+            if (pendingCheckpoints.getHead() == null)
+                pendingCheckpoints.setTail(null);
+        }
+
         @Override
         public void wakeUp() {
-            if (isWaiting)
+            if (waiting || isClosed)
                 semaphore.release();
         }
     }

@@ -15,6 +15,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -107,7 +108,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString().toUpperCase());
         }
-
         btreeStorage = new BTreeStorage(this);
         rootRef = new RootPageReference(btreeStorage);
         Chunk lastChunk = btreeStorage.getChunkManager().getLastChunk();
@@ -510,94 +510,174 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public void repair() {
+        lock.lock();
+        try {
+            ChunkManager chunkManager = btreeStorage.getChunkManager();
+            HashSet<Long> removedPages = new HashSet<>();
+            HashSet<Long> pages = new HashSet<>();
+            for (Integer id : chunkManager.getAllChunkIds()) {
+                Chunk c = chunkManager.getChunk(id);
+                removedPages.addAll(c.getRemovedPages());
+                pages.addAll(c.pagePositionToLengthMap.keySet());
+            }
+            clear();
+            pages.removeAll(removedPages);
+            for (Long p : pages) {
+                if (PageUtils.isNodePage(p))
+                    continue;
+                PageReference tmpRef = new PageReference(btreeStorage, p);
+                Page leaf = tmpRef.getOrReadPage();
+                int keys = leaf.getKeyCount();
+                for (int i = 0; i < keys; i++) {
+                    put((K) leaf.getKey(i), (V) leaf.getValue(i));
+                }
+            }
+            btreeStorage.save();
+        } finally {
+            lock.unlock();
+        }
+    }
+
     //////////////////// 以下是同步和异步API的实现 ////////////////////////////////
 
     @Override
     public V put(K key, V value) {
-        return put0(key, value, null);
+        return put0(null, key, value, null);
     }
 
     @Override
     public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        put0(key, value, handler);
+        put0(null, key, value, handler);
     }
 
-    private V put0(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    @Override
+    public void put(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put0(session, key, value, handler);
+    }
+
+    private V put0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite(value);
         Put<K, V, V> put = new Put<>(this, key, value, handler);
-        return runPageOperation(put);
+        return runPageOperation(session, put);
     }
 
     @Override
     public V putIfAbsent(K key, V value) {
-        return putIfAbsent0(key, value, null);
+        return putIfAbsent0(null, key, value, null);
     }
 
     @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        putIfAbsent0(key, value, handler);
+        putIfAbsent0(null, key, value, handler);
     }
 
-    private V putIfAbsent0(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    @Override
+    public void putIfAbsent(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent0(session, key, value, handler);
+    }
+
+    private V putIfAbsent0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
-        return runPageOperation(putIfAbsent);
+        return runPageOperation(session, putIfAbsent);
     }
 
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
-        return replace0(key, oldValue, newValue, null);
+        return replace0(null, key, oldValue, newValue, null);
     }
 
     @Override
     public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace0(key, oldValue, newValue, handler);
+        replace0(null, key, oldValue, newValue, handler);
     }
 
-    private boolean replace0(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+    @Override
+    public void replace(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace0(session, key, oldValue, newValue, handler);
+    }
+
+    private boolean replace0(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
         checkWrite(newValue);
         Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);
-        return runPageOperation(replace);
+        return runPageOperation(session, replace);
     }
 
     @Override
     public K append(V value) {
-        return append0(value, null);
+        return append0(null, value, null);
     }
 
     @Override
     public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
-        append0(value, handler);
+        append0(null, value, handler);
     }
 
-    private K append0(V value, AsyncHandler<AsyncResult<K>> handler) {
+    @Override
+    public void append(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+        append0(session, value, handler);
+    }
+
+    private K append0(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
         checkWrite(value);
         Append<K, V> append = new Append<>(this, value, handler);
-        return runPageOperation(append);
+        return runPageOperation(session, append);
     }
 
     @Override
     public V remove(K key) {
-        return remove0(key, null);
+        return remove0(null, key, null);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
-        remove0(key, handler);
+        remove0(null, key, handler);
     }
 
-    private V remove0(K key, AsyncHandler<AsyncResult<V>> handler) {
+    @Override
+    public void remove(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove0(session, key, handler);
+    }
+
+    private V remove0(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite();
         Remove<K, V> remove = new Remove<>(this, key, handler);
-        return runPageOperation(remove);
+        return runPageOperation(session, remove);
     }
 
-    private <R> R runPageOperation(WriteOperation<?, ?, R> po) {
-        PageOperationHandler poHandler = getPageOperationHandler(false);
-        // 先快速试一次，如果不成功再用异步等待的方式
-        if (po.run(poHandler) == PageOperationResult.SUCCEEDED)
-            return po.getResult();
-        poHandler = getPageOperationHandler(true);
+    private <R> R runPageOperation(Session session, WriteOperation<?, ?, R> po) {
+        PageOperationHandler poHandler;
+        boolean useSessionPoHandler;
+        // 启动阶段session不为null，但PageOperationHandler为null
+        if (session != null && session.getPageOperationHandler() != null) {
+            po.setSession(session);
+            poHandler = session.getPageOperationHandler();
+            useSessionPoHandler = true;
+        } else {
+            poHandler = getPageOperationHandler(false);
+            useSessionPoHandler = false;
+        }
+        // 先快速试3次，如果不成功再用异步等待的方式
+        int maxRetryCount = 3;
+        while (true) {
+            PageOperationResult result = po.run(poHandler, maxRetryCount == 1);
+            if (result == PageOperationResult.SUCCEEDED)
+                return po.getResult();
+            else if (result == PageOperationResult.LOCKED) {
+                --maxRetryCount;
+            } else if (result == PageOperationResult.RETRY) {
+                continue;
+            }
+            if (maxRetryCount < 1)
+                break;
+        }
+        if (!useSessionPoHandler)
+            poHandler = getPageOperationHandler(true);
         if (po.getResultHandler() == null) { // 同步
             PageOperation.Listener<R> listener = getPageOperationListener();
             po.setResultHandler(listener);
@@ -640,36 +720,5 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public InputStream getInputStream(FilePath file) {
         return btreeStorage.getInputStream(file);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void repair() {
-        lock.lock();
-        try {
-            ChunkManager chunkManager = btreeStorage.getChunkManager();
-            HashSet<Long> removedPages = new HashSet<>();
-            HashSet<Long> pages = new HashSet<>();
-            for (Integer id : chunkManager.getAllChunkIds()) {
-                Chunk c = chunkManager.getChunk(id);
-                removedPages.addAll(c.getRemovedPages());
-                pages.addAll(c.pagePositionToLengthMap.keySet());
-            }
-            clear();
-            pages.removeAll(removedPages);
-            for (Long p : pages) {
-                if (PageUtils.isNodePage(p))
-                    continue;
-                PageReference tmpRef = new PageReference(btreeStorage, p);
-                Page leaf = tmpRef.getOrReadPage();
-                int keys = leaf.getKeyCount();
-                for (int i = 0; i < keys; i++) {
-                    put((K) leaf.getKey(i), (V) leaf.getValue(i));
-                }
-            }
-            btreeStorage.save();
-        } finally {
-            lock.unlock();
-        }
     }
 }

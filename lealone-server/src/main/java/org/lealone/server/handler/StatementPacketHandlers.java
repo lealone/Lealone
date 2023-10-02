@@ -10,7 +10,6 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.server.protocol.statement.StatementUpdateAck;
 
 public class StatementPacketHandlers extends PacketHandlers {
 
@@ -30,11 +29,6 @@ public class StatementPacketHandlers extends PacketHandlers {
         @Override
         public Packet handle(PacketHandleTask task, StatementUpdate packet) {
             return handlePacket(task, packet);
-        }
-
-        @Override
-        protected Packet createAckPacket(PacketHandleTask task, int updateCount) {
-            return new StatementUpdateAck(updateCount);
         }
     }
 }

@@ -8,6 +8,7 @@ package org.lealone.transaction;
 import org.lealone.db.async.Future;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.StorageDataType;
 
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
@@ -81,11 +82,17 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf);
 
+    public default int tryLock(K key, Object oldTValue) {
+        return tryLock(key, oldTValue, null);
+    }
+
     public int tryLock(K key, Object oldTValue, int[] columnIndexes);
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
 
     public Object getTransactionalValue(K key);
+
+    public StorageDataType getTransactionalValueType();
 
     public int addWaitingTransaction(Object key, Object oldTValue);
 }

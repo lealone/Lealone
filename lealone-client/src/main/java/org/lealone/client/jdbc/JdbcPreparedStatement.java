@@ -133,7 +133,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         closeOldResultSet();
         setExecutingStatement(command);
         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+        AsyncCallback<ResultSet> ac = AsyncCallback.createConcurrentCallback();
         command.executeQuery(maxRows, scrollable).onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isSucceeded()) {
@@ -206,7 +206,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         checkClosed();
         closeOldResultSet();
         setExecutingStatement(command);
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = AsyncCallback.createConcurrentCallback();
         command.executeUpdate().onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isFailed()) {

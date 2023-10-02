@@ -322,5 +322,4 @@ public class CompressTool {
             throw DbException.convertIOException(e, null);
         }
     }
-
 }

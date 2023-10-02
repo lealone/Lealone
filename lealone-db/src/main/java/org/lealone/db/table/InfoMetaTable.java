@@ -42,7 +42,7 @@ import org.lealone.db.constraint.ConstraintUnique;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
-import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.Lock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -1287,12 +1287,12 @@ public class InfoMetaTable extends MetaTable {
         case LOCKS: {
             for (ServerSession s : database.getSessions(false)) {
                 if (admin || s == session) {
-                    for (DbObjectLock lock : s.getLocks()) {
+                    for (Lock lock : s.getLocks()) {
                         add(rows,
                                 // SESSION_ID
                                 "" + s.getId(),
                                 // LOCK_TYPE
-                                lock.getDbObjectType() + " "
+                                lock.getLockType() + " "
                                         + (lock.isLockedExclusivelyBy(s) ? "WRITE" : "READ"));
                     }
                 }
@@ -1355,7 +1355,7 @@ public class InfoMetaTable extends MetaTable {
                         // RUN_MODE
                         database.getRunMode().toString(),
                         // NODES
-                        "");
+                        database.getTargetNodes());
             }
             break;
         }

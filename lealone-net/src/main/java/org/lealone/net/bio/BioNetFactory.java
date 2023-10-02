@@ -9,7 +9,6 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.net.NetClient;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryBase;
 import org.lealone.net.NetServer;
 
@@ -39,8 +38,4 @@ public class BioNetFactory extends NetFactoryBase {
         throw DbException.getInternalError();
     }
 
-    @Override
-    public NetEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval) {
-        throw DbException.getInternalError();
-    }
 }

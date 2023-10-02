@@ -7,6 +7,7 @@ package org.lealone.net.bio;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.SocketChannel;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
@@ -16,12 +17,14 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
+import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 
 class BioNetClient extends NetClientBase {
 
     BioNetClient() {
+        super(true);
     }
 
     @Override
@@ -49,13 +52,13 @@ class BioNetClient extends NetClientBase {
             BioWritableChannel writableChannel = new BioWritableChannel(config, socket,
                     inetSocketAddress);
             if (connectionManager != null) {
-                conn = connectionManager.createConnection(writableChannel, false);
+                conn = connectionManager.createConnection(writableChannel, false, null);
             } else {
                 conn = new TcpClientConnection(writableChannel, this, 1);
             }
             conn.setInetSocketAddress(inetSocketAddress);
-            AsyncConnection conn2 = addConnection(inetSocketAddress, conn);
-            ac.setAsyncResult(conn2);
+            addConnection(inetSocketAddress, conn);
+            ac.setAsyncResult(conn);
         } catch (Exception e) {
             if (socket != null) {
                 try {
@@ -65,5 +68,20 @@ class BioNetClient extends NetClientBase {
             }
             ac.setAsyncResult(e);
         }
+    }
+
+    @Override
+    public boolean isThreadSafe() {
+        return false;
+    }
+
+    @Override
+    protected NetEventLoop getNetEventLoop() {
+        return null;
+    }
+
+    @Override
+    protected void registerConnectOperation(SocketChannel channel, ClientAttachment attachment,
+            AsyncCallback<AsyncConnection> ac) {
     }
 }

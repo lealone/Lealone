@@ -27,7 +27,6 @@ import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SimpleRow;
@@ -96,7 +95,7 @@ public abstract class Table extends SchemaObjectBase {
     private String packageName;
     private String codePath;
 
-    private final DbObjectLockImpl dbObjectLock = new DbObjectLockImpl(DbObjectType.TABLE_OR_VIEW);
+    private final DbObjectLock dbObjectLock = new DbObjectLock(DbObjectType.TABLE_OR_VIEW);
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name);
@@ -1083,6 +1082,10 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public boolean containsLargeObject() {
+        return false;
+    }
+
+    public boolean containsIndex() {
         return false;
     }
 

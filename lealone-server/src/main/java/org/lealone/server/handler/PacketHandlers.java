@@ -21,6 +21,7 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.StatementList;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {
@@ -51,6 +52,10 @@ public class PacketHandlers {
     private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
 
         protected void createYieldableUpdate(PacketHandleTask task, PreparedSQLStatement stmt) {
+            if (stmt instanceof StatementList) {
+                StatementListPacketHandlers.updateHandler.createYieldableUpdate(task, stmt);
+                return;
+            }
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     int updateCount = ar.getResult();
@@ -91,7 +96,10 @@ public class PacketHandlers {
 
         protected void createYieldableQuery(PacketHandleTask task, PreparedSQLStatement stmt,
                 QueryPacket packet) {
-
+            if (stmt instanceof StatementList) {
+                StatementListPacketHandlers.queryHandler.createYieldableQuery(task, stmt, packet);
+                return;
+            }
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows,
                     packet.scrollable, ar -> {
                         if (ar.isSucceeded()) {

@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -28,14 +29,17 @@ import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ManualCloseable;
 import org.lealone.db.Procedure;
+import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
-import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.Lock;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
@@ -44,6 +48,10 @@ import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.net.NetNode;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.AckPacketHandler;
+import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -51,7 +59,9 @@ import org.lealone.sql.SQLParser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.page.IPage;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
 /**
@@ -73,7 +83,7 @@ public class ServerSession extends SessionBase {
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
-    private final ArrayList<DbObjectLock> locks = new ArrayList<>();
+    private final ArrayList<Lock> locks = new ArrayList<>();
     private Random random;
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
@@ -410,16 +420,18 @@ public class ServerSession extends SessionBase {
     public PreparedSQLStatement prepareStatement(String sql, boolean rightsChecked) {
         SQLParser parser = database.createParser(this);
         parser.setRightsChecked(rightsChecked);
-        return parser.parse(sql).prepare();
+        PreparedSQLStatement p = parser.parse(sql).prepare();
+        return p;
     }
 
     public PreparedSQLStatement prepareStatementLocal(String sql) {
         SQLParser parser = database.createParser(this);
-        return parser.parse(sql).prepare();
+        PreparedSQLStatement p = parser.parse(sql).prepare();
+        return p;
     }
 
     @Override
-    public synchronized SQLCommand createSQLCommand(String sql, int fetchSize) {
+    public SQLCommand createSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 
@@ -516,11 +528,12 @@ public class ServerSession extends SessionBase {
             // setStatus(SessionStatus.STATEMENT_RUNNING); // 切回RUNNING状态
             return;
         }
-        boolean asyncCommit = false;
         boolean isCommitCommand = currentCommand != null
                 && currentCommand.getType() == SQLStatement.COMMIT;
         closeTemporaryResults();
         closeCurrentCommand();
+
+        boolean asyncCommit = false;
         if (asyncResult != null && asyncHandler != null) {
             if (isAutoCommit() || isCommitCommand) {
                 asyncCommit = true;
@@ -543,27 +556,31 @@ public class ServerSession extends SessionBase {
     }
 
     public void rollbackCurrentCommand() {
+        rollbackCurrentCommand(null);
+    }
+
+    private void rollbackCurrentCommand(Session newSession) {
         rollbackTo(currentCommandSavepointId);
         int size = locks.size();
         if (currentCommandLockIndex < size) {
             // 只解除当前语句拥有的锁
-            ArrayList<DbObjectLock> list = new ArrayList<>(locks);
+            ArrayList<Lock> list = new ArrayList<>(locks);
             for (int i = currentCommandLockIndex; i < size; i++) {
-                DbObjectLock lock = list.get(i);
-                lock.unlock(this, false);
+                Lock lock = list.get(i);
+                lock.unlock(this, false, newSession);
                 locks.remove(lock);
             }
         }
     }
 
+    public void asyncCommit() {
+        asyncCommit(null);
+    }
+
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
             beforeCommit();
-            transaction.asyncCommit(() -> {
-                commitFinal();
-                if (asyncTask != null)
-                    asyncTask.run();
-            });
+            transaction.asyncCommit(asyncTask);
         } else {
             // 包含子查询的场景
             if (asyncTask != null)
@@ -571,11 +588,11 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    /**
-     * Commit the current transaction. If the statement was not a data
-     * definition statement, and if there are temporary tables that should be
-     * dropped or truncated at commit, this is done as well.
-     */
+    @Override
+    public void asyncCommitComplete() {
+        commitFinal();
+    }
+
     public void commit() {
         if (transaction != null) {
             beforeCommit();
@@ -607,7 +624,7 @@ public class ServerSession extends SessionBase {
         containsDDL = false;
         containsDatabaseStatement = false;
         isForUpdate = false;
-        transaction.wakeUpWaitingTransactions();
+        wakeUpWaitingTransactionListeners();
         transactionStart = 0;
         transaction = null;
     }
@@ -649,6 +666,7 @@ public class ServerSession extends SessionBase {
             }
         }
         unlockAll(true);
+        clean();
         endTransaction();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -686,6 +704,7 @@ public class ServerSession extends SessionBase {
             db.copy();
             containsDDL = false;
         }
+        clean();
         executingStatements = 0; // 回滚时置0，否则出现锁超时异常时会导致严重错误
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
@@ -721,7 +740,7 @@ public class ServerSession extends SessionBase {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(name);
-            // 清空语句缓存，否则重复执行之前的select语句依然能读到旧的
+            // 让语句缓存变得无效
             clearQueryCache();
         }
     }
@@ -739,6 +758,8 @@ public class ServerSession extends SessionBase {
                 closeAllCache();
                 cleanTempTables(true);
                 database.removeSession(this);
+                if (getTransactionListener() != null)
+                    getTransactionListener().removeSession(sessionInfo);
             } finally {
                 super.close();
             }
@@ -750,21 +771,23 @@ public class ServerSession extends SessionBase {
      *
      * @param lock the lock that is locked
      */
-    public void addLock(DbObjectLock lock) {
+    @Override
+    public void addLock(Object lock) {
+        Lock lock2 = (Lock) lock;
         if (SysProperties.CHECK) {
-            if (locks.indexOf(lock) >= 0) {
+            if (locks.indexOf(lock2) >= 0) {
                 DbException.throwInternalError();
             }
         }
-        locks.add(lock);
+        locks.add(lock2);
     }
 
     private void unlockAll(boolean succeeded) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
-                lock.unlock(this, succeeded);
+                Lock lock = locks.get(i);
+                lock.unlock(this, succeeded, null);
             }
             locks.clear();
         }
@@ -1066,10 +1089,10 @@ public class ServerSession extends SessionBase {
         return transactionStart;
     }
 
-    public DbObjectLock[] getLocks() {
+    public Lock[] getLocks() {
         // copy the data without synchronizing
         int size = locks.size();
-        ArrayList<DbObjectLock> copy = new ArrayList<>(size);
+        ArrayList<Lock> copy = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             try {
                 copy.add(locks.get(i));
@@ -1078,7 +1101,7 @@ public class ServerSession extends SessionBase {
                 break;
             }
         }
-        DbObjectLock[] list = new DbObjectLock[copy.size()];
+        Lock[] list = new Lock[copy.size()];
         copy.toArray(list);
         return list;
     }
@@ -1148,6 +1171,7 @@ public class ServerSession extends SessionBase {
         return modificationId;
     }
 
+    @Override
     public void setConnectionInfo(ConnectionInfo ci) {
         connectionInfo = ci;
     }
@@ -1173,24 +1197,36 @@ public class ServerSession extends SessionBase {
         return objectId++;
     }
 
+    @Override
     public Transaction getTransaction() {
         if (transaction != null)
             return transaction;
 
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit,
+        RunMode runMode = getRunMode();
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode,
                 transactionIsolationLevel);
         transaction.setSession(this);
+        transaction.setTransactionHandler(transactionHandler);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;
         return transaction;
     }
 
+    @Override
+    public String getURL() {
+        return connectionInfo == null ? null : connectionInfo.getURL();
+    }
+
     public SQLParser getParser() {
         return database.createParser(this);
     }
 
-    private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
+    private static final AtomicReferenceFieldUpdater<ServerSession, SessionStatus> statusUpdater = //
+            AtomicReferenceFieldUpdater.newUpdater(ServerSession.class, SessionStatus.class,
+                    "sessionStatus");
+
+    private volatile SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
     @Override
     public SessionStatus getStatus() {
@@ -1200,8 +1236,35 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
+    public boolean compareAndSet(SessionStatus expect, SessionStatus update) {
+        return statusUpdater.compareAndSet(this, expect, update);
+    }
+
+    @Override
     public void setStatus(SessionStatus sessionStatus) {
         this.sessionStatus = sessionStatus;
+    }
+
+    private ServerSession lockedBy;
+
+    // 被哪个事务锁住记录了
+    private volatile Transaction lockedByTransaction;
+    private Object lockedKey;
+    private long lockStartTime;
+
+    @Override
+    public void setLockedBy(SessionStatus sessionStatus, Transaction lockedByTransaction,
+            Object lockedKey) {
+        this.sessionStatus = sessionStatus;
+        this.lockedByTransaction = lockedByTransaction;
+        this.lockedKey = lockedKey;
+        if (lockedByTransaction != null) {
+            lockStartTime = System.currentTimeMillis();
+            lockedBy = (ServerSession) lockedByTransaction.getSession();
+        } else {
+            lockStartTime = 0;
+            lockedBy = null;
+        }
     }
 
     public static class YieldableCommand {
@@ -1259,7 +1322,7 @@ public class ServerSession extends SessionBase {
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         if (yieldableCommand == null)
             return null;
-
+        wakeUpIfNeeded();
         // session处于以下状态时不会被当成候选的对象
         switch (getStatus()) {
         case WAITING:
@@ -1267,19 +1330,39 @@ public class ServerSession extends SessionBase {
                 checkTransactionTimeout(timeoutListener);
             }
         case TRANSACTION_COMMITTING:
-        case EXCLUSIVE_MODE:
         case STATEMENT_RUNNING:
+        case EXCLUSIVE_MODE:
             return null;
         }
         return yieldableCommand;
     }
 
+    // 当前事务申请锁失败被挂起时，只是把session变成等待状态，然后用lockedByTransaction指向占有锁的事务，
+    // 等lockedByTransaction提交或回滚后，不需要修改被挂起事务的状态，只需要唤醒被挂起事务的调度线程重试即可。
+    private void wakeUpIfNeeded() {
+        if (lockedByTransaction != null
+                && (lockedByTransaction.isClosed() || lockedByTransaction.isWaiting())) {
+            reset(SessionStatus.RETRYING_RETURN_ACK);
+        }
+    }
+
     private void checkTransactionTimeout(TimeoutListener timeoutListener) {
-        Transaction t = transaction;
-        if (t != null) {
-            try {
-                t.checkTimeout();
-            } catch (Throwable e) {
+        if (lockedByTransaction != null
+                && System.currentTimeMillis() - lockStartTime > getLockTimeout()) {
+            DbException e = null;
+            String keyStr = lockedKey.toString();
+            // 发生死锁了
+            if (lockedBy.lockedByTransaction == transaction) {
+                String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
+                msg += "\r\n" + getMsg(lockedByTransaction.getTransactionId(),
+                        lockedByTransaction.getSession(), transaction);
+                msg += ", the locked object: " + keyStr;
+                e = DbException.get(ErrorCode.DEADLOCK_1, msg);
+            } else {
+                String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
+                e = DbException.get(ErrorCode.LOCK_TIMEOUT_1, keyStr, msg);
+            }
+            if (e != null) {
                 if (timeoutListener != null)
                     timeoutListener.onTimeout(yieldableCommand, e);
                 rollback();
@@ -1287,14 +1370,62 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private TransactionListener transactionListener;
+    private static String getMsg(long tid, Session session, Transaction transaction) {
+        return "transaction #" + tid + " in session " + session + " wait for transaction #"
+                + transaction.getTransactionId() + " in session " + transaction.getSession();
+    }
 
+    public boolean canExecuteNextCommand() {
+        if (sessionStatus == SessionStatus.RETRYING
+                || sessionStatus == SessionStatus.RETRYING_RETURN_ACK)
+            return false;
+        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+        return yieldableCommand == null;
+    }
+
+    private TransactionListener transactionListener;
+    private TransactionHandler transactionHandler;
+    private Object sessionInfo;
+
+    @Override
     public TransactionListener getTransactionListener() {
         return transactionListener;
     }
 
     public void setTransactionListener(TransactionListener transactionListener) {
         this.transactionListener = transactionListener;
+    }
+
+    public TransactionHandler getTransactionHandler() {
+        return transactionHandler;
+    }
+
+    public void setTransactionHandler(TransactionHandler transactionHandler) {
+        this.transactionHandler = transactionHandler;
+    }
+
+    public Object getSessionInfo() {
+        return sessionInfo;
+    }
+
+    public void setSessionInfo(Object sessionInfo) {
+        this.sessionInfo = sessionInfo;
+    }
+
+    private void reset(SessionStatus sessionStatus) {
+        this.sessionStatus = sessionStatus;
+        reset();
+    }
+
+    private void reset() {
+        lockedBy = null;
+        lockedByTransaction = null;
+        lockedKey = null;
+        lockStartTime = 0;
+    }
+
+    private void clean() {
+        reset();
     }
 
     @Override
@@ -1312,6 +1443,23 @@ public class ServerSession extends SessionBase {
     public void cancelStatement(int statementId) {
         if (currentCommand != null && currentCommand.getId() == statementId)
             currentCommand.cancel();
+    }
+
+    @Override
+    public String getLocalHostAndPort() {
+        return NetNode.getLocalTcpHostAndPort();
+    }
+
+    @Override
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
+            AckPacketHandler<R, P> ackPacketHandler) {
+        throw DbException.getInternalError();
+    }
+
+    @Override
+    public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler) {
+        throw DbException.getInternalError();
     }
 
     private ExpiringMap<Integer, ManualCloseable> cache; // 缓存PreparedStatement和结果集
@@ -1494,9 +1642,47 @@ public class ServerSession extends SessionBase {
         return settings;
     }
 
+    @Override
+    public void addWaitingTransactionListener(TransactionListener listener) {
+        if (getTransactionListener() != null)
+            getTransactionListener().addWaitingTransactionListener(listener);
+    }
+
+    @Override
+    public void wakeUpWaitingTransactionListeners() {
+        if (getTransactionListener() != null)
+            getTransactionListener().wakeUpWaitingTransactionListeners();
+    }
+
+    private PageOperationHandler pageOperationHandler;
+
+    @Override
+    public PageOperationHandler getPageOperationHandler() {
+        return pageOperationHandler;
+    }
+
+    public void setPageOperationHandler(PageOperationHandler pageOperationHandler) {
+        this.pageOperationHandler = pageOperationHandler;
+    }
+
     public void clearQueryCache() {
         if (queryCache != null)
             queryCache.clear();
+    }
+
+    @Override
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+    }
+
+    @Override
+    public boolean isSingleThreadCallback() {
+        return true;
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback() {
+        // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
+        return AsyncCallback.createSingleThreadCallback();
     }
 
     @Override

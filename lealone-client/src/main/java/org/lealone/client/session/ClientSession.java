@@ -5,7 +5,10 @@
  */
 package org.lealone.client.session;
 
+import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
@@ -18,7 +21,10 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.LocalDataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.ConcurrentAsyncCallback;
 import org.lealone.db.async.Future;
+import org.lealone.db.async.SingleThreadAsyncCallback;
+import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionBase;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TcpClientConnection;
@@ -53,14 +59,17 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
     private final String server;
+    private final Session parent;
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
 
-    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, int id) {
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent,
+            int id) {
         this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
+        this.parent = parent;
         this.id = id;
 
         String cipher = ci.getProperty(DbSetting.CIPHER.getName());
@@ -97,7 +106,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public void checkClosed() {
         if (tcpConnection.isClosed()) {
-            String msg = tcpConnection.getInetSocketAddress().getHostName() + " tcp connection closed";
+            String msg = tcpConnection.getWritableChannel().getHost() + " tcp connection closed";
             throw getConnectionBrokenException(msg);
         }
         if (isClosed()) {
@@ -174,8 +183,11 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             RuntimeException closeError = null;
             synchronized (this) {
                 try {
-                    send(new SessionClose());
-                    tcpConnection.removeSession(id);
+                    // 只有当前Session有效时服务器端才持有对应的session
+                    if (isValid()) {
+                        send(new SessionClose());
+                        tcpConnection.removeSession(id);
+                    }
                 } catch (RuntimeException e) {
                     trace.error(e, "close");
                     closeError = e;
@@ -229,6 +241,16 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
+    public void runModeChanged(String newTargetNodes) {
+        parent.runModeChanged(newTargetNodes);
+    }
+
+    @Override
+    public String getURL() {
+        return ci.getURL();
+    }
+
+    @Override
     public ConnectionInfo getConnectionInfo() {
         return ci;
     }
@@ -243,47 +265,54 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         return ci.getNetworkTimeout();
     }
 
-    @SuppressWarnings("unchecked")
-    public <P extends AckPacket> Future<P> send(Packet packet) {
-        return send(packet, p -> {
-            return (P) p;
-        });
+    @Override
+    public String getLocalHostAndPort() {
+        try {
+            SocketAddress sa = tcpConnection.getWritableChannel().getSocketChannel().getLocalAddress();
+            String host;
+            int port;
+            if (sa instanceof InetSocketAddress) {
+                InetSocketAddress address = (InetSocketAddress) sa;
+                host = address.getHostString();
+                port = address.getPort();
+            } else {
+                host = InetAddress.getLocalHost().getHostAddress();
+                port = 0;
+            }
+            return host + ":" + port;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    @SuppressWarnings("unchecked")
-    public <P extends AckPacket> Future<P> send(Packet packet, int packetId) {
-        return send(packet, packetId, p -> {
-            return (P) p;
-        });
-    }
-
+    @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet,
             AckPacketHandler<R, P> ackPacketHandler) {
         int packetId = getNextId();
         return send(packet, packetId, ackPacketHandler);
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         traceOperation(packet.getType().name(), packetId);
         AsyncCallback<R> ac;
         if (packet.getAckType() != PacketType.VOID) {
-            ac = new AsyncCallback<R>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders
-                            .getDecoder(packet.getAckType());
-                    Packet packet = decoder.decode(in, getProtocolVersion());
-                    if (ackPacketHandler != null) {
-                        try {
-                            setAsyncResult(ackPacketHandler.handle((P) packet));
-                        } catch (Throwable e) {
-                            setAsyncResult(e);
-                        }
+            if (isSingleThreadCallback()) {
+                ac = new SingleThreadAsyncCallback<R>() {
+                    @Override
+                    public void runInternal(NetInputStream in) throws Exception {
+                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
                     }
-                }
-            };
+                };
+            } else {
+                ac = new ConcurrentAsyncCallback<R>() {
+                    @Override
+                    public void runInternal(NetInputStream in) throws Exception {
+                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
+                    }
+                };
+            }
             ac.setPacket(packet);
             ac.setStartTime(System.currentTimeMillis());
             ac.setNetworkTimeout(getNetworkTimeout());
@@ -310,7 +339,38 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         return ac;
     }
 
-    private void removeAsyncCallback(int packetId) {
+    @SuppressWarnings("unchecked")
+    private <R, P extends AckPacket> void handleAsyncCallback(NetInputStream in, PacketType packetType,
+            AckPacketHandler<R, P> ackPacketHandler, AsyncCallback<R> ac) throws IOException {
+        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
+        Packet packet = decoder.decode(in, getProtocolVersion());
+        if (ackPacketHandler != null) {
+            try {
+                ac.setAsyncResult(ackPacketHandler.handle((P) packet));
+            } catch (Throwable e) {
+                ac.setAsyncResult(e);
+            }
+        }
+    }
+
+    public void removeAsyncCallback(int packetId) {
         tcpConnection.removeAsyncCallback(packetId);
+    }
+
+    private boolean singleThreadCallback;
+
+    @Override
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+        this.singleThreadCallback = singleThreadCallback;
+    }
+
+    @Override
+    public boolean isSingleThreadCallback() {
+        return singleThreadCallback;
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback() {
+        return AsyncCallback.create(singleThreadCallback);
     }
 }

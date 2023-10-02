@@ -17,6 +17,7 @@ public class UndoLogRecord {
     private final String mapName;
     private final Object key;
     private final Object oldValue;
+    private final Object newValue; // 使用LazyRedoLogRecord时需要用它，不能直接使用newTV.getValue()，因为会变动
     private final TransactionalValue newTV;
     private boolean undone;
 
@@ -27,6 +28,7 @@ public class UndoLogRecord {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
+        this.newValue = newTV.getValue();
         this.newTV = newTV;
     }
 
@@ -94,17 +96,23 @@ public class UndoLogRecord {
             return;
         }
 
+        // 这一步很重要！！！
+        // 对于update和delete，要标记一下脏页，否则执行checkpoint保存数据时无法实别脏页
+        if (oldValue != null) {
+            map.markDirty(key);
+        }
+
         ValueString.type.write(writeBuffer, mapName);
         int keyValueLengthStartPos = writeBuffer.position();
         writeBuffer.putInt(0);
 
         map.getKeyType().write(writeBuffer, key);
-        if (newTV.getValue() == null)
+        if (newValue == null)
             writeBuffer.put((byte) 0);
         else {
             writeBuffer.put((byte) 1);
             // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newTV.getValue());
+            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newValue);
         }
         writeBuffer.putInt(keyValueLengthStartPos, writeBuffer.position() - keyValueLengthStartPos - 4);
     }

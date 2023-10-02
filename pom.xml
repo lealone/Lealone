@@ -51,6 +51,7 @@
 
     <modules>
         <module>lealone-common</module>
+        <module>lealone-sci</module>
         <module>lealone-net</module>
         <module>lealone-client</module>
         <module>lealone-server</module>

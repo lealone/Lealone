@@ -519,7 +519,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private Future<Boolean> commitInternal() throws SQLException {
         checkClosed();
-        AsyncCallback<Boolean> ac = new AsyncCallback<>();
+        AsyncCallback<Boolean> ac = AsyncCallback.createConcurrentCallback();
         commit = prepareSQLCommand("COMMIT", commit);
         commit.executeUpdate().onComplete(ar -> {
             if (ar.isFailed()) {
@@ -527,6 +527,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             } else {
                 ac.setAsyncResult(true);
             }
+            session.reconnectIfNeeded();
         });
         return ac;
     }
@@ -550,7 +551,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private Future<Boolean> rollbackInternal() throws SQLException {
         checkClosed();
-        AsyncCallback<Boolean> ac = new AsyncCallback<>();
+        AsyncCallback<Boolean> ac = AsyncCallback.createConcurrentCallback();
         rollback = prepareSQLCommand("ROLLBACK", rollback);
         rollback.executeUpdate().onComplete(ar -> {
             if (ar.isFailed()) {
@@ -558,6 +559,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             } else {
                 ac.setAsyncResult(true);
             }
+            session.reconnectIfNeeded();
         });
         return ac;
     }
@@ -1025,6 +1027,8 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
+        } finally {
+            session.reconnectIfNeeded();
         }
     }
 

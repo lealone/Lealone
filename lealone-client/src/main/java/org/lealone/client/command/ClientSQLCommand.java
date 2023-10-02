@@ -74,20 +74,19 @@ public class ClientSQLCommand implements SQLCommand {
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows, scrollable);
-    }
-
-    private Future<Result> query(int maxRows, boolean scrollable) {
-        isQuery = true;
-        int fetch;
-        if (scrollable) {
-            fetch = Integer.MAX_VALUE;
-        } else {
-            fetch = fetchSize;
+        try {
+            isQuery = true;
+            int fetch;
+            if (scrollable) {
+                fetch = Integer.MAX_VALUE;
+            } else {
+                fetch = fetchSize;
+            }
+            int resultId = session.getNextId();
+            return query(maxRows, scrollable, fetch, resultId);
+        } catch (Throwable t) {
+            return failedFuture(t);
         }
-        int resultId = session.getNextId();
-        return query(maxRows, scrollable, fetch, resultId);
-
     }
 
     protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId) {
@@ -118,11 +117,15 @@ public class ClientSQLCommand implements SQLCommand {
 
     @Override
     public Future<Integer> executeUpdate() {
-        int packetId = commandId = session.getNextId();
-        Packet packet = new StatementUpdate(sql);
-        return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
-            return ack.updateCount;
-        });
+        try {
+            int packetId = commandId = session.getNextId();
+            Packet packet = new StatementUpdate(sql);
+            return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
+                return ack.updateCount;
+            });
+        } catch (Throwable t) {
+            return failedFuture(t);
+        }
     }
 
     @Override
@@ -150,5 +153,9 @@ public class ClientSQLCommand implements SQLCommand {
             session.handleException(e);
         }
         return null;
+    }
+
+    protected static <T> Future<T> failedFuture(Throwable t) {
+        return Future.failedFuture(t);
     }
 }

@@ -97,10 +97,10 @@ public interface ProtocolServer {
     Map<String, String> getConfig();
 
     /**
-    * Get the configured base directory.
-    *
-    * @return the base directory
-    */
+     * Get the configured base directory.
+     *
+     * @return the base directory
+     */
     String getBaseDir();
 
     /**
@@ -114,5 +114,8 @@ public interface ProtocolServer {
 
     default int getSessionTimeout() {
         return -1;
+    }
+
+    default void accept(Object scheduler) {
     }
 }

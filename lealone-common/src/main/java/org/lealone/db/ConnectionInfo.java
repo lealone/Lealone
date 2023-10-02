@@ -22,6 +22,7 @@ import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.storage.fs.impl.encrypt.FilePathEncrypt;
+import org.lealone.transaction.TransactionHandler;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -82,7 +83,6 @@ public class ConnectionInfo implements Cloneable {
     private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
     private int networkTimeout = Constants.DEFAULT_NETWORK_TIMEOUT;
     private boolean traceEnabled;
-
     private boolean isServiceConnection;
 
     public ConnectionInfo() {
@@ -671,6 +671,10 @@ public class ConnectionInfo implements Cloneable {
         return sessionFactory;
     }
 
+    public void setSessionFactory(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
+    }
+
     private static String remapURL(String url) {
         String urlMap = SysProperties.URL_MAP;
         if (urlMap != null && urlMap.length() > 0) {
@@ -718,6 +722,8 @@ public class ConnectionInfo implements Cloneable {
         ci.netFactoryName = netFactoryName;
         ci.networkTimeout = networkTimeout;
         ci.traceEnabled = traceEnabled;
+        ci.singleThreadCallback = singleThreadCallback;
+        ci.transactionHandler = transactionHandler;
         return ci;
     }
 
@@ -754,5 +760,35 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isServiceConnection() {
         return isServiceConnection;
+    }
+
+    private boolean singleThreadCallback;
+
+    public boolean isSingleThreadCallback() {
+        return singleThreadCallback;
+    }
+
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+        this.singleThreadCallback = singleThreadCallback;
+    }
+
+    private TransactionHandler transactionHandler;
+
+    public TransactionHandler getTransactionHandler() {
+        return transactionHandler;
+    }
+
+    public void setTransactionHandler(TransactionHandler transactionHandler) {
+        this.transactionHandler = transactionHandler;
+    }
+
+    private int databaseId = -1;
+
+    public int getDatabaseId() {
+        return databaseId;
+    }
+
+    public void setDatabaseId(int databaseId) {
+        this.databaseId = databaseId;
     }
 }

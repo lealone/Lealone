@@ -6,11 +6,10 @@
 package org.lealone.server;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.logging.Logger;
@@ -22,6 +21,8 @@ import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
+import org.lealone.db.link.LinkableList;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
@@ -30,39 +31,59 @@ import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.page.PageOperationHandlerBase;
+import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
-public class Scheduler extends PageOperationHandlerBase implements Runnable, SQLStatementExecutor,
-        AsyncTaskHandler, TransactionListener, PageOperation.ListenerFactory<Object> {
+public class Scheduler extends PageOperationHandlerBase //
+        implements SQLStatementExecutor, AsyncTaskHandler, //
+        PageOperation.ListenerFactory<Object>, //
+        TransactionHandler, TransactionListener, NetEventLoop.Accepter {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
-    private final CopyOnWriteArrayList<SessionInfo> sessions = new CopyOnWriteArrayList<>();
-
-    private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<AsyncTask> maxPriorityQueue = new ConcurrentLinkedQueue<>();
-
-    private final ConcurrentLinkedQueue<SessionInitTask> sessionInitTasks = new ConcurrentLinkedQueue<>();
+    // 预防客户端不断创建新连接试探用户名和密码，试错多次后降低接入新连接的速度
     private final SessionValidator sessionValidator = new SessionValidator();
+    private final LinkableList<SessionInitTask> sessionInitTasks = new LinkableList<>();
+    private final LinkableList<SessionInfo> sessions = new LinkableList<>();
 
-    // 这个只增不删所以用CopyOnWriteArrayList
-    private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
+    // 执行一些周期性任务，数量不多，以读为主，所以用LinkableList
+    // 用LinkableList是安全的，所有的初始PeriodicTask都在main线程中注册，新的PeriodicTask在当前调度线程中注册
+    private final LinkableList<AsyncPeriodicTask> periodicTasks = new LinkableList<>();
+
+    // 存放还没有给客户端发送响应结果的事务
+    private final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
+
+    // 杂七杂八的任务，数量不多，执行完就删除
+    private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
+
+    // 注册网络ACCEPT事件，固定是protocol server的个数
+    private final RegisterAccepterTask[] registerAccepterTasks;
 
     private final long loopInterval;
-    private volatile boolean end;
+    private final NetEventLoop netEventLoop;
+
+    private boolean end;
     private YieldableCommand nextBestCommand;
-    private NetEventLoop netEventLoop;
     private Session currentSession;
 
     public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
         super(id, "ScheduleService-" + id, waitingQueueSize);
-        String key = "scheduler_loop_interval";// 默认100毫秒
+        String key = "scheduler_loop_interval";
+        // 默认100毫秒
         loopInterval = MapUtils.getLong(config, key, 100);
-        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval);
+        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval, true);
         netEventLoop.setOwner(this);
+        netEventLoop.setAccepter(this);
+
+        int protocolServerCount = MapUtils.getInt(config, "protocol_server_count", 1);
+        registerAccepterTasks = new RegisterAccepterTask[protocolServerCount];
+        for (int i = 0; i < protocolServerCount; i++) {
+            registerAccepterTasks[i] = new RegisterAccepterTask();
+        }
     }
 
     @Override
@@ -80,6 +101,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         return true;
     }
 
+    @Override
     public NetEventLoop getNetEventLoop() {
         return netEventLoop;
     }
@@ -87,6 +109,61 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
     @Override
     protected Logger getLogger() {
         return logger;
+    }
+
+    @Override
+    public long getLoad() {
+        return sessions.size() + super.getLoad();
+    }
+
+    public void end() {
+        end = true;
+        wakeUp();
+    }
+
+    @Override
+    public void run() {
+        while (!end) {
+            runRegisterAccepterTasks();
+            runSessionInitTasks();
+            runMiscTasks();
+
+            runPageOperationTasks();
+            runSessionTasks();
+            runPendingTransactions();
+            executeNextStatement();
+            runEventLoop();
+        }
+        netEventLoop.close();
+    }
+
+    @Override
+    public void handle(AsyncTask task) {
+        LinkableTask ltask = new LinkableTask() {
+            @Override
+            public void run() {
+                task.run();
+            }
+        };
+        miscTasks.add(ltask);
+    }
+
+    private void runMiscTasks() {
+        if (!miscTasks.isEmpty()) {
+            LinkableTask task = miscTasks.getHead();
+            while (task != null) {
+                try {
+                    task.run();
+                } catch (Throwable e) {
+                    logger.warn("Failed to run misc task: " + task, e);
+                }
+                task = task.next;
+                miscTasks.setHead(task);
+                miscTasks.decrementSize();
+            }
+            if (miscTasks.getHead() == null)
+                miscTasks.setTail(null);
+        }
     }
 
     void addSessionInfo(SessionInfo si) {
@@ -97,123 +174,97 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         sessions.remove(si);
     }
 
-    @Override
-    public void run() {
-        while (!end) {
-            runSessionInitTasks();
-            runQueueTasks(maxPriorityQueue);
-            runQueueTasks(normPriorityQueue);
-            runQueueTasks(minPriorityQueue);
-
-            runPageOperationTasks();
-            runSessionTasks();
-            executeNextStatement();
-            runEventLoop();
-        }
-        netEventLoop.close();
-    }
-
-    private void runQueueTasks(ConcurrentLinkedQueue<AsyncTask> queue) {
-        AsyncTask task = queue.poll();
-        while (task != null) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                logger.warn("Failed to run async queue task: " + task, e);
-            }
-            task = queue.poll();
-        }
-    }
-
     private void runSessionTasks() {
         if (sessions.isEmpty())
             return;
-        // 不适合使用普通for循环，sessions会随时新增或删除元素，
-        // 只能每次创建一个迭代器包含元素数组的快照
-        for (SessionInfo si : sessions) {
-            if (si.isMarkClosed())
-                continue;
-            si.runSessionTasks();
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            if (!si.isMarkClosed())
+                si.runSessionTasks();
+            si = si.next;
         }
     }
 
+    private void checkSessionTimeout() {
+        if (sessions.isEmpty())
+            return;
+        long currentTime = System.currentTimeMillis();
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            si.checkSessionTimeout(currentTime);
+            si = si.next;
+        }
+    }
+
+    void addSessionInitTask(SessionInitTask task) {
+        sessionInitTasks.add(task);
+    }
+
     private void runSessionInitTasks() {
-        if (canHandleNextSessionInitTask()) {
+        if (!sessionInitTasks.isEmpty() && canHandleNextSessionInitTask()) {
             int size = sessionInitTasks.size();
+            SessionInitTask task = sessionInitTasks.getHead();
             for (int i = 0; i < size; i++) {
-                SessionInitTask task = sessionInitTasks.poll();
                 try {
                     if (!task.run()) {
-                        sessionInitTasks.add(task); // 继续加到最后，但是不会马上执行
+                        // 继续加到最后，但是不会马上执行
+                        // 要copy一下，否则next又指向自己
+                        sessionInitTasks.add(task.copy());
                     }
                 } catch (Throwable e) {
                     logger.warn("Failed to run session init task: " + task, e);
                 }
+                task = task.next;
+                sessionInitTasks.setHead(task);
+                sessionInitTasks.decrementSize();
                 if (!canHandleNextSessionInitTask()) {
                     break;
                 }
             }
+            if (sessionInitTasks.getHead() == null)
+                sessionInitTasks.setTail(null);
         }
     }
 
-    public void validateSession(boolean isUserAndPasswordCorrect) {
+    void validateSession(boolean isUserAndPasswordCorrect) {
         sessionValidator.validate(isUserAndPasswordCorrect);
-    }
-
-    void end() {
-        end = true;
-        wakeUp();
-    }
-
-    @Override
-    public long getLoad() {
-        return sessions.size() + super.getLoad();
-    }
-
-    @Override
-    public void handle(AsyncTask task) {
-        if (task.isPeriodic()) {
-            periodicQueue.add(task);
-        } else {
-            switch (task.getPriority()) {
-            case AsyncTask.NORM_PRIORITY:
-                normPriorityQueue.add(task);
-                break;
-            case AsyncTask.MAX_PRIORITY:
-                maxPriorityQueue.add(task);
-                break;
-            case AsyncTask.MIN_PRIORITY:
-                minPriorityQueue.add(task);
-                break;
-            default:
-                normPriorityQueue.add(task);
-            }
-        }
-        wakeUp();
     }
 
     boolean canHandleNextSessionInitTask() {
         return sessionValidator.canHandleNextSessionInitTask();
     }
 
-    public void addSessionInitTask(SessionInitTask task) {
-        sessionInitTasks.add(task);
-    }
-
     @Override
     public void addPeriodicTask(AsyncPeriodicTask task) {
-        periodicQueue.add(task);
+        periodicTasks.add(task);
     }
 
     @Override
     public void removePeriodicTask(AsyncPeriodicTask task) {
-        periodicQueue.remove(task);
+        periodicTasks.remove(task);
+    }
+
+    private void runPeriodicTasks() {
+        if (periodicTasks.isEmpty())
+            return;
+
+        AsyncPeriodicTask task = periodicTasks.getHead();
+        while (task != null) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                logger.warn("Failed to run periodic task: " + task, e);
+            }
+            task = task.next;
+        }
     }
 
     private void gc() {
         if (MemoryManager.needFullGc()) {
-            for (SessionInfo si : sessions) {
+            SessionInfo si = sessions.getHead();
+            while (si != null) {
                 si.getSession().clearQueryCache();
+                si = si.next;
             }
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
             te.fullGc(SchedulerFactory.getSchedulerCount(), getHandlerId());
@@ -225,6 +276,8 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;
         while (true) {
+            if (netEventLoop.isQueueLarge())
+                netEventLoop.write();
             gc();
             YieldableCommand c;
             if (nextBestCommand != null) {
@@ -234,12 +287,17 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
+                runSessionTasks();
+                c = getNextBestCommand(null, priority, true);
+            }
+            if (c == null) {
+                runRegisterAccepterTasks();
                 checkSessionTimeout();
-                handlePeriodicTasks();
+                runPeriodicTasks();
                 runPageOperationTasks();
                 runSessionTasks();
-                runQueueTasks(maxPriorityQueue);
-                runQueueTasks(normPriorityQueue);
+                runPendingTransactions();
+                runMiscTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {
                     break;
@@ -252,16 +310,17 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 if (last == c) {
                     runPageOperationTasks();
                     runSessionTasks();
-                    runQueueTasks(maxPriorityQueue);
-                    runQueueTasks(normPriorityQueue);
+                    runMiscTasks();
                 }
                 last = c;
             } catch (Throwable e) {
-                for (SessionInfo si : sessions) {
+                SessionInfo si = sessions.getHead();
+                while (si != null) {
                     if (si.getSessionId() == c.getSessionId()) {
                         si.sendError(c.getPacketId(), e);
                         break;
                     }
+                    si = si.next;
                 }
             }
         }
@@ -269,24 +328,18 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
 
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
+        // 如果有新的session需要创建，那么先接入新的session
+        runRegisterAccepterTasks();
         try {
-            runQueueTasks(maxPriorityQueue);
-            runQueueTasks(normPriorityQueue);
-            runQueueTasks(minPriorityQueue);
-            try {
-                netEventLoop.getSelector().selectNow();
-            } catch (IOException e) {
-                logger.warn("Failed to selectNow", e);
-            }
-            handleSelectedKeys();
-            netEventLoop.write();
-            runSessionInitTasks();
-            runSessionTasks();
-            netEventLoop.write();
-        } catch (Exception e) {
-            logger.warn("Failed to yieldIfNeeded", e);
-            return false;
+            netEventLoop.getSelector().selectNow();
+        } catch (IOException e) {
+            logger.warn("Failed to selectNow", e);
         }
+        netEventLoop.handleSelectedKeys();
+        netEventLoop.write();
+        runSessionInitTasks();
+        runSessionTasks();
+        netEventLoop.write();
 
         // 至少有两个session才需要yield
         if (sessions.size() < 2)
@@ -308,13 +361,15 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        for (SessionInfo si : sessions) {
-            if (si.isMarkClosed())
-                continue;
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
             // 执行yieldIfNeeded时，不需要检查当前session
-            if (currentSession == si.getSession())
+            if (currentSession == si.getSession() || si.isMarkClosed()) {
+                si = si.next;
                 continue;
+            }
             YieldableCommand c = si.getYieldableCommand(checkTimeout);
+            si = si.next;
             if (c == null)
                 continue;
             if (c.getPriority() > priority) {
@@ -325,131 +380,92 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         return best;
     }
 
+    // --------------------- 实现 TransactionListener 接口，用同步方式执行 ---------------------
+
+    private AtomicInteger syncCounter;
+    private RuntimeException syncException;
+    private boolean needWakeUp = true;
+
     @Override
-    public void wakeUp() {
-        netEventLoop.wakeup();
+    public void setNeedWakeUp(boolean needWakeUp) {
+        this.needWakeUp = needWakeUp;
     }
 
-    private void checkSessionTimeout() {
-        if (sessions.isEmpty())
-            return;
-        long currentTime = System.currentTimeMillis();
-        for (SessionInfo si : sessions) {
-            si.checkSessionTimeout(currentTime);
-        }
+    @Override
+    public int getListenerId() {
+        return getHandlerId();
     }
-
-    private void handlePeriodicTasks() {
-        if (periodicQueue.isEmpty())
-            return;
-        for (int i = 0, size = periodicQueue.size(); i < size; i++) {
-            AsyncTask task = periodicQueue.get(i);
-            try {
-                task.run();
-            } catch (Throwable e) {
-                logger.warn("Failed to run periodic task: " + task + ", task index: " + i, e);
-            }
-        }
-    }
-
-    // 以下使用同步方式执行
-    private AtomicInteger counter;
-    private volatile RuntimeException e;
 
     @Override
     public void beforeOperation() {
-        e = null;
-        counter = new AtomicInteger(1);
+        syncException = null;
+        syncCounter = new AtomicInteger(1);
     }
 
     @Override
     public void operationUndo() {
-        counter.decrementAndGet();
-        wakeUp();
+        syncCounter.decrementAndGet();
+        if (needWakeUp)
+            wakeUp();
     }
 
     @Override
     public void operationComplete() {
-        counter.decrementAndGet();
-        wakeUp();
+        syncCounter.decrementAndGet();
+        if (needWakeUp)
+            wakeUp();
     }
 
     @Override
     public void setException(RuntimeException e) {
-        this.e = e;
+        syncException = e;
     }
 
     @Override
     public RuntimeException getException() {
-        return e;
+        return syncException;
     }
 
     @Override
     public void await() {
         for (;;) {
-            if (counter.get() < 1)
+            if (syncCounter.get() < 1)
                 break;
-            runQueueTasks(maxPriorityQueue);
-            runQueueTasks(normPriorityQueue);
-            runQueueTasks(minPriorityQueue);
+            runMiscTasks();
             runPageOperationTasks();
-            if (counter.get() < 1)
+            if (syncCounter.get() < 1)
                 break;
             runEventLoop();
         }
-        if (e != null)
-            throw e;
+        needWakeUp = true;
+        if (syncException != null)
+            throw syncException;
     }
 
-    private void runEventLoop() {
-        try {
-            netEventLoop.write();
-            netEventLoop.select();
-            handleSelectedKeys();
-        } catch (Throwable t) {
-            logger.warn("Failed to runEventLoop", t);
-        }
+    @Override
+    public Object addSession(Session session, Object parentSessionInfo) {
+        SessionInfo parent = (SessionInfo) parentSessionInfo;
+        SessionInfo si = parent.copy((ServerSession) session);
+        ((ServerSession) session).setSessionInfo(si);
+        addSessionInfo(si);
+        return si;
     }
 
-    private void handleSelectedKeys() {
-        Set<SelectionKey> keys = netEventLoop.getSelector().selectedKeys();
-        if (!keys.isEmpty()) {
-            try {
-                for (SelectionKey key : keys) {
-                    if (key.isValid()) {
-                        int readyOps = key.readyOps();
-                        if ((readyOps & SelectionKey.OP_READ) != 0) {
-                            netEventLoop.read(key);
-                        } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                            netEventLoop.write(key);
-                        } else {
-                            key.cancel();
-                        }
-                    } else {
-                        key.cancel();
-                    }
-                }
-            } finally {
-                keys.clear();
-            }
-        }
+    @Override
+    public void removeSession(Object sessionInfo) {
+        SessionInfo si = (SessionInfo) sessionInfo;
+        // 不删除root session
+        if (!si.getSession().isRoot())
+            removeSessionInfo(si);
     }
 
-    public void register(AsyncConnection conn) {
-        conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
-        // 如果Scheduler线程在执行select，
-        // 在jdk1.8中不能直接在另一个线程中注册读写操作，否则会阻塞这个线程
-        // jdk16不存在这个问题
-        handle(() -> {
-            netEventLoop.register(conn);
-        });
-    }
+    // --------------------- 实现 PageOperation.ListenerFactory 接口 ---------------------
 
     @Override
     public PageOperation.Listener<Object> createListener() {
         return new PageOperation.Listener<Object>() {
 
-            private volatile Object result;
+            private Object result;
 
             @Override
             public void startListen() {
@@ -461,7 +477,7 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
                 if (ar.isSucceeded()) {
                     result = ar.getResult();
                 } else {
-                    setException(new RuntimeException(ar.getCause()));
+                    setException(ar.getCause());
                 }
                 operationComplete();
             }
@@ -474,7 +490,124 @@ public class Scheduler extends PageOperationHandlerBase implements Runnable, SQL
         };
     }
 
+    // --------------------- 网络事件循环 ---------------------
+
+    @Override
+    public void wakeUp() {
+        netEventLoop.wakeup();
+    }
+
+    private void runEventLoop() {
+        try {
+            netEventLoop.write();
+            netEventLoop.select();
+            netEventLoop.handleSelectedKeys();
+        } catch (Throwable t) {
+            logger.warn("Failed to runEventLoop", t);
+        }
+    }
+
+    // --------------------- 注册 Accepter 和新的 AsyncConnection ---------------------
+
+    public void register(AsyncConnection conn) {
+        conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
+        netEventLoop.register(conn);
+    }
+
+    private class RegisterAccepterTask {
+
+        private AsyncServer<?> asyncServer;
+        private ServerSocketChannel serverChannel;
+        private boolean needRegisterAccepter;
+
+        private void run() {
+            if (!needRegisterAccepter)
+                return;
+            try {
+                serverChannel.register(netEventLoop.getSelector(), SelectionKey.OP_ACCEPT, this);
+            } catch (ClosedChannelException e) {
+                logger.warn("Failed to register server channel: " + serverChannel);
+            }
+            needRegisterAccepter = false;
+        }
+    }
+
+    public void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
+        RegisterAccepterTask task = registerAccepterTasks[asyncServer.getServerId()];
+        task.asyncServer = asyncServer;
+        task.serverChannel = serverChannel;
+        task.needRegisterAccepter = true;
+        wakeUp();
+    }
+
+    private void runRegisterAccepterTasks() {
+        for (int i = 0; i < registerAccepterTasks.length; i++) {
+            registerAccepterTasks[i].run();
+        }
+    }
+
+    @Override
+    public void accept(SelectionKey key) {
+        RegisterAccepterTask task = (RegisterAccepterTask) key.attachment();
+        task.asyncServer.getProtocolServer().accept(this);
+        if (task.asyncServer.isRoundRobinAcceptEnabled()) {
+            Scheduler scheduler = SchedulerFactory.getScheduler();
+            // 如果下一个负责处理网络accept事件的调度器又是当前调度器，那么不需要做什么
+            if (scheduler != this) {
+                key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
+                scheduler.registerAccepter(task.asyncServer, task.serverChannel);
+                task.asyncServer = null;
+                task.serverChannel = null;
+            }
+        }
+    }
+
+    // --------------------- 实现 TransactionHandler 接口 ---------------------
+
+    // runPendingTransactions和addTransaction已经确保只有一个调度线程执行，所以是单线程安全的
+    private void runPendingTransactions() {
+        if (pendingTransactions.isEmpty())
+            return;
+        PendingTransaction pt = pendingTransactions.getHead();
+        while (pt != null && pt.isSynced()) {
+            if (!pt.isCompleted()) {
+                try {
+                    pt.getTransaction().asyncCommitComplete();
+                } catch (Throwable e) {
+                    if (logger != null)
+                        logger.warn("Failed to run pending transaction: " + pt, e);
+                }
+            }
+            pt = pt.getNext();
+            pendingTransactions.decrementSize();
+            pendingTransactions.setHead(pt);
+        }
+        if (pendingTransactions.getHead() == null)
+            pendingTransactions.setTail(null);
+    }
+
+    @Override
+    public void addTransaction(PendingTransaction pt) {
+        pendingTransactions.add(pt);
+    }
+
+    @Override
+    public PendingTransaction getTransaction() {
+        return pendingTransactions.getHead();
+    }
+
+    @Override
     public DataBufferFactory getDataBufferFactory() {
-        return DataBufferFactory.getConcurrentFactory();
+        return netEventLoop.getDataBufferFactory();
+    }
+
+    @Override
+    public void addWaitingTransactionListener(TransactionListener listener) {
+        addWaitingHandler((PageOperationHandler) listener);
+    }
+
+    @Override
+    public void wakeUpWaitingTransactionListeners() {
+        wakeUpWaitingHandlers();
     }
 }

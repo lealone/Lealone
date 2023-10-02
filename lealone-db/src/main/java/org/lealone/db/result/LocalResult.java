@@ -378,7 +378,7 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getColumnName(int i) {
-        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1]
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1] //
                 : expressions[i].getColumnName();
     }
 
@@ -442,8 +442,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String toString() {
-        return super.toString() + " columns: " + visibleColumnCount + " rows: " + rowCount + " pos: "
-                + rowId;
+        return super.toString() + " columns: " + visibleColumnCount //
+                + " rows: " + rowCount + " pos: " + rowId;
     }
 
     /**

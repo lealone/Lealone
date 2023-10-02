@@ -14,6 +14,8 @@ import org.lealone.db.DataBuffer;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.aote.lock.InsertRowLock;
+import org.lealone.transaction.aote.lock.RowLock;
 
 //每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段
 public class TransactionalValue implements ITransactionalValue {
@@ -30,28 +32,16 @@ public class TransactionalValue implements ITransactionalValue {
         }
     }
 
-    private static class RowLock {
-        final AOTransaction t;
-        final Object oldValue;
-
-        RowLock(AOTransaction t, Object oldValue) {
-            this.t = t;
-            this.oldValue = oldValue;
-        }
-
-        public boolean isCommitted() {
-            return t.isCommitted();
-        }
-    }
-
     // 对于一个已经提交的值，如果当前事务因为隔离级别的原因读不到这个值，那么就返回SIGHTLESS
     public static final Object SIGHTLESS = new Object();
 
     private static final AtomicReferenceFieldUpdater<TransactionalValue, RowLock> rowLockUpdater = //
             AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, RowLock.class, "rowLock");
 
+    private static final RowLock NULL = new RowLock();
+
+    private volatile RowLock rowLock = NULL;
     private Object value;
-    private volatile RowLock rowLock;
 
     public TransactionalValue(Object value) {
         this.value = value;
@@ -59,21 +49,29 @@ public class TransactionalValue implements ITransactionalValue {
 
     public TransactionalValue(Object value, AOTransaction t) {
         this.value = value;
-        this.rowLock = new RowLock(t, null); // insert的场景，old value是null
-        t.addLock(this);
+        rowLock = new InsertRowLock(this);
+        rowLock.tryLock(t, this, null); // insert的场景，old value是null
+    }
+
+    public void resetRowLock() {
+        rowLock = NULL;
     }
 
     // 二级索引需要设置
     public void setTransaction(AOTransaction t) {
-        if (rowLock == null) {
-            rowLock = new RowLock(t, value);
-            t.addLock(this);
+        if (rowLock == NULL) {
+            rowLockUpdater.compareAndSet(this, NULL, new InsertRowLock(this));
         }
+        if (rowLock.getTransaction() == null)
+            rowLock.tryLock(t, this, value);
+    }
+
+    public AOTransaction getTransaction() {
+        return rowLock.getTransaction();
     }
 
     Object getOldValue() {
-        RowLock rl = rowLock;
-        return rl == null ? null : rl.oldValue;
+        return rowLock.getOldValue();
     }
 
     public void setValue(Object value) {
@@ -86,22 +84,22 @@ public class TransactionalValue implements ITransactionalValue {
     }
 
     public Object getValue(AOTransaction transaction) {
-        RowLock rl = rowLock;
-        if (rl != null && rl.t == transaction)
+        AOTransaction t = rowLock.getTransaction();
+        if (t == transaction)
             return value;
         // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
         int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
                 : transaction.getIsolationLevel();
         switch (isolationLevel) {
         case Transaction.IL_READ_COMMITTED: {
-            if (rl != null) {
-                if (rl.isCommitted()) {
+            if (t != null) {
+                if (t.isCommitted()) {
                     return value;
                 } else {
-                    if (rl.oldValue == null)
+                    if (rowLock.getOldValue() == null)
                         return SIGHTLESS; // 刚刚insert但是还没有提交的记录
                     else
-                        return rl.oldValue;
+                        return rowLock.getOldValue();
                 }
             }
             return value;
@@ -109,14 +107,14 @@ public class TransactionalValue implements ITransactionalValue {
         case Transaction.IL_REPEATABLE_READ:
         case Transaction.IL_SERIALIZABLE: {
             long tid = transaction.getTransactionId();
-            if (rl != null && rl.t.commitTimestamp > 0 && tid >= rl.t.commitTimestamp) {
+            if (t != null && t.commitTimestamp > 0 && tid >= t.commitTimestamp) {
                 return value;
             }
             OldValue oldValue = transaction.transactionEngine.getOldValue(this);
             if (oldValue != null) {
                 if (tid >= oldValue.tid) {
-                    if (rl != null && rl.oldValue != null)
-                        return rl.oldValue;
+                    if (t != null && rowLock.getOldValue() != null)
+                        return rowLock.getOldValue();
                     else
                         return value;
                 }
@@ -127,9 +125,9 @@ public class TransactionalValue implements ITransactionalValue {
                 }
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
-            if (rl != null) {
-                if (rl.oldValue != null)
-                    return rl.oldValue;
+            if (t != null) {
+                if (rowLock.getOldValue() != null)
+                    return rowLock.getOldValue();
                 else
                     return SIGHTLESS; // 刚刚insert但是还没有提交的记录
             } else {
@@ -147,48 +145,44 @@ public class TransactionalValue implements ITransactionalValue {
     // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
     // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
     public long getTid() {
-        RowLock rl = rowLock;
-        return rl == null ? 0 : rl.t.transactionId;
+        AOTransaction t = rowLock.getTransaction();
+        return t == null ? 0 : t.transactionId;
     }
 
     // 小于0：已经删除
     // 等于0：加锁失败
     // 大于0：加锁成功
     public int tryLock(AOTransaction t) {
-        RowLock rl = rowLock;
-        if (rl != null && t == rl.t)
-            return 1;
-        if (value == null && rl == null) // 已经删除了
+        // 加一个if判断，避免创建对象
+        if (rowLock == NULL) {
+            rowLockUpdater.compareAndSet(this, NULL, new RowLock());
+        }
+        if (value == null && !isLocked(t)) // 已经删除了
             return -1;
-        rl = new RowLock(t, value);
-        if (rowLockUpdater.compareAndSet(this, null, rl)) {
+        if (rowLock.tryLock(t, this, value))
             if (value == null) // 已经删除了
                 return -1;
-            t.addLock(this);
-            return 1;
-        }
-        return 0;
-    }
-
-    public void unlock() {
-        rowLock = null;
+            else
+                return 1;
+        else
+            return 0;
     }
 
     public boolean isLocked(AOTransaction t) {
-        RowLock rl = rowLock;
-        return rl == null ? false : rl.t != t;
+        if (rowLock.getTransaction() == null)
+            return false;
+        else
+            return rowLock.getTransaction() != t;
     }
 
-    public AOTransaction getLockOwner() {
-        RowLock rl = rowLock;
-        return rl == null ? null : rl.t;
+    public int addWaitingTransaction(Object key, AOTransaction t) {
+        return rowLock.addWaitingTransaction(key, rowLock.getTransaction(), t.getSession());
     }
 
     public void commit(boolean isInsert) {
-        RowLock rl = rowLock;
-        if (rl == null)
+        AOTransaction t = rowLock.getTransaction();
+        if (t == null)
             return;
-        AOTransaction t = rl.t;
         AOTransactionEngine te = t.transactionEngine;
         if (te.containsRepeatableReadTransactions()) {
             if (isInsert) {
@@ -204,10 +198,10 @@ public class TransactionalValue implements ITransactionalValue {
                 }
                 OldValue v = new OldValue(t.commitTimestamp, value);
                 if (old == null) {
-                    OldValue ov = new OldValue(0, rl.oldValue);
+                    OldValue ov = new OldValue(0, rowLock.getOldValue());
                     v.next = ov;
                 } else if (old.useLast) {
-                    OldValue ov = new OldValue(old.tid + 1, rl.oldValue);
+                    OldValue ov = new OldValue(old.tid + 1, rowLock.getOldValue());
                     ov.next = old;
                     v.next = ov;
                 } else {
@@ -219,8 +213,8 @@ public class TransactionalValue implements ITransactionalValue {
     }
 
     public boolean isCommitted() {
-        RowLock rl = rowLock;
-        return rl == null || rl.isCommitted();
+        AOTransaction t = rowLock.getTransaction();
+        return t == null || t.isCommitted();
     }
 
     public void rollback(Object oldValue) {
@@ -233,11 +227,11 @@ public class TransactionalValue implements ITransactionalValue {
     }
 
     public void writeMeta(DataBuffer buff) {
-        // RowLock rl = rowLock;
-        // if (rl == null) {
+        // AOTransaction t = rowLock.getTransaction();
+        // if (t == null) {
         // buff.putVarLong(0);
         // } else {
-        // buff.putVarLong(rl.t.transactionId);
+        // buff.putVarLong(t.transactionId);
         // }
         buff.putVarLong(0); // 兼容老版本
     }
@@ -253,11 +247,11 @@ public class TransactionalValue implements ITransactionalValue {
     }
 
     private Object getCommittedValue() {
-        RowLock rl = rowLock;
-        if (rl == null || rl.t.commitTimestamp > 0)
+        AOTransaction t = rowLock.getTransaction();
+        if (t == null || t.commitTimestamp > 0)
             return value;
         else
-            return rl.oldValue;
+            return rowLock.getOldValue();
     }
 
     public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType,

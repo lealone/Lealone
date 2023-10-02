@@ -17,6 +17,7 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DbSetting;
+import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
@@ -25,6 +26,13 @@ public abstract class SessionBase implements Session {
 
     protected boolean autoCommit = true;
     protected boolean closed;
+
+    protected boolean invalid;
+    protected String targetNodes;
+    protected RunMode runMode;
+    protected String newTargetNodes;
+    protected int consistencyLevel;
+
     protected TraceSystem traceSystem;
 
     @Override
@@ -35,6 +43,10 @@ public abstract class SessionBase implements Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         this.autoCommit = autoCommit;
+    }
+
+    @Override
+    public void asyncCommitComplete() {
     }
 
     @Override
@@ -57,6 +69,65 @@ public abstract class SessionBase implements Session {
         if (isClosed()) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
+    }
+
+    @Override
+    public void setInvalid(boolean v) {
+        invalid = v;
+    }
+
+    @Override
+    public boolean isInvalid() {
+        return invalid;
+    }
+
+    @Override
+    public boolean isValid() {
+        return !invalid;
+    }
+
+    @Override
+    public void setTargetNodes(String targetNodes) {
+        this.targetNodes = targetNodes;
+    }
+
+    @Override
+    public String getTargetNodes() {
+        return targetNodes;
+    }
+
+    public void setConsistencyLevel(int consistencyLevel) {
+        this.consistencyLevel = consistencyLevel;
+    }
+
+    public int getConsistencyLevel() {
+        return consistencyLevel;
+    }
+
+    @Override
+    public void setRunMode(RunMode runMode) {
+        this.runMode = runMode;
+    }
+
+    @Override
+    public RunMode getRunMode() {
+        return runMode;
+    }
+
+    @Override
+    public boolean isRunModeChanged() {
+        return newTargetNodes != null;
+    }
+
+    @Override
+    public void runModeChanged(String newTargetNodes) {
+        this.newTargetNodes = newTargetNodes;
+    }
+
+    public String getNewTargetNodes() {
+        String nodes = newTargetNodes;
+        newTargetNodes = null;
+        return nodes;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {

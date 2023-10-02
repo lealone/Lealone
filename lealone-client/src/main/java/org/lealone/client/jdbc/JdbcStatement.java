@@ -99,7 +99,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+        AsyncCallback<ResultSet> ac = AsyncCallback.createConcurrentCallback();
         command.executeQuery(maxRows, scrollable).onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isSucceeded()) {
@@ -227,7 +227,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
         SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = AsyncCallback.createConcurrentCallback();
         command.executeUpdate().onComplete(ar -> {
             // 设置完后再调用close，否则有可能当前语句提前关闭了
             setExecutingStatement(null);

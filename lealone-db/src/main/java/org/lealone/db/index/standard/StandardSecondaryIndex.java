@@ -98,7 +98,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         final TransactionMap<IndexKey, Value> map = getMap(session);
         final IndexKey key = convertToKey(row);
 
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         map.addIfAbsent(key, ValueNull.INSTANCE).onComplete(ar -> {
             if (ar.isFailed()) {
                 // 违反了唯一性，

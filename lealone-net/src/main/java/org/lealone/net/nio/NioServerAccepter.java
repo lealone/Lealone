@@ -11,34 +11,28 @@ import java.nio.channels.SocketChannel;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.ThreadUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
-//只负责接收新的TCP/MySQL/PostgreSQL连接
+//负责接收新的ProtocolServer连接，比如TCP、P2P
 //TODO 1.支持SSL 2.支持配置参数
-class ServerAccepter extends NetServerBase implements Runnable {
+class NioServerAccepter extends NetServerBase {
 
-    private static final Logger logger = LoggerFactory.getLogger(ServerAccepter.class);
+    private static final Logger logger = LoggerFactory.getLogger(NioServerAccepter.class);
     private ServerSocketChannel serverChannel;
 
     @Override
     public synchronized void start() {
         if (isStarted())
             return;
+        super.start();
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
-
-            logger.info("Starting " + getName() + " accepter");
-            serverChannel.configureBlocking(true);
-            super.start();
-            String name = getName() + "Accepter-" + getPort();
-            ThreadUtils.start(name, isDaemon(), () -> {
-                ServerAccepter.this.run();
-            });
+            serverChannel.configureBlocking(false);
+            connectionManager.registerAccepter(serverChannel);
         } catch (Exception e) {
-            checkBindException(e, "Failed to start " + getName() + " accepter");
+            checkBindException(e, "Failed to start protocol server accepter");
         }
     }
 
@@ -46,7 +40,6 @@ class ServerAccepter extends NetServerBase implements Runnable {
     public synchronized void stop() {
         if (isStopped())
             return;
-        logger.info("Stopping " + getName() + " accepter");
         super.stop();
         if (serverChannel != null) {
             try {
@@ -58,20 +51,14 @@ class ServerAccepter extends NetServerBase implements Runnable {
     }
 
     @Override
-    public void run() {
-        while (!isStopped()) {
-            accept();
-        }
-    }
-
-    private void accept() {
+    public void accept(Object scheduler) {
         SocketChannel channel = null;
         AsyncConnection conn = null;
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
             NioWritableChannel writableChannel = new NioWritableChannel(channel, null);
-            conn = createConnection(writableChannel);
+            conn = createConnection(writableChannel, scheduler);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);

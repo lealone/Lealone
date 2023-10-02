@@ -257,7 +257,7 @@ public class Optimizer {
     * @param masks per-column comparison bit masks, null means 'always false',
     *              see constants in IndexCondition
     * @param sortOrder the sort order
-    * @return the plan item
+    * @return the plan item 
     */
     public static PlanItem getBestPlanItem(ServerSession session, int[] masks, Table table,
             SortOrder sortOrder) {

@@ -9,11 +9,11 @@ import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
-import org.lealone.db.QueryStatisticsData;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.stat.QueryStatisticsData;
 
 /**
  * This class is responsible to build the database performance meta data pseudo tables.
@@ -56,9 +56,9 @@ public class PerfMetaTable extends MetaTable {
         ArrayList<Row> rows = Utils.newSmallArrayList();
         switch (type) {
         case QUERY_STATISTICS: {
-            QueryStatisticsData control = database.getQueryStatisticsData();
-            if (control != null) {
-                for (QueryStatisticsData.QueryEntry entry : control.getQueries()) {
+            QueryStatisticsData statData = database.getQueryStatisticsData();
+            if (statData != null) {
+                for (QueryStatisticsData.QueryEntry entry : statData.getQueries()) {
                     add(rows,
                             // SQL_STATEMENT
                             entry.sqlStatement,

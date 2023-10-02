@@ -28,6 +28,14 @@ public class StatementList extends StatementBase {
         this.remaining = remaining;
     }
 
+    public StatementBase getFirstStatement() {
+        return firstStatement;
+    }
+
+    public String getRemaining() {
+        return remaining;
+    }
+
     @Override
     public int getType() {
         return firstStatement.getType();

@@ -74,7 +74,7 @@ public class LealoneDatabase extends Database
         for (Entry<Object, Object> e : ci.getProperties().entrySet()) {
             parameters.put(e.getKey().toString(), e.getValue().toString());
         }
-        int id = INSTANCE.allocateObjectId();
+        int id = ci.getDatabaseId() < 0 ? INSTANCE.allocateObjectId() : ci.getDatabaseId();
         db = new Database(id, name, parameters);
         db.setRunMode(RunMode.EMBEDDED);
         db.init();

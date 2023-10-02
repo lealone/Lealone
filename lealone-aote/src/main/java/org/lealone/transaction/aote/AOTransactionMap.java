@@ -43,7 +43,12 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public StorageDataType getValueType() {
-        return ((TransactionalValueType) map.getValueType()).valueType;
+        return getTransactionalValueType().valueType;
+    }
+
+    @Override
+    public TransactionalValueType getTransactionalValueType() {
+        return (TransactionalValueType) map.getValueType();
     }
 
     @Override
@@ -304,7 +309,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         String mapName = map.getName();
         if (mapName != null) {
             map.remove();
-            transaction.transactionEngine.removeStorageMap(mapName);
+            transaction.transactionEngine.removeStorageMap(transaction, mapName);
         }
     }
 
@@ -421,7 +426,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             newTV = new TransactionalValue(value); // 内部没有增加行锁
             r = null;
         }
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = transaction.createCallback();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = ar -> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
@@ -447,7 +452,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                 ac.setAsyncResult(ar.getCause());
             }
         };
-        map.putIfAbsent(key, newTV, handler);
+        map.putIfAbsent(transaction.getSession(), key, newTV, handler);
         return ac;
     }
 
@@ -470,7 +475,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         else
             newTV = new TransactionalValue(value); // 内部没有增加行锁
         if (handler != null) {
-            map.append(newTV, ar -> {
+            map.append(session, newTV, ar -> {
                 if (isUndoLogEnabled && ar.isSucceeded())
                     transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
                 handler.handle(ar);
@@ -510,7 +515,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         // 提前调用tryLock的场景直接跳过
         if (!isLockedBySelf && tv.tryLock(transaction) != 1) {
             // 当前行已经被其他事务锁住了
-            return addWaitingTransaction(key, tv);
+            return Transaction.OPERATION_NEED_WAIT;
         }
         Object oldValue = tv.getValue();
         tv.setTransaction(transaction); // 二级索引需要设置
@@ -521,20 +526,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public int addWaitingTransaction(Object key, Object oldTValue) {
-        return addWaitingTransaction(key, (TransactionalValue) oldTValue);
-    }
-
-    private int addWaitingTransaction(Object key, TransactionalValue oldTValue) {
-        Object object = Thread.currentThread();
-        if (!(object instanceof TransactionListener)) {
-            return Transaction.OPERATION_NEED_WAIT;
-        }
-        AOTransaction t = oldTValue.getLockOwner();
-        // 有可能在这一步事务提交了
-        if (t == null)
-            return Transaction.OPERATION_NEED_RETRY;
-        else
-            return t.addWaitingTransaction(key, transaction, (TransactionListener) object);
+        return ((TransactionalValue) oldTValue).addWaitingTransaction(key, transaction);
     }
 
     @Override

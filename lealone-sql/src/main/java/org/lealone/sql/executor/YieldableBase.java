@@ -37,9 +37,9 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected long startTimeNanos;
     protected boolean started;
 
-    protected volatile Throwable pendingException;
-    protected volatile boolean stopped;
-    protected volatile boolean yieldEnabled = true;
+    protected Throwable pendingException;
+    protected boolean stopped;
+    protected boolean yieldEnabled = true;
 
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;

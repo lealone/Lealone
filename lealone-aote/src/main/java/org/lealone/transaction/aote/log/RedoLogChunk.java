@@ -10,8 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -21,7 +20,11 @@ import org.lealone.db.DataBuffer;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.transaction.aote.log.RedoLogRecord.Checkpoint;
+import org.lealone.transaction.PendingTransaction;
+import org.lealone.transaction.TransactionHandler;
+import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
+import org.lealone.transaction.aote.log.RedoLogRecord.CheckpointRLR;
+import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
 
 class RedoLogChunk {
 
@@ -54,11 +57,12 @@ class RedoLogChunk {
     private FileStorage checkpointChunk;
     private int checkpointChunkId;
 
+    private CheckpointServiceImpl checkpointService;
+
     private int id;
     private FileStorage fileStorage;
     private final Map<String, String> config;
-    private final AtomicInteger logQueueSize = new AtomicInteger(0);
-    private final LinkedTransferQueue<RedoLogRecord> logQueue = new LinkedTransferQueue<>();
+    private final LogSyncService logSyncService;
     private long pos;
 
     private final int archiveMaxFiles;
@@ -66,9 +70,10 @@ class RedoLogChunk {
 
     private final long logChunkSize;
 
-    RedoLogChunk(int id, Map<String, String> config) {
+    RedoLogChunk(int id, Map<String, String> config, LogSyncService logSyncService) {
         this.id = id;
         this.config = config;
+        this.logSyncService = logSyncService;
         fileStorage = getFileStorage(id, config);
         pos = fileStorage.size();
 
@@ -82,10 +87,6 @@ class RedoLogChunk {
     private static FileStorage getFileStorage(int id, Map<String, String> config) {
         String chunkFileName = getChunkFileName(config, id);
         return FileStorage.open(chunkFileName, config);
-    }
-
-    int logQueueSize() {
-        return logQueueSize.get();
     }
 
     // 第一次打开时只有一个线程读，所以用LinkedList即可
@@ -103,39 +104,86 @@ class RedoLogChunk {
         return list;
     }
 
-    void addRedoLogRecord(RedoLogRecord r) {
-        // 虽然这两行不是原子操作，但是也没影响的，最多日志线程空转一下
-        logQueue.add(r);
-        logQueueSize.incrementAndGet();
-    }
-
     void close() {
         save();
         fileStorage.close();
     }
 
     void save() {
+        TransactionHandler[] waitingHandlers = logSyncService.getWaitingHandlers();
+        int waitingQueueSize = waitingHandlers.length;
+        AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
+        long chunkLength = 0;
         while (logQueueSize.get() > 0) {
-            LinkedList<RedoLogRecord> list = new LinkedList<>();
-            logQueue.drainTo(list); // 性能比逐个poll要好
-            logQueueSize.addAndGet(-list.size());
-            long chunkLength = 0;
-            for (RedoLogRecord r : list) {
-                if (r.isCheckpoint()) {
-                    if (!checkpoint(r))
+            PendingTransaction[] lastPts = new PendingTransaction[waitingQueueSize];
+            PendingTransaction[] pts = new PendingTransaction[waitingQueueSize];
+            for (int i = 0; i < waitingQueueSize; i++) {
+                lastPts[i] = null;
+                TransactionHandler handler = waitingHandlers[i];
+                if (handler == null) {
+                    continue;
+                }
+                PendingTransaction pt = handler.getTransaction();
+                while (pt != null) {
+                    if (pt.isSynced()) {
+                        pt = pt.getNext();
+                        continue;
+                    }
+                    pts[handler.getHandlerId()] = pt;
+                    break;
+                }
+            }
+            PendingCheckpoint pendingCheckpoint = nextPendingCheckpoint(
+                    checkpointService.getCheckpoint());
+            PendingTransaction pt = nextPendingTransaction(pts);
+            while (pt != null || pendingCheckpoint != null) {
+                if (pt != null) {
+                    if (pendingCheckpoint == null
+                            || pt.getLogId() < pendingCheckpoint.getCheckpointId()) {
+                        RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
+                        r.write(buff);
+                        if (buff.position() > BUFF_SIZE)
+                            chunkLength += write(buff);
+                        logQueueSize.decrementAndGet();
+                        // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
+                        if (logSyncService.isPeriodic())
+                            pt.setSynced(true);
+                        int index = pt.getTransactionHandler().getHandlerId();
+                        lastPts[index] = pt;
+                        pts[index] = pt.getNext();
+                        pt = nextPendingTransaction(pts);
+                        continue;
+                    }
+
+                }
+                if (pendingCheckpoint != null) {
+                    if (!checkpoint(pendingCheckpoint))
                         chunkLength = 0;
-                } else {
-                    r.write(buff);
-                    if (buff.position() > BUFF_SIZE)
-                        chunkLength += write(buff);
+                    logQueueSize.decrementAndGet();
+                    pendingCheckpoint = nextPendingCheckpoint(pendingCheckpoint.getNext());
                 }
             }
             chunkLength += write(buff);
-            if (chunkLength > 0) {
+
+            if (chunkLength > 0 && !logSyncService.isPeriodic()) {
+                chunkLength = 0;
                 fileStorage.sync();
             }
-            for (RedoLogRecord r : list) {
-                r.onSynced();
+            for (int i = 0; i < waitingQueueSize; i++) {
+                TransactionHandler handler = waitingHandlers[i];
+                if (handler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
+                    continue;
+                }
+                if (!logSyncService.isPeriodic()) {
+                    pt = handler.getTransaction();
+                    while (pt != null) {
+                        pt.setSynced(true);
+                        if (pt == lastPts[i])
+                            break;
+                        pt = pt.getNext();
+                    }
+                }
+                handler.wakeUp();
             }
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)
@@ -144,6 +192,41 @@ class RedoLogChunk {
             if (pos > logChunkSize)
                 nextChunk(true);
         }
+        if (chunkLength > 0 && logSyncService.isPeriodic()) {
+            fileStorage.sync();
+        }
+    }
+
+    private PendingTransaction nextPendingTransaction(PendingTransaction[] pts) {
+        PendingTransaction minPendingTransaction = null;
+        long minCommitTimestamp = Long.MAX_VALUE;
+        for (int i = 0, len = pts.length; i < len; i++) {
+            PendingTransaction pt = pts[i];
+            while (pt != null) {
+                if (pt.isSynced()) {
+                    pt = pt.getNext();
+                    pts[i] = pt;
+                    continue;
+                }
+                if (pt.getLogId() < minCommitTimestamp) {
+                    minCommitTimestamp = pt.getLogId();
+                    minPendingTransaction = pt;
+                }
+                break;
+            }
+        }
+        return minPendingTransaction;
+    }
+
+    private PendingCheckpoint nextPendingCheckpoint(PendingCheckpoint pc) {
+        while (pc != null) {
+            if (pc.isSynced()) {
+                pc = pc.getNext();
+                continue;
+            }
+            return pc;
+        }
+        return null;
     }
 
     private int write(DataBuffer buff) {
@@ -168,10 +251,10 @@ class RedoLogChunk {
         pos = 0;
     }
 
-    private boolean checkpoint(RedoLogRecord r) {
-        Checkpoint cp = (Checkpoint) r;
+    private boolean checkpoint(PendingCheckpoint pendingCheckpoint) {
+        CheckpointRLR cp = pendingCheckpoint.getCheckpoint();
         if (cp.isSaved()) {
-            r.write(checkpointBuff);
+            cp.write(checkpointBuff);
             checkpointChunk.writeFully(checkpointChunk.size(), checkpointBuff.getAndFlipBuffer());
             checkpointBuff.clear();
             checkpointChunk.sync();
@@ -179,15 +262,15 @@ class RedoLogChunk {
             archiveOldChunkFiles();
             checkpointChunk = null;
             checkpointChunkId = 0;
-            return true;
         } else {
             write(buff);
             checkpointChunk = fileStorage;
             checkpointChunkId = id;
             nextChunk(false);
-            r.onSynced();
-            return false;
         }
+        pendingCheckpoint.setSynced(true);
+        checkpointService.wakeUp();
+        return cp.isSaved();
     }
 
     private void archiveOldChunkFiles() {
@@ -228,8 +311,16 @@ class RedoLogChunk {
         }
     }
 
+    void setCheckpointService(CheckpointServiceImpl checkpointService) {
+        this.checkpointService = checkpointService;
+    }
+
+    CheckpointServiceImpl getCheckpointService() {
+        return checkpointService;
+    }
+
     @Override
     public String toString() {
-        return "RedoLogChunk[" + id + ", " + fileStorage.getFileName() + "]";
+        return "RedoLogChunk[" + fileStorage.getFileName() + "]";
     }
 }

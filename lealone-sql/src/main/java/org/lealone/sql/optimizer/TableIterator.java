@@ -31,6 +31,10 @@ public class TableIterator {
 
     public void start() {
         tableFilter.startQuery(session);
+        reset();
+    }
+
+    public void reset() {
         tableFilter.reset();
     }
 

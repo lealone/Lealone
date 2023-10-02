@@ -5,23 +5,19 @@
  */
 package org.lealone.server;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Queue;
-
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.sql.PreparedSQLStatement;
 
-public class SessionInfo implements ServerSession.TimeoutListener {
+public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSession.TimeoutListener {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
-    // taskQueue中的命令统一由scheduler调度执行
-    private final Queue<AsyncTask> taskQueue = new LinkedList<>();
     private final Scheduler scheduler;
     private final TcpServerConnection conn;
 
@@ -30,6 +26,9 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private final int sessionTimeout;
 
     private long lastActiveTime;
+
+    // task统一由scheduler调度执行
+    private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
     SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
             int sessionTimeout) {
@@ -57,17 +56,22 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         return sessionId;
     }
 
+    private void addTask(LinkableTask task) {
+        tasks.add(task);
+    }
+
     public void submitTask(PacketHandleTask task) {
         updateLastActiveTime();
         if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
             runTask(task);
         else
-            taskQueue.add(task);
+            addTask(task);
     }
 
-    public void submitTasks(AsyncTask... tasks) {
+    public void submitTasks(LinkableTask... tasks) {
         updateLastActiveTime();
-        taskQueue.addAll(Arrays.asList(tasks));
+        for (LinkableTask task : tasks)
+            addTask(task);
     }
 
     public void submitYieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable) {
@@ -86,9 +90,9 @@ public class SessionInfo implements ServerSession.TimeoutListener {
             return;
         if (lastActiveTime + sessionTimeout < currentTime) {
             conn.closeSession(this);
-            logger.warn("Client session timeout, session id: " + sessionId + ", host: "
-                    + conn.getWritableChannel().getHost() + ", port: "
-                    + conn.getWritableChannel().getPort());
+            logger.warn("Client session timeout, session id: " + sessionId //
+                    + ", host: " + conn.getWritableChannel().getHost() //
+                    + ", port: " + conn.getWritableChannel().getPort());
         }
     }
 
@@ -106,19 +110,27 @@ public class SessionInfo implements ServerSession.TimeoutListener {
 
     // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
     private boolean canHandleNextSessionTask() {
-        return session.getYieldableCommand() == null;
+        return session.canExecuteNextCommand();
     }
 
     void runSessionTasks() {
-        if (!canHandleNextSessionTask())
+        // 只有当前语句执行完了才能执行下一条命令
+        if (session.getYieldableCommand() != null) {
             return;
-        AsyncTask task = taskQueue.poll();
-        while (task != null) {
-            runTask(task);
-            // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
-            if (session.getYieldableCommand() != null)
-                break;
-            task = taskQueue.poll();
+        }
+        if (!tasks.isEmpty() && session.canExecuteNextCommand()) {
+            LinkableTask task = tasks.getHead();
+            while (task != null) {
+                runTask(task);
+                task = task.next;
+                tasks.setHead(task);
+                tasks.decrementSize();
+                // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
+                if (session.getYieldableCommand() != null)
+                    break;
+            }
+            if (tasks.getHead() == null)
+                tasks.setTail(null);
         }
     }
 

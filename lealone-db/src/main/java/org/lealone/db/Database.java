@@ -43,7 +43,6 @@ import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
@@ -52,6 +51,7 @@ import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
+import org.lealone.db.stat.QueryStatisticsData;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.InfoMetaTable;
@@ -62,16 +62,19 @@ import org.lealone.db.table.TableView;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
+import org.lealone.net.NetNode;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionHandler;
 
 /**
  * There is one database object per open database.
@@ -103,10 +106,10 @@ public class Database extends DbObjectBase implements DataHandler {
             = new TransactionalDbObjects[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
-    private final DbObjectLock authLock = new DbObjectLockImpl(DbObjectType.USER);
-    private final DbObjectLock schemasLock = new DbObjectLockImpl(DbObjectType.SCHEMA);
-    private final DbObjectLock commentsLock = new DbObjectLockImpl(DbObjectType.COMMENT);
-    private final DbObjectLock databasesLock = new DbObjectLockImpl(DbObjectType.DATABASE);
+    private final DbObjectLock authLock = new DbObjectLock(DbObjectType.USER);
+    private final DbObjectLock schemasLock = new DbObjectLock(DbObjectType.SCHEMA);
+    private final DbObjectLock commentsLock = new DbObjectLock(DbObjectType.COMMENT);
+    private final DbObjectLock databasesLock = new DbObjectLock(DbObjectType.DATABASE);
 
     public DbObjectLock tryExclusiveAuthLock(ServerSession session) {
         return tryExclusiveLock(session, authLock);
@@ -147,6 +150,7 @@ public class Database extends DbObjectBase implements DataHandler {
     private final AtomicLong modificationMetaId = new AtomicLong();
 
     private Table meta;
+    private String metaStorageEngineName;
     private Index metaIdIndex;
 
     private TraceSystem traceSystem;
@@ -179,9 +183,14 @@ public class Database extends DbObjectBase implements DataHandler {
     private LobStorage lobStorage;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
+    private ConnectionInfo lastConnectionInfo;
 
     private final TableAlterHistory tableAlterHistory = new TableAlterHistory();
     private final ConcurrentHashMap<Integer, DataHandler> dataHandlers = new ConcurrentHashMap<>();
+
+    private String[] hostIds;
+    private HashSet<NetNode> nodes;
+    private String targetNodes;
 
     public Database(int id, String name, Map<String, String> parameters) {
         super(id, name);
@@ -242,7 +251,11 @@ public class Database extends DbObjectBase implements DataHandler {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, runMode);
+        return getCreateSQL(true);
+    }
+
+    public String getCreateSQL(boolean ifNotExists) {
+        return getCreateSQL(quoteIdentifier(name), parameters, runMode, ifNotExists);
     }
 
     @Override
@@ -383,25 +396,35 @@ public class Database extends DbObjectBase implements DataHandler {
     }
 
     public synchronized Database copy() {
+        return copy(true);
+    }
+
+    public synchronized Database copy(boolean init) {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storages.putAll(storages);
         db.runMode = runMode;
-        db.init();
-        LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
-        for (ServerSession s : userSessions) {
-            db.userSessions.add(s);
-            s.setDatabase(db);
+        db.hostIds = hostIds;
+        db.nodes = nodes;
+        db.targetNodes = targetNodes;
+        db.lastConnectionInfo = lastConnectionInfo;
+        if (init) {
+            db.init();
+            LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
+            for (ServerSession s : userSessions) {
+                db.userSessions.add(s);
+                s.setDatabase(db);
+            }
         }
         return db;
     }
 
     public boolean isInitialized() {
-        return state != State.CONSTRUCTOR_CALLED;
+        return state == State.OPENED;
     }
 
     public synchronized void init() {
-        if (state != State.CONSTRUCTOR_CALLED)
+        if (state == State.OPENED)
             return;
 
         String listener = dbSettings.eventListener;
@@ -506,7 +529,9 @@ public class Database extends DbObjectBase implements DataHandler {
         data.create = true;
         data.isHidden = true;
         data.session = systemSession;
-        data.storageEngineName = getDefaultStorageEngineName();
+        data.storageEngineName = metaStorageEngineName = getDefaultStorageEngineName();
+        data.storageEngineParams = new CaseInsensitiveMap<>(1);
+        data.storageEngineParams.put(StorageSetting.RUN_MODE.name(), RunMode.CLIENT_SERVER.name());
         meta = infoSchema.createTable(data);
         objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
 
@@ -1567,6 +1592,10 @@ public class Database extends DbObjectBase implements DataHandler {
         return state == State.CLOSING;
     }
 
+    public boolean isOpened() {
+        return state == State.OPENED;
+    }
+
     /**
      * Check if multi version concurrency is enabled for this database.
      *
@@ -1667,6 +1696,12 @@ public class Database extends DbObjectBase implements DataHandler {
         return systemSession.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
     }
 
+    public Connection getInternalConnection(TransactionHandler th) {
+        ServerSession s = createSession(getSystemUser());
+        s.setTransactionHandler(th);
+        return s.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
+    }
+
     public int getDefaultTableType() {
         return dbSettings.defaultTableType;
     }
@@ -1716,6 +1751,10 @@ public class Database extends DbObjectBase implements DataHandler {
         } catch (IOException e) {
             throw DbException.convertIOException(e, fileName);
         }
+    }
+
+    public Storage getMetaStorage() {
+        return storages.get(metaStorageEngineName);
     }
 
     public List<Storage> getStorages() {
@@ -1793,9 +1832,16 @@ public class Database extends DbObjectBase implements DataHandler {
         return storageBuilder;
     }
 
+    @Override
+    public String getSQL() {
+        return quoteIdentifier(name);
+    }
+
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
-            RunMode runMode) {
-        StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
+            RunMode runMode, boolean ifNotExists) {
+        StatementBuilder sql = new StatementBuilder("CREATE DATABASE ");
+        if (ifNotExists)
+            sql.append("IF NOT EXISTS ");
         sql.append(quotedDbName);
         if (runMode != null) {
             sql.append(" RUN MODE ").append(runMode.toString());
@@ -1817,6 +1863,57 @@ public class Database extends DbObjectBase implements DataHandler {
             sql.append(e.getKey()).append('=').append("'").append(e.getValue()).append("'");
         }
         sql.append(')');
+    }
+
+    public String[] getHostIds() {
+        if (hostIds == null) {
+            synchronized (this) {
+                if (hostIds == null) {
+                    if (parameters != null && parameters.containsKey("hostIds")) {
+                        targetNodes = parameters.get("hostIds").trim();
+                        hostIds = StringUtils.arraySplit(targetNodes, ',');
+                    }
+                    if (hostIds == null) {
+                        hostIds = new String[0];
+                        nodes = null;
+                    } else {
+                        nodes = new HashSet<>(hostIds.length);
+                        for (String id : hostIds) {
+                            nodes.add(NetNode.createTCP(id));
+                        }
+                    }
+                    if (nodes != null && nodes.isEmpty()) {
+                        nodes = null;
+                    }
+                    if (targetNodes != null && targetNodes.isEmpty())
+                        targetNodes = null;
+                }
+            }
+        }
+        return hostIds;
+    }
+
+    public void setHostIds(String[] hostIds) {
+        this.hostIds = null;
+        if (hostIds != null && hostIds.length > 0)
+            parameters.put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+        else
+            parameters.put("hostIds", "");
+        getHostIds();
+    }
+
+    public boolean isTargetNode(NetNode node) {
+        if (hostIds == null) {
+            getHostIds();
+        }
+        return nodes == null || nodes.contains(node);
+    }
+
+    public String getTargetNodes() {
+        if (hostIds == null) {
+            getHostIds();
+        }
+        return targetNodes;
     }
 
     public void createRootUserIfNotExists() {
@@ -1862,6 +1959,10 @@ public class Database extends DbObjectBase implements DataHandler {
         }
     }
 
+    public void setLastConnectionInfo(ConnectionInfo ci) {
+        lastConnectionInfo = ci;
+    }
+
     public TableAlterHistory getTableAlterHistory() {
         return tableAlterHistory;
     }
@@ -1877,6 +1978,14 @@ public class Database extends DbObjectBase implements DataHandler {
 
     public void removeDataHandler(int tableId) {
         dataHandlers.remove(tableId);
+    }
+
+    public long getDiskSpaceUsed() {
+        long sum = 0;
+        for (Storage s : getStorages()) {
+            sum += s.getDiskSpaceUsed();
+        }
+        return sum;
     }
 
     public TransactionalDbObjects[] getTransactionalDbObjectsArray() {

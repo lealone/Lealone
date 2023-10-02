@@ -86,7 +86,7 @@ public class DataBuffer implements AutoCloseable {
     /**
      * The minimum number of bytes to grow a buffer at a time.
      */
-    private static final int MIN_GROW = 1024;
+    public static final int MIN_GROW = 1024;
 
     /**
      * The data handler responsible for lob objects.

@@ -19,6 +19,7 @@ import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
@@ -27,11 +28,14 @@ public class RedoLog {
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
     private final Map<String, String> config;
+    private final LogSyncService logSyncService;
 
     private RedoLogChunk currentChunk;
 
-    RedoLog(Map<String, String> config) {
+    RedoLog(Map<String, String> config, LogSyncService logSyncService) {
         this.config = config;
+        this.logSyncService = logSyncService;
+
         String baseDir = config.get("base_dir");
         String logDir = MapUtils.getString(config, "redo_log_dir", "redo_log");
         String storagePath = baseDir + File.separator + logDir;
@@ -63,13 +67,13 @@ public class RedoLog {
     public void init() {
         List<Integer> ids = getAllChunkIds();
         if (ids.isEmpty()) {
-            currentChunk = new RedoLogChunk(0, config);
+            currentChunk = new RedoLogChunk(0, config, logSyncService);
         } else {
             int lastId = ids.get(ids.size() - 1);
             for (int id : ids) {
                 RedoLogChunk chunk = null;
                 try {
-                    chunk = new RedoLogChunk(id, config);
+                    chunk = new RedoLogChunk(id, config, logSyncService);
                     for (RedoLogRecord r : chunk.readRedoLogRecords()) {
                         r.initPendingRedoLog(pendingRedoLog);
                     }
@@ -105,14 +109,6 @@ public class RedoLog {
         }
     }
 
-    int logQueueSize() {
-        return currentChunk.logQueueSize();
-    }
-
-    void addRedoLogRecord(RedoLogRecord r) {
-        currentChunk.addRedoLogRecord(r);
-    }
-
     void close() {
         currentChunk.close();
     }
@@ -123,5 +119,9 @@ public class RedoLog {
 
     public void ignoreCheckpoint() {
         currentChunk.ignoreCheckpoint();
+    }
+
+    public void setCheckpointService(CheckpointServiceImpl checkpointService) {
+        currentChunk.setCheckpointService(checkpointService);
     }
 }

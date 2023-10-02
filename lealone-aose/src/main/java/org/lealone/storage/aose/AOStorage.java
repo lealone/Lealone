@@ -21,8 +21,6 @@ import org.lealone.storage.type.StorageDataType;
 
 /**
  * Adaptive optimization storage
- * 
- * @author zhh
  */
 public class AOStorage extends StorageBase {
 
@@ -44,6 +42,16 @@ public class AOStorage extends StorageBase {
                 fp.delete();
             }
         }
+    }
+
+    @Override
+    protected InputStream getInputStream(String mapName, FilePath file) {
+        return openBTreeMap(mapName).getInputStream(file);
+    }
+
+    @Override
+    public String getStorageName() {
+        return AOStorageEngine.NAME;
     }
 
     public boolean isReadOnly() {
@@ -87,10 +95,5 @@ public class AOStorage extends StorageBase {
             }
         }
         return (BTreeMap<K, V>) map;
-    }
-
-    @Override
-    protected InputStream getInputStream(String mapName, FilePath file) {
-        return openBTreeMap(mapName).getInputStream(file);
     }
 }

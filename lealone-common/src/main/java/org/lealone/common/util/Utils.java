@@ -67,6 +67,7 @@ public class Utils {
     private static boolean allowAllClasses;
     private static HashSet<String> allowedClassNames;
     private static String[] allowedClassNamePrefixes;
+
     static {
         String clazz = SysProperties.JAVA_OBJECT_SERIALIZER;
         if (clazz != null) {

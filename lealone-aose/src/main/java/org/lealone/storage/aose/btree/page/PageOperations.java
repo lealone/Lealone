@@ -31,7 +31,7 @@ public abstract class PageOperations {
         PageReference pRef;
         R result;
 
-        Session session;
+        Session currentSession;
 
         public WriteOperation(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
             this.map = map;
@@ -48,13 +48,17 @@ public abstract class PageOperations {
             return resultHandler;
         }
 
-        public R getResult() {
-            return result;
-        }
-
         @Override
         public Session getSession() {
-            return session;
+            return currentSession;
+        }
+
+        public void setSession(Session session) {
+            this.currentSession = session;
+        }
+
+        public R getResult() {
+            return result;
         }
 
         private boolean isPageChanged() {
@@ -63,12 +67,12 @@ public abstract class PageOperations {
         }
 
         @Override
-        public PageOperationResult run(PageOperationHandler poHandler) {
+        public PageOperationResult run(PageOperationHandler poHandler, boolean waitingIfLocked) {
             if (p == null) {
                 // 事先定位到leaf page，当加轻量级锁失败后再次运行时不用再定位leaf page
                 p = gotoLeafPage();
                 pRef = p.getRef();
-                session = poHandler.getCurrentSession();
+                currentSession = poHandler.getCurrentSession();
             }
 
             // 页面发生了结构性变动，重新从root定位leaf page
@@ -78,7 +82,7 @@ public abstract class PageOperations {
                 return PageOperationResult.RETRY; // 不用递归调用，让调度器重试
             }
 
-            if (pRef.tryLock(poHandler)) {
+            if (pRef.tryLock(poHandler, waitingIfLocked)) {
                 // 这一步检查是必需的，不能在一个不再使用的page上面进行写操作
                 if (isPageChanged()) {
                     p = null;
@@ -94,7 +98,7 @@ public abstract class PageOperations {
 
         @SuppressWarnings("unchecked")
         private void writeLocal(PageOperationHandler poHandler) {
-            session = poHandler.getCurrentSession();
+            currentSession = poHandler.getCurrentSession();
             p = pRef.getOrReadPage(); // 使用最新的page
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
@@ -103,12 +107,12 @@ public abstract class PageOperations {
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
             if (index < 0 && p.needSplit()) {
                 // 异步执行split操作，先尝试立刻执行，如果没有成功就加入等待队列
-                asyncSplitPage(poHandler, pRef);
+                asyncSplitPage(poHandler, true, currentSession, pRef);
             }
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
 
-            Session s = session;
+            Session s = currentSession;
             if (s != null) {
                 s.addDirtyPage(p);
             }
@@ -162,7 +166,7 @@ public abstract class PageOperations {
 
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
 
-        public PutIfAbsent(BTreeMap<K, V> map, K key, V value,
+        public PutIfAbsent(BTreeMap<K, V> map, K key, V value, //
                 AsyncHandler<AsyncResult<V>> resultHandler) {
             super(map, key, value, resultHandler);
         }
@@ -254,21 +258,23 @@ public abstract class PageOperations {
             newPage.remove(index);
             pRef.replacePage(newPage);
             if (newPage.isEmpty() && !pRef.isRoot()) { // 删除leaf page，但是root leaf page除外
-                asyncRemovePage(poHandler, pRef, key);
+                asyncRemovePage(poHandler, true, currentSession, pRef, key);
             }
             return oldValue;
         }
     }
 
-    private static void asyncRemovePage(PageOperationHandler poHandler, PageReference pRef, Object key) {
-        RemovePage rp = new RemovePage(pRef, key);
-        if (rp.runLocked(poHandler) != PageOperationResult.SUCCEEDED)
+    private static void asyncRemovePage(PageOperationHandler poHandler, boolean waitingIfLocked,
+            Session session, PageReference pRef, Object key) {
+        RemovePage rp = new RemovePage(session, pRef, key);
+        if (rp.runLocked(poHandler, waitingIfLocked) != PageOperationResult.SUCCEEDED)
             poHandler.handlePageOperation(rp);
     }
 
-    private static void asyncSplitPage(PageOperationHandler poHandler, PageReference pRef) {
-        SplitPage sp = new SplitPage(pRef);
-        if (sp.runLocked(poHandler) != PageOperationResult.SUCCEEDED)
+    private static void asyncSplitPage(PageOperationHandler poHandler, boolean waitingIfLocked,
+            Session session, PageReference pRef) {
+        SplitPage sp = new SplitPage(session, pRef);
+        if (sp.runLocked(poHandler, waitingIfLocked) != PageOperationResult.SUCCEEDED)
             poHandler.handlePageOperation(sp);
     }
 
@@ -276,32 +282,34 @@ public abstract class PageOperations {
 
         protected final PageReference pRef;
 
-        public ChildOperation(PageReference pRef) {
+        public ChildOperation(Session session, PageReference pRef) {
             this.pRef = pRef;
         }
 
         @Override
-        public PageOperationResult run(PageOperationHandler poHandler) {
+        public PageOperationResult run(PageOperationHandler poHandler, boolean waitingIfLocked) {
             if (pRef.isDataStructureChanged()) // 忽略掉
                 return PageOperationResult.SUCCEEDED;
-            if (!pRef.tryLock(poHandler))
+            if (!pRef.tryLock(poHandler, waitingIfLocked))
                 return PageOperationResult.LOCKED;
             if (pRef.isDataStructureChanged()) { // 需要再判断一次
                 pRef.unlock();
                 return PageOperationResult.SUCCEEDED;
             }
-            PageOperationResult res = runLocked(poHandler);
+            PageOperationResult res = runLocked(poHandler, waitingIfLocked);
             pRef.unlock();
             return res;
         }
 
-        protected abstract PageOperationResult runLocked(PageOperationHandler poHandler);
+        protected abstract PageOperationResult runLocked(PageOperationHandler poHandler,
+                boolean waitingIfLocked);
 
-        protected static boolean tryLockParentRef(PageReference pRef, PageOperationHandler poHandler) {
+        protected static boolean tryLockParentRef(PageReference pRef, PageOperationHandler poHandler,
+                boolean waitingIfLocked) {
             PageReference parentRef = pRef.getParentRef();
             if (parentRef.isDataStructureChanged())
                 return false;
-            if (!parentRef.tryLock(poHandler))
+            if (!parentRef.tryLock(poHandler, waitingIfLocked))
                 return false;
             if (parentRef.isDataStructureChanged()) {
                 parentRef.unlock();
@@ -309,7 +317,7 @@ public abstract class PageOperations {
             }
             if (pRef.getParentRef() != parentRef) {
                 parentRef.unlock();
-                return tryLockParentRef(pRef, poHandler);
+                return tryLockParentRef(pRef, poHandler, waitingIfLocked);
             }
             return true;
         }
@@ -320,20 +328,21 @@ public abstract class PageOperations {
 
         private final Object key;
 
-        public RemovePage(PageReference pRef, Object key) {
-            super(pRef);
+        public RemovePage(Session session, PageReference page, Object key) {
+            super(session, page);
             this.key = key;
         }
 
         @Override
-        protected PageOperationResult runLocked(PageOperationHandler poHandler) {
+        protected PageOperationResult runLocked(PageOperationHandler poHandler,
+                boolean waitingIfLocked) {
             Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root node page，那么直接替换
             if (pRef.isRoot()) {
                 // 新的空页面占用的内存大小不必再计入，原页面已经算在内了
                 p.map.newRoot(LeafPage.createEmpty(p.map, false));
             } else {
-                if (!tryLockParentRef(pRef, poHandler))
+                if (!tryLockParentRef(pRef, poHandler, waitingIfLocked))
                     return PageOperationResult.LOCKED;
                 PageReference parentRef = pRef.getParentRef();
                 Page parent = parentRef.getOrReadPage();
@@ -343,7 +352,7 @@ public abstract class PageOperations {
                 parentRef.replacePage(parent);
                 // 先看看父节点是否需要删除
                 if (parent.isEmpty()) {
-                    asyncRemovePage(poHandler, parentRef, key);
+                    asyncRemovePage(poHandler, waitingIfLocked, null, parentRef, key);
                 }
                 // 非root page被删除后，原有的ref被废弃
                 pRef.setDataStructureChanged(true);
@@ -356,19 +365,21 @@ public abstract class PageOperations {
 
     private static class SplitPage extends ChildOperation {
 
-        public SplitPage(PageReference pRef) {
-            super(pRef);
+        public SplitPage(Session session, PageReference pRef) {
+            super(session, pRef);
         }
 
         @Override
-        protected PageOperationResult runLocked(PageOperationHandler poHandler) {
+        protected PageOperationResult runLocked(PageOperationHandler poHandler,
+                boolean waitingIfLocked) {
+            TmpNodePage tmpNodePage;
             Page p = pRef.getOrReadPage(); // 获得最新的
             // 如果是root page，那么直接替换
             if (pRef.isRoot()) {
                 BTreeGC bgc = p.map.getBTreeStorage().getBTreeGC();
                 bgc.addUsedMemory(-pRef.getPageInfo().getTotalMemory());
 
-                TmpNodePage tmpNodePage = splitPage(p);
+                tmpNodePage = splitPage(p);
                 tmpNodePage.parent.setRef(pRef);
                 tmpNodePage.left.setParentRef(pRef);
                 tmpNodePage.right.setParentRef(pRef);
@@ -382,15 +393,15 @@ public abstract class PageOperations {
                 if (p.isNode())
                     setParentRef(tmpNodePage);
             } else {
-                if (!tryLockParentRef(pRef, poHandler))
+                if (!tryLockParentRef(pRef, poHandler, waitingIfLocked))
                     return PageOperationResult.LOCKED;
-                TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
+                tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
                 PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
-                    asyncSplitPage(poHandler, parentRef);
+                    asyncSplitPage(poHandler, waitingIfLocked, null, parentRef);
                 }
                 // 非root page被切割后，原有的ref被废弃
                 pRef.setDataStructureChanged(true);

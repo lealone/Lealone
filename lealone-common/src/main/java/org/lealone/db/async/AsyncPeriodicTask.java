@@ -5,15 +5,64 @@
  */
 package org.lealone.db.async;
 
-public interface AsyncPeriodicTask extends AsyncTask {
+import org.lealone.db.link.LinkableBase;
+
+public class AsyncPeriodicTask extends LinkableBase<AsyncPeriodicTask> implements AsyncTask {
+
+    private final long delay;
+    private Runnable runnable;
+    private long last;
+    private boolean canceled;
+
+    public AsyncPeriodicTask(long delay, Runnable runnable) {
+        this(delay, delay, runnable);
+    }
+
+    public AsyncPeriodicTask(long initialDelay, long delay, Runnable runnable) {
+        this.delay = delay;
+        this.runnable = runnable;
+
+        if (initialDelay > 0) {
+            last = System.currentTimeMillis() + initialDelay;
+        } else {
+            last = System.currentTimeMillis() + delay;
+        }
+    }
 
     @Override
-    default boolean isPeriodic() {
+    public boolean isPeriodic() {
         return true;
     }
 
     @Override
-    default int getPriority() {
+    public int getPriority() {
         return MIN_PRIORITY;
+    }
+
+    public void cancel() {
+        canceled = true;
+    }
+
+    public boolean isCancelled() {
+        return canceled;
+    }
+
+    @Override
+    public void run() {
+        if (canceled)
+            return;
+        long now = System.currentTimeMillis();
+        if (now > last) {
+            last = now + delay;
+            runnable.run();
+        }
+    }
+
+    public long getDelay() {
+        return delay;
+    }
+
+    public void setRunnable(Runnable runnable) {
+        this.runnable = runnable;
     }
 }

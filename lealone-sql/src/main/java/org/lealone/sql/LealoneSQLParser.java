@@ -68,6 +68,7 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.sql.admin.ShutdownDatabase;
 import org.lealone.sql.admin.ShutdownServer;
+import org.lealone.sql.admin.StartServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
 import org.lealone.sql.ddl.AlterSchemaRename;
@@ -292,6 +293,7 @@ public class LealoneSQLParser implements SQLParser {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
                     s = new StatementList(session, s, remaining);
+                    s.setSQL(sql);
                 }
             } else if (currentTokenType != END) {
                 throw getSyntaxError();
@@ -455,6 +457,10 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseShutdown();
                 } else if (readIf("SHOW")) {
                     s = parseShow();
+                } else if (readIf("START")) {
+                    if (readIf("SERVER")) {
+                        s = parseStartServer();
+                    }
                 }
                 break;
             case 't':
@@ -584,6 +590,12 @@ public class LealoneSQLParser implements SQLParser {
             return new NoOperation(session);
         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         return new ShutdownDatabase(session, db, immediately);
+    }
+
+    private StatementBase parseStartServer() {
+        String name = readString();
+        CaseInsensitiveMap<String> parameters = parseParameters();
+        return new StartServer(session, name, parameters);
     }
 
     private TransactionStatement parseBegin() {
@@ -4413,12 +4425,12 @@ public class LealoneSQLParser implements SQLParser {
             if (readIf("CLIENT_SERVER"))
                 return RunMode.CLIENT_SERVER;
             else if (readIf("REPLICATION"))
-                return RunMode.CLIENT_SERVER;
+                return RunMode.REPLICATION;
             else if (readIf("EMBEDDED"))
                 return RunMode.EMBEDDED;
             else {
                 read("SHARDING");
-                return RunMode.CLIENT_SERVER;
+                return RunMode.SHARDING;
             }
         }
         return null;
@@ -5593,8 +5605,8 @@ public class LealoneSQLParser implements SQLParser {
             command.setTableName(tableName);
             if (!readIf("(")) {
                 // 指定索引名，例如:
-                // CREATE TABLE IF NOT EXISTS t (
-                // f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
+                // CREATE TABLE IF NOT EXISTS t
+                // (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
                 command.setIndexName(readUniqueIdentifier());
                 read("(");
             }

@@ -113,11 +113,15 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     @Override
     public Future<Integer> executeUpdate() {
-        Packet packet = new PreparedStatementUpdate(commandId, getValues());
-        // 如果不给send方法传递packetId，它会自己创建一个，所以这里的调用是安全的
-        return session.<Integer, StatementUpdateAck> send(packet, ack -> {
-            return ack.updateCount;
-        });
+        try {
+            Packet packet = new PreparedStatementUpdate(commandId, getValues());
+            // 如果不给send方法传递packetId，它会自己创建一个，所以这里的调用是安全的
+            return session.<Integer, StatementUpdateAck> send(packet, ack -> {
+                return ack.updateCount;
+            });
+        } catch (Throwable t) {
+            return failedFuture(t);
+        }
     }
 
     private Value[] getValues() {

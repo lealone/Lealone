@@ -6,12 +6,13 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -31,6 +32,8 @@ import org.lealone.server.protocol.session.SessionInitAck;
 // 注意: 以下代码中出现的sessionId都表示客户端session的id，
 // 调用createSession创建的是服务器端的session，这个session的id有可能跟客户端session的id不一样，
 // 但是可以把客户端session的id跟服务器端的session做一个影射，这样两端的session就对上了。
+//
+// 每个TcpServerConnection实例对应一个Scheduler，也就是只会有一个调度服务线程执行它的方法
 public class TcpServerConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
@@ -38,7 +41,7 @@ public class TcpServerConnection extends TransferConnection {
     // 每个sessionId对应一个专有的SessionInfo，
     // 所有与这个sessionId相关的命令请求都先放到SessionInfo中的队列，
     // 然后由调度器根据优先级从多个队列中依次取出执行。
-    private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
+    private final HashMap<Integer, SessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
     private final Scheduler scheduler;
 
@@ -51,6 +54,11 @@ public class TcpServerConnection extends TransferConnection {
 
     int getSessionCount() {
         return sessions.size();
+    }
+
+    @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return scheduler.getDataBufferFactory();
     }
 
     @Override
@@ -91,11 +99,12 @@ public class TcpServerConnection extends TransferConnection {
         }
 
         SessionInitTask task = new SessionInitTask(this, packet, packetId, sessionId);
-        if (scheduler.canHandleNextSessionInitTask()) {
-            // 直接处理，如果完成了就不需要加入Scheduler的队列
-            if (task.run())
-                return;
-        }
+        // 在事件循环中直接执行如果又需要建立新session(remote page的场景)会遇到麻烦，事件循环不能嵌套
+        // if (scheduler.canHandleNextSessionInitTask()) {
+        // // 直接处理，如果完成了就不需要加入Scheduler的队列
+        // if (task.run())
+        // return;
+        // }
         scheduler.addSessionInitTask(task);
     }
 
@@ -124,30 +133,40 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     private void addSession(ServerSession session, int sessionId) {
-        // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
-        // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
-        // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
-        // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
-        session.setTransactionListener(scheduler);
-        session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), cObject -> {
-            try {
-                cObject.value.close();
-            } catch (Exception e) {
-                logger.warn(e.getMessage());
-            }
-            return null;
-        }));
-        SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
-                tcpServer.getSessionTimeout());
-        scheduler.addSessionInfo(si);
-        sessions.put(sessionId, si);
+        // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
+        // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
+        // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
+        if (session.isValid()) {
+            // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
+            // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
+            // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
+            // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
+            session.setTransactionListener(scheduler);
+            session.setTransactionHandler(scheduler);
+            session.setPageOperationHandler(scheduler);
+            session.setCache(
+                    new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), true, cObject -> {
+                        try {
+                            cObject.value.close();
+                        } catch (Exception e) {
+                            logger.warn(e.getMessage());
+                        }
+                        return null;
+                    }));
+            SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
+                    tcpServer.getSessionTimeout());
+            session.setSessionInfo(si);
+            scheduler.addSessionInfo(si);
+            sessions.put(sessionId, si);
+        }
     }
 
     private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session)
             throws Exception {
         TransferOutputStream out = createTransferOutputStream(session);
         out.writeResponseHeader(packetId, Session.STATUS_OK);
-        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit());
+        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(),
+                session.getTargetNodes(), session.getRunMode(), session.isInvalid(), 0);
         ack.encode(out, packet.clientVersion);
         out.flush();
     }
@@ -171,6 +190,10 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     void closeSession(SessionInfo si) {
+        closeSession(si, false);
+    }
+
+    private void closeSession(SessionInfo si, boolean isForLoop) {
         try {
             ServerSession s = si.getSession();
             // 执行SHUTDOWN IMMEDIATELY时会模拟PowerOff，此时不必再执行后续操作
@@ -182,7 +205,8 @@ public class TcpServerConnection extends TransferConnection {
             logger.error("Failed to close session", e);
         } finally {
             si.remove();
-            sessions.remove(si.getSessionId());
+            if (!isForLoop) // 在循环中不能删除元素，否则会有并发更新异常
+                sessions.remove(si.getSessionId());
         }
     }
 
@@ -190,7 +214,7 @@ public class TcpServerConnection extends TransferConnection {
     public void close() {
         super.close();
         for (SessionInfo si : sessions.values()) {
-            closeSession(si);
+            closeSession(si, true);
         }
         sessions.clear();
     }
@@ -198,6 +222,8 @@ public class TcpServerConnection extends TransferConnection {
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
+        } else if (session.isRunModeChanged()) {
+            return Session.STATUS_RUN_MODE_CHANGED;
         } else {
             return Session.STATUS_OK;
         }
@@ -208,6 +234,9 @@ public class TcpServerConnection extends TransferConnection {
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(task.packetId, getStatus(session));
+            if (session.isRunModeChanged()) {
+                out.writeInt(task.sessionId).writeString(session.getNewTargetNodes());
+            }
             packet.encode(out, session.getProtocolVersion());
             out.flush();
         } catch (Exception e) {

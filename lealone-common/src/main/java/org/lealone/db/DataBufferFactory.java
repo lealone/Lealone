@@ -20,14 +20,59 @@ public interface DataBufferFactory {
 
     void recycle(DataBuffer buffer);
 
+    public static DataBufferFactory getSingleThreadFactory() {
+        return new SingleThreadDataBufferFactory();
+    }
+
     public static DataBufferFactory getConcurrentFactory() {
         return ConcurrentDataBufferFactory.INSTANCE;
+    }
+
+    public static class SingleThreadDataBufferFactory implements DataBufferFactory {
+
+        private static final int maxPoolSize = 20;
+        private final DataBuffer[] queue = new DataBuffer[maxPoolSize];
+
+        @Override
+        public DataBuffer create() {
+            return create(0, true);
+        }
+
+        @Override
+        public DataBuffer create(int capacity, boolean direct) {
+            for (int i = 0; i < maxPoolSize; i++) {
+                DataBuffer buffer = queue[i];
+                if (buffer != null && (buffer.getDirect() != direct || buffer.capacity() >= capacity)) {
+                    queue[i] = null;
+                    buffer.clear();
+                    return buffer;
+                }
+            }
+            if (capacity <= 0)
+                capacity = DataBuffer.MIN_GROW;
+            DataBuffer buffer = DataBuffer.create(null, capacity, direct);
+            buffer.setFactory(this);
+            return buffer;
+        }
+
+        @Override
+        public void recycle(DataBuffer buffer) {
+            if (buffer.capacity() <= DataBuffer.MAX_REUSE_CAPACITY) {
+                for (int i = 0; i < maxPoolSize; i++) {
+                    if (queue[i] == null) {
+                        queue[i] = buffer;
+                        return;
+                    }
+                }
+            }
+            buffer.setFactory(null);
+        }
     }
 
     public static class ConcurrentDataBufferFactory implements DataBufferFactory {
 
         private static final ConcurrentDataBufferFactory INSTANCE = new ConcurrentDataBufferFactory();
-        private static final int maxPoolSize = 20;
+
         private final AtomicInteger poolSize = new AtomicInteger();
         private final ConcurrentLinkedQueue<DataBuffer> queue = new ConcurrentLinkedQueue<>();
 
@@ -65,7 +110,7 @@ public interface DataBufferFactory {
         @Override
         public void recycle(DataBuffer buffer) {
             if (buffer.capacity() <= DataBuffer.MAX_REUSE_CAPACITY) {
-                if (poolSize.incrementAndGet() <= maxPoolSize) {
+                if (poolSize.incrementAndGet() <= SingleThreadDataBufferFactory.maxPoolSize) {
                     queue.offer(buffer);
                 } else {
                     poolSize.decrementAndGet();

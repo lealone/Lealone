@@ -31,6 +31,8 @@ public interface Storage {
 
     String nextTemporaryMapName();
 
+    String getStorageName();
+
     String getStoragePath();
 
     boolean isInMemory();

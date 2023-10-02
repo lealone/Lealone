@@ -455,6 +455,11 @@ public interface SQLStatement extends SQLCommand {
     int SHUTDOWN_SERVER = 141;
 
     /**
+     * The type of a START SERVER statement.
+     */
+    int START_SERVER = 142;
+
+    /**
      * The type of a REPAIR TABLE statement.
      */
     int REPAIR_TABLE = 150;

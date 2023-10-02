@@ -32,6 +32,7 @@ import org.lealone.main.config.ConfigLoader;
 import org.lealone.main.config.YamlConfigLoader;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
+import org.lealone.server.SchedulerFactory;
 import org.lealone.server.TcpServerEngine;
 import org.lealone.sql.SQLEngine;
 import org.lealone.storage.StorageEngine;
@@ -159,6 +160,10 @@ public class Lealone {
 
             startProtocolServers();
 
+            // 等所有的Server启动完成后再调用SchedulerFactory.start
+            // 确保所有的初始PeriodicTask都在main线程中注册
+            SchedulerFactory.start();
+
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
             logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime,
@@ -171,7 +176,7 @@ public class Lealone {
             // 在主线程中运行，避免出现DestroyJavaVM线程
             Thread.currentThread().setName("CheckpointService");
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-            te.getRunnable().run();
+            te.getCheckpointService().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);

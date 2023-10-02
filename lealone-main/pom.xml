@@ -49,11 +49,5 @@
             <artifactId>lealone-docdb</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>1.32</version>
-        </dependency>
     </dependencies>
 </project>

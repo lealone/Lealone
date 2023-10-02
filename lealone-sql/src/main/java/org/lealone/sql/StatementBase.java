@@ -15,6 +15,7 @@ import org.lealone.db.Database;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
@@ -344,16 +345,18 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      * @param rowCount the query or update row count
      */
     public void trace(long startTimeNanos, int rowCount) {
-        if (startTimeNanos > 0 && session.getTrace().isInfoEnabled()) {
-            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
-            String params = Trace.formatParams(getParameters());
-            session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTimeNanos / 1000 / 1000);
-        }
-
         // startTimeNanos can be zero for the command that actually turns on statistics
-        if (startTimeNanos > 0 && session.getDatabase().getQueryStatistics()) {
-            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
-            session.getDatabase().getQueryStatisticsData().update(getSQL(), deltaTimeNanos, rowCount);
+        if (startTimeNanos > 0) {
+            long now = System.nanoTime();
+            long deltaTimeNanos = now - startTimeNanos;
+            if (session.getTrace().isInfoEnabled()) {
+                String params = Trace.formatParams(getParameters());
+                session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTimeNanos / 1000 / 1000);
+            }
+            Database db = session.getDatabase();
+            if (db.getQueryStatistics()) {
+                db.getQueryStatisticsData().update(getSQL(), deltaTimeNanos, rowCount);
+            }
         }
     }
 
@@ -520,21 +523,59 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        // 在当前线程中同步执行
-        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-        session.setYieldableCommand(c);
-        return Future.succeededFuture(syncExecute(yieldable));
+        return executeQuery0(maxRows, scrollable);
+    }
+
+    private Future<Result> executeQuery0(int maxRows, boolean scrollable) {
+        if (session.getTransactionListener() != null) {
+            // 放到调度线程中运行
+            AsyncCallback<Result> ac = session.createCallback();
+            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
+                if (ar.isSucceeded()) {
+                    Result result = ar.getResult();
+                    ac.setAsyncResult(result);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            return ac;
+        } else {
+            // 在当前线程中同步执行
+            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            return Future.succeededFuture(syncExecute(yieldable));
+        }
     }
 
     @Override
     public Future<Integer> executeUpdate() {
-        // 在当前线程中同步执行
-        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-        session.setYieldableCommand(c);
-        Integer updateCount = syncExecute(yieldable);
-        return Future.succeededFuture(updateCount);
+        if (session.getTransactionListener() != null) {
+            // 放到调度线程中运行
+            AsyncCallback<Integer> ac = session.createCallback();
+            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    Integer updateCount = ar.getResult();
+                    ac.setAsyncResult(updateCount);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            return ac;
+        } else {
+            // 在当前线程中同步执行
+            YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+            Integer updateCount = syncExecute(yieldable);
+            return Future.succeededFuture(updateCount);
+        }
     }
 
     @Override

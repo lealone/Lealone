@@ -5,10 +5,10 @@
  */
 package org.lealone.common.util;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -41,7 +41,7 @@ public class ExpiringMap<K, V> {
         }
     }
 
-    private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<>();
+    private final Map<K, CacheableObject<V>> cache;
     private final long defaultExpiration;
     private final AsyncTaskHandler asyncTaskHandler;
     private final AsyncPeriodicTask task;
@@ -50,31 +50,32 @@ public class ExpiringMap<K, V> {
      *
      * @param defaultExpiration the TTL for objects in the cache in milliseconds
      */
-    public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration,
+    public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration, boolean isThreadSafe,
             final Function<ExpiringMap.CacheableObject<V>, ?> postExpireHook) {
         // if (defaultExpiration <= 0) {
         // throw new IllegalArgumentException("Argument specified must be a positive number");
         // }
+        if (isThreadSafe)
+            cache = new HashMap<>();
+        else
+            cache = new ConcurrentHashMap<>();
         this.defaultExpiration = defaultExpiration;
         this.asyncTaskHandler = asyncTaskHandler;
-        task = new AsyncPeriodicTask() {
-            @Override
-            public void run() {
-                long start = System.nanoTime();
-                int n = 0;
-                for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
-                    if (entry.getValue().isReadyToDieAt(start)) {
-                        if (cache.remove(entry.getKey()) != null) {
-                            n++;
-                            if (postExpireHook != null)
-                                postExpireHook.apply(entry.getValue());
-                        }
+        task = new AsyncPeriodicTask(1000, () -> {
+            long start = System.nanoTime();
+            int n = 0;
+            for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
+                if (entry.getValue().isReadyToDieAt(start)) {
+                    if (cache.remove(entry.getKey()) != null) {
+                        n++;
+                        if (postExpireHook != null)
+                            postExpireHook.apply(entry.getValue());
                     }
                 }
-                if (logger.isTraceEnabled())
-                    logger.trace("Expired {} entries", n);
             }
-        };
+            if (logger.isTraceEnabled())
+                logger.trace("Expired {} entries", n);
+        });
         if (defaultExpiration > 0)
             asyncTaskHandler.addPeriodicTask(task);
     }

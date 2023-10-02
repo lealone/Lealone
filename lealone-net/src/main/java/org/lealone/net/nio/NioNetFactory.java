@@ -23,7 +23,7 @@ public class NioNetFactory extends NetFactoryBase {
     public static final NioNetFactory INSTANCE = new NioNetFactory();
 
     private final AtomicInteger index = new AtomicInteger(0);
-    private NioEventLoopClient[] netClients;
+    private NetClient[] netClients;
 
     public NioNetFactory() {
         super(NAME);
@@ -42,9 +42,9 @@ public class NioNetFactory extends NetFactoryBase {
                 if (netClients == null) {
                     int count = MapUtils.getInt(config, ConnectionSetting.NET_CLIENT_COUNT.name(),
                             Runtime.getRuntime().availableProcessors());
-                    NioEventLoopClient[] netClients = new NioEventLoopClient[count];
+                    NetClient[] netClients = new NioClient[count];
                     for (int i = 0; i < count; i++)
-                        netClients[i] = new NioEventLoopClient(i);
+                        netClients[i] = new NioClient(i);
                     this.netClients = netClients;
                 }
             }
@@ -58,13 +58,14 @@ public class NioNetFactory extends NetFactoryBase {
 
     @Override
     public NetServer createNetServer() {
-        return new ServerAccepter();
+        return new NioServerAccepter();
     }
 
     @Override
-    public NioEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval) {
+    public NioEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval,
+            boolean isThreadSafe) {
         try {
-            return new NioEventLoop(config, loopIntervalKey, defaultLoopInterval);
+            return new NioEventLoop(config, loopIntervalKey, defaultLoopInterval, isThreadSafe);
         } catch (IOException e) {
             throw DbException.convert(e);
         }

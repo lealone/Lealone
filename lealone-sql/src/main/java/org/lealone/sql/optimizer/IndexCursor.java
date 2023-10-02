@@ -98,7 +98,7 @@ public class IndexCursor implements Cursor {
         }
     }
 
-    private void parseIndexConditions(ServerSession session, ArrayList<IndexCondition> indexConditions) {
+    public void parseIndexConditions(ServerSession session, ArrayList<IndexCondition> indexConditions) {
         alwaysFalse = false;
         start = end = null;
         inList = null;
@@ -144,10 +144,10 @@ public class IndexCursor implements Cursor {
                     }
                 }
                 if (isStart) {
-                    start = getSearchRow(session, column, start, id, v, true);
+                    start = getSearchRow(session, start, id, v, true);
                 }
                 if (isEnd) {
-                    end = getSearchRow(session, column, end, id, v, false);
+                    end = getSearchRow(session, end, id, v, false);
                 }
                 if (isStart || isEnd) {
                     // an X=? condition will produce less rows than
@@ -185,8 +185,7 @@ public class IndexCursor implements Cursor {
         return idxCol == null || idxCol.column == column;
     }
 
-    private SearchRow getSearchRow(ServerSession session, Column column, SearchRow row, int id, Value v,
-            boolean max) {
+    private SearchRow getSearchRow(ServerSession session, SearchRow row, int id, Value v, boolean max) {
         if (row == null) {
             row = table.getTemplateRow();
         } else {

@@ -13,6 +13,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.RunMode;
+import org.lealone.storage.StorageSetting;
 
 public class TableAlterHistory {
 
@@ -33,7 +35,9 @@ public class TableAlterHistory {
         try {
             Statement stmt = conn.createStatement();
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS INFORMATION_SCHEMA.table_alter_history"
-                    + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))");
+                    + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))"
+                    + " PARAMETERS(" + StorageSetting.RUN_MODE.name() + "='"
+                    + RunMode.CLIENT_SERVER.name() + "')");
             stmt.close();
             psGetVersion = conn.prepareStatement(
                     "select max(version) from INFORMATION_SCHEMA.table_alter_history where id = ?");

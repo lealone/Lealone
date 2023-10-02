@@ -15,4 +15,6 @@ public enum StorageSetting {
     POH_FACTORY,
     USE_TABLE_LOB_STORAGE,
     MAX_CHUNK_SIZE,
+
+    RUN_MODE
 }

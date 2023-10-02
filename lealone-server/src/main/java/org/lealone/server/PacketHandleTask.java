@@ -7,7 +7,6 @@ package org.lealone.server;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.TransferInputStream;
 import org.lealone.server.handler.PacketHandler;
@@ -16,7 +15,7 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 
-public class PacketHandleTask implements AsyncTask {
+public class PacketHandleTask extends LinkableTask {
 
     private static final Logger logger = LoggerFactory.getLogger(PacketHandleTask.class);
 

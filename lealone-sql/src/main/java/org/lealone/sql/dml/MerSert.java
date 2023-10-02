@@ -27,6 +27,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.query.Query;
 
+// merge和insert的基类
 public abstract class MerSert extends ManipulationStatement {
 
     protected Table table;
