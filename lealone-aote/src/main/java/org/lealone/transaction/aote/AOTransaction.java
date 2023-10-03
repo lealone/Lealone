@@ -344,6 +344,8 @@ public class AOTransaction implements Transaction {
         // 如果已经提交了，通知重试
         if (isClosed() || isWaiting())
             return OPERATION_NEED_RETRY;
+        if (session == null) // 单元测试时session为null
+            return OPERATION_NEED_WAIT;
 
         SessionStatus oldSessionStatus = session.getStatus();
         if (asyncHandler != null) {

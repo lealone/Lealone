@@ -115,12 +115,10 @@ public class TransactionEngineTest extends AoteTestBase {
         // 在进行集成测试时可能在其他地方已经初始化TransactionEngine了
         String v = te.getConfig().get("dirty_page_cache_size_in_mb");
         if (v != null && v.equals("1")) {
-            try {
-                Thread.sleep(500); // 等待后端检查点线程完成数据保存
-            } catch (InterruptedException e) {
-            }
+            sleep(map);
         } else {
             executeCheckpoint();
+            sleep(map);
         }
         assertTrue(map.getDiskSpaceUsed() > 0);
 
@@ -133,6 +131,15 @@ public class TransactionEngineTest extends AoteTestBase {
 
         executeCheckpoint();
 
+        sleep(map);
+        assertTrue(map.getDiskSpaceUsed() > 0);
+    }
+
+    private void executeCheckpoint() {
+        te.checkpoint();
+    }
+
+    private void sleep(TransactionMap<String, String> map) {
         long sleep = 0;
         while (map.getDiskSpaceUsed() <= 0 || sleep > 3000) {
             try {
@@ -141,10 +148,5 @@ public class TransactionEngineTest extends AoteTestBase {
             }
             sleep += 500;
         }
-        assertTrue(map.getDiskSpaceUsed() > 0);
-    }
-
-    private void executeCheckpoint() {
-        te.checkpoint();
     }
 }
