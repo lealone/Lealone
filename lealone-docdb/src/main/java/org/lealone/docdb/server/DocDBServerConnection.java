@@ -147,11 +147,8 @@ public class DocDBServerConnection extends AsyncConnection {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
         try {
-            int length = buffer.length();
-            byte[] packet = new byte[length];
-            buffer.read(packet, 0, length);
-            buffer.recycle();
-            ByteBufferBsonInput input = new ByteBufferBsonInput(new ByteBufNIO(ByteBuffer.wrap(packet)));
+            ByteBuffer byteBuffer = buffer.getByteBuffer();
+            ByteBufferBsonInput input = new ByteBufferBsonInput(new ByteBufNIO(byteBuffer));
             int requestID = input.readInt32();
             int responseTo = input.readInt32();
             int opCode = input.readInt32();
@@ -173,6 +170,8 @@ public class DocDBServerConnection extends AsyncConnection {
         } catch (Throwable e) {
             logger.error("Failed to handle packet", e);
             sendErrorMessage(e);
+        } finally {
+            buffer.recycle();
         }
     }
 

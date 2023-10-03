@@ -30,6 +30,7 @@ public class NioBuffer implements NetBuffer {
         return dataBuffer.getAndFlipBuffer();
     }
 
+    @Override
     public ByteBuffer getByteBuffer() {
         return dataBuffer.getBuffer();
     }

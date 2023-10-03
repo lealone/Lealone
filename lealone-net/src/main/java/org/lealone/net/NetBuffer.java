@@ -5,6 +5,8 @@
  */
 package org.lealone.net;
 
+import java.nio.ByteBuffer;
+
 public interface NetBuffer {
 
     int length();
@@ -29,4 +31,6 @@ public interface NetBuffer {
 
     default void recycle() {
     }
+
+    ByteBuffer getByteBuffer();
 }
