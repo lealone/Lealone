@@ -526,6 +526,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         public void executeCheckpoint() {
             try {
                 gcPendingCheckpoints();
+                PendingCheckpoint pc = pendingCheckpoints.getHead();
+                if (pc != null && !pc.isSynced()) {
+                    return; // 前一个检查点第一阶段没有完成就不生成第二个检查点
+                }
                 if (!forceCheckpointTasks.isEmpty()) {
                     ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
                     forceCheckpointTasks.removeAll(tasks);

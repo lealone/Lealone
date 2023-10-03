@@ -98,14 +98,9 @@ public class PageReference {
         pInfo.pos = pos;
     }
 
-    public PageReference(BTreeStorage bs, Page page, long pos) {
+    public PageReference(BTreeStorage bs, Page page) {
         this(bs);
         pInfo.page = page;
-        pInfo.pos = pos;
-    }
-
-    public PageReference(BTreeStorage bs, Page page) {
-        this(bs, page, page.getPos());
     }
 
     public PageInfo getPageInfo() {
