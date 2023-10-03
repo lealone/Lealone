@@ -5,6 +5,7 @@
  */
 package org.lealone.test.fs;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
@@ -12,8 +13,18 @@ import org.lealone.common.security.SHA256;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileStorageInputStream;
 import org.lealone.storage.fs.FileStorageOutputStream;
+import org.lealone.test.TestBase;
 
 public class FileStorageTest extends FsTestBase {
+
+    public static String joinDirs(String... dirs) {
+        String path = TestBase.joinDirs(dirs);
+        File dir = new File(path);
+        if (!dir.getParentFile().exists())
+            dir.getParentFile().mkdirs();
+        return path;
+    }
+
     @Test
     public void run() {
         FileStorage fs = FileStorage.open(null, "nio:./src/test/resources/lealone-test.yaml", "r");

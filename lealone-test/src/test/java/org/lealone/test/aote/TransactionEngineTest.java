@@ -132,14 +132,19 @@ public class TransactionEngineTest extends AoteTestBase {
         t2.commit();
 
         executeCheckpoint();
+
+        long sleep = 0;
+        while (map.getDiskSpaceUsed() <= 0 || sleep > 3000) {
+            try {
+                Thread.sleep(500); // 等待后端检查点线程完成数据保存
+            } catch (InterruptedException e) {
+            }
+            sleep += 500;
+        }
         assertTrue(map.getDiskSpaceUsed() > 0);
     }
 
     private void executeCheckpoint() {
         te.checkpoint();
-        try {
-            Thread.sleep(500); // 等待后端检查点线程完成数据保存
-        } catch (InterruptedException e) {
-        }
     }
 }
