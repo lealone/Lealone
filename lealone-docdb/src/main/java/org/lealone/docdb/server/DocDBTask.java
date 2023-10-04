@@ -66,13 +66,13 @@ public class DocDBTask extends LinkableTask {
         case "insert":
             return BCInsert.execute(input, doc, conn, this);
         case "update":
-            return BCUpdate.execute(input, doc, conn);
+            return BCUpdate.execute(input, doc, conn, this);
         case "delete":
-            return BCDelete.execute(input, doc, conn);
+            return BCDelete.execute(input, doc, conn, this);
         case "find":
             return BCFind.execute(input, doc, conn, this);
         case "aggregate":
-            return BCAggregate.execute(input, doc, conn);
+            return BCAggregate.execute(input, doc, conn, this);
         default:
             return BCOther.execute(input, doc, conn, command);
         }

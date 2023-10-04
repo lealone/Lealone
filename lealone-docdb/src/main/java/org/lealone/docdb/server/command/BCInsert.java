@@ -24,7 +24,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.docdb.server.DocDBServerConnection;
 import org.lealone.docdb.server.DocDBTask;
-import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.expression.Expression;
 
@@ -51,8 +50,10 @@ public class BCInsert extends BsonCommand {
         int size = list.size();
         if (size > 0) {
             addRows(topDoc, conn, list, size, task);
+            return null;
+        } else {
+            return createResponseDocument(0);
         }
-        return null;
     }
 
     private static void addRows(BsonDocument topDoc, DocDBServerConnection conn,
@@ -78,19 +79,7 @@ public class BCInsert extends BsonCommand {
             insert.addRow(values.toArray(new Expression[values.size()]));
         }
         insert.prepare();
-
-        PreparedSQLStatement.Yieldable<?> yieldable = insert.createYieldableUpdate(ar -> {
-            if (ar.isSucceeded()) {
-                int updateCount = ar.getResult();
-                BsonDocument document = new BsonDocument();
-                setOk(document);
-                setN(document, updateCount);
-                conn.sendResponse(task.requestId, document);
-            } else {
-                conn.sendError(session, -1, ar.getCause());
-            }
-        });
-        task.si.submitYieldableCommand(-1, yieldable);
+        createAndSubmitYieldableUpdate(task, insert);
     }
 
     @SuppressWarnings("unused")

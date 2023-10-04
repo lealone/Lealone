@@ -24,9 +24,7 @@ import org.lealone.docdb.server.DocDBServerConnection;
 import org.lealone.docdb.server.DocDBTask;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.Wildcard;
-import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
 
@@ -34,12 +32,12 @@ public class BCFind extends BsonCommand {
 
     public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument doc,
             DocDBServerConnection conn, DocDBTask task) {
-        BsonArray documents = new BsonArray();
         Table table = findTable(doc, "find", conn);
         if (table != null) {
-            find(doc, conn, table, documents, task);
+            find(doc, conn, table, task);
             return null;
         } else {
+            BsonArray documents = new BsonArray();
             return createResponseDocument(doc, documents);
         }
     }
@@ -55,13 +53,7 @@ public class BCFind extends BsonCommand {
         return document;
     }
 
-    private static ExpressionColumn getExpressionColumn(TableFilter tableFilter, String columnName) {
-        return new ExpressionColumn(tableFilter.getTable().getDatabase(), tableFilter.getSchemaName(),
-                tableFilter.getTableAlias(), columnName);
-    }
-
-    private static void find(BsonDocument doc, DocDBServerConnection conn, Table table,
-            BsonArray documents, DocDBTask task) {
+    private static void find(BsonDocument doc, DocDBServerConnection conn, Table table, DocDBTask task) {
         ServerSession session = task.session;
         Select select = new Select(session);
         TableFilter tableFilter = new TableFilter(session, table, null, true, select);
@@ -70,16 +62,7 @@ public class BCFind extends BsonCommand {
         if (filter != null) {
             if (DEBUG)
                 logger.info("filter: {}", filter.toJson());
-            filter.forEach((k, v) -> {
-                String columnName = k.toUpperCase();
-                if ("_ID".equals(columnName)) {
-                    columnName = Column.ROWID;
-                }
-                Expression left = getExpressionColumn(tableFilter, columnName);
-                Expression right = toValueExpression(v);
-                Comparison cond = new Comparison(session, Comparison.EQUAL, left, right);
-                select.addCondition(cond);
-            });
+            select.addCondition(toWhereCondition(filter, tableFilter, session));
         }
 
         ArrayList<Expression> selectExpressions = Utils.newSmallArrayList();
@@ -92,29 +75,35 @@ public class BCFind extends BsonCommand {
         PreparedSQLStatement.Yieldable<?> yieldable = select.createYieldableQuery(-1, false, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
-                result.reset();
-
-                int len = result.getVisibleColumnCount();
-                String[] fieldNames = new String[len];
-                for (int i = 0; i < len; i++) {
-                    String columnName = result.getColumnName(i);
-                    if (Column.ROWID.equals(columnName)) {
-                        fieldNames[i] = "_id";
-                    } else {
-                        fieldNames[i] = columnName.toLowerCase();
-                    }
-                }
-
-                while (result.next()) {
-                    BsonDocument document = toBsonDocument(fieldNames, result.currentRow());
-                    documents.add(document);
-                }
-                task.conn.sendResponse(task.requestId, createResponseDocument(doc, documents));
+                task.conn.sendResponse(task.requestId,
+                        createResponseDocument(task.doc, toBsonDocuments(result)));
             } else {
                 task.conn.sendError(task.session, -1, ar.getCause());
             }
         });
         task.si.submitYieldableCommand(-1, yieldable);
+    }
+
+    private static BsonArray toBsonDocuments(Result result) {
+        result.reset();
+
+        int len = result.getVisibleColumnCount();
+        String[] fieldNames = new String[len];
+        for (int i = 0; i < len; i++) {
+            String columnName = result.getColumnName(i);
+            if (Column.ROWID.equals(columnName)) {
+                fieldNames[i] = "_id";
+            } else {
+                fieldNames[i] = columnName.toLowerCase();
+            }
+        }
+
+        BsonArray documents = new BsonArray();
+        while (result.next()) {
+            BsonDocument document = toBsonDocument(fieldNames, result.currentRow());
+            documents.add(document);
+        }
+        return documents;
     }
 
     @SuppressWarnings("unused")

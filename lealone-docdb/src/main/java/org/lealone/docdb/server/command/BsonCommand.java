@@ -35,7 +35,14 @@ import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueString;
 import org.lealone.docdb.server.DocDBServer;
 import org.lealone.docdb.server.DocDBServerConnection;
+import org.lealone.docdb.server.DocDBTask;
+import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.expression.condition.ConditionAndOr;
+import org.lealone.sql.optimizer.TableFilter;
 
 public abstract class BsonCommand {
 
@@ -286,5 +293,49 @@ public abstract class BsonCommand {
                 return Long.valueOf(id.asInt64().getValue());
         }
         return null;
+    }
+
+    public static ExpressionColumn getExpressionColumn(TableFilter tableFilter, String columnName) {
+        return new ExpressionColumn(tableFilter.getTable().getDatabase(), tableFilter.getSchemaName(),
+                tableFilter.getTableAlias(), columnName);
+    }
+
+    public static Expression toWhereCondition(BsonDocument doc, TableFilter tableFilter,
+            ServerSession session) {
+        Expression condition = null;
+        for (Entry<String, BsonValue> e : doc.entrySet()) {
+            String columnName = e.getKey().toUpperCase();
+            if ("_ID".equals(columnName)) {
+                columnName = Column.ROWID;
+            }
+            Expression left = getExpressionColumn(tableFilter, columnName);
+            Expression right = toValueExpression(e.getValue());
+            Comparison cond = new Comparison(session, Comparison.EQUAL, left, right);
+            if (condition == null) {
+                condition = cond;
+            } else {
+                condition = new ConditionAndOr(ConditionAndOr.AND, cond, condition);
+            }
+        }
+        return condition;
+    }
+
+    public static BsonDocument createResponseDocument(int n) {
+        BsonDocument document = new BsonDocument();
+        setOk(document);
+        setN(document, n);
+        return document;
+    }
+
+    public static void createAndSubmitYieldableUpdate(DocDBTask task, PreparedSQLStatement statement) {
+        PreparedSQLStatement.Yieldable<?> yieldable = statement.createYieldableUpdate(ar -> {
+            if (ar.isSucceeded()) {
+                int updateCount = ar.getResult();
+                task.conn.sendResponse(task.requestId, createResponseDocument(updateCount));
+            } else {
+                task.conn.sendError(task.session, -1, ar.getCause());
+            }
+        });
+        task.si.submitYieldableCommand(-1, yieldable);
     }
 }
