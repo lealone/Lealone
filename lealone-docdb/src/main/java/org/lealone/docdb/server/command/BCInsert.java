@@ -23,14 +23,15 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.docdb.server.DocDBServerConnection;
-import org.lealone.sql.PreparedSQLStatement.Yieldable;
+import org.lealone.docdb.server.DocDBTask;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.expression.Expression;
 
 public class BCInsert extends BsonCommand {
 
     public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument topDoc,
-            DocDBServerConnection conn) {
+            DocDBServerConnection conn, DocDBTask task) {
         ArrayList<BsonDocument> list = new ArrayList<>();
         BsonArray documents = topDoc.getArray("documents", null);
         if (documents != null) {
@@ -49,18 +50,15 @@ public class BCInsert extends BsonCommand {
         }
         int size = list.size();
         if (size > 0) {
-            addRows(topDoc, conn, list, size);
+            addRows(topDoc, conn, list, size, task);
         }
-        BsonDocument document = new BsonDocument();
-        setOk(document);
-        setN(document, size);
-        return document;
+        return null;
     }
 
     private static void addRows(BsonDocument topDoc, DocDBServerConnection conn,
-            ArrayList<BsonDocument> documents, int size) {
-        Table table = getTable(topDoc, documents.get(0), "insert", conn);
-        ServerSession session = getSession(table.getDatabase(), conn);
+            ArrayList<BsonDocument> documents, int size, DocDBTask task) {
+        ServerSession session = task.session;
+        Table table = getTable(topDoc, documents.get(0), "insert", session);
         Insert insert = new Insert(session);
         insert.setTable(table);
         for (int i = 0; i < size; i++) {
@@ -79,19 +77,20 @@ public class BCInsert extends BsonCommand {
             insert.setColumns(columns.toArray(new Column[columns.size()]));
             insert.addRow(values.toArray(new Expression[values.size()]));
         }
-
         insert.prepare();
-        Yieldable<?> yieldable = insert.createYieldableUpdate(ar -> {
-        });
-        conn.getScheduler().setCurrentSession(session);
-        yieldable.run();
 
-        // YieldableInsert yieldableInsert = insert.createYieldableUpdate(ar -> {
-        // });
-        //
-        // table.addRow(session, yieldableInsert.createNewRow()).onComplete(ar -> {
-        // session.asyncCommit(() -> session.close());
-        // });
+        PreparedSQLStatement.Yieldable<?> yieldable = insert.createYieldableUpdate(ar -> {
+            if (ar.isSucceeded()) {
+                int updateCount = ar.getResult();
+                BsonDocument document = new BsonDocument();
+                setOk(document);
+                setN(document, updateCount);
+                conn.sendResponse(task.requestId, document);
+            } else {
+                conn.sendError(session, -1, ar.getCause());
+            }
+        });
+        task.si.submitYieldableCommand(-1, yieldable);
     }
 
     @SuppressWarnings("unused")

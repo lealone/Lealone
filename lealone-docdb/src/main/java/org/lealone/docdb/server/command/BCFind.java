@@ -21,6 +21,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.ValueMap;
 import org.lealone.docdb.server.DocDBServerConnection;
+import org.lealone.docdb.server.DocDBTask;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.Wildcard;
@@ -31,13 +33,18 @@ import org.lealone.sql.query.Select;
 public class BCFind extends BsonCommand {
 
     public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument doc,
-            DocDBServerConnection conn) {
+            DocDBServerConnection conn, DocDBTask task) {
         BsonArray documents = new BsonArray();
         Table table = findTable(doc, "find", conn);
         if (table != null) {
-            find(doc, conn, table, documents);
+            find(doc, conn, table, documents, task);
+            return null;
+        } else {
+            return createResponseDocument(doc, documents);
         }
+    }
 
+    private static BsonDocument createResponseDocument(BsonDocument doc, BsonArray documents) {
         BsonDocument document = new BsonDocument();
         BsonDocument cursor = new BsonDocument();
         append(cursor, "id", 0L);
@@ -54,8 +61,8 @@ public class BCFind extends BsonCommand {
     }
 
     private static void find(BsonDocument doc, DocDBServerConnection conn, Table table,
-            BsonArray documents) {
-        ServerSession session = getSession(table.getDatabase(), conn);
+            BsonArray documents, DocDBTask task) {
+        ServerSession session = task.session;
         Select select = new Select(session);
         TableFilter tableFilter = new TableFilter(session, table, null, true, select);
         select.addTableFilter(tableFilter, true);
@@ -81,24 +88,33 @@ public class BCFind extends BsonCommand {
         select.setExpressions(selectExpressions);
         select.init();
         select.prepare();
-        Result result = select.executeQuery(-1).get();
-        result.reset();
 
-        int len = result.getVisibleColumnCount();
-        String[] fieldNames = new String[len];
-        for (int i = 0; i < len; i++) {
-            String columnName = result.getColumnName(i);
-            if (Column.ROWID.equals(columnName)) {
-                fieldNames[i] = "_id";
+        PreparedSQLStatement.Yieldable<?> yieldable = select.createYieldableQuery(-1, false, ar -> {
+            if (ar.isSucceeded()) {
+                Result result = ar.getResult();
+                result.reset();
+
+                int len = result.getVisibleColumnCount();
+                String[] fieldNames = new String[len];
+                for (int i = 0; i < len; i++) {
+                    String columnName = result.getColumnName(i);
+                    if (Column.ROWID.equals(columnName)) {
+                        fieldNames[i] = "_id";
+                    } else {
+                        fieldNames[i] = columnName.toLowerCase();
+                    }
+                }
+
+                while (result.next()) {
+                    BsonDocument document = toBsonDocument(fieldNames, result.currentRow());
+                    documents.add(document);
+                }
+                task.conn.sendResponse(task.requestId, createResponseDocument(doc, documents));
             } else {
-                fieldNames[i] = columnName.toLowerCase();
+                task.conn.sendError(task.session, -1, ar.getCause());
             }
-        }
-
-        while (result.next()) {
-            BsonDocument document = toBsonDocument(fieldNames, result.currentRow());
-            documents.add(document);
-        }
+        });
+        task.si.submitYieldableCommand(-1, yieldable);
     }
 
     @SuppressWarnings("unused")

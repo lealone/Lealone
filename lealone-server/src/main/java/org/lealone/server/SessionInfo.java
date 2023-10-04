@@ -19,7 +19,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
     private final Scheduler scheduler;
-    private final TcpServerConnection conn;
+    private final AsyncServerConnection conn;
 
     private final ServerSession session;
     private final int sessionId; // 客户端的sessionId
@@ -30,8 +30,8 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
     // task统一由scheduler调度执行
     private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
-    SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
-            int sessionTimeout) {
+    public SessionInfo(Scheduler scheduler, AsyncServerConnection conn, ServerSession session,
+            int sessionId, int sessionTimeout) {
         this.scheduler = scheduler;
         this.conn = conn;
         this.session = session;
@@ -48,7 +48,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         lastActiveTime = System.currentTimeMillis();
     }
 
-    ServerSession getSession() {
+    public ServerSession getSession() {
         return session;
     }
 
@@ -60,7 +60,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         tasks.add(task);
     }
 
-    public void submitTask(PacketHandleTask task) {
+    public void submitTask(LinkableTask task) {
         updateLastActiveTime();
         if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
             runTask(task);

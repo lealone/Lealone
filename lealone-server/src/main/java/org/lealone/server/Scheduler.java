@@ -166,7 +166,7 @@ public class Scheduler extends PageOperationHandlerBase //
         }
     }
 
-    void addSessionInfo(SessionInfo si) {
+    public void addSessionInfo(SessionInfo si) {
         sessions.add(si);
     }
 

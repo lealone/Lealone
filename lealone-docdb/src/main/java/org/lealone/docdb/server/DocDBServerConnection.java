@@ -25,20 +25,20 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
-import org.lealone.docdb.server.command.BCAggregate;
-import org.lealone.docdb.server.command.BCDelete;
-import org.lealone.docdb.server.command.BCFind;
-import org.lealone.docdb.server.command.BCInsert;
-import org.lealone.docdb.server.command.BCOther;
-import org.lealone.docdb.server.command.BCUpdate;
+import org.lealone.db.session.Session;
 import org.lealone.docdb.server.command.BsonCommand;
-import org.lealone.net.AsyncConnection;
+import org.lealone.docdb.server.legacy.OpcodeDelete;
+import org.lealone.docdb.server.legacy.OpcodeInsert;
+import org.lealone.docdb.server.legacy.OpcodeQuery;
+import org.lealone.docdb.server.legacy.OpcodeUpdate;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferOutputStream;
 import org.lealone.net.WritableChannel;
+import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
+import org.lealone.server.SessionInfo;
 
-public class DocDBServerConnection extends AsyncConnection {
+public class DocDBServerConnection extends AsyncServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(DocDBServerConnection.class);
     private static final boolean DEBUG = BsonCommand.DEBUG;
@@ -52,16 +52,27 @@ public class DocDBServerConnection extends AsyncConnection {
     @SuppressWarnings("unused")
     private final HashMap<String, LinkedList<PooledSession>> pooledSessionsMap = new HashMap<>();
 
+    private final HashMap<String, SessionInfo> sessionInfoMap = new HashMap<>();
+
     private final DocDBServer server;
     private final Scheduler scheduler;
     private final int connectionId;
 
-    protected DocDBServerConnection(DocDBServer server, WritableChannel channel, Scheduler scheduler,
+    public DocDBServerConnection(DocDBServer server, WritableChannel channel, Scheduler scheduler,
             int connectionId) {
         super(channel, true);
         this.server = server;
         this.scheduler = scheduler;
         this.connectionId = connectionId;
+    }
+
+    @Override
+    public void closeSession(SessionInfo si) {
+    }
+
+    @Override
+    public int getSessionCount() {
+        return sessionInfoMap.size();
     }
 
     public Scheduler getScheduler() {
@@ -74,6 +85,17 @@ public class DocDBServerConnection extends AsyncConnection {
 
     public HashMap<UUID, ServerSession> getSessions() {
         return sessions;
+    }
+
+    public SessionInfo getSessionInfo(BsonDocument doc) {
+        Database db = BsonCommand.getDatabase(doc);
+        SessionInfo si = sessionInfoMap.get(db.getName());
+        if (si == null) {
+            si = new SessionInfo(scheduler, this, getPooledSession(db), -1, -1);
+            sessionInfoMap.put(db.getName(), si);
+            scheduler.addSessionInfo(si);
+        }
+        return si;
     }
 
     public PooledSession getPooledSession(Database db) {
@@ -110,6 +132,7 @@ public class DocDBServerConnection extends AsyncConnection {
             s.close();
         }
         sessions.clear();
+        sessionInfoMap.clear();
     }
 
     private void sendErrorMessage(Throwable e) {
@@ -146,43 +169,65 @@ public class DocDBServerConnection extends AsyncConnection {
         if (!buffer.isOnlyOnePacket()) {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
+        int opCode = 0;
         try {
             ByteBuffer byteBuffer = buffer.getByteBuffer();
             ByteBufferBsonInput input = new ByteBufferBsonInput(new ByteBufNIO(byteBuffer));
-            int requestID = input.readInt32();
+            int requestId = input.readInt32();
             int responseTo = input.readInt32();
-            int opCode = input.readInt32();
+            opCode = input.readInt32();
             if (DEBUG)
-                logger.info("scheduler: {}", Thread.currentThread().getName());
-            if (DEBUG)
-                logger.info("opCode: {}, requestID: {}, responseTo: {}", opCode, requestID, responseTo);
+                logger.info("opCode: {}, requestId: {}, responseTo: {}", opCode, requestId, responseTo);
             switch (opCode) {
-            case 2013: {
-                handleMessage(input, requestID, responseTo);
+            case 2013:
+                handleMessage(input, requestId, responseTo, buffer);
                 break;
-            }
-            case 2004: {
-                handleQuery(input, requestID, responseTo, opCode);
+            case 2012:
+                handleCompressedMessage(input, requestId, responseTo, buffer);
                 break;
-            }
+            case 2001:
+                OpcodeUpdate.execute(input, this);
+                break;
+            case 2002:
+                OpcodeInsert.execute(input, this);
+                break;
+            case 2004:
+                OpcodeQuery.execute(input, requestId, this);
+                break;
+            case 2006:
+                OpcodeDelete.execute(input, this);
+                break;
             default:
+                logger.warn("Unknow opCode: {}", opCode);
             }
         } catch (Throwable e) {
             logger.error("Failed to handle packet", e);
             sendErrorMessage(e);
         } finally {
-            buffer.recycle();
+            if (opCode != 2013)
+                buffer.recycle();
         }
     }
 
-    private void handleMessage(ByteBufferBsonInput input, int requestID, int responseTo) {
+    // TODO 参考com.mongodb.internal.connection.Compressor
+    private void handleCompressedMessage(ByteBufferBsonInput input, int requestId, int responseTo,
+            NetBuffer buffer) {
+        input.readInt32(); // originalOpcode
+        input.readInt32(); // uncompressedSize
+        input.readByte(); // compressorId
+        input.close();
+        sendResponse(requestId);
+    }
+
+    private void handleMessage(ByteBufferBsonInput input, int requestId, int responseTo,
+            NetBuffer buffer) {
         input.readInt32(); // flagBits
         int type = input.readByte();
         BsonDocument response = null;
         switch (type) {
         case 0: {
-            response = handleCommand(input);
-            break;
+            handleCommand(input, requestId, buffer);
+            return;
         }
         case 1: {
             break;
@@ -190,60 +235,31 @@ public class DocDBServerConnection extends AsyncConnection {
         default:
         }
         input.close();
-        sendResponse(requestID, response);
+        sendResponse(requestId, response);
     }
 
-    private BsonDocument handleCommand(ByteBufferBsonInput input) {
+    private void handleCommand(ByteBufferBsonInput input, int requestId, NetBuffer buffer) {
         BsonDocument doc = decode(input);
         if (DEBUG)
             logger.info("command: {}", doc.toJson());
-        String command = doc.getFirstKey().toLowerCase();
-        switch (command) {
-        case "insert":
-            return BCInsert.execute(input, doc, this);
-        case "update":
-            return BCUpdate.execute(input, doc, this);
-        case "delete":
-            return BCDelete.execute(input, doc, this);
-        case "find":
-            return BCFind.execute(input, doc, this);
-        case "aggregate":
-            return BCAggregate.execute(input, doc, this);
-        default:
-            return BCOther.execute(input, doc, this, command);
-        }
+        SessionInfo si = getSessionInfo(doc);
+        DocDBTask task = new DocDBTask(this, input, doc, si, requestId, buffer);
+        si.submitTask(task);
     }
 
-    private void handleQuery(ByteBufferBsonInput input, int requestID, int responseTo, int opCode) {
-        input.readInt32();
-        input.readCString();
-        input.readInt32();
-        input.readInt32();
-        BsonDocument doc = decode(input);
-        if (DEBUG)
-            logger.info("query: {}", doc.toJson());
-        while (input.hasRemaining()) {
-            BsonDocument returnFieldsSelector = decode(input);
-            if (DEBUG)
-                logger.info("returnFieldsSelector: {}", returnFieldsSelector.toJson());
-        }
-        input.close();
-        sendResponse(requestID);
-    }
-
-    private void sendResponse(int requestID) {
+    public void sendResponse(int requestId) {
         BsonDocument document = new BsonDocument();
         BsonCommand.setWireVersion(document);
         BsonCommand.setOk(document);
         BsonCommand.setN(document, 1);
-        sendResponse(requestID, document);
+        sendResponse(requestId, document);
     }
 
-    private void sendResponse(int requestID, BsonDocument document) {
+    public void sendResponse(int requestId, BsonDocument document) {
         BasicOutputBuffer out = new BasicOutputBuffer();
         out.writeInt32(0);
-        out.writeInt32(requestID);
-        out.writeInt32(requestID);
+        out.writeInt32(requestId);
+        out.writeInt32(requestId);
         out.writeInt32(1);
 
         out.writeInt32(0);
@@ -256,6 +272,11 @@ public class DocDBServerConnection extends AsyncConnection {
         out.writeInt32(0, out.getPosition());
         sendMessage(out.toByteArray());
         out.close();
+    }
+
+    @Override
+    public void sendError(Session session, int packetId, Throwable t) {
+        logger.error("send error", t);
     }
 
     public BsonDocument decode(ByteBufferBsonInput input) {

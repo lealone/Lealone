@@ -141,6 +141,40 @@ public abstract class BsonCommand {
         return schema.getTableOrView(null, tableName);
     }
 
+    public static Table getTable(BsonDocument topDoc, BsonDocument firstDoc, String key,
+            ServerSession session) {
+        Database db = session.getDatabase();
+        Schema schema = db.getSchema(null, Constants.SCHEMA_MAIN);
+        String tableName = topDoc.getString(key).getValue();
+        Table table = schema.findTableOrView(null, tableName);
+        if (table == null) {
+            StatementBuilder sql = new StatementBuilder();
+            sql.append("CREATE TABLE IF NOT EXISTS ").append(Constants.SCHEMA_MAIN).append(".")
+                    .append(tableName).append("(");
+            for (Entry<String, BsonValue> e : firstDoc.entrySet()) {
+                String columnName = e.getKey();
+                if (columnName.equalsIgnoreCase("_id"))
+                    continue;
+                sql.appendExceptFirst(", ");
+                sql.append(e.getKey()).append(" ");
+                BsonValue v = e.getValue();
+                switch (v.getBsonType()) {
+                case INT32:
+                    sql.append("int");
+                    break;
+                case INT64:
+                    sql.append("long");
+                    break;
+                default:
+                    sql.append("varchar");
+                }
+            }
+            sql.append(")");
+            session.prepareStatementLocal(sql.toString()).executeUpdate();
+        }
+        return schema.getTableOrView(null, tableName);
+    }
+
     public static ServerSession createSession(Database db) {
         return new ServerSession(db, getUser(db), 0);
         // return db.createSession(getUser(db));

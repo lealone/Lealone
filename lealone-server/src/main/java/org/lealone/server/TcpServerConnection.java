@@ -16,7 +16,6 @@ import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
-import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
@@ -34,7 +33,7 @@ import org.lealone.server.protocol.session.SessionInitAck;
 // 但是可以把客户端session的id跟服务器端的session做一个影射，这样两端的session就对上了。
 //
 // 每个TcpServerConnection实例对应一个Scheduler，也就是只会有一个调度服务线程执行它的方法
-public class TcpServerConnection extends TransferConnection {
+public class TcpServerConnection extends AsyncServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
 
@@ -52,7 +51,8 @@ public class TcpServerConnection extends TransferConnection {
         this.scheduler = scheduler;
     }
 
-    int getSessionCount() {
+    @Override
+    public int getSessionCount() {
         return sessions.size();
     }
 
@@ -189,7 +189,8 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    void closeSession(SessionInfo si) {
+    @Override
+    public void closeSession(SessionInfo si) {
         closeSession(si, false);
     }
 
