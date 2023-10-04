@@ -6,20 +6,15 @@
 package org.lealone.docdb.server.command;
 
 import java.util.ArrayList;
-import java.util.Map.Entry;
 
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.util.Utils;
-import org.lealone.db.index.Cursor;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.db.value.ValueMap;
 import org.lealone.docdb.server.DocDBServerConnection;
 import org.lealone.docdb.server.DocDBTask;
 import org.lealone.sql.PreparedSQLStatement;
@@ -104,55 +99,5 @@ public class BCFind extends BsonCommand {
             documents.add(document);
         }
         return documents;
-    }
-
-    @SuppressWarnings("unused")
-    private static void findOld(BsonDocument doc, DocDBServerConnection conn, Table table,
-            BsonArray documents) {
-        ServerSession session = getSession(table.getDatabase(), conn);
-        BsonDocument filter = doc.getDocument("filter", null);
-        Long id = null;
-        if (filter != null) {
-            if (DEBUG)
-                logger.info("filter: {}", filter.toJson());
-            if (filter.size() == 1) {
-                id = getId(filter);
-            }
-        }
-
-        try {
-            if (id != null) {
-                Row row = table.getTemplateRow();
-                row.setKey(id.longValue());
-                Cursor cursor = table.getScanIndex(session).find(session, row, row);
-                if (cursor.next()) {
-                    BsonDocument document = toBsonDocument((ValueMap) cursor.get().getValue(0));
-                    documents.add(document);
-                }
-            } else {
-                Cursor cursor = table.getScanIndex(session).find(session, null, null);
-                while (cursor.next()) {
-                    BsonDocument document = toBsonDocument((ValueMap) cursor.get().getValue(0));
-                    if (filter != null) {
-                        boolean b = true;
-                        for (Entry<String, BsonValue> e : filter.entrySet()) {
-                            BsonValue v = document.get(e.getKey());
-                            if (v == null || !v.equals(e.getValue())) {
-                                b = false;
-                                break;
-                            }
-                        }
-                        if (b) {
-                            documents.add(document);
-                        }
-                    } else {
-                        documents.add(document);
-                    }
-                }
-            }
-            session.commit();
-        } finally {
-            session.close();
-        }
     }
 }

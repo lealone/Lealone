@@ -8,8 +8,6 @@ package org.lealone.docdb.server.command;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -18,7 +16,6 @@ import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -80,34 +77,5 @@ public class BCInsert extends BsonCommand {
         }
         insert.prepare();
         createAndSubmitYieldableUpdate(task, insert);
-    }
-
-    @SuppressWarnings("unused")
-    private static void addRowsOld(BsonDocument topDoc, DocDBServerConnection conn,
-            ArrayList<BsonDocument> list, int size) {
-        Table table = getTable(topDoc, "insert", conn);
-        ServerSession session = getSession(table.getDatabase(), conn);
-        AtomicInteger counter = new AtomicInteger(size);
-        AtomicBoolean isFailed = new AtomicBoolean(false);
-        for (int i = 0; i < size && !isFailed.get(); i++) {
-            BsonDocument document = list.get(i);
-            Row row = table.getTemplateRow();
-            row.setValue(0, toValueMap(document));
-            Long id = getId(document);
-            if (id != null) {
-                row.setKey(id.longValue());
-            }
-            table.addRow(session, row).onComplete(ar -> {
-                if (isFailed.get())
-                    return;
-                if (ar.isFailed()) {
-                    isFailed.set(true);
-                    session.rollback();
-                }
-                if (counter.decrementAndGet() == 0 || isFailed.get()) {
-                    session.asyncCommit(() -> session.close());
-                }
-            });
-        }
     }
 }

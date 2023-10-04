@@ -6,7 +6,6 @@
 package org.lealone.docdb.server.command;
 
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Map.Entry;
 
 import org.bson.BsonBoolean;
@@ -31,7 +30,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
-import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueString;
 import org.lealone.docdb.server.DocDBServer;
 import org.lealone.docdb.server.DocDBServerConnection;
@@ -113,42 +111,6 @@ public abstract class BsonCommand {
     }
 
     public static Table getTable(BsonDocument topDoc, BsonDocument firstDoc, String key,
-            DocDBServerConnection conn) {
-        Database db = getDatabase(topDoc);
-        Schema schema = db.getSchema(null, Constants.SCHEMA_MAIN);
-        String tableName = topDoc.getString(key).getValue();
-        Table table = schema.findTableOrView(null, tableName);
-        if (table == null) {
-            try (ServerSession session = getSession(db, conn)) {
-                StatementBuilder sql = new StatementBuilder();
-                sql.append("CREATE TABLE IF NOT EXISTS ").append(Constants.SCHEMA_MAIN).append(".")
-                        .append(tableName).append("(");
-                for (Entry<String, BsonValue> e : firstDoc.entrySet()) {
-                    String columnName = e.getKey();
-                    if (columnName.equalsIgnoreCase("_id"))
-                        continue;
-                    sql.appendExceptFirst(", ");
-                    sql.append(e.getKey()).append(" ");
-                    BsonValue v = e.getValue();
-                    switch (v.getBsonType()) {
-                    case INT32:
-                        sql.append("int");
-                        break;
-                    case INT64:
-                        sql.append("long");
-                        break;
-                    default:
-                        sql.append("varchar");
-                    }
-                }
-                sql.append(")");
-                session.prepareStatementLocal(sql.toString()).executeUpdate();
-            }
-        }
-        return schema.getTableOrView(null, tableName);
-    }
-
-    public static Table getTable(BsonDocument topDoc, BsonDocument firstDoc, String key,
             ServerSession session) {
         Database db = session.getDatabase();
         Schema schema = db.getSchema(null, Constants.SCHEMA_MAIN);
@@ -215,16 +177,6 @@ public abstract class BsonCommand {
         doc.append(key, new BsonString(value));
     }
 
-    public static ValueMap toValueMap(BsonDocument doc) {
-        Value[] values = new Value[doc.size() * 2];
-        int index = 0;
-        for (Entry<String, BsonValue> e : doc.entrySet()) {
-            values[index++] = ValueString.get(e.getKey());
-            values[index++] = toValue(e.getValue());
-        }
-        return ValueMap.get(String.class, Object.class, values);
-    }
-
     public static Value toValue(BsonValue bv) {
         switch (bv.getBsonType()) {
         case INT32:
@@ -261,26 +213,6 @@ public abstract class BsonCommand {
             return new BsonInt64(v.getLong());
         default:
             return new BsonString(v.getString());
-        }
-    }
-
-    public static BsonDocument toBsonDocument(ValueMap vMap) {
-        BsonDocument doc = (BsonDocument) vMap.getDocument();
-        if (doc != null)
-            return doc;
-        synchronized (vMap) {
-            doc = (BsonDocument) vMap.getDocument();
-            if (doc != null)
-                return doc;
-            Map<Value, Value> map = vMap.getMap();
-            ArrayList<BsonElement> bsonElements = new ArrayList<>(map.size());
-            for (Entry<Value, Value> e : map.entrySet()) {
-                BsonValue bv = toBsonValue(e.getValue());
-                bsonElements.add(new BsonElement(e.getKey().getString(), bv));
-            }
-            doc = new BsonDocument(bsonElements);
-            vMap.setDocument(doc);
-            return doc;
         }
     }
 

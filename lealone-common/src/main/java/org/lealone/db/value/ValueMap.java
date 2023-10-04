@@ -24,7 +24,6 @@ public class ValueMap extends Value {
     private final Class<?> vType;
     private final Map<Value, Value> map;
     private int hash;
-    private Object document;
 
     private ValueMap(Class<?> kType, Class<?> vType, Map<?, ?> map) {
         this.kType = kType;
@@ -87,14 +86,6 @@ public class ValueMap extends Value {
 
     public Class<?> getValueType() {
         return vType;
-    }
-
-    public Object getDocument() {
-        return document;
-    }
-
-    public void setDocument(Object document) {
-        this.document = document;
     }
 
     @Override
