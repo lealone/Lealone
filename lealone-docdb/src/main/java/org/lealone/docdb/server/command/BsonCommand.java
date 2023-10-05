@@ -72,9 +72,16 @@ public abstract class BsonCommand {
             dbName = DocDBServer.DATABASE_NAME;
         Database db = LealoneDatabase.getInstance().findDatabase(dbName);
         if (db == null) {
-            String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
-            LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
-            db = LealoneDatabase.getInstance().getDatabase(dbName);
+            // 需要同步
+            synchronized (LealoneDatabase.class) {
+                db = LealoneDatabase.getInstance().findDatabase(dbName);
+                if (db == null) {
+                    String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
+                    LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql)
+                            .executeUpdate();
+                    db = LealoneDatabase.getInstance().getDatabase(dbName);
+                }
+            }
         }
         if (!db.isInitialized())
             db.init();
@@ -86,21 +93,6 @@ public abstract class BsonCommand {
         Schema schema = db.getSchema(null, Constants.SCHEMA_MAIN);
         String tableName = doc.getString(key).getValue();
         return schema.findTableOrView(null, tableName);
-    }
-
-    public static Table getTable(BsonDocument doc, String key, DocDBServerConnection conn) {
-        Database db = getDatabase(doc);
-        Schema schema = db.getSchema(null, Constants.SCHEMA_MAIN);
-        String tableName = doc.getString(key).getValue();
-        Table table = schema.findTableOrView(null, tableName);
-        if (table == null) {
-            try (ServerSession session = getSession(db, conn)) {
-                String sql = "CREATE TABLE IF NOT EXISTS " + Constants.SCHEMA_MAIN + "." + tableName
-                        + "(_json_ map<varchar, object>)";
-                session.prepareStatementLocal(sql).executeUpdate();
-            }
-        }
-        return schema.getTableOrView(null, tableName);
     }
 
     public static Column parseColumn(Table table, String columnName) {

@@ -34,8 +34,10 @@ public class DocDBCrudTest {
         mongoClient.close();
     }
 
+    static int id = 0;
+
     static Document createDocument(int f1, int f2) {
-        return new Document().append("f1", f1).append("f2", f2);
+        return new Document().append("_id", ++id).append("f1", f1).append("f2", f2);
     }
 
     static void insert(MongoCollection<Document> collection) {

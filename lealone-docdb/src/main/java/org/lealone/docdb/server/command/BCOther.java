@@ -50,10 +50,12 @@ public class BCOther extends BsonCommand {
             return document;
         }
         case "drop": {
-            Table table = getTable(doc, "drop", conn);
-            try (ServerSession session = getSession(table.getDatabase(), conn)) {
-                String sql = "DROP TABLE IF EXISTS " + table.getSQL();
-                session.prepareStatementLocal(sql).executeUpdate();
+            Table table = findTable(doc, "drop", conn);
+            if (table != null) {
+                try (ServerSession session = getSession(table.getDatabase(), conn)) {
+                    String sql = "DROP TABLE IF EXISTS " + table.getSQL();
+                    session.prepareStatementLocal(sql).executeUpdate();
+                }
             }
             BsonDocument document = new BsonDocument();
             setOk(document);
