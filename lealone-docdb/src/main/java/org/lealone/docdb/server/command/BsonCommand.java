@@ -257,9 +257,9 @@ public abstract class BsonCommand {
                 int updateCount = ar.getResult();
                 task.conn.sendResponse(task.requestId, createResponseDocument(updateCount));
             } else {
-                task.conn.sendError(task.session, -1, ar.getCause());
+                task.conn.sendError(task.session, task.requestId, ar.getCause());
             }
         });
-        task.si.submitYieldableCommand(-1, yieldable);
+        task.si.submitYieldableCommand(task.requestId, yieldable);
     }
 }

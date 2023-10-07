@@ -73,10 +73,10 @@ public class BCFind extends BsonCommand {
                 task.conn.sendResponse(task.requestId,
                         createResponseDocument(task.doc, toBsonDocuments(result)));
             } else {
-                task.conn.sendError(task.session, -1, ar.getCause());
+                task.conn.sendError(task.session, task.requestId, ar.getCause());
             }
         });
-        task.si.submitYieldableCommand(-1, yieldable);
+        task.si.submitYieldableCommand(task.requestId, yieldable);
     }
 
     private static BsonArray toBsonDocuments(Result result) {

@@ -135,9 +135,6 @@ public class DocDBServerConnection extends AsyncServerConnection {
         sessionInfoMap.clear();
     }
 
-    private void sendErrorMessage(Throwable e) {
-    }
-
     private void sendMessage(byte[] data) {
         try (NetBufferOutputStream out = new NetBufferOutputStream(writableChannel, data.length,
                 scheduler.getDataBufferFactory())) {
@@ -169,11 +166,12 @@ public class DocDBServerConnection extends AsyncServerConnection {
         if (!buffer.isOnlyOnePacket()) {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
+        int requestId = 0;
         int opCode = 0;
         try {
             ByteBuffer byteBuffer = buffer.getByteBuffer();
             ByteBufferBsonInput input = new ByteBufferBsonInput(new ByteBufNIO(byteBuffer));
-            int requestId = input.readInt32();
+            requestId = input.readInt32();
             int responseTo = input.readInt32();
             opCode = input.readInt32();
             if (DEBUG)
@@ -202,7 +200,7 @@ public class DocDBServerConnection extends AsyncServerConnection {
             }
         } catch (Throwable e) {
             logger.error("Failed to handle packet", e);
-            sendErrorMessage(e);
+            sendError(null, requestId, e);
         } finally {
             if (opCode != 2013)
                 buffer.recycle();
@@ -275,8 +273,15 @@ public class DocDBServerConnection extends AsyncServerConnection {
     }
 
     @Override
-    public void sendError(Session session, int packetId, Throwable t) {
+    public void sendError(Session session, int requestId, Throwable t) {
         logger.error("send error", t);
+        BsonDocument document = new BsonDocument();
+        BsonCommand.setWireVersion(document);
+        BsonCommand.append(document, "ok", 0);
+        BsonCommand.setN(document, 1);
+        BsonCommand.append(document, "code", DbException.convert(t).getErrorCode());
+        BsonCommand.append(document, "errmsg", t.getMessage());
+        sendResponse(requestId, document);
     }
 
     public BsonDocument decode(ByteBufferBsonInput input) {

@@ -52,7 +52,7 @@ public class DocDBTask extends LinkableTask {
             }
         } catch (Throwable e) {
             logger.error("Failed to execute command: {}", e, doc.getFirstKey());
-            conn.sendError(session, 0, e);
+            conn.sendError(session, requestId, e);
         } finally {
             // 确保无论出现什么情况都回收
             buffer.recycle();
