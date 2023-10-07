@@ -8,15 +8,21 @@ package org.lealone.test.docdb;
 import java.util.ArrayList;
 
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.DeleteOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
+import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
+import com.mongodb.client.result.UpdateResult;
 
 public class DocDBCrudTest {
 
@@ -29,8 +35,11 @@ public class DocDBCrudTest {
         // System.out.println(database.runCommand(Document.parse("{\"buildInfo\": 1}")));
         // database.createCollection("c1");
         MongoCollection<Document> collection = database.getCollection("c1");
+        collection.drop();
         insert(collection);
         query(collection);
+        update(collection);
+        delete(collection);
         mongoClient.close();
     }
 
@@ -55,6 +64,21 @@ public class DocDBCrudTest {
 
         long count = collection.countDocuments();
         System.out.println("total document count: " + count);
+    }
+
+    static void delete(MongoCollection<Document> collection) {
+        Bson filter = Filters.eq("_id", 1);
+        DeleteOptions options = new DeleteOptions();
+        DeleteResult result = collection.deleteOne(filter, options);
+        System.out.println("DeletedCount: " + result.getDeletedCount());
+    }
+
+    static void update(MongoCollection<Document> collection) {
+        Bson filter = Filters.eq("_id", 1);
+        Bson update = Updates.addToSet("f1", 100);
+        UpdateOptions updateOptions = new UpdateOptions();
+        UpdateResult result = collection.updateOne(filter, update, updateOptions);
+        System.out.println("ModifiedCount: " + result.getModifiedCount());
     }
 
     static void query(MongoCollection<Document> collection) {

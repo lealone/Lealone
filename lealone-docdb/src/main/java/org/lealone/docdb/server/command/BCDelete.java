@@ -5,7 +5,8 @@
  */
 package org.lealone.docdb.server.command;
 
-import org.bson.BsonArray;
+import java.util.ArrayList;
+
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.io.ByteBufferBsonInput;
@@ -22,30 +23,27 @@ public class BCDelete extends BsonCommand {
             DocDBServerConnection conn, DocDBTask task) {
         Table table = findTable(doc, "delete", conn);
         if (table != null) {
-            delete(doc, conn, table, task);
+            delete(input, doc, conn, table, task);
             return null;
         } else {
             return createResponseDocument(0);
         }
     }
 
-    private static void delete(BsonDocument doc, DocDBServerConnection conn, Table table,
-            DocDBTask task) {
+    private static void delete(ByteBufferBsonInput input, BsonDocument doc, DocDBServerConnection conn,
+            Table table, DocDBTask task) {
         ServerSession session = task.session;
         Delete delete = new Delete(session);
         TableFilter tableFilter = new TableFilter(session, table, null, true, null);
         delete.setTableFilter(tableFilter);
-        BsonArray deletes = doc.getArray("deletes", null);
-        if (deletes != null) {
-            for (int i = 0, size = deletes.size(); i < size; i++) {
-                BsonDocument d = deletes.get(i).asDocument();
-                BsonDocument q = d.getDocument("q");
-                if (q != null)
-                    delete.setCondition(toWhereCondition(q, tableFilter, session));
-                BsonInt32 limit = d.getInt32("limit");
-                if (limit != null)
-                    delete.setLimit(toValueExpression(limit));
-            }
+        ArrayList<BsonDocument> deletes = readPayload(input, doc, conn, "deletes");
+        for (BsonDocument d : deletes) {
+            BsonDocument q = d.getDocument("q");
+            if (q != null)
+                delete.setCondition(toWhereCondition(q, tableFilter, session));
+            BsonInt32 limit = d.getInt32("limit");
+            if (limit != null)
+                delete.setLimit(toValueExpression(limit));
         }
         delete.prepare();
         createAndSubmitYieldableUpdate(task, delete);

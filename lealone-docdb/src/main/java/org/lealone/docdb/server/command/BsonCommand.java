@@ -8,6 +8,7 @@ package org.lealone.docdb.server.command;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
+import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
@@ -15,6 +16,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.StatementBuilder;
@@ -261,5 +263,28 @@ public abstract class BsonCommand {
             }
         });
         task.si.submitYieldableCommand(task.requestId, yieldable);
+    }
+
+    public static ArrayList<BsonDocument> readPayload(ByteBufferBsonInput input, BsonDocument topDoc,
+            DocDBServerConnection conn, Object key) {
+        ArrayList<BsonDocument> documents = new ArrayList<>();
+        BsonArray ba = topDoc.getArray(key, null);
+        if (ba != null) {
+            for (int i = 0, size = ba.size(); i < size; i++) {
+                documents.add(ba.get(i).asDocument());
+            }
+        }
+
+        // 对于insert、update、delete三个操作
+        // mongodb-driver-sync会把documents包含在独立的payload中，需要特殊处理
+        if (input.hasRemaining()) {
+            input.readByte();
+            input.readInt32(); // size
+            input.readCString();
+            while (input.hasRemaining()) {
+                documents.add(conn.decode(input));
+            }
+        }
+        return documents;
     }
 }

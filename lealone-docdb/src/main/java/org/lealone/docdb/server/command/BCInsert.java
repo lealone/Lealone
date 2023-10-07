@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map.Entry;
 
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
@@ -28,25 +27,10 @@ public class BCInsert extends BsonCommand {
 
     public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument topDoc,
             DocDBServerConnection conn, DocDBTask task) {
-        ArrayList<BsonDocument> list = new ArrayList<>();
-        BsonArray documents = topDoc.getArray("documents", null);
-        if (documents != null) {
-            for (int i = 0, size = documents.size(); i < size; i++) {
-                list.add(documents.get(i).asDocument());
-            }
-        }
-        // mongodb-driver-sync会把documents包含在独立的payload中，需要特殊处理
-        if (input.hasRemaining()) {
-            input.readByte();
-            input.readInt32(); // size
-            input.readCString();
-            while (input.hasRemaining()) {
-                list.add(conn.decode(input));
-            }
-        }
-        int size = list.size();
+        ArrayList<BsonDocument> documents = readPayload(input, topDoc, conn, "documents");
+        int size = documents.size();
         if (size > 0) {
-            addRows(topDoc, conn, list, size, task);
+            addRows(topDoc, conn, documents, size, task);
             return null;
         } else {
             return createResponseDocument(0);
