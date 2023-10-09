@@ -36,7 +36,7 @@
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>bson</artifactId>
-            <version>4.3.0</version>
+            <version>4.10.2</version>
         </dependency>
     </dependencies>
 </project>
