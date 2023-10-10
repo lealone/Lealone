@@ -9,12 +9,9 @@ import java.util.ArrayList;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.junit.Test;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.DeleteOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
@@ -24,23 +21,28 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
 
-public class DocDBCrudTest {
+public class DocDBCrudTest extends DocDBTestBase {
 
     public static void main(String[] args) {
-        int port = 9610;
-        // port = 27017;
-        String connectionString = "mongodb://127.0.0.1:" + port + "/?serverSelectionTimeoutMS=200000";
-        MongoClient mongoClient = MongoClients.create(connectionString);
-        MongoDatabase database = mongoClient.getDatabase("docdb1");
-        // System.out.println(database.runCommand(Document.parse("{\"buildInfo\": 1}")));
-        // database.createCollection("c1");
-        MongoCollection<Document> collection = database.getCollection("c1");
+        new DocDBCrudTest().runTest();
+    }
+
+    public DocDBCrudTest() {
+        super("c1");
+    }
+
+    @Override
+    protected void test() throws Exception {
+        crud();
+    }
+
+    @Test
+    public void crud() {
         collection.drop();
-        insert(collection);
-        query(collection);
-        update(collection);
-        delete(collection);
-        mongoClient.close();
+        insert();
+        query();
+        update();
+        delete();
     }
 
     static int id = 0;
@@ -49,7 +51,7 @@ public class DocDBCrudTest {
         return new Document().append("_id", ++id).append("f1", f1).append("f2", f2);
     }
 
-    static void insert(MongoCollection<Document> collection) {
+    void insert() {
         Document doc = createDocument(1, 2);
         InsertOneResult r = collection.insertOne(doc);
         System.out.println("InsertedId: " + r.getInsertedId());
@@ -64,16 +66,18 @@ public class DocDBCrudTest {
 
         long count = collection.countDocuments();
         System.out.println("total document count: " + count);
+        assertEquals(4, count);
     }
 
-    static void delete(MongoCollection<Document> collection) {
+    void delete() {
         Bson filter = Filters.eq("_id", 1);
         DeleteOptions options = new DeleteOptions();
         DeleteResult result = collection.deleteOne(filter, options);
         System.out.println("DeletedCount: " + result.getDeletedCount());
+        assertEquals(1, result.getDeletedCount());
     }
 
-    static void update(MongoCollection<Document> collection) {
+    void update() {
         Bson filter = Filters.eq("_id", 1);
         Bson update = Updates.addToSet("f1", 100);
         UpdateOptions updateOptions = new UpdateOptions();
@@ -81,7 +85,7 @@ public class DocDBCrudTest {
         System.out.println("ModifiedCount: " + result.getModifiedCount());
     }
 
-    static void query(MongoCollection<Document> collection) {
+    void query() {
         MongoCursor<Document> cursor = collection.find(Filters.eq("f1", 1))
                 .projection(Projections.include("f2")).iterator();
         try {

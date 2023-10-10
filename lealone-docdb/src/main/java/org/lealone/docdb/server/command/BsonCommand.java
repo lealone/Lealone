@@ -17,6 +17,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.StatementBuilder;
@@ -42,6 +43,8 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
+import org.lealone.sql.expression.condition.ConditionInConstantSet;
+import org.lealone.sql.expression.condition.ConditionNot;
 import org.lealone.sql.optimizer.TableFilter;
 
 public abstract class BsonCommand {
@@ -230,20 +233,112 @@ public abstract class BsonCommand {
             ServerSession session) {
         Expression condition = null;
         for (Entry<String, BsonValue> e : doc.entrySet()) {
-            String columnName = e.getKey().toUpperCase();
-            if ("_ID".equals(columnName)) {
-                columnName = Column.ROWID;
-            }
-            Expression left = getExpressionColumn(tableFilter, columnName);
-            Expression right = toValueExpression(e.getValue());
-            Comparison cond = new Comparison(session, Comparison.EQUAL, left, right);
-            if (condition == null) {
-                condition = cond;
+            String k = e.getKey();
+            BsonValue v = e.getValue();
+            if (k.charAt(0) == '$') {
+                switch (k) {
+                case "$and":
+                    return toAndOrExpression(v.asArray(), tableFilter, session, ConditionAndOr.AND);
+                case "$or":
+                    return toAndOrExpression(v.asArray(), tableFilter, session, ConditionAndOr.OR);
+                case "$nor":
+                    return new ConditionNot(
+                            toAndOrExpression(v.asArray(), tableFilter, session, ConditionAndOr.OR));
+                case "$not":
+                    return new ConditionNot(toWhereCondition(v.asDocument(), tableFilter, session));
+                default:
+                    throw DbException.getUnsupportedException("query operator " + k);
+                }
             } else {
-                condition = new ConditionAndOr(ConditionAndOr.AND, cond, condition);
+                String columnName = k.toUpperCase();
+                if ("_ID".equals(columnName)) {
+                    columnName = Column.ROWID;
+                }
+                Expression left = getExpressionColumn(tableFilter, columnName);
+                Expression right = null;
+                Expression cond = null;
+                if (v.isDocument()) {
+                    right = toColumnValueExpression(v.asDocument(), tableFilter, session, left);
+                    cond = right;
+                } else {
+                    right = toValueExpression(e.getValue());
+                    cond = new Comparison(session, Comparison.EQUAL, left, right);
+                }
+                if (condition == null) {
+                    condition = cond;
+                } else {
+                    condition = new ConditionAndOr(ConditionAndOr.AND, cond, condition);
+                }
             }
         }
         return condition;
+    }
+
+    public static Expression toAndOrExpression(BsonArray ba, TableFilter tableFilter,
+            ServerSession session, int andOrType) {
+        Expression e = null;
+        for (int i = 0, size = ba.size(); i < size; i++) {
+            Expression cond = toWhereCondition(ba.get(i).asDocument(), tableFilter, session);
+            if (e == null) {
+                e = cond;
+            } else {
+                e = new ConditionAndOr(andOrType, cond, e);
+            }
+        }
+        return e;
+    }
+
+    public static Expression toColumnValueExpression(BsonDocument doc, TableFilter tableFilter,
+            ServerSession session, Expression left) {
+        if (doc.size() > 1)
+            throw DbException.getUnsupportedException(doc.toJson());
+        String k = doc.getFirstKey();
+        BsonValue v = doc.get(k);
+        if (k.charAt(0) == '$') {
+            switch (k) {
+            case "$eq":
+                return new Comparison(session, Comparison.EQUAL, left, toValueExpression(v));
+            case "$ne":
+                return new Comparison(session, Comparison.NOT_EQUAL, left, toValueExpression(v));
+            case "$gt":
+                return new Comparison(session, Comparison.BIGGER, left, toValueExpression(v));
+            case "$gte":
+                return new Comparison(session, Comparison.BIGGER_EQUAL, left, toValueExpression(v));
+            case "$lt":
+                return new Comparison(session, Comparison.SMALLER, left, toValueExpression(v));
+            case "$lte":
+                return new Comparison(session, Comparison.SMALLER_EQUAL, left, toValueExpression(v));
+            case "$in":
+                return toInConstantSet(v.asArray(), tableFilter, session, left);
+            case "$nin":
+                return new ConditionNot(toInConstantSet(v.asArray(), tableFilter, session, left));
+            case "$exists":
+                if (v.asBoolean().getValue())
+                    return new Comparison(session, Comparison.IS_NOT_NULL, left, null);
+                else
+                    return new Comparison(session, Comparison.IS_NULL, left, null);
+            case "$not":
+                return new ConditionNot(
+                        toColumnValueExpression(v.asDocument(), tableFilter, session, left));
+            default:
+                throw DbException.getUnsupportedException("query operator " + k);
+            }
+        } else {
+            throw DbException.getUnsupportedException(doc.toJson());
+        }
+    }
+
+    public static Expression toInConstantSet(BsonArray ba, TableFilter tableFilter,
+            ServerSession session, Expression left) {
+        int size = ba.size();
+        ArrayList<Expression> valueList = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            valueList.add(toValueExpression(ba.get(i)));
+        }
+        // 需要提前知道left的类型
+        left.mapColumns(tableFilter, 0);
+        left.optimize(session);
+        return new ConditionInConstantSet(session, left, valueList);
     }
 
     public static BsonDocument createResponseDocument(int n) {
