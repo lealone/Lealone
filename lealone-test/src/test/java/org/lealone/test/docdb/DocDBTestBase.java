@@ -67,20 +67,6 @@ public class DocDBTestBase extends UnitTestBase {
         // do nothing
     }
 
-    public MongoCollection<Document> getCollection() {
-        return getCollection(getClass().getSimpleName());
-    }
-
-    public static MongoCollection<Document> getCollection(String collectionName) {
-        MongoClient mongoClient = getMongoClient();
-        MongoDatabase database = mongoClient.getDatabase("docdb");
-        // System.out.println(database.runCommand(Document.parse("{\"buildInfo\": 1}")));
-        // database.createCollection(collectionName);
-        MongoCollection<Document> collection = database.getCollection(collectionName);
-        collection.drop();
-        return collection;
-    }
-
     public static MongoClient getMongoClient() {
         int port = 9610;
         // port = 27017;

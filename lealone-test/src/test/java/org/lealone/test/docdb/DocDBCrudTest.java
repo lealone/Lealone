@@ -79,7 +79,7 @@ public class DocDBCrudTest extends DocDBTestBase {
 
     void update() {
         Bson filter = Filters.eq("_id", 1);
-        Bson update = Updates.addToSet("f1", 100);
+        Bson update = Updates.set("f1", 100);
         UpdateOptions updateOptions = new UpdateOptions();
         UpdateResult result = collection.updateOne(filter, update, updateOptions);
         System.out.println("ModifiedCount: " + result.getModifiedCount());

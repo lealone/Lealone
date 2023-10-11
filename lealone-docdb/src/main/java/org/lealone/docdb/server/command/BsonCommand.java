@@ -5,6 +5,7 @@
  */
 package org.lealone.docdb.server.command;
 
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
@@ -14,6 +15,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
@@ -31,6 +33,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBytes;
+import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueString;
@@ -38,6 +41,7 @@ import org.lealone.docdb.server.DocDBServer;
 import org.lealone.docdb.server.DocDBServerConnection;
 import org.lealone.docdb.server.DocDBTask;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ValueExpression;
@@ -182,6 +186,8 @@ public abstract class BsonCommand {
             return ValueLong.get(bv.asInt64().getValue());
         case OBJECT_ID:
             return ValueBytes.get(bv.asObjectId().getValue().toByteArray());
+        case DATE_TIME:
+            return ValueDate.get(new Date(bv.asDateTime().getValue()));
         // case STRING:
         default:
             return ValueString.get(bv.asString().getValue());
@@ -208,6 +214,8 @@ public abstract class BsonCommand {
             return new BsonInt32(v.getInt());
         case Value.LONG:
             return new BsonInt64(v.getLong());
+        case Value.NULL:
+            return BsonNull.VALUE;
         default:
             return new BsonString(v.getString());
         }
@@ -352,7 +360,10 @@ public abstract class BsonCommand {
         PreparedSQLStatement.Yieldable<?> yieldable = statement.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
-                task.conn.sendResponse(task.requestId, createResponseDocument(updateCount));
+                BsonDocument response = createResponseDocument(updateCount);
+                if (statement.getType() == SQLStatement.UPDATE)
+                    append(response, "nModified", updateCount);
+                task.conn.sendResponse(task.requestId, response);
             } else {
                 task.conn.sendError(task.session, task.requestId, ar.getCause());
             }
