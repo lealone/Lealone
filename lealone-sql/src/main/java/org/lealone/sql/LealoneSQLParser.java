@@ -41,9 +41,13 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.schema.UserDataType;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.ListColumn;
+import org.lealone.db.table.Column.MapColumn;
+import org.lealone.db.table.Column.SetColumn;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.DummyTable;
 import org.lealone.db.table.RangeTable;
@@ -64,6 +68,7 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.sql.admin.ShutdownDatabase;
 import org.lealone.sql.admin.ShutdownServer;
+import org.lealone.sql.admin.StartServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
 import org.lealone.sql.ddl.AlterSchemaRename;
@@ -109,6 +114,7 @@ import org.lealone.sql.ddl.DropUserDataType;
 import org.lealone.sql.ddl.DropView;
 import org.lealone.sql.ddl.GrantRevoke;
 import org.lealone.sql.ddl.PrepareProcedure;
+import org.lealone.sql.ddl.RepairTable;
 import org.lealone.sql.ddl.SetComment;
 import org.lealone.sql.ddl.TruncateTable;
 import org.lealone.sql.dml.Backup;
@@ -189,6 +195,7 @@ public class LealoneSQLParser implements SQLParser {
 
     private final Database database;
     private final ServerSession session;
+
     /**
      * @see DbSettings#databaseToUpper
      */
@@ -286,6 +293,7 @@ public class LealoneSQLParser implements SQLParser {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
                     s = new StatementList(session, s, remaining);
+                    s.setSQL(sql);
                 }
             } else if (currentTokenType != END) {
                 throw getSyntaxError();
@@ -340,8 +348,6 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseAlter();
                 } else if (readIf("ANALYZE")) {
                     s = parseAnalyze();
-                } else if (readIf("ADMIN")) {
-                    s = parseAdmin();
                 }
                 break;
             case 'b':
@@ -433,6 +439,8 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseRunScript();
                 } else if (readIf("RELEASE")) {
                     s = parseReleaseSavepoint();
+                } else if (readIf("REPAIR")) {
+                    s = parseRepair();
                 }
                 break;
             case 's':
@@ -449,6 +457,10 @@ public class LealoneSQLParser implements SQLParser {
                     s = parseShutdown();
                 } else if (readIf("SHOW")) {
                     s = parseShow();
+                } else if (readIf("START")) {
+                    if (readIf("SERVER")) {
+                        s = parseStartServer();
+                    }
                 }
                 break;
             case 't':
@@ -535,7 +547,11 @@ public class LealoneSQLParser implements SQLParser {
     private StatementBase parseBackup() {
         Backup command = new Backup(session);
         read("TO");
-        command.setFileName(readExpression());
+        command.setFileName(readString());
+        if (readIf("LAST")) {
+            read("DATE");
+            command.setLastDate(readString());
+        }
         return command;
     }
 
@@ -547,18 +563,39 @@ public class LealoneSQLParser implements SQLParser {
         return command;
     }
 
-    private StatementBase parseAdmin() {
-        if (readIf("SHUTDOWN")) {
+    private StatementBase parseShutdown() {
+        if (readIf("SERVER")) {
             return parseShutdownServer();
         } else {
-            throw getSyntaxError();
+            return parseShutdownDatabase();
         }
     }
 
     private StatementBase parseShutdownServer() {
-        read("SERVER");
-        int port = readInt();
+        int port;
+        if (currentTokenType == END || isToken(";")) {
+            port = -1;
+        } else {
+            port = readInt();
+        }
         return new ShutdownServer(session, port);
+    }
+
+    private StatementBase parseShutdownDatabase() {
+        read("DATABASE");
+        String dbName = readUniqueIdentifier();
+        boolean immediately = readIf("IMMEDIATELY");
+        // 如果已经关闭了什么都不做
+        if (LealoneDatabase.getInstance().isClosed(dbName))
+            return new NoOperation(session);
+        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+        return new ShutdownDatabase(session, db, immediately);
+    }
+
+    private StatementBase parseStartServer() {
+        String name = readString();
+        CaseInsensitiveMap<String> parameters = parseParameters();
+        return new StartServer(session, name, parameters);
     }
 
     private TransactionStatement parseBegin() {
@@ -582,20 +619,6 @@ public class LealoneSQLParser implements SQLParser {
         return command;
     }
 
-    private ShutdownDatabase parseShutdown() {
-        int type = SQLStatement.SHUTDOWN;
-        if (readIf("IMMEDIATELY")) {
-            type = SQLStatement.SHUTDOWN_IMMEDIATELY;
-        } else if (readIf("COMPACT")) {
-            type = SQLStatement.SHUTDOWN_COMPACT;
-        } else if (readIf("DEFRAG")) {
-            type = SQLStatement.SHUTDOWN_DEFRAG;
-        } else {
-            readIf("SCRIPT");
-        }
-        return new ShutdownDatabase(session, type);
-    }
-
     private TransactionStatement parseRollback() {
         TransactionStatement command;
         if (readIf("TRANSACTION")) {
@@ -616,7 +639,8 @@ public class LealoneSQLParser implements SQLParser {
 
     private StatementBase parsePrepare() {
         if (readIf("COMMIT")) {
-            TransactionStatement command = new TransactionStatement(session, SQLStatement.PREPARE_COMMIT);
+            TransactionStatement command = new TransactionStatement(session,
+                    SQLStatement.PREPARE_COMMIT);
             command.setTransactionName(readUniqueIdentifier());
             return command;
         }
@@ -894,35 +918,14 @@ public class LealoneSQLParser implements SQLParser {
         if (readIf("DATABASES")) {
             buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
         } else if (readIf("SCHEMAS")) {
-            buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
-        } else if (readIf("CLIENT_ENCODING")) {
-            // for PostgreSQL compatibility
-            buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
-        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
-            // for PostgreSQL compatibility
-            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("TRANSACTION")) {
-            // for PostgreSQL compatibility
-            read("ISOLATION");
-            read("LEVEL");
-            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("DATESTYLE")) {
-            // for PostgreSQL compatibility
-            buff.append("'ISO' AS DATESTYLE FROM DUAL");
-        } else if (readIf("SERVER_VERSION")) {
-            // for PostgreSQL compatibility
-            buff.append("'8.1.4' AS SERVER_VERSION FROM DUAL");
-        } else if (readIf("SERVER_ENCODING")) {
-            // for PostgreSQL compatibility
-            buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
+            buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMAS");
         } else if (readIf("TABLES")) {
-            // for MySQL compatibility
-            String schema = Constants.SCHEMA_MAIN;
+            String schema = session.getCurrentSchemaName();
             if (readIf("FROM")) {
                 schema = readUniqueIdentifier();
             }
-            buff.append(
-                    "TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
+            buff.append("TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES "
+                    + "WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
             paramValues.add(ValueString.get(schema));
         } else if (readIf("COLUMNS")) {
             // for MySQL compatibility
@@ -933,14 +936,22 @@ public class LealoneSQLParser implements SQLParser {
             if (readIf("FROM")) {
                 schemaName = readUniqueIdentifier();
             }
-            buff.append("C.COLUMN_NAME FIELD, " + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
+            buff.append("C.COLUMN_NAME FIELD, "
+                    + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
                     + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM "
                     + "INFORMATION_SCHEMA.INDEXES I " + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA "
                     + "AND I.TABLE_NAME=C.TABLE_NAME " + "AND I.COLUMN_NAME=C.COLUMN_NAME)"
-                    + "WHEN 'PRIMARY KEY' THEN 'PRI' " + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
+                    + "WHEN 'PRIMARY KEY' THEN 'PRI' "
+                    + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
                     + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
                     + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
+        } else {
+            if (session.getDatabase().getMode().isPostgreSQL()) {
+                parseShowPostgreSQL(buff);
+            } else {
+                throw getSyntaxError();
+            }
         }
         boolean b = session.getAllowLiterals();
         try {
@@ -950,6 +961,27 @@ public class LealoneSQLParser implements SQLParser {
             return prepare(session, buff.toString(), paramValues);
         } finally {
             session.setAllowLiterals(b);
+        }
+    }
+
+    // for PostgreSQL compatibility
+    private void parseShowPostgreSQL(StringBuilder buff) {
+        if (readIf("CLIENT_ENCODING")) {
+            buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
+        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
+            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
+        } else if (readIf("TRANSACTION")) {
+            read("ISOLATION");
+            read("LEVEL");
+            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
+        } else if (readIf("DATESTYLE")) {
+            buff.append("'ISO' AS DATESTYLE FROM DUAL");
+        } else if (readIf("SERVER_VERSION")) {
+            buff.append("'8.1.4' AS SERVER_VERSION FROM DUAL");
+        } else if (readIf("SERVER_ENCODING")) {
+            buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
+        } else {
+            throw getSyntaxError();
         }
     }
 
@@ -1034,9 +1066,7 @@ public class LealoneSQLParser implements SQLParser {
             columns = parseColumnList(table);
             command.setColumns(columns);
         }
-        if (readIf("DIRECT")) {
-            command.setInsertFromSelect(true);
-        }
+        readIf("DIRECT"); // 兼容H2
         if (readIf("DEFAULT")) {
             read("VALUES");
             Expression[] expr = {};
@@ -1086,6 +1116,14 @@ public class LealoneSQLParser implements SQLParser {
         read("TABLE");
         Table table = readTableOrView();
         TruncateTable command = new TruncateTable(session, table.getSchema());
+        command.setTable(table);
+        return command;
+    }
+
+    private StatementBase parseRepair() {
+        read("TABLE");
+        Table table = readTableOrView();
+        RepairTable command = new RepairTable(session, table.getSchema());
         command.setTable(table);
         return command;
     }
@@ -1295,9 +1333,8 @@ public class LealoneSQLParser implements SQLParser {
         String dbName = readUniqueIdentifier();
         DropDatabase command = new DropDatabase(session, dbName);
         command.setIfExists(ifExists);
-        if (readIf("DELETE")) {
+        if (readIf("DELETE")) { // 保持兼容
             read("FILES");
-            command.setDeleteFiles(true);
         }
         return command;
     }
@@ -1594,7 +1631,7 @@ public class LealoneSQLParser implements SQLParser {
                         readIdentifierWithSchema();
                     } while (readIf(","));
                 } else if (readIf("NOWAIT")) {
-                    // TODO parser: select for update nowait: should not wait
+                    // 忽略
                 }
                 command.setForUpdate(true);
             } else if (readIf("READ") || readIf("FETCH")) {
@@ -1693,7 +1730,8 @@ public class LealoneSQLParser implements SQLParser {
             }
             if (foundLeftBracket) {
                 Schema mainSchema = database.getSchema(session, Constants.SCHEMA_MAIN);
-                if (equalsToken(tableName, RangeTable.NAME) || equalsToken(tableName, RangeTable.ALIAS)) {
+                if (equalsToken(tableName, RangeTable.NAME)
+                        || equalsToken(tableName, RangeTable.ALIAS)) {
                     Expression min = readExpression();
                     read(",");
                     Expression max = readExpression();
@@ -1850,11 +1888,12 @@ public class LealoneSQLParser implements SQLParser {
                         String joinColumnName = c.getName();
                         if (equalsToken(tableColumnName, joinColumnName)) {
                             join.addNaturalJoinColumn(c);
-                            Expression tableExpr = new ExpressionColumn(database, tableSchema, last.getTableAlias(),
-                                    tableColumnName);
-                            Expression joinExpr = new ExpressionColumn(database, joinSchema, join.getTableAlias(),
-                                    joinColumnName);
-                            Expression equal = new Comparison(session, Comparison.EQUAL, tableExpr, joinExpr);
+                            Expression tableExpr = new ExpressionColumn(database, tableSchema,
+                                    last.getTableAlias(), tableColumnName);
+                            Expression joinExpr = new ExpressionColumn(database, joinSchema,
+                                    join.getTableAlias(), joinColumnName);
+                            Expression equal = new Comparison(session, Comparison.EQUAL, tableExpr,
+                                    joinExpr);
                             if (on == null) {
                                 on = equal;
                             } else {
@@ -1885,7 +1924,8 @@ public class LealoneSQLParser implements SQLParser {
         if (join.getJoin() != null) {
             String joinTable = Constants.PREFIX_JOIN + parseIndex; // 如：SYSTEM_JOIN_25
             // 嵌套TableFilter对应的DualTable没有字段
-            TableFilter n = new TableFilter(session, getDualTable(true), joinTable, rightsChecked, currentSelect);
+            TableFilter n = new TableFilter(session, getDualTable(true), joinTable, rightsChecked,
+                    currentSelect);
             n.setNestedJoin(join);
             join = n;
         }
@@ -2022,7 +2062,8 @@ public class LealoneSQLParser implements SQLParser {
                     read(")");
                 } else {
                     Expression right = readConcat();
-                    if (SysProperties.OLD_STYLE_OUTER_JOIN && readIf("(") && readIf("+") && readIf(")")) {
+                    if (SysProperties.OLD_STYLE_OUTER_JOIN && readIf("(") && readIf("+")
+                            && readIf(")")) {
                         // support for a subset of old-fashioned Oracle outer
                         // join with (+)
                         if (r instanceof ExpressionColumn && right instanceof ExpressionColumn) {
@@ -2140,7 +2181,8 @@ public class LealoneSQLParser implements SQLParser {
             AGroupConcat agg = null;
             if (equalsToken("GROUP_CONCAT", aggregateName)) {
                 boolean distinct = readIf("DISTINCT");
-                agg = new AGroupConcat(Aggregate.GROUP_CONCAT, readExpression(), currentSelect, distinct);
+                agg = new AGroupConcat(Aggregate.GROUP_CONCAT, readExpression(), currentSelect,
+                        distinct);
                 if (readIf("ORDER")) {
                     read("BY");
                     agg.setGroupConcatOrder(parseSimpleOrderList());
@@ -2240,7 +2282,8 @@ public class LealoneSQLParser implements SQLParser {
         }
         Function function = Function.getFunction(database, name);
         if (function == null) {
-            UserAggregate aggregate = getSchema(session.getCurrentSchemaName()).findAggregate(session, name);
+            UserAggregate aggregate = getSchema(session.getCurrentSchemaName()).findAggregate(session,
+                    name);
             if (aggregate != null) {
                 return readJavaAggregate(aggregate);
             }
@@ -2425,7 +2468,8 @@ public class LealoneSQLParser implements SQLParser {
             Sequence sequence = findSequence(schema, objectName);
             if (sequence != null) {
                 Function function = Function.getFunction(database, "CURRVAL");
-                function.setParameter(0, ValueExpression.get(ValueString.get(sequence.getSchema().getName())));
+                function.setParameter(0,
+                        ValueExpression.get(ValueString.get(sequence.getSchema().getName())));
                 function.setParameter(1, ValueExpression.get(ValueString.get(sequence.getName())));
                 function.doneWithParameters();
                 return function;
@@ -2663,6 +2707,25 @@ public class LealoneSQLParser implements SQLParser {
                     Expression[] array = new Expression[list.size()];
                     list.toArray(array);
                     r = new ExpressionList(array);
+                } else if (readIf(":")) {
+                    ArrayList<Expression> list = Utils.newSmallArrayList();
+                    list.add(r);
+                    r = readExpression();
+                    list.add(r);
+                    while (!readIf(")")) {
+                        if (!readIf(",")) {
+                            read(")");
+                            break;
+                        }
+                        r = readExpression();
+                        list.add(r);
+                        read(":");
+                        r = readExpression();
+                        list.add(r);
+                    }
+                    Expression[] array = new Expression[list.size()];
+                    list.toArray(array);
+                    r = new ExpressionList(array);
                 } else {
                     read(")");
                 }
@@ -2893,7 +2956,8 @@ public class LealoneSQLParser implements SQLParser {
             read();
         }
         if (equalsToken(".", currentToken)) {
-            if (equalsToken(schemaName, database.getShortName())) {
+            String dbName = database.getShortName();
+            if (dbName.equalsIgnoreCase(schemaName)) {
                 read(".");
                 schemaName = s;
                 if (currentTokenType != IDENTIFIER) {
@@ -2901,6 +2965,10 @@ public class LealoneSQLParser implements SQLParser {
                 }
                 s = currentToken;
                 read();
+            } else {
+                // 不允许跨库访问
+                throw DbException.get(ErrorCode.GENERAL_ERROR_1,
+                        "access the " + schemaName + " database is not allowed");
             }
         }
         return s;
@@ -3034,6 +3102,13 @@ public class LealoneSQLParser implements SQLParser {
         }
         case CHAR_SPECIAL_2:
             if (types[i] == CHAR_SPECIAL_2) {
+                // 例如: f1 list<list<int>>
+                if (sqlCommand.charAt(i - 1) == '>' && sqlCommand.charAt(i) == '>') {
+                    currentToken = ">";
+                    currentTokenType = BIGGER;
+                    parseIndex = i;
+                    return;
+                }
                 i++;
             }
             currentToken = sqlCommand.substring(start, i);
@@ -3121,7 +3196,8 @@ public class LealoneSQLParser implements SQLParser {
             }
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.cache(result), database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result),
+                    database.getMode().treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -3135,7 +3211,8 @@ public class LealoneSQLParser implements SQLParser {
             result = sqlCommand.substring(begin, i);
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.cache(result), database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result),
+                    database.getMode().treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -3153,7 +3230,8 @@ public class LealoneSQLParser implements SQLParser {
     private void checkLiterals(boolean text) {
         if (!session.getAllowLiterals()) {
             int allowed = database.getAllowLiterals();
-            if (allowed == Constants.ALLOW_LITERALS_NONE || (text && allowed != Constants.ALLOW_LITERALS_ALL)) {
+            if (allowed == Constants.ALLOW_LITERALS_NONE
+                    || (text && allowed != Constants.ALLOW_LITERALS_ALL)) {
                 throw DbException.get(ErrorCode.LITERALS_ARE_NOT_ALLOWED);
             }
         }
@@ -3826,6 +3904,40 @@ public class LealoneSQLParser implements SQLParser {
             scale = templateColumn.getScale();
         } else {
             dataType = DataType.getTypeByName(original);
+            if (original.equals("LIST")) {
+                read();
+                Column element;
+                if (readIf("<")) {
+                    element = parseColumnWithType("E");
+                    read(">");
+                } else {
+                    element = new Column("E", Value.JAVA_OBJECT);
+                }
+                return new ListColumn(columnName, element);
+            } else if (original.equals("SET")) {
+                read();
+                Column element;
+                if (readIf("<")) {
+                    element = parseColumnWithType("E");
+                    read(">");
+                } else {
+                    element = new Column("E", Value.JAVA_OBJECT);
+                }
+                return new SetColumn(columnName, element);
+            } else if (original.equals("MAP")) {
+                read();
+                Column key, value;
+                if (readIf("<")) {
+                    key = parseColumnWithType("K");
+                    read(",");
+                    value = parseColumnWithType("V");
+                    read(">");
+                } else {
+                    key = new Column("K", Value.JAVA_OBJECT);
+                    value = new Column("V", Value.JAVA_OBJECT);
+                }
+                return new MapColumn(columnName, key, value);
+            }
             if (dataType == null) {
                 Table table = null;
                 if (original.equalsIgnoreCase("void")) {
@@ -3921,7 +4033,8 @@ public class LealoneSQLParser implements SQLParser {
                 column.setSelectivity(selectivity);
             }
             SingleColumnResolver resolver = new SingleColumnResolver(column);
-            column.addCheckConstraint(session, templateColumn.getCheckConstraint(session, columnName), resolver);
+            column.addCheckConstraint(session, templateColumn.getCheckConstraint(session, columnName),
+                    resolver);
         }
         column.setComment(comment);
         column.setOriginalSQL(original);
@@ -3975,19 +4088,19 @@ public class LealoneSQLParser implements SQLParser {
         if (readIf("LOCAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, false, cached);
+            return parseCreateTable(true, false, cached, !memory);
         } else if (readIf("GLOBAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, !memory);
         } else if (readIf("TEMP") || readIf("TEMPORARY")) {
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, !memory);
         } else if (readIf("TABLE")) {
             if (!cached && !memory) {
                 cached = database.getDefaultTableType() == Table.TYPE_CACHED;
             }
-            return parseCreateTable(false, false, cached);
+            return parseCreateTable(false, false, cached, !memory);
         } else {
             boolean hash = false, primaryKey = false, unique = false;
             String indexName = null;
@@ -4080,6 +4193,9 @@ public class LealoneSQLParser implements SQLParser {
         } else if (readIf("RESOURCE")) {
             // ignore this right
             return true;
+        } else if (readIf("EXECUTE")) {
+            command.addRight(Right.EXECUTE);
+            return true;
         } else {
             command.addRoleName(readUniqueIdentifier());
             return false;
@@ -4101,6 +4217,11 @@ public class LealoneSQLParser implements SQLParser {
                 if (readIf("SCHEMA")) {
                     Schema schema = database.getSchema(session, readAliasIdentifier());
                     command.setSchema(schema);
+                } else if (readIf("SERVICE")) {
+                    do {
+                        Service service = readService();
+                        command.addService(service);
+                    } while (readIf(","));
                 } else {
                     do {
                         Table table = readTableOrView();
@@ -4247,6 +4368,7 @@ public class LealoneSQLParser implements SQLParser {
                 command.addServiceMethod(serviceMethod);
             } while (readIfMore());
         }
+        CaseInsensitiveMap<String> parameters = parseParameters();
         if (readIf("LANGUAGE")) {
             String language = readExpression().getValue(session).getString();
             command.setLanguage(language);
@@ -4271,6 +4393,9 @@ public class LealoneSQLParser implements SQLParser {
             String codePath = readExpression().getValue(session).getString();
             command.setCodePath(codePath);
         }
+        if (parameters == null)
+            parameters = parseParameters();
+        command.setServiceParameters(parameters);
         return command;
     }
 
@@ -4425,7 +4550,8 @@ public class LealoneSQLParser implements SQLParser {
         String name = readIdentifierWithSchema();
         CreateAggregate command = new CreateAggregate(session, getSchema());
         command.setForce(force);
-        if (isKeyword(name) || Function.getFunction(database, name) != null || getAggregateType(name) >= 0) {
+        if (isKeyword(name) || Function.getFunction(database, name) != null
+                || getAggregateType(name) >= 0) {
             throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
         }
         command.setName(name);
@@ -4653,13 +4779,8 @@ public class LealoneSQLParser implements SQLParser {
     }
 
     private TransactionStatement parseCheckpoint() {
-        TransactionStatement command;
-        if (readIf("SYNC")) {
-            command = new TransactionStatement(session, SQLStatement.CHECKPOINT_SYNC);
-        } else {
-            command = new TransactionStatement(session, SQLStatement.CHECKPOINT);
-        }
-        return command;
+        readIf("SYNC"); // 兼容原来的CHECKPOINT_SYNC命令
+        return new TransactionStatement(session, SQLStatement.CHECKPOINT);
     }
 
     private StatementBase parseAlter() {
@@ -4948,6 +5069,8 @@ public class LealoneSQLParser implements SQLParser {
             }
             return command;
         } else {
+            if (!identifiersToUpper)
+                currentToken = currentToken.toUpperCase();
             // 先看看是否是session级的参数，然后再看是否是database级的
             SetStatement command;
             try {
@@ -5089,7 +5212,8 @@ public class LealoneSQLParser implements SQLParser {
         if (schemaName != null) {
             return getSchema().getTableOrView(session, tableName);
         }
-        Table table = database.getSchema(session, session.getCurrentSchemaName()).findTableOrView(session, tableName);
+        Table table = database.getSchema(session, session.getCurrentSchemaName())
+                .findTableOrView(session, tableName);
         if (table != null) {
             return table;
         }
@@ -5106,8 +5230,36 @@ public class LealoneSQLParser implements SQLParser {
         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
+    private Service readService() {
+        return readService(readIdentifierWithSchema(null));
+    }
+
+    private Service readService(String serviceName) {
+        // same algorithm than readSequence
+        if (schemaName != null) {
+            return getSchema().getService(session, serviceName);
+        }
+        Service service = database.getSchema(session, session.getCurrentSchemaName()).getService(session,
+                serviceName);
+        if (service != null) {
+            return service;
+        }
+        String[] schemaNames = session.getSchemaSearchPath();
+        if (schemaNames != null) {
+            for (String name : schemaNames) {
+                Schema s = database.getSchema(session, name);
+                service = s.findService(session, serviceName);
+                if (service != null) {
+                    return service;
+                }
+            }
+        }
+        throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
+    }
+
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {
-        FunctionAlias functionAlias = database.getSchema(session, schema).findFunction(session, aliasName);
+        FunctionAlias functionAlias = database.getSchema(session, schema).findFunction(session,
+                aliasName);
         if (functionAlias != null) {
             return functionAlias;
         }
@@ -5173,6 +5325,18 @@ public class LealoneSQLParser implements SQLParser {
             }
             return command;
         } else if (readIf("RENAME")) {
+            if (readIf("COLUMN")) {
+                // PostgreSQL syntax
+                String columnName = readColumnIdentifier();
+                read("TO");
+                AlterTableRenameColumn command = new AlterTableRenameColumn(session, table.getSchema());
+                command.setTable(table);
+                Column column = table.getColumn(columnName);
+                command.setColumn(column);
+                String newName = readColumnIdentifier();
+                command.setNewColumnName(newName);
+                return command;
+            }
             read("TO");
             String newName = readIdentifierWithSchema(table.getSchema().getName());
             checkSchema(table.getSchema());
@@ -5187,7 +5351,8 @@ public class LealoneSQLParser implements SQLParser {
                 String constraintName = readIdentifierWithSchema(table.getSchema().getName());
                 ifExists = readIfExists(ifExists);
                 checkSchema(table.getSchema());
-                AlterTableDropConstraint command = new AlterTableDropConstraint(session, getSchema(), ifExists);
+                AlterTableDropConstraint command = new AlterTableDropConstraint(session, getSchema(),
+                        ifExists);
                 command.setConstraintName(constraintName);
                 return command;
             } else if (readIf("FOREIGN")) {
@@ -5195,7 +5360,8 @@ public class LealoneSQLParser implements SQLParser {
                 read("KEY");
                 String constraintName = readIdentifierWithSchema(table.getSchema().getName());
                 checkSchema(table.getSchema());
-                AlterTableDropConstraint command = new AlterTableDropConstraint(session, getSchema(), false);
+                AlterTableDropConstraint command = new AlterTableDropConstraint(session, getSchema(),
+                        false);
                 command.setConstraintName(constraintName);
                 return command;
             } else if (readIf("INDEX")) {
@@ -5258,7 +5424,8 @@ public class LealoneSQLParser implements SQLParser {
             } else if (readIf("DROP")) {
                 // PostgreSQL compatibility
                 if (readIf("DEFAULT")) {
-                    AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
+                    AlterTableAlterColumn command = new AlterTableAlterColumn(session,
+                            table.getSchema());
                     command.setTable(table);
                     command.setOldColumn(column);
                     command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_DEFAULT);
@@ -5318,7 +5485,8 @@ public class LealoneSQLParser implements SQLParser {
         throw getSyntaxError();
     }
 
-    private AlterTableAlterColumn parseAlterTableAlterColumnType(Table table, String columnName, Column column) {
+    private AlterTableAlterColumn parseAlterTableAlterColumnType(Table table, String columnName,
+            Column column) {
         Column newColumn = parseColumnForTable(columnName, column.isNullable());
         AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
         command.setTable(table);
@@ -5437,7 +5605,8 @@ public class LealoneSQLParser implements SQLParser {
             command.setTableName(tableName);
             if (!readIf("(")) {
                 // 指定索引名，例如:
-                // CREATE TABLE IF NOT EXISTS t (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
+                // CREATE TABLE IF NOT EXISTS t
+                // (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
                 command.setIndexName(readUniqueIdentifier());
                 read("(");
             }
@@ -5613,7 +5782,8 @@ public class LealoneSQLParser implements SQLParser {
         } while (readIfMore());
     }
 
-    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
+    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
+            boolean persistData) {
         boolean ifNotExists = readIfNotExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {
@@ -5625,6 +5795,7 @@ public class LealoneSQLParser implements SQLParser {
         Schema schema = getSchema();
         CreateTable command = new CreateTable(session, schema);
         command.setPersistIndexes(persistIndexes);
+        command.setPersistData(persistData);
         command.setTemporary(temp);
         command.setGlobalTemporary(globalTemp);
         command.setIfNotExists(ifNotExists);

@@ -5,8 +5,6 @@
  */
 package org.lealone.db.async;
 
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsyncTaskHandlerFactory {
@@ -18,9 +16,8 @@ public class AsyncTaskHandlerFactory {
         }
 
         @Override
-        public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit) {
+        public void addPeriodicTask(AsyncPeriodicTask task) {
             task.run();
-            return null;
         }
     };
 
@@ -33,5 +30,9 @@ public class AsyncTaskHandlerFactory {
 
     public static AsyncTaskHandler getAsyncTaskHandler() {
         return handlers[index.getAndIncrement() % handlers.length];
+    }
+
+    public static void addPeriodicTask(AsyncPeriodicTask task) {
+        getAsyncTaskHandler().addPeriodicTask(task);
     }
 }

@@ -19,6 +19,7 @@ import org.lealone.sql.optimizer.ColumnResolver;
  * replaced by column expressions.
  */
 public class Wildcard extends Expression {
+
     private final String schema;
     private final String table;
 
@@ -78,7 +79,7 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         if (table == null) {
             return "*";
         }

@@ -7,7 +7,6 @@ package org.lealone.sql.executor;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -18,14 +17,15 @@ import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
+import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.page.PageKey;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
 
@@ -37,9 +37,9 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected long startTimeNanos;
     protected boolean started;
 
-    protected volatile Throwable pendingException;
-    protected volatile boolean stopped;
-    protected volatile boolean yieldEnabled = true;
+    protected Throwable pendingException;
+    protected boolean stopped;
+    protected boolean yieldEnabled = true;
 
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;
@@ -86,12 +86,18 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     @Override
-    public void setPageKeys(List<PageKey> pageKeys) {
-        if (pageKeys != null) {
-            TableFilter tf = statement.getTableFilter();
-            if (tf != null)
-                tf.setPageKeys(pageKeys);
-        }
+    public ServerSession getSession() {
+        return session;
+    }
+
+    @Override
+    public PreparedSQLStatement getStatement() {
+        return statement;
+    }
+
+    @Override
+    public void setExecutor(SQLStatementExecutor executor) {
+        statement.setExecutor(executor);
     }
 
     @Override
@@ -112,7 +118,10 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         }
 
         if (pendingException != null) {
-            handleException(pendingException);
+            if (DbObjectLock.LOCKED_EXCEPTION == pendingException) // 忽略
+                pendingException = null;
+            else
+                handleException(pendingException);
         } else if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
             stop();
         }
@@ -172,6 +181,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
                 session.rollback();
             } else {
+                // 手动提交模式如果不设置状态会导致不能执行下一条语句
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
                 session.rollbackCurrentCommand();
             }
         }
@@ -190,7 +201,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     public void stop() {
         stopped = true;
         stopInternal();
-        session.stopCurrentCommand(asyncHandler, asyncResult);
+        session.stopCurrentCommand(statement, asyncHandler, asyncResult);
 
         if (startTimeNanos > 0 && trace.isInfoEnabled()) {
             long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;
@@ -206,17 +217,15 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         return stopped;
     }
 
-    @Override
-    public void back() {
-        // do nothing
-    }
-
     public void disableYield() {
         yieldEnabled = false;
     }
 
     public boolean yieldIfNeeded(int rowNumber) {
-        // 需要先设置行号
-        return statement.setCurrentRowNumber(rowNumber) && yieldEnabled;
+        if (statement.setCurrentRowNumber(rowNumber, yieldEnabled)) {
+            session.setStatus(SessionStatus.STATEMENT_YIELDED);
+            return true;
+        }
+        return false;
     }
 }

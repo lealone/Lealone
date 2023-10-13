@@ -11,6 +11,8 @@ public interface Plugin {
 
     String getName();
 
+    Map<String, String> getConfig();
+
     void init(Map<String, String> config);
 
     void close();

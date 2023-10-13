@@ -7,8 +7,9 @@ package org.lealone.storage.aose.btree.chunk;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
@@ -38,7 +39,8 @@ public class Chunk {
     public static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
         if (filePos < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Negative position {0}", filePos);
         }
         return filePos;
     }
@@ -75,21 +77,29 @@ public class Chunk {
     public long sumOfLivePageLength;
 
     public int pagePositionAndLengthOffset;
-    public final HashMap<Long, Integer> pagePositionToLengthMap = new HashMap<>();
+    // 会有多个线程读写，不能直接用HashMap
+    public final ConcurrentHashMap<Long, Integer> pagePositionToLengthMap = new ConcurrentHashMap<>();
 
     public FileStorage fileStorage;
     public String fileName;
     public long mapSize;
 
-    public int removedPageOffset;
-    public int removedPageCount;
+    private int removedPageOffset;
+    private int removedPageCount;
+    private HashSet<Long> removedPages;
 
     public Chunk(int id) {
         this.id = id;
     }
 
     public int getPageLength(long pagePosition) {
-        return pagePositionToLengthMap.get(pagePosition);
+        Integer length = pagePositionToLengthMap.get(pagePosition);
+        if (length == null) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "File corrupted in chunk {0}, not found page {1}", fileStorage.getFileName(),
+                    pagePosition);
+        }
+        return length.intValue();
     }
 
     /**
@@ -123,10 +133,19 @@ public class Chunk {
         return asStringBuilder().toString();
     }
 
+    public int getOffset() {
+        int size = (int) fileStorage.size();
+        if (size <= 0)
+            return 0;
+        else
+            return size - CHUNK_HEADER_SIZE;
+    }
+
     private void readPagePositions() {
         if (!pagePositionToLengthMap.isEmpty())
             return;
-        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset), pageCount * 8 + pageCount * 4);
+        ByteBuffer buff = fileStorage.readFully(getFilePos(pagePositionAndLengthOffset),
+                pageCount * 8 + pageCount * 4);
         for (int i = 0; i < pageCount; i++) {
             long position = buff.getLong();
             int length = buff.getInt();
@@ -135,25 +154,37 @@ public class Chunk {
     }
 
     private void writePagePositions(DataBuffer buff) {
-        pagePositionAndLengthOffset = buff.position();
+        pagePositionAndLengthOffset = getOffset() + buff.position();
         for (Entry<Long, Integer> e : pagePositionToLengthMap.entrySet()) {
             buff.putLong(e.getKey()).putInt(e.getValue());
         }
     }
 
-    public void readRemovedPages(TreeSet<Long> removedPages) {
-        if (removedPageCount > 0) {
-            ByteBuffer buff = fileStorage.readFully(getFilePos(removedPageOffset), removedPageCount * 8);
-            for (int i = 0; i < removedPageCount; i++) {
-                removedPages.add(buff.getLong());
+    public HashSet<Long> getRemovedPages() {
+        if (removedPages == null) {
+            removedPages = new HashSet<>(removedPageCount);
+            if (removedPageCount > 0) {
+                ByteBuffer buff = fileStorage.readFully(getFilePos(removedPageOffset),
+                        removedPageCount * 8);
+                for (int i = 0; i < removedPageCount; i++) {
+                    removedPages.add(buff.getLong());
+                }
             }
         }
+        return removedPages;
     }
 
-    private void writeRemovedPages(DataBuffer buff, TreeSet<Long> removedPages) {
-        removedPageOffset = buff.position();
-        removedPageCount = removedPages.size();
-        for (long pos : removedPages) {
+    private void writeRemovedPages(DataBuffer buff, ChunkManager chunkManager) {
+        // 使用老的removedPageOffset读
+        HashSet<Long> oldRemovedPages = getRemovedPages();
+        HashSet<Long> newRemovedPages = new HashSet<>(chunkManager.getRemovedPages());
+        // 更新removedPageOffset
+        removedPageOffset = getOffset() + buff.position();
+        removedPageCount = oldRemovedPages.size() + newRemovedPages.size();
+        for (long pos : oldRemovedPages) {
+            buff.putLong(pos);
+        }
+        for (long pos : newRemovedPages) {
             buff.putLong(pos);
         }
     }
@@ -195,8 +226,8 @@ public class Chunk {
             }
         }
         if (!ok) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk header is corrupt: {0}",
-                    fileStorage);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Chunk header is corrupt: {0}", fileStorage);
         }
     }
 
@@ -231,7 +262,8 @@ public class Chunk {
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
-                    "The chunk format {0} is larger than the supported format {1}", format, FORMAT_VERSION);
+                    "The chunk format {0} is larger than the supported format {1}", format,
+                    FORMAT_VERSION);
         }
 
         removedPageOffset = DataUtils.readHexInt(map, "removedPageOffset", 0);
@@ -260,25 +292,31 @@ public class Chunk {
         return buff;
     }
 
-    public void write(DataBuffer body, TreeSet<Long> removedPages) {
+    public void write(DataBuffer body, boolean appendMode, ChunkManager chunkManager) {
         writePagePositions(body);
-        writeRemovedPages(body, removedPages);
+        writeRemovedPages(body, chunkManager);
 
-        int chunkBodyLength = body.position();
-        chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
-        body.limit(chunkBodyLength);
-        body.position(0);
+        ByteBuffer buffer = body.getAndFlipBuffer();
+        int blockCount = MathUtils.roundUpInt(buffer.limit(), BLOCK_SIZE) / BLOCK_SIZE;
 
-        blockCount = chunkBodyLength / BLOCK_SIZE + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
+        long bodyPos;
+        if (appendMode) {
+            bodyPos = fileStorage.size();
+            this.blockCount += blockCount;
+        } else {
+            bodyPos = CHUNK_HEADER_SIZE;
+            this.blockCount = blockCount + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
+        }
 
         // chunk header
         writeHeader();
         // chunk body
-        fileStorage.writeFully(CHUNK_HEADER_SIZE, body.getBuffer());
+        fileStorage.writeFully(bodyPos, buffer);
         fileStorage.sync();
     }
 
-    public void updateRemovedPages(TreeSet<Long> removedPages) {
+    public void updateRemovedPages(HashSet<Long> removedPages) {
+        this.removedPages = removedPages;
         removedPageCount = removedPages.size();
         writeHeader();
         if (removedPageCount > 0) {

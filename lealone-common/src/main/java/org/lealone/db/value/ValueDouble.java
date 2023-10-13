@@ -205,7 +205,7 @@ public class ValueDouble extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 30;
+            return 24;
         }
 
         @Override
@@ -251,5 +251,4 @@ public class ValueDouble extends Value {
             return ValueDouble.get(Double.longBitsToDouble(Long.reverse(DataUtils.readVarLong(buff))));
         }
     };
-
 }

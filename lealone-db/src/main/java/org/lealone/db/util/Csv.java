@@ -16,6 +16,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -29,7 +31,6 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.result.SimpleRowSource;
@@ -46,7 +47,7 @@ public class Csv implements SimpleRowSource {
 
     private String[] columnNames;
 
-    private String characterSet = SysProperties.FILE_ENCODING;
+    private String characterSet;
     private char escapeCharacter = '\"';
     private char fieldDelimiter = '\"';
     private char fieldSeparatorRead = ',';
@@ -55,7 +56,7 @@ public class Csv implements SimpleRowSource {
     private boolean preserveWhitespace;
     private boolean writeColumnHeader = true;
     private char lineComment;
-    private String lineSeparator = SysProperties.LINE_SEPARATOR;
+    private String lineSeparator = System.lineSeparator();
     private String nullString = "";
 
     private String fileName;
@@ -161,7 +162,8 @@ public class Csv implements SimpleRowSource {
      *          (see system property file.encoding)
      * @return the number of rows written
      */
-    public int write(Connection conn, String outputFileName, String sql, String charset) throws SQLException {
+    public int write(Connection conn, String outputFileName, String sql, String charset)
+            throws SQLException {
         Statement stat = conn.createStatement();
         ResultSet rs = stat.executeQuery(sql);
         int rows = write(outputFileName, rs, charset);
@@ -255,7 +257,9 @@ public class Csv implements SimpleRowSource {
             try {
                 OutputStream out = FileUtils.newOutputStream(fileName, false);
                 out = new BufferedOutputStream(out, Constants.IO_BUFFER_SIZE);
-                output = new BufferedWriter(new OutputStreamWriter(out, characterSet));
+                output = new BufferedWriter(
+                        characterSet != null ? new OutputStreamWriter(out, characterSet)
+                                : new OutputStreamWriter(out));
             } catch (Exception e) {
                 close();
                 throw DbException.convertToIOException(e);
@@ -313,7 +317,9 @@ public class Csv implements SimpleRowSource {
             try {
                 InputStream in = FileUtils.newInputStream(fileName);
                 in = new BufferedInputStream(in, Constants.IO_BUFFER_SIZE);
-                input = new InputStreamReader(in, characterSet);
+                Charset charset = characterSet != null ? Charset.forName(characterSet)
+                        : StandardCharsets.UTF_8;
+                input = new InputStreamReader(in, charset);
             } catch (IOException e) {
                 close();
                 throw e;
@@ -459,7 +465,8 @@ public class Csv implements SimpleRowSource {
                         break;
                     }
                 }
-                String s = new String(inputBuffer, inputBufferStart, inputBufferPos - inputBufferStart - sep);
+                String s = new String(inputBuffer, inputBufferStart,
+                        inputBufferPos - inputBufferStart - sep);
                 if (containsEscape) {
                     s = unEscape(s);
                 }
@@ -510,7 +517,8 @@ public class Csv implements SimpleRowSource {
                         break;
                     }
                 }
-                String s = new String(inputBuffer, inputBufferStart, inputBufferPos - inputBufferStart - 1);
+                String s = new String(inputBuffer, inputBufferStart,
+                        inputBufferPos - inputBufferStart - 1);
                 if (!preserveWhitespace) {
                     s = s.trim();
                 }
@@ -875,5 +883,4 @@ public class Csv implements SimpleRowSource {
         }
         return false;
     }
-
 }

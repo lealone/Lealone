@@ -20,7 +20,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateRole extends DefinitionStatement implements AuthStatement {
+public class CreateRole extends AuthStatement {
 
     private String roleName;
     private boolean ifNotExists;
@@ -40,11 +40,6 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
 
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
-    }
-
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
     }
 
     @Override

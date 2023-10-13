@@ -11,7 +11,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 // COUNT(*)
 public class ACountAll extends BuiltInAggregate {
@@ -40,39 +39,33 @@ public class ACountAll extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "COUNT(*)";
     }
 
-    private class AggregateDataCountAll extends AggregateData {
+    public class AggregateDataCountAll extends AggregateData {
 
         private long count;
 
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+
+        public Select getSelect() {
+            return select;
+        }
+
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             count++;
         }
 
         @Override
-        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            if (bvv == null)
-                count += select.getTopTableFilter().getBatchSize();
-            else
-                count += bvv.trueCount();
-        }
-
-        @Override
         Value getValue(ServerSession session) {
-            return ValueLong.get(count);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            count += v.getLong();
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
             return ValueLong.get(count);
         }
     }

@@ -35,19 +35,28 @@ class QueryResultCache {
         noCache = true;
     }
 
+    boolean isNotCachable() {
+        return noCache || !session.getDatabase().getOptimizeReuseResults();
+    }
+
     void setResult(LocalResult r) {
-        lastResult = r;
+        if (isNotCachable())
+            return;
+        if (!isDeterministic())
+            disable();
+        else
+            lastResult = r;
     }
 
     LocalResult getResult(int limit) {
-        if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
+        if (isNotCachable()) {
             return null;
         } else {
             Value[] params = getParameterValues();
             long now = session.getDatabase().getModificationDataId();
             // 当lastEvaluated != now时，说明数据已经有变化，缓存的结果不能用了
-            if (lastEvaluated == now && lastResult != null && !lastResult.isClosed() && limit == lastLimit
-                    && select.accept(ExpressionVisitorFactory.getDeterministicVisitor())) {
+            if (lastEvaluated == now && lastResult != null && !lastResult.isClosed()
+                    && limit == lastLimit) {
                 if (sameResultAsLast(params)) {
                     lastResult = lastResult.createShallowCopy(session);
                     if (lastResult != null) {
@@ -67,10 +76,14 @@ class QueryResultCache {
         }
     }
 
+    private boolean isDeterministic() {
+        return select.accept(ExpressionVisitorFactory.getDeterministicVisitor());
+    }
+
     private Value[] getParameterValues() {
         ArrayList<Parameter> list = select.getParameters();
         if (list == null || list.isEmpty()) {
-            return new Value[0];
+            return null;
         }
         int size = list.size();
         Value[] params = new Value[size];
@@ -90,19 +103,32 @@ class QueryResultCache {
             return false;
         }
         Database db = session.getDatabase();
-        for (int i = 0; i < params.length; i++) {
-            Value a = lastParameters[i], b = params[i];
-            if (a.getType() != b.getType() || !db.areEqual(a, b)) {
-                return false;
-            }
-        }
-        if (!select.accept(ExpressionVisitorFactory.getDeterministicVisitor())
-                || !select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
+        if (!sameParamsAsLast(db, params))
+            return false;
+        if (!select.accept(ExpressionVisitorFactory.getIndependentVisitor())) {
             return false;
         }
-        if (db.getModificationDataId() > lastEvaluated && select.getMaxDataModificationId() > lastEvaluated) {
+        if (db.getModificationDataId() > lastEvaluated
+                && select.getMaxDataModificationId() > lastEvaluated) {
             return false;
         }
         return true;
+    }
+
+    private boolean sameParamsAsLast(Database db, Value[] params) {
+        if (params == null && lastParameters == null)
+            return true;
+        if (params != null && lastParameters != null) {
+            if (params.length != lastParameters.length)
+                return false;
+            for (int i = 0; i < params.length; i++) {
+                Value a = lastParameters[i], b = params[i];
+                if (a.getType() != b.getType() || !db.areEqual(a, b)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 }

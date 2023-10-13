@@ -65,11 +65,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     protected boolean distinct;
 
-    /**
-     * Whether the result needs to support random access.
-     */
-    protected boolean randomAccessResult;
-
     // 存放原始表达式的Alias和ColumnName，用于给客户端返回最原始的信息
     protected ArrayList<String[]> rawExpressionInfoList;
     protected ArrayList<Expression> expressions;
@@ -221,15 +216,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
         return distinct;
     }
 
-    /**
-     * Whether results need to support random access.
-     *
-     * @param b the new value
-     */
-    public void setRandomAccessResult(boolean b) {
-        randomAccessResult = b;
-    }
-
     @Override
     public boolean isQuery() {
         return true;
@@ -342,8 +328,9 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     * @param mustBeInResult all order by expressions must be in the select list
     * @param filters the table filters
     */
-    static void initOrder(ServerSession session, ArrayList<Expression> expressions, ArrayList<String> expressionSQL,
-            ArrayList<SelectOrderBy> orderList, int visible, boolean mustBeInResult, ArrayList<TableFilter> filters) {
+    static void initOrder(ServerSession session, ArrayList<Expression> expressions,
+            ArrayList<String> expressionSQL, ArrayList<SelectOrderBy> orderList, int visible,
+            boolean mustBeInResult, ArrayList<TableFilter> filters) {
         Database db = session.getDatabase();
         for (SelectOrderBy o : orderList) {
             Expression e = o.expression;
@@ -445,7 +432,8 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     * @param expressionCount the number of columns in the query
     * @return the {@link SortOrder} object
     */
-    static SortOrder prepareOrder(ServerSession session, ArrayList<SelectOrderBy> orderList, int expressionCount) {
+    static SortOrder prepareOrder(ServerSession session, ArrayList<SelectOrderBy> orderList,
+            int expressionCount) {
         int size = orderList.size();
         int[] index = new int[size];
         int[] sortType = new int[size];

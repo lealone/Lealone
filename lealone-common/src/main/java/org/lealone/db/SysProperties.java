@@ -6,8 +6,6 @@
 package org.lealone.db;
 
 import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,39 +36,13 @@ import org.lealone.storage.fs.FileUtils;
  * </pre>
  * 
  * <p>
- * 除FILE_ENCODING、FILE_SEPARATOR、JAVA_SPECIFICATION_VERSION、LINE_SEPARATOR、USER_HOME这些标准属性外，
- * 其他属性都默认加"lealone."前缀
+ * 除USER_HOME外，其他属性都默认加"lealone."前缀
  * </p>
  * 
  * @author H2 Group
  * @author zhh
  */
 public class SysProperties {
-
-    /**
-     * System property <code>file.encoding</code> (default: Cp1252).<br />
-     * It is usually set by the system and is the default encoding used for the
-     * RunScript and CSV tool.
-     */
-    public static final String FILE_ENCODING = Utils.getProperty("file.encoding", "Cp1252");
-
-    /**
-     * System property <code>file.separator</code> (default: /).<br />
-     * It is usually set by the system, and used to build absolute file names.
-     */
-    public static final String FILE_SEPARATOR = Utils.getProperty("file.separator", "/");
-
-    /**
-     * System property <code>java.specification.version</code>.<br />
-     * It is set by the system. Examples: 1.4, 1.5, 1.6.
-     */
-    public static final String JAVA_SPECIFICATION_VERSION = Utils.getProperty("java.specification.version", "1.4");
-
-    /**
-     * System property <code>line.separator</code> (default: \n).<br />
-     * It is usually set by the system, and used by the script and trace tools.
-     */
-    public static final String LINE_SEPARATOR = Utils.getProperty("line.separator", "\n");
 
     /**
      * System property <code>user.home</code> (empty string if not set).<br />
@@ -100,7 +72,8 @@ public class SysProperties {
      * System property <code>client.trace.directory</code> (default: trace.db/).<br />
      * Directory where the trace files of the JDBC client are stored (only for client / server).
      */
-    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory", "trace.db");
+    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory",
+            "trace.db");
 
     /**
      * System property <code>collator.cache.size</code> (default: 32000).<br />
@@ -113,7 +86,8 @@ public class SysProperties {
      * System property <code>datasource.trace.level</code> (default: 1).<br />
      * The trace level of the data source implementation. Default is 1 for error.
      */
-    public static final int DATASOURCE_TRACE_LEVEL = getProperty("datasource.trace.level", TraceSystem.ERROR);
+    public static final int DATASOURCE_TRACE_LEVEL = getProperty("datasource.trace.level",
+            TraceSystem.ERROR);
 
     /**
      * System property <code>delay.wrong.password.min</code> (default: 250).<br />
@@ -138,7 +112,7 @@ public class SysProperties {
      * System property <code>lob.close.between.reads</code> (default: false).<br />
      * Close LOB files between read operations.
      */
-    public static boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
+    public static final boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
 
     /**
      * System property <code>lob.in.database</code> (default: true).<br />
@@ -151,7 +125,8 @@ public class SysProperties {
      * The maximum size of a LOB object to keep in memory on the client side
      * when using the server mode.
      */
-    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = getProperty("lob.client.max.size.memory", 1024 * 1024);
+    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = getProperty("lob.client.max.size.memory",
+            1024 * 1024);
 
     /**
      * System property <code>max.file.retry</code> (default: 16).<br />
@@ -170,22 +145,6 @@ public class SysProperties {
     public static final long MAX_TRACE_DATA_LENGTH = getProperty("max.trace.data.length", 65535);
 
     /**
-     * System property <code>nio.load.mapped</code> (default: false).<br />
-     * If the mapped buffer should be loaded when the file is opened.
-     * This can improve performance.
-     */
-    public static final boolean NIO_LOAD_MAPPED = getProperty("nio.load.mapped", false);
-
-    /**
-     * System property <code>nio.cleaner.hack</code> (default: false).<br />
-     * If enabled, use the reflection hack to un-map the mapped file if
-     * possible. If disabled, System.gc() is called in a loop until the object
-     * is garbage collected. See also
-     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
-     */
-    public static final boolean NIO_CLEANER_HACK = getProperty("nio.cleaner.hack", false);
-
-    /**
      * System property <code>object.cache</code> (default: true).<br />
      * Cache commonly used values (numbers, strings). There is a shared cache
      * for all values.
@@ -196,14 +155,16 @@ public class SysProperties {
      * System property <code>object.cache.max.per.element.size</code> (default: 4096).<br />
      * The maximum size (precision) of an object in the cache.
      */
-    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = getProperty("object.cache.max.per.element.size", 4096);
+    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = getProperty(
+            "object.cache.max.per.element.size", 4096);
 
     /**
      * System property <code>object.cache.size</code> (default: 1024).<br />
      * The maximum number of objects in the cache.
      * This value must be a power of 2.
      */
-    public static final int OBJECT_CACHE_SIZE = MathUtils.nextPowerOf2(getProperty("object.cache.size", 1024));
+    public static final int OBJECT_CACHE_SIZE = MathUtils
+            .nextPowerOf2(getProperty("object.cache.size", 1024));
 
     /**
      * System property <code>prefix.temp.file</code> (default: lealone.temp).<br />
@@ -223,7 +184,8 @@ public class SysProperties {
      * (default: 100).<br />
      * The default result set fetch size when using the server mode.
      */
-    public static final int SERVER_RESULT_SET_FETCH_SIZE = getProperty("server.resultset.fetch.size", 100);
+    public static final int SERVER_RESULT_SET_FETCH_SIZE = getProperty("server.resultset.fetch.size",
+            100);
 
     /**
      * System property <code>sort.nulls.high</code> (default: false).<br />
@@ -232,12 +194,6 @@ public class SysProperties {
      * the beginning of a result set in a descending sort.
      */
     public static final boolean SORT_NULLS_HIGH = getProperty("sort.nulls.high", false);
-
-    /**
-     * System property <code>split.file.size.shift</code> (default: 30).<br />
-     * The maximum file size of a split file is 1L &lt;&lt; x.
-     */
-    public static final long SPLIT_FILE_SIZE_SHIFT = getProperty("split.file.size.shift", 30);
 
     /**
      * System property <code>sync.method</code> (default: sync).<br />
@@ -271,7 +227,8 @@ public class SysProperties {
      * Instead of using the default class loader when deserializing objects, the
      * current thread-context class loader will be used.
      */
-    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = getProperty("use.thread.context.classloader", false);
+    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = getProperty(
+            "use.thread.context.classloader", false);
 
     /**
      * System property <code>serialize.java.object</code> (default: true).<br />
@@ -301,7 +258,7 @@ public class SysProperties {
      * defensive copy himself before storing, or ensure that the value object is
      * immutable.
      */
-    public static boolean SERIALIZE_JAVA_OBJECT = getProperty("serialize.java.object", true);
+    public static final boolean SERIALIZE_JAVA_OBJECT = getProperty("serialize.java.object", true);
 
     /**
      * System property <code>java.object.serializer</code> (default: null).<br />
@@ -337,7 +294,8 @@ public class SysProperties {
      * @return the current value
      */
     public static String getScriptDirectory() {
-        return getProperty(SCRIPT_DIRECTORY, FileUtils.getDirWithSeparator(getBaseDir()) + "script_directory");
+        return getProperty(SCRIPT_DIRECTORY,
+                FileUtils.getDirWithSeparator(getBaseDir()) + "script_directory");
     }
 
     /**
@@ -370,19 +328,13 @@ public class SysProperties {
         Map<String, String> settings = new LinkedHashMap<>();
         settings.put("BASE_DIR", getBaseDir());
         settings.put("SCRIPT_DIRECTORY", getScriptDirectory());
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-                try {
-                    for (Field f : SysProperties.class.getDeclaredFields()) {
-                        Object v = f.get(null);
-                        settings.putIfAbsent(f.getName(), v == null ? "null" : v.toString());
-                    }
-                } catch (Exception e) {
-                }
-                return null;
+        try {
+            for (Field f : SysProperties.class.getDeclaredFields()) {
+                Object v = f.get(null);
+                settings.putIfAbsent(f.getName(), v == null ? "null" : v.toString());
             }
-        });
+        } catch (Exception e) {
+        }
         return settings;
     }
 }

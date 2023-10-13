@@ -5,10 +5,9 @@
  */
 package org.lealone.transaction.aote.log;
 
-import java.util.List;
-
 import org.lealone.db.DataBuffer;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.db.DataBufferFactory;
+import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.TransactionalValue;
 
 // 只有一个线程访问
@@ -38,9 +37,8 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV,
-            boolean isForUpdate) {
-        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV, isForUpdate);
+    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV) {
+        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV);
         if (first == null) {
             first = last = r;
         } else {
@@ -66,58 +64,34 @@ public class UndoLog {
         return r;
     }
 
-    public void undo() {
-        removeLast();
-    }
-
-    public void commit(AMTransactionEngine transactionEngine, long tid) {
+    public void commit(AOTransactionEngine te) {
         UndoLogRecord r = first;
         while (r != null) {
-            r.commit(transactionEngine, tid);
+            r.commit(te);
             r = r.next;
         }
     }
 
-    public void unlock() {
-        UndoLogRecord r = first;
-        while (r != null) {
-            r.unlock();
-            r = r.next;
-        }
-    }
-
-    public void gc() { // TODO
-    }
-
-    public void rollbackTo(AMTransactionEngine transactionEngine, int toLogId) {
+    public void rollbackTo(AOTransactionEngine te, int toLogId) {
         while (logId > toLogId) {
             UndoLogRecord r = removeLast();
-            r.rollback(transactionEngine);
-        }
-    }
-
-    public void setRetryReplicationNames(List<String> retryReplicationNames, int toLogId) {
-        int index = logId - 1;
-        UndoLogRecord r = first;
-        while (r != null) {
-            if (index-- < toLogId)
-                break;
-            r.setRetryReplicationNames(retryReplicationNames);
-            r = r.next;
+            r.rollback(te);
         }
     }
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public DataBuffer toRedoLogRecordBuffer(AMTransactionEngine transactionEngine) {
-        if (isEmpty())
-            return null;
-        DataBuffer buffer = DataBuffer.create();
-        UndoLogRecord r = first;
-        while (r != null) {
-            r.writeForRedo(buffer, transactionEngine);
-            r = r.next;
-        }
+    public DataBuffer toRedoLogRecordBuffer(AOTransactionEngine te, DataBufferFactory dbFactory) {
+        DataBuffer buffer = dbFactory.create();
+        toRedoLogRecordBuffer(te, buffer);
         buffer.getAndFlipBuffer();
         return buffer;
+    }
+
+    public void toRedoLogRecordBuffer(AOTransactionEngine te, DataBuffer buffer) {
+        UndoLogRecord r = first;
+        while (r != null) {
+            r.writeForRedo(buffer, te);
+            r = r.next;
+        }
     }
 }

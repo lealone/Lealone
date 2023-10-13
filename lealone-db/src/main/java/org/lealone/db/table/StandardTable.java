@@ -12,10 +12,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.RunMode;
@@ -36,6 +38,7 @@ import org.lealone.db.index.hash.UniqueHashIndex;
 import org.lealone.db.index.standard.StandardDelegateIndex;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.index.standard.StandardSecondaryIndex;
+import org.lealone.db.index.standard.VersionedValue;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
@@ -44,7 +47,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
-import org.lealone.transaction.Transaction;
+import org.lealone.storage.StorageSetting;
 
 /**
  * @author H2 Group
@@ -58,12 +61,13 @@ public class StandardTable extends Table {
     private final StorageEngine storageEngine;
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
+    private final TableAnalyzer tableAnalyzer;
 
     private long lastModificationId;
-    private int changesSinceAnalyze;
-    private int nextAnalyze;
-    private boolean containsLargeObject;
     private Column rowIdColumn;
+    private int[] largeObjectColumns;
+    private DataHandler dataHandler;
+    private final boolean useTableLobStorage;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -75,32 +79,20 @@ public class StandardTable extends Table {
         }
         globalTemporary = data.globalTemporary;
 
-        String initReplicationNodes = null;
-        String replicationName = data.session.getReplicationName();
-        if (replicationName != null) {
-            int pos = replicationName.indexOf('@');
-            if (pos != -1) {
-                initReplicationNodes = replicationName.substring(0, pos);
-                parameters.put("initReplicationNodes", initReplicationNodes);
-            }
-        }
-        if (data.isMemoryTable())
-            parameters.put("inMemory", "1");
-        parameters.put("isShardingMode", data.session.isShardingMode() + "");
-        RunMode runMode = data.session.getRunMode();
-        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
-            parameters.put("isDistributed", "true");
+        if (!data.persistData && data.isMemoryTable())
+            parameters.put(StorageSetting.IN_MEMORY.name(), "1");
+        if (!parameters.containsKey(StorageSetting.RUN_MODE.name()))
+            parameters.put(StorageSetting.RUN_MODE.name(), getRunMode().name());
 
         isHidden = data.isHidden;
-        nextAnalyze = database.getSettings().analyzeAuto;
+        int nextAnalyze = database.getSettings().analyzeAuto;
+        tableAnalyzer = nextAnalyze > 0 ? new TableAnalyzer(this, nextAnalyze) : null;
+
+        useTableLobStorage = MapUtils.getBoolean(parameters, StorageSetting.USE_TABLE_LOB_STORAGE.name(),
+                true);
 
         setTemporary(data.temporary);
         setColumns(data.columns.toArray(new Column[0]));
-        for (Column col : getColumns()) {
-            if (DataType.isLargeObject(col.getType())) {
-                containsLargeObject = true;
-            }
-        }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
         indexesExcludeDelegate.add(primaryIndex);
@@ -114,8 +106,25 @@ public class StandardTable extends Table {
         return storageEngine;
     }
 
+    @Override
     public Map<String, String> getParameters() {
         return parameters;
+    }
+
+    @Override
+    public String getParameter(String name) {
+        String v = parameters.get(name);
+        if (v == null)
+            v = database.getParameters().get(name);
+        return v;
+    }
+
+    public RunMode getRunMode() {
+        String str = MapUtils.getString(parameters, StorageSetting.RUN_MODE.name(), null);
+        if (str != null)
+            return RunMode.valueOf(str.trim().toUpperCase());
+        else
+            return database.getRunMode();
     }
 
     @Override
@@ -185,6 +194,7 @@ public class StandardTable extends Table {
         for (Index index : indexes) {
             index.close(session);
         }
+        database.removeDataHandler(getId());
     }
 
     @Override
@@ -232,13 +242,20 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
-        return primaryIndex.getRow(session, key, oldTransactionalValue);
+    public Row getRow(Row oldRow) {
+        return primaryIndex.getRow(oldRow.getPage(), oldRow.getTValue(), oldRow.getKey(),
+                oldRow.getTValue().getValue());
     }
 
     @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment, DbObjectLock lock) {
+    public boolean isRowChanged(Row row) {
+        VersionedValue v = (VersionedValue) row.getTValue().getValue();
+        return v.columns != row.getValueList();
+    }
+
+    @Override
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment, DbObjectLock lock) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -271,11 +288,14 @@ public class StandardTable extends Table {
             } else {
                 index = new StandardSecondaryIndex(session, this, indexId, indexName, indexType, cols);
             }
-            if (index.needRebuild()) {
-                new IndexRebuilder(session, storageEngine, this, index).rebuild();
-            }
         }
+        // 先加到indexesExcludeDelegate中，新记录可以直接写入，但是不能通过它查询
+        if (!(index instanceof StandardDelegateIndex))
+            indexesExcludeDelegate.add(index);
         index.setTemporary(isTemporary());
+        if (index.needRebuild()) {
+            new IndexRebuilder(session, this, index).rebuild();
+        }
         if (index.getCreateSQL() != null) {
             index.setComment(indexComment);
             boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
@@ -285,9 +305,7 @@ public class StandardTable extends Table {
                 schema.add(session, index, lock);
             }
         }
-        indexes.add(index);
-        if (!(index instanceof StandardDelegateIndex))
-            indexesExcludeDelegate.add(index);
+        indexes.add(index); // 索引rebuild完成后再加入indexes，此时可以通过索引查询了
         setModified();
         return index;
     }
@@ -322,39 +340,79 @@ public class StandardTable extends Table {
     }
 
     // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
-    private AsyncHandler<AsyncResult<Integer>> createHandler(AsyncCallback<Integer> ac, AtomicInteger count,
-            AtomicBoolean isFailed) {
+    private AsyncHandler<AsyncResult<Integer>> createHandler(ServerSession session,
+            AsyncCallback<Integer> ac, AtomicInteger count, AtomicBoolean isFailed) {
         return ar -> {
             if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
                 ac.setAsyncResult(ar);
             }
             if (count.decrementAndGet() == 0 && !isFailed.get()) {
                 ac.setAsyncResult(ar);
+                analyzeIfRequired(session);
             }
         };
+    }
+
+    private void analyzeIfRequired(ServerSession session) {
+        if (tableAnalyzer != null)
+            tableAnalyzer.analyzeIfRequired(session);
+    }
+
+    @Override
+    public void analyze(ServerSession session, int sample) {
+        if (tableAnalyzer != null)
+            tableAnalyzer.analyze(session, sample);
+    }
+
+    private AsyncCallback<Integer> createAsyncCallbackForAddRow(ServerSession session, Row row) {
+        AsyncCallback<Integer> ac = session.createCallback();
+        if (containsLargeObject()) {
+            // 增加row全部成功后再连接大对象
+            AsyncCallback<Integer> acLob = session.createCallback();
+            acLob.onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    primaryIndex.onAddSucceeded(session, row);
+                }
+                ac.setAsyncResult(ar);
+            });
+            return acLob;
+        }
+        return ac;
     }
 
     @Override
     public Future<Integer> addRow(ServerSession session, Row row) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = createAsyncCallbackForAddRow(session, row);
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
+
+        if (primaryIndex.containsMainIndexColumn()) {
             // 第一个是PrimaryIndex
             for (int i = 0; i < size && !isFailed.get(); i++) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.add(session, row).onComplete(createHandler(ac, count, isFailed));
+                index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
             }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+        } else {
+            // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
+            primaryIndex.add(session, row).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    if (count.decrementAndGet() == 0) {
+                        ac.setAsyncResult(ar);
+                        analyzeIfRequired(session);
+                        return;
+                    }
+                    for (int i = 1; i < size && !isFailed.get(); i++) {
+                        Index index = indexesExcludeDelegate.get(i);
+                        index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
+                    }
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
@@ -363,53 +421,40 @@ public class StandardTable extends Table {
             boolean isLockedBySelf) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
-            // 第一个是PrimaryIndex
-            for (int i = 0; i < size && !isFailed.get(); i++) {
-                Index index = indexesExcludeDelegate.get(i);
-                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
-                        .onComplete(createHandler(ac, count, isFailed));
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+
+        // 第一个是PrimaryIndex
+        for (int i = 0; i < size && !isFailed.get(); i++) {
+            Index index = indexesExcludeDelegate.get(i);
+            index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
+                    .onComplete(createHandler(session, ac, count, isFailed));
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
     @Override
     public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         int size = indexesExcludeDelegate.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
-        try {
-            for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
-                Index index = indexesExcludeDelegate.get(i);
-                index.remove(session, row, isLockedBySelf).onComplete(createHandler(ac, count, isFailed));
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
+
+        for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
+            Index index = indexesExcludeDelegate.get(i);
+            index.remove(session, row, isLockedBySelf)
+                    .onComplete(createHandler(session, ac, count, isFailed));
         }
-        analyzeIfRequired(session);
         return ac;
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    public int tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         // 只锁主索引即可
-        return primaryIndex.tryLock(session, row, lockColumns, isForUpdate);
+        return primaryIndex.tryLock(session, row, lockColumns);
     }
 
     @Override
@@ -419,21 +464,16 @@ public class StandardTable extends Table {
             Index index = indexes.get(i);
             index.truncate(session);
         }
-        changesSinceAnalyze = 0;
+        if (tableAnalyzer != null)
+            tableAnalyzer.reset();
+        if (containsLargeObject())
+            dataHandler.getLobStorage().removeAllForTable(getId());
     }
 
-    protected void analyzeIfRequired(ServerSession session) {
-        if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
-            return;
-        }
-        changesSinceAnalyze = 0;
-        int n = 2 * nextAnalyze;
-        if (n > 0) {
-            nextAnalyze = n;
-        }
-        // TODO
-        // int rows = session.getDatabase().getSettings().analyzeSample / 10;
-        // Analyze.analyzeTable(session, this, rows, false);
+    @Override
+    public void repair(ServerSession session) {
+        lastModificationId = database.getNextModificationDataId();
+        primaryIndex.repair(session);
     }
 
     @Override
@@ -468,7 +508,12 @@ public class StandardTable extends Table {
 
     @Override
     public boolean containsLargeObject() {
-        return containsLargeObject;
+        return largeObjectColumns != null;
+    }
+
+    @Override
+    public boolean containsIndex() {
+        return indexesExcludeDelegate.size() > 1;
     }
 
     @Override
@@ -498,11 +543,13 @@ public class StandardTable extends Table {
 
     @Override
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
-        if (containsLargeObject) {
-            // unfortunately, the data is gone on rollback
-            truncate(session);
-            if (database.getLobStorage() != null)
-                database.getLobStorage().removeAllForTable(getId());
+        if (containsLargeObject()) {
+            if (dataHandler.isTableLobStorage()) {
+                getDatabase().getTransactionEngine().removeGcTask(dataHandler.getLobStorage());
+                dataHandler.getLobStorage().close();
+            } else {
+                dataHandler.getLobStorage().removeAllForTable(getId());
+            }
         }
         super.removeChildrenAndResources(session, lock);
         // go backwards because database.removeIndex will
@@ -536,7 +583,11 @@ public class StandardTable extends Table {
 
     @Override
     public long getDiskSpaceUsed() {
-        return primaryIndex.getDiskSpaceUsed();
+        long sum = 0;
+        for (Index i : indexes) {
+            sum += i.getDiskSpaceUsed();
+        }
+        return sum;
     }
 
     @Override
@@ -572,12 +623,6 @@ public class StandardTable extends Table {
         return name.toString();
     }
 
-    @Override
-    public void setNewColumns(Column[] columns) {
-        this.oldColumns = this.columns;
-        setColumns(columns);
-    }
-
     private Column[] oldColumns;
 
     @Override
@@ -586,7 +631,44 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public long getAndAddKey(long delta) {
-        return getScanIndex(null).getAndAddKey(delta);
+    public void setNewColumns(Column[] columns) {
+        this.oldColumns = this.columns;
+        setColumns(columns);
+    }
+
+    @Override
+    protected void setColumns(Column[] columns) {
+        super.setColumns(columns);
+        largeObjectColumns = null;
+        ArrayList<Column> list = new ArrayList<>(1);
+        for (Column col : getColumns()) {
+            if (DataType.isLargeObject(col.getType())) {
+                list.add(col);
+            }
+        }
+        if (!list.isEmpty()) {
+            int size = list.size();
+            largeObjectColumns = new int[size];
+            for (int i = 0; i < size; i++)
+                largeObjectColumns[i] = list.get(i).getColumnId();
+
+            if (useTableLobStorage) {
+                dataHandler = new TableDataHandler(this, getMapNameForTable(getId()));
+                database.addDataHandler(getId(), dataHandler);
+            } else {
+                dataHandler = database;
+            }
+        } else {
+            dataHandler = database;
+        }
+    }
+
+    public int[] getLargeObjectColumns() {
+        return largeObjectColumns;
+    }
+
+    @Override
+    public DataHandler getDataHandler() {
+        return dataHandler;
     }
 }

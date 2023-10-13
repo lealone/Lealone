@@ -10,7 +10,7 @@ import java.util.List;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.QueryPacket;
@@ -21,7 +21,7 @@ import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.page.PageKey;
+import org.lealone.sql.StatementList;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {
@@ -47,15 +47,15 @@ public class PacketHandlers {
         BatchStatementPacketHandlers.register();
         ResultPacketHandlers.register();
         LobPacketHandlers.register();
-        ReplicationPacketHandlers.register();
-        DistributedTransactionPacketHandlers.register();
-        StoragePacketHandlers.register();
     }
 
     private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
 
-        protected void createYieldableUpdate(PacketDeliveryTask task, PreparedSQLStatement stmt,
-                List<PageKey> pageKeys) {
+        protected void createYieldableUpdate(PacketHandleTask task, PreparedSQLStatement stmt) {
+            if (stmt instanceof StatementList) {
+                StatementListPacketHandlers.updateHandler.createYieldableUpdate(task, stmt);
+                return;
+            }
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     int updateCount = ar.getResult();
@@ -64,48 +64,44 @@ public class PacketHandlers {
                     task.conn.sendError(task.session, task.packetId, ar.getCause());
                 }
             });
-            yieldable.setPageKeys(pageKeys);
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
-        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+        protected Packet createAckPacket(PacketHandleTask task, int updateCount) {
             return new StatementUpdateAck(updateCount);
         }
     }
 
     static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet, List<PageKey> pageKeys) {
+        protected Packet handlePacket(PacketHandleTask task, StatementUpdate packet) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, -1);
-            createYieldableUpdate(task, stmt, pageKeys);
+            createYieldableUpdate(task, stmt);
             return null;
         }
     }
 
-    static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate> extends UpdateBase<P> {
+    static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate>
+            extends UpdateBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet, List<PageKey> pageKeys) {
-            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
-            createYieldableUpdate(task, stmt, pageKeys);
+        protected Packet handlePacket(PacketHandleTask task, PreparedStatementUpdate packet) {
+            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
+                    packet.parameters);
+            createYieldableUpdate(task, stmt);
             return null;
         }
     }
 
     private static abstract class QueryBase<P extends QueryPacket> implements PacketHandler<P> {
 
-        protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt, QueryPacket packet,
-                List<PageKey> pageKeys) {
-
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows, packet.scrollable,
-                    ar -> {
+        protected void createYieldableQuery(PacketHandleTask task, PreparedSQLStatement stmt,
+                QueryPacket packet) {
+            if (stmt instanceof StatementList) {
+                StatementListPacketHandlers.queryHandler.createYieldableQuery(task, stmt, packet);
+                return;
+            }
+            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows,
+                    packet.scrollable, ar -> {
                         if (ar.isSucceeded()) {
                             Result result = ar.getResult();
                             sendResult(task, packet, result);
@@ -113,11 +109,10 @@ public class PacketHandlers {
                             task.conn.sendError(task.session, task.packetId, ar.getCause());
                         }
                     });
-            yieldable.setPageKeys(pageKeys);
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
-        protected void sendResult(PacketDeliveryTask task, QueryPacket packet, Result result) {
+        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result) {
             task.session.addCache(packet.resultId, result);
             try {
                 int rowCount = result.getRowCount();
@@ -130,38 +125,33 @@ public class PacketHandlers {
             }
         }
 
-        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
+        protected Packet createAckPacket(PacketHandleTask task, Result result, int rowCount, int fetch) {
             return new StatementQueryAck(result, rowCount, fetch);
         }
     }
 
     static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet, List<PageKey> pageKeys) {
+        protected Packet handlePacket(PacketHandleTask task, StatementQuery packet) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, packet.fetchSize);
-            createYieldableQuery(task, stmt, packet, pageKeys);
+            createYieldableQuery(task, stmt, packet);
             return null;
         }
     }
 
-    static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery> extends QueryBase<P> {
+    static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery>
+            extends QueryBase<P> {
 
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
-            return handlePacket(task, packet, null);
-        }
-
-        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet, List<PageKey> pageKeys) {
-            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
-            createYieldableQuery(task, stmt, packet, pageKeys);
+        protected Packet handlePacket(PacketHandleTask task, PreparedStatementQuery packet) {
+            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId,
+                    packet.parameters);
+            createYieldableQuery(task, stmt, packet);
             return null;
         }
     }
 
-    private static PreparedSQLStatement prepareStatement(PacketDeliveryTask task, String sql, int fetchSize) {
+    private static PreparedSQLStatement prepareStatement(PacketHandleTask task, String sql,
+            int fetchSize) {
         PreparedSQLStatement stmt = task.session.prepareStatement(sql, fetchSize);
         // 客户端的非Prepared语句不需要缓存，非Prepared语句执行一次就结束
         // 所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
@@ -169,8 +159,8 @@ public class PacketHandlers {
         return stmt;
     }
 
-    private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketDeliveryTask task, int commandId,
-            Value[] parameters) {
+    private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketHandleTask task,
+            int commandId, Value[] parameters) {
         PreparedSQLStatement stmt = (PreparedSQLStatement) task.session.getCache(commandId);
         List<? extends CommandParameter> params = stmt.getParameters();
         for (int i = 0, size = parameters.length; i < size; i++) {

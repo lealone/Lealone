@@ -24,7 +24,8 @@ public class JdbcArrayTest extends ClientTestBase {
 
         JdbcArray array = (JdbcArray) conn.createArrayOf(null, new Object[] { 1, 2, 3 });
 
-        PreparedStatement ps = conn.prepareStatement("INSERT INTO JdbcArrayTest(f1, f2, f3) VALUES(1, 2, ?)");
+        PreparedStatement ps = conn
+                .prepareStatement("INSERT INTO JdbcArrayTest(f1, f2, f3) VALUES(1, 2, ?)");
         ps.setArray(1, array);
         ps.executeUpdate();
 

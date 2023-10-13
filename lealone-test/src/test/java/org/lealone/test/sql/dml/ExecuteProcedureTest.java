@@ -12,8 +12,10 @@ public class ExecuteProcedureTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("drop table IF EXISTS ExecuteProcedureTest");
-        executeUpdate("create table IF NOT EXISTS ExecuteProcedureTest(id int, name varchar(500), b boolean)");
-        executeUpdate("CREATE INDEX IF NOT EXISTS ExecuteProcedureTestIndex ON ExecuteProcedureTest(name)");
+        executeUpdate(
+                "create table IF NOT EXISTS ExecuteProcedureTest(id int, name varchar(500), b boolean)");
+        executeUpdate(
+                "CREATE INDEX IF NOT EXISTS ExecuteProcedureTestIndex ON ExecuteProcedureTest(name)");
 
         executeUpdate("insert into ExecuteProcedureTest(id, name, b) values(1, 'a1', true)");
         executeUpdate("insert into ExecuteProcedureTest(id, name, b) values(1, 'b1', true)");

@@ -68,5 +68,4 @@ public class CompareModeDefault extends CompareMode {
             return key;
         }
     }
-
 }

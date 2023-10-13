@@ -69,7 +69,8 @@ public class TransactionTest extends SqlTestBase {
     void create() throws Exception {
         executeUpdate("DROP TABLE IF EXISTS TransactionTest");
         // executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL, f2 int, f3 varchar)");
-        executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
         // executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (SPLIT KEYS('200'),f1 int NOT NULL PRIMARY KEY, f2
         // int, f3 varchar)");
         // executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS TransactionTest_idx1 ON TransactionTest(f1)");

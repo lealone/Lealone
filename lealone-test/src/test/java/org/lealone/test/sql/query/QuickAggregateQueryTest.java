@@ -13,8 +13,10 @@ public class QuickAggregateQueryTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("drop table IF EXISTS QuickAggregateQueryTest");
-        stmt.executeUpdate("create table IF NOT EXISTS QuickAggregateQueryTest(f1 int, f2 int, f3 int not null)");
-        stmt.executeUpdate("create index IF NOT EXISTS QuickAggregateQueryTest_i1 on QuickAggregateQueryTest(f1)");
+        stmt.executeUpdate(
+                "create table IF NOT EXISTS QuickAggregateQueryTest(f1 int, f2 int, f3 int not null)");
+        stmt.executeUpdate(
+                "create index IF NOT EXISTS QuickAggregateQueryTest_i1 on QuickAggregateQueryTest(f1)");
 
         stmt.executeUpdate("insert into QuickAggregateQueryTest(f1, f2, f3) values(1,2,3)");
         stmt.executeUpdate("insert into QuickAggregateQueryTest(f1, f2, f3) values(1,3,3)");

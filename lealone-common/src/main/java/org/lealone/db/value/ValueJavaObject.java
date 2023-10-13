@@ -99,7 +99,8 @@ public class ValueJavaObject extends ValueBytes {
             boolean o1Comparable = o1 instanceof Comparable;
             boolean o2Comparable = o2 instanceof Comparable;
 
-            if (o1Comparable && o2Comparable && Utils.haveCommonComparableSuperclass(o1.getClass(), o2.getClass())) {
+            if (o1Comparable && o2Comparable
+                    && Utils.haveCommonComparableSuperclass(o1.getClass(), o2.getClass())) {
                 @SuppressWarnings("unchecked")
                 Comparable<Object> c1 = (Comparable<Object>) o1;
                 return c1.compareTo(o2);

@@ -415,7 +415,7 @@ public interface SQLStatement extends SQLCommand {
     /**
      * The type of a CHECKPOINT SYNC statement.
      */
-    int CHECKPOINT_SYNC = 126;
+    // int CHECKPOINT_SYNC = 126; // 已经废弃，跟CHECKPOINT一样
 
     /**
      * The type of a SAVEPOINT statement.
@@ -445,29 +445,24 @@ public interface SQLStatement extends SQLCommand {
     // admin commands
 
     /**
-     * The type of a SHUTDOWN statement.
+     * The type of a SHUTDOWN DATABASE statement.
      */
-    int SHUTDOWN = 140;
+    int SHUTDOWN_DATABASE = 140;
 
     /**
-     * The type of a SHUTDOWN IMMEDIATELY statement.
+     * The type of a SHUTDOWN SERVER statement.
      */
-    int SHUTDOWN_IMMEDIATELY = 141;
+    int SHUTDOWN_SERVER = 141;
 
     /**
-     * The type of a SHUTDOWN COMPACT statement.
+     * The type of a START SERVER statement.
      */
-    int SHUTDOWN_COMPACT = 142;
+    int START_SERVER = 142;
 
     /**
-     * The type of a SHUTDOWN DEFRAG statement.
+     * The type of a REPAIR TABLE statement.
      */
-    int SHUTDOWN_DEFRAG = 143;
-
-    /**
-     * The type of a SHUTDOWN SERVER  statement.
-     */
-    int SHUTDOWN_SERVER = 144;
+    int REPAIR_TABLE = 150;
 
     String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 }

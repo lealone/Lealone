@@ -151,5 +151,4 @@ public class ValueBytes extends Value {
         System.arraycopy(value, 0, buff, 0, len);
         return get(buff);
     }
-
 }

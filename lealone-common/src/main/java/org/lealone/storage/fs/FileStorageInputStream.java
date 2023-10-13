@@ -21,11 +21,11 @@ import org.lealone.db.DataHandler;
 public class FileStorageInputStream extends InputStream {
 
     private FileStorage fileStorage;
+    private final boolean alwaysClose;
+    private final CompressTool compress;
     private final DataBuffer page;
     private int remainingInBuffer;
-    private final CompressTool compress;
     private boolean endOfFile;
-    private final boolean alwaysClose;
 
     public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression,
             boolean alwaysClose) {
@@ -38,19 +38,26 @@ public class FileStorageInputStream extends InputStream {
         }
         page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE, false); // 不能用direct byte buffer
         try {
-            if (fileStorage.length() <= FileStorage.HEADER_LENGTH) {
-                close();
-            } else {
-                fillBuffer();
-            }
+            fillBuffer();
         } catch (IOException e) {
-            throw DbException.convertIOException(e, fileStorage.name);
+            throw DbException.convertIOException(e, fileStorage.getFileName());
         }
     }
 
     @Override
     public int available() {
         return remainingInBuffer <= 0 ? 0 : remainingInBuffer;
+    }
+
+    @Override
+    public int read() throws IOException {
+        fillBuffer();
+        if (endOfFile) {
+            return -1;
+        }
+        int i = page.readByte() & 0xff;
+        remainingInBuffer--;
+        return i;
     }
 
     @Override
@@ -148,16 +155,4 @@ public class FileStorageInputStream extends InputStream {
     protected void finalize() {
         close();
     }
-
-    @Override
-    public int read() throws IOException {
-        fillBuffer();
-        if (endOfFile) {
-            return -1;
-        }
-        int i = page.readByte() & 0xff;
-        remainingInBuffer--;
-        return i;
-    }
-
 }

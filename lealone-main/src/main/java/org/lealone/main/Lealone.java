@@ -6,11 +6,16 @@
 package org.lealone.main;
 
 import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.ConfigException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -21,15 +26,13 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
-import org.lealone.net.NetNode;
-import org.lealone.p2p.config.Config;
-import org.lealone.p2p.config.Config.PluggableEngineDef;
-import org.lealone.p2p.config.ConfigLoader;
-import org.lealone.p2p.config.YamlConfigLoader;
-import org.lealone.p2p.server.ClusterMetaData;
-import org.lealone.p2p.server.P2pServerEngine;
+import org.lealone.main.config.Config;
+import org.lealone.main.config.Config.PluggableEngineDef;
+import org.lealone.main.config.ConfigLoader;
+import org.lealone.main.config.YamlConfigLoader;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
+import org.lealone.server.SchedulerFactory;
 import org.lealone.server.TcpServerEngine;
 import org.lealone.sql.SQLEngine;
 import org.lealone.storage.StorageEngine;
@@ -43,25 +46,47 @@ public class Lealone {
         new Lealone().start(args);
     }
 
-    public static void embed(String[] args) {
-        run(args, true, null);
+    public static void main(String[] args, Runnable runnable) {
+        // 在一个新线程中启动 Lealone
+        CountDownLatch latch = new CountDownLatch(1);
+        new Thread(() -> {
+            new Lealone().start(args, latch);
+        }).start();
+        try {
+            latch.await();
+            if (runnable != null)
+                runnable.run();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
-    // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
-    public static void run(String[] args, boolean embedded, CountDownLatch latch) {
-        new Lealone().run(embedded, latch);
+    public static void embed() {
+        new Lealone().run(true, null);
+    }
+
+    public static void runScript(String url, String... sqlScripts) {
+        try (Connection conn = DriverManager.getConnection(url);
+                Statement stmt = conn.createStatement()) {
+            for (String script : sqlScripts) {
+                logger.info("Run script: " + script);
+                stmt.executeUpdate("RUNSCRIPT FROM '" + script + "'");
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     private Config config;
     private String baseDir;
-    private boolean isClusterMode;
     private String host;
     private String port;
-    private String p2pHost;
-    private String p2pPort;
-    private String seeds;
 
     public void start(String[] args) {
+        start(args, null);
+    }
+
+    public void start(String[] args, CountDownLatch latch) {
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
             if (arg.isEmpty())
@@ -71,20 +96,12 @@ public class Lealone {
                 return;
             } else if (arg.equals("-config")) {
                 Config.setProperty("config", args[++i]);
-            } else if (arg.equals("-cluster")) {
-                isClusterMode = true;
             } else if (arg.equals("-host")) {
                 host = args[++i];
             } else if (arg.equals("-port")) {
                 port = args[++i];
-            } else if (arg.equals("-p2pHost")) {
-                p2pHost = args[++i];
-            } else if (arg.equals("-p2pPort")) {
-                p2pPort = args[++i];
             } else if (arg.equals("-baseDir")) {
                 baseDir = args[++i];
-            } else if (arg.equals("-seeds")) {
-                seeds = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -92,7 +109,7 @@ public class Lealone {
                 continue;
             }
         }
-        run(false, null);
+        run(false, latch);
     }
 
     private void showUsage() {
@@ -104,10 +121,6 @@ public class Lealone {
         println("[-config <file>]        The config file");
         println("[-host <host>]          Tcp server host");
         println("[-port <port>]          Tcp server port");
-        println("[-p2pHost <host>]       P2p server host");
-        println("[-p2pPort <port>]       P2p server port");
-        println("[-seeds <nodes>]        The seed node list");
-        println("[-cluster]              Cluster mode");
         println("[-embed]                Embedded mode");
         println("[-client]               Client mode");
         println();
@@ -125,7 +138,7 @@ public class Lealone {
     }
 
     private void run(boolean embedded, CountDownLatch latch) {
-        logger.info("Lealone version: {}", Utils.getReleaseVersionString());
+        logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
 
         try {
             long t = System.currentTimeMillis();
@@ -142,51 +155,39 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            if (embedded) {
-                if (latch != null)
-                    latch.countDown();
+            if (embedded)
                 return;
-            }
-
-            // ProtocolServer mainProtocolServer = startProtocolServers();
 
             startProtocolServers();
 
+            // 等所有的Server启动完成后再调用SchedulerFactory.start
+            // 确保所有的初始PeriodicTask都在main线程中注册
+            SchedulerFactory.start();
+
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
-            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime, t1, t2, t3);
+            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime,
+                    t1, t2, t3);
             logger.info("Exit with Ctrl+C");
 
             if (latch != null)
                 latch.countDown();
 
-            Thread thread = Thread.currentThread();
-            if (thread.getName().equals("main"))
-                thread.setName("CheckpointService");
-            TransactionEngine te = PluginManager.getPlugin(TransactionEngine.class,
-                    Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-            te.getRunnable().run();
-
             // 在主线程中运行，避免出现DestroyJavaVM线程
-            // if (mainProtocolServer != null)
-            // mainProtocolServer.getRunnable().run();
+            Thread.currentThread().setName("CheckpointService");
+            TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
+            te.getCheckpointService().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
     }
 
-    protected void beforeInit() {
-    }
-
-    protected void afterInit(Config config) {
-    }
-
     private void loadConfig() {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
-        if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
-            loader = Utils.construct(loaderClass, "configuration loading");
+        if (loaderClass != null) {
+            loader = Utils.construct(loaderClass, "config loading");
         } else {
             loader = new YamlConfigLoader();
         }
@@ -196,36 +197,25 @@ public class Lealone {
             if (host != null)
                 config.listen_address = host;
             for (PluggableEngineDef e : config.protocol_server_engines) {
-                if (TcpServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                if (e.enabled && TcpServerEngine.NAME.equalsIgnoreCase(e.name)) {
                     if (host != null)
                         e.parameters.put("host", host);
                     if (port != null)
                         e.parameters.put("port", port);
+                    break;
                 }
             }
         }
         if (baseDir != null)
             config.base_dir = baseDir;
-        if (isClusterMode) {
-            if (baseDir == null && NetNode.createTCP(config.listen_address).geInetAddress().isLoopbackAddress()) {
-                String nodeId = config.listen_address.replace('.', '_');
-                config.base_dir = config.base_dir + File.separator + "cluster" + File.separator + "node_" + nodeId;
-            }
-            for (PluggableEngineDef e : config.protocol_server_engines) {
-                if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
-                    e.enabled = true;
-                    if (p2pHost != null)
-                        e.parameters.put("host", p2pHost);
-                    if (p2pPort != null)
-                        e.parameters.put("port", p2pPort);
-                }
-            }
-        }
-        if (seeds != null) {
-            config.cluster_config.seed_provider.parameters.put("seeds", seeds);
-        }
         loader.applyConfig(config);
         this.config = config;
+    }
+
+    protected void beforeInit() {
+    }
+
+    protected void afterInit(Config config) {
     }
 
     private void init() {
@@ -236,24 +226,19 @@ public class Lealone {
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         long t2 = System.currentTimeMillis();
         logger.info("Init lealone database: " + (t2 - t1) + " ms");
-
-        // 如果启用了集群，集群的元数据表通过嵌入式的方式访问
-        if (config.protocol_server_engines != null) {
-            for (PluggableEngineDef def : config.protocol_server_engines) {
-                if (def.enabled && P2pServerEngine.NAME.equalsIgnoreCase(def.name)) {
-                    ClusterMetaData.init(LealoneDatabase.getInstance().getInternalConnection());
-                    break;
-                }
-            }
-        }
     }
 
     private void initBaseDir() {
         if (config.base_dir == null || config.base_dir.isEmpty())
             throw new ConfigException("base_dir must be specified and not empty");
-        SysProperties.setBaseDir(config.base_dir);
-
-        logger.info("Base dir: {}", config.base_dir);
+        String baseDir;
+        try {
+            baseDir = new File(config.base_dir).getCanonicalPath();
+        } catch (IOException e) {
+            baseDir = new File(config.base_dir).getAbsolutePath();
+        }
+        SysProperties.setBaseDir(baseDir);
+        logger.info("Base dir: {}", baseDir.replace('\\', '/')); // 显示格式跟Loading config一样
     }
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
@@ -276,23 +261,25 @@ public class Lealone {
     }
 
     private void initTransactionEngineEngines() {
-        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
-            TransactionEngine te;
-            try {
-                te = PluginManager.getPlugin(TransactionEngine.class, def.name);
-                if (te == null) {
-                    te = Utils.newInstance(def.name);
-                    PluginManager.register(te);
-                }
-            } catch (Throwable e) {
-                te = PluginManager.getPlugin(TransactionEngine.class, Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-                if (te == null) {
-                    throw e;
-                }
-                logger.warn("Transaction engine " + def.name + " not found, use " + te.getName() + " instead");
-            }
-            return te;
-        });
+        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine",
+                def -> {
+                    TransactionEngine te;
+                    try {
+                        te = PluginManager.getPlugin(TransactionEngine.class, def.name);
+                        if (te == null) {
+                            te = Utils.newInstance(def.name);
+                            PluginManager.register(te);
+                        }
+                    } catch (Throwable e) {
+                        te = TransactionEngine.getDefaultTransactionEngine();
+                        if (te == null) {
+                            throw e;
+                        }
+                        logger.warn("Transaction engine " + def.name + " not found, use " + te.getName()
+                                + " instead");
+                    }
+                    return te;
+                });
     }
 
     private void initSQLEngines() {
@@ -324,8 +311,8 @@ public class Lealone {
         V call(PluggableEngineDef def) throws Exception;
     }
 
-    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name, String defaultEngineKey,
-            CallableTask<T> callableTask) {
+    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name,
+            String defaultEngineKey, CallableTask<T> callableTask) {
         long t1 = System.currentTimeMillis();
         if (engines != null) {
             name += " engine";
@@ -347,7 +334,8 @@ public class Lealone {
                     return;
                 }
                 PluggableEngine pe = (PluggableEngine) result;
-                if (defaultEngineKey != null && Config.getProperty(defaultEngineKey) == null)
+                if (def.is_default && defaultEngineKey != null
+                        && Config.getProperty(defaultEngineKey) == null)
                     Config.setProperty(defaultEngineKey, pe.getName());
                 try {
                     initPluggableEngine(pe, def);
@@ -382,25 +370,17 @@ public class Lealone {
         pe.init(parameters);
     }
 
-    private ProtocolServer startProtocolServers() throws Exception {
-        ProtocolServer mainProtocolServer = null;
+    private void startProtocolServers() throws Exception {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
-                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
+                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class,
+                            def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
-                    if (protocolServer.isRunInMainThread()) {
-                        // 默认是第一个
-                        if (mainProtocolServer == null)
-                            mainProtocolServer = protocolServer;
-                        else
-                            protocolServer.setRunInMainThread(false);
-                    }
                     startProtocolServer(protocolServer);
                 }
             }
         }
-        return mainProtocolServer;
     }
 
     private void startProtocolServer(final ProtocolServer server) throws Exception {
@@ -408,7 +388,8 @@ public class Lealone {
         server.start();
         final String name = server.getName();
         ShutdownHookUtils.addShutdownHook(server, () -> {
-            server.stop();
+            if (!server.isStopped())
+                server.stop();
             logger.info(name + " stopped");
         });
         logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());

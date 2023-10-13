@@ -44,14 +44,16 @@ public class FunctionTableTest extends DbObjectTestBase {
         rs.close();
 
         // TABLE_DISTINCT内部使用LocalResult.distinctRows来存放唯一记录，顺序不一定是按sql字符串中出现的顺序来
-        rs = executeQuery("select * from TABLE_DISTINCT(ID INT=(1, 2), NAME VARCHAR=(UPPER('Hello'), 'World'))");
+        rs = executeQuery(
+                "select * from TABLE_DISTINCT(ID INT=(1, 2), NAME VARCHAR=(UPPER('Hello'), 'World'))");
         assertTrue(rs.next());
         p(getInt(rs, 1) + ", " + getString(rs, 2));
         assertTrue(rs.next());
         p(getInt(rs, 1) + ", " + getString(rs, 2));
         rs.close();
 
-        rs = executeQuery("select count(*) from TABLE_DISTINCT(ID INT=(1, 1), NAME VARCHAR=(UPPER('Hello'), 'Hello'))");
+        rs = executeQuery(
+                "select count(*) from TABLE_DISTINCT(ID INT=(1, 1), NAME VARCHAR=(UPPER('Hello'), 'Hello'))");
         assertTrue(rs.next());
         assertEquals(2, getInt(rs, 1));
         rs.close();

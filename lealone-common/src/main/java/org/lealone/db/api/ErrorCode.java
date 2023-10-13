@@ -909,7 +909,7 @@ public class ErrorCode {
      * the file header of a database files (*.db) does not match the
      * expected version, or if it is corrupted.
      */
-    public static final int FILE_VERSION_ERROR_1 = 90048;
+    // public static final int FILE_VERSION_ERROR_1 = 90048;
 
     /**
      * The error with code <code>90049</code> is thrown when
@@ -1913,7 +1913,7 @@ public class ErrorCode {
      */
     public static final int STEP_SIZE_MUST_NOT_BE_ZERO = 90142;
 
-    public static final int CREATE_DATABASE_RIGHTS_REQUIRED = 90143;
+    public static final int LEALONE_DATABASE_ADMIN_RIGHT_1 = 90143;
 
     public static final int CANNOT_DROP_LEALONE_DATABASE = 90144;
 
@@ -1923,7 +1923,9 @@ public class ErrorCode {
 
     public static final int NETWORK_TIMEOUT_1 = 90147;
 
-    // next are 90056, 90110, 90122, 90143
+    public static final int ACCESS_DENIED_TO_SCHEMA_1 = 90148;
+
+    // next are 90056, 90110, 90122, 90149
 
     private ErrorCode() {
         // utility class

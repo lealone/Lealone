@@ -17,7 +17,18 @@ class QCache extends QOperator {
     }
 
     @Override
+    public void start() {
+        // 什么都不做
+    }
+
+    @Override
     public void run() {
         loopEnd = true;
+    }
+
+    @Override
+    public void stop() {
+        // 忽略limit和offset
+        handleLocalResult();
     }
 }

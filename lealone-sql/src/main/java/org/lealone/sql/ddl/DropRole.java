@@ -21,7 +21,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropRole extends DefinitionStatement implements AuthStatement {
+public class DropRole extends AuthStatement {
 
     private String roleName;
     private boolean ifExists;
@@ -41,11 +41,6 @@ public class DropRole extends DefinitionStatement implements AuthStatement {
 
     public void setIfExists(boolean ifExists) {
         this.ifExists = ifExists;
-    }
-
-    @Override
-    public boolean isIfDDL() {
-        return ifExists;
     }
 
     @Override

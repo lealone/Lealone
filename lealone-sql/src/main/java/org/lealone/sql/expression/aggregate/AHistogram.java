@@ -8,7 +8,6 @@ package org.lealone.sql.expression.aggregate;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
@@ -40,19 +39,19 @@ public class AHistogram extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("HISTOGRAM", isDistributed);
+    public String getSQL() {
+        return getSQL("HISTOGRAM");
     }
 
     // 会忽略distinct
     // 计算每个值出现的次数
-    private class AggregateDataHistogram extends AggregateData {
+    public class AggregateDataHistogram extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataHistogram> distinctValues;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (distinctValues == null) {
                 distinctValues = ValueHashMap.newInstance();
             }
@@ -88,16 +87,6 @@ public class AHistogram extends BuiltInAggregate {
             });
             Value v = ValueArray.get(values);
             return v.convertTo(dataType);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            throw DbException.getUnsupportedException("merge");
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            throw DbException.getUnsupportedException("getMergedValue");
         }
     }
 }

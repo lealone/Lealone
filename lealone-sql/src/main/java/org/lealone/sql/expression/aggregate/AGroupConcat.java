@@ -95,24 +95,24 @@ public class AGroupConcat extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder("GROUP_CONCAT(");
         if (distinct) {
             buff.append("DISTINCT ");
         }
-        buff.append(on.getSQL(isDistributed));
+        buff.append(on.getSQL());
         if (groupConcatOrderList != null) {
             buff.append(" ORDER BY ");
             for (SelectOrderBy o : groupConcatOrderList) {
                 buff.appendExceptFirst(", ");
-                buff.append(o.expression.getSQL(isDistributed));
+                buff.append(o.expression.getSQL());
                 if (o.descending) {
                     buff.append(" DESC");
                 }
             }
         }
         if (groupConcatSeparator != null) {
-            buff.append(" SEPARATOR ").append(groupConcatSeparator.getSQL(isDistributed));
+            buff.append(" SEPARATOR ").append(groupConcatSeparator.getSQL());
         }
         return buff.append(')').toString();
     }
@@ -122,13 +122,13 @@ public class AGroupConcat extends BuiltInAggregate {
         return visitor.visitAGroupConcat(this);
     }
 
-    private class AggregateDataGroupConcat extends AggregateData {
+    public class AggregateDataGroupConcat extends AggregateData {
 
         private ArrayList<Value> list;
         private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (v != ValueNull.INSTANCE) {
                 v = v.convertTo(Value.STRING);
                 if (groupConcatOrderList != null) {
@@ -182,7 +182,8 @@ public class AGroupConcat extends BuiltInAggregate {
                 });
             }
             StatementBuilder buff = new StatementBuilder();
-            String sep = groupConcatSeparator == null ? "," : groupConcatSeparator.getValue(session).getString();
+            String sep = groupConcatSeparator == null ? ","
+                    : groupConcatSeparator.getValue(session).getString();
             for (Value val : list) {
                 String s;
                 if (val.getType() == Value.ARRAY) {
@@ -208,19 +209,6 @@ public class AGroupConcat extends BuiltInAggregate {
             for (Value v : distinctValues.keys()) {
                 add(session, v, false);
             }
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            list.add(v);
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            return null;
         }
     }
 }

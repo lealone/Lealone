@@ -8,6 +8,7 @@ package org.lealone.server;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.storage.StorageEngine;
@@ -19,18 +20,17 @@ public class SchedulerFactory {
     private static final AtomicInteger index = new AtomicInteger(0);
 
     public static Scheduler getScheduler() {
-        return schedulers[index.getAndIncrement() % schedulers.length];
+        return schedulers[PageOperationHandlerFactory.getAndIncrementIndex(index) % schedulers.length];
+    }
+
+    public static int getSchedulerCount() {
+        return schedulers.length;
     }
 
     public static synchronized void init(Map<String, String> config) {
         if (schedulers != null)
             return;
-        int schedulerCount;
-        if (config.containsKey("scheduler_count"))
-            schedulerCount = Math.max(1, Integer.parseInt(config.get("scheduler_count")));
-        else
-            schedulerCount = Runtime.getRuntime().availableProcessors();
-
+        int schedulerCount = MapUtils.getSchedulerCount(config);
         schedulers = new Scheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
             schedulers[i] = new Scheduler(i, schedulerCount, config);
@@ -46,14 +46,15 @@ public class SchedulerFactory {
             }
             e.setPageOperationHandlerFactory(pohFactory);
         }
+    }
 
-        // 提前启动，LealoneDatabase要用到存储引擎
+    public static synchronized void start() {
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
     }
 
-    public static synchronized void destroy() {
+    public static synchronized void stop() {
         if (schedulers == null)
             return;
         for (Scheduler scheduler : schedulers) {

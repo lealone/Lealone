@@ -61,7 +61,7 @@ public class ReadonlyArray extends ArrayBase {
             StatementBuilder buff = new StatementBuilder("[");
             for (Value v : va.getList()) {
                 buff.appendExceptFirst(", ");
-                buff.append(v.getTraceSQL());
+                buff.append(v.getString());
             }
             return buff.append(']').toString();
         }

@@ -198,7 +198,7 @@ public class ValueInt extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 24;
+            return 16;
         }
 
         @Override
@@ -242,7 +242,5 @@ public class ValueInt extends Value {
             }
             return ValueInt.get(tag - TAG_INTEGER_0_15);
         }
-
     };
-
 }

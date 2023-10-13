@@ -49,8 +49,8 @@ public class LealoneClientTest implements MainTest {
             futures[i].get();
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("loop: " + loop + ", connection count: " + connectionCount + ", total time: " + (t2 - t1)
-                + " ms" + ", avg time: " + (t2 - t1) / (connectionCount * 1.0) + " ms");
+        System.out.println("loop: " + loop + ", connection count: " + connectionCount + ", total time: "
+                + (t2 - t1) + " ms" + ", avg time: " + (t2 - t1) / (connectionCount * 1.0) + " ms");
         for (int i = 0; i < connectionCount; i++) {
             connections[i].close();
         }

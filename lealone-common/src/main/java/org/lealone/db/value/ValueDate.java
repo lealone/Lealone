@@ -176,7 +176,7 @@ public class ValueDate extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 40;
+            return 24;
         }
 
         @Override
@@ -199,7 +199,5 @@ public class ValueDate extends Value {
         public Value readValue(ByteBuffer buff) {
             return ValueDate.fromDateValue(DataUtils.readVarLong(buff));
         }
-
     };
-
 }

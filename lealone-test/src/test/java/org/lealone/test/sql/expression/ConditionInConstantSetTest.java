@@ -12,7 +12,8 @@ public class ConditionInConstantSetTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("drop table IF EXISTS ConditionInConstantSetTest");
-        stmt.executeUpdate("create table IF NOT EXISTS ConditionInConstantSetTest(id int, name varchar(50))");
+        stmt.executeUpdate(
+                "create table IF NOT EXISTS ConditionInConstantSetTest(id int, name varchar(50))");
 
         stmt.executeUpdate("insert into ConditionInConstantSetTest(id, name) values(1, 'a1')");
         stmt.executeUpdate("insert into ConditionInConstantSetTest(id, name) values(1, 'b1')");
@@ -26,7 +27,7 @@ public class ConditionInConstantSetTest extends SqlTestBase {
         assertEquals(0, getIntValue(1, true));
         sql = "select count(*) from ConditionInConstantSetTest where id in(3,2)";
         assertEquals(4, getIntValue(1, true));
-        // 后面的id = 1会进行优化，直接加了in列表中
+        // 后面的id = 1会进行优化，直接加到in列表中
         sql = "select count(*) from ConditionInConstantSetTest where id in(3,2) or id = 1";
         assertEquals(6, getIntValue(1, true));
     }

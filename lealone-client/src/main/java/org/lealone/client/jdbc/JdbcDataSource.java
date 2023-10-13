@@ -57,7 +57,8 @@ import org.lealone.common.util.StringUtils;
  * In this example the user name and password are serialized as
  * well; this may be a security problem in some cases.
  */
-public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializable, Referenceable, XADataSource {
+public class JdbcDataSource extends JdbcWrapper
+        implements DataSource, Serializable, Referenceable, XADataSource {
 
     private static final long serialVersionUID = 1288136338451857771L;
 
@@ -181,7 +182,8 @@ public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializa
         if (conn == null) {
             throw new SQLException("No suitable driver found for " + url, "08001", 8001);
         } else if (!(conn instanceof JdbcConnection)) {
-            throw new SQLException("Connecting with old version is not supported: " + url, "08001", 8001);
+            throw new SQLException("Connecting with old version is not supported: " + url, "08001",
+                    8001);
         }
         return (JdbcConnection) conn;
     }

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.session.ServerSession;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 //只存放同一种DbObject的多个实例，支持多版本
 //需要配合DbObjectLock使用，只允许一个事务修改
@@ -18,7 +19,6 @@ public class TransactionalDbObjects {
     private HashMap<String, DbObject> dbObjects;
     private TransactionalDbObjects old;
     private long version;
-    private long parentVersion;
 
     public TransactionalDbObjects() {
         this.dbObjects = new CaseInsensitiveMap<>();
@@ -45,7 +45,7 @@ public class TransactionalDbObjects {
 
         Transaction transaction = session.getTransaction();
         long tid = transaction.getTransactionId();
-        if (tid == version || tid == parentVersion) {
+        if (tid == version) {
             return dbObjects.get(dbObjectName);
         }
         switch (transaction.getIsolationLevel()) {
@@ -95,21 +95,14 @@ public class TransactionalDbObjects {
             old.old = this.old;
             this.old = old;
             version = tid;
-            // 在sharding模式下，如果接入节点也是数据库的目标节点之一，那么允许接入节点的事务访问子事务未提交的对象，
-            // 因为sql在准备阶段是在接入节点的事务中执行的，会访问到模式中的表，但是update/query是在子事务中执行的，
-            // 由子事务把对象加入dbObjects，用的是子事务的事务ID当version.
-            if (session.getParentTransaction() != null)
-                parentVersion = session.getParentTransaction().getTransactionId();
         }
     }
 
     public void commit() {
         if (old != null) {
             old.version = version;
-            old.parentVersion = parentVersion;
         }
         version = 0;
-        parentVersion = 0;
     }
 
     public void rollback() {
@@ -118,6 +111,33 @@ public class TransactionalDbObjects {
             old = old.old;
         }
         version = 0;
-        parentVersion = 0;
+    }
+
+    public void gc(TransactionEngine te) {
+        if (old == null)
+            return;
+        if (!te.containsRepeatableReadTransactions()) {
+            old = null;
+            return;
+        }
+        long minTid = Long.MAX_VALUE;
+        for (Transaction t : te.currentTransactions().values()) {
+            if (t.isRepeatableRead() && t.getTransactionId() < minTid)
+                minTid = t.getTransactionId();
+        }
+        if (minTid != Long.MAX_VALUE) {
+            TransactionalDbObjects last = this;
+            TransactionalDbObjects old = this.old;
+            while (old != null) {
+                if (old.version < minTid) {
+                    last.old = null;
+                    break;
+                }
+                last = old;
+                old = old.old;
+            }
+        } else {
+            old = null;
+        }
     }
 }

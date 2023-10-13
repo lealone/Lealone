@@ -9,7 +9,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.sql.StatementBase;
 
 /**
- * This class represents a non-transaction statement, for example a CREATE or DROP.
+ * This class represents a definition statement, for example a CREATE or DROP.
  */
 public abstract class DefinitionStatement extends StatementBase {
 

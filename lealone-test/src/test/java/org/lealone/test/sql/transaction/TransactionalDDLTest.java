@@ -37,7 +37,8 @@ public class TransactionalDDLTest extends SqlTestBase implements MainTest {
         long t1 = System.currentTimeMillis();
         for (int i = 0; i < 1000; i++) {
             stmt.executeUpdate("CREATE USER IF NOT EXISTS sa" + i + " PASSWORD 'abc' ADMIN");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS table" + i + " (f1 int NOT NULL, f2 int, f3 varchar)");
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS table" + i + " (f1 int NOT NULL, f2 int, f3 varchar)");
 
             // for (int j = 0; j < 200; j++) {
             // executeUpdate("INSERT INTO table" + i + "(f1, f2, f3) VALUES(1, 1, '1')");
@@ -47,7 +48,8 @@ public class TransactionalDDLTest extends SqlTestBase implements MainTest {
     }
 
     public void runDLL() throws Exception {
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=true)");
+        stmt.executeUpdate(
+                "CREATE DATABASE IF NOT EXISTS db2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=true)");
 
         stmt.executeUpdate("ALTER DATABASE db2 PARAMETERS(OPTIMIZE_DISTINCT=false)");
 
@@ -79,7 +81,8 @@ public class TransactionalDDLTest extends SqlTestBase implements MainTest {
         stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS TEST_SCHEMA2 AUTHORIZATION SA2");
 
         stmt.executeUpdate("DROP USER IF EXISTS guest");
-        stmt.executeUpdate("CREATE USER IF NOT EXISTS guest COMMENT 'create a guest user' PASSWORD 'abc'");
+        stmt.executeUpdate(
+                "CREATE USER IF NOT EXISTS guest COMMENT 'create a guest user' PASSWORD 'abc'");
 
         stmt.executeUpdate("ALTER USER SA2 SET PASSWORD '123'");
         stmt.executeUpdate("ALTER USER SA2 SET SALT X'123456' HASH X'78'");

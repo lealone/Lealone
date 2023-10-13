@@ -5,6 +5,8 @@
  */
 package org.lealone.net;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -13,11 +15,21 @@ import org.lealone.db.ConnectionSetting;
 
 public class AsyncConnectionPool {
 
-    private final CopyOnWriteArrayList<AsyncConnection> list = new CopyOnWriteArrayList<>();
+    private final List<AsyncConnection> list;
+
+    public AsyncConnectionPool(boolean isThreadSafe) {
+        list = isThreadSafe ? new ArrayList<>() : new CopyOnWriteArrayList<>();
+    }
 
     public AsyncConnection getConnection(Map<String, String> config) {
-        if (!isShared(config))
+        if (!isShared(config)) {
+            // 专用连接如果空闲了也可以直接复用
+            for (AsyncConnection c : list) {
+                if (c.getMaxSharedSize() == 1 && c.getSharedSize() == 0)
+                    return c;
+            }
             return null;
+        }
         AsyncConnection best = null;
         int min = Integer.MAX_VALUE;
         for (AsyncConnection c : list) {
@@ -43,6 +55,10 @@ public class AsyncConnectionPool {
         list.remove(conn);
     }
 
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+
     public void close() {
         for (AsyncConnection c : list) {
             try {
@@ -60,9 +76,10 @@ public class AsyncConnectionPool {
     }
 
     public static int getMaxSharedSize(Map<String, String> config) {
-        if (!isShared(config))
-            return 1; // 独享受模式
-        return MapUtils.getInt(config, ConnectionSetting.MAX_SHARED_SIZE.name(), -1);
+        if (isShared(config))
+            return MapUtils.getInt(config, ConnectionSetting.MAX_SHARED_SIZE.name(), 3);
+        else
+            return 1; // 独享模式
     }
 
     public static boolean isShared(Map<String, String> config) {

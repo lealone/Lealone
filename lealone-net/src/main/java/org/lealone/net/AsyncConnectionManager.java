@@ -9,11 +9,8 @@ import java.nio.channels.ServerSocketChannel;
 
 public interface AsyncConnectionManager {
 
-    AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer);
-
-    default AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer, Object scheduler) {
-        return null;
-    }
+    AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer,
+            Object scheduler);
 
     void removeConnection(AsyncConnection conn);
 

@@ -14,6 +14,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
@@ -22,7 +23,6 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
-import org.lealone.storage.lob.LobStorage;
 
 public class LobPacketHandlers extends PacketHandlers {
 
@@ -37,21 +37,29 @@ public class LobPacketHandlers extends PacketHandlers {
             byte[] hmac = packet.hmac;
             long offset = packet.offset;
             int length = packet.length;
-            SmallLRUCache<Long, InputStream> lobs = session.getLobCache();
-            CachedInputStream cachedInputStream = (CachedInputStream) lobs.get(lobId);
-            if (cachedInputStream == null) {
-                cachedInputStream = new CachedInputStream(null);
-                lobs.put(lobId, cachedInputStream);
-            }
+            SmallLRUCache<String, InputStream> lobs = session.getLobCache();
             try {
-                TransferOutputStream.verifyLobMac(session, hmac, lobId);
+                boolean useTableLobStorage = false;
+                int tableId = TransferOutputStream.verifyLobMac(session, hmac, lobId);
+                if (tableId < 0) {
+                    tableId = -tableId;
+                    useTableLobStorage = true;
+                }
+                String key = tableId + "_" + lobId;
+                CachedInputStream cachedInputStream = (CachedInputStream) lobs.get(key);
+                if (cachedInputStream == null) {
+                    cachedInputStream = new CachedInputStream(null);
+                    lobs.put(key, cachedInputStream);
+                }
                 if (cachedInputStream.getPos() != offset) {
-                    LobStorage lobStorage = session.getDataHandler().getLobStorage();
+                    DataHandler dh = useTableLobStorage ? session.getDatabase().getDataHandler(tableId)
+                            : session.getDatabase();
                     // only the lob id is used
-                    ValueLob lob = ValueLob.create(Value.BLOB, null, -1, lobId, hmac, -1);
-                    InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);
+                    ValueLob lob = ValueLob.create(Value.BLOB, dh, tableId, lobId, hmac, -1);
+                    lob.setUseTableLobStorage(useTableLobStorage);
+                    InputStream lobIn = dh.getLobStorage().getInputStream(lob, hmac, -1);
                     cachedInputStream = new CachedInputStream(lobIn);
-                    lobs.put(lobId, cachedInputStream);
+                    lobs.put(key, cachedInputStream);
                     lobIn.skip(offset);
                 }
                 // limit the buffer size

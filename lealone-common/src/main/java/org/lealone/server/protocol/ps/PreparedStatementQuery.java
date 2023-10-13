@@ -19,8 +19,8 @@ public class PreparedStatementQuery extends QueryPacket {
     public final int commandId;
     public final Value[] parameters;
 
-    public PreparedStatementQuery(int resultId, int maxRows, int fetchSize, boolean scrollable, int commandId,
-            Value[] parameters) {
+    public PreparedStatementQuery(int resultId, int maxRows, int fetchSize, boolean scrollable,
+            int commandId, Value[] parameters) {
         super(resultId, maxRows, fetchSize, scrollable);
         this.commandId = commandId;
         this.parameters = parameters;

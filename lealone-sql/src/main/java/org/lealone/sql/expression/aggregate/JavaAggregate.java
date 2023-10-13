@@ -97,12 +97,12 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder();
         buff.append(LealoneSQLParser.quoteIdentifier(userAggregate.getName())).append('(');
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
+            buff.append(e.getSQL());
         }
         return buff.append(')').toString();
     }

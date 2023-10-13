@@ -6,6 +6,8 @@
 package org.lealone.net;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,8 +25,8 @@ public class TcpClientConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpClientConnection.class);
 
-    private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Session> sessions;
+    private final Map<Integer, AsyncCallback<?>> callbackMap;
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final int maxSharedSize;
     private final NetClient netClient;
@@ -35,6 +37,13 @@ public class TcpClientConnection extends TransferConnection {
         super(writableChannel, false);
         this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
+        if (netClient.isThreadSafe()) {
+            sessions = new HashMap<>();
+            callbackMap = new HashMap<>();
+        } else {
+            sessions = new ConcurrentHashMap<>();
+            callbackMap = new ConcurrentHashMap<>();
+        }
     }
 
     public int getNextId() {
@@ -63,13 +72,22 @@ public class TcpClientConnection extends TransferConnection {
                 e = DbException.convert(pendingException);
                 pendingException = null;
             } else {
-                e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + Session.STATUS_CLOSED);
+                e = DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                        "unexpected status " + Session.STATUS_CLOSED);
             }
             for (AsyncCallback<?> callback : callbackMap.values()) {
                 callback.setDbException(e, true);
             }
         }
         super.close();
+
+        for (Session s : sessions.values()) {
+            try {
+                s.close();
+            } catch (Exception e) { // 忽略异常
+            }
+        }
+        sessions.clear();
     }
 
     private Session getSession(int sessionId) {
@@ -105,18 +123,11 @@ public class TcpClientConnection extends TransferConnection {
             int sessionId = in.readInt();
             session = getSession(sessionId);
             newTargetNodes = in.readString();
-        } else if (status == Session.STATUS_REPLICATING) {
-            // ok
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac;
-        if (status == Session.STATUS_REPLICATING) {
-            ac = callbackMap.get(packetId);
-        } else {
-            ac = callbackMap.remove(packetId);
-        }
+        AsyncCallback<?> ac = callbackMap.remove(packetId);
         if (ac == null) {
             String msg = "Async callback is null, may be a bug! packetId = " + packetId;
             if (e != null) {

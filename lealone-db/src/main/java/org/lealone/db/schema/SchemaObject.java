@@ -27,4 +27,6 @@ public interface SchemaObject extends DbObject {
      */
     boolean isHidden();
 
+    default void onUpdateComplete() {
+    }
 }

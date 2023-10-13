@@ -33,6 +33,14 @@ public interface Compressor {
     int getAlgorithm();
 
     /**
+     * Set the compression options. This may include settings for
+     * higher performance but less compression.
+     *
+     * @param options the options
+     */
+    void setOptions(String options);
+
+    /**
      * Compress a number of bytes.
      *
      * @param in the input data
@@ -54,12 +62,4 @@ public interface Compressor {
      * @param outLen the size of the uncompressed data
      */
     void expand(byte[] in, int inPos, int inLen, byte[] out, int outPos, int outLen);
-
-    /**
-     * Set the compression options. This may include settings for
-     * higher performance but less compression.
-     *
-     * @param options the options
-     */
-    void setOptions(String options);
 }

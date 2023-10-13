@@ -17,10 +17,10 @@ import org.lealone.common.util.JdbcUtils;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.test.TcpServerStart;
 import org.lealone.test.TestBase;
-import org.lealone.test.start.TcpServerStart;
 
-public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
+public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestBase.ClientServerTest {
 
     protected Connection conn;
     protected Statement stmt;
@@ -299,12 +299,6 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
         } catch (Exception e) {
             throw DbException.convert(e);
         }
-    }
-
-    public static void assertErrorCode(Exception e, int errorCode) {
-        Throwable cause = e instanceof SQLException ? e : e.getCause();
-        assertTrue(cause instanceof SQLException);
-        assertEquals(errorCode, ((SQLException) cause).getErrorCode());
     }
 
     public void executeUpdateThanAssertErrorCode(String sql, int errorCode) {

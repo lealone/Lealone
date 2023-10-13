@@ -203,7 +203,7 @@ public class ValueFloat extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 24;
+            return 16;
         }
 
         @Override
@@ -247,5 +247,4 @@ public class ValueFloat extends Value {
             return ValueFloat.get(Float.intBitsToFloat(Integer.reverse(DataUtils.readVarInt(buff))));
         }
     };
-
 }

@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.CommandParameter;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.LinkableTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
@@ -31,16 +31,16 @@ class BatchStatementPacketHandlers extends PacketHandlers {
 
     private static class Update implements PacketHandler<BatchStatementUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, BatchStatementUpdate packet) {
+        public Packet handle(PacketHandleTask task, BatchStatementUpdate packet) {
             ServerSession session = task.session;
             int size = packet.size;
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            AsyncTask[] subTasks = new AsyncTask[size];
+            LinkableTask[] subTasks = new LinkableTask[size];
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 final String sql = packet.batchStatements.get(i);
-                AsyncTask subTask = new AsyncTask() {
+                LinkableTask subTask = new LinkableTask() {
                     @Override
                     public void run() {
                         PreparedSQLStatement command = session.prepareStatement(sql, -1);
@@ -49,6 +49,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 };
                 subTasks[i] = subTask;
             }
+            packet.batchStatements.clear();
             task.si.submitTasks(subTasks);
             return null;
         }
@@ -56,7 +57,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
 
     private static class PreparedUpdate implements PacketHandler<BatchStatementPreparedUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, BatchStatementPreparedUpdate packet) {
+        public Packet handle(PacketHandleTask task, BatchStatementPreparedUpdate packet) {
             ServerSession session = task.session;
             int commandId = packet.commandId;
             int size = packet.size;
@@ -64,11 +65,11 @@ class BatchStatementPacketHandlers extends PacketHandlers {
             List<? extends CommandParameter> params = command.getParameters();
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            AsyncTask[] subTasks = new AsyncTask[size];
+            LinkableTask[] subTasks = new LinkableTask[size];
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 final Value[] values = packet.batchParameters.get(i);
-                AsyncTask subTask = new AsyncTask() {
+                LinkableTask subTask = new LinkableTask() {
                     @Override
                     public void run() {
                         // 不能放到外面设置，否则只取到最后一项
@@ -81,13 +82,14 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 };
                 subTasks[i] = subTask;
             }
+            packet.batchParameters.clear();
             task.si.submitTasks(subTasks);
             return null;
         }
     }
 
-    private static void submitYieldableCommand(PacketDeliveryTask task, PreparedSQLStatement command, int[] results,
-            AtomicInteger count, int index) {
+    private static void submitYieldableCommand(PacketHandleTask task, PreparedSQLStatement command,
+            int[] results, AtomicInteger count, int index) {
         PreparedSQLStatement.Yieldable<?> yieldable = command.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();

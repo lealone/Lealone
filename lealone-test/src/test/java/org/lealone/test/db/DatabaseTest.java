@@ -38,8 +38,8 @@ public class DatabaseTest extends DbObjectTestBase {
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest1");
         asserts("CreateDatabaseTest1");
 
-        executeUpdate(
-                "CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2"
+                + " PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
         asserts("CreateDatabaseTest2");
 
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest3 PARAMETERS()");
@@ -61,21 +61,11 @@ public class DatabaseTest extends DbObjectTestBase {
             assertEquals(ErrorCode.DATABASE_ALREADY_EXISTS_1, ((DbException) e).getErrorCode());
         }
 
-        String dbName = "CreateDatabaseTest4";
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName //
-                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1)");
-        Database db = LealoneDatabase.getInstance().findDatabase(dbName);
-        assertNotNull(db);
-        assertNotNull(db.getReplicationParameters());
-        assertTrue(db.getReplicationParameters().containsKey("class"));
-
-        executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:2)");
-
-        db = LealoneDatabase.getInstance().findDatabase(dbName);
-        assertNotNull(db);
-        assertNotNull(db.getReplicationParameters());
-        assertEquals("2", db.getReplicationParameters().get("replication_factor"));
-        // executeUpdate("DROP DATABASE IF EXISTS " + dbName);
+        try {
+            executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTestXxx PARAMETERS(xxxx=false)");
+            fail();
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("Unrecognized parameters"));
+        }
     }
 }

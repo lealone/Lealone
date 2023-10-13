@@ -38,72 +38,72 @@ public abstract class Aggregate extends Expression {
     /**
      * The aggregate type for SUM(expression).
      */
-    static final int SUM = 3;
+    public static final int SUM = 3;
 
     /**
      * The aggregate type for MIN(expression).
      */
-    static final int MIN = 4;
+    public static final int MIN = 4;
 
     /**
      * The aggregate type for MAX(expression).
      */
-    static final int MAX = 5;
+    public static final int MAX = 5;
 
     /**
      * The aggregate type for AVG(expression).
      */
-    static final int AVG = 6;
+    public static final int AVG = 6;
 
     /**
      * The aggregate type for STDDEV_POP(expression).
      */
-    static final int STDDEV_POP = 7;
+    public static final int STDDEV_POP = 7;
 
     /**
      * The aggregate type for STDDEV_SAMP(expression).
      */
-    static final int STDDEV_SAMP = 8;
+    public static final int STDDEV_SAMP = 8;
 
     /**
      * The aggregate type for VAR_POP(expression).
      */
-    static final int VAR_POP = 9;
+    public static final int VAR_POP = 9;
 
     /**
      * The aggregate type for VAR_SAMP(expression).
      */
-    static final int VAR_SAMP = 10;
+    public static final int VAR_SAMP = 10;
 
     /**
      * The aggregate type for BOOL_OR(expression).
      */
-    static final int BOOL_OR = 11;
+    public static final int BOOL_OR = 11;
 
     /**
      * The aggregate type for BOOL_AND(expression).
      */
-    static final int BOOL_AND = 12;
+    public static final int BOOL_AND = 12;
 
     /**
      * The aggregate type for BIT_OR(expression).
      */
-    static final int BIT_OR = 13;
+    public static final int BIT_OR = 13;
 
     /**
      * The aggregate type for BIT_AND(expression).
      */
-    static final int BIT_AND = 14;
+    public static final int BIT_AND = 14;
 
     /**
      * The aggregate type for SELECTIVITY(expression).
      */
-    static final int SELECTIVITY = 15;
+    public static final int SELECTIVITY = 15;
 
     /**
      * The aggregate type for HISTOGRAM(expression).
      */
-    static final int HISTOGRAM = 16;
+    public static final int HISTOGRAM = 16;
 
     private static final HashMap<String, Integer> AGGREGATES = new HashMap<>();
 

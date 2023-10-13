@@ -12,7 +12,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 // COUNT(x)
 public class ACount extends BuiltInAggregate {
@@ -37,17 +36,37 @@ public class ACount extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("COUNT", isDistributed);
+    public String getSQL() {
+        return getSQL("COUNT");
     }
 
-    private class AggregateDataCount extends AggregateData {
+    public class AggregateDataCount extends AggregateData {
 
         private long count;
         private ValueHashMap<AggregateDataCount> distinctValues;
 
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+
+        public ValueHashMap<AggregateDataCount> getDistinctValues() {
+            return distinctValues;
+        }
+
+        public void setDistinctValues(ValueHashMap<AggregateDataCount> distinctValues) {
+            this.distinctValues = distinctValues;
+        }
+
+        public boolean isDistinct() {
+            return distinct;
+        }
+
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             if (v == ValueNull.INSTANCE) {
                 return;
             }
@@ -61,21 +80,6 @@ public class ACount extends BuiltInAggregate {
         }
 
         @Override
-        void add(ServerSession session, ValueVector bvv, ValueVector vv) {
-            if (bvv == null)
-                count += vv.size();
-            else
-                count += bvv.trueCount();
-            if (distinct) {
-                if (distinctValues == null) {
-                    distinctValues = ValueHashMap.newInstance();
-                }
-                for (Value v : vv.getValues(bvv))
-                    distinctValues.put(v, this);
-            }
-        }
-
-        @Override
         Value getValue(ServerSession session) {
             if (distinct) {
                 if (distinctValues != null) {
@@ -84,16 +88,6 @@ public class ACount extends BuiltInAggregate {
                     count = 0;
                 }
             }
-            return ValueLong.get(count);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            count += v.getLong();
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
             return ValueLong.get(count);
         }
     }

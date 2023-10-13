@@ -10,7 +10,6 @@ import org.lealone.db.index.standard.ValueDataType;
 import org.lealone.db.index.standard.VersionedValue;
 import org.lealone.db.index.standard.VersionedValueType;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.CursorParameters;
@@ -26,14 +25,13 @@ public class PageStorageModeTest extends AoseTestBase {
 
     private final int rowCount = 6000;
     private final int columnCount = 10;
-    private final int pageSplitSize = 1024 * 1024;
-    private final int cacheSize = 100 * 1024 * 1024; // 100M
+    private final int pageSize = 1024 * 1024;
+    private final int cacheSize = 100; // 100M
 
     @Test
     public void run() {
         ValueDataType keyType = new ValueDataType(null, null, null);
-        ValueDataType valueType = new ValueDataType(null, null, null);
-        VersionedValueType vvType = new VersionedValueType(valueType, columnCount);
+        VersionedValueType vvType = new VersionedValueType(null, null, null, columnCount);
         TransactionalValueType tvType = new TransactionalValueType(vvType);
 
         testRowStorage(keyType, tvType);
@@ -57,7 +55,7 @@ public class PageStorageModeTest extends AoseTestBase {
             for (int col = 0; col < columnCount; col++) {
                 columns[col] = ValueString.get("value-row" + row + "-col" + (col + 1));
             }
-            VersionedValue vv = new VersionedValue(row, ValueArray.get(columns));
+            VersionedValue vv = new VersionedValue(row, columns);
             TransactionalValue tv = TransactionalValue.createCommitted(vv);
             map.put(key, tv);
         }
@@ -66,8 +64,9 @@ public class PageStorageModeTest extends AoseTestBase {
 
     private void testStorage(ValueDataType keyType, TransactionalValueType tvType, PageStorageMode mode,
             String mapName) {
-        AOStorage storage = AOStorageTest.openStorage(pageSplitSize, cacheSize);
-        BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType, null);
+        AOStorage storage = AOStorageTest.openStorage(pageSize, cacheSize);
+        BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType,
+                null);
         map.setPageStorageMode(mode);
         putData(map);
 
@@ -79,26 +78,26 @@ public class PageStorageModeTest extends AoseTestBase {
         ValueLong key = ValueLong.get(4000);
         TransactionalValue tv = map.get(key);
         VersionedValue vv = (VersionedValue) tv.getValue();
-        Value columnValue = vv.value.getList()[columnIndex];
+        Value columnValue = vv.columns[columnIndex];
         assertEquals("value-row4000-col3", columnValue.getString());
 
         key = ValueLong.get(2);
         tv = map.get(key, columnIndex);
         vv = (VersionedValue) tv.getValue();
-        columnValue = vv.value.getList()[columnIndex];
+        columnValue = vv.columns[columnIndex];
         assertEquals("value-row2-col3", columnValue.getString());
 
         key = ValueLong.get(2999);
         tv = map.get(key, columnIndex);
         vv = (VersionedValue) tv.getValue();
-        columnValue = vv.value.getList()[columnIndex];
+        columnValue = vv.columns[columnIndex];
         assertEquals("value-row2999-col3", columnValue.getString());
 
         int rows = 0;
         ValueLong from = ValueLong.get(2000);
-        StorageMapCursor<ValueLong, TransactionalValue> cursor = map.cursor(CursorParameters.create(from, columnIndex));
-        while (cursor.hasNext()) {
-            cursor.next();
+        StorageMapCursor<ValueLong, TransactionalValue> cursor = map
+                .cursor(CursorParameters.create(from, columnIndex));
+        while (cursor.next()) {
             rows++;
         }
         assertEquals(rowCount - 2000 + 1, rows);

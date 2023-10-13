@@ -10,7 +10,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.IntIntHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.query.Select;
 
@@ -36,21 +35,20 @@ public class ASelectivity extends BuiltInAggregate {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return getSQL("SELECTIVITY", isDistributed);
+    public String getSQL() {
+        return getSQL("SELECTIVITY");
     }
 
     // 会忽略distinct
     // 返回(100 * distinctCount/rowCount)
-    private class AggregateDataSelectivity extends AggregateData {
+    public class AggregateDataSelectivity extends AggregateData {
 
         private long count;
         private IntIntHashMap distinctHashes;
         private double m2;
-        private Value value;
 
         @Override
-        void add(ServerSession session, Value v) {
+        public void add(ServerSession session, Value v) {
             // 是基于某个表达式(多数是单个字段)算不重复的记录数所占总记录数的百分比
             // Constants.SELECTIVITY_DISTINCT_COUNT默认是1万，这个值不能改，
             // 对统计值影响很大。通常这个值越大，统计越精确，但是会使用更多内存。
@@ -71,32 +69,14 @@ public class ASelectivity extends BuiltInAggregate {
 
         @Override
         Value getValue(ServerSession session) {
+            if (distinctHashes == null)
+                return ValueInt.get(Constants.SELECTIVITY_DEFAULT);
             m2 += distinctHashes.size();
             m2 = 100 * m2 / count;
             int s = (int) m2;
             s = s <= 0 ? 1 : s > 100 ? 100 : s;
             Value v = ValueInt.get(s);
             return v.convertTo(dataType);
-        }
-
-        @Override
-        void merge(ServerSession session, Value v) {
-            count++;
-            if (value == null) {
-                value = v.convertTo(dataType);
-            } else {
-                v = v.convertTo(value.getType());
-                value = value.add(v);
-            }
-        }
-
-        @Override
-        Value getMergedValue(ServerSession session) {
-            Value v = null;
-            if (value != null) {
-                v = BuiltInAggregate.divide(value, count);
-            }
-            return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
         }
     }
 }

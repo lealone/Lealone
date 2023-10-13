@@ -98,9 +98,10 @@ public class ConstraintReferential extends Constraint {
      * @param forRefTable the referenced table
      * @param quotedName the name of this object (quoted if necessary)
      * @param internalIndex add the index name to the statement
-     * @return the SQL statement
+     * @return the SQL statement 
      */
-    private String getCreateSQLForCopy(Table forTable, Table forRefTable, String quotedName, boolean internalIndex) {
+    private String getCreateSQLForCopy(Table forTable, Table forRefTable, String quotedName,
+            boolean internalIndex) {
         StatementBuilder buff = new StatementBuilder("ALTER TABLE ");
         String mainTable = forTable.getSQL();
         buff.append(mainTable).append(" ADD CONSTRAINT ");
@@ -647,19 +648,15 @@ public class ConstraintReferential extends Constraint {
         int i = 0;
         for (IndexColumn c : columns) {
             buff.appendExceptFirst(" AND ");
-            buff.append("C.").append(c.getSQL()).append('=').append("P.").append(refColumns[i++].getSQL());
+            buff.append("C.").append(c.getSQL()).append('=').append("P.")
+                    .append(refColumns[i++].getSQL());
         }
         buff.append(')');
         String sql = buff.toString();
-        session.startNestedStatement();
-        try {
-            Result r = session.prepareStatement(sql).query(1);
-            if (r.next()) {
-                throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
-                        getShortDescription(null, null));
-            }
-        } finally {
-            session.endNestedStatement();
+        Result r = session.prepareStatement(sql).query(1);
+        if (r.next()) {
+            throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
+                    getShortDescription(null, null));
         }
     }
 

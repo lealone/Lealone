@@ -43,11 +43,6 @@ public class CreateIndex extends SchemaStatement {
         return SQLStatement.CREATE_INDEX;
     }
 
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
     public void setTableName(String tableName) {
         this.tableName = tableName;
     }
@@ -62,11 +57,6 @@ public class CreateIndex extends SchemaStatement {
 
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
-    }
-
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
     }
 
     public void setPrimaryKey(boolean b) {
@@ -104,7 +94,8 @@ public class CreateIndex extends SchemaStatement {
         int id = getObjectId();
         if (indexName == null) {
             if (primaryKey) {
-                indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
+                indexName = table.getSchema().getUniqueIndexName(session, table,
+                        Constants.PREFIX_PRIMARY_KEY);
             } else {
                 indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
             }

@@ -5,12 +5,10 @@
  */
 package org.lealone.transaction;
 
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-
 import org.lealone.db.async.Future;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.StorageDataType;
 
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
@@ -37,41 +35,18 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
-    /**
-     * Update the value for the given key, without adding an undo log entry.
-     *
-     * @param key the key
-     * @param value the value
-     * @return the old value
-     */
-    public V putCommitted(K key, V value);
+    @Override
+    public default TransactionMapCursor<K, V> cursor(K from) {
+        return cursor(CursorParameters.create(from));
+    }
 
-    /**
-     * Iterate over entries.
-     *
-     * @param from the first key to return
-     * @return the iterator
-     */
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(K from);
+    @Override
+    public default TransactionMapCursor<K, V> cursor() {
+        return cursor(CursorParameters.create(null));
+    }
 
-    public Iterator<TransactionMapEntry<K, V>> entryIterator(CursorParameters<K> parameters);
-
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @return the iterator
-     */
-    public Iterator<K> keyIterator(K from);
-
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @param includeUncommitted whether uncommitted entries should be included
-     * @return the iterator
-     */
-    public Iterator<K> keyIterator(K from, boolean includeUncommitted);
+    @Override
+    public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
     public Future<Integer> addIfAbsent(K key, V value);
 
@@ -93,7 +68,8 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
         return tryUpdate(key, newValue, columnIndexes, oldTValue, false);
     }
 
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue, boolean isLockedBySelf);
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
+            boolean isLockedBySelf);
 
     public default int tryRemove(K key) {
         Object oldTValue = getTransactionalValue(key);
@@ -106,28 +82,17 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf);
 
-    public default boolean tryLock(K key) {
-        Object oldTValue = getTransactionalValue(key);
-        return tryLock(key, oldTValue);
+    public default int tryLock(K key, Object oldTValue) {
+        return tryLock(key, oldTValue, null);
     }
 
-    public default boolean tryLock(K key, Object oldTValue) {
-        return tryLock(key, oldTValue, null, false);
-    }
-
-    public boolean tryLock(K key, Object oldTValue, int[] columnIndexes, boolean isForUpdate);
+    public int tryLock(K key, Object oldTValue, int[] columnIndexes);
 
     public boolean isLocked(Object oldTValue, int[] columnIndexes);
 
-    public Object[] getValueAndRef(K key, int[] columnIndexes);
-
-    public Object getValue(Object oldTValue);
-
     public Object getTransactionalValue(K key);
 
-    public int addWaitingTransaction(Object key, Object oldTValue);
+    public StorageDataType getTransactionalValueType();
 
-    public default String checkReplicationConflict(ByteBuffer key, String replicationName) {
-        return null;
-    }
+    public int addWaitingTransaction(Object key, Object oldTValue);
 }

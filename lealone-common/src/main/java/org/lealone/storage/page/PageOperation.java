@@ -9,38 +9,26 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.AsyncTask;
+import org.lealone.db.session.Session;
 
-public interface PageOperation extends AsyncTask {
+public interface PageOperation {
 
     public static enum PageOperationResult {
-        SPLITTING,
         SUCCEEDED,
-        SHIFTED,
-        REMOTE_WRITTING,
         RETRY,
-        FAILED,
         LOCKED;
     }
 
-    @Override
-    default int getPriority() {
-        return MAX_PRIORITY;
-    }
-
-    @Override
-    default void run() {
-        // Thread t = Thread.currentThread();
-        // if (t instanceof PageOperationHandler) {
-        // run((PageOperationHandler) t);
-        // } else {
-        // run(null);
-        // }
-    }
-
     default PageOperationResult run(PageOperationHandler currentHandler) {
-        run();
+        return run(currentHandler, true);
+    }
+
+    default PageOperationResult run(PageOperationHandler currentHandler, boolean waitingIfLocked) {
         return PageOperationResult.SUCCEEDED;
+    }
+
+    default Session getSession() {
+        return null;
     }
 
     interface Listener<V> extends AsyncHandler<AsyncResult<V>> {

@@ -34,7 +34,6 @@ public class Mode {
         mode.convertInsertNullToZero = true;
         mode.indexDefinitionInCreateTable = true;
         mode.lowerCaseIdentifiers = true;
-        mode.onDuplicateKeyUpdate = true;
         add(mode);
 
         mode = new Mode("PostgreSQL");
@@ -62,6 +61,10 @@ public class Mode {
      */
     public static Mode getInstance(String name) {
         return MODES.get(name);
+    }
+
+    public boolean isPostgreSQL() {
+        return "PostgreSQL".equalsIgnoreCase(name);
     }
 
     // Modes are also documented in the features section
@@ -127,19 +130,6 @@ public class Mode {
     public boolean systemColumns;
 
     /**
-     * For unique indexes, NULL is distinct. That means only one row with NULL
-     * in one of the columns is allowed.
-     */
-    public boolean uniqueIndexSingleNull;
-
-    /**
-     * When using unique indexes, multiple rows with NULL in all columns
-     * are allowed, however it is not allowed to have multiple rows with the
-     * same values otherwise.
-     */
-    public boolean uniqueIndexSingleNullExceptAllColumnsAreNull;
-
-    /**
      * Empty strings are treated like NULL values. Useful for Oracle emulation.
      */
     public boolean treatEmptyStringsAsNull;
@@ -163,16 +153,6 @@ public class Mode {
      * Swap the parameters of the CONVERT function.
      */
     public boolean swapConvertFunctionParameters;
-
-    /**
-     * can set the isolation level using WITH {RR|RS|CS|UR}
-     */
-    public boolean isolationLevelInSelectOrInsertStatement;
-
-    /**
-     * MySQL style INSERT ... ON DUPLICATE KEY UPDATE ...
-     */
-    public boolean onDuplicateKeyUpdate;
 
     /**
      * Support the # for column names

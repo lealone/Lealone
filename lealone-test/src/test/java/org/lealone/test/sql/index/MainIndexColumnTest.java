@@ -13,9 +13,11 @@ public class MainIndexColumnTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("drop table IF EXISTS MainIndexColumnTest CASCADE");
-        executeUpdate("create table IF NOT EXISTS MainIndexColumnTest(id int not null, name varchar(50))");
+        executeUpdate(
+                "create table IF NOT EXISTS MainIndexColumnTest(id int not null, name varchar(50))");
 
-        executeUpdate("CREATE PRIMARY KEY IF NOT EXISTS MainIndexColumnTest_id ON MainIndexColumnTest(id)");
+        executeUpdate(
+                "CREATE PRIMARY KEY IF NOT EXISTS MainIndexColumnTest_id ON MainIndexColumnTest(id)");
 
         executeUpdate("insert into MainIndexColumnTest(id, name) values(10, 'a1')");
         executeUpdate("insert into MainIndexColumnTest(id, name) values(20, 'b1')");

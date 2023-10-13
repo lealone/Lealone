@@ -7,18 +7,14 @@ package org.lealone.db.result;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
-import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 
 /**
  * Represents a simple row without state.
  */
-public class SimpleRow implements SearchRow {
+public class SimpleRow extends RowBase {
 
-    private long key;
-    private int version;
-    private final Value[] data;
-    private int memory;
+    protected final Value[] data;
 
     public SimpleRow(Value[] data) {
         this.data = data;
@@ -30,39 +26,33 @@ public class SimpleRow implements SearchRow {
     }
 
     @Override
-    public long getKey() {
-        return key;
+    public Value getValue(int index) {
+        return data[index];
     }
 
     @Override
-    public void setKey(long key) {
-        this.key = key;
+    public void setValue(int index, Value v) {
+        data[index] = v;
     }
 
     @Override
-    public void setKeyAndVersion(SearchRow row) {
-        key = row.getKey();
-        version = row.getVersion();
-    }
-
-    @Override
-    public int getVersion() {
-        return version;
-    }
-
-    @Override
-    public void setValue(int idx, Value v) {
-        setValue(idx, v, null);
-    }
-
-    @Override
-    public void setValue(int idx, Value v, Column c) {
-        data[idx] = v;
-    }
-
-    @Override
-    public Value getValue(int i) {
-        return data[i];
+    public int getMemory() {
+        if (memory > 0) {
+            return memory;
+        }
+        int m = Constants.MEMORY_ROW;
+        if (data != null) {
+            int len = data.length;
+            m += Constants.MEMORY_OBJECT + len * Constants.MEMORY_POINTER;
+            for (int i = 0; i < len; i++) {
+                Value v = data[i];
+                if (v != null) {
+                    m += v.getMemory();
+                }
+            }
+        }
+        memory = m;
+        return m;
     }
 
     @Override
@@ -73,25 +63,12 @@ public class SimpleRow implements SearchRow {
             buff.append(" v:" + version);
         }
         buff.append(" */ ");
-        for (Value v : data) {
-            buff.appendExceptFirst(", ");
-            buff.append(v == null ? "null" : v.getTraceSQL());
-        }
-        return buff.append(')').toString();
-    }
-
-    @Override
-    public int getMemory() {
-        if (memory == 0) {
-            int len = data.length;
-            memory = Constants.MEMORY_OBJECT + len * Constants.MEMORY_POINTER;
-            for (int i = 0; i < len; i++) {
-                Value v = data[i];
-                if (v != null) {
-                    memory += v.getMemory();
-                }
+        if (data != null) {
+            for (Value v : data) {
+                buff.appendExceptFirst(", ");
+                buff.append(v == null ? "null" : v.getTraceSQL());
             }
         }
-        return memory;
+        return buff.append(')').toString();
     }
 }

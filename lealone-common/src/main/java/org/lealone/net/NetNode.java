@@ -16,8 +16,10 @@ import org.lealone.db.Constants;
 
 public class NetNode implements Comparable<NetNode> {
 
-    private static NetNode localTcpNode = new NetNode(Constants.DEFAULT_HOST, Constants.DEFAULT_TCP_PORT);
-    private static NetNode localP2pNode = new NetNode(Constants.DEFAULT_HOST, Constants.DEFAULT_P2P_PORT);
+    private static NetNode localTcpNode = new NetNode(Constants.DEFAULT_HOST,
+            Constants.DEFAULT_TCP_PORT);
+    private static NetNode localP2pNode = new NetNode(Constants.DEFAULT_HOST,
+            Constants.DEFAULT_P2P_PORT);
 
     public static void setLocalTcpNode(String host, int port) {
         localTcpNode = new NetNode(host, port);

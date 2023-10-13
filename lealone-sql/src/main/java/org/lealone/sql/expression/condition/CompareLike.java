@@ -52,7 +52,8 @@ public class CompareLike extends Condition {
     private boolean fastCompare;
     private boolean invalidPattern;
 
-    public CompareLike(Database db, Expression left, Expression right, Expression escape, boolean regexp) {
+    public CompareLike(Database db, Expression left, Expression right, Expression escape,
+            boolean regexp) {
         this(db.getCompareMode(), db.getSettings().defaultEscape, left, right, escape, regexp);
     }
 
@@ -83,14 +84,14 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         if (regexp) {
-            sql = left.getSQL(isDistributed) + " REGEXP " + right.getSQL(isDistributed);
+            sql = left.getSQL() + " REGEXP " + right.getSQL();
         } else {
-            sql = left.getSQL(isDistributed) + " LIKE " + right.getSQL(isDistributed);
+            sql = left.getSQL() + " LIKE " + right.getSQL();
             if (escape != null) {
-                sql += " ESCAPE " + escape.getSQL(isDistributed);
+                sql += " ESCAPE " + escape.getSQL();
             }
         }
         return "(" + sql + ")";
@@ -202,7 +203,8 @@ public class CompareLike extends Condition {
             return;
         }
         int dataType = l.getColumn().getType();
-        if (dataType != Value.STRING && dataType != Value.STRING_IGNORECASE && dataType != Value.STRING_FIXED) {
+        if (dataType != Value.STRING && dataType != Value.STRING_IGNORECASE
+                && dataType != Value.STRING_FIXED) {
             // column is not a varchar - can't use the index
             return;
         }
@@ -213,23 +215,23 @@ public class CompareLike extends Condition {
         }
         String begin = buff.toString();
         if (maxMatch == patternLength) {
-            filter.addIndexCondition(
-                    IndexCondition.get(Comparison.EQUAL, l, ValueExpression.get(ValueString.get(begin))));
+            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l,
+                    ValueExpression.get(ValueString.get(begin))));
         } else {
             // TODO check if this is correct according to Unicode rules
             // (code points)
             String end;
             if (begin.length() > 0) {
-                filter.addIndexCondition(
-                        IndexCondition.get(Comparison.BIGGER_EQUAL, l, ValueExpression.get(ValueString.get(begin))));
+                filter.addIndexCondition(IndexCondition.get(Comparison.BIGGER_EQUAL, l,
+                        ValueExpression.get(ValueString.get(begin))));
                 char next = begin.charAt(begin.length() - 1);
                 // search the 'next' unicode character (or at least a character
                 // that is higher)
                 for (int i = 1; i < 2000; i++) {
                     end = begin.substring(0, begin.length() - 1) + (char) (next + i);
                     if (compareMode.compareString(begin, end, ignoreCase) == -1) {
-                        filter.addIndexCondition(
-                                IndexCondition.get(Comparison.SMALLER, l, ValueExpression.get(ValueString.get(end))));
+                        filter.addIndexCondition(IndexCondition.get(Comparison.SMALLER, l,
+                                ValueExpression.get(ValueString.get(end))));
                         break;
                     }
                 }

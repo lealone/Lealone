@@ -6,19 +6,16 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
-import org.lealone.common.util.Pair;
-import org.lealone.db.ConnectionInfo;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
-import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
@@ -34,21 +31,34 @@ import org.lealone.server.protocol.session.SessionInitAck;
 // 注意: 以下代码中出现的sessionId都表示客户端session的id，
 // 调用createSession创建的是服务器端的session，这个session的id有可能跟客户端session的id不一样，
 // 但是可以把客户端session的id跟服务器端的session做一个影射，这样两端的session就对上了。
-public class TcpServerConnection extends TransferConnection {
+//
+// 每个TcpServerConnection实例对应一个Scheduler，也就是只会有一个调度服务线程执行它的方法
+public class TcpServerConnection extends AsyncServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
 
     // 每个sessionId对应一个专有的SessionInfo，
     // 所有与这个sessionId相关的命令请求都先放到SessionInfo中的队列，
     // 然后由调度器根据优先级从多个队列中依次取出执行。
-    private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
+    private final HashMap<Integer, SessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
     private final Scheduler scheduler;
 
-    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, Scheduler scheduler) {
+    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
+            Scheduler scheduler) {
         super(writableChannel, true);
         this.tcpServer = tcpServer;
         this.scheduler = scheduler;
+    }
+
+    @Override
+    public int getSessionCount() {
+        return sessions.size();
+    }
+
+    @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return scheduler.getDataBufferFactory();
     }
 
     @Override
@@ -56,53 +66,61 @@ public class TcpServerConnection extends TransferConnection {
         tcpServer.removeConnection(this);
     }
 
-    // 这个方法是由网络事件循环线程执行的
     @Override
-    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType)
+            throws IOException {
         // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
         int sessionId = in.readInt();
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
-                // 当前共享的TCP连接对应的Scheduler不负责网络IO时，需要为每个新session重新分配Scheduler
-                if (this.scheduler.useNetEventLoop()) {
-                    // 直接处理，不需要加入Scheduler的队列
-                    readInitPacket(in, packetId, sessionId, this.scheduler);
-                } else {
-                    // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                    Scheduler scheduler = SchedulerFactory.getScheduler();
-                    scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
-                }
+                readInitPacket(in, packetId, sessionId);
             } else {
                 sessionNotFound(packetId, sessionId);
             }
         } else {
             in.setSession(si.getSession());
-            PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
+            PacketHandleTask task = new PacketHandleTask(this, in, packetId, packetType, si);
             si.submitTask(task);
         }
     }
 
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId, Scheduler scheduler) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
         SessionInit packet;
         try {
             packet = SessionInit.decoder.decode(in, 0);
         } catch (Throwable e) {
-            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
+            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId,
+                    e);
             sendError(null, packetId, e);
             return;
         } finally {
             in.closeInputStream();
         }
 
+        SessionInitTask task = new SessionInitTask(this, packet, packetId, sessionId);
+        // 在事件循环中直接执行如果又需要建立新session(remote page的场景)会遇到麻烦，事件循环不能嵌套
+        // if (scheduler.canHandleNextSessionInitTask()) {
+        // // 直接处理，如果完成了就不需要加入Scheduler的队列
+        // if (task.run())
+        // return;
+        // }
+        scheduler.addSessionInitTask(task);
+    }
+
+    boolean createSession(SessionInit packet, int packetId, int sessionId) {
         try {
-            ServerSession session = createSession(packet.ci, sessionId, scheduler);
-            scheduler.validateUserAndPassword(true);
+            ServerSession session = (ServerSession) packet.ci.createSession();
+            if (session == null) {
+                return false;
+            }
+            addSession(session, sessionId);
+            scheduler.validateSession(true);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
         } catch (Throwable e) {
             if (DbException.convert(e).getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
-                scheduler.validateUserAndPassword(false);
+                scheduler.validateSession(false);
             }
             SessionInfo si = sessions.get(sessionId);
             if (si != null) {
@@ -111,11 +129,10 @@ public class TcpServerConnection extends TransferConnection {
             logger.error("Failed to create session, sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
+        return true;
     }
 
-    private ServerSession createSession(ConnectionInfo ci, int sessionId, Scheduler scheduler) {
-        ServerSession session = (ServerSession) ci.createSession();
-
+    private void addSession(ServerSession session, int sessionId) {
         // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
         // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
         // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
@@ -125,37 +142,38 @@ public class TcpServerConnection extends TransferConnection {
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
             session.setTransactionListener(scheduler);
-            session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(),
-                    new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
-                        @Override
-                        public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
-                            try {
-                                pair.right.value.close();
-                            } catch (Exception e) {
-                                logger.warn(e.getMessage());
-                            }
-                            return null;
+            session.setTransactionHandler(scheduler);
+            session.setPageOperationHandler(scheduler);
+            session.setCache(
+                    new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), true, cObject -> {
+                        try {
+                            cObject.value.close();
+                        } catch (Exception e) {
+                            logger.warn(e.getMessage());
                         }
+                        return null;
                     }));
-            SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
+            SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
+                    tcpServer.getSessionTimeout());
             session.setSessionInfo(si);
             scheduler.addSessionInfo(si);
             sessions.put(sessionId, si);
         }
-        return session;
     }
 
-    private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session) throws Exception {
+    private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session)
+            throws Exception {
         TransferOutputStream out = createTransferOutputStream(session);
         out.writeResponseHeader(packetId, Session.STATUS_OK);
-        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(), session.getTargetNodes(),
-                session.getRunMode(), session.isInvalid());
+        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(),
+                session.getTargetNodes(), session.getRunMode(), session.isInvalid(), 0);
         ack.encode(out, packet.clientVersion);
         out.flush();
     }
 
     private void sessionNotFound(int packetId, int sessionId) {
-        String msg = "Server session not found, maybe closed or timeout. client session id: " + sessionId;
+        String msg = "Server session not found, maybe closed or timeout. client session id: "
+                + sessionId;
         RuntimeException e = new RuntimeException(msg);
         // logger.warn(msg, e); //打印错误堆栈不是很大必要
         logger.warn(msg);
@@ -171,7 +189,12 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    void closeSession(SessionInfo si) {
+    @Override
+    public void closeSession(SessionInfo si) {
+        closeSession(si, false);
+    }
+
+    private void closeSession(SessionInfo si, boolean isForLoop) {
         try {
             ServerSession s = si.getSession();
             // 执行SHUTDOWN IMMEDIATELY时会模拟PowerOff，此时不必再执行后续操作
@@ -183,7 +206,8 @@ public class TcpServerConnection extends TransferConnection {
             logger.error("Failed to close session", e);
         } finally {
             si.remove();
-            sessions.remove(si.getSessionId());
+            if (!isForLoop) // 在循环中不能删除元素，否则会有并发更新异常
+                sessions.remove(si.getSessionId());
         }
     }
 
@@ -191,7 +215,7 @@ public class TcpServerConnection extends TransferConnection {
     public void close() {
         super.close();
         for (SessionInfo si : sessions.values()) {
-            closeSession(si);
+            closeSession(si, true);
         }
         sessions.clear();
     }
@@ -201,14 +225,12 @@ public class TcpServerConnection extends TransferConnection {
             return Session.STATUS_CLOSED;
         } else if (session.isRunModeChanged()) {
             return Session.STATUS_RUN_MODE_CHANGED;
-        } else if (session.getReplicationName() != null) {
-            return Session.STATUS_REPLICATING;
         } else {
             return Session.STATUS_OK;
         }
     }
 
-    public void sendResponse(PacketDeliveryTask task, Packet packet) {
+    public void sendResponse(PacketHandleTask task, Packet packet) {
         ServerSession session = task.session;
         try {
             TransferOutputStream out = createTransferOutputStream(session);

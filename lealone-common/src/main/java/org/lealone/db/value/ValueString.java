@@ -196,7 +196,7 @@ public class ValueString extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 24 + 2 * obj.toString().length();
+            return 16 + 2 * obj.toString().length();
         }
 
         @Override
@@ -243,5 +243,4 @@ public class ValueString extends Value {
             return ValueString.get(DataUtils.readString(buff, len));
         }
     };
-
 }

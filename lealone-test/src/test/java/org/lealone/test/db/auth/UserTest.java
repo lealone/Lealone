@@ -43,7 +43,8 @@ public class UserTest extends DbObjectTestBase {
         // 第2种用SALT和HASH
         // SALT和HASH必须是16进制的，X不加也是可以的
         // X'...'必须是偶数个
-        executeUpdate("CREATE USER IF NOT EXISTS sa2 COMMENT 'a amdin user with salt' SALT X'123456' HASH X'78' ADMIN");
+        executeUpdate(
+                "CREATE USER IF NOT EXISTS sa2 COMMENT 'a amdin user with salt' SALT X'123456' HASH X'78' ADMIN");
         asserts("sa2");
 
         // 第3种用IDENTIFIED BY

@@ -5,9 +5,9 @@
  */
 package org.lealone.storage;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -24,10 +24,11 @@ import org.lealone.storage.fs.FileUtils;
 //子类通常只需要实现openMap方法
 public abstract class StorageBase implements Storage {
 
-    protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp" + Constants.NAME_SEPARATOR;
+    protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp"
+            + Constants.NAME_SEPARATOR;
 
-    protected final ConcurrentHashMap<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
-    protected final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    protected final Map<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
+    protected final Map<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     protected final Map<String, Object> config;
     protected boolean closed;
 
@@ -70,7 +71,7 @@ public abstract class StorageBase implements Storage {
 
     @Override
     public String getStoragePath() {
-        return (String) config.get("storagePath");
+        return (String) config.get(StorageSetting.STORAGE_PATH.name());
     }
 
     @Override
@@ -108,15 +109,23 @@ public abstract class StorageBase implements Storage {
     }
 
     @Override
-    public void backupTo(String fileName) {
+    public void backupTo(String fileName, Long lastDate) {
         if (isInMemory())
             return;
         save();
-        // TODO 如何在不关闭存储的情况下备份，可能相关的文件在打开时就用排它锁锁住了，所以读不了
-        close();
+        backupFiles(fileName, lastDate);
+    }
 
-        String path = getStoragePath(); // 可能是一个文件或目录
-        backupFiles(path, fileName);
+    @Override
+    public void backupTo(String baseDir, ZipOutputStream out, Long lastDate) {
+        if (isInMemory())
+            return;
+        save();
+        try {
+            backupFiles(baseDir, out, lastDate);
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "");
+        }
     }
 
     @Override
@@ -153,31 +162,56 @@ public abstract class StorageBase implements Storage {
         listeners.remove(listener);
     }
 
-    private static void backupFiles(String path, String toFile) {
-        try (OutputStream zip = FileUtils.newOutputStream(toFile, false);
-                ZipOutputStream out = new ZipOutputStream(zip)) {
-            FilePath p = FilePath.get(path);
-            if (p.isDirectory()) {
-                String pathShortName = path.replace('\\', '/');
-                pathShortName = pathShortName.substring(pathShortName.lastIndexOf('/') + 1);
-                FilePath dir = FilePath.get(path);
-                for (FilePath map : dir.newDirectoryStream()) {
-                    String entryNameBase = pathShortName + "/" + map.getName();
-                    for (FilePath file : map.newDirectoryStream()) {
-                        backupFile(out, file.newInputStream(), entryNameBase + "/" + file.getName());
-                    }
-                }
-            } else {
-                backupFile(out, p.newInputStream(), p.getName());
-            }
+    protected InputStream getInputStream(String mapName, FilePath file) throws IOException {
+        return file.newInputStream();
+    }
+
+    private void backupFiles(String toFile, Long lastDate) {
+        try (ZipOutputStream out = createZipOutputStream(toFile)) {
+            backupFiles(null, out, lastDate);
         } catch (IOException e) {
             throw DbException.convertIOException(e, toFile);
         }
     }
 
-    private static void backupFile(ZipOutputStream out, InputStream in, String entryName) throws IOException {
+    private void backupFiles(String baseDir, ZipOutputStream out, Long lastDate) throws IOException {
+        if (baseDir != null)
+            baseDir = new File(baseDir).getCanonicalPath().replace('\\', '/');
+        String path = new File(getStoragePath()).getCanonicalPath(); // 可能是一个文件或目录
+        FilePath p = FilePath.get(path);
+        if (p.isDirectory()) {
+            String pathShortName = path.replace('\\', '/');
+            if (baseDir != null && pathShortName.startsWith(baseDir))
+                pathShortName = pathShortName.substring(baseDir.length() + 1);
+            else
+                pathShortName = pathShortName.substring(pathShortName.lastIndexOf('/') + 1);
+            FilePath dir = FilePath.get(path);
+            for (FilePath map : dir.newDirectoryStream()) {
+                String mapName = map.getName();
+                String entryNameBase = pathShortName + "/" + mapName;
+                for (FilePath file : map.newDirectoryStream()) {
+                    if (lastDate == null || file.lastModified() > lastDate.longValue())
+                        backupFile(out, getInputStream(mapName, file),
+                                entryNameBase + "/" + file.getName());
+                }
+            }
+        } else {
+            backupFile(out, p.newInputStream(), p.getName());
+        }
+    }
+
+    private static void backupFile(ZipOutputStream out, InputStream in, String entryName)
+            throws IOException {
+        if (in == null)
+            return;
         out.putNextEntry(new ZipEntry(entryName));
         IOUtils.copyAndCloseInput(in, out);
         out.closeEntry();
+    }
+
+    public static ZipOutputStream createZipOutputStream(String fileName) throws IOException {
+        if (!fileName.toLowerCase().endsWith(".zip"))
+            fileName += ".zip";
+        return new ZipOutputStream(FileUtils.newOutputStream(fileName, false));
     }
 }

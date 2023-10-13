@@ -56,14 +56,14 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         switch (andOrType) {
         case AND:
-            sql = left.getSQL(isDistributed) + "\n    AND " + right.getSQL(isDistributed);
+            sql = left.getSQL() + "\n    AND " + right.getSQL();
             break;
         case OR:
-            sql = left.getSQL(isDistributed) + "\n    OR " + right.getSQL(isDistributed);
+            sql = left.getSQL() + "\n    OR " + right.getSQL();
             break;
         default:
             throw DbException.getInternalError("andOrType=" + andOrType);
@@ -190,12 +190,14 @@ public class ConditionAndOr extends Condition {
                     return added.optimize(session);
                 }
             } else if (left instanceof ConditionInConstantSet && right instanceof Comparison) {
-                Expression added = ((ConditionInConstantSet) left).getAdditional(session, (Comparison) right);
+                Expression added = ((ConditionInConstantSet) left).getAdditional(session,
+                        (Comparison) right);
                 if (added != null) {
                     return added.optimize(session);
                 }
             } else if (right instanceof ConditionInConstantSet && left instanceof Comparison) {
-                Expression added = ((ConditionInConstantSet) right).getAdditional(session, (Comparison) left);
+                Expression added = ((ConditionInConstantSet) right).getAdditional(session,
+                        (Comparison) left);
                 if (added != null) {
                     return added.optimize(session);
                 }

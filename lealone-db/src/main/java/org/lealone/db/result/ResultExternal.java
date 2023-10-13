@@ -10,8 +10,7 @@ import java.util.ArrayList;
 import org.lealone.db.value.Value;
 
 /**
- * This interface is used to extend the LocalResult class, if data does not fit
- * in memory.
+ * This interface is used to extend the LocalResult class, if data does not fit in memory.
  */
 public interface ResultExternal {
 
@@ -54,8 +53,7 @@ public interface ResultExternal {
     void close();
 
     /**
-     * Remove the row with the given values from this object if such a row
-     * exists.
+     * Remove the row with the given values from this object if such a row exists.
      *
      * @param values the row
      * @return the new row count

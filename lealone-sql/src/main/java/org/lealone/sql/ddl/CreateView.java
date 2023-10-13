@@ -57,11 +57,6 @@ public class CreateView extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
     public void setSelect(Query select) {
         this.select = select;
     }
@@ -120,7 +115,8 @@ public class CreateView extends SchemaStatement {
             if (view == null) {
                 Schema schema = session.getDatabase().getSchema(session, session.getCurrentSchemaName());
                 sysSession.setCurrentSchema(schema);
-                view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession, false);
+                view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession,
+                        false);
             } else {
                 view.replace(querySQL, columnNames, sysSession, false, force);
             }

@@ -5,9 +5,12 @@
  */
 package org.lealone.storage;
 
-import java.util.Iterator;
+import java.util.Objects;
+import java.util.function.Consumer;
 
-public interface StorageMapCursor<K, V> extends Iterator<K> {
+import org.lealone.storage.page.IPage;
+
+public interface StorageMapCursor<K, V> {
 
     /**
      * Get the last read key if there was one.
@@ -23,4 +26,15 @@ public interface StorageMapCursor<K, V> extends Iterator<K> {
      */
     V getValue();
 
+    default IPage getPage() {
+        return null;
+    }
+
+    boolean next();
+
+    default void forEachRemaining(Consumer<? super K> action) {
+        Objects.requireNonNull(action);
+        while (next())
+            action.accept(getKey());
+    }
 }

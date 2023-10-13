@@ -12,6 +12,7 @@ import org.lealone.db.DbObjectBase;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 
@@ -47,10 +48,15 @@ public class Right extends DbObjectBase {
     public static final int ALTER_ANY_SCHEMA = 16;
 
     /**
-     * The right bit mask that means: select, insert, update, delete, and update
+     * The right bit mask that means: execute service is allowed.
+     */
+    public static final int EXECUTE = 32;
+
+    /**
+     * The right bit mask that means: select, insert, update, delete, execute and update
      * for this object is allowed.
      */
-    public static final int ALL = SELECT | DELETE | INSERT | UPDATE;
+    public static final int ALL = SELECT | DELETE | INSERT | UPDATE | EXECUTE;
 
     /**
      * To whom the right is granted.
@@ -86,7 +92,8 @@ public class Right extends DbObjectBase {
 
         // TODO 如何更优雅的处理临时对象的授权(或者内存数据库中的所有对象的授权)
         // grantedObject有可能为null，如: GRANT ALTER ANY SCHEMA
-        if (grantedObject != null && (grantedObject.isTemporary() || !grantedObject.getDatabase().isPersistent()))
+        if (grantedObject != null
+                && (grantedObject.isTemporary() || !grantedObject.getDatabase().isPersistent()))
             setTemporary(true);
     }
 
@@ -95,7 +102,8 @@ public class Right extends DbObjectBase {
         return DbObjectType.RIGHT;
     }
 
-    private static boolean appendRight(StringBuilder buff, int right, int mask, String name, boolean comma) {
+    private static boolean appendRight(StringBuilder buff, int right, int mask, String name,
+            boolean comma) {
         if ((right & mask) != 0) {
             if (comma) {
                 buff.append(", ");
@@ -115,6 +123,7 @@ public class Right extends DbObjectBase {
             comma = appendRight(buff, grantedRight, SELECT, "SELECT", comma);
             comma = appendRight(buff, grantedRight, DELETE, "DELETE", comma);
             comma = appendRight(buff, grantedRight, INSERT, "INSERT", comma);
+            comma = appendRight(buff, grantedRight, EXECUTE, "EXECUTE", comma);
             comma = appendRight(buff, grantedRight, ALTER_ANY_SCHEMA, "ALTER ANY SCHEMA", comma);
             appendRight(buff, grantedRight, UPDATE, "UPDATE", comma);
         }
@@ -144,6 +153,8 @@ public class Right extends DbObjectBase {
             if (grantedObject != null) {
                 if (grantedObject instanceof Schema) {
                     buff.append(" ON SCHEMA ").append(grantedObject.getSQL());
+                } else if (grantedObject instanceof Service) {
+                    buff.append(" ON SERVICE ").append(grantedObject.getSQL());
                 } else if (grantedObject instanceof Table) {
                     buff.append(" ON ").append(grantedObject.getSQL());
                 }

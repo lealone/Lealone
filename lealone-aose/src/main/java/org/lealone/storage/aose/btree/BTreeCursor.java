@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.btree.page.Page;
+import org.lealone.storage.page.IPage;
 
 /**
  * A cursor to iterate over elements in ascending order.
@@ -20,9 +21,9 @@ import org.lealone.storage.aose.btree.page.Page;
  */
 public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
-    protected final BTreeMap<K, ?> map;
-    protected final CursorParameters<K> parameters;
-    protected CursorPos pos;
+    private final BTreeMap<K, ?> map;
+    private final CursorParameters<K> parameters;
+    private CursorPos pos;
 
     private K key;
     private V value;
@@ -45,7 +46,26 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     }
 
     @Override
-    public boolean hasNext() {
+    public IPage getPage() {
+        return pos.page;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public boolean next() {
+        if (hasNext()) {
+            int index = pos.index++;
+            key = (K) pos.page.getKey(index);
+            if (parameters.allColumns)
+                value = (V) pos.page.getValue(index, true);
+            else
+                value = (V) pos.page.getValue(index, parameters.columnIndexes);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasNext() {
         while (pos != null) {
             if (pos.index < pos.page.getKeyCount()) {
                 return true;
@@ -61,22 +81,6 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
         return false;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public K next() {
-        // 不再检测了，让调用者自己先调用hasNext()再调用next()
-        // if (!hasNext()) {
-        // throw new NoSuchElementException();
-        // }
-        int index = pos.index++;
-        key = (K) pos.page.getKey(index);
-        if (parameters.allColumns)
-            value = (V) pos.page.getValue(index, true);
-        else
-            value = (V) pos.page.getValue(index, parameters.columnIndexes);
-        return key;
-    }
-
     /**
      * Fetch the next entry that is equal or larger than the given key, starting
      * from the given page. This method retains the stack.
@@ -84,7 +88,7 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
      * @param p the page to start
      * @param from the key to search
      */
-    protected void min(Page p, K from) {
+    private void min(Page p, K from) {
         while (true) {
             if (p.isLeaf()) {
                 int x = from == null ? 0 : p.binarySearch(from);
@@ -97,6 +101,29 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
             int x = from == null ? 0 : p.getPageIndex(from);
             pos = new CursorPos(p, x + 1, pos);
             p = p.getChildPage(x);
+        }
+    }
+
+    private static class CursorPos {
+        /**
+         * The current page.
+         */
+        final Page page;
+
+        /**
+         * The current index.
+         */
+        int index;
+
+        /**
+         * The position in the parent page, if any.
+         */
+        final CursorPos parent;
+
+        CursorPos(Page page, int index, CursorPos parent) {
+            this.page = page;
+            this.index = index;
+            this.parent = parent;
         }
     }
 }

@@ -23,11 +23,6 @@ public class PageUtils {
     public static final int PAGE_TYPE_COLUMN = 2;
 
     /**
-     * The type for remote page.
-     */
-    public static final int PAGE_TYPE_REMOTE = 3;
-
-    /**
      * The bit mask for compressed pages (compression level fast).
      */
     public static final int PAGE_COMPRESSED = 2;
@@ -99,9 +94,5 @@ public class PageUtils {
 
     public static boolean isNodePage(long pos) {
         return pos > 0 && getPageType(pos) == PAGE_TYPE_NODE;
-    }
-
-    public static boolean isRemotePage(long pos) {
-        return pos > 0 && getPageType(pos) == PAGE_TYPE_REMOTE;
     }
 }

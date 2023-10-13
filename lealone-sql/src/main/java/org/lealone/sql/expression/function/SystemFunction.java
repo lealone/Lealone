@@ -57,14 +57,16 @@ public class SystemFunction extends BuiltInFunction {
     public static void init() {
     }
 
-    public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153, SCOPE_IDENTITY = 154,
-            AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157, LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
+    public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153,
+            SCOPE_IDENTITY = 154, AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157,
+            LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
 
-    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205,
-            CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211, MEMORY_FREE = 212,
-            MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
-            LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, FILE_READ = 223,
-            TRANSACTION_ID = 224, TRUNCATE_VALUE = 225, NVL2 = 226, DECODE = 227, ARRAY_CONTAINS = 228;
+    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204,
+            NULLIF = 205, CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210,
+            CSVWRITE = 211, MEMORY_FREE = 212, MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214,
+            SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, GREATEST = 218, LEAST = 219,
+            CANCEL_SESSION = 220, SET = 221, FILE_READ = 222, TRANSACTION_ID = 223, TRUNCATE_VALUE = 224,
+            NVL2 = 225, DECODE = 226, ARRAY_CONTAINS = 227;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -105,11 +107,11 @@ public class SystemFunction extends BuiltInFunction {
         addFunction("CSVWRITE", CSVWRITE, VAR_ARGS, Value.INT, false, false);
         addFunctionNotDeterministic("MEMORY_FREE", MEMORY_FREE, 0, Value.INT);
         addFunctionNotDeterministic("MEMORY_USED", MEMORY_USED, 0, Value.INT);
-        addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0, Value.INT);
+        addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0,
+                Value.INT);
         addFunctionNotDeterministic("SCHEMA", SCHEMA, 0, Value.STRING);
         addFunctionNotDeterministic("SESSION_ID", SESSION_ID, 0, Value.INT);
         addFunction("ARRAY_LENGTH", ARRAY_LENGTH, 1, Value.INT);
-        addFunctionNotDeterministic("LINK_SCHEMA", LINK_SCHEMA, 6, Value.RESULT_SET);
         addFunctionWithNull("LEAST", LEAST, VAR_ARGS, Value.NULL);
         addFunctionWithNull("GREATEST", GREATEST, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("CANCEL_SESSION", CANCEL_SESSION, 1, Value.BOOLEAN);
@@ -269,7 +271,7 @@ public class SystemFunction extends BuiltInFunction {
         }
         case CURRVAL: {
             Sequence sequence = getSequence(session, v0, v1);
-            result = ValueLong.get(sequence.getCurrentValue());
+            result = ValueLong.get(sequence.getCurrentValue(session));
             break;
         }
         case CSVREAD: {
@@ -291,7 +293,7 @@ public class SystemFunction extends BuiltInFunction {
                 csv.setNullString(nullString);
             }
             char fieldSeparator = csv.getFieldSeparatorRead();
-            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
+            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator);
             try {
                 ValueResultSet vr = ValueResultSet.get(csv.read(fileName, columns, charset));
                 result = vr;
@@ -299,15 +301,6 @@ public class SystemFunction extends BuiltInFunction {
                 throw DbException.convert(e);
             }
             break;
-        }
-        case LINK_SCHEMA: {
-            // session.getUser().checkAdmin();
-            // Connection conn = session.createConnection(false);
-            // ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(),
-            // v3.getString(),
-            // v4.getString(), v5.getString());
-            // result = ValueResultSet.get(rs);
-            throw DbException.getUnsupportedException("LINK_SCHEMA");
         }
         case CSVWRITE: {
             session.getUser().checkAdmin();
@@ -353,7 +346,7 @@ public class SystemFunction extends BuiltInFunction {
             try {
                 try (InputStream in = FileUtils.newInputStream(fileName)) {
                     if (blob) {
-                        result = database.getLobStorage().createBlob(in, -1);
+                        result = session.getDataHandler().getLobStorage().createBlob(in, -1);
                     } else {
                         Reader reader;
                         if (v1 == ValueNull.INSTANCE) {
@@ -361,7 +354,7 @@ public class SystemFunction extends BuiltInFunction {
                         } else {
                             reader = new InputStreamReader(in, v1.getString());
                         }
-                        result = database.getLobStorage().createClob(reader, -1);
+                        result = session.getDataHandler().getLobStorage().createClob(reader, -1);
                     }
                 }
             } catch (IOException e) {
@@ -673,6 +666,27 @@ public class SystemFunction extends BuiltInFunction {
             }
             break;
         }
+        case CASE: {
+            t = args[2].getType();
+            p = args[2].getPrecision();
+            s = args[2].getScale();
+            d = args[2].getDisplaySize();
+            for (int i = 3, len = args.length - 1; i < len; i += 2) {
+                int index = i + 1;
+                t = Value.getHigherOrder(t, args[index].getType());
+                p = Math.max(p, args[index].getPrecision());
+                s = Math.max(s, args[index].getScale());
+                d = Math.max(d, args[index].getDisplaySize());
+            }
+            if (args.length % 2 == 0) { // elsePart
+                int index = args.length - 1;
+                t = Value.getHigherOrder(t, args[index].getType());
+                p = Math.max(p, args[index].getPrecision());
+                s = Math.max(s, args[index].getScale());
+                d = Math.max(d, args[index].getDisplaySize());
+            }
+            break;
+        }
         case CASEWHEN:
             t = Value.getHigherOrder(args[1].getType(), args[2].getType());
             p = Math.max(args[1].getPrecision(), args[2].getPrecision());
@@ -764,13 +778,14 @@ public class SystemFunction extends BuiltInFunction {
                 charset = csv.setOptions(options);
             } else {
                 charset = options;
-                String fieldSeparatorRead = args.length < 4 ? null : args[3].getValue(session).getString();
+                String fieldSeparatorRead = args.length < 4 ? null
+                        : args[3].getValue(session).getString();
                 String fieldDelimiter = args.length < 5 ? null : args[4].getValue(session).getString();
                 String escapeCharacter = args.length < 6 ? null : args[5].getValue(session).getString();
                 setCsvDelimiterEscape(csv, fieldSeparatorRead, fieldDelimiter, escapeCharacter);
             }
             char fieldSeparator = csv.getFieldSeparatorRead();
-            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator, true);
+            String[] columns = StringUtils.arraySplit(columnList, fieldSeparator);
             ResultSet rs = null;
             ValueResultSet x;
             try {
@@ -787,7 +802,7 @@ public class SystemFunction extends BuiltInFunction {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         if (info.type == CASE) {
             if (args[0] != null) {
@@ -805,17 +820,17 @@ public class SystemFunction extends BuiltInFunction {
         buff.append('(');
         switch (info.type) {
         case CAST: {
-            buff.append(args[0].getSQL(isDistributed)).append(" AS ")
+            buff.append(args[0].getSQL()).append(" AS ")
                     .append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         case CONVERT: {
-            buff.append(args[0].getSQL(isDistributed)).append(',')
+            buff.append(args[0].getSQL()).append(',')
                     .append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         default:
-            appendArgs(buff, isDistributed);
+            appendArgs(buff);
         }
         return buff.append(')').toString();
     }

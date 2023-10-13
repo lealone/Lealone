@@ -9,11 +9,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
@@ -25,7 +27,6 @@ import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SimpleRow;
@@ -48,6 +49,8 @@ import org.lealone.sql.IExpression;
  * @author zhh
  */
 public abstract class Table extends SchemaObjectBase {
+
+    // 以下两种类型都要持久化表的数据，区别是TYPE_CACHED同样持久化索引数据，而TYPE_MEMORY不持久化索引数据。
 
     /**
      * The table type that means this table is a regular persistent table.
@@ -88,11 +91,11 @@ public abstract class Table extends SchemaObjectBase {
     private boolean onCommitTruncate;
     private Row nullRow;
 
-    private int version = -1;
+    private int version;
     private String packageName;
     private String codePath;
 
-    private final DbObjectLockImpl dbObjectLock = new DbObjectLockImpl(DbObjectType.TABLE_OR_VIEW);
+    private final DbObjectLock dbObjectLock = new DbObjectLock(DbObjectType.TABLE_OR_VIEW);
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name);
@@ -107,29 +110,20 @@ public abstract class Table extends SchemaObjectBase {
         return DbObjectType.TABLE_OR_VIEW;
     }
 
+    // 只在打开数据库的时候调用，也就是只有一个线程调用
+    public void initVersion() {
+        version = getDatabase().getTableAlterHistory().getVersion(getId());
+    }
+
     public int getVersion() {
-        if (version == -1) {
-            synchronized (this) {
-                version = getDatabase().getVersionManager().getVersion(getId());
-            }
-        }
         return version;
     }
 
-    public void incrementVersion() {
-        synchronized (this) {
-            version++;
-            getDatabase().getVersionManager().updateVersion(getId(), version);
-        }
-    }
-
-    public void decrementVersion() {
-        if (version == -1)
-            return;
-        synchronized (this) {
-            version--;
-            getDatabase().getVersionManager().updateVersion(getId(), version);
-        }
+    // 修改表结构时也只有一个线程调用
+    public int incrementAndGetVersion() {
+        int v = version + 1;
+        version = v;
+        return v;
     }
 
     @Override
@@ -173,25 +167,6 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     /**
-     * Check if this table is locked exclusively.
-     *
-     * @return true if it is.
-     */
-    public boolean isLockedExclusively() {
-        return dbObjectLock.isLockedExclusively();
-    }
-
-    /**
-     * Check if the table is exclusively locked by this session.
-     *
-     * @param session the session
-     * @return true if it is
-     */
-    public boolean isLockedExclusivelyBy(ServerSession session) {
-        return dbObjectLock.isLockedExclusivelyBy(session);
-    }
-
-    /**
      * Create an index for this table
      *
      * @param session the session
@@ -203,13 +178,16 @@ public abstract class Table extends SchemaObjectBase {
      * @param indexComment the comment
      * @return the index
      */
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment, DbObjectLock lock) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment, DbObjectLock lock) {
         throw newUnsupportedException();
     }
 
     private DbException newUnsupportedException() {
         return DbException.getUnsupportedException(getTableType().toString());
+    }
+
+    public void analyze(ServerSession session, int sample) {
     }
 
     /**
@@ -230,7 +208,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns) {
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow,
+            int[] updateColumns) {
         return updateRow(session, oldRow, newRow, updateColumns, false);
     }
 
@@ -253,7 +232,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean tryLockRow(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
+    public int tryLockRow(ServerSession session, Row row, int[] lockColumns) {
         throw newUnsupportedException();
     }
 
@@ -263,6 +242,10 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      */
     public void truncate(ServerSession session) {
+        throw newUnsupportedException();
+    }
+
+    public void repair(ServerSession session) {
         throw newUnsupportedException();
     }
 
@@ -528,7 +511,8 @@ public abstract class Table extends SchemaObjectBase {
      * @throws DbException if the column is referenced by multi-column
      *             constraints or indexes
      */
-    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col, DbObjectLock lock) {
+    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col,
+            DbObjectLock lock) {
         ArrayList<Constraint> constraintsToDrop = Utils.newSmallArrayList();
         if (constraints != null) {
             for (int i = 0, size = constraints.size(); i < size; i++) {
@@ -858,7 +842,8 @@ public abstract class Table extends SchemaObjectBase {
      *  @return if there are any triggers or rows defined
      */
     public boolean fireRow() {
-        return (constraints != null && !constraints.isEmpty()) || (triggers != null && !triggers.isEmpty());
+        return (constraints != null && !constraints.isEmpty())
+                || (triggers != null && !triggers.isEmpty());
     }
 
     /**
@@ -902,7 +887,8 @@ public abstract class Table extends SchemaObjectBase {
         }
     }
 
-    private boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
+    private boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction,
+            boolean rollback) {
         if (triggers != null) {
             for (TriggerObject trigger : triggers) {
                 boolean done = trigger.fireRow(session, oldRow, newRow, beforeAction, rollback);
@@ -934,7 +920,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param enabled true if checking should be enabled
      * @param checkExisting true if existing rows must be checked during this call
      */
-    public void setCheckForeignKeyConstraints(ServerSession session, boolean enabled, boolean checkExisting) {
+    public void setCheckForeignKeyConstraints(ServerSession session, boolean enabled,
+            boolean checkExisting) {
         if (enabled && checkExisting) {
             if (constraints != null) {
                 for (Constraint c : constraints) {
@@ -1098,15 +1085,31 @@ public abstract class Table extends SchemaObjectBase {
         return false;
     }
 
+    public boolean containsIndex() {
+        return false;
+    }
+
     public Row getRow(ServerSession session, long key) {
         return null;
     }
 
-    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+    public Row getRow(Row oldRow) {
+        return oldRow;
+    }
+
+    public boolean isRowChanged(Row row) {
+        return false;
+    }
+
+    public Map<String, String> getParameters() {
         return null;
     }
 
-    public long getAndAddKey(long delta) {
-        return 0;
+    public String getParameter(String name) {
+        return null;
+    }
+
+    public DataHandler getDataHandler() {
+        return database;
     }
 }

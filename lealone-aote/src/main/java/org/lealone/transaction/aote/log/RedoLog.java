@@ -10,56 +10,49 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
-import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
-import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaCommitRedoLogRecord;
-import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaPrepareCommitRedoLogRecord;
 
-/**
- * A redo log
- *
- * @author zhh
- */
 public class RedoLog {
-
-    private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
-
-    public static final char NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
     private final Map<String, String> config;
-    private final long logChunkSize;
+    private final LogSyncService logSyncService;
 
     private RedoLogChunk currentChunk;
 
-    RedoLog(Map<String, String> config) {
+    RedoLog(Map<String, String> config, LogSyncService logSyncService) {
         this.config = config;
-        logChunkSize = MapUtils.getLong(config, "log_chunk_size", DEFAULT_LOG_CHUNK_SIZE);
+        this.logSyncService = logSyncService;
 
         String baseDir = config.get("base_dir");
-        String logDir = config.get("redo_log_dir");
+        String logDir = MapUtils.getString(config, "redo_log_dir", "redo_log");
         String storagePath = baseDir + File.separator + logDir;
-        config.put("storagePath", storagePath);
+        config.put(StorageSetting.STORAGE_PATH.name(), storagePath);
 
         if (!FileUtils.exists(storagePath))
             FileUtils.createDirectories(storagePath);
     }
 
     private List<Integer> getAllChunkIds() {
+        return getAllChunkIds(config.get(StorageSetting.STORAGE_PATH.name()));
+    }
+
+    static List<Integer> getAllChunkIds(String dirStr) {
         ArrayList<Integer> ids = new ArrayList<>();
         int prefixLength = RedoLogChunk.CHUNK_FILE_NAME_PREFIX.length();
-        FilePath dir = FilePath.get(config.get("storagePath"));
+        FilePath dir = FilePath.get(dirStr);
         for (FilePath fp : dir.newDirectoryStream()) {
             String fullName = fp.getName();
             if (fullName.startsWith(RedoLogChunk.CHUNK_FILE_NAME_PREFIX)) {
@@ -71,27 +64,18 @@ public class RedoLog {
         return ids;
     }
 
-    public long init() {
-        long lastTransactionId = 0;
+    public void init() {
         List<Integer> ids = getAllChunkIds();
         if (ids.isEmpty()) {
-            currentChunk = new RedoLogChunk(0, config);
+            currentChunk = new RedoLogChunk(0, config, logSyncService);
         } else {
-            LinkedHashMap<String, ReplicaPrepareCommitRedoLogRecord> replicaPrepareCommitMap = new LinkedHashMap<>();
             int lastId = ids.get(ids.size() - 1);
             for (int id : ids) {
                 RedoLogChunk chunk = null;
                 try {
-                    chunk = new RedoLogChunk(id, config);
-                    for (RedoLogRecord r : chunk.getAndResetRedoLogRecords()) {
-                        if (r instanceof ReplicaPrepareCommitRedoLogRecord) {
-                            ReplicaPrepareCommitRedoLogRecord rpc = (ReplicaPrepareCommitRedoLogRecord) r;
-                            replicaPrepareCommitMap.put(rpc.getCurrentReplicationName(), rpc);
-                        } else if (r instanceof ReplicaCommitRedoLogRecord) {
-                            ReplicaCommitRedoLogRecord rc = (ReplicaCommitRedoLogRecord) r;
-                            replicaPrepareCommitMap.remove(rc.getCurrentReplicationName());
-                        }
-                        lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
+                    chunk = new RedoLogChunk(id, config, logSyncService);
+                    for (RedoLogRecord r : chunk.readRedoLogRecords()) {
+                        r.initPendingRedoLog(pendingRedoLog);
                     }
                 } finally {
                     // 注意一定要关闭，否则对应的chunk文件将无法删除，
@@ -102,15 +86,6 @@ public class RedoLog {
                         chunk.close();
                 }
             }
-            redoReplicaPrepareCommit(replicaPrepareCommitMap);
-        }
-        return lastTransactionId;
-    }
-
-    private void redoReplicaPrepareCommit(
-            LinkedHashMap<String, ReplicaPrepareCommitRedoLogRecord> replicaPrepareCommitMap) {
-        for (ReplicaPrepareCommitRedoLogRecord r : replicaPrepareCommitMap.values()) {
-            r.redo();
         }
     }
 
@@ -134,24 +109,19 @@ public class RedoLog {
         }
     }
 
-    int size() {
-        return currentChunk.size();
-    }
-
-    void addRedoLogRecord(RedoLogRecord r) {
-        currentChunk.addRedoLogRecord(r);
-    }
-
     void close() {
-        save();
         currentChunk.close();
     }
 
     void save() {
         currentChunk.save();
-        if (currentChunk.logChunkSize() > logChunkSize) {
-            currentChunk.close();
-            currentChunk = new RedoLogChunk(currentChunk.getId() + 1, config);
-        }
+    }
+
+    public void ignoreCheckpoint() {
+        currentChunk.ignoreCheckpoint();
+    }
+
+    public void setCheckpointService(CheckpointServiceImpl checkpointService) {
+        currentChunk.setCheckpointService(checkpointService);
     }
 }

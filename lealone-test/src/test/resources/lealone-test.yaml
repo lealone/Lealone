@@ -6,20 +6,28 @@ base_dir: target/test-data
 
 listen_address: 127.0.0.1
 
+scheduler:
+    parameters: {
+        scheduler_count: 8,
+        max_packet_count_per_loop: 10, # 每次循环最多读取多少个数据包，默认20
+    }
+    
 storage_engines:
   - name: AOSE
     enabled: true
     parameters: {
-        # key1: v1,
-        # key2: v2,
+        page_size: 16k,
+        # cache_size: 16m, # 每个 btree 的缓存大小
+        compress: no, # no、lzf、deflate 或 0、1、2
     }
 
 transaction_engines:
   - name: AOTE
     enabled: true
     parameters: {
+        dirty_page_cache_size_in_mb: 32, # 默认是32M
         redo_log_dir: redo_log, # 会组合成这样的目录: ${base_dir} + "/"+ ${redo_log_dir},
-        # log_sync_type: no_sync
+        log_sync_type: periodic # 取值：instant,no_sync,periodic，默认是periodic
     }
 
 sql_engines:
@@ -35,62 +43,15 @@ protocol_server_engines:
     enabled: true
     parameters: {
         port: 9210,
-        trace: false,
         allow_others: true,
-        max_packet_count_per_loop: 10, # 每次循环最多读取多少个数据包，默认20
-        # net_event_loop_run_in_scheduler: true, # 默认在调度器中处理网络IO
         # white_list: "127.0.0.4,127.0.0.2",
-        daemon: false,
-        # scheduler_count: 1,
-        net_factory_name: nio, # 网络层默认用nio来实现
         ssl: false,
         session_timeout: -1
     }
-  - name: P2P
-    enabled: false
+  - name: DocDB
+    enabled: true
     parameters: {
-        port: 9211,
+        port: 9610,
+        allow_others: true,
         ssl: false
     }
-  - name: HTTP
-    enabled: false
-    parameters: {
-        port: 9000,
-        environment: prod,
-        web_root: ../web,
-        jdbc_url: "jdbc:lealone:embed:test"
-    }
-server_encryption_options:
-    keystore: conf/.keystore
-    keystore_password: lealone
-    truststore: conf/.truststore
-    truststore_password: lealone
-
-cluster_config:
-    cluster_name: Test Cluster
-    node_snitch: SimpleSnitch
-    dynamic_snitch: true
-    #方便在eclipse中debug，不会产生超时
-    request_timeout_in_ms: 100000000
-    #request_timeout_in_ms: 2000
-
-    seed_provider:
-        name: SimpleSeedProvider
-        parameters: {
-            seeds: "127.0.0.1"
-        }
-
-    replication_strategy:
-        name: SimpleStrategy
-        parameters: {
-            replication_factor: 3
-        }
-
-    # replication_strategy:
-    #     name: NetworkTopologyStrategy
-    #     parameters: {
-    #         dc1: 1,
-    #         dc2: 2
-    #     }
-
-

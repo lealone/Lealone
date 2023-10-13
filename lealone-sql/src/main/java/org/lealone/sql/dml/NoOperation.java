@@ -23,11 +23,6 @@ public class NoOperation extends ManipulationStatement {
     }
 
     @Override
-    public boolean isQuery() {
-        return false;
-    }
-
-    @Override
     public boolean needRecompile() {
         return false;
     }
@@ -36,5 +31,4 @@ public class NoOperation extends ManipulationStatement {
     public int update() {
         return 0;
     }
-
 }

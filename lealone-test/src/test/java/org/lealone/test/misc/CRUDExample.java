@@ -11,22 +11,38 @@ import java.sql.Statement;
 
 import org.junit.Assert;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.net.nio.NioNetFactory;
+import org.lealone.net.bio.BioNetFactory;
 import org.lealone.test.TestBase;
 
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
-        test.setNetFactoryName(NioNetFactory.NAME);
+        test.setNetFactoryName(BioNetFactory.NAME);
         Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }
 
     public static void crud(Connection conn) throws Exception {
+        crud(conn, null);
+    }
+
+    public static void crud(Connection conn, String storageEngineName) throws Exception {
         Statement stmt = conn.createStatement();
+        crud(stmt, storageEngineName);
+        // batchInsert(stmt);
+        // batchDelete(stmt);
+        stmt.close();
+        conn.close();
+    }
+
+    public static void crud(Statement stmt, String storageEngineName) throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        String sql = "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)";
+        if (storageEngineName != null)
+            sql += " ENGINE = " + storageEngineName;
+        stmt.executeUpdate(sql);
+
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
@@ -38,8 +54,15 @@ public class CRUDExample {
         rs = stmt.executeQuery("SELECT * FROM test");
         Assert.assertFalse(rs.next());
         rs.close();
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.close();
-        conn.close();
+    }
+
+    public static void batchInsert(Statement stmt) throws Exception {
+        for (int i = 1; i <= 60000; i++)
+            stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
+    }
+
+    public static void batchDelete(Statement stmt) throws Exception {
+        for (int i = 1; i <= 60000; i++)
+            stmt.executeUpdate("DELETE FROM test WHERE f1 =" + i);
     }
 }

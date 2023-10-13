@@ -44,11 +44,11 @@ public class AlterTableSet extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(table, Right.ALL);
         DbObjectLock lock = tryAlterTable(table);
         if (lock == null)
             return -1;
 
-        session.getUser().checkRight(table, Right.ALL);
         switch (type) {
         case SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY:
             table.setCheckForeignKeyConstraints(session, value, value ? checkExisting : false);

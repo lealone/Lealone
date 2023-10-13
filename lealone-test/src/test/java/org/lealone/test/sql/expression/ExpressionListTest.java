@@ -28,7 +28,7 @@ public class ExpressionListTest extends SqlTestBase {
     }
 
     void testExpressionList() throws Exception {
-        sql = "SELECT count(*) FROM ExpressionListTest WHERE (f1,f2) >= (10)";
+        sql = "SELECT count(*) FROM ExpressionListTest WHERE (f1,f2) >= ('a1', 10)";
         assertEquals(6, getIntValue(1, true));
         sql = "SELECT count(*) FROM ExpressionListTest WHERE (f1,f2) >= ('a2', 10)";
         assertEquals(5, getIntValue(1, true));

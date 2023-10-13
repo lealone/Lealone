@@ -36,8 +36,7 @@ public class LZFOutputStream extends OutputStream {
     }
 
     private void ensureOutput(int len) {
-        // TODO calculate the maximum overhead (worst case) for the output
-        // buffer
+        // TODO calculate the maximum overhead (worst case) for the output buffer
         int outputLen = (len < 100 ? len + 100 : len) * 2;
         if (outBuffer == null || outBuffer.length < outputLen) {
             outBuffer = new byte[outputLen];
@@ -99,5 +98,4 @@ public class LZFOutputStream extends OutputStream {
         flush();
         out.close();
     }
-
 }

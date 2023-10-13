@@ -5,6 +5,7 @@
  */
 package org.lealone.server.handler;
 
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.protocol.Packet;
@@ -35,7 +36,7 @@ class ResultPacketHandlers extends PacketHandlers {
     private static class ChangeId implements PacketHandler<ResultChangeId> {
         @Override
         public Packet handle(ServerSession session, ResultChangeId packet) {
-            AutoCloseable obj = session.removeCache(packet.oldId, false);
+            ManualCloseable obj = session.removeCache(packet.oldId, false);
             session.addCache(packet.newId, obj);
             return null;
         }

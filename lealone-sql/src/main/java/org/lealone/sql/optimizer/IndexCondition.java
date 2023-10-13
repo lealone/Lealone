@@ -308,5 +308,4 @@ public class IndexCondition {
         }
         return expressionQuery.accept(ExpressionVisitorFactory.getEvaluatableVisitor());
     }
-
 }

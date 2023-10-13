@@ -10,7 +10,7 @@ import java.util.HashMap;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
-import org.lealone.db.table.Table;
+import org.lealone.db.schema.SchemaObject;
 
 /**
  * A right owner (sometimes called principal).
@@ -60,22 +60,22 @@ public abstract class RightOwner extends DbObjectBase {
      * precedence over rights of tables, in other words, the rights of schemas
      * will be valid for every each table in the related schema.
      *
-     * @param table the table to check
+     * @param schemaObject the schema object(table or service) to check
      * @param rightMask the right mask to check
      * @return true if the right was already granted
      */
-    boolean isRightGrantedRecursive(Table table, int rightMask) {
+    boolean isRightGrantedRecursive(SchemaObject schemaObject, int rightMask) {
         Right right;
         if (grantedRights != null) {
-            if (table != null) {
-                right = grantedRights.get(table.getSchema());
+            if (schemaObject != null) {
+                right = grantedRights.get(schemaObject.getSchema());
                 if (right != null) {
                     if ((right.getRightMask() & rightMask) == rightMask) {
                         return true;
                     }
                 }
             }
-            right = grantedRights.get(table);
+            right = grantedRights.get(schemaObject);
             if (right != null) {
                 if ((right.getRightMask() & rightMask) == rightMask) {
                     return true;
@@ -84,7 +84,7 @@ public abstract class RightOwner extends DbObjectBase {
         }
         if (grantedRoles != null) {
             for (RightOwner role : grantedRoles.keySet()) {
-                if (role.isRightGrantedRecursive(table, rightMask)) {
+                if (role.isRightGrantedRecursive(schemaObject, rightMask)) {
                     return true;
                 }
             }

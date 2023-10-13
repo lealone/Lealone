@@ -67,8 +67,8 @@ class YieldableSelectUnion extends YieldableQueryBase {
 
         if (session.getDatabase().getSettings().optimizeInsertFromSelect) {
             if (selectUnion.unionType == SelectUnion.UNION_ALL && target != null) {
-                if (selectUnion.sort == null && !selectUnion.distinct && maxRows == 0 && selectUnion.offsetExpr == null
-                        && limitExpr == null) {
+                if (selectUnion.sort == null && !selectUnion.distinct && maxRows == 0
+                        && selectUnion.offsetExpr == null && limitExpr == null) {
                     insertFromSelect = true;
                     leftYieldableQuery = selectUnion.left.createYieldableQuery(0, false, null, target);
                     rightYieldableQuery = selectUnion.right.createYieldableQuery(0, false, null, target);
@@ -86,9 +86,6 @@ class YieldableSelectUnion extends YieldableQueryBase {
             selectUnion.right.setDistinct(true);
             result.setDistinct();
         }
-        if (selectUnion.randomAccessResult) {
-            result.setRandomAccess();
-        }
         switch (selectUnion.unionType) {
         case SelectUnion.UNION:
         case SelectUnion.EXCEPT:
@@ -103,7 +100,6 @@ class YieldableSelectUnion extends YieldableQueryBase {
             selectUnion.right.setDistinct(true);
             temp = new LocalResult(session, selectUnion.expressionArray, columnCount);
             temp.setDistinct();
-            temp.setRandomAccess();
             break;
         default:
             DbException.throwInternalError("type=" + selectUnion.unionType);

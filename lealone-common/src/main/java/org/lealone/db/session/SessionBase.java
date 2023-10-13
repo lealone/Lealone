@@ -21,32 +21,19 @@ import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.transaction.Transaction;
 
 public abstract class SessionBase implements Session {
 
-    protected String replicationName;
-
     protected boolean autoCommit = true;
-    protected Transaction parentTransaction;
     protected boolean closed;
 
     protected boolean invalid;
     protected String targetNodes;
     protected RunMode runMode;
     protected String newTargetNodes;
+    protected int consistencyLevel;
 
     protected TraceSystem traceSystem;
-
-    @Override
-    public String getReplicationName() {
-        return replicationName;
-    }
-
-    @Override
-    public void setReplicationName(String replicationName) {
-        this.replicationName = replicationName;
-    }
 
     @Override
     public boolean isAutoCommit() {
@@ -56,17 +43,6 @@ public abstract class SessionBase implements Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         this.autoCommit = autoCommit;
-    }
-
-    @Override
-    public Transaction getParentTransaction() {
-        return parentTransaction;
-    }
-
-    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
-    @Override
-    public synchronized void setParentTransaction(Transaction parentTransaction) {
-        this.parentTransaction = parentTransaction;
     }
 
     @Override
@@ -120,6 +96,14 @@ public abstract class SessionBase implements Session {
         return targetNodes;
     }
 
+    public void setConsistencyLevel(int consistencyLevel) {
+        this.consistencyLevel = consistencyLevel;
+    }
+
+    public int getConsistencyLevel() {
+        return consistencyLevel;
+    }
+
     @Override
     public void setRunMode(RunMode runMode) {
         this.runMode = runMode;
@@ -156,13 +140,15 @@ public abstract class SessionBase implements Session {
     @Override
     public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
         if (traceSystem != null)
-            return traceSystem.getTrace(traceModuleType, traceObjectType, TraceObject.getNextTraceId(traceObjectType));
+            return traceSystem.getTrace(traceModuleType, traceObjectType,
+                    TraceObject.getNextTraceId(traceObjectType));
         else
             return Trace.NO_TRACE;
     }
 
     @Override
-    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId) {
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType,
+            int traceObjectId) {
         if (traceSystem != null)
             return traceSystem.getTrace(traceModuleType, traceObjectType, traceObjectId);
         else
@@ -184,7 +170,8 @@ public abstract class SessionBase implements Session {
             try {
                 traceSystem.setLevelFile(level);
                 if (level > 0) {
-                    String file = FileUtils.createTempFile(filePrefix, Constants.SUFFIX_TRACE_FILE, false, false);
+                    String file = FileUtils.createTempFile(filePrefix, Constants.SUFFIX_TRACE_FILE,
+                            false, false);
                     traceSystem.setFileName(file);
                 }
             } catch (IOException e) {
@@ -219,5 +206,4 @@ public abstract class SessionBase implements Session {
         }
         return buff.toString();
     }
-
 }

@@ -45,15 +45,15 @@ public class SessionInit implements Packet {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.setSSL(ci.isSSL());
-        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
-        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
+        out.writeInt(Constants.TCP_PROTOCOL_VERSION_MIN); // minClientVersion
+        out.writeInt(Constants.TCP_PROTOCOL_VERSION_MAX); // maxClientVersion
         out.writeString(ci.getDatabaseName());
         out.writeString(ci.getURL()); // 不带参数的URL
         out.writeString(ci.getUserName());
         out.writeBytes(ci.getUserPasswordHash());
         out.writeBytes(ci.getFilePasswordHash());
         out.writeBytes(ci.getFileEncryptionKey());
-        String[] keys = ci.getKeys();
+        String[] keys = ci.getKeys(true);
         out.writeInt(keys.length);
         for (String key : keys) {
             out.writeString(key).writeString(ci.getProperty(key));

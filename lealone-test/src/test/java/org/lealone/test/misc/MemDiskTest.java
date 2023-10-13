@@ -47,17 +47,28 @@ public class MemDiskTest {
         for (int i = 0; i < bytes.length; i++) {
             bytes[i] = (byte) i;
         }
+
+        System.out.println("OperatingSystem：");
         OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         try {
             Method m = os.getClass().getMethod("getTotalPhysicalMemorySize");
+            m.setAccessible(true);
             System.out.println("Total RAM：" + toM((Long) m.invoke(os)));
             m = os.getClass().getMethod("getFreePhysicalMemorySize");
+            m.setAccessible(true);
             System.out.println("Free  RAM：" + toM((Long) m.invoke(os)));
             System.out.println();
         } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
+
+        System.out.println("Runtime：");
+        System.out.println("Total RAM：" + toM(Runtime.getRuntime().totalMemory()));
+        System.out.println("Max   RAM：" + toM(Runtime.getRuntime().maxMemory()));
+        System.out.println();
+
         MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-        System.out.println("HeapMemory");
+        System.out.println("HeapMemory：");
         printMemoryUsage(mu);
         System.out.println();
         mu = ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage();

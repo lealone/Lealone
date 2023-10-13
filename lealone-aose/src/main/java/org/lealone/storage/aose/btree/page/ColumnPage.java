@@ -6,52 +6,34 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.type.StorageDataType;
 
-class ColumnPage extends Page {
+public class ColumnPage extends Page {
 
-    Object[] values; // 每个元素指向一条记录，并不是字段值
-    private int columnIndex;
+    private final AtomicInteger memory = new AtomicInteger(0);
     private ByteBuffer buff;
 
     ColumnPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
-    ColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
-        super(map);
-        this.values = values;
-        this.columnIndex = columnIndex;
-    }
-
     @Override
     public int getMemory() {
-        int memory = 0;
-        // 延迟计算
-        if (values != null) {
-            StorageDataType valueType = map.getValueType();
-            for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-                memory += valueType.getMemory(values[row], columnIndex);
-            }
-        }
-        return memory;
-    }
-
-    protected void recalculateMemory() {
-        getMemory();
+        return memory.get();
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
 
-        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+        readCheckValue(buff, chunkId, offset, pageLength);
         buff.get(); // page type;
         int compressType = buff.get();
 
@@ -61,16 +43,22 @@ class ColumnPage extends Page {
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
     void readColumn(Object[] values, int columnIndex) {
-        this.values = values;
-        this.columnIndex = columnIndex;
+        int memory = 0;
+        ByteBuffer buff = this.buff.slice(); // 要支持多线程同时读，所以直接用slice
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
             valueType.readColumn(buff, values[row], columnIndex);
+            memory += valueType.getMemory(values[row], columnIndex);
         }
-        buff = null;
+        if (this.memory.compareAndSet(0, memory)) {
+            // buff内存大小在getOrReadPage中加了，这里只加列占用的内存大小
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(memory);
+        }
     }
 
-    long write(Chunk chunk, DataBuffer buff, boolean replicatePage) {
+    long write(Chunk chunk, DataBuffer buff, Object[] values, int columnIndex) {
+        PageInfo pInfoOld = getRef().getPageInfo();
+        beforeWrite(pInfoOld);
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_COLUMN;
         buff.putInt(0); // 回填pageLength
@@ -89,13 +77,8 @@ class ColumnPage extends Page {
         compressPage(buff, compressStart, compressType, compressTypePos);
         int pageLength = buff.position() - start;
         buff.putInt(start, pageLength);
-        int chunkId = chunk.id;
 
-        writeCheckValue(buff, chunkId, start, pageLength, checkPos);
-
-        if (!replicatePage) {
-            updateChunkAndCachePage(chunk, start, pageLength, type);
-        }
-        return pos;
+        writeCheckValue(buff, chunk, start, pageLength, checkPos);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type);
     }
 }

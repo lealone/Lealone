@@ -5,22 +5,20 @@
  */
 package org.lealone.client.session;
 
-import java.net.InetSocketAddress;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.RunMode;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.NetClient;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetNode;
@@ -28,7 +26,6 @@ import org.lealone.net.TcpClientConnection;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
-import org.lealone.storage.replication.ReplicationSession;
 
 public class ClientSessionFactory implements SessionFactory {
 
@@ -46,13 +43,14 @@ public class ClientSessionFactory implements SessionFactory {
         if (!ci.isRemote()) {
             throw DbException.getInternalError();
         }
-        AsyncCallback<Session> ac = new AsyncCallback<>();
+        AsyncCallback<Session> ac = AsyncCallback.create(ci.isSingleThreadCallback());
         createSession(ci, allowRedirect, ac);
         return ac;
     }
 
-    private static void createSession(ConnectionInfo ci, boolean allowRedirect, AsyncCallback<Session> ac) {
-        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
+    private static void createSession(ConnectionInfo ci, boolean allowRedirect,
+            AsyncCallback<Session> ac) {
+        String[] servers = StringUtils.arraySplit(ci.getServers(), ',');
         Random random = new Random(System.currentTimeMillis());
         AutoReconnectSession parent = new AutoReconnectSession(ci);
         createSession(parent, ci, servers, allowRedirect, random, ac);
@@ -66,7 +64,7 @@ public class ClientSessionFactory implements SessionFactory {
             boolean allowRedirect, Random random, AsyncCallback<Session> topAc) {
         int randomIndex = random.nextInt(servers.length);
         String server = servers[randomIndex];
-        AsyncCallback<ClientSession> ac = new AsyncCallback<>();
+        AsyncCallback<ClientSession> ac = AsyncCallback.create(ci.isSingleThreadCallback());
         ac.onComplete(ar -> {
             if (ar.isSucceeded()) {
                 ClientSession clientSession = ar.getResult();
@@ -80,8 +78,8 @@ public class ClientSessionFactory implements SessionFactory {
             } else {
                 // 如果已经是最后一个了那就可以直接抛异常了，否则再选其他的
                 if (servers.length == 1) {
-                    Throwable e = ar.getCause();
-                    e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + server);
+                    Throwable e = DbException.getCause(ar.getCause());
+                    e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, server);
                     topAc.setAsyncResult(e);
                 } else {
                     int len = servers.length;
@@ -97,13 +95,20 @@ public class ClientSessionFactory implements SessionFactory {
         createClientSession(parent, ci, server, ac);
     }
 
-    private static void createClientSession(AutoReconnectSession parent, ConnectionInfo ci, String server,
-            AsyncCallback<ClientSession> ac) {
-        NetNode node = NetNode.createTCP(server);
-        NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
+    private static void createClientSession(AutoReconnectSession parent, ConnectionInfo ci,
+            String server, AsyncCallback<ClientSession> ac) {
+        NetClient netClient;
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+        if (ci.getNetFactoryName() != null)
+            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), ci.getNetFactoryName());
+        if (ci.getNetworkTimeout() > 0)
+            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(ci.getNetworkTimeout()));
+
+        NetFactory factory = NetFactoryManager.getFactory(config, true);
+        netClient = factory.getNetClient();
+        NetNode node = NetNode.createTCP(server);
         // 多个客户端session会共用同一条TCP连接
-        factory.getNetClient().createConnection(config, node).onComplete(ar -> {
+        netClient.createConnection(config, node).onComplete(ar -> {
             if (ar.isSucceeded()) {
                 AsyncConnection conn = ar.getResult();
                 if (!(conn instanceof TcpClientConnection)) {
@@ -117,7 +122,9 @@ public class ClientSessionFactory implements SessionFactory {
                 // 每一个通过网络传输的协议包都会带上sessionId，
                 // 这样就能在同一条TCP连接中区分不同的客户端session了
                 int sessionId = tcpConnection.getNextId();
-                ClientSession clientSession = new ClientSession(tcpConnection, ci, server, parent, sessionId);
+                ClientSession clientSession = new ClientSession(tcpConnection, ci, server, parent,
+                        sessionId);
+                clientSession.setSingleThreadCallback(ci.isSingleThreadCallback());
                 tcpConnection.addSession(sessionId, clientSession);
 
                 SessionInit packet = new SessionInit(ci);
@@ -127,6 +134,7 @@ public class ClientSessionFactory implements SessionFactory {
                     clientSession.setTargetNodes(ack.targetNodes);
                     clientSession.setRunMode(ack.runMode);
                     clientSession.setInvalid(ack.invalid);
+                    clientSession.setConsistencyLevel(ack.consistencyLevel);
                     return clientSession;
                 };
                 Future<ClientSession> f = clientSession.send(packet, ackPacketHandler);
@@ -139,83 +147,24 @@ public class ClientSessionFactory implements SessionFactory {
         });
     }
 
-    private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, ConnectionInfo ci,
-            AsyncCallback<Session> topAc) {
-        if (clientSession.getRunMode() == RunMode.REPLICATION) {
-            if (ci.isServiceConnection()) {
-                createServiceSession(parent, clientSession, ci, topAc);
-                return;
+    private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession,
+            ConnectionInfo ci, AsyncCallback<Session> topAc) {
+        if (clientSession.isInvalid()) {
+            switch (clientSession.getRunMode()) {
+            case CLIENT_SERVER:
+            case SHARDING: {
+                ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
+                // 关闭当前session,因为连到的节点不是所要的
+                clientSession.close();
+                createSession(ci2, false, topAc);
+                break;
             }
-            String[] replicationServers = StringUtils.arraySplit(clientSession.getTargetNodes(), ',', true);
-            int size = replicationServers.length;
-            AtomicInteger count = new AtomicInteger();
-            CopyOnWriteArrayList<Session> sessions = new CopyOnWriteArrayList<>();
-
-            InetSocketAddress inetSocketAddress = clientSession.getInetSocketAddress();
-            for (int i = 0; i < size; i++) {
-                // 如果首次连接的节点就是复制节点之一，则复用它
-                if (clientSession.isValid()) {
-                    NetNode node = NetNode.createTCP(replicationServers[i]);
-                    if (node.getInetSocketAddress().equals(inetSocketAddress)) {
-                        addSessionForReplication(parent, clientSession, sessions, size, count, topAc);
-                        continue;
-                    }
-                }
-                // 每个节点使用独立的AsyncCallback，因为AsyncCallback调用一次处理器后就自动置null了
-                AsyncCallback<ClientSession> replicationAc = new AsyncCallback<>();
-                replicationAc.onComplete(ar -> {
-                    if (ar.isSucceeded()) {
-                        addSessionForReplication(parent, ar.getResult(), sessions, size, count, topAc);
-                    } else {
-                        if (count.incrementAndGet() == size) {
-                            topAc.setAsyncResult(ar.getCause());
-                        }
-                    }
-                });
-                ConnectionInfo ci2 = ci.copy(replicationServers[i]);
-                createClientSession(parent, ci2, replicationServers[i], replicationAc);
+            default:
+                topAc.setAsyncResult(DbException.getInternalError());
             }
         } else {
-            if (clientSession.isInvalid()) {
-                switch (clientSession.getRunMode()) {
-                case CLIENT_SERVER:
-                case SHARDING: {
-                    ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
-                    // 关闭当前session,因为连到的节点不是所要的
-                    clientSession.close();
-                    createSession(ci2, false, topAc);
-                    break;
-                }
-                default:
-                    topAc.setAsyncResult(DbException.getInternalError());
-                }
-            } else {
-                parent.setSession(clientSession);
-                topAc.setAsyncResult(parent);
-            }
-        }
-    }
-
-    private static void addSessionForReplication(AutoReconnectSession parent, ClientSession clientSession,
-            CopyOnWriteArrayList<Session> sessions, int size, AtomicInteger count, AsyncCallback<Session> topAc) {
-        sessions.add(clientSession);
-        if (count.incrementAndGet() == size) {
-            ReplicationSession rs = new ReplicationSession(sessions.toArray(new Session[0]));
-            rs.setAutoCommit(clientSession.isAutoCommit());
-            parent.setSession(rs);
-            topAc.setAsyncResult(parent);
-        }
-    }
-
-    // 在复制模式场景下调用微服务不需要创建ReplicationSession，只需随机选择一个节点即可
-    private static void createServiceSession(AutoReconnectSession parent, ClientSession clientSession,
-            ConnectionInfo ci, AsyncCallback<Session> topAc) {
-        if (clientSession.isValid()) {
             parent.setSession(clientSession);
             topAc.setAsyncResult(parent);
-        } else {
-            ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
-            createSession(ci2, false, topAc);
         }
     }
 }

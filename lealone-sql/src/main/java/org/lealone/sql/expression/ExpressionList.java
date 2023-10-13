@@ -74,11 +74,11 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder("(");
         for (Expression e : list) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL(isDistributed));
+            buff.append(e.getSQL());
         }
         if (list.length == 1) {
             buff.append(',');
@@ -100,7 +100,8 @@ public class ExpressionList extends Expression {
         ExpressionColumn[] expr = new ExpressionColumn[list.length];
         for (int i = 0; i < list.length; i++) {
             Expression e = list[i];
-            Column col = new Column("C" + (i + 1), e.getType(), e.getPrecision(), e.getScale(), e.getDisplaySize());
+            Column col = new Column("C" + (i + 1), e.getType(), e.getPrecision(), e.getScale(),
+                    e.getDisplaySize());
             expr[i] = new ExpressionColumn(session.getDatabase(), col);
         }
         return expr;

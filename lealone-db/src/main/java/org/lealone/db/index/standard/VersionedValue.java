@@ -5,23 +5,25 @@
  */
 package org.lealone.db.index.standard;
 
-import org.lealone.db.value.ValueArray;
+import java.util.Arrays;
+
+import org.lealone.db.value.Value;
 
 public class VersionedValue {
 
     public final int version; // 表的元数据版本号
-    public final ValueArray value;
+    public final Value[] columns;
 
-    public VersionedValue(int version, ValueArray value) {
+    public VersionedValue(int version, Value[] columns) {
         this.version = version;
-        this.value = value;
+        this.columns = columns;
     }
 
     @Override
     public String toString() {
         // StringBuilder buff = new StringBuilder("VersionedValue[ ");
         // buff.append("version = ").append(version);
-        // buff.append(", value = ").append(value).append(" ]");
-        return value.toString();
+        // buff.append(", columns = ").append(Arrays.toString(columns)).append(" ]");
+        return Arrays.toString(columns);
     }
 }

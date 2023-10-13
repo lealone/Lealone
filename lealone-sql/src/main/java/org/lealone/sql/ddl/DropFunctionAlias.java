@@ -44,11 +44,6 @@ public class DropFunctionAlias extends SchemaStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifExists;
-    }
-
-    @Override
     public int update() {
         session.getUser().checkAdmin();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.FUNCTION_ALIAS, session);

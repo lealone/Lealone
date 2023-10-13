@@ -6,14 +6,17 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.DbSetting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.IndexColumn;
@@ -22,8 +25,12 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.ListColumn;
+import org.lealone.db.table.Column.MapColumn;
+import org.lealone.db.table.Column.SetColumn;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableSetting;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
@@ -31,6 +38,7 @@ import org.lealone.sql.dml.Insert;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Query;
+import org.lealone.storage.StorageSetting;
 
 /**
  * This class represents the statement
@@ -113,13 +121,32 @@ public class CreateTable extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
+    private void validateParameters() {
+        CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
+        if (data.storageEngineParams != null)
+            parameters.putAll(data.storageEngineParams);
+        if (parameters.isEmpty())
+            return;
+
+        HashSet<String> recognizedSettingOptions = new HashSet<>(
+                StorageSetting.values().length + TableSetting.values().length);
+        recognizedSettingOptions.addAll(DbSetting.getRecognizedStorageSetting());
+        for (StorageSetting s : StorageSetting.values())
+            recognizedSettingOptions.add(s.name());
+        for (TableSetting s : TableSetting.values())
+            recognizedSettingOptions.add(s.name());
+
+        parameters.removeAll(recognizedSettingOptions);
+        if (!parameters.isEmpty()) {
+            throw new ConfigException(String.format("Unrecognized parameters: %s for table %s, " //
+                    + "recognized setting options: %s", //
+                    parameters.keySet(), data.tableName, recognizedSettingOptions));
+        }
     }
 
     @Override
     public int update() {
+        validateParameters();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
         if (lock == null)
             return -1;
@@ -196,7 +223,6 @@ public class CreateTable extends SchemaStatement {
                 Insert insert = new Insert(session);
                 insert.setQuery(asQuery);
                 insert.setTable(table);
-                insert.setInsertFromSelect(true);
                 insert.prepare();
                 insert.update();
             }
@@ -224,12 +250,14 @@ public class CreateTable extends SchemaStatement {
             DataType dt = DataType.getDataType(type);
             if (precision > 0 && //
                     (dt.defaultPrecision == 0 //
-                            || (dt.defaultPrecision > precision && dt.defaultPrecision < Byte.MAX_VALUE))) {
+                            || (dt.defaultPrecision > precision
+                                    && dt.defaultPrecision < Byte.MAX_VALUE))) {
                 // dont' set precision to MAX_VALUE if this is the default
                 precision = dt.defaultPrecision;
             }
             int scale = expr.getScale();
-            if (scale > 0 && (dt.defaultScale == 0 || (dt.defaultScale > scale && dt.defaultScale < precision))) {
+            if (scale > 0 && (dt.defaultScale == 0
+                    || (dt.defaultScale > scale && dt.defaultScale < precision))) {
                 scale = dt.defaultScale;
             }
             if (scale > precision) {
@@ -309,11 +337,6 @@ public class CreateTable extends SchemaStatement {
         data.storageEngineParams = storageEngineParams;
     }
 
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
     public String getPackageName() {
         return packageName;
     }
@@ -355,9 +378,10 @@ public class CreateTable extends SchemaStatement {
 
         // 收集需要导入的类
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add("org.lealone.orm.Model");
-        importSet.add("org.lealone.orm.ModelTable");
-        importSet.add("org.lealone.orm.ModelProperty");
+        importSet.add("org.lealone.plugins.orm.Model");
+        importSet.add("org.lealone.plugins.orm.ModelTable");
+        importSet.add("org.lealone.plugins.orm.ModelProperty");
+        importSet.add("org.lealone.plugins.orm.format.JsonFormat");
 
         for (ConstraintReferential ref : table.getReferentialConstraints()) {
             Table refTable = ref.getRefTable();
@@ -385,14 +409,35 @@ public class CreateTable extends SchemaStatement {
             String modelPropertyClassName = getModelPropertyClassName(type, importSet);
             String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
 
-            fields.append("    public final ").append(modelPropertyClassName).append('<').append(className).append("> ")
-                    .append(columnName).append(";\r\n");
+            fields.append("    public final ").append(modelPropertyClassName).append('<')
+                    .append(className);
+            if (c instanceof ListColumn) {
+                fields.append(", ");
+                ListColumn lc = (ListColumn) c;
+                fields.append(getTypeName(lc.element, importSet));
+            } else if (c instanceof SetColumn) {
+                fields.append(", ");
+                SetColumn sc = (SetColumn) c;
+                fields.append(getTypeName(sc.element, importSet));
+            } else if (c instanceof MapColumn) {
+                fields.append(", ");
+                MapColumn mc = (MapColumn) c;
+                fields.append(getTypeName(mc.key, importSet));
+                fields.append(", ");
+                fields.append(getTypeName(mc.value, importSet));
+            }
+            fields.append("> ").append(columnName).append(";\r\n");
 
             // 例如: id = new PLong<>("id", this);
-            initFields.append("        ").append(columnName).append(" = new ").append(modelPropertyClassName)
-                    .append("<>(\"").append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
-                    .append("\", this);\r\n");
-
+            initFields.append("        ").append(columnName).append(" = new ")
+                    .append(modelPropertyClassName).append("<>(\"")
+                    .append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
+                    .append("\", this");
+            if (c instanceof MapColumn) {
+                MapColumn mc = (MapColumn) c;
+                initFields.append(", ").append(getTypeName(mc.key, importSet)).append(".class");
+            }
+            initFields.append(");\r\n");
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");
             }
@@ -415,8 +460,8 @@ public class CreateTable extends SchemaStatement {
             if (refTable == table) {
                 String ownerClassName = CreateService.toClassName(owner.getName());
                 // add方法，增加单个model实例
-                amBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
-                        .append(ownerClassName).append(" m) {\r\n");
+                amBuff.append("    public ").append(className).append(" add").append(ownerClassName)
+                        .append("(").append(ownerClassName).append(" m) {\r\n");
                 amBuff.append("        m.set").append(refTableClassName).append("(this);\r\n");
                 amBuff.append("        super.addModel(m);\r\n");
                 amBuff.append("        return this;\r\n");
@@ -424,8 +469,8 @@ public class CreateTable extends SchemaStatement {
                 amBuff.append("\r\n");
 
                 // add方法，增加多个model实例
-                amBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
-                        .append(ownerClassName).append("... mArray) {\r\n");
+                amBuff.append("    public ").append(className).append(" add").append(ownerClassName)
+                        .append("(").append(ownerClassName).append("... mArray) {\r\n");
                 amBuff.append("        for (").append(ownerClassName).append(" m : mArray)\r\n");
                 amBuff.append("            add").append(ownerClassName).append("(m);\r\n");
                 amBuff.append("        return this;\r\n");
@@ -433,9 +478,10 @@ public class CreateTable extends SchemaStatement {
                 amBuff.append("\r\n");
 
                 // get list方法
-                amBuff.append("    public List<").append(ownerClassName).append("> get").append(ownerClassName)
-                        .append("List() {\r\n");
-                amBuff.append("        return super.getModelList(").append(ownerClassName).append(".class);\r\n");
+                amBuff.append("    public List<").append(ownerClassName).append("> get")
+                        .append(ownerClassName).append("List() {\r\n");
+                amBuff.append("        return super.getModelList(").append(ownerClassName)
+                        .append(".class);\r\n");
                 amBuff.append("    }\r\n");
                 amBuff.append("\r\n");
 
@@ -443,7 +489,8 @@ public class CreateTable extends SchemaStatement {
                 IndexColumn[] refColumns = ref.getRefColumns();
                 IndexColumn[] columns = ref.getColumns();
                 adderBuff.append("    protected class ").append(ownerClassName)
-                        .append("Adder implements AssociateAdder<").append(ownerClassName).append("> {\r\n");
+                        .append("Adder implements AssociateAdder<").append(ownerClassName)
+                        .append("> {\r\n");
                 adderBuff.append("        @Override\r\n");
                 adderBuff.append("        public ").append(ownerClassName).append(" getDao() {\r\n");
                 adderBuff.append("            return ").append(ownerClassName).append(".dao;\r\n");
@@ -456,9 +503,12 @@ public class CreateTable extends SchemaStatement {
                     if (i != 0) {
                         adderBuff.append(" && ");
                     }
-                    String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
-                    String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
-                    adderBuff.append("areEqual(").append(refColumnName).append(", m.").append(columnName).append(")");
+                    String columnName = CamelCaseHelper
+                            .toCamelFromUnderscore(columns[i].column.getName());
+                    String refColumnName = CamelCaseHelper
+                            .toCamelFromUnderscore(refColumns[i].column.getName());
+                    adderBuff.append("areEqual(").append(refColumnName).append(", m.").append(columnName)
+                            .append(")");
                 }
                 adderBuff.append(") {\r\n");
                 adderBuff.append("                add").append(ownerClassName).append("(m);\r\n");
@@ -475,27 +525,32 @@ public class CreateTable extends SchemaStatement {
                 String refTableVar = CamelCaseHelper.toCamelFromUnderscore(refTable.getName());
 
                 // 引用表字段
-                fields.append("    private ").append(refTableClassName).append(" ").append(refTableVar).append(";\r\n");
+                fields.append("    private ").append(refTableClassName).append(" ").append(refTableVar)
+                        .append(";\r\n");
 
                 // get方法
-                amBuff.append("    public ").append(refTableClassName).append(" get").append(refTableClassName)
-                        .append("() {\r\n");
+                amBuff.append("    public ").append(refTableClassName).append(" get")
+                        .append(refTableClassName).append("() {\r\n");
                 amBuff.append("        return ").append(refTableVar).append(";\r\n");
                 amBuff.append("    }\r\n");
                 amBuff.append("\r\n");
 
                 // set方法
-                amBuff.append("    public ").append(className).append(" set").append(refTableClassName).append("(")
-                        .append(refTableClassName).append(" ").append(refTableVar).append(") {\r\n");
-                amBuff.append("        this.").append(refTableVar).append(" = ").append(refTableVar).append(";\r\n");
+                amBuff.append("    public ").append(className).append(" set").append(refTableClassName)
+                        .append("(").append(refTableClassName).append(" ").append(refTableVar)
+                        .append(") {\r\n");
+                amBuff.append("        this.").append(refTableVar).append(" = ").append(refTableVar)
+                        .append(";\r\n");
 
                 IndexColumn[] refColumns = ref.getRefColumns();
                 IndexColumn[] columns = ref.getColumns();
                 for (int i = 0; i < columns.length; i++) {
-                    String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
-                    String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
-                    amBuff.append("        this.").append(columnName).append(".set(").append(refTableVar).append(".")
-                            .append(refColumnName).append(".get());\r\n");
+                    String columnName = CamelCaseHelper
+                            .toCamelFromUnderscore(columns[i].column.getName());
+                    String refColumnName = CamelCaseHelper
+                            .toCamelFromUnderscore(refColumns[i].column.getName());
+                    amBuff.append("        this.").append(columnName).append(".set(").append(refTableVar)
+                            .append(".").append(refColumnName).append(".get());\r\n");
                 }
                 amBuff.append("        return this;\r\n");
                 amBuff.append("    }\r\n");
@@ -503,22 +558,27 @@ public class CreateTable extends SchemaStatement {
 
                 // Setter类
                 setterBuff.append("    protected class ").append(refTableClassName)
-                        .append("Setter implements AssociateSetter<").append(refTableClassName).append("> {\r\n");
+                        .append("Setter implements AssociateSetter<").append(refTableClassName)
+                        .append("> {\r\n");
                 setterBuff.append("        @Override\r\n");
                 setterBuff.append("        public ").append(refTableClassName).append(" getDao() {\r\n");
                 setterBuff.append("            return ").append(refTableClassName).append(".dao;\r\n");
                 setterBuff.append("        }\r\n");
                 setterBuff.append("\r\n");
                 setterBuff.append("        @Override\r\n");
-                setterBuff.append("        public boolean set(").append(refTableClassName).append(" m) {\r\n");
+                setterBuff.append("        public boolean set(").append(refTableClassName)
+                        .append(" m) {\r\n");
                 setterBuff.append("            if (");
                 for (int i = 0; i < columns.length; i++) {
                     if (i != 0) {
                         setterBuff.append(" && ");
                     }
-                    String columnName = CamelCaseHelper.toCamelFromUnderscore(columns[i].column.getName());
-                    String refColumnName = CamelCaseHelper.toCamelFromUnderscore(refColumns[i].column.getName());
-                    setterBuff.append("areEqual(").append(columnName).append(", m.").append(refColumnName).append(")");
+                    String columnName = CamelCaseHelper
+                            .toCamelFromUnderscore(columns[i].column.getName());
+                    String refColumnName = CamelCaseHelper
+                            .toCamelFromUnderscore(refColumns[i].column.getName());
+                    setterBuff.append("areEqual(").append(columnName).append(", m.")
+                            .append(refColumnName).append(")");
                 }
                 setterBuff.append(") {\r\n");
                 setterBuff.append("                set").append(refTableClassName).append("(m);\r\n");
@@ -550,7 +610,8 @@ public class CreateTable extends SchemaStatement {
         buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         buff.append(" */\r\n");
         // 例如: public class Customer extends Model<Customer> {
-        buff.append("public class ").append(className).append(" extends Model<").append(className).append("> {\r\n");
+        buff.append("public class ").append(className).append(" extends Model<").append(className)
+                .append("> {\r\n");
         buff.append("\r\n");
 
         // static create 方法
@@ -561,8 +622,11 @@ public class CreateTable extends SchemaStatement {
         // buff.append("\r\n");
 
         // static dao字段
-        buff.append("    public static final ").append(className).append(" dao = new ").append(className)
-                .append("(null, ROOT_DAO);\r\n");
+        String daoName = table.getParameter(TableSetting.DAO_NAME.name());
+        if (daoName == null)
+            daoName = "dao";
+        buff.append("    public static final ").append(className).append(" ").append(daoName)
+                .append(" = new ").append(className).append("(null, ROOT_DAO);\r\n");
         buff.append("\r\n");
 
         // 字段
@@ -575,15 +639,21 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
 
-        String tableFullName = "\"" + db.getName() + "\", \"" + schema.getName() + "\", \"" + tableName + "\"";
+        String tableFullName = "\"" + db.getName() + "\", \"" + schema.getName() + "\", \"" + tableName
+                + "\"";
         if (databaseToUpper) {
             tableFullName = tableFullName.toUpperCase();
         }
+        String jsonFormatName = table.getParameter(TableSetting.JSON_FORMAT.name());
         // 内部构造函数
         buff.append("    private ").append(className).append("(ModelTable t, short modelType) {\r\n");
-        buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, modelType);\r\n");
+        buff.append("        super(t == null ? new ModelTable(").append(tableFullName)
+                .append(") : t, modelType);\r\n");
         buff.append(initFields);
-        buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames).append(" });\r\n");
+        if (jsonFormatName != null)
+            buff.append("        super.setJsonFormat(\"").append(jsonFormatName).append("\");\r\n");
+        buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames)
+                .append(" });\r\n");
         if (setterInitBuff.length() > 0) {
             buff.append("        super.initSetters(").append(setterInitBuff).append(");\r\n");
         }
@@ -595,7 +665,8 @@ public class CreateTable extends SchemaStatement {
 
         // newInstance方法
         buff.append("    @Override\r\n");
-        buff.append("    protected ").append(className).append(" newInstance(ModelTable t, short modelType) {\r\n");
+        buff.append("    protected ").append(className)
+                .append(" newInstance(ModelTable t, short modelType) {\r\n");
         buff.append("        return new ").append(className).append("(t, modelType);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
@@ -615,7 +686,11 @@ public class CreateTable extends SchemaStatement {
 
         // static decode方法
         buff.append("    public static ").append(className).append(" decode(String str) {\r\n");
-        buff.append("        return new ").append(className).append("().decode0(str);\r\n");
+        buff.append("        return decode(str, null);\r\n");
+        buff.append("    }\r\n\r\n");
+        buff.append("    public static ").append(className)
+                .append(" decode(String str, JsonFormat format) {\r\n");
+        buff.append("        return new ").append(className).append("().decode0(str, format);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
@@ -639,7 +714,14 @@ public class CreateTable extends SchemaStatement {
             name = name.substring(pos + 1);
         }
         name = "P" + name;
-        importSet.add("org.lealone.orm.property." + name);
+        importSet.add("org.lealone.plugins.orm.property." + name);
+        return name;
+    }
+
+    private static String getTypeName(Column c, TreeSet<String> importSet) {
+        String name = CreateService.getTypeName(c, importSet);
+        // if (name.equals("Object"))
+        // name = "?";
         return name;
     }
 }

@@ -8,6 +8,7 @@ package org.lealone.sql.query;
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
@@ -22,8 +23,8 @@ public class YieldableSelect extends YieldableQueryBase {
     private final Select select;
     private final ResultTarget target;
     private final int olapThreshold;
-    private Operator queryOperator;
     private boolean olapDisabled;
+    private Operator queryOperator;
 
     public YieldableSelect(Select select, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
@@ -42,6 +43,7 @@ public class YieldableSelect extends YieldableQueryBase {
             if (olapOperator != null) {
                 queryOperator = olapOperator;
                 yield = true; // olapOperator创建成功后让出执行权
+                session.setStatus(SessionStatus.STATEMENT_YIELDED);
             }
             return yield;
         }
@@ -59,7 +61,8 @@ public class YieldableSelect extends YieldableQueryBase {
         if (olapOperatorFactoryName == null) {
             olapOperatorFactoryName = "olap";
         }
-        OperatorFactory operatorFactory = PluginManager.getPlugin(OperatorFactory.class, olapOperatorFactoryName);
+        OperatorFactory operatorFactory = PluginManager.getPlugin(OperatorFactory.class,
+                olapOperatorFactoryName);
         if (operatorFactory != null) {
             olapOperator = operatorFactory.createOperator(select, queryOperator.getLocalResult());
             olapOperator.start();
@@ -70,9 +73,7 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected boolean startInternal() {
-        select.topTableFilter.lock(session, select.isForUpdate);
-        select.topTableFilter.startQuery(session);
-        select.topTableFilter.reset();
+        // select.getTopTableFilter().lock(session, select.isForUpdate);
         select.fireBeforeSelectTriggers();
         queryOperator = createQueryOperator();
         queryOperator.start();
@@ -88,15 +89,32 @@ public class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected void executeInternal() {
-        queryOperator.run();
-        if (queryOperator.isStopped()) {
-            // 查询结果已经增加到target了
-            if (target != null) {
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            } else if (queryOperator.getLocalResult() != null) {
-                setResult(queryOperator.getLocalResult(), queryOperator.getLocalResult().getRowCount());
-                select.resultCache.setResult(queryOperator.getLocalResult());
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+        while (true) {
+            session.setStatus(SessionStatus.STATEMENT_RUNNING);
+            try {
+                queryOperator.run();
+            } catch (RuntimeException e) {
+                if (DbObjectLock.LOCKED_EXCEPTION == e) {
+                    queryOperator.onLockedException();
+                } else {
+                    throw e;
+                }
+            }
+            if (queryOperator.isStopped()) {
+                // 查询结果已经增加到target了
+                if (target != null) {
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                } else if (queryOperator.getLocalResult() != null) {
+                    LocalResult r = queryOperator.getLocalResult();
+                    setResult(r, r.getRowCount());
+                    select.resultCache.setResult(r);
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                }
+                break;
+            }
+            if (session.getStatus() == SessionStatus.STATEMENT_YIELDED
+                    || session.getStatus() == SessionStatus.WAITING) {
+                return;
             }
         }
     }
@@ -126,7 +144,6 @@ public class YieldableSelect extends YieldableQueryBase {
                         } else {
                             queryOperator = new QGroup(select);
                         }
-                        to = result;
                     }
                 } else if (select.isDistinctQuery) {
                     queryOperator = new QDistinct(select);
@@ -177,10 +194,6 @@ public class YieldableSelect extends YieldableQueryBase {
         if (select.distinct && !select.isDistinctQuery) {
             result = createLocalResult(result);
             result.setDistinct();
-        }
-        if (select.randomAccessResult) {
-            result = createLocalResult(result);
-            // result.setRandomAccess(); //见H2的Mainly MVStore improvements的提交记录
         }
         if (select.isGroupQuery && !select.isGroupSortedQuery) {
             result = createLocalResult(result);

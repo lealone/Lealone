@@ -12,11 +12,11 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
-public abstract class AoseTestBase extends TestBase {
+public abstract class AoseTestBase extends TestBase implements TestBase.EmbeddedTest {
 
     protected AOStorage storage;
     protected BTreeMap<Integer, String> map;
-    protected int pageSplitSize = 1 * 1024;
+    protected int pageSize = 1 * 1024;
 
     protected void init() {
         init(false);
@@ -31,7 +31,7 @@ public abstract class AoseTestBase extends TestBase {
     }
 
     protected void init(String mapName, boolean clearMap) {
-        storage = AOStorageTest.openStorage(pageSplitSize);
+        storage = AOStorageTest.openStorage(pageSize);
         map = storage.openBTreeMap(mapName);
         if (clearMap)
             map.clear();

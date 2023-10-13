@@ -17,7 +17,7 @@ import org.lealone.sql.expression.visitor.ExpressionVisitor;
  */
 public class SequenceValue extends Expression {
 
-    private final Sequence sequence;
+    private Sequence sequence;
 
     public SequenceValue(Sequence sequence) {
         this.sequence = sequence;
@@ -29,6 +29,8 @@ public class SequenceValue extends Expression {
 
     @Override
     public Value getValue(ServerSession session) {
+        if (sequence.isInvalid())
+            sequence = sequence.getNewSequence(session);
         long value = sequence.getNext(session);
         session.setLastIdentity(ValueLong.get(value));
         return ValueLong.get(value);
@@ -60,7 +62,7 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "(NEXT VALUE FOR " + sequence.getSQL() + ")";
     }
 

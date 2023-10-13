@@ -21,11 +21,13 @@ public class SelectUnionTest extends SqlTestBase {
 
     void init() {
         executeUpdate("DROP TABLE IF EXISTS SelectUnionTest1");
-        executeUpdate("CREATE TABLE IF NOT EXISTS SelectUnionTest1(id int, name varchar(500), b boolean, id1 int)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS SelectUnionTest1(id int, name varchar(500), b boolean, id1 int)");
         executeUpdate("CREATE INDEX IF NOT EXISTS SelectUnionTestIndex1 ON SelectUnionTest1(name)");
 
         executeUpdate("DROP TABLE IF EXISTS SelectUnionTest2");
-        executeUpdate("CREATE TABLE IF NOT EXISTS SelectUnionTest2(id int, name varchar(500), b boolean, id2 int)");
+        executeUpdate(
+                "CREATE TABLE IF NOT EXISTS SelectUnionTest2(id int, name varchar(500), b boolean, id2 int)");
         executeUpdate("CREATE INDEX IF NOT EXISTS SelectUnionTestIndex2 ON SelectUnionTest2(name)");
 
         executeUpdate("insert into SelectUnionTest1(id, name, b) values(1, 'a1', true)");

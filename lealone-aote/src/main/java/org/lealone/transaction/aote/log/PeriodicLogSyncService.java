@@ -8,8 +8,8 @@ package org.lealone.transaction.aote.log;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
-import org.lealone.transaction.RedoLogSyncListener;
-import org.lealone.transaction.aote.AMTransaction;
+import org.lealone.transaction.PendingTransaction;
+import org.lealone.transaction.aote.AOTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
 
@@ -21,6 +21,11 @@ class PeriodicLogSyncService extends LogSyncService {
         blockWhenSyncLagsMillis = (long) (syncIntervalMillis * 1.5);
     }
 
+    @Override
+    public boolean isPeriodic() {
+        return true;
+    }
+
     private boolean waitForSyncToCatchUp() {
         // 如果当前时间是第10毫秒，上次同步时间是在第5毫秒，同步间隔是10毫秒，说时当前时间还是同步周期内，就不用阻塞了
         // 如果当前时间是第16毫秒，超过了同步周期，需要阻塞
@@ -28,22 +33,30 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void addAndMaybeWaitForSync(RedoLogRecord r) {
-        // 如果在同步周期内，不用等
+    public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        PendingTransaction pt = new PendingTransaction(t, r, logId);
+        // 如果在同步周期内，可以提前通知异步提交完成了
         if (!waitForSyncToCatchUp()) {
-            addRedoLogRecord(r);
+            t.onSynced(); // 不能直接pt.setSynced(true);
+            asyncWrite(pt);
+            pt.setCompleted(true);
+            t.asyncCommitComplete();
         } else {
-            addAndWaitForSync(r);
+            asyncWrite(pt);
         }
     }
 
     @Override
-    public void asyncCommit(RedoLogRecord r, AMTransaction t, RedoLogSyncListener listener) {
-        // 如果在同步周期内，可以提前提交事务
+    public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        // 如果在同步周期内，不用等
         if (!waitForSyncToCatchUp()) {
-            t.asyncCommitComplete();
+            PendingTransaction pt = new PendingTransaction(t, r, logId);
+            t.onSynced();
+            asyncWrite(pt);
+            pt.setCompleted(true);
+            // 同步调用无需t.asyncCommitComplete();
         } else {
-            super.asyncCommit(r, t, listener);
+            super.syncWrite(t, r, logId);
         }
     }
 }

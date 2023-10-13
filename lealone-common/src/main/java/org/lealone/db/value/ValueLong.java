@@ -241,7 +241,7 @@ public class ValueLong extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 30;
+            return 24;
         }
 
         @Override
@@ -290,5 +290,4 @@ public class ValueLong extends Value {
             return ValueLong.get(Long.valueOf(tag - TAG_LONG_0_7));
         }
     };
-
 }

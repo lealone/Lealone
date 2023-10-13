@@ -26,13 +26,14 @@ import org.lealone.sql.IExpression;
 /**
  * This class implements the temp table buffer for the LocalResult class.
  */
+// 单线程操作
 public class ResultTempTable implements ResultExternal {
 
     private static final String COLUMN_NAME = "DATA";
+    private final ServerSession session;
     private final boolean distinct;
     private final SortOrder sort;
     private Index index;
-    private final ServerSession session;
     private Table table;
     private Cursor resultCursor;
     private int rowCount;
@@ -113,7 +114,7 @@ public class ResultTempTable implements ResultExternal {
     }
 
     @Override
-    public synchronized ResultExternal createShallowCopy() {
+    public ResultExternal createShallowCopy() {
         if (parent != null) {
             return parent.createShallowCopy();
         }
@@ -143,18 +144,24 @@ public class ResultTempTable implements ResultExternal {
 
     @Override
     public int addRow(Value[] values) {
-        Row row = convertToRow(values);
-        if (distinct) {
-            Cursor cursor = find(row);
-            if (cursor == null) {
+        // 写入临时表的记录不写undoLog
+        session.setUndoLogEnabled(false);
+        try {
+            Row row = convertToRow(values);
+            if (distinct) {
+                Cursor cursor = find(row);
+                if (cursor == null) {
+                    table.addRow(session, row);
+                    rowCount++;
+                }
+            } else {
                 table.addRow(session, row);
                 rowCount++;
             }
-        } else {
-            table.addRow(session, row);
-            rowCount++;
+            return rowCount;
+        } finally {
+            session.setUndoLogEnabled(true);
         }
-        return rowCount;
     }
 
     @Override
@@ -169,14 +176,14 @@ public class ResultTempTable implements ResultExternal {
         return rowCount;
     }
 
-    private synchronized void closeChild() {
+    private void closeChild() {
         if (--childCount == 0 && closed) {
             dropTable();
         }
     }
 
     @Override
-    public synchronized void close() {
+    public void close() {
         if (closed) {
             return;
         }
@@ -200,37 +207,12 @@ public class ResultTempTable implements ResultExternal {
             return;
         }
         try {
-            Database database = session.getDatabase();
-            // Need to lock because not all of the code-paths
-            // that reach here have already taken this lock,
-            // notably via the close() paths.
-            synchronized (session) {
-                synchronized (database) {
-                    table.truncate(session);
-                }
-            }
-            // This session may not lock the sys table (except if it already has
-            // locked it) because it must be committed immediately, otherwise
-            // other threads can not access the sys table. If the table is not
-            // removed now, it will be when the database is opened the next
-            // time. (the table is truncated, so this is just one record)
-            if (!database.isSysTableLocked()) {
-                ServerSession sysSession = database.getSystemSession();
-                table.removeChildrenAndResources(sysSession, null);
-                if (index != null) {
-                    // need to explicitly do this,
-                    // as it's not registered in the system session
-                    session.removeLocalTempTableIndex(index);
-                }
-                // the transaction must be committed immediately
-                // TODO this synchronization cascade is very ugly
-                synchronized (session) {
-                    synchronized (sysSession) {
-                        synchronized (database) {
-                            sysSession.commit();
-                        }
-                    }
-                }
+            table.truncate(session);
+            table.removeChildrenAndResources(session, null);
+            if (index != null) {
+                // need to explicitly do this,
+                // as it's not registered in the system session
+                session.removeLocalTempTableIndex(index);
             }
         } finally {
             table = null;
@@ -308,5 +290,4 @@ public class ResultTempTable implements ResultExternal {
         }
         return null;
     }
-
 }

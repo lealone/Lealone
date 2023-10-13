@@ -22,6 +22,7 @@ public class TableTest extends DbObjectTestBase {
         create();
     }
 
+    @Override
     @After
     public void tearDownAfter() {
         drop();
@@ -99,6 +100,20 @@ public class TableTest extends DbObjectTestBase {
         assertNotNull(table);
         table = findTable("mytable2");
         assertNull(table);
+    }
+
+    @Test
+    public void ALTER_TABLE_RENAME_COLUMN_RENAME() {
+        Table table = findTable("mytable");
+        executeUpdate("ALTER TABLE mytable RENAME COLUMN f1 TO f10");
+        Column column = table.getColumn("f2");
+        assertNotNull(column);
+        try {
+            column = table.getColumn("f1");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.COLUMN_NOT_FOUND_1);
+        }
     }
 
     @Test
@@ -333,5 +348,16 @@ public class TableTest extends DbObjectTestBase {
 
         sql = "ALTER TABLE mytable DROP COLUMN f3";
         executeUpdate();
+    }
+
+    @Test
+    public void validateParameters() throws Exception {
+        try {
+            executeUpdate("CREATE TABLE mytable(f int) PARAMETERS(aaa=1,bbb=2,IN_MEMORY=1)");
+            fail("not throw SQLException");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().toLowerCase().contains("aaa"));
+            // System.out.println(e.getMessage());
+        }
     }
 }

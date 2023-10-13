@@ -108,12 +108,12 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(table, Right.ALL);
         DbObjectLock lock = tryAlterTable(table);
         if (lock == null)
             return -1;
 
         Database db = session.getDatabase();
-        session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
         if (newColumn != null) {
             checkDefaultReferencesTable((Expression) newColumn.getDefaultExpression());
@@ -177,13 +177,15 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
         case SQLStatement.ALTER_TABLE_ADD_COLUMN: {
             // ifNotExists only supported for single column add
-            if (ifNotExists && columnsToAdd.size() == 1 && table.doesColumnExist(columnsToAdd.get(0).getName())) {
+            if (ifNotExists && columnsToAdd.size() == 1
+                    && table.doesColumnExist(columnsToAdd.get(0).getName())) {
                 break;
             }
             for (Column column : columnsToAdd) {
                 if (column.isAutoIncrement()) {
                     int objId = getObjectId();
-                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lock);
+                    column.convertAutoIncrementToSequence(session, getSchema(), objId,
+                            table.isTemporary(), lock);
                 }
             }
             addTableAlterHistoryRecords();
@@ -255,7 +257,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
     }
 
     private void checkNoNullValues() {
-        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
+        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL()
+                + " IS NULL";
         StatementBase command = (StatementBase) session.prepareStatement(sql);
         Result result = command.query(0);
         result.next();
@@ -277,14 +280,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             table.setNewColumns(table.getOldColumns());
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, e, getSQL(), e.getMessage());
         }
-
-        try {
-            table.incrementVersion();
-        } catch (DbException e) {
-            table.setNewColumns(table.getOldColumns());
-            throw e;
-        }
-
+        table.getDatabase().updateMeta(session, table);
         // 通知元数据改变了，原有的结果集缓存要废弃了
         table.setModified();
     }
@@ -299,7 +295,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
                     Integer.toString(position));
         } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
@@ -316,12 +312,13 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, buff.toString());
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
+                    buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
-            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
                     position + "," + newColumn.getCreateSQL());
         }
 

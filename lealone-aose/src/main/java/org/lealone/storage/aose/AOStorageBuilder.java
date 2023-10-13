@@ -11,6 +11,7 @@ import java.util.Map;
 import org.lealone.db.PluginManager;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageSetting;
 import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public class AOStorageBuilder extends StorageBuilder {
@@ -34,13 +35,13 @@ public class AOStorageBuilder extends StorageBuilder {
             pohFactory = PageOperationHandlerFactory.create(defaultConfig);
         if (defaultConfig != null)
             config.putAll(defaultConfig);
-        config.put("pohFactory", pohFactory);
+        config.put(StorageSetting.POH_FACTORY.name(), pohFactory);
         se.setPageOperationHandlerFactory(pohFactory);
     }
 
     @Override
     public AOStorage openStorage() {
-        String storagePath = (String) config.get("storagePath");
+        String storagePath = (String) config.get(StorageSetting.STORAGE_PATH.name());
         AOStorage storage = cache.get(storagePath);
         if (storage == null) {
             synchronized (cache) {

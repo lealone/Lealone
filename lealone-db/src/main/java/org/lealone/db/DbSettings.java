@@ -143,13 +143,8 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>LARGE_TRANSACTIONS</code> (default: true).<br />
      * Support very large transactions
      */
-    // public final boolean largeTransactions = get(DbSetting.LARGE_TRANSACTIONS, true); // TODO 是否考虑用在UndoLog中
-
-    /**
-     * Database setting <code>MAX_COMPACT_TIME</code> (default: 200).<br />
-     * The maximum time in milliseconds used to compact a database when closing.
-     */
-    // public final int maxCompactTime = get(DbSetting.MAX_COMPACT_TIME, 200); // TODO 这个参数可以用到存储引擎中
+    // TODO 是否考虑用在UndoLog中
+    // public final boolean largeTransactions = get(DbSetting.LARGE_TRANSACTIONS, true);
 
     /**
      * Database setting <code>MAX_QUERY_TIMEOUT</code> (default: 0).<br />
@@ -176,7 +171,8 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>OPTIMIZE_EVALUATABLE_SUBQUERIES</code> (default: true).<br />
      * Optimize subqueries that are not dependent on the outer query.
      */
-    public final boolean optimizeEvaluatableSubqueries = get(DbSetting.OPTIMIZE_EVALUATABLE_SUBQUERIES, true);
+    public final boolean optimizeEvaluatableSubqueries = get(DbSetting.OPTIMIZE_EVALUATABLE_SUBQUERIES,
+            true);
 
     /**
      * Database setting <code>OPTIMIZE_INSERT_FROM_SELECT</code>
@@ -255,7 +251,8 @@ public class DbSettings extends SettingsBase {
      * (default: lealone).<br />
      * The default sql engine.
      */
-    public final String defaultSQLEngine = get(DbSetting.DEFAULT_SQL_ENGINE, Constants.DEFAULT_SQL_ENGINE_NAME);
+    public final String defaultSQLEngine = get(DbSetting.DEFAULT_SQL_ENGINE,
+            Constants.DEFAULT_SQL_ENGINE_NAME);
 
     /**
      * Database setting <code>DEFAULT_TRANSACTION_ENGINE</code>
@@ -286,7 +283,8 @@ public class DbSettings extends SettingsBase {
     public final String cipher = get(DbSetting.CIPHER, null);
     public final byte[] filePasswordHash = convertHexToBytes(DbSetting.FILE_PASSWORD_HASH, null);
     public final byte[] fileEncryptionKey = convertHexToBytes(DbSetting.FILE_ENCRYPTION_KEY, null);
-    public final int traceLevelFile = get(DbSetting.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
+    public final int traceLevelFile = get(DbSetting.TRACE_LEVEL_FILE,
+            TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
     public final int traceLevelSystemOut = get(DbSetting.TRACE_LEVEL_SYSTEM_OUT,
             TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
 
@@ -297,7 +295,8 @@ public class DbSettings extends SettingsBase {
     public final String binaryCollation = get(DbSetting.BINARY_COLLATION, null);
     public final String lobCompressionAlgorithm = get(DbSetting.LOB_COMPRESSION_ALGORITHM, null);
     public final int dbCloseDelay = get(DbSetting.DB_CLOSE_DELAY, -1);
-    public final int defaultLockTimeout = get(DbSetting.DEFAULT_LOCK_TIMEOUT, Constants.INITIAL_LOCK_TIMEOUT);
+    public final int defaultLockTimeout = get(DbSetting.DEFAULT_LOCK_TIMEOUT,
+            Constants.INITIAL_LOCK_TIMEOUT);
     public final int defaultTableType = get(DbSetting.DEFAULT_TABLE_TYPE, Table.TYPE_CACHED);
     public final boolean ignoreCase = get(DbSetting.IGNORECASE, false);
 
@@ -307,7 +306,8 @@ public class DbSettings extends SettingsBase {
 
     public final int maxMemoryRows = get(DbSetting.MAX_MEMORY_ROWS, Constants.DEFAULT_MAX_MEMORY_ROWS);
     public final int maxMemoryUndo = get(DbSetting.MAX_MEMORY_UNDO, Constants.DEFAULT_MAX_MEMORY_UNDO);
-    public final int maxOperationMemory = get(DbSetting.MAX_OPERATION_MEMORY, Constants.DEFAULT_MAX_OPERATION_MEMORY);
+    public final int maxOperationMemory = get(DbSetting.MAX_OPERATION_MEMORY,
+            Constants.DEFAULT_MAX_OPERATION_MEMORY);
 
     public final boolean optimizeReuseResults = get(DbSetting.OPTIMIZE_REUSE_RESULTS, true);
     public final boolean referentialIntegrity = get(DbSetting.REFERENTIAL_INTEGRITY, true);
@@ -315,8 +315,6 @@ public class DbSettings extends SettingsBase {
     public final boolean queryStatistics = get(DbSetting.QUERY_STATISTICS, false);
     public final int queryStatisticsMaxEntries = get(DbSetting.QUERY_STATISTICS_MAX_ENTRIES,
             Constants.QUERY_STATISTICS_MAX_ENTRIES);
-
-    public final int writeDelay = get(DbSetting.WRITE_DELAY, Constants.DEFAULT_WRITE_DELAY);
 
     /**
      * Get the setting for the given key.

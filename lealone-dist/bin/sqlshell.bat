@@ -4,4 +4,4 @@
 @REM  Initial Developer: zhh
 
 @echo off
-.\lealone.bat -client %*
+lealone.bat -client %*

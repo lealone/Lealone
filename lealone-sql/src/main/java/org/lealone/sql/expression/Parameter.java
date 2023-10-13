@@ -30,7 +30,7 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "?" + (index + 1);
     }
 
@@ -145,7 +145,8 @@ public class Parameter extends Expression implements CommandParameter {
 
     @Override
     public Expression getNotIfPossible(ServerSession session) {
-        return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
+        return new Comparison(session, Comparison.EQUAL, this,
+                ValueExpression.get(ValueBoolean.get(false)));
     }
 
     public void setColumn(Column column) {

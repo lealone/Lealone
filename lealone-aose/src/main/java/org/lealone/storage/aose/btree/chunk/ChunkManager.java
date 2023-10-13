@@ -6,11 +6,13 @@
 package org.lealone.storage.aose.btree.chunk;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
@@ -18,11 +20,12 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageUtils;
+import org.lealone.storage.fs.FilePath;
 
 public class ChunkManager {
 
     private final BTreeStorage btreeStorage;
-    private final TreeSet<Long> removedPages = new TreeSet<>();
+    private final ConcurrentSkipListSet<Long> removedPages = new ConcurrentSkipListSet<>();
     private final ConcurrentHashMap<Integer, String> idToChunkFileNameMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Chunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
@@ -59,14 +62,14 @@ public class ChunkManager {
         try {
             if (lastChunkId > 0) {
                 lastChunk = readChunk(lastChunkId);
-                lastChunk.readRemovedPages(removedPages);
             } else {
                 lastChunk = null;
             }
         } catch (IllegalStateException e) {
             throw btreeStorage.panic(e);
         } catch (Exception e) {
-            throw btreeStorage.panic(DataUtils.ERROR_READING_FAILED, "Failed to read last chunk: {0}", lastChunkId, e);
+            throw btreeStorage.panic(DataUtils.ERROR_READING_FAILED, "Failed to read last chunk: {0}",
+                    lastChunkId, e);
         }
     }
 
@@ -94,35 +97,24 @@ public class ChunkManager {
         return ++maxSeq;
     }
 
-    synchronized TreeSet<Long> getRemovedPagesCopy() {
-        return new TreeSet<>(removedPages);
-    }
-
-    public synchronized TreeSet<Long> getRemovedPages() {
-        return removedPages;
-    }
-
-    public synchronized void addRemovedPage(long pagePos) {
-        removedPages.add(pagePos);
-    }
-
-    synchronized void updateRemovedPages(TreeSet<Long> removedPages) {
-        this.removedPages.clear();
-        this.removedPages.addAll(removedPages);
-        getLastChunk().updateRemovedPages(removedPages);
-    }
-
     public synchronized void close() {
         for (Chunk c : chunks.values()) {
             if (c.fileStorage != null)
                 c.fileStorage.close();
         }
+        // maxSeq = 0;
+        // for (Integer id : idToChunkFileNameMap.keySet()) {
+        // chunkIds.clear(id);
+        // }
         chunks.clear();
+        // idToChunkFileNameMap.clear();
         removedPages.clear();
-        idToChunkFileNameMap.clear();
+        lastChunk = null;
     }
 
     private synchronized Chunk readChunk(int chunkId) {
+        if (chunks.containsKey(chunkId))
+            return chunks.get(chunkId);
         Chunk chunk = new Chunk(chunkId);
         chunk.read(btreeStorage);
         chunks.put(chunk.id, chunk);
@@ -131,11 +123,16 @@ public class ChunkManager {
 
     public Chunk getChunk(long pos) {
         int chunkId = PageUtils.getPageChunkId(pos);
+        return getChunk(chunkId);
+    }
+
+    public Chunk getChunk(int chunkId) {
         Chunk c = chunks.get(chunkId);
         if (c == null)
             c = readChunk(chunkId);
         if (c == null)
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} not found", chunkId);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} not found",
+                    chunkId);
         return c;
     }
 
@@ -154,12 +151,15 @@ public class ChunkManager {
         idToChunkFileNameMap.put(c.id, c.fileName);
     }
 
-    void removeUnusedChunk(Chunk c) {
+    synchronized void removeUnusedChunk(Chunk c) {
         c.fileStorage.close();
         c.fileStorage.delete();
         chunkIds.clear(c.id);
         chunks.remove(c.id);
         idToChunkFileNameMap.remove(c.id);
+        removedPages.removeAll(c.pagePositionToLengthMap.keySet());
+        if (c == lastChunk)
+            lastChunk = null;
     }
 
     List<Chunk> readChunks(HashSet<Integer> chunkIds) {
@@ -171,5 +171,36 @@ public class ChunkManager {
             list.add(chunks.get(id));
         }
         return list;
+    }
+
+    public InputStream getChunkInputStream(FilePath file) {
+        String name = file.getName();
+        if (name.endsWith(AOStorage.SUFFIX_AO_FILE)) {
+            // chunk文件名格式: c_[chunkId]_[sequence]
+            String str = name.substring(2, name.length() - AOStorage.SUFFIX_AO_FILE_LENGTH);
+            int pos = str.indexOf('_');
+            int chunkId = Integer.parseInt(str.substring(0, pos));
+            return getChunk(chunkId).fileStorage.getInputStream();
+        }
+        return null;
+    }
+
+    public void addRemovedPage(long pos) {
+        removedPages.add(pos);
+    }
+
+    public Set<Long> getRemovedPages() {
+        return removedPages;
+    }
+
+    public HashSet<Long> getAllRemovedPages() {
+        HashSet<Long> removedPages = new HashSet<>(this.removedPages);
+        if (lastChunk != null)
+            removedPages.addAll(lastChunk.getRemovedPages());
+        return removedPages;
+    }
+
+    public Set<Integer> getAllChunkIds() {
+        return idToChunkFileNameMap.keySet();
     }
 }

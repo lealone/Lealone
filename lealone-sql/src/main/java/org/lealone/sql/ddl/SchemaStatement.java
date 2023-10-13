@@ -27,6 +27,7 @@ public abstract class SchemaStatement extends DefinitionStatement {
     public SchemaStatement(ServerSession session, Schema schema) {
         super(session);
         this.schema = schema;
+        session.getUser().checkSystemSchema(session, schema);
     }
 
     /**

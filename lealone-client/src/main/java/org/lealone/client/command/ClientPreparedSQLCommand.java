@@ -24,13 +24,6 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionParameters;
-import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
-import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
-import org.lealone.server.protocol.dt.DTransactionQueryAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdate;
-import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionUpdateAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
@@ -40,8 +33,6 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 
@@ -65,7 +56,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
-            PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId, sql);
+            PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId,
+                    sql);
             Future<PreparedStatementPrepareReadParamsAck> f = session.send(packet);
             PreparedStatementPrepareReadParamsAck ack = f.get();
             isQuery = ack.isQuery;
@@ -98,10 +90,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         prepareIfRequired();
         try {
-            Future<PreparedStatementGetMetaDataAck> f = session.send(new PreparedStatementGetMetaData(commandId));
+            Future<PreparedStatementGetMetaDataAck> f = session
+                    .send(new PreparedStatementGetMetaData(commandId));
             PreparedStatementGetMetaDataAck ack = f.get();
-            ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
-                    ack.columnCount, 0, 0);
+            ClientResult result = new RowCountDeterminedClientResult(session,
+                    (TransferInputStream) ack.in, -1, ack.columnCount, 0, 0);
             return result;
         } catch (IOException e) {
             session.handleException(e);
@@ -110,58 +103,24 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId,
-            DTransactionParameters parameters) {
-        if (parameters != null) {
-            Packet packet = new DTransactionPreparedQuery(resultId, maxRows, fetch, scrollable, commandId, getValues(),
-                    parameters);
-            return session.<Result, DTransactionQueryAck> send(packet, ack -> {
-                return getQueryResult(ack, fetch, resultId);
-            });
-        } else {
-            Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId, getValues());
-            return session.<Result, StatementQueryAck> send(packet, ack -> {
-                return getQueryResult(ack, fetch, resultId);
-            });
-        }
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId) {
+        Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId,
+                getValues());
+        return session.<Result, StatementQueryAck> send(packet, ack -> {
+            return getQueryResult(ack, fetch, resultId);
+        });
     }
 
     @Override
     public Future<Integer> executeUpdate() {
-        Packet packet = new PreparedStatementUpdate(commandId, getValues());
-        // 如果不给send方法传递packetId，它会自己创建一个，所以这里的调用是安全的
-        return session.<Integer, StatementUpdateAck> send(packet, ack -> {
-            return ack.updateCount;
-        });
-    }
-
-    @Override
-    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
-        Packet packet = new DTransactionPreparedUpdate(commandId, getValues(), parameters);
-        return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
-            return ack.updateCount;
-        });
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName,
-            DTransactionParameters parameters) {
-        int packetId = session.getNextId();
-        if (parameters != null) {
-            Packet packet = new DTransactionReplicationPreparedUpdate(commandId, getValues(), replicationName,
-                    parameters);
-            return session.<ReplicationUpdateAck, DTransactionReplicationUpdateAck> send(packet, packetId, ack -> {
-                ack.setReplicaCommand(ClientPreparedSQLCommand.this);
-                ack.setPacketId(packetId);
-                return ack;
+        try {
+            Packet packet = new PreparedStatementUpdate(commandId, getValues());
+            // 如果不给send方法传递packetId，它会自己创建一个，所以这里的调用是安全的
+            return session.<Integer, StatementUpdateAck> send(packet, ack -> {
+                return ack.updateCount;
             });
-        } else {
-            Packet packet = new ReplicationPreparedUpdate(commandId, getValues(), replicationName);
-            return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
-                ack.setReplicaCommand(ClientPreparedSQLCommand.this);
-                ack.setPacketId(packetId);
-                return ack;
-            });
+        } catch (Throwable t) {
+            return failedFuture(t);
         }
     }
 
@@ -217,8 +176,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
         try {
-            Future<BatchStatementUpdateAck> f = session
-                    .send(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
+            Future<BatchStatementUpdateAck> f = session.send(new BatchStatementPreparedUpdate(commandId,
+                    batchParameters.size(), batchParameters));
             BatchStatementUpdateAck ack = f.get();
             return ack.results;
         } catch (Exception e) {

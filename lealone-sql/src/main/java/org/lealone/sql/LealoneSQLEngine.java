@@ -51,6 +51,7 @@ public class LealoneSQLEngine extends PluginBase implements SQLEngine {
 
     @Override
     public IExpression createConditionAndOr(boolean and, IExpression left, IExpression right) {
-        return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR, (Expression) left, (Expression) right);
+        return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR, (Expression) left,
+                (Expression) right);
     }
 }

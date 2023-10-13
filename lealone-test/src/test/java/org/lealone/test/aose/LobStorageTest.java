@@ -24,7 +24,6 @@ public class LobStorageTest extends AoseTestBase {
         InputStream in = LobStorageTest.class.getResourceAsStream(name);
         int length = in.available();
         LobStreamStorage lobStorage = new LobStreamStorage(new LocalDataHandler(), storage);
-        lobStorage.init();
         lobStorage.getLobStreamMap().setMaxBlockSize(512); // 设置小一点可以测试LobStreamMap中的indirect块
 
         ValueLob lob = lobStorage.createBlob(in, -1);
@@ -47,9 +46,6 @@ public class LobStorageTest extends AoseTestBase {
 
         in = lobStorage.getInputStream(lob, null, 0);
         assertNotNull(in);
-
-        lob = lobStorage.copyLob(lob, 10, lob.getPrecision());
-        assertEquals(10, lob.getTableId());
 
         lobStorage.setTable(lob, 20);
         lobStorage.removeAllForTable(20);

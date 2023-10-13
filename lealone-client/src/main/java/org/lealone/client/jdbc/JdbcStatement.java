@@ -52,7 +52,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         this(conn, id, resultSetType, resultSetConcurrency, false);
     }
 
-    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet) {
+    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency,
+            boolean closedByResultSet) {
         this.conn = conn;
         this.session = conn.getSession();
         this.resultSetType = resultSetType;
@@ -98,14 +99,14 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+        AsyncCallback<ResultSet> ac = AsyncCallback.createConcurrentCallback();
         command.executeQuery(maxRows, scrollable).onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isSucceeded()) {
                 Result r = ar.getResult();
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
-                        scrollable, updatable);
+                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id,
+                        closedByResultSet, scrollable, updatable);
                 resultSet.setCommand(command); // 关闭结果集时再关闭
                 ac.setAsyncResult(resultSet);
             } else {
@@ -226,7 +227,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
         SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = AsyncCallback.createConcurrentCallback();
         command.executeUpdate().onComplete(ar -> {
             // 设置完后再调用close，否则有可能当前语句提前关闭了
             setExecutingStatement(null);

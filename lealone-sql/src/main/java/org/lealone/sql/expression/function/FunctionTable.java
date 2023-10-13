@@ -57,8 +57,9 @@ public class FunctionTable extends Table {
             int columnCount = meta.getColumnCount();
             Column[] cols = new Column[columnCount];
             for (int i = 0; i < columnCount; i++) {
-                cols[i] = new Column(meta.getColumnName(i + 1), DataType.getValueTypeFromResultSet(meta, i + 1),
-                        meta.getPrecision(i + 1), meta.getScale(i + 1), meta.getColumnDisplaySize(i + 1));
+                cols[i] = new Column(meta.getColumnName(i + 1),
+                        DataType.getValueTypeFromResultSet(meta, i + 1), meta.getPrecision(i + 1),
+                        meta.getScale(i + 1), meta.getColumnDisplaySize(i + 1));
             }
             setColumns(cols);
         } catch (SQLException e) {
@@ -143,7 +144,8 @@ public class FunctionTable extends Table {
             return cachedResult;
         }
         ResultSet rs = v.getResultSet();
-        LocalResult result = LocalResult.read(session, Expression.getExpressionColumns(session, rs), rs, 0);
+        LocalResult result = LocalResult.read(session, Expression.getExpressionColumns(session, rs), rs,
+                0);
         if (function.isDeterministic()) {
             cachedResult = result;
             cachedValue = v;

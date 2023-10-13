@@ -93,5 +93,4 @@ public class RunScript extends ScriptBase {
             throw e.addSQL(sql);
         }
     }
-
 }

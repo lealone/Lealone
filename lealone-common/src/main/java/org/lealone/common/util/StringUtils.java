@@ -424,7 +424,8 @@ public class StringUtils {
             } else {
                 if (SysProperties.CHECK) {
                     if (ch > 127 || ch < ' ') {
-                        throw new IllegalArgumentException("Unexpected char " + (int) ch + " decoding " + encoded);
+                        throw new IllegalArgumentException(
+                                "Unexpected char " + (int) ch + " decoding " + encoded);
                     }
                 }
                 buff[j++] = (byte) ch;
@@ -478,7 +479,7 @@ public class StringUtils {
     }
 
     public static int[] arraySplitAsInt(String s, char separatorChar) {
-        String[] array = arraySplit(s, separatorChar, true);
+        String[] array = arraySplit(s, separatorChar);
         if (array == null)
             return null;
 

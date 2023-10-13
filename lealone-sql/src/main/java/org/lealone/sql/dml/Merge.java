@@ -32,7 +32,7 @@ import org.lealone.sql.expression.Parameter;
  * @author H2 Group
  * @author zhh
  */
-public class Merge extends InsertBase {
+public class Merge extends MerSert {
 
     private Column[] keys;
     private StatementBase update;
@@ -113,10 +113,10 @@ public class Merge extends InsertBase {
 
     @Override
     public YieldableMerge createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableMerge(this, asyncHandler); // 统一处理单机模式、复制模式、sharding模式
+        return new YieldableMerge(this, asyncHandler);
     }
 
-    private static class YieldableMerge extends YieldableInsertBase {
+    private static class YieldableMerge extends YieldableMerSert {
 
         final Merge mergeStatement;
 
@@ -132,11 +132,7 @@ public class Merge extends InsertBase {
             session.getUser().checkRight(table, Right.INSERT);
             session.getUser().checkRight(table, Right.UPDATE);
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
-            statement.setCurrentRowNumber(0);
-            if (statement.query != null) {
-                yieldableQuery = statement.query.createYieldableQuery(0, false, null, null);
-            }
-            return false;
+            return super.startInternal();
         }
 
         @Override
@@ -145,35 +141,7 @@ public class Merge extends InsertBase {
         }
 
         @Override
-        protected void executeLoopUpdate() {
-            if (yieldableQuery == null) {
-                while (pendingException == null && index < listSize) {
-                    merge(createNewRow());
-                    if (yieldIfNeeded(++index)) {
-                        return;
-                    }
-                }
-                onLoopEnd();
-            } else {
-                if (rows == null) {
-                    yieldableQuery.run();
-                    if (!yieldableQuery.isStopped()) {
-                        return;
-                    }
-                    rows = yieldableQuery.getResult();
-                }
-                while (pendingException == null && rows.next()) {
-                    merge(createNewRow(rows.currentRow()));
-                    if (yieldIfNeeded(++index)) {
-                        return;
-                    }
-                }
-                rows.close();
-                onLoopEnd();
-            }
-        }
-
-        private void merge(Row row) {
+        protected void merSert(Row row) {
             ArrayList<Parameter> k = mergeStatement.update.getParameters();
             for (int i = 0; i < statement.columns.length; i++) {
                 Column col = statement.columns[i];

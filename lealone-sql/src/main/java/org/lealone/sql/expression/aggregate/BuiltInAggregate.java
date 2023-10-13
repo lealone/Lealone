@@ -10,7 +10,6 @@ import java.util.HashMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -18,16 +17,13 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.Select;
-import org.lealone.sql.vector.ValueVector;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.
@@ -58,6 +54,10 @@ public abstract class BuiltInAggregate extends Aggregate {
         this.type = type;
         this.on = on;
         this.distinct = distinct;
+    }
+
+    public int getAType() {
+        return type;
     }
 
     @Override
@@ -99,7 +99,7 @@ public abstract class BuiltInAggregate extends Aggregate {
 
     protected abstract AggregateData createAggregateData();
 
-    private AggregateData getAggregateData() {
+    public AggregateData getAggregateData() {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)
@@ -131,25 +131,6 @@ public abstract class BuiltInAggregate extends Aggregate {
         data.add(session, v);
     }
 
-    public void updateVectorizedAggregate(ServerSession session, ValueVector bvv,
-            ExpressionVisitor<ValueVector> visitor) {
-        AggregateData data = getAggregateData();
-        if (data == null) {
-            return;
-        }
-        ValueVector vv = on == null ? null : on.accept(visitor);
-        data.add(session, bvv, vv);
-    }
-
-    @Override
-    public void mergeAggregate(ServerSession session, Value v) {
-        AggregateData data = getAggregateData();
-        if (data == null) {
-            return;
-        }
-        data.merge(session, v);
-    }
-
     @Override
     public Value getValue(ServerSession session) {
         if (select.isQuickAggregateQuery()) {
@@ -166,8 +147,7 @@ public abstract class BuiltInAggregate extends Aggregate {
                 if ((sortType & SortOrder.DESCENDING) != 0) {
                     first = !first;
                 }
-                Cursor cursor = index.findFirstOrLast(session, first);
-                SearchRow row = cursor.getSearchRow();
+                SearchRow row = index.findFirstOrLast(session, first);
                 Value v;
                 if (row == null) {
                     v = ValueNull.INSTANCE;
@@ -192,80 +172,6 @@ public abstract class BuiltInAggregate extends Aggregate {
             data = createAggregateData();
         }
         return data;
-    }
-
-    @Override
-    public Value getMergedValue(ServerSession session) {
-        return getFinalAggregateData().getMergedValue(session);
-    }
-
-    @Override
-    public void calculate(Calculator calculator) {
-        switch (type) {
-        case BuiltInAggregate.COUNT_ALL:
-        case BuiltInAggregate.COUNT:
-        case BuiltInAggregate.MIN:
-        case BuiltInAggregate.MAX:
-        case BuiltInAggregate.SUM:
-        case BuiltInAggregate.BOOL_AND:
-        case BuiltInAggregate.BOOL_OR:
-        case BuiltInAggregate.BIT_AND:
-        case BuiltInAggregate.BIT_OR:
-            break;
-        case BuiltInAggregate.AVG: {
-            int i = calculator.getIndex();
-            Value v = divide(calculator.getValue(i + 1), calculator.getValue(i).getLong());
-            calculator.addResultValue(v);
-            calculator.addIndex(2);
-            break;
-        }
-        case BuiltInAggregate.STDDEV_POP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = Math.sqrt(sum2 / count - (sum1 / count) * (sum1 / count));
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.STDDEV_SAMP: { // 见:http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = Math.sqrt((sum2 - (sum1 * sum1 / count)) / (count - 1));
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.VAR_POP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = sum2 / count - (sum1 / count) * (sum1 / count);
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.VAR_SAMP: {
-            int i = calculator.getIndex();
-            long count = calculator.getValue(i).getLong();
-            double sum1 = calculator.getValue(i + 1).getDouble();
-            double sum2 = calculator.getValue(i + 2).getDouble();
-            double result = (sum2 - (sum1 * sum1 / count)) / (count - 1);
-            calculator.addResultValue(ValueDouble.get(result));
-            calculator.addIndex(3);
-            break;
-        }
-        case BuiltInAggregate.HISTOGRAM:
-        case BuiltInAggregate.SELECTIVITY:
-        case BuiltInAggregate.GROUP_CONCAT:
-            break;
-        default:
-            DbException.throwInternalError("type=" + type);
-        }
     }
 
     private Index getColumnIndex() {
@@ -310,11 +216,11 @@ public abstract class BuiltInAggregate extends Aggregate {
         return a;
     }
 
-    protected String getSQL(String text, boolean isDistributed) {
+    protected String getSQL(String text) {
         if (distinct) {
-            return text + "(DISTINCT " + on.getSQL(isDistributed) + ")";
+            return text + "(DISTINCT " + on.getSQL() + ")";
         }
-        return text + StringUtils.enclose(on.getSQL(isDistributed));
+        return text + StringUtils.enclose(on.getSQL());
     }
 
     @Override

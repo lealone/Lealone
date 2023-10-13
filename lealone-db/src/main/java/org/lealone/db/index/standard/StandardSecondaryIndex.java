@@ -5,17 +5,14 @@
  */
 package org.lealone.db.index.standard;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.TreeSet;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.EmptyCursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -24,14 +21,14 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
-import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
+import org.lealone.storage.StorageSetting;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.TransactionMapCursor;
 
 /**
  * @author H2 Group
@@ -42,7 +39,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     private final StandardTable table;
     private final String mapName;
     private final int keyColumns;
-    private final TransactionMap<ValueArray, Value> dataMap;
+    private final TransactionMap<IndexKey, Value> dataMap;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexType indexType, IndexColumn[] indexColumns) {
@@ -59,23 +56,28 @@ public class StandardSecondaryIndex extends StandardIndex {
         dataMap = openMap(session, mapName);
     }
 
-    private TransactionMap<ValueArray, Value> openMap(ServerSession session, String mapName) {
+    private TransactionMap<IndexKey, Value> openMap(ServerSession session, String mapName) {
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < indexColumns.length; i++) {
             sortTypes[i] = indexColumns[i].sortType;
         }
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
 
-        ValueDataType keyType;
+        IndexKeyType keyType;
         if (indexType.isUnique())
-            keyType = new UniqueKeyDataType(database, database.getCompareMode(), sortTypes);
+            keyType = new UniqueKeyType(database, database.getCompareMode(), sortTypes);
         else
-            keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
+            keyType = new IndexKeyType(database, database.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
-        TransactionMap<ValueArray, Value> map = session.getTransaction().openMap(mapName, keyType, valueType, storage,
-                table.getParameters());
+        Map<String, String> parameters = table.getParameters();
+        if (!table.isPersistIndexes()) {
+            parameters = new HashMap<>(parameters);
+            parameters.put(StorageSetting.IN_MEMORY.name(), "1");
+        }
+        TransactionMap<IndexKey, Value> map = session.getTransaction().openMap(mapName, keyType,
+                valueType, storage, parameters);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.getInternalError("Incompatible key type");
         }
@@ -93,10 +95,10 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
-        final TransactionMap<ValueArray, Value> map = getMap(session);
-        final ValueArray key = convertToKey(row);
+        final TransactionMap<IndexKey, Value> map = getMap(session);
+        final IndexKey key = convertToKey(row);
 
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         map.addIfAbsent(key, ValueNull.INSTANCE).onComplete(ar -> {
             if (ar.isFailed()) {
                 // 违反了唯一性，
@@ -127,8 +129,8 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
-        TransactionMap<ValueArray, Value> map = getMap(session);
-        ValueArray key = convertToKey(row);
+        TransactionMap<IndexKey, Value> map = getMap(session);
+        IndexKey key = convertToKey(row);
         Object tv = map.getTransactionalValue(key);
         if (!isLockedBySelf && map.isLocked(tv, null))
             return Future.succeededFuture(map.addWaitingTransaction(key, tv));
@@ -138,14 +140,14 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        ValueArray min = convertToKey(first);
+        IndexKey min = convertToKey(first);
         if (min != null) {
-            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+            min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        return new StandardSecondaryIndexRegularCursor(session, getMap(session).keyIterator(min), last);
+        return new StandardSecondaryIndexRegularCursor(session, getMap(session).cursor(min), last);
     }
 
-    private ValueArray convertToKey(SearchRow r) {
+    private IndexKey convertToKey(SearchRow r) {
         if (r == null) {
             return null;
         }
@@ -159,7 +161,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             }
         }
         array[keyColumns - 1] = ValueLong.get(r.getKey());
-        return ValueArray.get(array);
+        return new IndexKey(array);
     }
 
     @Override
@@ -172,23 +174,19 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
-        TransactionMap<ValueArray, Value> map = getMap(session);
-        ValueArray key = first ? map.firstKey() : map.lastKey();
+    public SearchRow findFirstOrLast(ServerSession session, boolean first) {
+        TransactionMap<IndexKey, Value> map = getMap(session);
+        IndexKey key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
-                return EmptyCursor.INSTANCE;
+                return null;
             }
-            if (key.getList()[0] != ValueNull.INSTANCE) {
+            if (key.columns[0] != ValueNull.INSTANCE) {
                 break;
             }
             key = first ? map.higherKey(key) : map.lowerKey(key);
         }
-        ArrayList<ValueArray> list = new ArrayList<>(1);
-        list.add(key);
-        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexRegularCursor(session, list.iterator(), null);
-        cursor.next();
-        return cursor;
+        return convertToSearchRow(key);
     }
 
     @Override
@@ -227,7 +225,7 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public void remove(ServerSession session) {
-        TransactionMap<ValueArray, Value> map = getMap(session);
+        TransactionMap<IndexKey, Value> map = getMap(session);
         if (!map.isClosed()) {
             map.remove();
         }
@@ -244,7 +242,7 @@ public class StandardSecondaryIndex extends StandardIndex {
      * @param session the session
      * @return the map
      */
-    private TransactionMap<ValueArray, Value> getMap(ServerSession session) {
+    private TransactionMap<IndexKey, Value> getMap(ServerSession session) {
         if (session == null) {
             return dataMap;
         }
@@ -265,110 +263,14 @@ public class StandardSecondaryIndex extends StandardIndex {
         return dataMap.isInMemory();
     }
 
-    @Override
-    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        TransactionMap<ValueArray, Value> map = openMap(session, bufferName);
-        for (Row row : rows) {
-            ValueArray key = convertToKey(row);
-            map.put(key, ValueNull.INSTANCE);
-        }
-    }
-
-    @Override
-    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        ArrayList<String> mapNames = new ArrayList<>(bufferNames);
-        final CompareMode compareMode = database.getCompareMode();
-        /**
-         * A source of values.
-         */
-        class Source implements Comparable<Source> {
-            ValueArray value;
-            Iterator<ValueArray> next;
-            int sourceId;
-
-            @Override
-            public int compareTo(Source o) {
-                int comp = value.compareTo(o.value, compareMode);
-                if (comp == 0) {
-                    comp = sourceId - o.sourceId;
-                }
-                return comp;
-            }
-        }
-        TreeSet<Source> sources = new TreeSet<>();
-        for (int i = 0; i < bufferNames.size(); i++) {
-            TransactionMap<ValueArray, Value> map = openMap(session, bufferNames.get(i));
-            Iterator<ValueArray> it = map.keyIterator(null, true);
-            if (it.hasNext()) {
-                Source s = new Source();
-                s.value = it.next();
-                s.next = it;
-                s.sourceId = i;
-                sources.add(s);
-            }
-        }
-        try {
-            while (true) {
-                Source s = sources.first();
-                ValueArray v = s.value;
-
-                if (indexType.isUnique()) {
-                    Value[] array = v.getList();
-                    // don't change the original value
-                    array = array.clone();
-                    array[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-                    ValueArray unique = ValueArray.get(array);
-                    SearchRow row = convertToSearchRow(v);
-                    checkUnique(row, dataMap, unique);
-                }
-
-                dataMap.putCommitted(v, ValueNull.INSTANCE);
-
-                Iterator<ValueArray> it = s.next;
-                if (!it.hasNext()) {
-                    sources.remove(s);
-                    if (sources.isEmpty()) {
-                        break;
-                    }
-                } else {
-                    ValueArray nextValue = it.next();
-                    sources.remove(s);
-                    s.value = nextValue;
-                    sources.add(s);
-                }
-            }
-        } finally {
-            for (String tempMapName : mapNames) {
-                TransactionMap<ValueArray, Value> map = openMap(session, tempMapName);
-                map.remove();
-            }
-        }
-    }
-
-    private void checkUnique(SearchRow row, TransactionMap<ValueArray, Value> map, ValueArray unique) {
-        Iterator<ValueArray> it = map.keyIterator(unique, true);
-        while (it.hasNext()) {
-            ValueArray k = it.next();
-            SearchRow r2 = convertToSearchRow(k);
-            if (compareRows(row, r2) != 0) {
-                break;
-            }
-            if (map.get(k) != null) {
-                if (!containsNullAndAllowMultipleNull(r2)) {
-                    throw getDuplicateKeyException(k.toString());
-                }
-            }
-        }
-    }
-
     /**
      * Convert array of values to a SearchRow.
      *
      * @param array the index key
      * @return the row
      */
-    private SearchRow convertToSearchRow(ValueArray key) {
-        Value[] array = key.getList();
+    private SearchRow convertToSearchRow(IndexKey key) {
+        Value[] array = key.columns;
         int len = array.length - 1;
         SearchRow searchRow = table.getTemplateRow();
         searchRow.setKey((array[len]).getLong());
@@ -417,7 +319,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             return searchRow != null;
         }
 
-        protected SearchRow createSearchRow(ValueArray key) {
+        protected SearchRow createSearchRow(IndexKey key) {
             if (key == null)
                 return null;
             else
@@ -429,21 +331,26 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     private class StandardSecondaryIndexRegularCursor extends StandardSecondaryIndexCursor {
 
-        private final Iterator<ValueArray> iterator;
+        private final TransactionMapCursor<IndexKey, ?> tmCursor;
         private final SearchRow last;
 
-        public StandardSecondaryIndexRegularCursor(ServerSession session, Iterator<ValueArray> iterator,
-                SearchRow last) {
+        public StandardSecondaryIndexRegularCursor(ServerSession session,
+                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last) {
             super(session);
-            this.iterator = iterator;
+            this.tmCursor = tmCursor;
             this.last = last;
         }
 
         @Override
         protected SearchRow nextSearchRow() {
-            ValueArray current = iterator.hasNext() ? iterator.next() : null;
-            SearchRow searchRow = createSearchRow(current);
-            if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+            SearchRow searchRow;
+            if (tmCursor.next()) {
+                IndexKey current = tmCursor.getKey();
+                searchRow = createSearchRow(current);
+                if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+                    searchRow = null;
+                }
+            } else {
                 searchRow = null;
             }
             return searchRow;
@@ -452,8 +359,8 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     private class StandardSecondaryIndexDistinctCursor extends StandardSecondaryIndexCursor {
 
-        private final TransactionMap<ValueArray, Value> map;
-        private ValueArray oldKey;
+        private final TransactionMap<IndexKey, Value> map;
+        private IndexKey oldKey;
 
         public StandardSecondaryIndexDistinctCursor(ServerSession session) {
             super(session);
@@ -462,16 +369,16 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         @Override
         protected SearchRow nextSearchRow() {
-            ValueArray current = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
+            IndexKey current = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
             if (current != null) {
-                Value[] currentValues = current.getList();
+                Value[] currentValues = current.columns;
                 if (oldKey == null) {
                     Value[] oldValues = new Value[keyColumns];
                     System.arraycopy(currentValues, 0, oldValues, 0, keyColumns - 1);
                     oldValues[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
-                    oldKey = ValueArray.get(oldValues);
+                    oldKey = new IndexKey(oldValues);
                 } else {
-                    Value[] oldValues = oldKey.getList();
+                    Value[] oldValues = oldKey.columns;
                     for (int i = 0, size = keyColumns - 1; i < size; i++)
                         oldValues[i] = currentValues[i];
                 }

@@ -15,6 +15,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.session.Session;
@@ -29,6 +30,10 @@ public abstract class TransferConnection extends AsyncConnection {
         super(writableChannel, isServer);
     }
 
+    public DataBufferFactory getDataBufferFactory() {
+        return DataBufferFactory.getConcurrentFactory();
+    }
+
     @Override
     public ByteBuffer getPacketLengthByteBuffer() {
         return packetLengthByteBuffer;
@@ -40,10 +45,11 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     public TransferOutputStream createTransferOutputStream(Session session) {
-        return new TransferOutputStream(session, writableChannel);
+        return new TransferOutputStream(session, writableChannel, getDataBufferFactory());
     }
 
-    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType)
+            throws IOException {
         throw DbException.getInternalError("handleRequest");
     }
 
@@ -63,7 +69,8 @@ public abstract class TransferConnection extends AsyncConnection {
             String sql = in.readString();
             int errorCode = in.readInt();
             String stackTrace = in.readString();
-            JdbcSQLException s = new JdbcSQLException(message, sql, sqlState, errorCode, null, stackTrace);
+            JdbcSQLException s = new JdbcSQLException(message, sql, sqlState, errorCode, null,
+                    stackTrace);
             t = s;
             if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
                 IOException e = new IOException(s.toString());
@@ -94,8 +101,8 @@ public abstract class TransferConnection extends AsyncConnection {
             }
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_ERROR);
-            out.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
-                    .writeString(trace).flush();
+            out.writeString(e.getSQLState()).writeString(message).writeString(sql)
+                    .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (session != null)
                 session.close();

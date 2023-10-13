@@ -19,6 +19,7 @@ import org.lealone.sql.optimizer.TableFilter;
  * An expression representing a constant value.
  */
 public class ValueExpression extends Expression {
+
     /**
      * The expression represents ValueNull.INSTANCE.
      */
@@ -87,7 +88,8 @@ public class ValueExpression extends Expression {
 
     @Override
     public Expression getNotIfPossible(ServerSession session) {
-        return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
+        return new Comparison(session, Comparison.EQUAL, this,
+                ValueExpression.get(ValueBoolean.get(false)));
     }
 
     @Override
@@ -121,7 +123,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         if (this == DEFAULT) {
             return "DEFAULT";
         }

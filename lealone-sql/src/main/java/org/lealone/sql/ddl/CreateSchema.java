@@ -49,11 +49,6 @@ public class CreateSchema extends DefinitionStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifNotExists;
-    }
-
-    @Override
     public int update() {
         session.getUser().checkSchemaAdmin();
         Database db = session.getDatabase();

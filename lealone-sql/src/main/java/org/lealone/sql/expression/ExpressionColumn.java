@@ -18,6 +18,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueLob;
 import org.lealone.sql.LealoneSQLParser;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
@@ -53,7 +54,8 @@ public class ExpressionColumn extends Expression {
         this.columnName = columnName;
     }
 
-    public ExpressionColumn(String databaseName, String schemaName, String tableAlias, String columnName) {
+    public ExpressionColumn(String databaseName, String schemaName, String tableAlias,
+            String columnName) {
         this.database = null;
         this.databaseName = databaseName;
         this.schemaName = schemaName;
@@ -77,7 +79,7 @@ public class ExpressionColumn extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         boolean quote = getDatabase().getSettings().databaseToUpper;
         if (column != null) {
@@ -216,6 +218,9 @@ public class ExpressionColumn extends Expression {
         if (value == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
+        if (value instanceof ValueLob) {
+            ((ValueLob) value).setHandler(columnResolver.getTableFilter().getTable().getDataHandler());
+        }
         return value;
     }
 
@@ -318,7 +323,8 @@ public class ExpressionColumn extends Expression {
 
     @Override
     public Expression getNotIfPossible(ServerSession session) {
-        return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
+        return new Comparison(session, Comparison.EQUAL, this,
+                ValueExpression.get(ValueBoolean.get(false)));
     }
 
     @Override

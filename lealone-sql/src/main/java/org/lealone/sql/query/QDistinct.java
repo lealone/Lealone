@@ -13,30 +13,32 @@ import org.lealone.db.value.Value;
 // 单字段/多字段distinct
 class QDistinct extends QOperator {
 
-    private Index index;
-    private int[] columnIds;
-    private int size;
+    private final Index index;
+    private final int[] columnIds;
+    private final int size;
     private Cursor cursor;
 
     QDistinct(Select select) {
         super(select);
+        index = select.getTopTableFilter().getIndex();
+        columnIds = index.getColumnIds();
+        size = columnIds.length;
     }
 
     @Override
     public void start() {
-        super.start();
-        index = select.topTableFilter.getIndex();
-        columnIds = index.getColumnIds();
-        size = columnIds.length;
         cursor = index.findDistinct(session);
         yieldableSelect.disableOlap(); // 无需从oltp转到olap
+        tableIterator.setCursor(cursor);
+        super.start();
     }
 
     @Override
     public void run() {
-        while (cursor.next()) {
-            if (select.isForUpdate && !select.topTableFilter.lockRow())
+        while (next()) {
+            if (select.isForUpdate && !tryLockRow()) {
                 return; // 锁记录失败
+            }
             boolean yield = yieldIfNeeded(++loopCount);
             SearchRow found = cursor.getSearchRow();
             Value[] row = new Value[size];

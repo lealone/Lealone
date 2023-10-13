@@ -48,6 +48,9 @@ public class SetDatabase extends SetStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
+        // 需要加锁，不允许多个事务同时修改数据库的参数
+        if (database.tryExclusiveDatabaseLock(session) == null)
+            return -1;
         String name = setting.name();
         switch (setting) {
         case ALLOW_LITERALS: {
@@ -101,9 +104,11 @@ public class SetDatabase extends SetStatement {
             CompareMode currentMode = database.getCompareMode();
             CompareMode newMode;
             if (stringValue.equals(CompareMode.SIGNED)) {
-                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), false);
+                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(),
+                        false);
             } else if (stringValue.equals(CompareMode.UNSIGNED)) {
-                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), true);
+                newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(),
+                        true);
             } else {
                 throw DbException.getInvalidValueException(name, stringValue);
             }
@@ -117,8 +122,9 @@ public class SetDatabase extends SetStatement {
             break;
         }
         case DATABASE_EVENT_LISTENER: {
-            setDbSetting(stringValue);
+            // 先在setEventListenerClass中检查类是否存在，然后现构建DbSetting
             database.setEventListenerClass(stringValue);
+            setDbSetting(stringValue);
             break;
         }
         case DB_CLOSE_DELAY: {
@@ -255,11 +261,6 @@ public class SetDatabase extends SetStatement {
             setDbSetting(value);
             break;
         }
-        case WRITE_DELAY: {
-            int value = getAndValidateIntValue();
-            setDbSetting(value);
-            break;
-        }
         case QUERY_CACHE_SIZE: {
             int value = getAndValidateIntValue();
             setDbSetting(value);
@@ -281,14 +282,14 @@ public class SetDatabase extends SetStatement {
     }
 
     private void setDbSetting(int v) {
-        changed = database.setDbSetting(setting, String.valueOf(v));
-    }
-
-    private void setDbSetting(String v) {
-        changed = database.setDbSetting(setting, v);
+        setDbSetting(String.valueOf(v));
     }
 
     private void setDbSetting(boolean v) {
-        changed = database.setDbSetting(setting, String.valueOf(v));
+        setDbSetting(String.valueOf(v));
+    }
+
+    private void setDbSetting(String v) {
+        changed = database.setDbSetting(session, setting, v);
     }
 }

@@ -25,8 +25,10 @@ public class IndexRebuildTest extends IndexTestBase {
 
         executeUpdate(
                 "CREATE UNIQUE HASH INDEX IF NOT EXISTS IndexRebuildTest_UniqueHashIndex1 ON IndexRebuildTest(f1)");
-        executeUpdate("CREATE HASH INDEX IF NOT EXISTS IndexRebuildTest_NonUniqueHashIndex1 ON IndexRebuildTest(f1)");
-        executeUpdate("CREATE INDEX IF NOT EXISTS IndexRebuildTest_StandardIndex1 ON IndexRebuildTest(f1)");
+        executeUpdate(
+                "CREATE HASH INDEX IF NOT EXISTS IndexRebuildTest_NonUniqueHashIndex1 ON IndexRebuildTest(f1)");
+        executeUpdate(
+                "CREATE INDEX IF NOT EXISTS IndexRebuildTest_StandardIndex1 ON IndexRebuildTest(f1)");
 
         assertFound("IndexRebuildTest", "IndexRebuildTest_UniqueHashIndex1");
         assertFound("IndexRebuildTest", "IndexRebuildTest_NonUniqueHashIndex1");

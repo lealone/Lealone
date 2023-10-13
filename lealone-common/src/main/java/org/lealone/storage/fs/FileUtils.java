@@ -335,8 +335,8 @@ public class FileUtils {
      * @param inTempDir if the file should be stored in the temporary directory
      * @return the name of the created file
      */
-    public static String createTempFile(String prefix, String suffix, boolean deleteOnExit, boolean inTempDir)
-            throws IOException {
+    public static String createTempFile(String prefix, String suffix, boolean deleteOnExit, //
+            boolean inTempDir) throws IOException {
         return FilePath.get(prefix).createTempFile(suffix, deleteOnExit, inTempDir).toString();
     }
 

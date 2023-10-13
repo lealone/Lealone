@@ -169,5 +169,4 @@ public class Permutations<T> {
         moveIndex();
         return true;
     }
-
 }

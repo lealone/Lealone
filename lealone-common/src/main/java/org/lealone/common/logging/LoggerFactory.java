@@ -32,9 +32,11 @@ public abstract class LoggerFactory {
                 Class<?> clz = loader.loadClass(factoryClassName);
                 return Utils.newInstance(clz);
             } catch (Exception e) {
-                throw new IllegalArgumentException("Error instantiating class \"" + factoryClassName + "\"", e);
+                throw new IllegalArgumentException(
+                        "Error instantiating class \"" + factoryClassName + "\"", e);
             }
-        } else if (LoggerFactory.class.getResource("/org/apache/logging/log4j/spi/ExtendedLogger.class") != null) {
+        } else if (LoggerFactory.class
+                .getResource("/org/apache/logging/log4j/spi/ExtendedLogger.class") != null) {
             return new Log4j2LoggerFactory();
         } else {
             return new ConsoleLoggerFactory();

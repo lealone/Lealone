@@ -53,7 +53,27 @@ public class SequenceTest extends DbObjectTestBase {
         Sequence sequence = schema.findSequence(session, "myseq");
         assertEquals(10000, sequence.getMaxValue());
         executeUpdate("ALTER SEQUENCE myseq MAXVALUE 20000");
+        // sequence变动了需要重新取
+        sequence = schema.findSequence(session, "myseq");
         assertEquals(20000, sequence.getMaxValue());
+
+        executeUpdate("drop table if exists t1_myseq2");
+        executeUpdate("drop sequence if exists myseq2");
+        executeUpdate("create sequence if not exists myseq2");
+        executeUpdate("create table t1_myseq2(f1 int default (next value for myseq2), f2 int)");
+
+        executeUpdate("insert into t1_myseq2(f2) values(2)");
+        Result rs = executeQuery("select f1 from t1_myseq2 where f2=2");
+        assertTrue(rs.next());
+        assertEquals(1, getInt(rs, 1));
+        rs.close();
+
+        executeUpdate("alter sequence myseq2 restart with 50");
+        executeUpdate("insert into t1_myseq2(f2) values(3)");
+        rs = executeQuery("select f1 from t1_myseq2 where f2=3");
+        assertTrue(rs.next());
+        assertEquals(50, getInt(rs, 1));
+        rs.close();
     }
 
     void drop() {

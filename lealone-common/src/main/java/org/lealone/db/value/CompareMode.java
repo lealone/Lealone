@@ -83,7 +83,8 @@ public class CompareMode {
      * @param binaryUnsigned whether to compare binaries as unsigned
      * @return the compare mode
      */
-    public static synchronized CompareMode getInstance(String name, int strength, boolean binaryUnsigned) {
+    public static synchronized CompareMode getInstance(String name, int strength,
+            boolean binaryUnsigned) {
         if (lastUsed != null) {
             if (StringUtils.equals(lastUsed.name, name) && lastUsed.strength == strength
                     && lastUsed.binaryUnsigned == binaryUnsigned) {
@@ -156,7 +157,8 @@ public class CompareMode {
      */
     public static String getName(Locale l) {
         Locale english = Locale.ENGLISH;
-        String name = l.getDisplayLanguage(english) + ' ' + l.getDisplayCountry(english) + ' ' + l.getVariant();
+        String name = l.getDisplayLanguage(english) + ' ' + l.getDisplayCountry(english) + ' '
+                + l.getVariant();
         name = StringUtils.toUpperEnglish(name.trim().replace(' ', '_'));
         return name;
     }

@@ -22,7 +22,8 @@ public enum SessionSetting {
     VALUE_VECTOR_FACTORY_NAME,
     EXPRESSION_COMPILE_THRESHOLD,
     OLAP_OPERATOR_FACTORY_NAME,
-    OLAP_THRESHOLD;
+    OLAP_THRESHOLD,
+    OLAP_BATCH_SIZE;
 
     public String getName() {
         if (this == VARIABLE)

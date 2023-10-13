@@ -27,7 +27,7 @@ public class OptimizableVisitor extends BooleanExpressionVisitor {
 
     @Override
     public Boolean visitExpressionColumn(ExpressionColumn e) {
-        return false;
+        return true;
     }
 
     @Override

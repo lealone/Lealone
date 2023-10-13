@@ -61,8 +61,8 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
-        return "(NOT " + condition.getSQL(isDistributed) + ")";
+    public String getSQL() {
+        return "(NOT " + condition.getSQL() + ")";
     }
 
     @Override

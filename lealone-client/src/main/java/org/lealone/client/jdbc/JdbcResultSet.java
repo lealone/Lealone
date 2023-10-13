@@ -90,8 +90,8 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     private JdbcPreparedStatement preparedStatement;
     private Command command;
 
-    public JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id, boolean closeStatement,
-            boolean scrollable, boolean updatable) {
+    public JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id,
+            boolean closeStatement, boolean scrollable, boolean updatable) {
         this.conn = conn;
         this.stat = stat;
         this.result = result;
@@ -103,7 +103,8 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     }
 
     JdbcResultSet(JdbcConnection conn, JdbcPreparedStatement preparedStatement, Result result, int id,
-            boolean closeStatement, boolean scrollable, boolean updatable, HashMap<String, Integer> columnLabelMap) {
+            boolean closeStatement, boolean scrollable, boolean updatable,
+            HashMap<String, Integer> columnLabelMap) {
         this(conn, preparedStatement, result, id, closeStatement, scrollable, updatable);
         this.columnLabelMap = columnLabelMap;
         this.preparedStatement = preparedStatement;
@@ -750,7 +751,8 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
         try {
             if (isDebugEnabled()) {
-                debugCode("getBigDecimal(" + StringUtils.quoteJavaString(columnLabel) + ", " + scale + ");");
+                debugCode("getBigDecimal(" + StringUtils.quoteJavaString(columnLabel) + ", " + scale
+                        + ");");
             }
             if (scale < 0) {
                 throw DbException.getInvalidValueException("scale", scale);
@@ -3063,7 +3065,8 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
             String table = columnLabel.substring(0, idx);
             String col = columnLabel.substring(idx + 1);
             for (int i = 0; i < columnCount; i++) {
-                if (table.equalsIgnoreCase(result.getTableName(i)) && col.equalsIgnoreCase(result.getColumnName(i))) {
+                if (table.equalsIgnoreCase(result.getTableName(i))
+                        && col.equalsIgnoreCase(result.getColumnName(i))) {
                     return i + 1;
                 }
             }

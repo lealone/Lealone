@@ -54,7 +54,8 @@ public class ObjectArrayType extends StorageDataTypeBase {
             for (int i = 0; i < len; i++) {
                 int x;
                 if (type == boolean.class) {
-                    x = Integer.signum((((boolean[]) aObj)[i] ? 1 : 0) - (((boolean[]) bObj)[i] ? 1 : 0));
+                    x = Integer
+                            .signum((((boolean[]) aObj)[i] ? 1 : 0) - (((boolean[]) bObj)[i] ? 1 : 0));
                 } else if (type == char.class) {
                     x = Integer.signum((((char[]) aObj)[i]) - (((char[]) bObj)[i]));
                 } else if (type == short.class) {
@@ -193,8 +194,8 @@ public class ObjectArrayType extends StorageDataTypeBase {
             try {
                 clazz = Class.forName(componentType);
             } catch (Exception e) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_SERIALIZATION, "Could not get class {0}",
-                        componentType, e);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_SERIALIZATION,
+                        "Could not get class {0}", componentType, e);
             }
         } else {
             clazz = ObjectDataType.COMMON_CLASSES[ct];
@@ -239,5 +240,4 @@ public class ObjectArrayType extends StorageDataTypeBase {
     public void writeValue(DataBuffer buff, Value v) {
         throw newInternalError();
     }
-
 }

@@ -10,6 +10,8 @@ import java.util.Map;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
+import org.lealone.net.bio.BioNetFactory;
+import org.lealone.net.nio.NioNetFactory;
 
 public class NetFactoryManager extends PluginManager<NetFactory> {
 
@@ -24,17 +26,28 @@ public class NetFactoryManager extends PluginManager<NetFactory> {
     }
 
     public static NetFactory getFactory(String name) {
-        return instance.getPlugin(name);
+        NetFactory factory;
+        if (NioNetFactory.NAME.equalsIgnoreCase(name))
+            factory = NioNetFactory.INSTANCE;
+        else if (BioNetFactory.NAME.equalsIgnoreCase(name))
+            factory = BioNetFactory.INSTANCE;
+        else
+            factory = instance.getPlugin(name);
+        return factory;
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
+        return getFactory(config, false);
+    }
+
+    public static NetFactory getFactory(Map<String, String> config, boolean initClient) {
         String netFactoryName = MapUtils.getString(config, Constants.NET_FACTORY_NAME_KEY,
                 Constants.DEFAULT_NET_FACTORY_NAME);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {
             throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");
         }
-        factory.init(config);
+        factory.init(config, initClient);
         return factory;
     }
 

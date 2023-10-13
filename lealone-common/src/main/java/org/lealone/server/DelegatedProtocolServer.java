@@ -37,8 +37,15 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean isRunning(boolean traceError) {
-        return protocolServer.isRunning(traceError);
+    public boolean isStarted() {
+        if (protocolServer == null)
+            return false;
+        return protocolServer.isStarted();
+    }
+
+    @Override
+    public boolean isStopped() {
+        return protocolServer.isStopped();
     }
 
     @Override
@@ -102,35 +109,8 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean isStarted() {
-        if (protocolServer == null)
-            return false;
-        return protocolServer.isStarted();
-    }
-
-    @Override
-    public boolean isStopped() {
-        return protocolServer.isStopped();
-    }
-
-    @Override
     public boolean allow(String testHost) {
         return protocolServer.allow(testHost);
-    }
-
-    @Override
-    public boolean isRunInMainThread() {
-        return protocolServer.isRunInMainThread();
-    }
-
-    @Override
-    public void setRunInMainThread(boolean runInMainThread) {
-        protocolServer.setRunInMainThread(runInMainThread);
-    }
-
-    @Override
-    public Runnable getRunnable() {
-        return protocolServer.getRunnable();
     }
 
     @Override

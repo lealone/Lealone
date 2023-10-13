@@ -50,11 +50,11 @@ public class AlterTableRename extends SchemaStatement {
 
     @Override
     public int update() {
+        session.getUser().checkRight(oldTable, Right.ALL);
         DbObjectLock lock = tryAlterTable(oldTable);
         if (lock == null)
             return -1;
 
-        session.getUser().checkRight(oldTable, Right.ALL);
         Table t = schema.findTableOrView(session, newTableName);
         if (t != null && hidden && newTableName.equals(oldTable.getName())) {
             if (!t.isHidden()) {

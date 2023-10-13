@@ -11,22 +11,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A facility to store streams in a map. Streams are split into blocks, which
  * are stored in a map. Very small streams are inlined in the stream id.
  * <p>
- * The key of the map is a long (incremented for each stored block). The default
- * initial value is 0. Before storing blocks into the map, the stream store
- * checks if there is already a block with the next key, and if necessary
- * searches the next free entry using a binary search (0 to Long.MAX_VALUE).
- * <p>
- * Before storing
+ * The key of the map is a long (incremented for each stored block).
  * <p>
  * The format of the binary id is: An empty id represents 0 bytes of data.
  * In-place data is encoded as 0, the size (a variable size int), then the data.
@@ -41,38 +36,30 @@ import org.lealone.storage.aose.btree.BTreeMap;
  */
 public class LobStreamMap {
 
-    /**
-     * The stream store data map.
-     *
-     * Key: stream store block id (long).
-     * Value: data (byte[]).
-     */
     private final BTreeMap<Long, byte[]> map;
-    private final AtomicLong nextKey = new AtomicLong();
     private final AtomicReference<byte[]> nextBuffer = new AtomicReference<>();
 
     private int minBlockSize = 256;
     private int maxBlockSize = 256 * 1024;
 
-    /**
-     * Create a stream store instance.
-     *
-     * @param map the map to store blocks of data
-     */
     public LobStreamMap(BTreeMap<Long, byte[]> map) {
         this.map = map;
     }
 
+    public void save() {
+        map.save();
+    }
+
+    public void gc(TransactionEngine te) {
+        map.gc(te);
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
     public boolean isEmpty() {
         return map.isEmpty();
-    }
-
-    public void setNextKey(long nextKey) {
-        this.nextKey.set(nextKey);
-    }
-
-    public long getNextKey() {
-        return nextKey.get();
     }
 
     public Long lastKey() {
@@ -115,6 +102,7 @@ public class LobStreamMap {
      * @param in the stream
      * @return the id (potentially an empty array)
      */
+    @SuppressWarnings("resource")
     public byte[] put(InputStream in) throws IOException {
         ByteArrayOutputStream id = new ByteArrayOutputStream();
         int level = 0;
@@ -181,6 +169,20 @@ public class LobStreamMap {
         return eof;
     }
 
+    private ByteArrayOutputStream putIndirectId(ByteArrayOutputStream id) throws IOException {
+        byte[] data = id.toByteArray();
+        id = new ByteArrayOutputStream();
+        // indirect: 2, total len (long), blockId (long)
+        id.write(2);
+        DataUtils.writeVarLong(id, length(data));
+        DataUtils.writeVarLong(id, writeBlock(data));
+        return id;
+    }
+
+    private long writeBlock(byte[] data) {
+        return map.append(data);
+    }
+
     private static byte[] read(InputStream in, byte[] target) throws IOException {
         int copied = 0;
         int remaining = target.length;
@@ -197,60 +199,6 @@ public class LobStreamMap {
             }
         }
         return target;
-    }
-
-    private ByteArrayOutputStream putIndirectId(ByteArrayOutputStream id) throws IOException {
-        byte[] data = id.toByteArray();
-        id = new ByteArrayOutputStream();
-        // indirect: 2, total len (long), blockId (long)
-        id.write(2);
-        DataUtils.writeVarLong(id, length(data));
-        DataUtils.writeVarLong(id, writeBlock(data));
-        return id;
-    }
-
-    private long writeBlock(byte[] data) {
-        long key = getAndIncrementNextKey();
-        map.put(key, data);
-        onStore(data.length);
-        return key;
-    }
-
-    /**
-     * This method is called after a block of data is stored. Override this
-     * method to persist data if necessary.
-     *
-     * @param len the length of the stored block.
-     */
-    protected void onStore(int len) {
-        // do nothing by default
-    }
-
-    /**
-     * Generate a new key.
-     *
-     * @return the new key
-     */
-    private long getAndIncrementNextKey() {
-        long key = nextKey.getAndIncrement();
-        if (!map.containsKey(key)) {
-            return key;
-        }
-        // search the next free id using binary search
-        synchronized (this) {
-            long low = key, high = Long.MAX_VALUE;
-            while (low < high) {
-                long x = (low + high) >>> 1;
-                if (map.containsKey(x)) {
-                    low = x + 1;
-                } else {
-                    high = x;
-                }
-            }
-            key = low;
-            nextKey.set(key + 1);
-            return key;
-        }
     }
 
     /**
@@ -409,31 +357,12 @@ public class LobStreamMap {
     }
 
     /**
-     * Check whether the id itself contains all the data. This operation does
-     * not cause any reads in the map.
-     *
-     * @param id the id
-     * @return if the id contains the data
-     */
-    public boolean isInPlace(byte[] id) {
-        ByteBuffer idBuffer = ByteBuffer.wrap(id);
-        while (idBuffer.hasRemaining()) {
-            if (idBuffer.get() != 0) {
-                return false;
-            }
-            int len = DataUtils.readVarInt(idBuffer);
-            idBuffer.position(idBuffer.position() + len);
-        }
-        return true;
-    }
-
-    /**
      * Open an input stream to read data.
      *
      * @param id the id
      * @return the stream
      */
-    public InputStream get(byte[] id) {
+    public InputStream getInputStream(byte[] id) {
         return new Stream(this, id);
     }
 
@@ -446,7 +375,8 @@ public class LobStreamMap {
     private byte[] getBlock(long key) {
         byte[] data = map.get(key);
         if (data == null) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block {0} not found", key);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND,
+                    "Block {0} not found", key);
         }
         return data;
     }
@@ -570,7 +500,8 @@ public class LobStreamMap {
                         continue;
                     }
                     byte[] k = lobStreamMap.getBlock(key);
-                    ByteBuffer newBuffer = ByteBuffer.allocate(k.length + idBuffer.limit() - idBuffer.position());
+                    ByteBuffer newBuffer = ByteBuffer
+                            .allocate(k.length + idBuffer.limit() - idBuffer.position());
                     newBuffer.put(k);
                     newBuffer.put(idBuffer);
                     newBuffer.flip();

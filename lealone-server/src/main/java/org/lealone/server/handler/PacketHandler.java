@@ -6,7 +6,7 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 
 public interface PacketHandler<P extends Packet> {
@@ -15,7 +15,7 @@ public interface PacketHandler<P extends Packet> {
         return null;
     }
 
-    default Packet handle(PacketDeliveryTask task, P packet) {
+    default Packet handle(PacketHandleTask task, P packet) {
         return handle(task.session, packet);
     }
 }

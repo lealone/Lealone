@@ -45,7 +45,7 @@ public class ConditionExists extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         return "EXISTS(\n" + StringUtils.indent(query.getPlanSQL(), 4, false) + ")";
     }
 

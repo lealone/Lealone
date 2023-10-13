@@ -9,13 +9,13 @@
     <parent>
         <groupId>org.lealone</groupId>
         <artifactId>lealone</artifactId>
-        <version>5.0.0-SNAPSHOT</version>
+        <version>6.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>lealone-dist</artifactId>
     <packaging>pom</packaging>
-    <version>5.0.0-SNAPSHOT</version> 
+    <version>6.0.0-SNAPSHOT</version> 
 
     <build>
         <plugins>
@@ -51,7 +51,7 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <outputFile>${project.build.directory}/lealone-${project.version}.jar</outputFile>
+                            <outputFile>../target/lealone-${project.version}.jar</outputFile>
                         </configuration>
                     </execution>
                 </executions>

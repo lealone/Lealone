@@ -21,7 +21,8 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.db.session.SessionSetting;
-import org.lealone.storage.fs.FilePathEncrypt;
+import org.lealone.storage.fs.impl.encrypt.FilePathEncrypt;
+import org.lealone.transaction.TransactionHandler;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -31,7 +32,8 @@ import org.lealone.storage.fs.FilePathEncrypt;
  */
 public class ConnectionInfo implements Cloneable {
 
-    private static final boolean IGNORE_UNKNOWN_SETTINGS = Utils.getProperty("lealone.ignore.unknown.settings", false);
+    private static final boolean IGNORE_UNKNOWN_SETTINGS = Utils
+            .getProperty("lealone.ignore.unknown.settings", false);
     private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
 
     static {
@@ -63,6 +65,7 @@ public class ConnectionInfo implements Cloneable {
     private byte[] filePasswordHash;
     private byte[] fileEncryptionKey;
     private byte[] userPasswordHash;
+    private byte[] salt;
 
     /**
      * The database name
@@ -80,7 +83,6 @@ public class ConnectionInfo implements Cloneable {
     private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
     private int networkTimeout = Constants.DEFAULT_NETWORK_TIMEOUT;
     private boolean traceEnabled;
-
     private boolean isServiceConnection;
 
     public ConnectionInfo() {
@@ -126,13 +128,23 @@ public class ConnectionInfo implements Cloneable {
         readAndRemoveSettingsFromURL();
         parseURL();
 
-        setUserName(removeProperty(ConnectionSetting.USER, ""));
+        // 如果url中未指定用户名，默认是root
+        String userName = removeProperty(ConnectionSetting.USER, "");
+        if (userName.isEmpty() && isEmbedded())
+            userName = "ROOT";
+        setUserName(userName);
+
         convertPasswords();
         isServiceConnection = removeProperty(ConnectionSetting.IS_SERVICE_CONNECTION, false);
 
-        netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME, Constants.DEFAULT_NET_FACTORY_NAME);
-        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT, Constants.DEFAULT_NETWORK_TIMEOUT);
+        netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME,
+                Constants.DEFAULT_NET_FACTORY_NAME);
+        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT,
+                Constants.DEFAULT_NETWORK_TIMEOUT);
         initTraceProperty();
+        if (isEmbedded()) {
+            System.setProperty("lealone.embedded", "true");
+        }
     }
 
     private void checkURL() {
@@ -200,7 +212,7 @@ public class ConnectionInfo implements Cloneable {
         if (idx >= 0) {
             String settings = url.substring(idx + 1);
             url = url.substring(0, idx); // 去掉后面的参数
-            String[] list = StringUtils.arraySplit(settings, splitChar, false);
+            String[] list = StringUtils.arraySplit(settings, splitChar);
             for (String setting : list) {
                 if (setting.isEmpty()) {
                     continue;
@@ -388,6 +400,14 @@ public class ConnectionInfo implements Cloneable {
         return userPasswordHash;
     }
 
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    public void setSalt(byte[] salt) {
+        this.salt = salt;
+    }
+
     /**
      * Get the file password hash if it is set.
      *
@@ -407,6 +427,19 @@ public class ConnectionInfo implements Cloneable {
      * @return the property keys
      */
     public String[] getKeys() {
+        return getKeys(false);
+    }
+
+    public String[] getKeys(boolean ignoreClientSettings) {
+        Properties prop = this.prop;
+        if (ignoreClientSettings) {
+            prop = new Properties();
+            prop.putAll(this.prop);
+            // 这些参数不需要传给server
+            prop.remove(ConnectionSetting.IS_SHARED.name());
+            prop.remove(ConnectionSetting.MAX_SHARED_SIZE.name());
+            prop.remove(ConnectionSetting.NET_CLIENT_COUNT.name());
+        }
         String[] keys = new String[prop.size()];
         prop.keySet().toArray(keys);
         return keys;
@@ -629,12 +662,17 @@ public class ConnectionInfo implements Cloneable {
                 } else {
                     className = "org.lealone.db.session.ServerSessionFactory";
                 }
-                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance").invoke(null);
+                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance")
+                        .invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
         }
         return sessionFactory;
+    }
+
+    public void setSessionFactory(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
     }
 
     private static String remapURL(String url) {
@@ -684,6 +722,8 @@ public class ConnectionInfo implements Cloneable {
         ci.netFactoryName = netFactoryName;
         ci.networkTimeout = networkTimeout;
         ci.traceEnabled = traceEnabled;
+        ci.singleThreadCallback = singleThreadCallback;
+        ci.transactionHandler = transactionHandler;
         return ci;
     }
 
@@ -720,5 +760,35 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isServiceConnection() {
         return isServiceConnection;
+    }
+
+    private boolean singleThreadCallback;
+
+    public boolean isSingleThreadCallback() {
+        return singleThreadCallback;
+    }
+
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+        this.singleThreadCallback = singleThreadCallback;
+    }
+
+    private TransactionHandler transactionHandler;
+
+    public TransactionHandler getTransactionHandler() {
+        return transactionHandler;
+    }
+
+    public void setTransactionHandler(TransactionHandler transactionHandler) {
+        this.transactionHandler = transactionHandler;
+    }
+
+    private int databaseId = -1;
+
+    public int getDatabaseId() {
+        return databaseId;
+    }
+
+    public void setDatabaseId(int databaseId) {
+        this.databaseId = databaseId;
     }
 }

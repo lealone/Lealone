@@ -20,11 +20,9 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.sql.expression.visitor.CalculateVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
 import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.MapColumnsVisitor;
-import org.lealone.sql.expression.visitor.MergeAggregateVisitor;
 import org.lealone.sql.expression.visitor.UpdateAggregateVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -116,12 +114,7 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      * @return the SQL statement
      */
     @Override
-    public abstract String getSQL(boolean isDistributed);
-
-    @Override
-    public String getSQL() {
-        return getSQL(false);
-    }
+    public abstract String getSQL();
 
     /**
      * Update an aggregate value.
@@ -329,7 +322,8 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         ExpressionColumn[] expr = new ExpressionColumn[list.length];
         for (int i = 0, len = list.length; i < len; i++) {
             Value v = list[i];
-            Column col = new Column("C" + (i + 1), v.getType(), v.getPrecision(), v.getScale(), v.getDisplaySize());
+            Column col = new Column("C" + (i + 1), v.getType(), v.getPrecision(), v.getScale(),
+                    v.getDisplaySize());
             expr[i] = new ExpressionColumn(session.getDatabase(), col);
         }
         return expr;
@@ -362,18 +356,6 @@ public abstract class Expression implements org.lealone.sql.IExpression {
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
-    }
-
-    public void mergeAggregate(ServerSession session, Value v) {
-        accept(new MergeAggregateVisitor(session, v));
-    }
-
-    public void calculate(Calculator calculator) {
-        accept(new CalculateVisitor(calculator));
-    }
-
-    public Value getMergedValue(ServerSession session) {
-        return getValue(session);
     }
 
     @SuppressWarnings("unchecked")

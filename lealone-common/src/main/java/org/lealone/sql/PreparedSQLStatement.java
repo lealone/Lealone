@@ -5,16 +5,13 @@
  */
 package org.lealone.sql;
 
-import java.util.List;
-
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
-import org.lealone.storage.page.PageKey;
-import org.lealone.storage.replication.ReplicaSQLCommand;
 
-public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
+public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
     public final static int MIN_PRIORITY = 1;
     public final static int NORM_PRIORITY = 5;
@@ -32,11 +29,7 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
     void setPriority(int priority);
 
-    boolean isLocal();
-
-    void setLocal(boolean local);
-
-    void setObjectId(int i);
+    void setObjectId(int objectId);
 
     boolean canReuse();
 
@@ -50,6 +43,7 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
         return false;
     }
 
+    @Deprecated
     default boolean isIfDDL() {
         return false;
     }
@@ -58,7 +52,11 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
         return false;
     }
 
-    default boolean isReplicationStatement() {
+    default boolean isTransactionStatement() {
+        return false;
+    }
+
+    default boolean isForUpdate() {
         return false;
     }
 
@@ -79,12 +77,15 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
         boolean isStopped();
 
-        void back();
-
         T getResult();
 
         int getPriority();
 
-        void setPageKeys(List<PageKey> pageKeys);
+        Session getSession();
+
+        PreparedSQLStatement getStatement();
+
+        void setExecutor(SQLStatementExecutor executor);
+
     }
 }

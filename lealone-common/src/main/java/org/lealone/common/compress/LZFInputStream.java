@@ -130,5 +130,4 @@ public class LZFInputStream extends InputStream {
     public void close() throws IOException {
         in.close();
     }
-
 }

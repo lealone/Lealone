@@ -165,5 +165,4 @@ public class IndexType {
         }
         return buff.toString();
     }
-
 }

@@ -176,7 +176,7 @@ public class JdbcDriver implements java.sql.Driver {
         if (info == null) {
             info = new Properties();
         }
-        AsyncCallback<JdbcConnection> ac = new AsyncCallback<>();
+        AsyncCallback<JdbcConnection> ac = AsyncCallback.createConcurrentCallback();
         try {
             ConnectionInfo ci = new ConnectionInfo(url, info);
             ci.getSessionFactory().createSession(ci).onSuccess(s -> {

@@ -10,10 +10,8 @@ import java.util.Map;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 
 /**
- * Classes implementing this interface usually provide a
- * TCP/IP listener such as an FTP server.
- * The can be started and stopped, and may or may not
- * allow remote connections.
+ * Classes implementing this interface usually provide a TCP/IP listener such as an TCP server.
+ * The server can be started and stopped, and may or may not allow remote connections.
  * 
  * @author H2 Group
  * @author zhh
@@ -37,13 +35,9 @@ public interface ProtocolServer {
      */
     void stop();
 
-    /**
-     * Check if the server is running.
-     *
-     * @param traceError if errors should be written
-     * @return if the server is running
-     */
-    boolean isRunning(boolean traceError);
+    boolean isStarted();
+
+    boolean isStopped();
 
     /**
      * Get the URL of this server in a human readable form
@@ -102,11 +96,12 @@ public interface ProtocolServer {
 
     Map<String, String> getConfig();
 
+    /**
+     * Get the configured base directory.
+     *
+     * @return the base directory
+     */
     String getBaseDir();
-
-    boolean isStarted();
-
-    boolean isStopped();
 
     /**
      * Check if this socket may connect to this server.
@@ -116,17 +111,6 @@ public interface ProtocolServer {
      * @return true if this client may connect
      */
     boolean allow(String testHost);
-
-    default boolean isRunInMainThread() {
-        return false;
-    }
-
-    default void setRunInMainThread(boolean runInMainThread) {
-    }
-
-    default Runnable getRunnable() {
-        return null;
-    }
 
     default int getSessionTimeout() {
         return -1;

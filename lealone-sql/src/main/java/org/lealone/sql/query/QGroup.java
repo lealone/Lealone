@@ -32,11 +32,12 @@ class QGroup extends QOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.next()) {
+        while (next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
-                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                if (select.isForUpdate && !tryLockRow()) {
                     return; // 锁记录失败
+                }
                 rowCount++;
                 Value key = getKey(select);
                 select.currentGroup = getOrCreateGroup(groups, key);
@@ -72,7 +73,8 @@ class QGroup extends QOperator {
         return keyValues;
     }
 
-    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups, Value key) {
+    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups,
+            Value key) {
         HashMap<Expression, Object> values = groups.get(key);
         if (values == null) {
             values = new HashMap<>();
@@ -81,8 +83,8 @@ class QGroup extends QOperator {
         return values;
     }
 
-    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select, int columnCount,
-            ResultTarget result) {
+    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select,
+            int columnCount, ResultTarget result) {
         for (Value v : groups.keys()) {
             ValueArray key = (ValueArray) v;
             select.currentGroup = groups.get(key);

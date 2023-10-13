@@ -8,6 +8,10 @@ package org.lealone.db;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.sql.ResultSet;
+import java.util.Properties;
+
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.Utils;
 
 /**
  * Constants are fixed values that are used in the whole database code.
@@ -16,6 +20,11 @@ import java.sql.ResultSet;
  * @author zhh
  */
 public class Constants {
+
+    private Constants() {
+        // utility class
+    }
+
     /**
      * 项目名称.
      */
@@ -35,7 +44,7 @@ public class Constants {
 
     public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
 
-    public static final int DEFAULT_NETWORK_TIMEOUT = 5000; // 默认5秒无响应就超时
+    public static final int DEFAULT_NETWORK_TIMEOUT = 15000; // 默认15秒无响应就超时
 
     public static final String DEFAULT_NET_FACTORY_NAME = "nio";
 
@@ -46,29 +55,14 @@ public class Constants {
     public static final String RESOURCES_DIR = "/org/lealone/common/resources/";
 
     /**
-     * The major version of this database.
-     */
-    public static final int VERSION_MAJOR = 5;
-
-    /**
-     * The minor version of this database.
-     */
-    public static final int VERSION_MINOR = 0;
-
-    /**
-     * The build date is updated for each public release.
-     */
-    public static final String BUILD_DATE = "2021-12-12";
-
-    /**
-     * The build id is incremented for each public release.
-     */
-    public static final int BUILD_ID = 0;
-
-    /**
      * The TCP protocol version number 1.
      */
     public static final int TCP_PROTOCOL_VERSION_1 = 1;
+
+    /**
+     * The TCP protocol version number 6.
+     */
+    public static final int TCP_PROTOCOL_VERSION_6 = 6;
 
     /**
      * The min TCP protocol version number.
@@ -78,12 +72,12 @@ public class Constants {
     /**
      * The max TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_1;
+    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_6;
 
     /**
      * The current TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_1;
+    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_6;
 
     /**
      * The number of milliseconds after which to check for a deadlock if locking
@@ -110,16 +104,6 @@ public class Constants {
      * Whether searching in Blob values should be supported.
      */
     public static final boolean BLOB_SEARCH = false;
-
-    /**
-     * The minimum number of entries to keep in the cache.
-     */
-    public static final int CACHE_MIN_RECORDS = 16;
-
-    /**
-     * The default cache size in KB.
-     */
-    public static final int DEFAULT_CACHE_SIZE = 16 * 1024;
 
     /**
      * The cost is calculated on rowcount + this offset,
@@ -156,6 +140,11 @@ public class Constants {
     public static final int DEFAULT_MAX_OPERATION_MEMORY = 100000;
 
     /**
+     * The default cache size in MB.
+     */
+    public static final int DEFAULT_CACHE_SIZE = 32;
+
+    /**
      * The default page size to use for new databases.
      */
     public static final int DEFAULT_PAGE_SIZE = 16 * 1024; // 16K;
@@ -177,17 +166,6 @@ public class Constants {
     public static final int DEFAULT_P2P_PORT = 9211;
 
     public static final String DEFAULT_HOST = "localhost";
-
-    /**
-     * The default delay in milliseconds before the transaction log is written.
-     */
-    public static final int DEFAULT_WRITE_DELAY = 500;
-
-    /**
-     * The password is hashed this many times
-     * to slow down dictionary attacks.
-     */
-    public static final int ENCRYPTION_KEY_HASH_ITERATIONS = 1024;
 
     /**
      * The block of a file. It is also the encryption block size.
@@ -245,8 +223,7 @@ public class Constants {
     public static final String PREFIX_JOIN = "SYSTEM_JOIN_";
 
     /**
-     * The name prefix used for primary key constraints that are not explicitly
-     * named.
+     * The name prefix used for primary key constraints that are not explicitly named.
      */
     public static final String PREFIX_PRIMARY_KEY = "PRIMARY_KEY_";
 
@@ -292,14 +269,12 @@ public class Constants {
     public static final String JDBC_URL_KEY = "lealone.jdbc.url";
 
     /**
-     * The database URL used when calling a function if only the column list
-     * should be returned.
+     * The database URL used when calling a function if only the column list should be returned.
      */
     public static final String CONN_URL_COLUMNLIST = URL_PREFIX + "columnlist:connection";
 
     /**
-     * The database URL used when calling a function if the data should be
-     * returned.
+     * The database URL used when calling a function if the data should be returned.
      */
     public static final String CONN_URL_INTERNAL = URL_PREFIX + "default:connection";
 
@@ -361,19 +336,35 @@ public class Constants {
     // 为了避免模块之间在编译期存在依赖，有些地方会用到反射，在这里统一定义类名
     public static final String REFLECTION_JDBC_CONNECTION = "org.lealone.client.jdbc.JdbcConnection";
 
-    private Constants() {
-        // utility class
-    }
+    /**
+     * The major version of this database.
+     */
+    public static final int VERSION_MAJOR;
 
     /**
-     * Get the version of this product, consisting of major version, minor version,
-     * and build id.
+     * The minor version of this database.
+     */
+    public static final int VERSION_MINOR;
+
+    /**
+     * The build id is incremented for each public release.
+     */
+    public static final int BUILD_ID;
+
+    /**
+     * The build date is updated for each public release.
+     */
+    public static final String BUILD_DATE;
+
+    public static final String RELEASE_VERSION;
+
+    /**
+     * Get the version of this product, consisting of major version, minor version, and build id.
      *
      * @return the version number
      */
     public static String getVersion() {
-        String version = VERSION_MAJOR + "." + VERSION_MINOR + "." + BUILD_ID;
-        return version;
+        return VERSION_MAJOR + "." + VERSION_MINOR + "." + BUILD_ID;
     }
 
     /**
@@ -384,5 +375,33 @@ public class Constants {
      */
     public static String getFullVersion() {
         return getVersion() + " (" + BUILD_DATE + ")";
+    }
+
+    private static String getProperty(Properties props, String key1, String key2) {
+        String v = props.getProperty(key1);
+        if (v == null && key2 != null) {
+            v = System.getProperty(PROJECT_NAME_PREFIX + key2, "Unknown");
+        }
+        return v;
+    }
+
+    static {
+        try {
+            Properties props = Utils.getResourceAsProperties(RESOURCES_DIR + "version.properties");
+            String releaseVersion = getProperty(props, "lealoneVersion", "lealone.version");
+            BUILD_DATE = getProperty(props, "buildDate", "build.date");
+
+            String v = releaseVersion;
+            int pos = v.indexOf('-');
+            if (pos > 0)
+                v = v.substring(0, pos);
+            String[] a = v.split("\\.");
+            VERSION_MAJOR = Integer.parseInt(a[0]);
+            VERSION_MINOR = Integer.parseInt(a[1]);
+            BUILD_ID = Integer.parseInt(a[2]);
+            RELEASE_VERSION = releaseVersion;
+        } catch (Throwable e) {
+            throw DbException.convert(e);
+        }
     }
 }

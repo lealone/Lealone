@@ -59,14 +59,15 @@ public class PageStorageModeSqlTest extends SqlTestBase {
         for (int col = 1; col <= columnCount; col++) {
             sql.append(", f").append(col).append(" varchar");
         }
-        sql.append(") Engine ").append(AOStorageEngine.NAME).append(" PARAMETERS(pageStorageMode='")
-                .append(pageStorageMode).append("')");
+        sql.append(") Engine ").append(AOStorageEngine.NAME).append(" PARAMETERS(page_storage_mode='")
+                .append(pageStorageMode).append("', page_size='512k')");
         executeUpdate(sql.toString());
     }
 
     private void putData(String tableName) {
         for (int row = 1; row <= rowCount; row++) {
-            StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(").append(row);
+            StringBuilder sql = new StringBuilder("insert into ").append(tableName).append(" values(")
+                    .append(row);
             for (int col = 1; col <= columnCount; col++) {
                 sql.append(", 'value-row" + row + "-col" + col + "'");
             }

@@ -5,27 +5,21 @@
  */
 package org.lealone.server;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
-import org.lealone.server.protocol.PacketType;
 import org.lealone.sql.PreparedSQLStatement;
 
-public class SessionInfo implements ServerSession.TimeoutListener {
+public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSession.TimeoutListener {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
-    // taskQueue中的命令统一由scheduler调度执行
-    private final Queue<AsyncTask> taskQueue;
     private final Scheduler scheduler;
-    private final TcpServerConnection conn;
+    private final AsyncServerConnection conn;
 
     private final ServerSession session;
     private final int sessionId; // 客户端的sessionId
@@ -33,22 +27,16 @@ public class SessionInfo implements ServerSession.TimeoutListener {
 
     private long lastActiveTime;
 
-    private PacketDeliveryTask conflictTask;
+    // task统一由scheduler调度执行
+    private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
-    SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
-            int sessionTimeout) {
+    public SessionInfo(Scheduler scheduler, AsyncServerConnection conn, ServerSession session,
+            int sessionId, int sessionTimeout) {
         this.scheduler = scheduler;
         this.conn = conn;
         this.session = session;
         this.sessionId = sessionId;
         this.sessionTimeout = sessionTimeout;
-
-        // 如果scheduler也负责网络IO，往taskQueue中增加和删除元素都由scheduler完成，用普通链表即可
-        if (scheduler.useNetEventLoop()) {
-            taskQueue = new LinkedList<>();
-        } else {
-            taskQueue = new ConcurrentLinkedQueue<>();
-        }
         updateLastActiveTime();
     }
 
@@ -60,7 +48,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         lastActiveTime = System.currentTimeMillis();
     }
 
-    ServerSession getSession() {
+    public ServerSession getSession() {
         return session;
     }
 
@@ -68,24 +56,26 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         return sessionId;
     }
 
-    public void submitTask(PacketDeliveryTask task) {
-        updateLastActiveTime();
-        if (task.packetType == PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT.value) {
-            conflictTask = task;
-        } else {
-            taskQueue.add(task);
-        }
-        if (!scheduler.useNetEventLoop())
-            scheduler.wakeUp();
+    private void addTask(LinkableTask task) {
+        tasks.add(task);
     }
 
-    public void submitTasks(AsyncTask... tasks) {
+    public void submitTask(LinkableTask task) {
         updateLastActiveTime();
-        taskQueue.addAll(Arrays.asList(tasks));
-        scheduler.wakeUp();
+        if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
+            runTask(task);
+        else
+            addTask(task);
+    }
+
+    public void submitTasks(LinkableTask... tasks) {
+        updateLastActiveTime();
+        for (LinkableTask task : tasks)
+            addTask(task);
     }
 
     public void submitYieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable) {
+        yieldable.setExecutor(scheduler);
         YieldableCommand yieldableCommand = new YieldableCommand(packetId, yieldable, sessionId);
         session.setYieldableCommand(yieldableCommand);
         // 执行此方法的当前线程就是scheduler，所以不用唤醒scheduler
@@ -100,38 +90,47 @@ public class SessionInfo implements ServerSession.TimeoutListener {
             return;
         if (lastActiveTime + sessionTimeout < currentTime) {
             conn.closeSession(this);
-            logger.warn("Client session timeout, session id: " + sessionId + ", host: "
-                    + conn.getWritableChannel().getHost() + ", port: " + conn.getWritableChannel().getPort());
+            logger.warn("Client session timeout, session id: " + sessionId //
+                    + ", host: " + conn.getWritableChannel().getHost() //
+                    + ", port: " + conn.getWritableChannel().getPort());
         }
     }
 
     private void runTask(AsyncTask task) {
+        ServerSession old = (ServerSession) scheduler.getCurrentSession();
+        scheduler.setCurrentSession(session);
         try {
             task.run();
         } catch (Throwable e) {
             logger.warn("Failed to run async session task: " + task + ", session id: " + sessionId, e);
+        } finally {
+            scheduler.setCurrentSession(old);
         }
     }
 
+    // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+    private boolean canHandleNextSessionTask() {
+        return session.canExecuteNextCommand();
+    }
+
     void runSessionTasks() {
-        // 在复制模式下，除了冲突处理命令，只有当前语句执行完了才能执行下一条命令
-        if (session.getYieldableCommand() != null || session.isStorageReplicationMode()) {
-            if (conflictTask != null) {
-                runTask(conflictTask);
-                conflictTask = null;
-            } else {
-                return;
-            }
+        // 只有当前语句执行完了才能执行下一条命令
+        if (session.getYieldableCommand() != null) {
+            return;
         }
-        if (session.canExecuteNextCommand()) {
-            AsyncTask task = taskQueue.poll();
+        if (!tasks.isEmpty() && session.canExecuteNextCommand()) {
+            LinkableTask task = tasks.getHead();
             while (task != null) {
                 runTask(task);
+                task = task.next;
+                tasks.setHead(task);
+                tasks.decrementSize();
                 // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
                 if (session.getYieldableCommand() != null)
                     break;
-                task = taskQueue.poll();
             }
+            if (tasks.getHead() == null)
+                tasks.setTail(null);
         }
     }
 
@@ -146,5 +145,15 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     @Override
     public void onTimeout(YieldableCommand c, Throwable e) {
         sendError(c.getPacketId(), e);
+    }
+
+    boolean isMarkClosed() {
+        if (session.isMarkClosed()) {
+            conn.closeSession(this);
+            if (conn.getSessionCount() == 0)
+                conn.close();
+            return true;
+        }
+        return false;
     }
 }

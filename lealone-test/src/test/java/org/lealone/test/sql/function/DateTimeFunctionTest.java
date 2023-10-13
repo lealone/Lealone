@@ -86,9 +86,12 @@ public class DateTimeFunctionTest extends SqlTestBase {
         assertEquals(51, getIntValue(13));
         assertEquals(5, getIntValue(14));
 
-        assertTrue(getStringValue(15).equals(getStringValue(16)) && getStringValue(15).equals(getStringValue(17)));
-        assertTrue(getStringValue(18).equals(getStringValue(19)) && getStringValue(18).equals(getStringValue(20)));
-        assertTrue(getStringValue(21).equals(getStringValue(22)) && getStringValue(21).equals(getStringValue(23)));
+        assertTrue(getStringValue(15).equals(getStringValue(16))
+                && getStringValue(15).equals(getStringValue(17)));
+        assertTrue(getStringValue(18).equals(getStringValue(19))
+                && getStringValue(18).equals(getStringValue(20)));
+        assertTrue(getStringValue(21).equals(getStringValue(22))
+                && getStringValue(21).equals(getStringValue(23)));
         String now = getStringValue(23);
         String now0 = getStringValue(24); // xxx.0的形式
         String now1 = getStringValue(25);
@@ -96,7 +99,8 @@ public class DateTimeFunctionTest extends SqlTestBase {
         String now3 = getStringValue(27);
         String now4 = getStringValue(28);
         assertTrue(now0.length() == now1.length());
-        assertTrue(now.length() >= now4.length() && now3.length() >= now2.length() && now2.length() >= now1.length());
+        assertTrue(now.length() >= now4.length() && now3.length() >= now2.length()
+                && now2.length() >= now1.length());
 
         assertTrue(getStringValue(29).startsWith("2013-01-21"));
         assertEquals(-2, getIntValue(30));

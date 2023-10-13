@@ -49,11 +49,6 @@ public class DropIndex extends SchemaStatement {
     }
 
     @Override
-    public boolean isIfDDL() {
-        return ifExists;
-    }
-
-    @Override
     public int update() {
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.INDEX, session);
         if (lock == null)
@@ -76,7 +71,8 @@ public class DropIndex extends SchemaStatement {
                     if (Constraint.PRIMARY_KEY.equals(cons.getConstraintType())) {
                         pkConstraint = cons;
                     } else {
-                        throw DbException.get(ErrorCode.INDEX_BELONGS_TO_CONSTRAINT_2, indexName, cons.getName());
+                        throw DbException.get(ErrorCode.INDEX_BELONGS_TO_CONSTRAINT_2, indexName,
+                                cons.getName());
                     }
                 }
             }

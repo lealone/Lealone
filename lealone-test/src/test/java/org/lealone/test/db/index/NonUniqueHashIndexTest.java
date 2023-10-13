@@ -13,7 +13,8 @@ public class NonUniqueHashIndexTest extends IndexTestBase {
         executeUpdate("DROP TABLE IF EXISTS NonUniqueHashIndexTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS NonUniqueHashIndexTest (f1 int NOT NULL, f2 int)");
 
-        executeUpdate("CREATE HASH INDEX IF NOT EXISTS NonUniqueHashIndex1 ON NonUniqueHashIndexTest(f1)");
+        executeUpdate(
+                "CREATE HASH INDEX IF NOT EXISTS NonUniqueHashIndex1 ON NonUniqueHashIndexTest(f1)");
         assertFound("NonUniqueHashIndexTest", "NonUniqueHashIndex1");
 
         executeUpdate("insert into NonUniqueHashIndexTest(f1, f2) values(1, 2)");

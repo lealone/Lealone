@@ -16,8 +16,8 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.subquery.SubQueryResult;
-import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.ExpressionVisitor;
+import org.lealone.sql.expression.visitor.ExpressionVisitorFactory;
 import org.lealone.sql.expression.visitor.NotFromResolverVisitor;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
@@ -33,8 +33,10 @@ public class ConditionInSelect extends Condition {
     private final Query query;
     private final boolean all;
     private final int compareType;
+    private SubQueryResult rows;
 
-    public ConditionInSelect(Database database, Expression left, Query query, boolean all, int compareType) {
+    public ConditionInSelect(Database database, Expression left, Query query, boolean all,
+            int compareType) {
         this.database = database;
         this.left = left;
         this.query = query;
@@ -52,9 +54,13 @@ public class ConditionInSelect extends Condition {
 
     @Override
     public Value getValue(ServerSession session) {
-        query.setSession(session);
-        SubQueryResult rows = new SubQueryResult(query, 0);
-        session.addTemporaryResult(rows);
+        if (rows == null) {
+            query.setSession(session);
+            rows = new SubQueryResult(query, 0);
+            session.addTemporaryResult(rows);
+        } else {
+            rows.reset();
+        }
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
             return ValueBoolean.get(all);
@@ -112,7 +118,6 @@ public class ConditionInSelect extends Condition {
     @Override
     public Expression optimize(ServerSession session) {
         left = left.optimize(session);
-        query.setRandomAccessResult(true);
         query.prepare();
         if (query.getColumnCount() != 1) {
             throw DbException.get(ErrorCode.SUBQUERY_IS_NOT_SINGLE_COLUMN);
@@ -122,9 +127,9 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StringBuilder buff = new StringBuilder();
-        buff.append('(').append(left.getSQL(isDistributed)).append(' ');
+        buff.append('(').append(left.getSQL()).append(' ');
         if (all) {
             buff.append(Comparison.getCompareOperator(compareType)).append(" ALL");
         } else {

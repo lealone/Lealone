@@ -21,8 +21,8 @@ public class CommentTest extends DbObjectTestBase {
         if (db.getSettings().databaseToUpper)
             dbName = dbName.toUpperCase();
 
-        executeUpdate(
-                "COMMENT ON COLUMN " + dbName + "." + Constants.SCHEMA_MAIN + ".CommentTest.f1 IS 'column comment'");
+        executeUpdate("COMMENT ON COLUMN " + dbName + "." + Constants.SCHEMA_MAIN
+                + ".CommentTest.f1 IS 'column comment'");
         executeUpdate("COMMENT ON TABLE " + Constants.SCHEMA_MAIN + ".CommentTest IS 'table comment'");
 
         executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");

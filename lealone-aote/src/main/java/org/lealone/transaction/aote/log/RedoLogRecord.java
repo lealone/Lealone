@@ -9,112 +9,102 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.link.LinkableBase;
 import org.lealone.db.value.ValueString;
-import org.lealone.storage.replication.ReplicationConflictType;
-import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.AOTransactionEngine;
 
 public abstract class RedoLogRecord {
 
-    private static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
-
     private static byte TYPE_CHECKPOINT = 0;
-    private static byte TYPE_DROPPED_MAP_REDO_LOG_RECORD = 1;
-    private static byte TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD = 2;
-    private static byte TYPE_DISTRIBUTED_TRANSACTION_REDO_LOG_RECORD = 3;
-    private static byte TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD = 4;
-    private static byte TYPE_REPLICA_COMMIT_REDO_LOG_RECORD = 5;
+    private static byte TYPE_DROPPED_MAP = 1;
+    private static byte TYPE_LOCAL_TRANSACTION = 2;
 
-    private volatile boolean synced;
-    private CountDownLatch latch;
-
-    boolean isSynced() {
-        return synced;
-    }
-
-    void setSynced(boolean synced) {
-        this.synced = synced;
-        if (latch != null)
-            latch.countDown();
-    }
-
-    void setLatch(CountDownLatch latch) {
-        this.latch = latch;
+    public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
     }
 
     boolean isCheckpoint() {
         return false;
     }
 
-    abstract long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId);
-
     abstract void write(DataBuffer buff);
 
     static RedoLogRecord read(ByteBuffer buff) {
         int type = buff.get();
         if (type == TYPE_CHECKPOINT) {
-            return Checkpoint.read(buff);
-        } else if (type == TYPE_DROPPED_MAP_REDO_LOG_RECORD) {
-            return DroppedMapRedoLogRecord.read(buff);
-        } else if (type == TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD) {
-            return LocalTransactionRedoLogRecord.read(buff);
-        } else if (type == TYPE_DISTRIBUTED_TRANSACTION_REDO_LOG_RECORD) {
-            return DistributedTransactionRedoLogRecord.read(buff);
-        } else if (type == TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD) {
-            return ReplicaPrepareCommitRedoLogRecord.read(buff);
-        } else if (type == TYPE_REPLICA_COMMIT_REDO_LOG_RECORD) {
-            return ReplicaCommitRedoLogRecord.read(buff);
+            return CheckpointRLR.read(buff);
+        } else if (type == TYPE_DROPPED_MAP) {
+            return DroppedMapRLR.read(buff);
+        } else if (type == TYPE_LOCAL_TRANSACTION) {
+            return LocalTransactionRLR.read(buff);
         } else {
             throw DbException.getInternalError("unknow type: " + type);
         }
     }
 
-    public static Checkpoint createCheckpoint(long checkpointId) {
-        return new Checkpoint(checkpointId);
+    public static CheckpointRLR createCheckpoint(long checkpointId, boolean saved) {
+        return new CheckpointRLR(checkpointId, saved);
     }
 
-    public static DroppedMapRedoLogRecord createDroppedMapRedoLogRecord(String mapName) {
-        return new DroppedMapRedoLogRecord(mapName);
+    public static DroppedMapRLR createDroppedMapRedoLogRecord(String mapName) {
+        return new DroppedMapRLR(mapName);
     }
 
-    public static LocalTransactionRedoLogRecord createLocalTransactionRedoLogRecord(long transactionId,
-            DataBuffer operations) {
-        return new LocalTransactionRedoLogRecord(transactionId, operations);
+    public static PendingCheckpoint createPendingCheckpoint(long checkpointId, boolean saved,
+            boolean force) {
+        return new PendingCheckpoint(new CheckpointRLR(checkpointId, saved), force);
     }
 
-    public static DistributedTransactionRedoLogRecord createDistributedTransactionRedoLogRecord(long transactionId,
-            String transactionName, String globalTransactionName, long commitTimestamp, DataBuffer operations) {
+    public static class PendingCheckpoint extends LinkableBase<PendingCheckpoint> {
 
-        return new DistributedTransactionRedoLogRecord(transactionId, transactionName, globalTransactionName,
-                commitTimestamp, operations);
+        private final CheckpointRLR checkpoint;
+        private boolean synced;
+        private boolean force;
+
+        public PendingCheckpoint(CheckpointRLR checkpoint, boolean force) {
+            this.checkpoint = checkpoint;
+        }
+
+        public CheckpointRLR getCheckpoint() {
+            return checkpoint;
+        }
+
+        public long getCheckpointId() {
+            return checkpoint.getCheckpointId();
+        }
+
+        public boolean isSaved() {
+            return checkpoint.isSaved();
+        }
+
+        public boolean isForce() {
+            return force;
+        }
+
+        public boolean isSynced() {
+            return synced;
+        }
+
+        public void setSynced(boolean synced) {
+            this.synced = synced;
+        }
     }
 
-    public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
-            long transactionId, UndoLog undoLog) {
-        return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
-    }
-
-    public static ReplicaPrepareCommitRedoLogRecord createReplicaPrepareCommitRedoLogRecord(String sql, int updateCount,
-            long first, String uncommittedReplicationName, String currentReplicationName,
-            ReplicationConflictType replicationConflictType) {
-        return new ReplicaPrepareCommitRedoLogRecord(sql, updateCount, first, uncommittedReplicationName,
-                currentReplicationName, replicationConflictType);
-    }
-
-    public static ReplicaCommitRedoLogRecord createReplicaCommitRedoLogRecord(String currentReplicationName) {
-        return new ReplicaCommitRedoLogRecord(currentReplicationName);
-    }
-
-    static class Checkpoint extends RedoLogRecord {
+    static class CheckpointRLR extends RedoLogRecord {
 
         private final long checkpointId;
+        private final boolean saved;
 
-        Checkpoint(long checkpointId) {
+        CheckpointRLR(long checkpointId, boolean saved) {
             this.checkpointId = checkpointId;
+            this.saved = saved;
+        }
+
+        public long getCheckpointId() {
+            return checkpointId;
         }
 
         @Override
@@ -122,71 +112,80 @@ public abstract class RedoLogRecord {
             return true;
         }
 
+        public boolean isSaved() {
+            return saved;
+        }
+
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
             pendingRedoLog.clear();
-            if (checkpointId < lastTransactionId) {
-                throw DbException
-                        .getInternalError("checkpointId=" + checkpointId + ", lastTransactionId=" + lastTransactionId);
-            }
-            return checkpointId;
         }
 
         @Override
         public void write(DataBuffer buff) {
             buff.put(TYPE_CHECKPOINT);
-            buff.putVarLong(checkpointId);
+            buff.putVarLong(0); // checkpointId兼容老版本
         }
 
         public static RedoLogRecord read(ByteBuffer buff) {
-            long checkpointId = DataUtils.readVarLong(buff);
-            return new Checkpoint(checkpointId);
+            DataUtils.readVarLong(buff); // checkpointId兼容老版本
+            return new CheckpointRLR(0, true);
         }
     }
 
-    static class DroppedMapRedoLogRecord extends RedoLogRecord {
+    static class DroppedMapRLR extends RedoLogRecord {
 
         private final String mapName;
 
-        DroppedMapRedoLogRecord(String mapName) {
+        DroppedMapRLR(String mapName) {
             DataUtils.checkNotNull(mapName, "mapName");
             this.mapName = mapName;
         }
 
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
             List<ByteBuffer> logs = pendingRedoLog.get(mapName);
             if (logs != null) {
                 logs = new LinkedList<>();
                 pendingRedoLog.put(mapName, logs);
             }
-            return lastTransactionId;
         }
 
         @Override
         public void write(DataBuffer buff) {
-            buff.put(TYPE_DROPPED_MAP_REDO_LOG_RECORD);
+            buff.put(TYPE_DROPPED_MAP);
             ValueString.type.write(buff, mapName);
         }
 
         public static RedoLogRecord read(ByteBuffer buff) {
             String mapName = ValueString.type.read(buff);
-            return new DroppedMapRedoLogRecord(mapName);
+            return new DroppedMapRLR(mapName);
         }
     }
 
-    static class TransactionRedoLogRecord extends RedoLogRecord {
+    static class TransactionRLR extends RedoLogRecord {
 
-        protected final long transactionId;
-        protected final ByteBuffer operations;
+        protected ByteBuffer operations;
+        protected DataBuffer rlrDataBuffer;
 
-        public TransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
-            this.transactionId = transactionId;
+        public TransactionRLR(ByteBuffer operations) {
             this.operations = operations;
         }
 
+        public TransactionRLR(DataBuffer rlrDataBuffer) {
+            this.operations = rlrDataBuffer.getBuffer();
+            this.rlrDataBuffer = rlrDataBuffer;
+        }
+
+        protected void release() {
+            if (rlrDataBuffer != null) {
+                rlrDataBuffer.close();
+                rlrDataBuffer = null;
+            }
+        }
+
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
             ByteBuffer buff = operations;
             while (buff.hasRemaining()) {
                 // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
@@ -202,224 +201,91 @@ public abstract class RedoLogRecord {
                 buff.get(keyValue);
                 keyValues.add(ByteBuffer.wrap(keyValue));
             }
-            return transactionId > lastTransactionId ? transactionId : lastTransactionId;
         }
 
         @Override
         public void write(DataBuffer buff) {
-            write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
+            write(buff, TYPE_LOCAL_TRANSACTION);
         }
 
         public void write(DataBuffer buff, byte type) {
             buff.put(type);
-            buff.putVarLong(transactionId);
+            buff.putVarLong(0); // transactionId兼容老版本
+            writeOperations(buff);
+            release();
+        }
+
+        public void writeOperations(DataBuffer buff) {
             buff.putInt(operations.remaining());
             buff.put(operations);
         }
 
         public static ByteBuffer readOperations(ByteBuffer buff) {
-            ByteBuffer operations;
-            int len = buff.getInt(); // DataUtils.readVarInt(buff);
-            if (len > 0) {
-                byte[] value = new byte[len];
-                buff.get(value);
-                operations = ByteBuffer.wrap(value);
-            } else {
-                operations = EMPTY_BUFFER;
-            }
-            return operations;
+            byte[] bytes = new byte[buff.getInt()];
+            buff.get(bytes);
+            return ByteBuffer.wrap(bytes);
         }
     }
 
-    static class LocalTransactionRedoLogRecord extends TransactionRedoLogRecord {
+    public static class LocalTransactionRLR extends TransactionRLR {
 
-        private DataBuffer buffer;
-
-        public LocalTransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
-            super(transactionId, operations);
+        public LocalTransactionRLR(ByteBuffer operations) {
+            super(operations);
         }
 
-        public LocalTransactionRedoLogRecord(long transactionId, DataBuffer operations) {
-            super(transactionId, operations.getBuffer());
-            this.buffer = operations;
+        public LocalTransactionRLR(DataBuffer rlrDataBuffer) {
+            super(rlrDataBuffer);
         }
 
-        @Override
-        public void write(DataBuffer buff) {
-            write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-            if (buffer != null) {
-                buffer.close();
-            }
-        }
-
-        public static LocalTransactionRedoLogRecord read(ByteBuffer buff) {
-            long transactionId = DataUtils.readVarLong(buff);
+        public static LocalTransactionRLR read(ByteBuffer buff) {
+            DataUtils.readVarLong(buff); // transactionId兼容老版本
             ByteBuffer operations = readOperations(buff);
-            return new LocalTransactionRedoLogRecord(transactionId, operations);
+            return new LocalTransactionRLR(operations);
         }
     }
 
-    static class DistributedTransactionRedoLogRecord extends TransactionRedoLogRecord {
+    public static class LazyLocalTransactionRLR extends LocalTransactionRLR {
 
-        private final String transactionName;
-        private final String globalTransactionName;
-        private final long commitTimestamp;
-        private DataBuffer buffer;
+        private final UndoLog undoLog;
+        private final AOTransactionEngine te;
 
-        public DistributedTransactionRedoLogRecord(long transactionId, String transactionName,
-                String globalTransactionName, long commitTimestamp, DataBuffer operations) {
-            this(transactionId, transactionName, globalTransactionName, commitTimestamp, operations.getBuffer());
-            this.buffer = operations;
-        }
-
-        public DistributedTransactionRedoLogRecord(long transactionId, String transactionName,
-                String globalTransactionName, long commitTimestamp, ByteBuffer operations) {
-            super(transactionId, operations);
-            this.transactionName = transactionName;
-            this.globalTransactionName = globalTransactionName;
-            this.commitTimestamp = commitTimestamp;
-        }
-
-        @Override
-        public void write(DataBuffer buff) {
-            write(buff, TYPE_DISTRIBUTED_TRANSACTION_REDO_LOG_RECORD);
-            ValueString.type.write(buff, transactionName);
-            ValueString.type.write(buff, globalTransactionName);
-            buff.putVarLong(commitTimestamp);
-            if (buffer != null) {
-                buffer.close();
-            }
-        }
-
-        public static DistributedTransactionRedoLogRecord read(ByteBuffer buff) {
-            long transactionId = DataUtils.readVarLong(buff);
-            ByteBuffer operations = readOperations(buff);
-            String transactionName = ValueString.type.read(buff);
-            String globalTransactionName = ValueString.type.read(buff);
-            long commitTimestamp = DataUtils.readVarLong(buff);
-            return new DistributedTransactionRedoLogRecord(transactionId, transactionName, globalTransactionName,
-                    commitTimestamp, operations);
-        }
-    }
-
-    static class LazyTransactionRedoLogRecord extends RedoLogRecord {
-
-        final AMTransactionEngine transactionEngine;
-        final long transactionId;
-        final UndoLog undoLog;
-
-        public LazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine, long transactionId,
-                UndoLog undoLog) {
-            this.transactionEngine = transactionEngine;
-            this.transactionId = transactionId;
+        public LazyLocalTransactionRLR(UndoLog undoLog, AOTransactionEngine te) {
+            super((ByteBuffer) null);
             this.undoLog = undoLog;
+            this.te = te;
         }
 
         @Override
-        void write(DataBuffer buffer) {
-            if (undoLog.isEmpty())
-                return;
-            buffer.put(TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-            buffer.putVarLong(transactionId);
-            int pos = buffer.position();
-            buffer.putInt(0);
-            UndoLogRecord r = undoLog.getFirst();
-            while (r != null) {
-                r.writeForRedo(buffer, transactionEngine);
-                r = r.next;
-            }
-            int length = buffer.position() - pos - 4;
-            buffer.putInt(pos, length);
+        public void writeOperations(DataBuffer buff) {
+            writeOperations(buff, undoLog, te);
         }
 
-        @Override
-        long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
-            throw DbException.getInternalError();
+        static void writeOperations(DataBuffer buff, UndoLog undoLog, AOTransactionEngine te) {
+            int pos = buff.position();
+            buff.putInt(0);
+            undoLog.toRedoLogRecordBuffer(te, buff);
+            buff.putInt(pos, buff.position() - pos - 4);
         }
     }
 
-    static class ReplicaPrepareCommitRedoLogRecord extends RedoLogRecord {
+    public static class LobSave extends RedoLogRecord {
 
-        private final String sql;
-        private final int updateCount;
-        private final long first;
-        private final String uncommittedReplicationName;
-        private final String currentReplicationName;
-        private final ReplicationConflictType replicationConflictType;
+        Runnable lobTask;
+        RedoLogRecord r;
 
-        ReplicaPrepareCommitRedoLogRecord(String sql, int updateCount, long first, String uncommittedReplicationName,
-                String currentReplicationName, ReplicationConflictType replicationConflictType) {
-            this.sql = sql;
-            this.updateCount = updateCount;
-            this.first = first;
-            this.uncommittedReplicationName = uncommittedReplicationName;
-            this.currentReplicationName = currentReplicationName;
-            this.replicationConflictType = replicationConflictType;
-        }
-
-        public String getCurrentReplicationName() {
-            return currentReplicationName;
+        public LobSave(Runnable lobTask, RedoLogRecord r) {
+            this.lobTask = lobTask;
+            this.r = r;
         }
 
         @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
-            return lastTransactionId;
+        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
         }
 
         @Override
-        public void write(DataBuffer buff) {
-            buff.put(TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD);
-            ValueString.type.write(buff, sql);
-            buff.putVarInt(updateCount);
-            buff.putVarLong(first);
-            ValueString.type.write(buff, uncommittedReplicationName);
-            ValueString.type.write(buff, currentReplicationName);
-            buff.putVarInt(replicationConflictType.value);
-        }
-
-        public static RedoLogRecord read(ByteBuffer buff) {
-            String sql = ValueString.type.read(buff);
-            int updateCount = DataUtils.readVarInt(buff);
-            long first = DataUtils.readVarLong(buff);
-            String uncommittedReplicationName = ValueString.type.read(buff);
-            String currentReplicationName = ValueString.type.read(buff);
-            ReplicationConflictType replicationConflictType = ReplicationConflictType
-                    .getType(DataUtils.readVarInt(buff));
-            return new ReplicaPrepareCommitRedoLogRecord(sql, updateCount, first, uncommittedReplicationName,
-                    currentReplicationName, replicationConflictType);
-        }
-
-        public void redo() {
-            // TODO
-        }
-    }
-
-    static class ReplicaCommitRedoLogRecord extends RedoLogRecord {
-
-        private final String currentReplicationName;
-
-        ReplicaCommitRedoLogRecord(String currentReplicationName) {
-            this.currentReplicationName = currentReplicationName;
-        }
-
-        public String getCurrentReplicationName() {
-            return currentReplicationName;
-        }
-
-        @Override
-        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
-            return lastTransactionId;
-        }
-
-        @Override
-        public void write(DataBuffer buff) {
-            buff.put(TYPE_REPLICA_COMMIT_REDO_LOG_RECORD);
-            ValueString.type.write(buff, currentReplicationName);
-        }
-
-        public static RedoLogRecord read(ByteBuffer buff) {
-            String currentReplicationName = ValueString.type.read(buff);
-            return new ReplicaCommitRedoLogRecord(currentReplicationName);
+        void write(DataBuffer buff) {
+            lobTask.run();
+            r.write(buff);
         }
     }
 }

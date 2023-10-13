@@ -9,7 +9,7 @@ import java.nio.channels.SocketChannel;
 
 public interface WritableChannel {
 
-    void write(Object data);
+    void write(NetBuffer data);
 
     void close();
 
@@ -24,5 +24,12 @@ public interface WritableChannel {
     NetBufferFactory getBufferFactory();
 
     default void setEventLoop(NetEventLoop eventLoop) {
+    }
+
+    default boolean isBio() {
+        return false;
+    }
+
+    default void read(AsyncConnection conn) {
     }
 }

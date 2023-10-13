@@ -45,7 +45,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     private int maxOutParameters;
     private HashMap<String, Integer> namedParameters;
 
-    JdbcCallableStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency) {
+    JdbcCallableStatement(JdbcConnection conn, String sql, int id, int resultSetType,
+            int resultSetConcurrency) {
         super(conn, sql, id, resultSetType, resultSetConcurrency);
         trace = conn.getTrace(TraceObjectType.CALLABLE_STATEMENT, id);
     }
@@ -99,7 +100,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
      * @param typeName the SQL type name - ignored
      */
     @Override
-    public void registerOutParameter(int parameterIndex, int sqlType, String typeName) throws SQLException {
+    public void registerOutParameter(int parameterIndex, int sqlType, String typeName)
+            throws SQLException {
         registerOutParameter(parameterIndex);
     }
 
@@ -123,7 +125,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
      * @param typeName the SQL type name - ignored
      */
     @Override
-    public void registerOutParameter(String parameterName, int sqlType, String typeName) throws SQLException {
+    public void registerOutParameter(String parameterName, int sqlType, String typeName)
+            throws SQLException {
         registerOutParameter(getIndexForName(parameterName), sqlType, typeName);
     }
 
@@ -1044,7 +1047,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
      * @throws SQLException if this object is closed
      */
     @Override
-    public void setObject(String parameterName, Object x, int targetSqlType, int scale) throws SQLException {
+    public void setObject(String parameterName, Object x, int targetSqlType, int scale)
+            throws SQLException {
         setObject(getIndexForName(parameterName), x, targetSqlType, scale);
     }
 

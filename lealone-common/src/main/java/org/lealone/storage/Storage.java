@@ -5,13 +5,10 @@
  */
 package org.lealone.storage;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipOutputStream;
 
-import org.lealone.common.exceptions.DbException;
-import org.lealone.db.IDatabase;
-import org.lealone.db.RunMode;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 
@@ -34,6 +31,8 @@ public interface Storage {
 
     String nextTemporaryMapName();
 
+    String getStorageName();
+
     String getStoragePath();
 
     boolean isInMemory();
@@ -46,7 +45,13 @@ public interface Storage {
 
     void drop();
 
-    void backupTo(String fileName);
+    default void backupTo(String fileName) {
+        backupTo(fileName, null);
+    }
+
+    void backupTo(String fileName, Long lastDate);
+
+    void backupTo(String baseDir, ZipOutputStream out, Long lastDate);
 
     void close();
 
@@ -57,16 +62,4 @@ public interface Storage {
     void registerEventListener(StorageEventListener listener);
 
     void unregisterEventListener(StorageEventListener listener);
-
-    default void replicateFrom(ByteBuffer data) {
-        throw DbException.getUnsupportedException("replicateFrom");
-    }
-
-    default void scaleOut(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
-        throw DbException.getUnsupportedException("scaleOut");
-    }
-
-    default void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
-        throw DbException.getUnsupportedException("scaleIn");
-    }
 }

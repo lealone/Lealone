@@ -64,7 +64,8 @@ public class StatementPriorityTest extends SqlTestBase implements MainTest {
         void insert() throws Exception {
             int loop = 10002;
             for (int i = 10000; i < loop; i++) {
-                String sql = "INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('" + i + "', 'a1', 'b', 51)";
+                String sql = "INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('" + i
+                        + "', 'a1', 'b', 51)";
                 statement.executeUpdate(sql);
             }
         }
@@ -202,6 +203,7 @@ public class StatementPriorityTest extends SqlTestBase implements MainTest {
         // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
 
         for (int i = 1000; i < 2000; i++)
-            executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('" + i + "', 'a1', 'b', 51)");
+            executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('" + i
+                    + "', 'a1', 'b', 51)");
     }
 }

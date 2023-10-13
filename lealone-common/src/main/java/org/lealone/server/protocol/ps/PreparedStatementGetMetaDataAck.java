@@ -49,7 +49,8 @@ public class PreparedStatementGetMetaDataAck implements AckPacket {
 
     private static class Decoder implements PacketDecoder<PreparedStatementGetMetaDataAck> {
         @Override
-        public PreparedStatementGetMetaDataAck decode(NetInputStream in, int version) throws IOException {
+        public PreparedStatementGetMetaDataAck decode(NetInputStream in, int version)
+                throws IOException {
             int columnCount = in.readInt();
             return new PreparedStatementGetMetaDataAck(in, columnCount);
         }

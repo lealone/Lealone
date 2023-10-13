@@ -114,45 +114,13 @@ public final class CompressLZF implements Compressor {
     private int[] cachedHashTable;
 
     @Override
+    public int getAlgorithm() {
+        return Compressor.LZF;
+    }
+
+    @Override
     public void setOptions(String options) {
         // nothing to do
-    }
-
-    /**
-     * Return the integer with the first two bytes 0, then the bytes at the
-     * index, then at index+1.
-     */
-    private static int first(byte[] in, int inPos) {
-        return (in[inPos] << 8) | (in[inPos + 1] & 255);
-    }
-
-    /**
-     * Return the integer with the first two bytes 0, then the bytes at the
-     * index, then at index+1.
-     */
-    private static int first(ByteBuffer in, int inPos) {
-        return (in.get(inPos) << 8) | (in.get(inPos + 1) & 255);
-    }
-
-    /**
-     * Shift the value 1 byte left, and add the byte at index inPos+2.
-     */
-    private static int next(int v, byte[] in, int inPos) {
-        return (v << 8) | (in[inPos + 2] & 255);
-    }
-
-    /**
-     * Shift the value 1 byte left, and add the byte at index inPos+2.
-     */
-    private static int next(int v, ByteBuffer in, int inPos) {
-        return (v << 8) | (in.get(inPos + 2) & 255);
-    }
-
-    /**
-     * Compute the address in the hash table.
-     */
-    private static int hash(int h) {
-        return ((h * 2777) >> 9) & (HASH_SIZE - 1);
     }
 
     @Override
@@ -453,9 +421,40 @@ public final class CompressLZF implements Compressor {
         } while (out.position() < out.capacity());
     }
 
-    @Override
-    public int getAlgorithm() {
-        return Compressor.LZF;
+    /**
+     * Return the integer with the first two bytes 0, then the bytes at the
+     * index, then at index+1.
+     */
+    private static int first(byte[] in, int inPos) {
+        return (in[inPos] << 8) | (in[inPos + 1] & 255);
     }
 
+    /**
+     * Return the integer with the first two bytes 0, then the bytes at the
+     * index, then at index+1.
+     */
+    private static int first(ByteBuffer in, int inPos) {
+        return (in.get(inPos) << 8) | (in.get(inPos + 1) & 255);
+    }
+
+    /**
+     * Shift the value 1 byte left, and add the byte at index inPos+2.
+     */
+    private static int next(int v, byte[] in, int inPos) {
+        return (v << 8) | (in[inPos + 2] & 255);
+    }
+
+    /**
+     * Shift the value 1 byte left, and add the byte at index inPos+2.
+     */
+    private static int next(int v, ByteBuffer in, int inPos) {
+        return (v << 8) | (in.get(inPos + 2) & 255);
+    }
+
+    /**
+     * Compute the address in the hash table.
+     */
+    private static int hash(int h) {
+        return ((h * 2777) >> 9) & (HASH_SIZE - 1);
+    }
 }

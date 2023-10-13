@@ -22,6 +22,11 @@ public class PluginBase implements Plugin {
     }
 
     @Override
+    public Map<String, String> getConfig() {
+        return config;
+    }
+
+    @Override
     public void init(Map<String, String> config) {
         this.config = config;
     }

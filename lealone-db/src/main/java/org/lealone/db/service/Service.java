@@ -15,6 +15,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.session.ServerSession;
@@ -89,9 +90,18 @@ public class Service extends SchemaObjectBase {
 
     // 延迟创建executor的实例，因为执行create service语句时，依赖的服务实现类还不存在
     public ServiceExecutor getExecutor() {
+        return getExecutor(false);
+    }
+
+    public ServiceExecutor getExecutor(boolean disableDynamicCompile) {
         if (executor == null) {
             synchronized (this) {
                 if (executor == null) {
+                    // 跟spring boot集成时不支持动态编译
+                    if (disableDynamicCompile) {
+                        executor = new JavaServiceExecutor(this);
+                        return executor;
+                    }
                     if (executorCode != null) {
                         String code = executorCode.toString();
                         executorCode = null;
@@ -105,7 +115,8 @@ public class Service extends SchemaObjectBase {
         return executor;
     }
 
-    public static Service getService(ServerSession session, Database db, String schemaName, String serviceName) {
+    public static Service getService(ServerSession session, Database db, String schemaName,
+            String serviceName) {
         // 调用服务前数据库可能没有初始化
         if (!db.isInitialized())
             db.init();
@@ -113,22 +124,30 @@ public class Service extends SchemaObjectBase {
         if (schema == null) {
             throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
         }
-        Service service = schema.findService(session, serviceName);
-        if (service != null) {
-            return service;
-        } else {
-            throw new RuntimeException("service " + serviceName + " not found");
-        }
+        return schema.getService(session, serviceName);
+    }
+
+    private static void checkRight(ServerSession session, Service service) {
+        session.getUser().checkRight(service, Right.EXECUTE);
     }
 
     // 通过jdbc调用
-    public static Value execute(ServerSession session, String serviceName, String methodName, Value[] methodArgs) {
-        Service service = getService(session, session.getDatabase(), session.getCurrentSchemaName(), serviceName);
+    public static Value execute(ServerSession session, String serviceName, String methodName,
+            Value[] methodArgs) {
+        Service service = getService(session, session.getDatabase(), session.getCurrentSchemaName(),
+                serviceName);
+        checkRight(session, service);
         return service.getExecutor().executeService(methodName, methodArgs);
     }
 
     // 通过http调用
-    public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
+    public static Object execute(ServerSession session, String serviceName, String methodName,
+            Map<String, Object> methodArgs) {
+        return execute(session, serviceName, methodName, methodArgs, false);
+    }
+
+    public static Object execute(ServerSession session, String serviceName, String methodName,
+            Map<String, Object> methodArgs, boolean disableDynamicCompile) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 3) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
@@ -136,15 +155,16 @@ public class Service extends SchemaObjectBase {
                 serviceName = serviceName.toUpperCase();
                 methodName = methodName.toUpperCase();
             }
-            Service service = getService(null, db, a[1], a[2]);
-            return service.getExecutor().executeService(methodName, methodArgs);
+            Service service = getService(session, db, a[1], a[2]);
+            checkRight(session, service);
+            return service.getExecutor(disableDynamicCompile).executeService(methodName, methodArgs);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
         }
     }
 
-    // 通过sockjs调用
-    public static String execute(String serviceName, String json) {
+    // 通过json调用
+    public static Object execute(ServerSession session, String serviceName, String json) {
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {
             Database db = LealoneDatabase.getInstance().getDatabase(a[0]);
@@ -152,7 +172,8 @@ public class Service extends SchemaObjectBase {
             if (db.getSettings().databaseToUpper) {
                 methodName = methodName.toUpperCase();
             }
-            Service service = getService(null, db, a[1], a[2]);
+            Service service = getService(session, db, a[1], a[2]);
+            checkRight(session, service);
             return service.getExecutor().executeService(methodName, json);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");

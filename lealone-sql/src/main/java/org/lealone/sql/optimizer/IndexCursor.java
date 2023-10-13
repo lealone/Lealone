@@ -7,8 +7,6 @@ package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -25,7 +23,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.query.Select;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * The filter used to walk through an index. This class supports IN(..)
@@ -41,6 +38,7 @@ public class IndexCursor implements Cursor {
 
     private SearchRow start, end;
     private Cursor cursor;
+
     private Column inColumn;
     private int inListIndex;
     private Value[] inList;
@@ -68,13 +66,22 @@ public class IndexCursor implements Cursor {
     }
 
     /**
+     * Check if the result is empty for sure.
+     *
+     * @return true if it is
+     */
+    public boolean isAlwaysFalse() {
+        return alwaysFalse;
+    }
+
+    /**
      * Re-evaluate the start and end values of the index search for rows.
      *
-     * @param s the session
+     * @param session the session
      * @param indexConditions the index conditions
      */
-    public void find(ServerSession s, ArrayList<IndexCondition> indexConditions) {
-        parseIndexConditions(s, indexConditions);
+    public void find(ServerSession session, ArrayList<IndexCondition> indexConditions) {
+        parseIndexConditions(session, indexConditions);
         if (inColumn != null) {
             return;
         }
@@ -86,7 +93,7 @@ public class IndexCursor implements Cursor {
             } else {
                 columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
-            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, pageKeys, columnIndexes);
+            CursorParameters<SearchRow> parameters = CursorParameters.create(start, end, columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);
         }
     }
@@ -137,10 +144,10 @@ public class IndexCursor implements Cursor {
                     }
                 }
                 if (isStart) {
-                    start = getSearchRow(session, column, start, id, v, true);
+                    start = getSearchRow(session, start, id, v, true);
                 }
                 if (isEnd) {
-                    end = getSearchRow(session, column, end, id, v, false);
+                    end = getSearchRow(session, end, id, v, false);
                 }
                 if (isStart || isEnd) {
                     // an X=? condition will produce less rows than
@@ -178,7 +185,7 @@ public class IndexCursor implements Cursor {
         return idxCol == null || idxCol.column == column;
     }
 
-    private SearchRow getSearchRow(ServerSession session, Column column, SearchRow row, int id, Value v, boolean max) {
+    private SearchRow getSearchRow(ServerSession session, SearchRow row, int id, Value v, boolean max) {
         if (row == null) {
             row = table.getTemplateRow();
         } else {
@@ -187,7 +194,7 @@ public class IndexCursor implements Cursor {
         if (id < 0) {
             row.setKey(v.getLong());
         } else {
-            row.setValue(id, v, column);
+            row.setValue(id, v);
         }
         return row;
     }
@@ -222,33 +229,24 @@ public class IndexCursor implements Cursor {
         return comp > 0 ? a : b;
     }
 
-    /**
-     * Check if the result is empty for sure.
-     *
-     * @return true if it is
-     */
-    public boolean isAlwaysFalse() {
-        return alwaysFalse;
-    }
-
     @Override
     public Row get() {
-        if (cursor == null) {
+        if (cursor == null)
             return null;
-        }
         return cursor.get();
     }
 
     @Override
     public Row get(int[] columnIndexes) {
-        if (cursor == null) {
+        if (cursor == null)
             return null;
-        }
         return cursor.get(columnIndexes);
     }
 
     @Override
     public SearchRow getSearchRow() {
+        if (cursor == null)
+            return null;
         return cursor.getSearchRow();
     }
 
@@ -273,6 +271,7 @@ public class IndexCursor implements Cursor {
             while (inListIndex < inList.length) {
                 Value v = inList[inListIndex++];
                 if (v != ValueNull.INSTANCE) {
+                    v = inColumn.convert(v);
                     find(v);
                     break;
                 }
@@ -283,7 +282,7 @@ public class IndexCursor implements Cursor {
                 if (v != ValueNull.INSTANCE) {
                     v = inColumn.convert(v);
                     if (inResultTested == null) {
-                        inResultTested = new HashSet<Value>();
+                        inResultTested = new HashSet<>();
                     }
                     if (inResultTested.add(v)) {
                         find(v);
@@ -295,34 +294,11 @@ public class IndexCursor implements Cursor {
     }
 
     private void find(Value v) {
-        v = inColumn.convert(v);
         int id = inColumn.getColumnId();
         if (start == null) {
             start = table.getTemplateRow();
         }
         start.setValue(id, v);
         cursor = index.find(tableFilter.getSession(), start, start);
-    }
-
-    public SearchRow getStartSearchRow() {
-        return start;
-    }
-
-    public SearchRow getEndSearchRow() {
-        return end;
-    }
-
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
-        return index.getNodeToPageKeyMap(session, start, end);
-    }
-
-    private List<PageKey> pageKeys;
-
-    public void setPageKeys(List<PageKey> pageKeys) {
-        this.pageKeys = pageKeys;
-    }
-
-    public List<PageKey> getPageKeys() {
-        return pageKeys;
     }
 }

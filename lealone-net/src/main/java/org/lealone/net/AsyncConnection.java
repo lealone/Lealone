@@ -36,6 +36,10 @@ public abstract class AsyncConnection {
         return writableChannel;
     }
 
+    public String getHostAndPort() {
+        return writableChannel.getHost() + ":" + writableChannel.getPort();
+    }
+
     public InetSocketAddress getInetSocketAddress() {
         return inetSocketAddress;
     }
@@ -78,5 +82,9 @@ public abstract class AsyncConnection {
 
     public int getMaxSharedSize() {
         return 0;
+    }
+
+    public boolean isServer() {
+        return isServer;
     }
 }

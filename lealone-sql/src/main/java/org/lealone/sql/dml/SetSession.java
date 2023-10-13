@@ -78,6 +78,9 @@ public class SetSession extends SetStatement {
         case OLAP_THRESHOLD:
             session.setOlapThreshold(getIntValue());
             break;
+        case OLAP_BATCH_SIZE:
+            session.setOlapBatchSize(getIntValue());
+            break;
         default:
             DbException.throwInternalError("unknown setting type: " + setting);
         }

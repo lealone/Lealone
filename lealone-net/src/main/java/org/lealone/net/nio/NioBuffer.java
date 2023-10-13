@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.NetBuffer;
 
-class NioBuffer implements NetBuffer {
+public class NioBuffer implements NetBuffer {
 
     private final DataBuffer dataBuffer;
     private boolean onlyOnePacket;
@@ -30,6 +30,7 @@ class NioBuffer implements NetBuffer {
         return dataBuffer.getAndFlipBuffer();
     }
 
+    @Override
     public ByteBuffer getByteBuffer() {
         return dataBuffer.getBuffer();
     }

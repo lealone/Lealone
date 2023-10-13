@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
+import org.lealone.storage.StorageEngine;
+
 public abstract class PageOperationHandlerFactory {
 
     protected PageOperationHandler[] pageOperationHandlers;
@@ -17,6 +21,10 @@ public abstract class PageOperationHandlerFactory {
     protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
         if (handlers != null) {
             setPageOperationHandlers(handlers);
+            StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
+                    Constants.DEFAULT_STORAGE_ENGINE_NAME);
+            if (se != null)
+                se.setPageOperationHandlerFactory(this);
             return;
         }
         // 如果未指定处理器集，那么使用默认的
@@ -60,18 +68,6 @@ public abstract class PageOperationHandlerFactory {
         }
     }
 
-    public void addPageOperation(PageOperation po) {
-        Object t = Thread.currentThread();
-        // 如果当前线程本身就是PageOperationHandler，直接运行。
-        if (t instanceof PageOperationHandler) {
-            po.run((PageOperationHandler) t);
-        } else {
-            // 如果当前线程不是PageOperationHandler，按配置的分配策略选出一个出来，放到它的队列中，让它去处理
-            PageOperationHandler handler = getPageOperationHandler();
-            handler.handlePageOperation(po);
-        }
-    }
-
     public static PageOperationHandlerFactory create(Map<String, String> config) {
         return create(config, null);
     }
@@ -82,9 +78,7 @@ public abstract class PageOperationHandlerFactory {
             config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
-        String type = null; // "LoadBalance";
-        if (config.containsKey(key))
-            type = config.get(key);
+        String type = config.get(key);
         if (type == null || type.equalsIgnoreCase("RoundRobin"))
             factory = new RoundRobinFactory(config, handlers);
         else if (type.equalsIgnoreCase("Random"))
@@ -122,7 +116,7 @@ public abstract class PageOperationHandlerFactory {
 
         @Override
         public PageOperationHandler getPageOperationHandler() {
-            return pageOperationHandlers[index.getAndIncrement() % pageOperationHandlers.length];
+            return pageOperationHandlers[getAndIncrementIndex(index) % pageOperationHandlers.length];
         }
     }
 
@@ -138,10 +132,25 @@ public abstract class PageOperationHandlerFactory {
             int index = 0;
             for (int i = 0, size = pageOperationHandlers.length; i < size; i++) {
                 long load = pageOperationHandlers[i].getLoad();
-                if (load < minLoad)
+                if (load < minLoad) {
                     index = i;
+                    minLoad = load;
+                }
             }
             return pageOperationHandlers[index];
         }
+    }
+
+    // 变成负数时从0开始
+    public static int getAndIncrementIndex(AtomicInteger index) {
+        int i = index.getAndIncrement();
+        if (i < 0) {
+            if (index.compareAndSet(i, 1)) {
+                i = 0;
+            } else {
+                i = index.getAndIncrement();
+            }
+        }
+        return i;
     }
 }

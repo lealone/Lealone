@@ -6,7 +6,7 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketDeliveryTask;
+import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionCancelStatement;
@@ -25,7 +25,8 @@ class SessionPacketHandlers extends PacketHandlers {
     private static class CancelStatement implements PacketHandler<SessionCancelStatement> {
         @Override
         public Packet handle(ServerSession session, SessionCancelStatement packet) {
-            PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(packet.statementId, true);
+            PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(packet.statementId,
+                    true);
             if (command != null) {
                 command.cancel();
                 command.close();
@@ -46,7 +47,7 @@ class SessionPacketHandlers extends PacketHandlers {
 
     private static class Close implements PacketHandler<SessionClose> {
         @Override
-        public Packet handle(PacketDeliveryTask task, SessionClose packet) {
+        public Packet handle(PacketHandleTask task, SessionClose packet) {
             task.conn.closeSession(task.packetId, task.sessionId);
             return null;
         }

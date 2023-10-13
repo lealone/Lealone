@@ -11,17 +11,12 @@ import org.lealone.common.trace.TraceObjectType;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.RunMode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.transaction.Transaction;
 
 public class DelegatedSession implements Session {
 
@@ -49,43 +44,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        return session.createDistributedSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        return session.createReplicaSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        return session.createStorageCommand();
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        return session.createReplicaStorageCommand();
-    }
-
-    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
         return session.prepareSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
-        return session.prepareReplicaSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public String getReplicationName() {
-        return session.getReplicationName();
-    }
-
-    @Override
-    public void setReplicationName(String replicationName) {
-        session.setReplicationName(replicationName);
     }
 
     @Override
@@ -99,11 +59,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setFinalResult(boolean isFinalResult) {
-        session.setFinalResult(isFinalResult);
-    }
-
-    @Override
     public boolean isAutoCommit() {
         return session.isAutoCommit();
     }
@@ -111,16 +66,6 @@ public class DelegatedSession implements Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         session.setAutoCommit(autoCommit);
-    }
-
-    @Override
-    public Transaction getParentTransaction() {
-        return session.getParentTransaction();
-    }
-
-    @Override
-    public void setParentTransaction(Transaction transaction) {
-        session.setParentTransaction(transaction);
     }
 
     @Override
@@ -204,7 +149,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId) {
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType,
+            int traceObjectId) {
         return session.getTrace(traceModuleType, traceObjectType, traceObjectId);
     }
 
@@ -254,7 +200,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
+            AckPacketHandler<R, P> ackPacketHandler) {
         return session.send(packet, ackPacketHandler);
     }
 
@@ -264,30 +211,18 @@ public class DelegatedSession implements Session {
         return session.send(packet, packetId, ackPacketHandler);
     }
 
-    // 以下是Transaction.Participant的API
-
     @Override
-    public void addSavepoint(String name) {
-        session.addSavepoint(name);
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+        session.setSingleThreadCallback(singleThreadCallback);
     }
 
     @Override
-    public void rollbackToSavepoint(String name) {
-        session.rollbackToSavepoint(name);
+    public boolean isSingleThreadCallback() {
+        return session.isSingleThreadCallback();
     }
 
     @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        return session.commitTransaction(globalTransactionName);
-    }
-
-    @Override
-    public void commitFinal() {
-        session.commitFinal();
-    }
-
-    @Override
-    public void rollbackTransaction() {
-        session.rollbackTransaction();
+    public <T> AsyncCallback<T> createCallback() {
+        return session.createCallback();
     }
 }

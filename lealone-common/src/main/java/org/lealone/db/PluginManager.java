@@ -6,6 +6,7 @@
 package org.lealone.db;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,7 +49,7 @@ public class PluginManager<T extends Plugin> {
 
     public void deregisterPlugin(T plugin, String... alias) {
         plugins.remove(plugin.getName().toUpperCase());
-        plugins.remove(plugin.getClass().getName().toUpperCase().toUpperCase());
+        plugins.remove(plugin.getClass().getName().toUpperCase());
         if (alias != null) {
             for (String a : alias)
                 plugins.remove(a.toUpperCase());
@@ -58,15 +59,17 @@ public class PluginManager<T extends Plugin> {
     private synchronized void loadPlugins() {
         if (loaded)
             return;
-        try {
-            // 执行next时ServiceLoader内部会自动为每一个实现Plugin接口的类生成一个新实例
-            // 所以Plugin接口的实现类必需有一个public的无参数构造函数
-            for (T p : ServiceLoader.load(pluginClass)) {
+        Iterator<T> iterator = ServiceLoader.load(pluginClass).iterator();
+        while (iterator.hasNext()) {
+            try {
+                // 执行next时ServiceLoader内部会自动为每一个实现Plugin接口的类生成一个新实例
+                // 所以Plugin接口的实现类必需有一个public的无参数构造函数
+                T p = iterator.next();
                 registerPlugin(p);
+            } catch (Throwable t) {
+                // 只是发出警告
+                logger.warn("Failed to load plugin: " + pluginClass.getName(), t);
             }
-        } catch (Throwable t) {
-            // 只是发出警告
-            logger.warn("Failed to load plugin: " + pluginClass.getName(), t);
         }
         // 注意在load完之后再设为true，否则其他线程可能会因为不用等待load完成从而得到一个NPE
         loaded = true;
@@ -104,7 +107,15 @@ public class PluginManager<T extends Plugin> {
         getInstance(plugin).registerPlugin(plugin, alias);
     }
 
+    public static <P extends Plugin> void register(Class<P> pluginClass, P plugin, String... alias) {
+        getInstance(pluginClass).registerPlugin(plugin, alias);
+    }
+
     public static <P extends Plugin> void deregister(P plugin, String... alias) {
         getInstance(plugin).deregisterPlugin(plugin, alias);
+    }
+
+    public static <P extends Plugin> void deregister(Class<P> pluginClass, P plugin, String... alias) {
+        getInstance(pluginClass).deregisterPlugin(plugin, alias);
     }
 }

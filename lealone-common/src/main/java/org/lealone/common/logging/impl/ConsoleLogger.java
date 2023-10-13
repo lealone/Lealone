@@ -5,6 +5,7 @@
  */
 package org.lealone.common.logging.impl;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 
 class ConsoleLogger implements Logger {
@@ -161,12 +162,12 @@ class ConsoleLogger implements Logger {
     private void log(Object message, Throwable t) {
         log(message);
         if (t != null)
-            t.printStackTrace(System.err);
+            DbException.getCause(t).printStackTrace(System.err);
     }
 
     private void log(Object message, Throwable t, Object... params) {
         log(message, params);
         if (t != null)
-            t.printStackTrace(System.err);
+            DbException.getCause(t).printStackTrace(System.err);
     }
 }

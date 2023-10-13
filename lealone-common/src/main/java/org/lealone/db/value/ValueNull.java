@@ -194,7 +194,7 @@ public class ValueNull extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 0;
+            return 16;
         }
 
         @Override
@@ -211,6 +211,5 @@ public class ValueNull extends Value {
         public Value readValue(ByteBuffer buff) {
             return ValueNull.INSTANCE;
         }
-
     };
 }

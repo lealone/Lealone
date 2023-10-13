@@ -43,11 +43,12 @@ public class DateTimeFunction extends BuiltInFunction {
     public static void init() {
     }
 
-    public static final int CURDATE = 100, CURTIME = 101, DATE_ADD = 102, DATE_DIFF = 103, DAY_NAME = 104,
-            DAY_OF_MONTH = 105, DAY_OF_WEEK = 106, DAY_OF_YEAR = 107, HOUR = 108, MINUTE = 109, MONTH = 110,
-            MONTH_NAME = 111, NOW = 112, QUARTER = 113, SECOND = 114, WEEK = 115, YEAR = 116, CURRENT_DATE = 117,
-            CURRENT_TIME = 118, CURRENT_TIMESTAMP = 119, EXTRACT = 120, FORMATDATETIME = 121, PARSEDATETIME = 122,
-            ISO_YEAR = 123, ISO_WEEK = 124, ISO_DAY_OF_WEEK = 125;
+    public static final int CURDATE = 100, CURTIME = 101, DATE_ADD = 102, DATE_DIFF = 103,
+            DAY_NAME = 104, DAY_OF_MONTH = 105, DAY_OF_WEEK = 106, DAY_OF_YEAR = 107, HOUR = 108,
+            MINUTE = 109, MONTH = 110, MONTH_NAME = 111, NOW = 112, QUARTER = 113, SECOND = 114,
+            WEEK = 115, YEAR = 116, CURRENT_DATE = 117, CURRENT_TIME = 118, CURRENT_TIMESTAMP = 119,
+            EXTRACT = 120, FORMATDATETIME = 121, PARSEDATETIME = 122, ISO_YEAR = 123, ISO_WEEK = 124,
+            ISO_DAY_OF_WEEK = 125;
 
     private static final HashMap<String, Integer> DATE_PART = new HashMap<>();
 
@@ -265,7 +266,8 @@ public class DateTimeFunction extends BuiltInFunction {
             } else {
                 String locale = v2 == null ? null : v2 == ValueNull.INSTANCE ? null : v2.getString();
                 String tz = v3 == null ? null : v3 == ValueNull.INSTANCE ? null : v3.getString();
-                result = ValueString.get(DateTimeUtils.formatDateTime(v0.getTimestamp(), v1.getString(), locale, tz));
+                result = ValueString.get(
+                        DateTimeUtils.formatDateTime(v0.getTimestamp(), v1.getString(), locale, tz));
             }
             break;
         }
@@ -281,7 +283,8 @@ public class DateTimeFunction extends BuiltInFunction {
             } else {
                 String locale = v2 == null ? null : v2 == ValueNull.INSTANCE ? null : v2.getString();
                 String tz = v3 == null ? null : v3 == ValueNull.INSTANCE ? null : v3.getString();
-                java.util.Date d = DateTimeUtils.parseDateTime(v0.getString(), v1.getString(), locale, tz);
+                java.util.Date d = DateTimeUtils.parseDateTime(v0.getString(), v1.getString(), locale,
+                        tz);
                 result = ValueTimestamp.get(new Timestamp(d.getTime()));
             }
             break;
@@ -347,13 +350,13 @@ public class DateTimeFunction extends BuiltInFunction {
         // certain time zones (those that are 30 minutes off)
         TimeZone zone = calendar.getTimeZone();
         calendar.setTime(d1);
-        t1 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK),
-                calendar.get(Calendar.MILLISECOND));
+        t1 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH),
+                calendar.get(Calendar.DAY_OF_WEEK), calendar.get(Calendar.MILLISECOND));
         calendar.setTime(d2);
-        t2 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK),
-                calendar.get(Calendar.MILLISECOND));
+        t2 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH),
+                calendar.get(Calendar.DAY_OF_WEEK), calendar.get(Calendar.MILLISECOND));
         switch (field) {
         case Calendar.MILLISECOND:
             return t2 - t1;
@@ -414,17 +417,17 @@ public class DateTimeFunction extends BuiltInFunction {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         buff.append('(');
         switch (info.type) {
         case EXTRACT: {
             ValueString v = (ValueString) ((ValueExpression) args[0]).getValue(null);
-            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL(isDistributed));
+            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL());
             break;
         }
         default:
-            appendArgs(buff, isDistributed);
+            appendArgs(buff);
         }
         return buff.append(')').toString();
     }

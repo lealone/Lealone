@@ -42,7 +42,6 @@ public class LocalResult implements Result, ResultTarget {
     private ResultExternal external;
     private int diskOffset;
     private boolean distinct;
-    private boolean randomAccess;
     private boolean closed;
 
     /**
@@ -108,7 +107,6 @@ public class LocalResult implements Result, ResultTarget {
         copy.sort = this.sort;
         copy.distinctRows = this.distinctRows;
         copy.distinct = distinct;
-        copy.randomAccess = randomAccess;
         copy.currentRow = null;
         copy.offset = 0;
         copy.limit = -1;
@@ -132,13 +130,6 @@ public class LocalResult implements Result, ResultTarget {
     public void setDistinct() {
         distinct = true;
         distinctRows = ValueHashMap.newInstance();
-    }
-
-    /**
-     * Random access is required (containsDistinct).
-     */
-    public void setRandomAccess() {
-        this.randomAccess = true;
     }
 
     /**
@@ -366,7 +357,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getAlias(int i) {
-        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[0] : expressions[i].getAlias();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[0]
+                : expressions[i].getAlias();
     }
 
     @Override
@@ -386,7 +378,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String getColumnName(int i) {
-        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1] : expressions[i].getColumnName();
+        return rawExpressionInfoList != null ? rawExpressionInfoList.get(i)[1] //
+                : expressions[i].getColumnName();
     }
 
     @Override
@@ -449,7 +442,8 @@ public class LocalResult implements Result, ResultTarget {
 
     @Override
     public String toString() {
-        return super.toString() + " columns: " + visibleColumnCount + " rows: " + rowCount + " pos: " + rowId;
+        return super.toString() + " columns: " + visibleColumnCount //
+                + " rows: " + rowCount + " pos: " + rowId;
     }
 
     /**
@@ -479,7 +473,8 @@ public class LocalResult implements Result, ResultTarget {
      * @param maxRows the maximum number of rows to read (0 for no limit)
      * @return the local result set
      */
-    public static LocalResult read(ServerSession session, IExpression[] cols, ResultSet rs, int maxRows) {
+    public static LocalResult read(ServerSession session, IExpression[] cols, ResultSet rs,
+            int maxRows) {
         int columnCount = cols.length;
         LocalResult result = new LocalResult(session, cols, columnCount);
         try {

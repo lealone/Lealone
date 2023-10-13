@@ -172,7 +172,7 @@ public class ValueByte extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 0;
+            return 16;
         }
 
         @Override
@@ -189,7 +189,5 @@ public class ValueByte extends Value {
         public Value readValue(ByteBuffer buff) {
             return ValueByte.get(buff.get());
         }
-
     };
-
 }

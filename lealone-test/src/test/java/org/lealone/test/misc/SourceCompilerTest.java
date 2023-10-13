@@ -12,7 +12,6 @@ public class SourceCompilerTest {
     public static void main(String[] args) throws Exception {
         String name = SourceCompilerTest.class.getName();
         String str = "public class Test { " + name + " f; public void m() {" + name + ".test(); }}";
-        // SourceCompiler.compile("Test", str);
 
         Class<?> clz = SourceCompiler.compileAsClass("Test", str);
         Object obj = clz.getDeclaredConstructor().newInstance();

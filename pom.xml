@@ -11,7 +11,9 @@
     <groupId>org.lealone</groupId>
     <artifactId>lealone</artifactId>
     <packaging>pom</packaging>
-    <version>5.0.0-SNAPSHOT</version>
+    <version>6.0.0-SNAPSHOT</version>
+    <url>https://github.com/lealone/Lealone</url>
+    <description>lealone database project</description>
 
     <licenses>
         <license>
@@ -25,8 +27,8 @@
             <distribution>repo</distribution>
         </license>
         <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <name>Server Side Public License 1.0</name>
+            <url>https://github.com/lealone/Lealone/blob/master/LICENSE.md</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -49,6 +51,7 @@
 
     <modules>
         <module>lealone-common</module>
+        <module>lealone-sci</module>
         <module>lealone-net</module>
         <module>lealone-client</module>
         <module>lealone-server</module>
@@ -56,11 +59,8 @@
         <module>lealone-db</module>
         <module>lealone-aote</module>
         <module>lealone-aose</module>
-        <module>lealone-p2p</module>
-        <module>lealone-orm</module>
-        <module>lealone-web</module>
-        <module>lealone-olap</module>
         <module>lealone-main</module>
+        <module>lealone-docdb</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
     </modules>
@@ -105,6 +105,13 @@
                             </goals>
                         </execution>
                     </executions>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <Built-By>Lealone Database Group</Built-By>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -118,6 +125,13 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>2.4</version>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <Built-By>Lealone Database Group</Built-By>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -156,20 +170,16 @@
                         <version>${project.version}</version>
                         <exclusions>
                             <exclusion>
-                                <groupId>org.lealone</groupId>
-                                <artifactId>lealone-web</artifactId>
-                            </exclusion>
-                            <exclusion>
-                                <groupId>org.lealone</groupId>
-                                <artifactId>lealone-orm</artifactId>
-                            </exclusion>
-                            <exclusion>
                                 <groupId>org.apache.logging.log4j</groupId>
                                 <artifactId>log4j-api</artifactId>
                             </exclusion>
                             <exclusion>
                                 <groupId>org.apache.logging.log4j</groupId>
                                 <artifactId>log4j-core</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.yaml</groupId>
+                                <artifactId>snakeyaml</artifactId>
                             </exclusion>
                         </exclusions>
                     </dependency>
@@ -198,7 +208,7 @@
                     </configuration>
                     </plugin>
                     <!-- Javadoc -->
-                    <!-- <plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>2.9.1</version>
@@ -212,8 +222,9 @@
                         </executions>
                         <configuration>
                             <encoding>UTF-8</encoding>
+                            <additionalparam>-Xdoclint:none</additionalparam>
                         </configuration>
-                    </plugin> -->
+                    </plugin>
                     <!-- GPG -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -221,10 +232,15 @@
                         <version>1.5</version>
                         <executions>
                             <execution>
+                                <id>sign-artifacts</id>
                                 <phase>verify</phase>
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <keyname>${gpg.keyname}</keyname>
+                                    <passphraseServerId>${gpg.keyname}</passphraseServerId>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -248,6 +264,17 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-release-plugin</artifactId>
                         <version>2.5.1</version>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.7</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

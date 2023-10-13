@@ -6,42 +6,42 @@
 package org.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.RunMode;
-import org.lealone.db.value.ValueString;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
-import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.page.LeafPageMovePlan;
+import org.lealone.storage.page.IPage;
 
-public class Page {
+public class Page implements IPage {
 
-    public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+    /**
+     * Whether assertions are enabled.
+     */
+    public static final boolean ASSERT = false;
+
+    public static Page create(BTreeMap<?, ?> map, int type) {
+        switch (type) {
+        case PageUtils.PAGE_TYPE_LEAF:
+            return new LeafPage(map);
+        case PageUtils.PAGE_TYPE_NODE:
+            return new NodePage(map);
+        case PageUtils.PAGE_TYPE_COLUMN:
+            return new ColumnPage(map);
+        default:
+            throw DbException.getInternalError("type: " + type);
+        }
+    }
 
     protected final BTreeMap<?, ?> map;
-    protected long pos;
-
     private PageReference ref;
-    private PageReference parentRef;
 
     protected Page(BTreeMap<?, ?> map) {
         this.map = map;
-    }
-
-    public void setParentRef(PageReference parentRef) {
-        this.parentRef = parentRef;
-    }
-
-    public PageReference getParentRef() {
-        return parentRef;
     }
 
     public void setRef(PageReference ref) {
@@ -52,21 +52,12 @@ public class Page {
         return ref;
     }
 
-    /**
-     * Get the position of the page
-     * 
-     * @return the position
-     */
     public long getPos() {
-        return pos;
+        return ref.getPos();
     }
 
     private static RuntimeException ie() {
         return DbException.throwInternalError();
-    }
-
-    public Object[] getKeys() {
-        throw ie();
     }
 
     /**
@@ -88,14 +79,6 @@ public class Page {
         throw ie();
     }
 
-    public Object getLastKey() {
-        throw ie();
-    }
-
-    public Object[] getValues() {
-        throw ie();
-    }
-
     /**
      * Get the value at the given index.
      * 
@@ -103,10 +86,6 @@ public class Page {
      * @return the value
      */
     public Object getValue(int index) {
-        throw ie();
-    }
-
-    public Object getValue(int index, int columnIndex) {
         throw ie();
     }
 
@@ -122,17 +101,12 @@ public class Page {
         throw ie();
     }
 
-    public boolean isNotEmpty() {
-        return !isEmpty();
+    public PageReference[] getChildren() {
+        throw ie();
     }
 
-    /**
-    * Get the total number of key-value pairs, including child pages.
-    *
-    * @return the number of key-value pairs
-    */
-    public long getTotalCount() {
-        return 0;
+    public PageReference getChildPageReference(int index) {
+        throw ie();
     }
 
     /**
@@ -142,10 +116,6 @@ public class Page {
      * @return the child page
      */
     public Page getChildPage(int index) {
-        throw ie();
-    }
-
-    public PageReference getChildPageReference(int index) {
         throw ie();
     }
 
@@ -164,15 +134,6 @@ public class Page {
      * @return true if it is a node page
      */
     public boolean isNode() {
-        return false;
-    }
-
-    /**
-     * Check whether this is a remote page.
-     * 
-     * @return true if it is a remote page
-     */
-    public boolean isRemote() {
         return false;
     }
 
@@ -205,16 +166,6 @@ public class Page {
     }
 
     /**
-     * Replace the key at an index in this page.
-     * 
-     * @param index the index
-     * @param key the new key
-     */
-    public void setKey(int index, Object key) {
-        throw ie();
-    }
-
-    /**
      * Replace the value at an index in this page.
      * 
      * @param index the index
@@ -225,47 +176,11 @@ public class Page {
         throw ie();
     }
 
-    /**
-     * Replace the child page.
-     * 
-     * @param index the index
-     * @param c the new child page
-     */
-    public void setChild(int index, Page c) {
+    Page copyAndInsertChild(TmpNodePage tmpNodePage) {
         throw ie();
     }
 
-    public void setChild(int index, PageReference ref) {
-        throw ie();
-    }
-
-    void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
-        throw ie();
-    }
-
-    /**
-     * Insert a key-value pair into this leaf.
-     * 
-     * @param index the index
-     * @param key the key
-     * @param value the value
-     */
-    public void insertLeaf(int index, Object key, Object value) {
-        throw ie();
-    }
-
-    public Page copyLeaf(int index, Object key, Object value) {
-        throw ie();
-    }
-
-    /**
-     * Insert a child page into this node.
-     * 
-     * @param index the index
-     * @param key the key
-     * @param childPage the child page
-     */
-    public void insertNode(int index, Object key, Page childPage) {
+    public Page copyAndInsertLeaf(int index, Object key, Object value) {
         throw ie();
     }
 
@@ -285,24 +200,9 @@ public class Page {
      * @param chunkId the chunk id
      * @param offset the offset within the chunk
      * @param expectedPageLength the expected page length
-     * @param disableCheck disable check
      */
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
+    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         throw ie();
-    }
-
-    public void writeLeaf(DataBuffer buff, boolean remote) {
-        throw ie();
-    }
-
-    public static Page readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
-        int type = page.get();
-        if (type == PageUtils.PAGE_TYPE_LEAF)
-            return LeafPage.readLeafPage(map, page);
-        else if (type == PageUtils.PAGE_TYPE_REMOTE)
-            return RemotePage.readLeafPage(map, page);
-        else
-            throw DbException.getInternalError("type: " + type);
     }
 
     /**
@@ -312,14 +212,34 @@ public class Page {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public void writeUnsavedRecursive(Chunk chunk, DataBuffer buff) {
+    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         throw ie();
     }
 
-    /**
-     * Unlink the children recursively after all data is written.
-     */
-    void writeEnd() {
+    protected void beforeWrite(PageInfo pInfoOld) {
+        if (ASSERT) {
+            if (pInfoOld.getPos() != 0)
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
+                        "Page already stored");
+            if (pInfoOld.buff != null)
+                DbException.throwInternalError();
+        }
+    }
+
+    public void markDirty() {
+        ref.markDirtyPage();
+    }
+
+    // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
+    // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
+    @Override
+    public void markDirtyBottomUp() {
+        markDirty();
+        PageReference parentRef = getRef().getParentRef();
+        while (parentRef != null) {
+            parentRef.markDirtyPage();
+            parentRef = parentRef.getParentRef();
+        }
     }
 
     public int getRawChildPageCount() {
@@ -339,214 +259,30 @@ public class Page {
         throw ie();
     }
 
-    /**
-     * Remove the page.
-     */
-    public void removePage() {
-        throw ie();
-    }
-
-    void markDirty() {
-        markDirty(false);
-    }
-
-    void markDirty(boolean hasUnsavedChanges) {
-        if (pos != 0) {
-            removePage();
-            pos = 0;
-        } else {
-            // 频繁设置volatile类型的hasUnsavedChanges字段也影响性能
-            if (hasUnsavedChanges)
-                map.getBTreeStorage().setUnsavedChanges(true);
-        }
-    }
-
-    public void markDirtyRecursive() {
-        markDirty(true);
-        PageReference parentRef = getParentRef();
-        while (parentRef != null) {
-            parentRef.page.markDirty(false);
-            parentRef = parentRef.page.getParentRef();
-        }
-    }
-
-    /**
-     * Remove this page and all child pages.
-     */
-    public void removeAllRecursive() {
-        throw ie();
-    }
-
-    /**
-     * Read a page.
-     * 
-     * @param map the map
-     * @param fileStorage the file storage
-     * @param pos the position
-     * @param filePos the position in the file
-     * @param pageLength the page length
-     * @return the page
-     */
-    public static Page read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos, int pageLength) {
-        ByteBuffer buff = readPageBuff(fileStorage, filePos, pageLength);
-        int type = PageUtils.getPageType(pos);
-        Page p = create(map, type);
-        p.pos = pos;
-        int chunkId = PageUtils.getPageChunkId(pos);
-        int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, pageLength, false);
-        return p;
-    }
-
-    private static ByteBuffer readPageBuff(FileStorage fileStorage, long filePos, int pageLength) {
-        if (pageLength < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
-        }
-        return fileStorage.readFully(filePos, pageLength);
-    }
-
-    private static Page create(BTreeMap<?, ?> map, int type) {
-        Page p;
-        if (type == PageUtils.PAGE_TYPE_LEAF)
-            p = new LeafPage(map);
-        else if (type == PageUtils.PAGE_TYPE_NODE)
-            p = new NodePage(map);
-        else if (type == PageUtils.PAGE_TYPE_COLUMN)
-            p = new ColumnPage(map);
-        else if (type == PageUtils.PAGE_TYPE_REMOTE)
-            p = new RemotePage(map);
-        else
-            throw DbException.getInternalError("type: " + type);
-        return p;
-    }
-
-    // 返回key所在的leaf page
-    public Page binarySearchLeafPage(Object key) {
-        Page p = this;
-        while (true) {
-            if (p.isLeaf()) {
-                int index = p.binarySearch(key);
-                // 如果找不到，是返回null还是throw new AssertionError()，由调用者确保key总是存在
-                return index >= 0 ? p : null;
-            } else {
-                int index = p.getPageIndex(key);
-                p = p.getChildPage(index);
-            }
-        }
-    }
-
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     public Page gotoLeafPage(Object key) {
-        return gotoLeafPage(key, false);
-    }
-
-    public Page gotoLeafPage(Object key, boolean markDirty) {
         Page p = this;
         while (p.isNode()) {
-            if (markDirty)
-                p.markDirty();
             int index = p.getPageIndex(key);
             p = p.getChildPage(index);
         }
         return p;
     }
 
-    public void readRemotePages() {
-        throw ie();
-    }
-
-    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
-        throw ie();
-    }
-
-    public void replicatePage(DataBuffer buff) {
-        throw ie();
-    }
-
-    public static Page readReplicatedPage(BTreeMap<?, ?> map, ByteBuffer buff) {
-        int type = buff.get();
-        Page p = create(map, type);
-        int chunkId = 0;
-        int offset = buff.position();
-        int pageLength = buff.getInt();
-        p.read(buff, chunkId, offset, pageLength, true);
-        return p;
-    }
-
-    public boolean isRemoteChildPage(int index) {
-        return false;
-    }
-
-    public boolean isNodeChildPage(int index) {
-        return false;
-    }
-
-    public boolean isLeafChildPage(int index) {
-        return false;
-    }
-
-    public PageReference[] getChildren() {
-        throw ie();
-    }
-
-    public LeafPageMovePlan getLeafPageMovePlan() {
-        return null;
-    }
-
-    public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
-    }
-
-    public List<String> getReplicationHostIds() {
-        return null;
-    }
-
-    public void setReplicationHostIds(List<String> replicationHostIds) {
-    }
-
-    static void writeReplicationHostIds(List<String> replicationHostIds, DataBuffer buff) {
-        if (replicationHostIds == null || replicationHostIds.isEmpty())
-            buff.putInt(0);
-        else {
-            buff.putInt(replicationHostIds.size());
-            for (String id : replicationHostIds) {
-                ValueString.type.write(buff, id);
-            }
-        }
-    }
-
-    static List<String> readReplicationHostIds(ByteBuffer buff) {
-        int length = buff.getInt();
-        List<String> replicationHostIds = new ArrayList<>(length);
-        for (int i = 0; i < length; i++)
-            replicationHostIds.add(ValueString.type.read(buff));
-
-        if (replicationHostIds.isEmpty())
-            replicationHostIds = null;
-
-        return replicationHostIds;
-    }
-
-    public static LeafPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
-        return LeafPage.create(map, keys, values, totalCount, memory);
-    }
-
-    public static NodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
-        return NodePage.create(map, keys, children, memory);
-    }
-
-    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength, boolean disableCheck) {
+    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength) {
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
-        if (!disableCheck && check != (short) checkTest) {
+        if (check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
+                    "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest,
+                    check);
         }
     }
 
-    static void writeCheckValue(DataBuffer buff, int chunkId, int start, int pageLength, int checkPos) {
-        int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
+    static void writeCheckValue(DataBuffer buff, Chunk chunk, int start, int pageLength, int checkPos) {
+        int check = DataUtils.getCheckValue(chunk.id)
+                ^ DataUtils.getCheckValue(chunk.getOffset() + start)
                 ^ DataUtils.getCheckValue(pageLength);
         buff.putShort(checkPos, (short) check);
     }
@@ -554,8 +290,8 @@ public class Page {
     static void checkPageLength(int chunkId, int pageLength, int expectedPageLength) {
         if (pageLength != expectedPageLength || pageLength < 4) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, expectedPageLength,
-                    pageLength);
+                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId,
+                    expectedPageLength, pageLength);
         }
     }
 
@@ -608,37 +344,17 @@ public class Page {
         return buff;
     }
 
-    void updateChunkAndCachePage(Chunk chunk, int start, int pageLength, int type) {
-        if (pos != 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
-        }
-        pos = PageUtils.getPagePos(chunk.id, start, type);
+    long updateChunkAndPage(PageInfo pInfoOld, Chunk chunk, int start, int pageLength, int type) {
+        long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
-
-        map.getBTreeStorage().cachePage(pos, this, getMemory());
-
-        if (chunk.sumOfPageLength > Chunk.MAX_SIZE)
+        if (chunk.sumOfPageLength > Chunk.MAX_SIZE) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
-                    "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE, chunk.sumOfPageLength);
-    }
-
-    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
-
-    public String getPrettyPageInfo(boolean readOffLinePage) {
-        throw ie();
-    }
-
-    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
-    }
-
-    static class PrettyPageInfo {
-        StringBuilder buff = new StringBuilder();
-        int pageCount;
-        int leafPageCount;
-        int nodePageCount;
-        int levelCount;
-        boolean readOffLinePage;
+                    "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
+                    chunk.sumOfPageLength);
+        }
+        ref.updatePage(pos, this, pInfoOld);
+        return pos;
     }
 }

@@ -15,6 +15,7 @@ import org.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionEvaluator;
 import org.lealone.sql.expression.evaluator.ExpressionInterpreter;
 import org.lealone.sql.operator.Operator;
+import org.lealone.sql.optimizer.TableIterator;
 
 // 由子类实现具体的查询操作
 abstract class QOperator implements Operator {
@@ -22,6 +23,7 @@ abstract class QOperator implements Operator {
     protected final Select select;
     protected final ServerSession session;
     protected final ExpressionEvaluator conditionEvaluator;
+    protected final TableIterator tableIterator;
 
     int columnCount;
     ResultTarget target;
@@ -39,6 +41,7 @@ abstract class QOperator implements Operator {
     QOperator(Select select) {
         this.select = select;
         session = select.getSession();
+        tableIterator = new TableIterator(session, select.getTopTableFilter());
         Expression c = select.condition;
         // 没有查询条件或者查询条件是常量时看看是否能演算为true,false在IndexCursor.isAlwaysFalse()中已经处理了
         if (c == null || (c instanceof ValueExpression && c.getValue(session).getBoolean())) {
@@ -69,6 +72,14 @@ abstract class QOperator implements Operator {
         return false;
     }
 
+    protected boolean next() {
+        return tableIterator.next();
+    }
+
+    protected boolean tryLockRow() {
+        return tableIterator.tryLockRow(null) > 0;
+    }
+
     @Override
     public void start() {
         limitRows = maxRows;
@@ -90,6 +101,7 @@ abstract class QOperator implements Operator {
         rowCount = 0;
         select.setCurrentRowNumber(0);
         sampleSize = select.getSampleSizeValue(session);
+        tableIterator.start();
     }
 
     @Override
@@ -104,6 +116,10 @@ abstract class QOperator implements Operator {
         if (maxRows >= 0) {
             localResult.setLimit(maxRows);
         }
+        handleLocalResult();
+    }
+
+    void handleLocalResult() {
         if (localResult != null) {
             localResult.done();
             if (target != null) {
@@ -132,5 +148,10 @@ abstract class QOperator implements Operator {
             row[i] = expr.getValue(session);
         }
         return row;
+    }
+
+    @Override
+    public void onLockedException() {
+        tableIterator.onLockedException();
     }
 }

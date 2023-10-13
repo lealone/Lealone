@@ -20,11 +20,11 @@ public class MapUtils {
         return Utils.toInt(value, def);
     }
 
-    public static int getIntMB(Map<String, String> map, String key, int def) {
+    public static long getLongMB(Map<String, String> map, String key, long def) {
         if (map == null)
             return def;
         String value = map.get(key);
-        return Utils.toIntMB(value, def);
+        return Utils.toLongMB(value, def);
     }
 
     public static long getLong(Map<String, String> map, String key, long def) {
@@ -49,5 +49,12 @@ public class MapUtils {
             return def;
         else
             return value;
+    }
+
+    public static int getSchedulerCount(Map<String, String> map) {
+        if (map.containsKey("scheduler_count"))
+            return Math.max(1, Integer.parseInt(map.get("scheduler_count")));
+        else
+            return Runtime.getRuntime().availableProcessors();
     }
 }

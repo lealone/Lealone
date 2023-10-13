@@ -14,7 +14,9 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.net.NetNode;
+import org.lealone.transaction.TransactionListener;
 
 /**
  * This class is responsible for creating new sessions.
@@ -46,6 +48,9 @@ public class ServerSessionFactory implements SessionFactory {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
         ServerSession session = createServerSession(dbName, ci);
+        if (session == null) {
+            return null;
+        }
         if (session.isInvalid()) { // 无效session，不需要进行后续的操作
             return session;
         }
@@ -79,16 +84,46 @@ public class ServerSessionFactory implements SessionFactory {
         if (database.isClosing()) {
             throw DbException.get(ErrorCode.DATABASE_IS_CLOSING);
         }
-        if (!database.isInitialized()) {
-            database.init();
+        if (!database.isInitialized() && !initDatabase(database, ci)) {
+            return null;
         }
+        User user = validateUser(database, ci);
+        ServerSession session = database.createSession(user, ci);
+        session.setTargetNodes(targetNodes);
+        session.setRunMode(database.getRunMode());
+        return session;
+    }
 
+    // 只能有一个线程初始化数据库
+    private boolean initDatabase(Database database, ConnectionInfo ci) {
+        ServerSession session = new ServerSession(database, null, 0);
+        Object t = Thread.currentThread();
+        TransactionListener tl = (t instanceof TransactionListener) ? (TransactionListener) t : null;
+        session.setTransactionListener(tl);
+        DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
+        if (lock != null) {
+            try {
+                // sharding模式下访问remote page时会用到
+                database.setLastConnectionInfo(ci);
+                database.init();
+            } finally {
+                session.commit();
+            }
+            return true;
+        } else {
+            // 仅仅是从事务引擎中删除事务
+            session.getTransaction().rollback();
+            return false;
+        }
+    }
+
+    private User validateUser(Database database, ConnectionInfo ci) {
         User user = null;
         if (database.validateFilePasswordHash(ci.getProperty(DbSetting.CIPHER.getName(), null),
                 ci.getFilePasswordHash())) {
             user = database.findUser(null, ci.getUserName());
             if (user != null) {
-                if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
+                if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt())) {
                     user = null;
                 } else {
                     database.setLastConnectionInfo(ci);
@@ -99,23 +134,22 @@ public class ServerSessionFactory implements SessionFactory {
             database.removeSession(null);
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
-        ServerSession session = database.createSession(user, ci);
-        session.setTargetNodes(targetNodes);
-        session.setRunMode(database.getRunMode());
-        return session;
+        return user;
     }
 
     private void initSession(ServerSession session, ConnectionInfo ci) {
+        String[] keys = ci.getKeys();
+        if (keys.length == 0)
+            return;
         boolean autoCommit = session.isAutoCommit();
         session.setAutoCommit(false);
-        session.setRoot(ci.getProperty(ConnectionSetting.IS_ROOT, true));
-        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
         session.setAllowLiterals(true);
-        for (String setting : ci.getKeys()) {
-            if (SessionSetting.contains(setting) || DbSetting.contains(setting)) {
-                String value = ci.getProperty(setting);
+        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
+        for (String key : ci.getKeys()) {
+            if (SessionSetting.contains(key) || DbSetting.contains(key)) {
                 try {
-                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " '" + value + "'";
+                    String sql = "SET " + session.getDatabase().quoteIdentifier(key) + " '"
+                            + ci.getProperty(key) + "'";
                     session.prepareStatementLocal(sql).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
@@ -125,19 +159,8 @@ public class ServerSessionFactory implements SessionFactory {
                 }
             }
         }
-        String init = ci.getProperty(ConnectionSetting.INIT, null);
-        if (init != null) {
-            try {
-                session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        session.setAllowLiterals(false);
         session.commit();
         session.setAutoCommit(autoCommit);
+        session.setAllowLiterals(false);
     }
 }

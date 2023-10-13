@@ -44,29 +44,33 @@ public class ValueDataType implements StorageDataType {
         if (a instanceof ValueArray && b instanceof ValueArray) {
             Value[] ax = ((ValueArray) a).getList();
             Value[] bx = ((ValueArray) b).getList();
-            int al = ax.length;
-            int bl = bx.length;
-            int len = Math.min(al, bl);
-            // 唯一索引key不需要比较最后的rowId
-            int size = isUniqueKey() ? len - 1 : len;
-            for (int i = 0; i < size; i++) {
-                int sortType = sortTypes[i];
-                int comp = compareValues(ax[i], bx[i], sortType);
-                if (comp != 0) {
-                    return comp;
-                }
-            }
-            if (len < al) {
-                return -1;
-            } else if (len < bl) {
-                return 1;
-            }
-            return 0;
+            return compareValues(ax, bx);
         }
-        return compareValues((Value) a, (Value) b, SortOrder.ASCENDING);
+        return compareValue((Value) a, (Value) b, SortOrder.ASCENDING);
     }
 
-    private int compareValues(Value a, Value b, int sortType) {
+    public int compareValues(Value[] ax, Value[] bx) {
+        int al = ax.length;
+        int bl = bx.length;
+        int len = Math.min(al, bl);
+        // 唯一索引key不需要比较最后的rowId
+        int size = isUniqueKey() ? len - 1 : len;
+        for (int i = 0; i < size; i++) {
+            int sortType = sortTypes[i];
+            int comp = compareValue(ax[i], bx[i], sortType);
+            if (comp != 0) {
+                return comp;
+            }
+        }
+        if (len < al) {
+            return -1;
+        } else if (len < bl) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private int compareValue(Value a, Value b, int sortType) {
         if (a == b) {
             return 0;
         }
@@ -150,5 +154,4 @@ public class ValueDataType implements StorageDataType {
         }
         return Arrays.equals(sortTypes, v.sortTypes);
     }
-
 }

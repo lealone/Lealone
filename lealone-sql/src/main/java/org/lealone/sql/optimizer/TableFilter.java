@@ -8,8 +8,6 @@ package org.lealone.sql.optimizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -34,7 +32,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.query.Select;
-import org.lealone.storage.page.PageKey;
 
 /**
  * A table filter represents a table that is used in a query. There is one such
@@ -123,7 +120,8 @@ public class TableFilter extends ColumnResolverBase {
      * @param rightsChecked true if rights are already checked
      * @param select the select statement
      */
-    public TableFilter(ServerSession session, Table table, String alias, boolean rightsChecked, Select select) {
+    public TableFilter(ServerSession session, Table table, String alias, boolean rightsChecked,
+            Select select) {
         this.session = session;
         this.table = table;
         this.alias = alias;
@@ -292,7 +290,7 @@ public class TableFilter extends ColumnResolverBase {
      * @param s the session
      */
     public void startQuery(ServerSession s) {
-        this.session = s;
+        session = s;
         scanCount = 0;
         if (nestedJoin != null) {
             nestedJoin.startQuery(s);
@@ -834,7 +832,7 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     public Row rebuildSearchRow(ServerSession session, Row oldRow) {
-        Row newRow = table.getRow(session, oldRow.getKey(), oldRow.getTValue());
+        Row newRow = table.getRow(oldRow);
         current = newRow;
         currentSearchRow = newRow;
         return newRow;
@@ -932,16 +930,6 @@ public class TableFilter extends ColumnResolverBase {
         return false;
     }
 
-    /**
-     * Lock the current row.
-     */
-    public boolean lockRow() {
-        if (state == FOUND) {
-            return table.tryLockRow(session, get(), null, true);
-        }
-        return false;
-    }
-
     public TableFilter getNestedJoin() {
         return nestedJoin;
     }
@@ -989,44 +977,6 @@ public class TableFilter extends ColumnResolverBase {
         void accept(TableFilter f);
     }
 
-    private boolean indexConditionsParsed = false;
-
-    public void setIndexConditionsParsed(boolean parsed) {
-        this.indexConditionsParsed = parsed;
-    }
-
-    public SearchRow getStartSearchRow() {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getStartSearchRow();
-    }
-
-    public SearchRow getEndSearchRow() {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getEndSearchRow();
-    }
-
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
-        if (!indexConditionsParsed) {
-            indexConditionsParsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
-        return cursor.getNodeToPageKeyMap(session);
-    }
-
-    public void setPageKeys(List<PageKey> pageKeys) {
-        cursor.setPageKeys(pageKeys);
-    }
-
-    public List<PageKey> getPageKeys() {
-        return cursor.getPageKeys();
-    }
-
     @Override
     public Value getExpressionValue(Session session, IExpression e, Object data) {
         setSession((ServerSession) session);
@@ -1036,10 +986,6 @@ public class TableFilter extends ColumnResolverBase {
 
     public int[] getColumnIndexes() {
         return columnIndexes;
-    }
-
-    public void setColumnIndexes(int[] columnIndexes) {
-        this.columnIndexes = columnIndexes;
     }
 
     public int[] createColumnIndexes(Expression... expressionArray) {

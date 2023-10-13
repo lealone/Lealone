@@ -9,15 +9,7 @@ import org.lealone.db.PluginBase;
 
 public abstract class NetFactoryBase extends PluginBase implements NetFactory {
 
-    protected final NetClient netClient;
-
-    public NetFactoryBase(String name, NetClient netClient) {
+    public NetFactoryBase(String name) {
         super(name);
-        this.netClient = netClient;
-    }
-
-    @Override
-    public NetClient getNetClient() {
-        return netClient;
     }
 }

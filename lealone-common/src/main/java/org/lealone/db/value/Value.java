@@ -30,7 +30,6 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
@@ -140,6 +139,7 @@ public abstract class Value implements Comparable<Value> {
      * The value type for RESULT_SET values.
      */
     public static final int RESULT_SET = 18;
+
     /**
      * The value type for JAVA_OBJECT values.
      */
@@ -155,14 +155,25 @@ public abstract class Value implements Comparable<Value> {
      */
     public static final int STRING_FIXED = 21;
 
+    public static final int LIST = 22;
+    public static final int SET = 23;
+    public static final int MAP = 24;
+
     /**
      * The number of value types.
      */
-    public static final int TYPE_COUNT = STRING_FIXED + 1;
+    public static final int TYPE_COUNT = MAP + 1;
 
     private static SoftReference<Value[]> softCache = new SoftReference<Value[]>(null);
     private static final BigDecimal MAX_LONG_DECIMAL = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal MIN_LONG_DECIMAL = BigDecimal.valueOf(Long.MIN_VALUE);
+
+    private static final CompareMode COMPARE_MODE = CompareMode.getInstance(null, 0, false);
+
+    @Override
+    public int compareTo(Value o) {
+        return compareTo(o, COMPARE_MODE);
+    }
 
     /**
      * Get the SQL expression for this value.
@@ -302,6 +313,12 @@ public abstract class Value implements Comparable<Value> {
             return 50;
         case RESULT_SET:
             return 51;
+        case LIST:
+            return 52;
+        case SET:
+            return 53;
+        case MAP:
+            return 54;
         default:
             throw DbException.getInternalError("type:" + type);
         }
@@ -445,7 +462,8 @@ public abstract class Value implements Comparable<Value> {
     }
 
     public Clob getClob() {
-        return new ReadonlyClob(ValueLob.createSmallLob(Value.CLOB, getString().getBytes(Constants.UTF8)));
+        return new ReadonlyClob(
+                ValueLob.createSmallLob(Value.CLOB, getString().getBytes(Constants.UTF8)));
     }
 
     public Array getArray() {
@@ -754,8 +772,11 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes
-                            .getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] {
+                            (byte) (x >> 24),
+                            (byte) (x >> 16),
+                            (byte) (x >> 8),
+                            (byte) x });
                 }
                 case LONG: {
                     long x = getLong();
@@ -778,7 +799,7 @@ public abstract class Value implements Comparable<Value> {
                 case BLOB:
                     return ValueJavaObject.getNoCopy(null, getBytesNoCopy());
                 }
-                break;
+                return this; // 其他类型直接返回
             }
             case BLOB: {
                 switch (getType()) {
@@ -792,6 +813,38 @@ public abstract class Value implements Comparable<Value> {
                 case BYTES:
                     return ValueUuid.get(getBytesNoCopy());
                 }
+                break;
+            }
+            case ARRAY: {
+                Value[] values = { this };
+                return ValueArray.get(values);
+            }
+            case LIST: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueList.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueList.get(values);
+                }
+            }
+            case SET: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueSet.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueSet.get(values);
+                }
+            }
+            case MAP: {
+                switch (getType()) {
+                case ARRAY:
+                    return ValueMap.get(((ValueArray) this).getList());
+                default:
+                    Value[] values = { this };
+                    return ValueSet.get(values);
+                }
             }
             }
             // conversion by parsing the string value
@@ -803,8 +856,8 @@ public abstract class Value implements Comparable<Value> {
                 if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes")
                         || s.equalsIgnoreCase("y")) {
                     return ValueBoolean.get(true);
-                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f") || s.equalsIgnoreCase("no")
-                        || s.equalsIgnoreCase("n")) {
+                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f")
+                        || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("n")) {
                     return ValueBoolean.get(false);
                 } else {
                     // convert to a number, and if it is not 0 then it is true
@@ -884,8 +937,7 @@ public abstract class Value implements Comparable<Value> {
     }
 
     /**
-     * Compare this value against another value using the specified compare
-     * mode.
+     * Compare this value against another value using the specified compare mode.
      *
      * @param v the other value
      * @param mode the compare mode
@@ -973,38 +1025,6 @@ public abstract class Value implements Comparable<Value> {
     }
 
     /**
-     * Link a large value to a given table. For values that are kept fully in
-     * memory this method has no effect.
-     *
-     * @param handler the data handler
-     * @param tableId the table to link to
-     * @return the new value or itself
-     */
-    public Value link(DataHandler handler, int tableId) {
-        return this;
-    }
-
-    /**
-     * Check if this value is linked to a specific table. For values that are
-     * kept fully in memory, this method returns false.
-     *
-     * @return true if it is
-     */
-    public boolean isLinked() {
-        return false;
-    }
-
-    /**
-     * Mark any underlying resource as 'not linked to any table'. For values
-     * that are kept fully in memory this method has no effect.
-     *
-     * @param handler the data handler
-     */
-    public void unlink(DataHandler handler) {
-        // nothing to do
-    }
-
-    /**
      * Close the underlying resource, if any. For values that are kept fully in
      * memory this method has no effect.
      */
@@ -1049,73 +1069,27 @@ public abstract class Value implements Comparable<Value> {
         throw DbException.getUnsupportedException(DataType.getDataType(getType()).name + " " + op);
     }
 
-    /**
-     * Get the table (only for LOB object).
-     *
-     * @return the table id
-     */
-    public int getTableId() {
-        return 0;
-    }
-
-    /**
-     * Get the byte array.
-     *
-     * @return the byte array
-     */
-    public byte[] getSmall() {
-        return null;
-    }
-
-    /**
-     * Copy this value to a temporary file if necessary.
-     *
-     * @return the new value
-     */
-    public Value copyToTemp() {
-        return this;
-    }
-
-    /**
-     * Create an independent copy of this value if needed, that will be bound to
-     * a result. If the original row is removed, this copy is still readable.
-     *
-     * @return the value (this for small objects)
-     */
-    public Value copyToResult() {
-        return this;
-    }
-
     public ResultSet getResultSet() {
         SimpleResultSet rs = new SimpleResultSet();
-        rs.addColumn("X", DataType.convertTypeToSQLType(getType()), MathUtils.convertLongToInt(getPrecision()),
-                getScale());
+        rs.addColumn("X", DataType.convertTypeToSQLType(getType()),
+                MathUtils.convertLongToInt(getPrecision()), getScale());
         rs.addRow(getObject());
         return rs;
     }
 
-    /**
-     * A "binary large object".
-     */
-    public interface ValueClob {
-        // this is a marker interface
-    }
-
-    /**
-     * A "character large object".
-     */
-    public interface ValueBlob {
-        // this is a marker interface
-    }
-
-    @Override
-    public int compareTo(Value o) {
-        return compareTo(o, compareMode);
-    }
-
-    private static CompareMode compareMode = CompareMode.getInstance(null, 0, false);
-
     public final boolean isFalse() {
         return this != ValueNull.INSTANCE && !getBoolean();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getCollection() {
+        return (T) getObject();
+    }
+
+    static int getCollectionComponentTypeFromClass(Class<?> clz) {
+        if (clz == null || clz == Object.class)
+            return Value.UNKNOWN; // 集合类型会自动根据元素构建相应的ValueXxx，所以不能用Value.JAVA_OBJECT
+        else
+            return DataType.getTypeFromClass(clz);
     }
 }

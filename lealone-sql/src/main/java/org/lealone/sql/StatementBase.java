@@ -6,8 +6,6 @@
 package org.lealone.sql;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -26,18 +24,11 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
-import org.lealone.server.protocol.dt.DTransactionParameters;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
-import org.lealone.sql.executor.DefaultYieldableLocalUpdate;
-import org.lealone.sql.executor.DefaultYieldableReplicationUpdate;
-import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
+import org.lealone.sql.executor.YieldableLocalUpdate;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.query.YieldableLocalQuery;
-import org.lealone.sql.query.sharding.YieldableShardingQuery;
-import org.lealone.storage.page.PageKey;
 
 /**
  * A parsed and prepared statement.
@@ -45,7 +36,7 @@ import org.lealone.storage.page.PageKey;
  * @author H2 Group
  * @author zhh
  */
-public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLStatement, DistributedSQLCommand {
+public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLStatement {
 
     /**
      * The session.
@@ -64,8 +55,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     /**
      * If the query should be prepared before each execution. This is set for
-     * queries with LIKE ?, because the query plan depends on the parameter
-     * value.
+     * queries with LIKE ?, because the query plan depends on the parameter value.
      */
     protected boolean prepareAlways;
 
@@ -77,8 +67,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private int currentRowNumber;
     private int rowScanCount;
     private boolean canReuse;
-    private boolean local;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+
+    private SQLStatementExecutor executor;
 
     /**
      * Create a new object.
@@ -144,16 +135,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public boolean isLocal() {
-        return local;
-    }
-
-    @Override
-    public void setLocal(boolean local) {
-        this.local = local;
-    }
-
-    @Override
     public int getFetchSize() {
         return fetchSize;
     }
@@ -194,7 +175,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         }
         // parser: currently, compiling every create/drop/... twice
         // because needRecompile return true even for the first execution
-        return prepareAlways || modificationMetaId < db.getModificationMetaId() || db.getSettings().recompileAlways;
+        return prepareAlways || modificationMetaId < db.getModificationMetaId()
+                || db.getSettings().recompileAlways;
     }
 
     /**
@@ -252,11 +234,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     /**
      * Set the object id for this statement.
      *
-     * @param i the object id
+     * @param objectId the object id
      */
     @Override
-    public void setObjectId(int i) {
-        this.objectId = i;
+    public void setObjectId(int objectId) {
+        this.objectId = objectId;
     }
 
     /**
@@ -306,10 +288,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      * @return the execution plan
      */
     public String getPlanSQL() {
-        return getSQL();
-    }
-
-    public String getPlanSQL(boolean isDistributed) {
         return getSQL();
     }
 
@@ -367,16 +345,18 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      * @param rowCount the query or update row count
      */
     public void trace(long startTimeNanos, int rowCount) {
-        if (startTimeNanos > 0 && session.getTrace().isInfoEnabled()) {
-            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
-            String params = Trace.formatParams(getParameters());
-            session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTimeNanos / 1000 / 1000);
-        }
-
         // startTimeNanos can be zero for the command that actually turns on statistics
-        if (startTimeNanos > 0 && session.getDatabase().getQueryStatistics()) {
-            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
-            session.getDatabase().getQueryStatisticsData().update(getSQL(), deltaTimeNanos, rowCount);
+        if (startTimeNanos > 0) {
+            long now = System.nanoTime();
+            long deltaTimeNanos = now - startTimeNanos;
+            if (session.getTrace().isInfoEnabled()) {
+                String params = Trace.formatParams(getParameters());
+                session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTimeNanos / 1000 / 1000);
+            }
+            Database db = session.getDatabase();
+            if (db.getQueryStatistics()) {
+                db.getQueryStatisticsData().update(getSQL(), deltaTimeNanos, rowCount);
+            }
         }
     }
 
@@ -390,31 +370,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         this.prepareAlways = prepareAlways;
     }
 
-    private boolean yieldIfNeeded() {
-        Thread t = Thread.currentThread();
-        if (t instanceof SQLStatementExecutor) {
-            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
-            return sqlStatementExecutor.yieldIfNeeded(this);
-        }
-        return false;
-    }
-
-    /**
-     * Set the current row number.
-     *
-     * @param rowNumber the row number
-     */
-    public boolean setCurrentRowNumber(int rowNumber) {
-        boolean yieldIfNeeded = false;
-        if ((++rowScanCount & 127) == 0) {
-            checkCanceled();
-            yieldIfNeeded = yieldIfNeeded();
-        }
-        this.currentRowNumber = rowNumber;
-        setProgress();
-        return yieldIfNeeded;
-    }
-
     /**
      * Get the current row number.
      *
@@ -425,12 +380,35 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
+     * Set the current row number.
+     *
+     * @param rowNumber the row number
+     */
+    public boolean setCurrentRowNumber(int rowNumber) {
+        return setCurrentRowNumber(rowNumber, true);
+    }
+
+    public boolean setCurrentRowNumber(int rowNumber, boolean yieldEnabled) {
+        this.currentRowNumber = rowNumber;
+        if ((++rowScanCount & 127) == 0) {
+            checkCanceled();
+            setProgress();
+            if (yieldEnabled && executor != null)
+                return executor.yieldIfNeeded(this);
+        }
+        return false;
+    }
+
+    /**
      * Notifies query progress via the DatabaseEventListener
      */
     private void setProgress() {
-        if ((currentRowNumber & 127) == 0) {
-            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql, currentRowNumber, 0);
-        }
+        session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
+                currentRowNumber, 0);
+    }
+
+    public void setExecutor(SQLStatementExecutor executor) {
+        this.executor = executor;
     }
 
     /**
@@ -530,9 +508,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         yieldable.disableYield();
         while (!yieldable.isStopped()) {
             yieldable.run();
-            if (session.getReplicationName() != null && session.getStatus() == SessionStatus.STATEMENT_RUNNING) {
-                break;
-            }
+            // 如果在存储引擎层面没有顺利结束，需要执行其他语句
+            if (executor != null && !yieldable.isStopped())
+                executor.executeNextStatement();
             while (session.getStatus() == SessionStatus.WAITING) {
                 try {
                     Thread.sleep(100);
@@ -545,26 +523,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return executeQuery(maxRows, scrollable, null);
+        return executeQuery0(maxRows, scrollable);
     }
 
-    @Override
-    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
-        setDistributedSession(parameters);
-        return executeQuery(maxRows, scrollable, parameters);
-    }
-
-    private void setDistributedSession(DTransactionParameters parameters) {
-        if (parameters != null) {
-            session.setAutoCommit(parameters.autoCommit);
-            session.setRoot(false);
-        }
-    }
-
-    private Future<Result> executeQuery(int maxRows, boolean scrollable, DTransactionParameters parameters) {
+    private Future<Result> executeQuery0(int maxRows, boolean scrollable) {
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
-            AsyncCallback<Result> ac = new AsyncCallback<>();
+            AsyncCallback<Result> ac = session.createCallback();
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
                 if (ar.isSucceeded()) {
                     Result result = ar.getResult();
@@ -573,8 +538,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -582,8 +545,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             return Future.succeededFuture(syncExecute(yieldable));
@@ -592,19 +553,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Integer> executeUpdate() {
-        return executeUpdate(null);
-    }
-
-    @Override
-    public Future<Integer> executeDistributedUpdate(DTransactionParameters parameters) {
-        return executeUpdate(parameters);
-    }
-
-    private Future<Integer> executeUpdate(DTransactionParameters parameters) {
-        setDistributedSession(parameters);
         if (session.getTransactionListener() != null) {
             // 放到调度线程中运行
-            AsyncCallback<Integer> ac = new AsyncCallback<>();
+            AsyncCallback<Integer> ac = session.createCallback();
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     Integer updateCount = ar.getResult();
@@ -613,8 +564,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     ac.setAsyncResult(ar.getCause());
                 }
             });
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             session.getTransactionListener().addSession(session, session.getSessionInfo());
@@ -622,8 +571,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         } else {
             // 在当前线程中同步执行
             YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
             Integer updateCount = syncExecute(yieldable);
@@ -632,89 +579,14 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName,
-            DTransactionParameters parameters) {
-        setDistributedSession(parameters);
-        if (session.getTransactionListener() != null) {
-            // 放到调度线程中运行
-            AsyncCallback<ReplicationUpdateAck> ac = new AsyncCallback<>();
-            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
-                if (ar.isSucceeded()) {
-                    Integer updateCount = ar.getResult();
-                    ReplicationUpdateAck ack = (ReplicationUpdateAck) session
-                            .createReplicationUpdateAckPacket(updateCount, false);
-                    ack.setReplicaCommand(StatementBase.this);
-                    ac.setAsyncResult(ack);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            session.getTransactionListener().addSession(session, session.getSessionInfo());
-            return ac;
-        } else {
-            // 在当前线程中同步执行
-            YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-            if (parameters != null)
-                yieldable.setPageKeys(parameters.pageKeys);
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            Integer updateCount = syncExecute(yieldable);
-            ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(updateCount,
-                    false);
-            ack.setReplicaCommand(this);
-            return Future.succeededFuture(ack);
-        }
-    }
-
-    @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        // 查询语句的单机模式和复制模式一样
-        if (isShardingMode())
-            return new YieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
-        else
-            return new YieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
+        return new YieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        if (isShardingMode())
-            return new DefaultYieldableShardingUpdate(this, asyncHandler);
-        else if (session.getReplicationName() != null)
-            return new DefaultYieldableReplicationUpdate(this, asyncHandler);
-        else
-            return new DefaultYieldableLocalUpdate(this, asyncHandler);
-    }
-
-    @Override
-    public void handleReplicaConflict(List<String> retryReplicationNames) {
-        session.handleReplicaConflict(retryReplicationNames);
-    }
-
-    public TableFilter getTableFilter() {
-        return null;
-    }
-
-    public Map<List<String>, List<PageKey>> getNodeToPageKeyMap() {
-        TableFilter tf = getTableFilter();
-        if (tf != null)
-            return tf.getNodeToPageKeyMap(session);
-        return null;
-    }
-
-    public String getIndexName() {
-        TableFilter tf = getTableFilter();
-        if (tf != null)
-            return tf.getIndex().getName();
-        return null;
-    }
-
-    protected boolean isShardingMode() {
-        // 有些在本地执行的语句需要无视session是否是ShardingMode
-        return !isLocal() && session.isRoot() && session.isShardingMode();
+    public YieldableBase<Integer> createYieldableUpdate(
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableLocalUpdate(this, asyncHandler);
     }
 }

@@ -152,8 +152,10 @@ public class ValueTimestamp extends Value {
                 second -= minute * 60;
                 int hour = minute / 60;
                 minute -= hour * 60;
-                long millis = DateTimeUtils.getMillis(tz, year, month, day, hour, minute, (int) second, (int) ms);
-                ms = DateTimeUtils.convertToLocal(new Date(millis), Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+                long millis = DateTimeUtils.getMillis(tz, year, month, day, hour, minute, (int) second,
+                        (int) ms);
+                ms = DateTimeUtils.convertToLocal(new Date(millis),
+                        Calendar.getInstance(TimeZone.getTimeZone("UTC")));
                 long md = DateTimeUtils.MILLIS_PER_DAY;
                 long absoluteDay = (ms >= 0 ? ms : ms - md + 1) / md;
                 dateValue = DateTimeUtils.dateValueFromAbsoluteDay(absoluteDay);
@@ -299,7 +301,7 @@ public class ValueTimestamp extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 40;
+            return 32;
         }
 
         @Override
@@ -324,6 +326,5 @@ public class ValueTimestamp extends Value {
             long nanos = DataUtils.readVarLong(buff) * 1000000 + DataUtils.readVarLong(buff);
             return ValueTimestamp.fromDateValueAndNanos(dateValue, nanos);
         }
-
     };
 }

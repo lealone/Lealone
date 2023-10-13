@@ -90,7 +90,8 @@ public class UpdatableRow {
             return;
         }
         key.clear();
-        rs = meta.getIndexInfo(null, StringUtils.escapeMetaDataPattern(schemaName), tableName, true, true);
+        rs = meta.getIndexInfo(null, StringUtils.escapeMetaDataPattern(schemaName), tableName, true,
+                true);
         while (rs.next()) {
             int pos = rs.getShort("ORDINAL_POSITION");
             if (pos == 1) {

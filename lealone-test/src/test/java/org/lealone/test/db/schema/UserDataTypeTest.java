@@ -36,21 +36,24 @@ public class UserDataTypeTest extends DbObjectTestBase {
         // DROP DOMAIN/TYPE/DATATYPE也是一样的
         // -----------------------------------------------
         // VALUE是CREATE DOMAIN语句的默认临时列名
-        String sql = "CREATE DOMAIN IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
+        String sql = "CREATE DOMAIN IF NOT EXISTS " + udtName
+                + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
         assertNotNull(schema.findUserDataType(session, udtName));
         sql = "DROP DOMAIN " + udtName;
         executeUpdate(sql);
         assertNull(schema.findUserDataType(session, udtName));
 
-        sql = "CREATE TYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
+        sql = "CREATE TYPE IF NOT EXISTS " + udtName
+                + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
         assertNotNull(schema.findUserDataType(session, udtName));
         sql = "DROP TYPE " + udtName;
         executeUpdate(sql);
         assertNull(schema.findUserDataType(session, udtName));
 
-        sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
+        sql = "CREATE DATATYPE IF NOT EXISTS " + udtName
+                + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
         assertNotNull(schema.findUserDataType(session, udtName));
         sql = "DROP DATATYPE " + udtName;
@@ -78,7 +81,8 @@ public class UserDataTypeTest extends DbObjectTestBase {
             // 如果DATABASE_TO_UPPER是false就用大写INTEGER
             if (!db.getSettings().databaseToUpper)
                 udtName = udtName.toUpperCase();
-            sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
+            sql = "CREATE DATATYPE IF NOT EXISTS " + udtName
+                    + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
             executeUpdate(sql);
             fail();
         } catch (Exception e) {

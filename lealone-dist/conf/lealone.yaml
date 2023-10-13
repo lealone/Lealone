@@ -2,7 +2,7 @@
 # Licensed under the Server Side Public License, v 1.
 # Initial Developer: zhh
 
-base_dir: ../data
+base_dir: ${LEALONE_HOME}/data
 
 listen_address: 127.0.0.1
 
@@ -34,45 +34,13 @@ protocol_server_engines:
     enabled: true
     parameters: {
         port: 9210,
-        trace: false,
         allow_others: true,
-        daemon: false,
         ssl: false
     }
-  - name: P2P
-    enabled: false
+  - name: DocDB
+    enabled: true
     parameters: {
-        port: 9211,
+        port: 9610,
+        allow_others: true,
         ssl: false
     }
-
-server_encryption_options:
-    keystore: conf/.keystore
-    keystore_password: lealone
-    truststore: conf/.truststore
-    truststore_password: lealone
-
-cluster_config:
-    cluster_name: Test Cluster
-    node_snitch: SimpleSnitch
-    dynamic_snitch: true
-    request_timeout_in_ms: 10000
-
-    seed_provider:
-        name: SimpleSeedProvider
-        parameters: {
-            seeds: "127.0.0.1"
-        }
-
-    replication_strategy:
-        name: SimpleStrategy
-        parameters: {
-            replication_factor: 3
-        }
-
-    # replication_strategy:
-    #     name: NetworkTopologyStrategy
-    #     parameters: {
-    #         dc1: 1,
-    #         dc2: 2
-    #     }

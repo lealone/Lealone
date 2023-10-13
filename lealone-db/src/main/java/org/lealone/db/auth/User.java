@@ -20,6 +20,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;
@@ -90,6 +91,10 @@ public class User extends RightOwner {
         return userPasswordHash;
     }
 
+    public byte[] getPasswordHash() {
+        return passwordHash;
+    }
+
     /**
      * Checks that this user has the given rights for this database object.
      *
@@ -151,19 +156,46 @@ public class User extends RightOwner {
         return false;
     }
 
+    public void checkRight(Service service, int rightMask) {
+        if (!hasServiceRight(service, rightMask)) {
+            throw DbException.get(ErrorCode.NOT_ENOUGH_RIGHTS_FOR_1, service.getSQL());
+        }
+    }
+
+    private boolean hasServiceRight(Service service, int rightMask) {
+        if (admin) {
+            return true;
+        }
+        Role publicRole = database.getPublicRole();
+        if (publicRole.isRightGrantedRecursive(service, rightMask)) {
+            return true;
+        }
+        if (service != null) {
+            if (hasRight(null, Right.ALTER_ANY_SCHEMA)) {
+                return true;
+            }
+        }
+        if (isRightGrantedRecursive(service, rightMask)) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Check the password of this user.
      *
      * @param userPasswordHash the password data (the user password hash)
      * @return true if the user password hash is correct
      */
-    public boolean validateUserPasswordHash(byte[] userPasswordHash) {
+    public boolean validateUserPasswordHash(byte[] userPasswordHash, byte[] salt) {
         if (userPasswordHash.length == 0 && passwordHash.length == 0) {
             return true;
         }
         if (userPasswordHash.length == 0) {
             userPasswordHash = SHA256.getKeyPasswordHash(getName(), new char[0]);
         }
+        if (salt == null)
+            salt = this.salt;
         byte[] hash = SHA256.getHashWithSalt(userPasswordHash, salt);
         return Utils.compareSecure(hash, passwordHash);
     }
@@ -204,6 +236,12 @@ public class User extends RightOwner {
                 throw DbException.get(ErrorCode.CANNOT_DROP_2, getName(), s.getName());
             }
         }
+    }
+
+    public void checkSystemSchema(ServerSession session, Schema schema) {
+        Database db = session.getDatabase();
+        if (db.getSystemSession().getUser() != session.getUser() && db.isSystemSchema(schema))
+            throw DbException.get(ErrorCode.ACCESS_DENIED_TO_SCHEMA_1, schema.getName());
     }
 
     /**

@@ -13,17 +13,6 @@ class InstantLogSyncService extends LogSyncService {
 
     InstantLogSyncService(Map<String, String> config) {
         super(config);
-        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 5);
-    }
-
-    @Override
-    public boolean isInstantSync() {
-        return true;
-    }
-
-    @Override
-    public void addAndMaybeWaitForSync(RedoLogRecord r) {
-        // 总是等待
-        addAndWaitForSync(r);
+        syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 100);
     }
 }

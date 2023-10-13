@@ -129,7 +129,7 @@ public class ValueBoolean extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 0;
+            return 16;
         }
 
         @Override
@@ -154,5 +154,4 @@ public class ValueBoolean extends Value {
                 return ValueBoolean.get(true);
         }
     };
-
 }

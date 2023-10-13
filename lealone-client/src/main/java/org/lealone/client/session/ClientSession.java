@@ -5,13 +5,13 @@
  */
 package org.lealone.client.session;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
-import org.lealone.client.command.ClientStorageCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
@@ -21,7 +21,9 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.LocalDataHandler;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.ConcurrentAsyncCallback;
 import org.lealone.db.async.Future;
+import org.lealone.db.async.SingleThreadAsyncCallback;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionBase;
 import org.lealone.net.NetInputStream;
@@ -33,23 +35,13 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
-import org.lealone.server.protocol.dt.DTransactionCommit;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.server.protocol.dt.DTransactionCommitFinal;
-import org.lealone.server.protocol.dt.DTransactionRollback;
-import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
 import org.lealone.storage.lob.LobLocalStorage;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
 
 /**
  * The client side part of a session when using the server mode. 
@@ -72,7 +64,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final LocalDataHandler dataHandler;
     private final Trace trace;
 
-    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int id) {
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent,
+            int id) {
         this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
@@ -113,7 +106,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public void checkClosed() {
         if (tcpConnection.isClosed()) {
-            String msg = tcpConnection.getInetSocketAddress().getHostName() + " tcp connection closed";
+            String msg = tcpConnection.getWritableChannel().getHost() + " tcp connection closed";
             throw getConnectionBrokenException(msg);
         }
         if (isClosed()) {
@@ -177,37 +170,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        checkClosed();
-        return new ClientStorageCommand(this);
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        checkClosed();
-        return new ClientStorageCommand(this);
-    }
-
-    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientPreparedSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         checkClosed();
         return new ClientPreparedSQLCommand(this, sql, fetchSize);
     }
@@ -263,7 +226,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
+    public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off,
+            int length) {
         try {
             LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
             if (ack.buff != null && ack.buff.length > 0) {
@@ -274,54 +238,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             handleException(e);
         }
         return -1;
-    }
-
-    @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        checkClosed();
-        try {
-            return send(new DTransactionCommit(globalTransactionName));
-        } catch (Exception e) {
-            handleException(e);
-        }
-        return null;
-    }
-
-    @Override
-    public void commitFinal() {
-        checkClosed();
-        try {
-            send(new DTransactionCommitFinal());
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void rollbackTransaction() {
-        try {
-            send(new DTransactionRollback());
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void addSavepoint(String name) {
-        try {
-            send(new DTransactionAddSavepoint(name));
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public void rollbackToSavepoint(String name) {
-        try {
-            send(new DTransactionRollbackSavepoint(name));
-        } catch (Exception e) {
-            handleException(e);
-        }
     }
 
     @Override
@@ -370,32 +286,33 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
+            AckPacketHandler<R, P> ackPacketHandler) {
         int packetId = getNextId();
         return send(packet, packetId, ackPacketHandler);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         traceOperation(packet.getType().name(), packetId);
         AsyncCallback<R> ac;
         if (packet.getAckType() != PacketType.VOID) {
-            ac = new AsyncCallback<R>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet packet = decoder.decode(in, getProtocolVersion());
-                    if (ackPacketHandler != null) {
-                        try {
-                            setAsyncResult(ackPacketHandler.handle((P) packet));
-                        } catch (Throwable e) {
-                            setAsyncResult(e);
-                        }
+            if (isSingleThreadCallback()) {
+                ac = new SingleThreadAsyncCallback<R>() {
+                    @Override
+                    public void runInternal(NetInputStream in) throws Exception {
+                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
                     }
-                }
-            };
+                };
+            } else {
+                ac = new ConcurrentAsyncCallback<R>() {
+                    @Override
+                    public void runInternal(NetInputStream in) throws Exception {
+                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
+                    }
+                };
+            }
             ac.setPacket(packet);
             ac.setStartTime(System.currentTimeMillis());
             ac.setNetworkTimeout(getNetworkTimeout());
@@ -409,6 +326,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             out.writeRequestHeader(packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
+            if (ac != null && tcpConnection.getWritableChannel().isBio())
+                tcpConnection.getWritableChannel().read(tcpConnection);
         } catch (Throwable e) {
             if (ac != null) {
                 removeAsyncCallback(packetId);
@@ -420,7 +339,38 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         return ac;
     }
 
+    @SuppressWarnings("unchecked")
+    private <R, P extends AckPacket> void handleAsyncCallback(NetInputStream in, PacketType packetType,
+            AckPacketHandler<R, P> ackPacketHandler, AsyncCallback<R> ac) throws IOException {
+        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
+        Packet packet = decoder.decode(in, getProtocolVersion());
+        if (ackPacketHandler != null) {
+            try {
+                ac.setAsyncResult(ackPacketHandler.handle((P) packet));
+            } catch (Throwable e) {
+                ac.setAsyncResult(e);
+            }
+        }
+    }
+
     public void removeAsyncCallback(int packetId) {
         tcpConnection.removeAsyncCallback(packetId);
+    }
+
+    private boolean singleThreadCallback;
+
+    @Override
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+        this.singleThreadCallback = singleThreadCallback;
+    }
+
+    @Override
+    public boolean isSingleThreadCallback() {
+        return singleThreadCallback;
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback() {
+        return AsyncCallback.create(singleThreadCallback);
     }
 }

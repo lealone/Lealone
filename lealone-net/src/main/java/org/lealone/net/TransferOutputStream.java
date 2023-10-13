@@ -12,26 +12,31 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.security.SHA256;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLob;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to send Value objects.
@@ -44,7 +49,6 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static final int BUFFER_SIZE = 4 * 1024;
     static final int LOB_MAGIC = 0x1234;
-    private static final int LOB_MAC_SALT_LENGTH = 16;
 
     public static final byte REQUEST = 1;
     public static final byte RESPONSE = 2;
@@ -53,9 +57,11 @@ public class TransferOutputStream implements NetOutputStream {
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public TransferOutputStream(Session session, WritableChannel writableChannel) {
+    public TransferOutputStream(Session session, WritableChannel writableChannel,
+            DataBufferFactory dataBufferFactory) {
         this.session = session;
-        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE);
+        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE,
+                dataBufferFactory);
         out = new DataOutputStream(resettableOutputStream);
     }
 
@@ -72,12 +78,14 @@ public class TransferOutputStream implements NetOutputStream {
         return this;
     }
 
-    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType) throws IOException {
+    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType)
+            throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
         return this;
     }
 
-    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType) throws IOException {
+    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType)
+            throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
         return this;
     }
@@ -261,13 +269,6 @@ public class TransferOutputStream implements NetOutputStream {
         return this;
     }
 
-    @Override
-    public TransferOutputStream writePageKey(PageKey pk) throws IOException {
-        writeValue((Value) pk.key);
-        writeBoolean(pk.first);
-        return this;
-    }
-
     /**
      * Write a value.
      *
@@ -333,16 +334,14 @@ public class TransferOutputStream implements NetOutputStream {
             break;
         case Value.BLOB:
         case Value.CLOB: {
-            if (v instanceof ValueLob) {
-                ValueLob lob = (ValueLob) v;
-                if (lob.isStored()) {
-                    writeLong(-1);
-                    writeInt(lob.getTableId());
-                    writeLong(lob.getLobId());
-                    writeBytes(calculateLobMac(session, lob.getLobId()));
-                    writeLong(lob.getPrecision());
-                    break;
-                }
+            ValueLob lob = (ValueLob) v;
+            if (lob.isStored()) {
+                writeLong(-1);
+                writeInt(lob.getTableId());
+                writeLong(lob.getLobId());
+                writeBytes(calculateLobMac(session, lob));
+                writeLong(lob.getPrecision());
+                break;
             }
             long length = v.getPrecision();
             if (length < 0) {
@@ -352,7 +351,8 @@ public class TransferOutputStream implements NetOutputStream {
             if (type == Value.BLOB) {
                 long written = IOUtils.copyAndCloseInput(v.getInputStream(), out);
                 if (written != length) {
-                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length:" + length + " written:" + written);
+                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                            "length:" + length + " written:" + written);
                 }
             } else {
                 Reader reader = v.getReader();
@@ -405,6 +405,57 @@ public class TransferOutputStream implements NetOutputStream {
             }
             break;
         }
+        case Value.SET: {
+            ValueSet vs = (ValueSet) v;
+            Set<Value> set = vs.getSet();
+            int size = set.size();
+            Class<?> componentType = vs.getComponentType();
+            if (componentType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(componentType.getName());
+            }
+            for (Value value : set) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.LIST: {
+            ValueList vl = (ValueList) v;
+            List<Value> list = vl.getList();
+            int size = list.size();
+            Class<?> componentType = vl.getComponentType();
+            if (componentType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(componentType.getName());
+            }
+            for (Value value : list) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.MAP: {
+            ValueMap vm = (ValueMap) v;
+            Map<Value, Value> map = vm.getMap();
+            int size = map.size();
+            Class<?> kType = vm.getKeyType();
+            Class<?> vType = vm.getValueType();
+            if (kType == Object.class && vType == Object.class) {
+                writeInt(size);
+            } else {
+                writeInt(-(size + 1));
+                writeString(kType.getName());
+                writeString(vType.getName());
+            }
+            for (Entry<Value, Value> e : map.entrySet()) {
+                writeValue(e.getKey());
+                writeValue(e.getValue());
+            }
+            break;
+        }
         default:
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);
         }
@@ -413,39 +464,35 @@ public class TransferOutputStream implements NetOutputStream {
     /**
      * Verify the HMAC.
      *
-     * @param hmac the message authentication code
+     * @param hmacData the message authentication code
      * @param lobId the lobId
      * @throws DbException if the HMAC does not match
      */
-    public static void verifyLobMac(Session session, byte[] hmac, long lobId) {
-        byte[] result = calculateLobMac(session, lobId);
-        if (!Utils.compareSecure(hmac, result)) {
+    public static int verifyLobMac(Session session, byte[] hmacData, long lobId) {
+        long hmac = Utils.readLong(hmacData, 0);
+        if ((lobId >> 32) != ((int) hmac)) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
                     "Invalid lob hmac; possibly the connection was re-opened internally");
         }
+        return (int) (hmac >> 32);
     }
 
-    private static byte[] calculateLobMac(Session session, long lobId) {
-        byte[] lobMacSalt = null;
-        if (session != null) {
-            lobMacSalt = session.getLobMacSalt();
-        }
-        if (lobMacSalt == null) {
-            lobMacSalt = MathUtils.secureRandomBytes(LOB_MAC_SALT_LENGTH);
-            if (session != null) {
-                session.setLobMacSalt(lobMacSalt);
-            }
-        }
-        byte[] data = new byte[8];
-        Utils.writeLong(data, 0, lobId);
-        byte[] hmacData = SHA256.getHashWithSalt(data, lobMacSalt);
+    private static byte[] calculateLobMac(Session session, ValueLob lob) {
+        int tableId = lob.getTableId();
+        long lobId = lob.getLobId();
+        if (lob.isUseTableLobStorage())
+            tableId = -tableId;
+        long hmac = (lobId >> 32) + (((long) tableId) << 32);
+        byte[] hmacData = new byte[8];
+        Utils.writeLong(hmacData, 0, hmac);
         return hmacData;
     }
 
     private static class ResettableBufferOutputStream extends NetBufferOutputStream {
 
-        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
-            super(writableChannel, initialSizeHint);
+        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
+                DataBufferFactory dataBufferFactory) {
+            super(writableChannel, initialSizeHint, dataBufferFactory);
         }
 
         @Override

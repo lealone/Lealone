@@ -72,7 +72,8 @@ public class MergeTest extends SqlTestBase {
             sql = "SELECT name FROM MergeTest WHERE id=10";
             assertEquals("abc", getStringValue(1, true));
 
-            PreparedStatement ps = conn.prepareStatement("MERGE INTO MergeTest(id, name) KEY(id) VALUES(?, ?)");
+            PreparedStatement ps = conn
+                    .prepareStatement("MERGE INTO MergeTest(id, name) KEY(id) VALUES(?, ?)");
             ps.setInt(1, 30);
             ps.setString(2, "c");
             ps.executeUpdate();

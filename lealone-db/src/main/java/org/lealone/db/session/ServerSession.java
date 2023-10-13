@@ -6,16 +6,15 @@
 package org.lealone.db.session;
 
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -28,9 +27,9 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.Procedure;
 import org.lealone.db.RunMode;
-import org.lealone.db.ServerStorageCommand;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
@@ -40,42 +39,30 @@ import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
-import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.Lock;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
-import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.dt.DTransactionCommitAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.dt.DTransactionReplicationUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationCheckConflict;
-import org.lealone.server.protocol.replication.ReplicationHandleConflict;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.Storage;
-import org.lealone.storage.StorageCommand;
-import org.lealone.storage.StorageMap;
+import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.storage.replication.ReplicationConflictType;
+import org.lealone.storage.page.IPage;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.TransactionHandler;
+import org.lealone.transaction.TransactionListener;
 
 /**
  * A session represents an embedded database connection. When using the server
@@ -96,7 +83,7 @@ public class ServerSession extends SessionBase {
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
-    private final ArrayList<DbObjectLock> locks = new ArrayList<>();
+    private final ArrayList<Lock> locks = new ArrayList<>();
     private Random random;
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
@@ -113,11 +100,15 @@ public class ServerSession extends SessionBase {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
-    private HashMap<String, Value> unlinkLobMap;
+    private DataHandler currentDataHandler;
+    private HashMap<Integer, DataHandler> dataHandlers;
+    private HashMap<String, ValueLob> unlinkLobMapAtCommit;
+    private HashMap<String, ValueLob> unlinkLobMapAtRollback;
+    private boolean containsLargeObject;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
     private boolean autoCommitAtTransactionEnd;
-    private volatile long cancelAt;
+    private long cancelAt;
     private final long sessionStart = System.currentTimeMillis();
     private long transactionStart;
     private long currentCommandStart;
@@ -134,7 +125,9 @@ public class ServerSession extends SessionBase {
     private boolean containsDDL;
     private boolean containsDatabaseStatement;
 
-    private volatile Transaction transaction;
+    private Transaction transaction;
+    private HashSet<IPage> dirtyPages;
+    private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -144,6 +137,7 @@ public class ServerSession extends SessionBase {
         this.id = id;
         this.lockTimeout = database.getSettings().defaultLockTimeout;
         this.currentSchemaName = Constants.SCHEMA_MAIN;
+        currentDataHandler = database;
     }
 
     @Override
@@ -189,12 +183,14 @@ public class ServerSession extends SessionBase {
             old = variables.remove(name);
         } else {
             // link LOB values, to make sure we have our own object
-            value = value.link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
+            if (value instanceof ValueLob)
+                value = ((ValueLob) value).link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
             old = variables.put(name, value);
         }
         if (old != null) {
             // close the old value (in case it is a lob)
-            old.unlink(database);
+            if (old instanceof ValueLob)
+                ((ValueLob) old).unlink(database);
             old.close();
         }
     }
@@ -400,10 +396,6 @@ public class ServerSession extends SessionBase {
         this.lockTimeout = lockTimeout;
     }
 
-    public boolean isLocal() {
-        return !database.isShardingMode() || connectionInfo == null || connectionInfo.isEmbedded();
-    }
-
     public ParsedSQLStatement parseStatement(String sql) {
         return database.createParser(this).parse(sql);
     }
@@ -429,40 +421,18 @@ public class ServerSession extends SessionBase {
         SQLParser parser = database.createParser(this);
         parser.setRightsChecked(rightsChecked);
         PreparedSQLStatement p = parser.parse(sql).prepare();
-        p.setLocal(isLocal());
         return p;
     }
 
     public PreparedSQLStatement prepareStatementLocal(String sql) {
         SQLParser parser = database.createParser(this);
         PreparedSQLStatement p = parser.parse(sql).prepare();
-        p.setLocal(true);
         return p;
     }
 
     @Override
-    public synchronized SQLCommand createSQLCommand(String sql, int fetchSize) {
+    public SQLCommand createSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        return new ServerStorageCommand(this);
-    }
-
-    @Override
-    public ReplicaStorageCommand createReplicaStorageCommand() {
-        return new ServerStorageCommand(this);
     }
 
     /**
@@ -474,11 +444,6 @@ public class ServerSession extends SessionBase {
      */
     @Override
     public synchronized SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
-    @Override
-    public synchronized ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 
@@ -512,20 +477,112 @@ public class ServerSession extends SessionBase {
                 queryCache.put(sql, ps);
             }
         }
-        ps.setLocal(isLocal());
         if (fetchSize != -1)
             ps.setFetchSize(fetchSize);
         return ps;
     }
 
+    private short executingStatements;
+    private boolean isForUpdate; // 记录当前事务执行过的语句是否带有更新语句(含select for update)
+
+    public void startCurrentCommand(PreparedSQLStatement statement) {
+        if (!isForUpdate) {
+            isForUpdate = statement.isForUpdate()
+                    || (!statement.isQuery() && !statement.isTransactionStatement());
+        }
+        if (executingStatements++ == 0) {
+            currentCommand = statement;
+            if (queryTimeout > 0) {
+                long now = System.currentTimeMillis();
+                currentCommandStart = now;
+                cancelAt = now + queryTimeout;
+            }
+            currentCommandSavepointId = getTransaction().getSavepointId();
+            if (locks.isEmpty())
+                currentCommandLockIndex = 0;
+            else
+                currentCommandLockIndex = locks.size() - 1;
+        }
+        // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
+        if (statement.isDatabaseStatement())
+            containsDatabaseStatement = true;
+        else if (statement.isDDL())
+            containsDDL = true;
+    }
+
+    private void closeCurrentCommand() {
+        // 关闭后一些DML语句才可以重用
+        if (currentCommand != null) {
+            currentCommand.close();
+            currentCommand = null;
+        }
+    }
+
+    public <T> void stopCurrentCommand(PreparedSQLStatement statement,
+            AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        // 执行rollback命令时executingStatements会置0，然后再执行stopCurrentCommand
+        // 此时executingStatements不需要再减了
+        if (executingStatements > 0 && --executingStatements > 0) {
+            statement.close();
+            // 增加记录时，如果触发TableAnalyzer，下面的语句会导致错误
+            // setStatus(SessionStatus.STATEMENT_RUNNING); // 切回RUNNING状态
+            return;
+        }
+        boolean isCommitCommand = currentCommand != null
+                && currentCommand.getType() == SQLStatement.COMMIT;
+        closeTemporaryResults();
+        closeCurrentCommand();
+
+        boolean asyncCommit = false;
+        if (asyncResult != null && asyncHandler != null) {
+            if (isAutoCommit() || isCommitCommand) {
+                asyncCommit = true;
+                // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
+                asyncCommit(() -> asyncHandler.handle(asyncResult));
+            } else {
+                // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
+                asyncHandler.handle(asyncResult);
+            }
+        } else {
+            if (isAutoCommit() || isCommitCommand) {
+                // 阻塞当前线程，可能需要等事务日志写完为止
+                commit();
+            }
+        }
+        // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
+        if (!asyncCommit) {
+            setYieldableCommand(null);
+        }
+    }
+
+    public void rollbackCurrentCommand() {
+        rollbackCurrentCommand(null);
+    }
+
+    private void rollbackCurrentCommand(Session newSession) {
+        rollbackTo(currentCommandSavepointId);
+        int size = locks.size();
+        if (currentCommandLockIndex < size) {
+            // 只解除当前语句拥有的锁
+            ArrayList<Lock> list = new ArrayList<>(locks);
+            for (int i = currentCommandLockIndex; i < size; i++) {
+                Lock lock = list.get(i);
+                lock.unlock(this, false, newSession);
+                locks.remove(lock);
+            }
+        }
+    }
+
+    public void asyncCommit() {
+        asyncCommit(null);
+    }
+
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
-            transaction.setStatus(Transaction.STATUS_COMMITTING);
-            sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
+            beforeCommit();
             transaction.asyncCommit(asyncTask);
         } else {
-            // 在手动提交模式下执行了COMMIT语句，然后再手动提交事务，
-            // 此时transaction为null，但是asyncTask不为null
+            // 包含子查询的场景
             if (asyncTask != null)
                 asyncTask.run();
         }
@@ -533,51 +590,22 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void asyncCommitComplete() {
-        transactionStart = 0;
         commitFinal();
-        transaction = null;
     }
 
     public void commit() {
-        commit(null);
-    }
-
-    /**
-     * Commit the current transaction. If the statement was not a data
-     * definition statement, and if there are temporary tables that should be
-     * dropped or truncated at commit, this is done as well.
-     */
-    public void commit(String globalTransactionName) {
-        if (transaction == null)
-            return;
-        checkCommitRollback();
-        transactionStart = 0;
-        if (globalTransactionName == null && isRoot() && !transaction.isLocal() && !isAutoCommit()) {
-            StringBuilder buff = new StringBuilder(transaction.getTransactionName());
-            if (nestedHostAndPortSet != null) {
-                for (String hostAndPort : nestedHostAndPortSet) {
-                    buff.append(',').append(hostAndPort);
-                }
-            }
-            globalTransactionName = buff.toString();
-        }
-        // 避免重复commit
-        Transaction transaction = this.transaction;
-        if (transaction.isLocal())
-            this.transaction = null;
-        // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
-        if (!isAutoCommit() && transaction.getSavepointId() > 0)
-            database.getNextModificationDataId();
-
-        if (globalTransactionName == null)
+        if (transaction != null) {
+            beforeCommit();
             transaction.commit();
-        else
-            transaction.commit(globalTransactionName);
-
-        // 客户端连续执行commit时nestedHostAndPortSet为null
-        if (transaction.isLocal() || nestedHostAndPortSet == null || isAutoCommit()) {
             commitFinal();
         }
+    }
+
+    private void beforeCommit() {
+        addLobTask();
+        checkCommitRollback();
+        checkDataModification();
+        sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
     }
 
     private void checkCommitRollback() {
@@ -586,44 +614,60 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private void endTransaction() {
-        if (!isRoot)
-            setAutoCommit(true);
-
-        containsDDL = false;
-        containsDatabaseStatement = false;
+    private void checkDataModification() {
+        // 手动提交时，如果更新了数据，让缓存失效，这样其他还没结束的事务就算开启了缓存也能读到新数据
+        if (!isAutoCommit() && transaction.getSavepointId() > 0)
+            database.getNextModificationDataId();
     }
 
-    @Override
-    public void commitFinal() {
-        endTransaction();
-        if (transaction != null && !transaction.isLocal()) {
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            transaction.commitFinal();
+    private void endTransaction() {
+        containsDDL = false;
+        containsDatabaseStatement = false;
+        isForUpdate = false;
+        wakeUpWaitingTransactionListeners();
+        transactionStart = 0;
+        transaction = null;
+    }
+
+    private void unlinkLob(HashMap<String, ValueLob> lobMap) {
+        if (lobMap != null) {
+            for (ValueLob v : lobMap.values()) {
+                v.unlink(v.getHandler());
+                v.close();
+            }
         }
+    }
+
+    private void addLobTask() {
+        if (containsLargeObject) {
+            unlinkLob(unlinkLobMapAtCommit);
+            unlinkLobMapAtCommit = null;
+            unlinkLobMapAtRollback = null;
+            containsLargeObject = false;
+
+            if (dataHandlers != null) {
+                HashMap<Integer, DataHandler> dHandlers = dataHandlers;
+                dataHandlers = null;
+                transaction.addLobTask(() -> {
+                    for (DataHandler dh : dHandlers.values())
+                        dh.getLobStorage().save();
+                });
+            }
+        }
+    }
+
+    private void commitFinal() {
         if (!containsDDL) {
-            // do not clean the temp tables if the last command was a
-            // create/drop
+            // do not clean the temp tables if the last command was a create/drop
             cleanTempTables(false);
             if (autoCommitAtTransactionEnd) {
                 autoCommit = true;
                 autoCommitAtTransactionEnd = false;
             }
         }
-        if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
-            // need to flush the transaction log, because we can't unlink lobs
-            // if the commit record is not written
-            database.flush();
-            for (Value v : unlinkLobMap.values()) {
-                v.unlink(database);
-                v.close();
-            }
-            unlinkLobMap = null;
-        }
         unlockAll(true);
         clean();
-        releaseNestedSessions();
+        endTransaction();
         yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
@@ -632,33 +676,37 @@ public class ServerSession extends SessionBase {
      * Fully roll back the current transaction.
      */
     public void rollback() {
+        if (transaction == null)
+            return;
         checkCommitRollback();
-        if (transaction != null) {
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            transaction.rollback();
-            endTransaction();
-        }
+        transaction.rollback();
+        clearDirtyPages();
         cleanTempTables(false);
         unlockAll(false);
+        endTransaction();
+
+        if (containsLargeObject) {
+            unlinkLob(unlinkLobMapAtRollback);
+            unlinkLobMapAtCommit = null;
+            unlinkLobMapAtRollback = null;
+            containsLargeObject = false;
+        }
         if (autoCommitAtTransactionEnd) {
             autoCommit = true;
             autoCommitAtTransactionEnd = false;
         }
-
         if (containsDatabaseStatement) {
             LealoneDatabase.getInstance().copy();
             containsDatabaseStatement = false;
         }
-
         if (containsDDL) {
             Database db = this.database;
             db.copy();
             containsDDL = false;
         }
-
         clean();
-        releaseNestedSessions();
+        executingStatements = 0; // 回滚时置0，否则出现锁超时异常时会导致严重错误
+        yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -679,7 +727,6 @@ public class ServerSession extends SessionBase {
      *
      * @param name the savepoint name
      */
-    @Override
     public void addSavepoint(String name) {
         getTransaction().addSavepoint(name);
     }
@@ -689,11 +736,12 @@ public class ServerSession extends SessionBase {
      *
      * @param name the savepoint name
      */
-    @Override
     public void rollbackToSavepoint(String name) {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(name);
+            // 让语句缓存变得无效
+            clearQueryCache();
         }
     }
 
@@ -723,25 +771,23 @@ public class ServerSession extends SessionBase {
      *
      * @param lock the lock that is locked
      */
-    public void addLock(DbObjectLock lock) {
+    @Override
+    public void addLock(Object lock) {
+        Lock lock2 = (Lock) lock;
         if (SysProperties.CHECK) {
-            if (locks.indexOf(lock) >= 0) {
+            if (locks.indexOf(lock2) >= 0) {
                 DbException.throwInternalError();
             }
         }
-        locks.add(lock);
+        locks.add(lock2);
     }
 
     private void unlockAll(boolean succeeded) {
-        unlockAll(succeeded, null);
-    }
-
-    private void unlockAll(boolean succeeded, ServerSession newLockOwner) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
-                lock.unlock(this, succeeded, newLockOwner);
+                Lock lock = locks.get(i);
+                lock.unlock(this, succeeded, null);
             }
             locks.clear();
         }
@@ -834,95 +880,6 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public void startCurrentCommand(PreparedSQLStatement statement) {
-        currentCommand = statement;
-        if (statement != null) {
-            // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
-            if (statement.isDatabaseStatement())
-                containsDatabaseStatement = true;
-            else if (statement.isDDL())
-                containsDDL = true;
-
-            if (queryTimeout > 0) {
-                long now = System.currentTimeMillis();
-                currentCommandStart = now;
-                cancelAt = now + queryTimeout;
-            }
-            currentCommandSavepointId = getTransaction().getSavepointId();
-            currentCommandLockIndex = locks.size();
-        }
-    }
-
-    private void closeCurrentCommand() {
-        // 关闭后一些DML语句才可以重用
-        if (currentCommand != null) {
-            currentCommand.close();
-            currentCommand = null;
-        }
-    }
-
-    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
-        if (executingNestedStatement)
-            return;
-        if (lastReplicationName != null && isAutoCommit()) {
-            getTransaction().replicaCommit(lastReplicationName);
-            lastReplicationName = null;
-        }
-        closeTemporaryResults();
-        closeCurrentCommand();
-        // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
-        if (getStatus() == SessionStatus.RETRYING) {
-            setStatus(SessionStatus.STATEMENT_COMPLETED);
-            if (isAutoCommit()) {
-                if (asyncResult != null)
-                    asyncCommit(() -> {
-                    });
-                else
-                    commit();
-            }
-        } else {
-            if (asyncResult != null && asyncHandler != null) {
-                // 在复制模式下不能自动提交
-                if (isAutoCommit() && getReplicationName() == null) {
-                    // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
-                    asyncCommit(() -> asyncHandler.handle(asyncResult));
-                } else {
-                    // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
-                    asyncHandler.handle(asyncResult);
-                }
-            } else {
-                if (isAutoCommit() && getReplicationName() == null) {
-                    // 阻塞当前线程，可能需要等事务日志写完为止
-                    commit();
-                }
-            }
-        }
-        // 可经执行下一条命令了
-        if (getReplicationName() == null) {
-            setYieldableCommand(null);
-        }
-    }
-
-    public void rollbackCurrentCommand() {
-        rollbackTo(currentCommandSavepointId);
-        int size = locks.size();
-        if (currentCommandLockIndex < size) {
-            // 只解除当前语句拥有的锁
-            ArrayList<DbObjectLock> list = new ArrayList<>(locks);
-            for (int i = currentCommandLockIndex; i < size; i++) {
-                DbObjectLock lock = list.get(i);
-                lock.unlock(this, false, null);
-                locks.remove(lock);
-            }
-        }
-    }
-
-    private void rollbackCurrentCommand(ServerSession newLockOwner) {
-        rollbackTo(currentCommandSavepointId);
-        unlockAll(false, newLockOwner);
-        sessionStatus = SessionStatus.WAITING;
-    }
-
     /**
      * Check if the current transaction is canceled by calling
      * Statement.cancel() or because a session timeout was set and expired.
@@ -995,7 +952,8 @@ public class ServerSession extends SessionBase {
     public Connection createConnection(String user, String url) {
         try {
             Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
-            Connection conn = (Connection) jdbcConnectionClass.getConstructor(Session.class, String.class, String.class)
+            Connection conn = (Connection) jdbcConnectionClass
+                    .getConstructor(Session.class, String.class, String.class)
                     .newInstance(this, user, url);
             return conn;
         } catch (Exception e) {
@@ -1005,34 +963,40 @@ public class ServerSession extends SessionBase {
 
     @Override
     public DataHandler getDataHandler() {
-        return database;
+        return currentDataHandler;
     }
 
-    /**
-     * Remember that the given LOB value must be un-linked (disconnected from
-     * the table) at commit.
-     *
-     * @param v the value
-     */
-    public void unlinkAtCommit(Value v) {
+    public void setDataHandler(DataHandler dh) {
+        currentDataHandler = dh;
+    }
+
+    public void addDataHandler(int tableId, DataHandler dataHandler) {
+        if (dataHandlers == null) {
+            dataHandlers = new HashMap<>();
+        }
+        dataHandlers.put(tableId, dataHandler);
+    }
+
+    public void unlinkAtCommit(ValueLob v) {
         if (SysProperties.CHECK && !v.isLinked()) {
             DbException.throwInternalError();
         }
-        if (unlinkLobMap == null) {
-            unlinkLobMap = new HashMap<>();
+        if (unlinkLobMapAtCommit == null) {
+            unlinkLobMapAtCommit = new HashMap<>();
         }
-        unlinkLobMap.put(v.toString(), v);
+        unlinkLobMapAtCommit.put(v.toString(), v);
+        containsLargeObject = true;
     }
 
-    /**
-     * Do not unlink this LOB value at commit any longer.
-     *
-     * @param v the value
-     */
-    public void unlinkAtCommitStop(Value v) {
-        if (unlinkLobMap != null) {
-            unlinkLobMap.remove(v.toString());
+    public void unlinkAtRollback(ValueLob v) {
+        if (SysProperties.CHECK && !v.isLinked()) {
+            DbException.throwInternalError();
         }
+        if (unlinkLobMapAtRollback == null) {
+            unlinkLobMapAtRollback = new HashMap<>();
+        }
+        unlinkLobMapAtRollback.put(v.toString(), v);
+        containsLargeObject = true;
     }
 
     /**
@@ -1125,10 +1089,10 @@ public class ServerSession extends SessionBase {
         return transactionStart;
     }
 
-    public DbObjectLock[] getLocks() {
+    public Lock[] getLocks() {
         // copy the data without synchronizing
         int size = locks.size();
-        ArrayList<DbObjectLock> copy = new ArrayList<>(size);
+        ArrayList<Lock> copy = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             try {
                 copy.add(locks.get(i));
@@ -1137,7 +1101,7 @@ public class ServerSession extends SessionBase {
                 break;
             }
         }
-        DbObjectLock[] list = new DbObjectLock[copy.size()];
+        Lock[] list = new Lock[copy.size()];
         copy.toArray(list);
         return list;
     }
@@ -1207,6 +1171,7 @@ public class ServerSession extends SessionBase {
         return modificationId;
     }
 
+    @Override
     public void setConnectionInfo(ConnectionInfo ci) {
         connectionInfo = ci;
     }
@@ -1232,126 +1197,20 @@ public class ServerSession extends SessionBase {
         return objectId++;
     }
 
-    private boolean isRoot = true; // 分布式事务最开始启动时所在的session就是root session，相当于协调者
-
-    public boolean isRoot() {
-        return isRoot;
-    }
-
-    public void setRoot(boolean isRoot) {
-        this.isRoot = isRoot;
-    }
-
-    public String getURL(String hostId) {
-        if (connectionInfo == null) {
-            String dbName = database.getShortName();
-            String url = createURL(dbName, hostId);
-            connectionInfo = new ConnectionInfo(url, dbName);
-            connectionInfo.setUserName(user.getName());
-            connectionInfo.setUserPasswordHash(user.getUserPasswordHash());
-            return url;
-        }
-        StringBuilder buff = new StringBuilder();
-        String url = connectionInfo.getURL();
-        int pos1 = url.indexOf("//") + 2;
-        buff.append(url.substring(0, pos1)).append(hostId);
-
-        int pos2 = url.indexOf('/', pos1);
-        buff.append(url.substring(pos2));
-        return buff.toString();
-    }
-
+    @Override
     public Transaction getTransaction() {
         if (transaction != null)
             return transaction;
 
         RunMode runMode = getRunMode();
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode);
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode,
+                transactionIsolationLevel);
         transaction.setSession(this);
-        transaction.setGlobalReplicationName(replicationName);
-        transaction.setIsolationLevel(transactionIsolationLevel);
+        transaction.setTransactionHandler(transactionHandler);
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;
         return transaction;
-    }
-
-    // 参与本次事务的其他Session，只有分布式场景才用得到，所以延迟初始化
-    private Map<String, Session> nestedSessions;
-    private Set<String> nestedHostAndPortSet;
-
-    public Session getNestedSession(String hostAndPort) {
-        return getNestedSession(hostAndPort, !NetNode.isLocalTcpNode(hostAndPort));
-    }
-
-    // 得到的嵌套session会参与当前事务
-    public Session getNestedSession(String hostAndPort, boolean remote) {
-        // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
-        String url = getURL(hostAndPort);
-        Session s;
-        if (nestedSessions == null) {
-            nestedSessions = new HashMap<>();
-            nestedHostAndPortSet = new HashSet<>();
-            s = null;
-        } else {
-            s = nestedSessions.get(url);
-        }
-        if (s == null) {
-            nestedHostAndPortSet.add(hostAndPort);
-            s = SessionPool.getSessionSync(this, url, remote);
-            if (transaction != null)
-                transaction.addParticipant(s);
-            nestedSessions.put(url, s);
-        }
-        if (s instanceof ServerSession) {
-            ((ServerSession) s).setTransactionListener(transactionListener);
-            ((ServerSession) s).setSessionInfo(sessionInfo);
-        }
-        // 集群内部节点之间通信用服务器端配置的超时时间
-        s.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
-        return s;
-    }
-
-    private void releaseNestedSessions() {
-        if (nestedSessions != null) {
-            for (Session s : nestedSessions.values()) {
-                s.setParentTransaction(null);
-                SessionPool.release(s);
-            }
-            nestedSessions = null;
-            nestedHostAndPortSet = null;
-        }
-    }
-
-    public boolean validateTransaction(String globalTransactionName) {
-        return database.getTransactionEngine().validateTransaction(globalTransactionName);
-    }
-
-    public String checkReplicationConflict(ReplicationCheckConflict packet) {
-        TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
-        return map.checkReplicationConflict(packet.key, packet.replicationName);
-    }
-
-    public void handleReplicationConflict(ReplicationHandleConflict packet) {
-        if (!transaction.getGlobalReplicationName().equals(packet.replicationName)) {
-            transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
-            TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
-            if (map.tryLock(map.getKeyType().read(packet.key))) {
-                transaction.setGlobalReplicationName(packet.replicationName);
-            }
-        }
-    }
-
-    private static String createURL(String dbName, String hostAndPort) {
-        StringBuilder url = new StringBuilder(100);
-        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
-        url.append(hostAndPort);
-        url.append("/").append(dbName);
-        return url.toString();
-    }
-
-    public SQLParser getParser() {
-        return database.createParser(this);
     }
 
     @Override
@@ -1359,44 +1218,15 @@ public class ServerSession extends SessionBase {
         return connectionInfo == null ? null : connectionInfo.getURL();
     }
 
-    @Override
-    public Future<DTransactionCommitAck> commitTransaction(String globalTransactionName) {
-        commit(globalTransactionName);
-        return Future.succeededFuture(new DTransactionCommitAck());
+    public SQLParser getParser() {
+        return database.createParser(this);
     }
 
-    @Override
-    public void rollbackTransaction() {
-        rollback();
-    }
+    private static final AtomicReferenceFieldUpdater<ServerSession, SessionStatus> statusUpdater = //
+            AtomicReferenceFieldUpdater.newUpdater(ServerSession.class, SessionStatus.class,
+                    "sessionStatus");
 
-    public boolean isShardingMode() {
-        return database.isShardingMode();
-    }
-
-    public StorageMap<Object, Object> getStorageMap(String mapName) {
-        return getTransactionMap(mapName);
-    }
-
-    @SuppressWarnings("unchecked")
-    public TransactionMap<Object, Object> getTransactionMap(String mapName) {
-        // 数据库可能还没有初始化，这时事务引擎中就找不到对应的Map
-        if (!database.isInitialized())
-            database.init();
-        TransactionEngine transactionEngine = database.getTransactionEngine();
-        return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
-    }
-
-    public void replicatePages(String dbName, String storageName, ByteBuffer data) {
-        Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-        if (!database.isInitialized()) {
-            database.init();
-        }
-        Storage storage = database.getStorage(storageName);
-        storage.replicateFrom(data);
-    }
-
-    private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
+    private volatile SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
     @Override
     public SessionStatus getStatus() {
@@ -1406,71 +1236,35 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
+    public boolean compareAndSet(SessionStatus expect, SessionStatus update) {
+        return statusUpdater.compareAndSet(this, expect, update);
+    }
+
+    @Override
     public void setStatus(SessionStatus sessionStatus) {
-        if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT) {
-            // 在复制模式下对无主键的表执行insert时，会当成append处理，
-            // 如果客户端至少抢到了一个append锁，只需发送一次结果即可
-            if (appendReplicationName != null && replicationConflictType == ReplicationConflictType.APPEND) {
-                return;
-            }
-            // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
-            if (currentCommand != null && currentCommand.isIfDDL() && ackVersion > 0) {
-                sessionStatus = SessionStatus.RETRYING;
-            }
-        }
         this.sessionStatus = sessionStatus;
     }
 
-    private ServerSession lockedExclusivelyBy;
-    private ReplicationConflictType replicationConflictType;
-    private long startKey;
-    private int appendCount;
-    private Index appendIndex;
-    private String appendReplicationName;
+    private ServerSession lockedBy;
 
-    private Row currentLockedRow;
-    private int currentLockedRowSavepointId;
+    // 被哪个事务锁住记录了
+    private volatile Transaction lockedByTransaction;
+    private Object lockedKey;
+    private long lockStartTime;
 
-    public Row getCurrentLockedRow() {
-        return currentLockedRow;
-    }
-
-    public void setCurrentLockedRow(Row currentLockedRow, int savepointId) {
-        this.currentLockedRow = currentLockedRow;
-        currentLockedRowSavepointId = savepointId;
-    }
-
-    public void setStartKey(long startKey) {
-        this.startKey = startKey;
-    }
-
-    public void setAppendCount(int appendCount) {
-        this.appendCount = appendCount;
-    }
-
-    public void setAppendIndex(Index appendIndex) {
-        this.appendIndex = appendIndex;
-    }
-
-    public void setLastRow(Row r) {
-        setLastIdentity(ValueLong.get(r.getKey()));
-    }
-
-    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy) {
-        this.lockedExclusivelyBy = lockedExclusivelyBy;
-    }
-
-    public void setReplicationConflictType(ReplicationConflictType replicationConflictType) {
-        this.replicationConflictType = replicationConflictType;
-    }
-
-    public boolean needsHandleReplicationConflict() {
-        if (lockedExclusivelyBy == null && getTransaction().getLockedBy() != null)
-            lockedExclusivelyBy = (ServerSession) getTransaction().getLockedBy().getSession();
-        if (getReplicationName() != null && replicationConflictType != ReplicationConflictType.NONE) {
-            return true;
+    @Override
+    public void setLockedBy(SessionStatus sessionStatus, Transaction lockedByTransaction,
+            Object lockedKey) {
+        this.sessionStatus = sessionStatus;
+        this.lockedByTransaction = lockedByTransaction;
+        this.lockedKey = lockedKey;
+        if (lockedByTransaction != null) {
+            lockStartTime = System.currentTimeMillis();
+            lockedBy = (ServerSession) lockedByTransaction.getSession();
+        } else {
+            lockStartTime = 0;
+            lockedBy = null;
         }
-        return false;
     }
 
     public static class YieldableCommand {
@@ -1479,7 +1273,8 @@ public class ServerSession extends SessionBase {
         private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final int sessionId;
 
-        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable, int sessionId) {
+        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable,
+                int sessionId) {
             this.packetId = packetId;
             this.yieldable = yieldable;
             this.sessionId = sessionId;
@@ -1491,6 +1286,10 @@ public class ServerSession extends SessionBase {
 
         public int getSessionId() {
             return sessionId;
+        }
+
+        public Session getSession() {
+            return yieldable.getSession();
         }
 
         public int getPriority() {
@@ -1523,73 +1322,86 @@ public class ServerSession extends SessionBase {
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         if (yieldableCommand == null)
             return null;
-
+        wakeUpIfNeeded();
         // session处于以下状态时不会被当成候选的对象
         switch (getStatus()) {
         case WAITING:
-            // 复制模式下不主动检查超时
-            if (checkTimeout && getReplicationName() == null) {
+            if (checkTimeout) {
                 checkTransactionTimeout(timeoutListener);
             }
         case TRANSACTION_COMMITTING:
-        case EXCLUSIVE_MODE:
         case STATEMENT_RUNNING:
+        case EXCLUSIVE_MODE:
             return null;
         }
         return yieldableCommand;
     }
 
+    // 当前事务申请锁失败被挂起时，只是把session变成等待状态，然后用lockedByTransaction指向占有锁的事务，
+    // 等lockedByTransaction提交或回滚后，不需要修改被挂起事务的状态，只需要唤醒被挂起事务的调度线程重试即可。
+    private void wakeUpIfNeeded() {
+        if (lockedByTransaction != null
+                && (lockedByTransaction.isClosed() || lockedByTransaction.isWaiting())) {
+            reset(SessionStatus.RETRYING_RETURN_ACK);
+        }
+    }
+
     private void checkTransactionTimeout(TimeoutListener timeoutListener) {
-        Transaction t = transaction;
-        if (t != null && t.getStatus() == Transaction.STATUS_WAITING) {
-            try {
-                t.checkTimeout();
-            } catch (Throwable e) {
-                t.rollback();
+        if (lockedByTransaction != null
+                && System.currentTimeMillis() - lockStartTime > getLockTimeout()) {
+            DbException e = null;
+            String keyStr = lockedKey.toString();
+            // 发生死锁了
+            if (lockedBy.lockedByTransaction == transaction) {
+                String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
+                msg += "\r\n" + getMsg(lockedByTransaction.getTransactionId(),
+                        lockedByTransaction.getSession(), transaction);
+                msg += ", the locked object: " + keyStr;
+                e = DbException.get(ErrorCode.DEADLOCK_1, msg);
+            } else {
+                String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
+                e = DbException.get(ErrorCode.LOCK_TIMEOUT_1, keyStr, msg);
+            }
+            if (e != null) {
                 if (timeoutListener != null)
                     timeoutListener.onTimeout(yieldableCommand, e);
-                transaction = null;
-                yieldableCommand = null; // 移除当前命令
+                rollback();
             }
         }
     }
 
-    public boolean canExecuteNextCommand() {
-        if (sessionStatus == SessionStatus.RETRYING || sessionStatus == SessionStatus.RETRYING_RETURN_RESULT)
-            return false;
-        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-        // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
-        return yieldableCommand == null || getReplicationName() != null;
+    private static String getMsg(long tid, Session session, Transaction transaction) {
+        return "transaction #" + tid + " in session " + session + " wait for transaction #"
+                + transaction.getTransactionId() + " in session " + transaction.getSession();
     }
 
-    private int ackVersion;
-    private Transaction.Listener transactionListener;
-    private boolean isFinalResult;
-    private String lastReplicationName;
+    public boolean canExecuteNextCommand() {
+        if (sessionStatus == SessionStatus.RETRYING
+                || sessionStatus == SessionStatus.RETRYING_RETURN_ACK)
+            return false;
+        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+        return yieldableCommand == null;
+    }
+
+    private TransactionListener transactionListener;
+    private TransactionHandler transactionHandler;
     private Object sessionInfo;
 
     @Override
-    public void setReplicationName(String replicationName) {
-        super.setReplicationName(replicationName);
-        if (replicationName != null)
-            this.lastReplicationName = replicationName;
-    }
-
-    public Transaction.Listener getTransactionListener() {
+    public TransactionListener getTransactionListener() {
         return transactionListener;
     }
 
-    public void setTransactionListener(Transaction.Listener transactionListener) {
+    public void setTransactionListener(TransactionListener transactionListener) {
         this.transactionListener = transactionListener;
     }
 
-    public boolean isFinalResult() {
-        return isFinalResult;
+    public TransactionHandler getTransactionHandler() {
+        return transactionHandler;
     }
 
-    @Override
-    public void setFinalResult(boolean isFinalResult) {
-        this.isFinalResult = isFinalResult;
+    public void setTransactionHandler(TransactionHandler transactionHandler) {
+        this.transactionHandler = transactionHandler;
     }
 
     public Object getSessionInfo() {
@@ -1600,180 +1412,20 @@ public class ServerSession extends SessionBase {
         this.sessionInfo = sessionInfo;
     }
 
-    public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
-        if (replicationConflictType == null)
-            replicationConflictType = ReplicationConflictType.NONE;
-        long first = -1;
-        String uncommittedReplicationName = null;
-        switch (replicationConflictType) {
-        case ROW_LOCK: // 两种锁的的响应格式一样
-        case DB_OBJECT_LOCK:
-            uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
-            break;
-        case APPEND:
-            if (startKey >= 0) { // 第一次返回-1，第二次重试成功后需要把第一次的lockedExclusivelyBy变为null
-                lockedExclusivelyBy = null;
-            }
-            if (lockedExclusivelyBy != null) {
-                uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
-            }
-            first = startKey;
-            updateCount = appendCount;
-            break;
-        }
-        Packet ack;
-        boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
-
-        // 在分布式事务中做复制
-        if (!isRoot() && !isAutoCommit()) {
-            if (prepared)
-                ack = new DTransactionReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-            else
-                ack = new DTransactionReplicationUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-        } else {
-            if (prepared)
-                ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
-                        replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
-            else
-                ack = new ReplicationUpdateAck(updateCount, first, uncommittedReplicationName, replicationConflictType,
-                        ++ackVersion, isIfDDL, isFinalResult);
-        }
-
-        if (isAutoCommit()) {
-            // 写入一条redo log，用于恢复
-            getTransaction().replicaPrepareCommit(currentCommand.getSQL(), updateCount, first,
-                    uncommittedReplicationName, getReplicationName(), replicationConflictType);
-        }
-        return ack;
+    private void reset(SessionStatus sessionStatus) {
+        this.sessionStatus = sessionStatus;
+        reset();
     }
 
-    private void setRetryReplicationNames(List<String> retryReplicationNames) {
-        // if (!isAutoCommit())
-        // return;
-        if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
-            if (!locks.isEmpty()) {
-                for (int i = 0, size = locks.size(); i < size; i++) {
-                    DbObjectLock lock = locks.get(i);
-                    lock.setRetryReplicationNames(retryReplicationNames);
-                }
-            }
-            transaction.setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
-        }
-    }
-
-    private void replicaRollback(List<String> retryReplicationNames, Transaction owner) {
-        getTransaction().setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
-        rollbackTo(currentLockedRowSavepointId);
-        owner.addWaitingTransaction(ValueLong.get(getCurrentLockedRow().getKey()), getTransaction(),
-                getTransactionListener());
-        yieldableCommand.yieldable.back();
-        setStatus(SessionStatus.WAITING);
-    }
-
-    public void handleReplicaConflict(List<String> retryReplicationNames) {
-        if (isStorageReplicationMode()) {
-            commit();
-            return;
-        }
-        ackVersion = 0;
-        if (replicationConflictType == null) {
-            replicationConflictType = ReplicationConflictType.NONE;
-        }
-        if (replicationConflictType == ReplicationConflictType.ROW_LOCK
-                || replicationConflictType == ReplicationConflictType.DB_OBJECT_LOCK) {
-            setRetryReplicationNames(retryReplicationNames);
-        }
-        switch (replicationConflictType) {
-        case ROW_LOCK: { // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            retryReplicationNames.add(0, getReplicationName());
-            lockedExclusivelyBy.replicaRollback(retryReplicationNames, transaction);
-            lockedExclusivelyBy = null;
-            replicationConflictType = null;
-            sessionStatus = SessionStatus.RETRYING;
-            return;
-        }
-        case DB_OBJECT_LOCK: {
-            // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            if (lockedExclusivelyBy != null) {
-                // 重试复制名里也包含lockedExclusivelyBy
-                lockedExclusivelyBy.setRetryReplicationNames(retryReplicationNames);
-                lockedExclusivelyBy.rollbackCurrentCommand(this);
-                replicationConflictType = null;
-                lockedExclusivelyBy = null;
-                sessionStatus = SessionStatus.RETRYING;
-                return;
-            }
-            break;
-        }
-        case APPEND: {
-            int size = retryReplicationNames.size();
-            HashMap<String, Long> replicationNameToStartKeyMap = new HashMap<>(size);
-            long minKey = Long.MAX_VALUE;
-            long delta = 0;
-            for (int i = 0; i < size; i++) {
-                String name = retryReplicationNames.get(i);
-                int colonIndex = name.indexOf(':');
-                String[] keys = name.substring(0, colonIndex).split(",");
-                long first = Long.parseLong(keys[0]);
-                int appendCount = Integer.parseInt(keys[1]);
-                delta += appendCount;
-                if (first < minKey)
-                    minKey = first;
-                String replicationName = name.substring(colonIndex + 1);
-                replicationNameToStartKeyMap.put(replicationName, first);
-            }
-            long maxKey = minKey + delta;
-            appendIndex.setMaxKey(maxKey);
-            appendIndex.setReplicationNameToStartKeyMap(replicationNameToStartKeyMap);
-            appendReplicationName = getReplicationName(); // 用于最后从ReplicationNameToStartKeyMap中删除
-            appendIndex.unlockAppend(this);
-            if (lockedExclusivelyBy != null) {
-                appendIndex.unlockAppend(lockedExclusivelyBy);
-                lockedExclusivelyBy.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
-                lockedExclusivelyBy = null;
-            }
-            sessionStatus = SessionStatus.RETRYING;
-            return;
-        }
-        default:
-            // nothing to do
-            break;
-        }
-        clean();
-        if (yieldableCommand != null) {
-            yieldableCommand.stop();
-            yieldableCommand = null;
-        }
-        if (!isAutoCommit()) {
-            setStatus(SessionStatus.STATEMENT_COMPLETED);
-        }
+    private void reset() {
+        lockedBy = null;
+        lockedByTransaction = null;
+        lockedKey = null;
+        lockStartTime = 0;
     }
 
     private void clean() {
-        if (appendIndex != null) {
-            appendIndex.removeReplicationName(appendReplicationName);
-            appendIndex = null;
-            appendReplicationName = null;
-        }
-        setReplicationName(null);
-        setStorageReplicationMode(false);
-        lockedExclusivelyBy = null;
-        replicationConflictType = null;
-        isFinalResult = false;
-    }
-
-    private byte[] lobMacSalt;
-
-    @Override
-    public void setLobMacSalt(byte[] lobMacSalt) {
-        this.lobMacSalt = lobMacSalt;
-    }
-
-    @Override
-    public byte[] getLobMacSalt() {
-        return lobMacSalt;
+        reset();
     }
 
     @Override
@@ -1799,28 +1451,8 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
+    public <R, P extends AckPacket> Future<R> send(Packet packet,
             AckPacketHandler<R, P> ackPacketHandler) {
-        String dbName = getDatabase().getShortName();
-        String url = createURL(dbName, hostAndPort);
-
-        AsyncCallback<R> ac = new AsyncCallback<>();
-        // 不参与当前事务，所以不用当成当前session的嵌套session
-        SessionPool.getSessionAsync(this, url, true).onComplete(ar -> {
-            if (ar.isSucceeded()) {
-                Session s = ar.getResult();
-                s.send(packet, hostAndPort, ackPacketHandler).onComplete(ar2 -> {
-                    ac.setAsyncResult(ar2);
-                });
-            } else {
-                ac.setAsyncResult(ar.getCause());
-            }
-        });
-        return ac;
-    }
-
-    @Override
-    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
         throw DbException.getInternalError();
     }
 
@@ -1830,8 +1462,8 @@ public class ServerSession extends SessionBase {
         throw DbException.getInternalError();
     }
 
-    private ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集
-    private SmallLRUCache<Long, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
+    private ExpiringMap<Integer, ManualCloseable> cache; // 缓存PreparedStatement和结果集
+    private SmallLRUCache<String, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     private void closeAllCache() {
         if (cache != null) {
@@ -1850,26 +1482,26 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public void setCache(ExpiringMap<Integer, AutoCloseable> cache) {
+    public void setCache(ExpiringMap<Integer, ManualCloseable> cache) {
         this.cache = cache;
     }
 
-    public void addCache(Integer k, AutoCloseable v) {
+    public void addCache(Integer k, ManualCloseable v) {
         cache.put(k, v);
     }
 
-    public AutoCloseable getCache(Integer k) {
+    public ManualCloseable getCache(Integer k) {
         return cache.get(k);
     }
 
-    public AutoCloseable removeCache(Integer k, boolean ifAvailable) {
+    public ManualCloseable removeCache(Integer k, boolean ifAvailable) {
         return cache.remove(k, ifAvailable);
     }
 
-    public SmallLRUCache<Long, InputStream> getLobCache() {
+    public SmallLRUCache<String, InputStream> getLobCache() {
         if (lobCache == null) {
-            lobCache = SmallLRUCache.newInstance(
-                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+            lobCache = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
+                    SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
         }
         return lobCache;
     }
@@ -1895,7 +1527,8 @@ public class ServerSession extends SessionBase {
             this.transactionIsolationLevel = Connection.TRANSACTION_READ_UNCOMMITTED;
             break;
         default:
-            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+            throw DbException.getInvalidValueException("transaction isolation level",
+                    transactionIsolationLevel);
         }
     }
 
@@ -1907,19 +1540,10 @@ public class ServerSession extends SessionBase {
         case Connection.TRANSACTION_READ_UNCOMMITTED:
             break;
         default:
-            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+            throw DbException.getInvalidValueException("transaction isolation level",
+                    transactionIsolationLevel);
         }
         this.transactionIsolationLevel = transactionIsolationLevel;
-    }
-
-    private boolean isStorageReplicationMode;
-
-    public boolean isStorageReplicationMode() {
-        return isStorageReplicationMode;
-    }
-
-    public void setStorageReplicationMode(boolean isStorageReplicationMode) {
-        this.isStorageReplicationMode = isStorageReplicationMode;
     }
 
     private String valueVectorFactoryName;
@@ -1962,6 +1586,16 @@ public class ServerSession extends SessionBase {
         this.olapThreshold = olapThreshold;
     }
 
+    private int olapBatchSize;
+
+    public int getOlapBatchSize() {
+        return olapBatchSize;
+    }
+
+    public void setOlapBatchSize(int olapBatchSize) {
+        this.olapBatchSize = olapBatchSize;
+    }
+
     public Map<String, String> getSettings() {
         Map<String, String> settings = new LinkedHashMap<>(SessionSetting.values().length);
         for (SessionSetting setting : SessionSetting.values()) {
@@ -1999,19 +1633,126 @@ public class ServerSession extends SessionBase {
             case OLAP_THRESHOLD:
                 v = olapThreshold;
                 break;
+            case OLAP_BATCH_SIZE:
+                v = olapBatchSize;
+                break;
             }
             settings.put(setting.name(), v == null ? "null" : v.toString());
         }
         return settings;
     }
 
-    private boolean executingNestedStatement;
-
-    public void startNestedStatement() {
-        executingNestedStatement = true;
+    @Override
+    public void addWaitingTransactionListener(TransactionListener listener) {
+        if (getTransactionListener() != null)
+            getTransactionListener().addWaitingTransactionListener(listener);
     }
 
-    public void endNestedStatement() {
-        executingNestedStatement = false;
+    @Override
+    public void wakeUpWaitingTransactionListeners() {
+        if (getTransactionListener() != null)
+            getTransactionListener().wakeUpWaitingTransactionListeners();
+    }
+
+    private PageOperationHandler pageOperationHandler;
+
+    @Override
+    public PageOperationHandler getPageOperationHandler() {
+        return pageOperationHandler;
+    }
+
+    public void setPageOperationHandler(PageOperationHandler pageOperationHandler) {
+        this.pageOperationHandler = pageOperationHandler;
+    }
+
+    public void clearQueryCache() {
+        if (queryCache != null)
+            queryCache.clear();
+    }
+
+    @Override
+    public void setSingleThreadCallback(boolean singleThreadCallback) {
+    }
+
+    @Override
+    public boolean isSingleThreadCallback() {
+        return true;
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback() {
+        // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
+        return AsyncCallback.createSingleThreadCallback();
+    }
+
+    @Override
+    public boolean isQueryCommand() {
+        PreparedSQLStatement c = currentCommand;
+        return c != null && c.isQuery();
+    }
+
+    @Override
+    public boolean isForUpdate() {
+        return isForUpdate;
+    }
+
+    private boolean undoLogEnabled = true;
+
+    @Override
+    public boolean isUndoLogEnabled() {
+        return undoLogEnabled;
+    }
+
+    public void setUndoLogEnabled(boolean enabled) {
+        undoLogEnabled = enabled;
+    }
+
+    @Override
+    public void addPageReference(Object ref) {
+        pageRefs.put(ref, ref);
+    }
+
+    @Override
+    public void addPageReference(Object oldRef, Object lRef, Object rRef) {
+        if (pageRefs.containsKey(oldRef)) {
+            pageRefs.put(lRef, lRef);
+            pageRefs.put(rRef, rRef);
+        }
+    }
+
+    @Override
+    public boolean containsPageReference(Object ref) {
+        return pageRefs.containsKey(ref);
+    }
+
+    @Override
+    public void addDirtyPage(IPage page) {
+        if (dirtyPages == null)
+            dirtyPages = new HashSet<>();
+        dirtyPages.add(page);
+    }
+
+    @Override
+    public void markDirtyPages() {
+        if (dirtyPages != null) {
+            for (IPage page : dirtyPages)
+                page.markDirtyBottomUp();
+        }
+        clearDirtyPages();
+    }
+
+    private void clearDirtyPages() {
+        dirtyPages = null;
+        pageRefs = new ConcurrentHashMap<>();
+    }
+
+    private boolean markClosed;
+
+    public void markClosed() {
+        markClosed = true;
+    }
+
+    public boolean isMarkClosed() {
+        return markClosed;
     }
 }

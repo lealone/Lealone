@@ -16,7 +16,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
-import org.lealone.db.SQLEngineHolder;
+import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
@@ -28,13 +28,17 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.sql.IExpression;
+import org.lealone.sql.SQLEngine;
 
 /**
  * This class represents a column in a table.
@@ -147,7 +151,8 @@ public class Column {
         } catch (DbException e) {
             if (e.getErrorCode() == ErrorCode.DATA_CONVERSION_ERROR_1) {
                 String target = (table == null ? "" : table.getName() + ": ") + getCreateSQL();
-                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, v.getSQL() + " (" + target + ")");
+                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1,
+                        v.getSQL() + " (" + target + ")");
             }
             throw e;
         }
@@ -217,7 +222,7 @@ public class Column {
     }
 
     public String getSQL() {
-        return SQLEngineHolder.quoteIdentifier(name);
+        return quoteIdentifier(name);
     }
 
     public String getName() {
@@ -323,7 +328,9 @@ public class Column {
 
     private void updateSequenceIfRequired(ServerSession session, Value value) {
         if (sequence != null) {
-            long current = sequence.getCurrentValue();
+            if (sequence.isInvalid())
+                sequence = sequence.getNewSequence(session);
+            long current = sequence.getCurrentValue(session);
             long inc = sequence.getIncrement();
             long now = value.getLong();
             boolean update = false;
@@ -333,7 +340,7 @@ public class Column {
                 update = true;
             }
             if (update) {
-                sequence.modify(now + inc, null, null, null);
+                sequence.modify(session, now + inc, null, null, null, true);
                 session.setLastIdentity(ValueLong.get(now));
                 sequence.flush(session, 0);
             }
@@ -350,8 +357,8 @@ public class Column {
      * @param temporary true if the sequence is temporary and does not need to
      *            be stored
      */
-    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary,
-            DbObjectLock lock) {
+    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id,
+            boolean temporary, DbObjectLock lock) {
         if (!autoIncrement) {
             DbException.throwInternalError();
         }
@@ -400,7 +407,7 @@ public class Column {
     public String getCreateSQL(boolean exceptName) {
         StringBuilder buff = new StringBuilder();
         if (!exceptName && name != null) {
-            buff.append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
+            buff.append(quoteIdentifier(name)).append(' ');
         }
         if (originalSQL != null) {
             buff.append(originalSQL);
@@ -538,7 +545,8 @@ public class Column {
      * @param session the session
      * @param expr the (additional) constraint
      */
-    public void addCheckConstraint(ServerSession session, IExpression expr, IExpression.Evaluator evaluator) {
+    public void addCheckConstraint(ServerSession session, IExpression expr,
+            IExpression.Evaluator evaluator) {
         if (expr == null) {
             return;
         }
@@ -558,7 +566,8 @@ public class Column {
             checkConstraint = expr;
             checkConstraintEvaluator = evaluator;
         } else {
-            checkConstraint = session.getDatabase().getSQLEngine().createConditionAndOr(true, checkConstraint, expr);
+            checkConstraint = session.getDatabase().getSQLEngine().createConditionAndOr(true,
+                    checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
 
@@ -721,5 +730,71 @@ public class Column {
         isComputed = source.isComputed;
         selectivity = source.selectivity;
         primaryKey = source.primaryKey;
+    }
+
+    public boolean isCollectionType() {
+        return type == Value.LIST || type == Value.SET || type == Value.MAP;
+    }
+
+    public static class ListColumn extends Column {
+
+        public final Column element;
+
+        public ListColumn(String name, Column element) {
+            super(name, Value.LIST);
+            this.element = element;
+        }
+
+        @Override
+        public Value convert(Value v) {
+            ValueList vl = (ValueList) super.convert(v);
+            vl.convertComponent(element.type);
+            return vl;
+        }
+    }
+
+    public static class SetColumn extends Column {
+
+        public final Column element;
+
+        public SetColumn(String name, Column element) {
+            super(name, Value.SET);
+            this.element = element;
+        }
+
+        @Override
+        public Value convert(Value v) {
+            ValueSet vs = (ValueSet) super.convert(v);
+            vs.convertComponent(element.type);
+            return vs;
+        }
+    }
+
+    public static class MapColumn extends Column {
+
+        public final Column key;
+        public final Column value;
+
+        public MapColumn(String name, Column key, Column value) {
+            super(name, Value.MAP);
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public Value convert(Value v) {
+            ValueMap vm = (ValueMap) super.convert(v);
+            vm.convertComponent(key.type, value.type);
+            return vm;
+        }
+    }
+
+    private String quoteIdentifier(String identifier) {
+        return getSQLEngine().quoteIdentifier(identifier);
+    }
+
+    private SQLEngine getSQLEngine() {
+        return table != null ? table.getDatabase().getSQLEngine()
+                : PluginManager.getPlugin(SQLEngine.class, Constants.DEFAULT_SQL_ENGINE_NAME);
     }
 }

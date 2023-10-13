@@ -14,16 +14,16 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.RunMode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.StorageCommand;
-import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicaStorageCommand;
+import org.lealone.storage.page.IPage;
+import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionListener;
 
 /**
  * A client or server session. A session represents a database connection.
@@ -31,25 +31,16 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public interface Session extends Closeable, Transaction.Participant {
+public interface Session extends Closeable {
 
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;
     public static final int STATUS_RUN_MODE_CHANGED = 1003;
-    public static final int STATUS_REPLICATING = 1004;
 
     int getId();
 
     SQLCommand createSQLCommand(String sql, int fetchSize);
-
-    DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize);
-
-    ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize);
-
-    StorageCommand createStorageCommand();
-
-    ReplicaStorageCommand createReplicaStorageCommand();
 
     /**
      * Parse a command and prepare it for execution.
@@ -60,24 +51,11 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     SQLCommand prepareSQLCommand(String sql, int fetchSize);
 
-    ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize);
-
-    String getReplicationName();
-
-    void setReplicationName(String replicationName);
-
-    default boolean isReplicationMode() {
-        return getReplicationName() != null;
-    }
-
     public default SessionStatus getStatus() {
         return SessionStatus.TRANSACTION_NOT_START;
     }
 
     public default void setStatus(SessionStatus sessionStatus) {
-    }
-
-    public default void setFinalResult(boolean isFinalResult) {
     }
 
     /**
@@ -94,10 +72,6 @@ public interface Session extends Closeable, Transaction.Participant {
      * @param autoCommit the new value
      */
     void setAutoCommit(boolean autoCommit);
-
-    Transaction getParentTransaction();
-
-    void setParentTransaction(Transaction transaction);
 
     void asyncCommitComplete();
 
@@ -175,6 +149,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     int getNetworkTimeout();
 
+    default void setConnectionInfo(ConnectionInfo ci) {
+    }
+
     ConnectionInfo getConnectionInfo();
 
     default void reconnectIfNeeded() {
@@ -213,19 +190,74 @@ public interface Session extends Closeable, Transaction.Participant {
         });
     }
 
-    @SuppressWarnings("unchecked")
-    default <P extends AckPacket> Future<P> send(Packet packet, String hostAndPort) {
-        return send(packet, hostAndPort, p -> {
-            return (P) p;
-        });
-    }
-
-    default <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
-            AckPacketHandler<R, P> ackPacketHandler) {
-        return send(packet, ackPacketHandler);
-    }
-
     <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler);
 
-    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId, AckPacketHandler<R, P> ackPacketHandler);
+    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler);
+
+    void setSingleThreadCallback(boolean singleThreadCallback);
+
+    boolean isSingleThreadCallback();
+
+    <T> AsyncCallback<T> createCallback();
+
+    default void setLockedBy(SessionStatus sessionStatus, Transaction lockedBy, Object lockedKey) {
+    }
+
+    default Transaction getTransaction() {
+        return null;
+    }
+
+    default TransactionListener getTransactionListener() {
+        return null;
+    }
+
+    default void addLock(Object lock) {
+    }
+
+    default void addWaitingTransactionListener(TransactionListener listener) {
+    }
+
+    default void wakeUpWaitingTransactionListeners() {
+    }
+
+    default boolean compareAndSet(SessionStatus expect, SessionStatus update) {
+        return false;
+    }
+
+    default PageOperationHandler getPageOperationHandler() {
+        return null;
+    }
+
+    default boolean isRoot() {
+        return true;
+    }
+
+    default boolean isQueryCommand() {
+        return false;
+    }
+
+    default boolean isForUpdate() {
+        return false;
+    }
+
+    default boolean isUndoLogEnabled() {
+        return true;
+    }
+
+    default void addPageReference(Object ref) {
+    }
+
+    default void addPageReference(Object oldRef, Object lRef, Object rRef) {
+    }
+
+    default boolean containsPageReference(Object ref) {
+        return false;
+    }
+
+    default void addDirtyPage(IPage page) {
+    }
+
+    default void markDirtyPages() {
+    }
 }

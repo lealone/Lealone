@@ -12,8 +12,10 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -33,10 +35,13 @@ import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueList;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueSet;
 import org.lealone.db.value.ValueShort;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringFixed;
@@ -76,12 +81,12 @@ public class DataBuffer implements AutoCloseable {
      */
     public static final int LENGTH_INT = 4;
 
-    private static final int MAX_REUSE_CAPACITY = 4 * 1024 * 1024;
+    public static final int MAX_REUSE_CAPACITY = 4 * 1024 * 1024;
 
     /**
      * The minimum number of bytes to grow a buffer at a time.
      */
-    private static final int MIN_GROW = 1024;
+    public static final int MIN_GROW = 1024;
 
     /**
      * The data handler responsible for lob objects.
@@ -136,6 +141,10 @@ public class DataBuffer implements AutoCloseable {
 
     public DataHandler getHandler() {
         return handler;
+    }
+
+    public boolean getDirect() {
+        return direct;
     }
 
     /**
@@ -606,7 +615,12 @@ public class DataBuffer implements AutoCloseable {
             ValueLob lob = (ValueLob) v;
             byte[] small = lob.getSmall();
             if (small == null) {
-                buff.putVarInt(-3).putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
+                if (lob.isUseTableLobStorage()) {
+                    buff.putVarInt(-2);
+                } else {
+                    buff.putVarInt(-3);
+                }
+                buff.putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
                         .putVarLong(lob.getPrecision());
             } else {
                 buff.putVarInt(small.length).put(small);
@@ -658,12 +672,60 @@ public class DataBuffer implements AutoCloseable {
             }
             break;
         }
-        // case Value.GEOMETRY: {
-        // byte[] b = v.getBytes();
-        // int len = b.length;
-        // buff.put((byte) type).putVarInt(len).put(b);
-        // break;
-        // }
+        case Value.SET: {
+            buff.put((byte) type);
+            ValueSet vs = (ValueSet) v;
+            Set<Value> set = vs.getSet();
+            int size = set.size();
+            Class<?> componentType = vs.getComponentType();
+            if (componentType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, componentType.getName());
+            }
+            for (Value value : set) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.LIST: {
+            buff.put((byte) type);
+            ValueList vl = (ValueList) v;
+            List<Value> list = vl.getList();
+            int size = list.size();
+            Class<?> componentType = vl.getComponentType();
+            if (componentType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, componentType.getName());
+            }
+            for (Value value : list) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.MAP: {
+            buff.put((byte) type);
+            ValueMap vm = (ValueMap) v;
+            Map<Value, Value> map = vm.getMap();
+            int size = map.size();
+            Class<?> kType = vm.getKeyType();
+            Class<?> vType = vm.getValueType();
+            if (kType == Object.class && vType == Object.class) {
+                putVarInt(size);
+            } else {
+                putVarInt(-(size + 1));
+                writeString(buff, kType.getName());
+                writeString(buff, vType.getName());
+            }
+            for (Entry<Value, Value> e : map.entrySet()) {
+                writeValue(e.getKey());
+                writeValue(e.getValue());
+            }
+            break;
+        }
         default:
             type = StorageDataType.getTypeId(type);
             TYPES[type].writeValue(buff, v);
@@ -711,12 +773,16 @@ public class DataBuffer implements AutoCloseable {
                 byte[] small = DataUtils.newBytes(smallLen);
                 buff.get(small, 0, smallLen);
                 return ValueLob.createSmallLob(type, small);
-            } else if (smallLen == -3) {
+            } else if (smallLen == -3 || smallLen == -2) {
                 int tableId = readVarInt(buff);
                 long lobId = readVarLong(buff);
                 long precision = readVarLong(buff);
-                // ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
                 ValueLob lob = ValueLob.create(type, null, tableId, lobId, null, precision);
+                if (smallLen == -3) {
+                    lob.setUseTableLobStorage(false);
+                } else {
+                    lob.setUseTableLobStorage(true);
+                }
                 return lob;
             } else {
                 throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "lob type: " + smallLen);
@@ -754,6 +820,39 @@ public class DataBuffer implements AutoCloseable {
             }
             return ValueResultSet.get(rs);
         }
+        case Value.SET:
+        case Value.LIST: {
+            int size = readVarInt(buff);
+            Class<?> componentType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                componentType = Utils.loadUserClass(readString(buff));
+            }
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = readValue(buff);
+            }
+            if (type == Value.LIST)
+                return ValueList.get(componentType, values);
+            else
+                return ValueSet.get(componentType, values);
+        }
+        case Value.MAP: {
+            int size = readVarInt(buff);
+            Class<?> kType = Object.class, vType = Object.class;
+            if (size < 0) {
+                size = -(size + 1);
+                kType = Utils.loadUserClass(readString(buff));
+                vType = Utils.loadUserClass(readString(buff));
+            }
+            size = size * 2;
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i += 2) {
+                values[i] = readValue(buff);
+                values[i + 1] = readValue(buff);
+            }
+            return ValueMap.get(kType, vType, values);
+        }
         default:
             int type2 = StorageDataType.getTypeId(type);
             return TYPES[type2].readValue(buff, type);
@@ -781,6 +880,7 @@ public class DataBuffer implements AutoCloseable {
      * @param source the reader
      * @param target the output stream
      */
+    @SuppressWarnings("resource")
     public static void copyString(Reader source, OutputStream target) throws IOException {
         char[] buff = new char[Constants.IO_BUFFER_SIZE];
         DataBuffer d = new DataBuffer(null, 3 * Constants.IO_BUFFER_SIZE, false);
@@ -820,60 +920,28 @@ public class DataBuffer implements AutoCloseable {
 
     @Override
     public void close() {
-        DataBufferPool.offer(this);
+        if (factory != null) {
+            factory.recycle(this);
+        } else {
+            DataBufferFactory.getConcurrentFactory().recycle(this);
+        }
+    }
+
+    private DataBufferFactory factory;
+
+    public void setFactory(DataBufferFactory factory) {
+        this.factory = factory;
     }
 
     public static DataBuffer create() {
-        return DataBufferPool.poll();
+        return DataBufferFactory.getConcurrentFactory().create();
     }
 
     public static DataBuffer getOrCreate(int capacity) {
-        return DataBufferPool.poll(capacity);
+        return getOrCreate(capacity, true);
     }
 
-    private static class DataBufferPool {
-
-        private static final int maxPoolSize = 20;
-        private static final AtomicInteger poolSize = new AtomicInteger();
-        private static final ConcurrentLinkedQueue<DataBuffer> dataBufferPool = new ConcurrentLinkedQueue<>();
-
-        private static DataBuffer poll() {
-            DataBuffer buffer = dataBufferPool.poll();
-            if (buffer == null)
-                buffer = new DataBuffer();
-            else {
-                buffer.clear();
-                poolSize.decrementAndGet();
-            }
-            return buffer;
-        }
-
-        private static DataBuffer poll(int capacity) {
-            DataBuffer buffer = null;
-            for (int i = 0, size = poolSize.get(); i < size; i++) {
-                buffer = dataBufferPool.poll();
-                if (buffer == null) {
-                    break;
-                }
-                if (buffer.capacity() < capacity) {
-                    dataBufferPool.offer(buffer); // 放到队列末尾
-                } else {
-                    buffer.clear();
-                    poolSize.decrementAndGet();
-                    return buffer;
-                }
-            }
-            return DataBuffer.create(capacity);
-        }
-
-        private static void offer(DataBuffer buffer) {
-            if (buffer.capacity() <= MAX_REUSE_CAPACITY) {
-                if (poolSize.incrementAndGet() <= maxPoolSize) {
-                    dataBufferPool.offer(buffer);
-                } else {
-                    poolSize.decrementAndGet();
-                }
-            }
-        }
+    public static DataBuffer getOrCreate(int capacity, boolean direct) {
+        return DataBufferFactory.getConcurrentFactory().create(capacity, direct);
     }
 }

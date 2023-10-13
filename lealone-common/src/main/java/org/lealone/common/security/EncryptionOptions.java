@@ -6,12 +6,13 @@
 package org.lealone.common.security;
 
 public abstract class EncryptionOptions {
+
     public String keystore = "conf/.keystore";
     public String keystore_password = "lealone";
     public String truststore = "conf/.truststore";
     public String truststore_password = "lealone";
-    // 这行执行很慢
-    // public String[] cipher_suites = ((SSLSocketFactory) SSLSocketFactory.getDefault()).getDefaultCipherSuites();
+    // 用这种方式设置默认值执行很慢
+    // cipher_suites = ((SSLSocketFactory) SSLSocketFactory.getDefault()).getDefaultCipherSuites();
     public String[] cipher_suites;
     public String protocol = "TLS";
     public String algorithm = "SunX509";

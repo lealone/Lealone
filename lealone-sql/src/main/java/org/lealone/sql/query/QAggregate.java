@@ -20,11 +20,12 @@ class QAggregate extends QOperator {
 
     @Override
     public void run() {
-        while (select.topTableFilter.next()) {
+        while (next()) {
             boolean yield = yieldIfNeeded(++loopCount);
             if (conditionEvaluator.getBooleanValue()) {
-                if (select.isForUpdate && !select.topTableFilter.lockRow())
+                if (select.isForUpdate && !tryLockRow()) {
                     return; // 锁记录失败
+                }
                 rowCount++;
                 select.currentGroupRowId++;
                 for (int i = 0; i < columnCount; i++) {

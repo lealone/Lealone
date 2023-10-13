@@ -25,7 +25,7 @@ import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.DbObjectLock;
-import org.lealone.db.lock.DbObjectLockImpl;
+import org.lealone.db.result.Row;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.CreateTableData;
@@ -50,7 +50,8 @@ public class Schema extends DbObjectBase {
      */
     private final HashSet<String> temporaryUniqueNames = new HashSet<>();
 
-    private final TransactionalDbObjects[] dbObjectsArray = new TransactionalDbObjects[DbObjectType.TYPES.length];
+    private final TransactionalDbObjects[] dbObjectsArray = //
+            new TransactionalDbObjects[DbObjectType.TYPES.length];
     private final DbObjectLock[] locks = new DbObjectLock[DbObjectType.TYPES.length];
 
     private final User owner;
@@ -70,7 +71,7 @@ public class Schema extends DbObjectBase {
         for (DbObjectType type : DbObjectType.TYPES) {
             if (type.isSchemaObject) {
                 dbObjectsArray[type.value] = new TransactionalDbObjects();
-                locks[type.value] = new DbObjectLockImpl(type);
+                locks[type.value] = new DbObjectLock(type);
             }
         }
         this.owner = owner;
@@ -106,7 +107,8 @@ public class Schema extends DbObjectBase {
             return null;
         }
         StatementBuilder sql = new StatementBuilder();
-        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
+        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ")
+                .append(owner.getSQL());
         return sql.toString();
     }
 
@@ -178,6 +180,10 @@ public class Schema extends DbObjectBase {
         }
     }
 
+    public Row tryLockSchemaObject(ServerSession session, SchemaObject obj, int errorCode) {
+        return database.tryLockDbObject(session, obj, errorCode);
+    }
+
     /**
      * Add an object to this schema.
      *
@@ -226,6 +232,40 @@ public class Schema extends DbObjectBase {
                     dbObjects.rollback();
                 }
                 freeUniqueName(obj.getName());
+            });
+        }
+    }
+
+    public void update(ServerSession session, SchemaObject obj, Row oldRow, DbObjectLock lock) {
+        TransactionalDbObjects dbObjects = dbObjectsArray[obj.getType().value];
+        int id = obj.getId();
+
+        if (SysProperties.CHECK) {
+            if (obj.getSchema() != this) {
+                DbException.throwInternalError("wrong schema");
+            }
+            if (session == null) {
+                DbException.throwInternalError("session is null");
+            }
+            if (id < 0) {
+                DbException.throwInternalError("object id<0" + id);
+            }
+            if (!database.isObjectIdEnabled(id)) {
+                DbException.throwInternalError("object id is not enabled: " + id);
+            }
+        }
+
+        database.updateMeta(session, obj, oldRow);
+        dbObjects.copyOnAdd(session, obj);
+
+        if (lock != null) {
+            lock.addHandler(ar -> {
+                if (ar.isSucceeded() && ar.getResult()) {
+                    dbObjects.commit();
+                    obj.onUpdateComplete();
+                } else {
+                    dbObjects.rollback();
+                }
             });
         }
     }
@@ -462,6 +502,14 @@ public class Schema extends DbObjectBase {
         return find(DbObjectType.SERVICE, session, name);
     }
 
+    public Service getService(ServerSession session, String name) {
+        Service service = findService(session, name);
+        if (service == null) {
+            throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, name);
+        }
+        return service;
+    }
+
     /**
      * Release a unique object name.
      *
@@ -689,8 +737,7 @@ public class Schema extends DbObjectBase {
             StorageEngine engine = PluginManager.getPlugin(StorageEngine.class, data.storageEngineName);
             if (engine == null) {
                 try {
-                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).getDeclaredConstructor()
-                            .newInstance();
+                    engine = Utils.newInstance(data.storageEngineName);
                     PluginManager.register(engine);
                 } catch (Exception e) {
                     throw DbException.convert(e);
@@ -703,5 +750,9 @@ public class Schema extends DbObjectBase {
             return new StandardTable(data, engine);
         }
         throw DbException.convert(new NullPointerException("table engine is null"));
+    }
+
+    public TransactionalDbObjects[] getTransactionalDbObjectsArray() {
+        return dbObjectsArray;
     }
 }

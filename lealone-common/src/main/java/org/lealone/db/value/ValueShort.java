@@ -172,7 +172,7 @@ public class ValueShort extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 24;
+            return 16;
         }
 
         @Override
@@ -190,5 +190,4 @@ public class ValueShort extends Value {
             return ValueShort.get(buff.getShort());
         }
     };
-
 }

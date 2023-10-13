@@ -33,7 +33,7 @@ echo    -p            mvn package assembly:assembly -Dmaven.test.skip=true
 echo    -pc           mvn clean package assembly:assembly -Dmaven.test.skip=true
 echo    -pd           mvn package -Dmaven.test.skip=true -P database
 echo    -pad          mvn package assembly:assembly -Dmaven.test.skip=true -P database
-echo    -i            mvn install -Dmaven.test.skip=true
+echo    -i            mvn install -DskipTests
 echo    -c            mvn clean
 echo    -dt           mvn dependency:tree
 echo    -vu version   pom.xml version update
@@ -72,7 +72,7 @@ call mvn clean
 goto end
 
 :i
-call mvn install -Dmaven.test.skip=true
+call mvn install -DskipTests
 goto end
 
 :dt
@@ -84,7 +84,9 @@ set VERSION=%2
 if /i "%VERSION%" == "" goto usage
 call mvn versions:set -DnewVersion=%VERSION%
 call mvn versions:commit
-echo lealoneVersion=%VERSION%>lealone-common\src\main\resources\org\lealone\common\resources\version.properties
+set VERSION_FILE=lealone-common\src\main\resources\org\lealone\common\resources\version.properties
+echo lealoneVersion=%VERSION%>%VERSION_FILE%
+echo buildDate=%date:~0,4%-%date:~5,2%-%date:~8,2%>>%VERSION_FILE%
 goto end
 
 :end

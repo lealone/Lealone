@@ -5,17 +5,14 @@
  */
 package org.lealone.storage;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
-import org.lealone.storage.page.LeafPageMovePlan;
-import org.lealone.storage.page.PageKey;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.TransactionEngine;
 
 public interface StorageMap<K, V> {
 
@@ -55,8 +52,8 @@ public interface StorageMap<K, V> {
      */
     V get(K key);
 
-    default V get(K key, int[] columnIndexes) {
-        return get(key);
+    default Object[] getObjects(K key, int[] columnIndexes) {
+        return null;
     }
 
     /**
@@ -163,6 +160,9 @@ public interface StorageMap<K, V> {
      */
     long size();
 
+    default void decrementSize() {
+    }
+
     /**
      * Whether the map contains the key.
      *
@@ -191,15 +191,15 @@ public interface StorageMap<K, V> {
      * @param from the first key to return
      * @return the cursor
      */
-    StorageMapCursor<K, V> cursor(K from);
+    default StorageMapCursor<K, V> cursor(K from) {
+        return cursor(CursorParameters.create(from));
+    }
 
     default StorageMapCursor<K, V> cursor() {
-        return cursor((K) null);
+        return cursor(CursorParameters.create(null));
     }
 
-    default StorageMapCursor<K, V> cursor(CursorParameters<K> parameters) {
-        return cursor(parameters.from);
-    }
+    StorageMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
     /**
      * Remove all entries.
@@ -229,9 +229,44 @@ public interface StorageMap<K, V> {
      */
     void save();
 
-    long getDiskSpaceUsed();
+    default void save(long dirtyMemory) {
+    }
 
-    long getMemorySpaceUsed();
+    default void repair() {
+    }
+
+    default long getDiskSpaceUsed() {
+        return 0;
+    }
+
+    default long getMemorySpaceUsed() {
+        return 0;
+    }
+
+    default boolean hasUnsavedChanges() {
+        return false;
+    }
+
+    default boolean needGc() {
+        return false;
+    }
+
+    default void gc() {
+        gc(null);
+    }
+
+    default void gc(TransactionEngine te) {
+    }
+
+    default void fullGc(TransactionEngine te) {
+    }
+
+    default long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
+        return 0;
+    }
+
+    default void markDirty(Object key) {
+    }
 
     //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////
 
@@ -240,9 +275,18 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
+    default Future<Object> get(Session session, K key) {
+        Object v = get(key);
+        return Future.succeededFuture(v);
+    }
+
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         V v = put(key, value);
         handleAsyncResult(handler, v);
+    }
+
+    default void put(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put(key, value, handler);
     }
 
     default void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
@@ -250,10 +294,17 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
-    default K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+    default void putIfAbsent(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent(key, value, handler);
+    }
+
+    default void append(V value, AsyncHandler<AsyncResult<K>> handler) {
         K k = append(value);
         handleAsyncResult(handler, k);
-        return k;
+    }
+
+    default void append(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+        append(value, handler);
     }
 
     default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
@@ -261,36 +312,21 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, b);
     }
 
+    default void replace(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace(key, oldValue, newValue, handler);
+    }
+
     default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
         V v = remove(key);
         handleAsyncResult(handler, v);
     }
 
-    static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
-        AsyncResult<R> ar = new AsyncResult<>();
-        ar.setResult(result);
-        handler.handle(ar);
+    default void remove(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove(key, handler);
     }
 
-    ////////////////////// 以下是分布式API ////////////////////////////////
-
-    Future<Object> get(Session session, Object key);
-
-    Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent);
-
-    Future<Object> append(Session session, Object value, StorageDataType valueType);
-
-    Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue, StorageDataType valueType);
-
-    Future<Object> remove(Session session, Object key);
-
-    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
-
-    void removeLeafPage(PageKey pageKey);
-
-    LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
-
-    ByteBuffer readPage(PageKey pageKey);
-
-    Map<List<String>, List<PageKey>> getNodeToPageKeyMap(K from, K to);
+    static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
+        handler.handle(new AsyncResult<>(result));
+    }
 }

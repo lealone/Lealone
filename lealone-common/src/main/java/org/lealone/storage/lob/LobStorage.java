@@ -8,9 +8,10 @@ package org.lealone.storage.lob;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.util.zip.ZipOutputStream;
 
-import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A mechanism to store and retrieve lob data.
@@ -18,7 +19,7 @@ import org.lealone.db.value.ValueLob;
  * @author H2 Group
  * @author zhh
  */
-public interface LobStorage {
+public interface LobStorage extends org.lealone.transaction.TransactionEngine.GcTask {
 
     /**
      * The table id for session variables (LOBs not assigned to a table).
@@ -30,22 +31,18 @@ public interface LobStorage {
      */
     int TABLE_TEMP = -2;
 
-    /**
-     * The table id for result sets.
-     */
-    int TABLE_RESULT = -3;
+    default void save() {
+    }
 
-    /**
-     * Initialize the lob storage.
-     */
-    void init();
+    @Override
+    default void gc(TransactionEngine te) {
+    }
 
-    /**
-     * Whether the storage is read-only
-     *
-     * @return true if yes
-     */
-    boolean isReadOnly();
+    default void close() {
+    }
+
+    default void backupTo(String baseDir, ZipOutputStream out, Long lastDate) {
+    }
 
     /**
      * Create a BLOB object.
@@ -54,7 +51,7 @@ public interface LobStorage {
      * @param maxLength the maximum length (-1 if not known)
      * @return the LOB
      */
-    Value createBlob(InputStream in, long maxLength);
+    ValueLob createBlob(InputStream in, long maxLength);
 
     /**
      * Create a CLOB object.
@@ -63,17 +60,7 @@ public interface LobStorage {
      * @param maxLength the maximum length (-1 if not known)
      * @return the LOB
      */
-    Value createClob(Reader reader, long maxLength);
-
-    /**
-     * Copy a lob.
-     *
-     * @param old the old lob
-     * @param tableId the new table id
-     * @param length the length
-     * @return the new lob
-     */
-    ValueLob copyLob(ValueLob old, int tableId, long length);
+    ValueLob createClob(Reader reader, long maxLength);
 
     /**
      * Get the input stream for the given lob.

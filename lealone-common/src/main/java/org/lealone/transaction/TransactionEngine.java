@@ -5,18 +5,33 @@
  */
 package org.lealone.transaction;
 
+import java.util.concurrent.ConcurrentSkipListMap;
+
+import org.lealone.db.Constants;
 import org.lealone.db.PluggableEngine;
+import org.lealone.db.PluginManager;
 import org.lealone.db.RunMode;
 
 public interface TransactionEngine extends PluggableEngine {
+
+    public static TransactionEngine getDefaultTransactionEngine() {
+        return PluginManager.getPlugin(TransactionEngine.class,
+                Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+    }
 
     default Transaction beginTransaction(boolean autoCommit) {
         return beginTransaction(autoCommit, RunMode.CLIENT_SERVER);
     }
 
-    Transaction beginTransaction(boolean autoCommit, RunMode runMode);
+    default Transaction beginTransaction(boolean autoCommit, RunMode runMode) {
+        return beginTransaction(autoCommit, runMode, Transaction.IL_READ_COMMITTED);
+    }
 
-    boolean validateTransaction(String globalTransactionName);
+    default Transaction beginTransaction(boolean autoCommit, int isolationLevel) {
+        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER, isolationLevel);
+    }
+
+    Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel);
 
     boolean supportsMVCC();
 
@@ -24,7 +39,42 @@ public interface TransactionEngine extends PluggableEngine {
 
     void checkpoint();
 
-    default Runnable getRunnable() {
+    default CheckpointService getCheckpointService() {
         return null;
+    }
+
+    interface CheckpointService extends Runnable {
+        void executeCheckpoint();
+
+        long getLoopInterval();
+    }
+
+    default boolean containsRepeatableReadTransactions() {
+        return false;
+    }
+
+    default boolean containsTransaction(Long tid) {
+        return false;
+    }
+
+    default Transaction getTransaction(Long tid) {
+        return null;
+    }
+
+    default ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
+        return null;
+    }
+
+    default void fullGc(int schedulerCount, int schedulerId) {
+    }
+
+    default void addGcTask(GcTask gcTask) {
+    }
+
+    default void removeGcTask(GcTask gcTask) {
+    }
+
+    interface GcTask {
+        void gc(TransactionEngine te);
     }
 }

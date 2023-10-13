@@ -15,7 +15,7 @@ import org.junit.After;
 import org.junit.Before;
 
 //标识它的子类是进行单元测试的
-public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
+public class UnitTestBase extends TestBase implements TestBase.SqlExecutor, TestBase.EmbeddedTest {
 
     public UnitTestBase() {
     }

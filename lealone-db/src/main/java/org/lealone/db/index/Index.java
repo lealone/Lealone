@@ -5,9 +5,6 @@
  */
 package org.lealone.db.index;
 
-import java.util.List;
-import java.util.Map;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
@@ -19,7 +16,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.storage.CursorParameters;
-import org.lealone.storage.page.PageKey;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -91,7 +87,7 @@ public interface Index extends SchemaObject {
 
     default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
             boolean isLockedBySelf) {
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        AsyncCallback<Integer> ac = session.createCallback();
         remove(session, oldRow, isLockedBySelf).onSuccess(v -> {
             add(session, newRow).onComplete(ar -> {
                 ac.setAsyncResult(ar);
@@ -116,8 +112,8 @@ public interface Index extends SchemaObject {
         throw DbException.getUnsupportedException("remove row");
     }
 
-    default boolean tryLock(ServerSession session, Row row, int[] lockColumns, boolean isForUpdate) {
-        return false;
+    default int tryLock(ServerSession session, Row row, int[] lockColumns) {
+        return 0;
     }
 
     /**
@@ -141,15 +137,14 @@ public interface Index extends SchemaObject {
     boolean canGetFirstOrLast();
 
     /**
-     * Find the first (or last) value of this index. The cursor returned is
-     * positioned on the correct row, or on null if no row has been found.
+     * Find the first (or last) value of this index.
      *
      * @param session the session
      * @param first true if the first (lowest for ascending indexes) or last
      *            value should be returned
-     * @return a cursor (never null)
+     * @return a SearchRow or null
      */
-    Cursor findFirstOrLast(ServerSession session, boolean first);
+    SearchRow findFirstOrLast(ServerSession session, boolean first);
 
     /**
      * Check if the index supports distinct query.
@@ -271,55 +266,4 @@ public interface Index extends SchemaObject {
     boolean needRebuild();
 
     boolean isInMemory();
-
-    /**
-     * Add the rows to a temporary storage (not to the index yet). The rows are
-     * sorted by the index columns. This is to more quickly build the index.
-     *
-     * @param rows the rows
-     * @param bufferName the name of the temporary storage
-     */
-    void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName);
-
-    /**
-     * Add all the index data from the buffers to the index. The index will
-     * typically use merge sort to add the data more quickly in sorted order.
-     *
-     * @param bufferNames the names of the temporary storage
-     */
-    void addBufferedRows(ServerSession session, List<String> bufferNames);
-
-    Map<List<String>, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
-
-    default long getAndAddKey(long delta) {
-        return 0;
-    }
-
-    default void setMaxKey(long maxKey) {
-    }
-
-    default boolean isAppendMode() {
-        return false;
-    }
-
-    default boolean tryExclusiveAppendLock(ServerSession session) {
-        return true;
-    }
-
-    default void unlockAppend(ServerSession session) {
-    }
-
-    default void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
-    }
-
-    default void removeReplicationName(String replicationName) {
-    }
-
-    default boolean containsReplicationName(String replicationName) {
-        return false;
-    }
-
-    default long getStartKey(String replicationName) {
-        return -1;
-    }
 }

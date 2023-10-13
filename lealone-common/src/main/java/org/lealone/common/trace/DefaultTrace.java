@@ -8,7 +8,6 @@ package org.lealone.common.trace;
 import java.text.MessageFormat;
 
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.SysProperties;
 
 /**
  * This class represents a default trace module.
@@ -34,7 +33,7 @@ class DefaultTrace implements Trace {
         this.module = module;
         this.traceObjectName = traceObjectName;
         this.id = id;
-        this.lineSeparator = SysProperties.LINE_SEPARATOR;
+        this.lineSeparator = System.lineSeparator();
     }
 
     @Override
@@ -146,7 +145,8 @@ class DefaultTrace implements Trace {
         if (!space) {
             buff.append(' ');
         }
-        buff.append("*/").append(StringUtils.javaEncode(sql)).append(StringUtils.javaEncode(params)).append(';');
+        buff.append("*/").append(StringUtils.javaEncode(sql)).append(StringUtils.javaEncode(params))
+                .append(';');
         sql = buff.toString();
         traceWriter.write(TraceSystem.INFO, module, sql, null);
     }

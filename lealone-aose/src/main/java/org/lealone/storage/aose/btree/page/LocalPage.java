@@ -12,11 +12,6 @@ import org.lealone.storage.type.StorageDataType;
 public abstract class LocalPage extends Page {
 
     /**
-     * Whether assertions are enabled.
-     */
-    public static final boolean ASSERT = false;
-
-    /**
      * The last result of a find operation is cached.
      */
     protected int cachedCompare;
@@ -33,21 +28,8 @@ public abstract class LocalPage extends Page {
      */
     protected Object[] keys;
 
-    /**
-     * Whether the page is an in-memory (not stored, or not yet stored) page,
-     * and it is removed. This is to keep track of pages that concurrently
-     * changed while they are being stored, in which case the live bookkeeping
-     * needs to be aware of such cases.
-     */
-    protected volatile boolean removedInMemory;
-
     protected LocalPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    @Override
-    public Object[] getKeys() {
-        return keys;
     }
 
     @Override
@@ -58,14 +40,6 @@ public abstract class LocalPage extends Page {
     @Override
     public int getKeyCount() {
         return keys.length;
-    }
-
-    @Override
-    public Object getLastKey() {
-        if (keys == null || keys.length == 0)
-            return null;
-        else
-            return keys[keys.length - 1];
     }
 
     /**
@@ -109,22 +83,7 @@ public abstract class LocalPage extends Page {
 
     @Override
     boolean needSplit() {
-        return memory > map.getBTreeStorage().getPageSplitSize() && keys.length > 1;
-    }
-
-    @Override
-    public void setKey(int index, Object key) {
-        // this is slightly slower:
-        // keys = Arrays.copyOf(keys, keys.length);
-        keys = keys.clone();
-        Object old = keys[index];
-        StorageDataType keyType = map.getKeyType();
-        int mem = keyType.getMemory(key);
-        if (old != null) {
-            mem -= keyType.getMemory(old);
-        }
-        addMemory(mem);
-        keys[index] = key;
+        return memory > map.getBTreeStorage().getPageSize() && keys.length > 1;
     }
 
     @Override
@@ -151,35 +110,22 @@ public abstract class LocalPage extends Page {
 
     @Override
     public int getMemory() {
-        if (ASSERT) {
-            int mem = memory;
-            recalculateMemory();
-            if (mem != memory) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Memory calculation error");
-            }
-        }
         return memory;
     }
 
     protected void addMemory(int mem) {
+        addMemory(mem, true);
+    }
+
+    protected void addMemory(int mem, boolean addToUsedMemory) {
         memory += mem;
+        if (addToUsedMemory)
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(mem);
     }
 
-    @Override
-    public void removePage() {
-        if (pos == 0) {
-            removedInMemory = true;
-        }
-        map.getBTreeStorage().removePage(pos, memory);
-    }
-
-    protected void removeIfInMemory() {
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
-        }
+    protected void copy(LocalPage newPage) {
+        newPage.cachedCompare = cachedCompare;
+        newPage.setRef(getRef());
     }
 
     @Override
@@ -188,7 +134,8 @@ public abstract class LocalPage extends Page {
             return true;
         }
         if (other instanceof LocalPage) {
-            if (pos != 0 && ((LocalPage) other).pos == pos) {
+            long pos = getPos();
+            if (pos != 0 && ((LocalPage) other).getPos() == pos) {
                 return true;
             }
         }
@@ -197,69 +144,13 @@ public abstract class LocalPage extends Page {
 
     @Override
     public int hashCode() {
-        return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
+        return super.hashCode();
+        // long pos = getPos();
+        // return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
     }
 
     @Override
     public String toString() {
-        return getPrettyPageInfo(false);
+        return PrettyPagePrinter.getPrettyPageInfo(this, false);
     }
-
-    ////////////////////// 打印出漂亮的由page组成的btree ////////////////////////////////
-
-    @Override
-    public String getPrettyPageInfo(boolean readOffLinePage) {
-        StringBuilder buff = new StringBuilder();
-        PrettyPageInfo info = new PrettyPageInfo();
-        info.readOffLinePage = readOffLinePage;
-
-        getPrettyPageInfoRecursive("", info);
-
-        buff.append("PrettyPageInfo:").append('\n');
-        buff.append("--------------").append('\n');
-        buff.append("pageCount: ").append(info.pageCount).append('\n');
-        buff.append("leafPageCount: ").append(info.leafPageCount).append('\n');
-        buff.append("nodePageCount: ").append(info.nodePageCount).append('\n');
-        buff.append("levelCount: ").append(info.levelCount).append('\n');
-        buff.append('\n');
-        buff.append("pages:").append('\n');
-        buff.append("--------------------------------").append('\n');
-
-        buff.append(info.buff).append('\n');
-
-        return buff.toString();
-    }
-
-    @Override
-    void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
-        StringBuilder buff = info.buff;
-        info.pageCount++;
-        if (isLeaf())
-            info.leafPageCount++;
-        else
-            info.nodePageCount++;
-        int levelCount = indent.length() / 2 + 1;
-        if (levelCount > info.levelCount)
-            info.levelCount = levelCount;
-
-        buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
-        buff.append(indent).append("pos: ").append(pos).append('\n');
-        buff.append(indent).append("chunkId: ").append(PageUtils.getPageChunkId(pos)).append('\n');
-        // buff.append(indent).append("totalCount: ").append(getTotalCount()).append('\n');
-        buff.append(indent).append("memory: ").append(memory).append('\n');
-        buff.append(indent).append("keyLength: ").append(keys.length).append('\n');
-
-        if (keys.length > 0) {
-            buff.append(indent).append("keys: ");
-            for (int i = 0, len = keys.length; i < len; i++) {
-                if (i > 0)
-                    buff.append(", ");
-                buff.append(keys[i]);
-            }
-            buff.append('\n');
-            getPrettyPageInfoRecursive(buff, indent, info);
-        }
-    }
-
-    protected abstract void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info);
 }

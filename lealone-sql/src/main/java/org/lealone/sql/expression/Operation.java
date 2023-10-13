@@ -43,7 +43,7 @@ public class Operation extends Expression {
     public static final int MULTIPLY = 3;
 
     /**
-     * This operation represents a division as in 4 * 2.
+     * This operation represents a division as in 4 / 2.
      */
     public static final int DIVIDE = 4;
 
@@ -90,16 +90,16 @@ public class Operation extends Expression {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         String sql;
         if (opType == NEGATE) {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = "- " + left.getSQL(isDistributed);
+            sql = "- " + left.getSQL();
         } else {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = left.getSQL(isDistributed) + " " + getOperationToken() + " " + right.getSQL(isDistributed);
+            sql = left.getSQL() + " " + getOperationToken() + " " + right.getSQL();
         }
         return "(" + sql + ")";
     }
@@ -196,7 +196,6 @@ public class Operation extends Expression {
         case MULTIPLY:
         case DIVIDE:
         case MODULUS:
-            dataType = Value.DECIMAL; // 我加上的
             right = right.optimize(session);
             int l = left.getType();
             int r = right.getType();
@@ -231,7 +230,8 @@ public class Operation extends Expression {
                         // Oracle date add
                         Function f = Function.getFunction(session.getDatabase(), "DATEADD");
                         f.setParameter(0, ValueExpression.get(ValueString.get("SECOND")));
-                        left = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)), left);
+                        left = new Operation(Operation.MULTIPLY,
+                                ValueExpression.get(ValueInt.get(60 * 60 * 24)), left);
                         f.setParameter(1, left);
                         f.setParameter(2, right);
                         f.doneWithParameters();
@@ -259,8 +259,8 @@ public class Operation extends Expression {
                         // Oracle date subtract
                         Function f = Function.getFunction(session.getDatabase(), "DATEADD");
                         f.setParameter(0, ValueExpression.get(ValueString.get("SECOND")));
-                        right = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)),
-                                right);
+                        right = new Operation(Operation.MULTIPLY,
+                                ValueExpression.get(ValueInt.get(60 * 60 * 24)), right);
                         right = new Operation(NEGATE, right, null);
                         right = right.optimize(session);
                         f.setParameter(1, right);
@@ -302,15 +302,15 @@ public class Operation extends Expression {
                         return this;
                     }
                 }
-                throw DbException.getUnsupportedException(
-                        DataType.getDataType(l).name + " " + getOperationToken() + " " + DataType.getDataType(r).name);
+                throw DbException.getUnsupportedException(DataType.getDataType(l).name + " "
+                        + getOperationToken() + " " + DataType.getDataType(r).name);
             } else {
                 dataType = Value.getHigherOrder(l, r);
-                if (DataType.isStringType(dataType) && session.getDatabase().getMode().allowPlusForStringConcat) {
+                if (DataType.isStringType(dataType)
+                        && session.getDatabase().getMode().allowPlusForStringConcat) {
                     opType = CONCAT;
                 }
             }
-            dataType = Value.DECIMAL; // 我加上的
             break;
         default:
             DbException.throwInternalError("type=" + opType);
@@ -350,7 +350,8 @@ public class Operation extends Expression {
         if (right != null) {
             switch (opType) {
             case CONCAT:
-                return MathUtils.convertLongToInt((long) left.getDisplaySize() + (long) right.getDisplaySize());
+                return MathUtils
+                        .convertLongToInt((long) left.getDisplaySize() + (long) right.getDisplaySize());
             default:
                 return Math.max(left.getDisplaySize(), right.getDisplaySize());
             }

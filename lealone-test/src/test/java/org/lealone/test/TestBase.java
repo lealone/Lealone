@@ -22,13 +22,21 @@ import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.DbSetting;
 import org.lealone.db.SysProperties;
-import org.lealone.p2p.config.Config;
+import org.lealone.main.config.Config;
 import org.lealone.storage.fs.FileUtils;
 
 public class TestBase extends Assert {
 
     public static interface SqlExecutor {
         void execute(String sql);
+    }
+
+    // 一个标记接口，在Embedded模式下运行的测试类
+    public static interface EmbeddedTest {
+    }
+
+    // 一个标记接口，在Client-Server模式下运行的测试类
+    public static interface ClientServerTest {
     }
 
     // 一个标记接口，指示那些通过main方式运行的测试类
@@ -41,7 +49,8 @@ public class TestBase extends Assert {
 
     public static String url;
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
-    public static final String TEST_BASE_DIR = "." + File.separatorChar + "target" + File.separatorChar + "test-data";
+    public static final String TEST_BASE_DIR = "." + File.separatorChar + "target" + File.separatorChar
+            + "test-data";
     public static final String TEST_DIR = TEST_BASE_DIR + File.separatorChar + "test";
     public static final String TEST = "test";
     public static final String LEALONE = "lealone";
@@ -68,7 +77,8 @@ public class TestBase extends Assert {
 
     // 测试阶段使用ConsoleLogger能加快启动速度
     public static void setConsoleLoggerFactory() {
-        System.setProperty(LoggerFactory.LOGGER_FACTORY_CLASS_NAME, ConsoleLoggerFactory.class.getName());
+        System.setProperty(LoggerFactory.LOGGER_FACTORY_CLASS_NAME,
+                ConsoleLoggerFactory.class.getName());
     }
 
     public static String getDefaultStorageEngineName() {
@@ -80,7 +90,7 @@ public class TestBase extends Assert {
     protected String password = DEFAULT_PASSWORD;
 
     private final Map<String, String> connectionParameters = new HashMap<>();
-    private String storageEngineName = getDefaultStorageEngineName();
+    // private String storageEngineName = getDefaultStorageEngineName();
     private boolean embedded = false;
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;
@@ -134,7 +144,7 @@ public class TestBase extends Assert {
     }
 
     public TestBase setStorageEngineName(String name) {
-        storageEngineName = name;
+        // storageEngineName = name;
         return this;
     }
 
@@ -209,12 +219,14 @@ public class TestBase extends Assert {
         // addConnectionParameter(DbSetting.DATABASE_TO_UPPER, "false");
         // addConnectionParameter(DbSetting.ALIAS_COLUMN_NAME, "true");
         // addConnectionParameter(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, "true");
+        // addConnectionParameter(DbSetting.DEFAULT_STORAGE_ENGINE, storageEngineName);
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", user);
             addConnectionParameter("password", password);
         }
-        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT, String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
+        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT,
+                String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 
         StringBuilder url = new StringBuilder(100);
 
@@ -242,9 +254,8 @@ public class TestBase extends Assert {
             separatorChar = '&';
         }
 
-        url.append(dbName).append(firstSeparatorChar).append(DbSetting.DEFAULT_STORAGE_ENGINE).append("=")
-                .append(storageEngineName);
-        url.append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=").append(netFactoryName);
+        url.append(dbName).append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=")
+                .append(netFactoryName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())
             url.append(separatorChar).append(e.getKey()).append('=').append(e.getValue());
@@ -270,6 +281,12 @@ public class TestBase extends Assert {
         // p(e.getMessage());
     }
 
+    public static void assertErrorCode(Exception e, int errorCode) {
+        Throwable cause = e instanceof SQLException ? e : e.getCause();
+        assertTrue(cause instanceof SQLException);
+        assertEquals(errorCode, ((SQLException) cause).getErrorCode());
+    }
+
     public static void p(Object o) {
         System.out.println(o);
     }
@@ -281,7 +298,8 @@ public class TestBase extends Assert {
     public static void deleteFileRecursive(String path) {
         // 避免误删除
         if (!path.startsWith(TEST_BASE_DIR)) {
-            throw new RuntimeException("invalid path: " + path + ", must be start with: " + TEST_BASE_DIR);
+            throw new RuntimeException(
+                    "invalid path: " + path + ", must be start with: " + TEST_BASE_DIR);
         }
         FileUtils.deleteRecursive(path, false);
     }

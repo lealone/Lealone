@@ -111,7 +111,8 @@ public abstract class BuiltInFunction extends Function {
         return null;
     }
 
-    protected static Value getNullOrValue(ServerSession session, Expression[] args, Value[] values, int i) {
+    protected static Value getNullOrValue(ServerSession session, Expression[] args, Value[] values,
+            int i) {
         if (i >= args.length) {
             return null;
         }
@@ -123,7 +124,8 @@ public abstract class BuiltInFunction extends Function {
     }
 
     protected DbException getUnsupportedException() {
-        return DbException.getUnsupportedException("function name: " + info.name + ", type=" + info.type);
+        return DbException
+                .getUnsupportedException("function name: " + info.name + ", type=" + info.type);
     }
 
     @Override
@@ -219,10 +221,10 @@ public abstract class BuiltInFunction extends Function {
     }
 
     @Override
-    public String getSQL(boolean isDistributed) {
+    public String getSQL() {
         StatementBuilder buff = new StatementBuilder(info.name);
         buff.append('(');
-        appendArgs(buff, isDistributed);
+        appendArgs(buff);
         return buff.append(')').toString();
     }
 

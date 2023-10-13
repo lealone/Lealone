@@ -7,6 +7,7 @@ package org.lealone.server.protocol.session;
 
 import java.io.IOException;
 
+import org.lealone.db.Constants;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -21,13 +22,16 @@ public class SessionInitAck implements AckPacket {
     public final String targetNodes;
     public final RunMode runMode;
     public final boolean invalid;
+    public final int consistencyLevel;
 
-    public SessionInitAck(int clientVersion, boolean autoCommit, String targetNodes, RunMode runMode, boolean invalid) {
+    public SessionInitAck(int clientVersion, boolean autoCommit, String targetNodes, RunMode runMode,
+            boolean invalid, int consistencyLevel) {
         this.clientVersion = clientVersion;
         this.autoCommit = autoCommit;
         this.targetNodes = targetNodes;
         this.runMode = runMode;
         this.invalid = invalid;
+        this.consistencyLevel = consistencyLevel;
     }
 
     @Override
@@ -39,9 +43,12 @@ public class SessionInitAck implements AckPacket {
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeInt(clientVersion);
         out.writeBoolean(autoCommit);
-        out.writeString(targetNodes);
-        out.writeString(runMode.toString());
-        out.writeBoolean(invalid);
+        if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_6) {
+            out.writeString(targetNodes);
+            out.writeString(runMode.toString());
+            out.writeBoolean(invalid);
+            out.writeInt(consistencyLevel);
+        }
     }
 
     public static final Decoder decoder = new Decoder();
@@ -51,10 +58,17 @@ public class SessionInitAck implements AckPacket {
         public SessionInitAck decode(NetInputStream in, int version) throws IOException {
             int clientVersion = in.readInt();
             boolean autoCommit = in.readBoolean();
-            String targetNodes = in.readString();
-            RunMode runMode = RunMode.valueOf(in.readString());
-            boolean invalid = in.readBoolean();
-            return new SessionInitAck(clientVersion, autoCommit, targetNodes, runMode, invalid);
+            if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_6) {
+                String targetNodes = in.readString();
+                RunMode runMode = RunMode.valueOf(in.readString());
+                boolean invalid = in.readBoolean();
+                int consistencyLevel = in.readInt();
+                return new SessionInitAck(clientVersion, autoCommit, targetNodes, runMode, invalid,
+                        consistencyLevel);
+            } else {
+                return new SessionInitAck(clientVersion, autoCommit, null, RunMode.CLIENT_SERVER, false,
+                        0);
+            }
         }
     }
 }

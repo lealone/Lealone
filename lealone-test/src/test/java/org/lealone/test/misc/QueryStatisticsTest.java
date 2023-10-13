@@ -38,7 +38,7 @@ public class QueryStatisticsTest extends SqlTestBase {
         sql = "select distinct f1 from QueryStatisticsTest";
         printResultSet();
 
-        sql = "select * from INFORMATION_SCHEMA.QUERY_STATISTICS";
+        sql = "select * from PERFORMANCE_SCHEMA.QUERY_STATISTICS";
         printResultSet();
     }
 
