@@ -71,22 +71,7 @@ public class BCAggregate extends BsonCommand {
                 for (Entry<String, BsonValue> e : document.entrySet()) {
                     String stage = e.getKey();
                     BsonDocument stageDoc = e.getValue().asDocument();
-                    switch (stage) {
-                    case "$group":
-                        group(stageDoc, select, tableFilter);
-                        break;
-                    case "$match":
-                        if (select.isGroupQuery())
-                            having(stageDoc, select, tableFilter);
-                        else
-                            where(stageDoc, select, tableFilter);
-                        break;
-                    case "$sort":
-                        sort(stageDoc, select, tableFilter);
-                        break;
-                    default:
-                        throw DbException.getUnsupportedException("aggregation pipeline stage " + stage);
-                    }
+                    parseStage(stage, stageDoc, select, tableFilter);
                 }
             }
         }
@@ -107,6 +92,76 @@ public class BCAggregate extends BsonCommand {
         task.si.submitYieldableCommand(task.requestId, yieldable);
     }
 
+    private static void parseStage(String stage, BsonDocument stageDoc, Select select,
+            TableFilter tableFilter) {
+        switch (stage) {
+        case "$group":
+            group(stageDoc, select, tableFilter);
+            break;
+        case "$match":
+            if (select.isGroupQuery())
+                having(stageDoc, select, tableFilter);
+            else
+                where(stageDoc, select, tableFilter);
+            break;
+        case "$sort":
+            sort(stageDoc, select, tableFilter);
+            break;
+        default:
+            throw DbException.getUnsupportedException("aggregation pipeline stage " + stage);
+        }
+    }
+
+    private static void parseAccumulator(BsonDocument fieldDoc, Select select, TableFilter tableFilter) {
+        String accumulator = fieldDoc.getFirstKey();
+        BsonValue accumulatorValue = fieldDoc.get(accumulator);
+        switch (accumulator) {
+        case "$sum": {
+            if (accumulatorValue.isString()) {
+                toAggregate(accumulatorValue, select, tableFilter, Aggregate.SUM);
+            } else {
+                Expression a = Aggregate.create(Aggregate.COUNT_ALL, null, select, false);
+                select.getExpressions().add(a);
+                select.setGroupQuery();
+            }
+            break;
+        }
+        case "$avg": {
+            toAggregate(accumulatorValue, select, tableFilter, Aggregate.AVG);
+            break;
+        }
+        case "$min": {
+            toAggregate(accumulatorValue, select, tableFilter, Aggregate.MIN);
+            break;
+        }
+        case "$max": {
+            toAggregate(accumulatorValue, select, tableFilter, Aggregate.MAX);
+            break;
+        }
+        case "$stdDevPop": {
+            toAggregate(accumulatorValue, select, tableFilter, Aggregate.STDDEV_POP);
+            break;
+        }
+        case "$stdDevSamp": {
+            toAggregate(accumulatorValue, select, tableFilter, Aggregate.STDDEV_SAMP);
+            break;
+        }
+        default:
+            throw DbException.getUnsupportedException("accumulator " + accumulator);
+        }
+    }
+
+    private static void toAggregate(BsonValue accumulatorValue, Select select, TableFilter tableFilter,
+            int type) {
+        String f = accumulatorValue.asString().getValue();
+        if (f.charAt(0) == '$')
+            f = f.substring(1);
+        Expression on = getExpressionColumn(tableFilter, f.toUpperCase());
+        Expression a = Aggregate.create(type, on, select, false);
+        select.getExpressions().add(a);
+        select.setGroupQuery();
+    }
+
     private static void group(BsonDocument doc, Select select, TableFilter tableFilter) {
         if (!doc.containsKey("_id"))
             throw DbException.getUnsupportedException("a group specification must include an _id");
@@ -124,38 +179,7 @@ public class BCAggregate extends BsonCommand {
                     group.add(getExpressionColumn(tableFilter, id.toUpperCase()));
                 }
             } else {
-                BsonDocument fieldDoc = v.asDocument();
-                String accumulator = fieldDoc.getFirstKey();
-                BsonValue accumulatorValue = fieldDoc.get(accumulator);
-                switch (accumulator) {
-                case "$sum": {
-                    Expression a;
-                    if (accumulatorValue.isString()) {
-                        String f = accumulatorValue.asString().getValue();
-                        if (f.charAt(0) == '$')
-                            f = f.substring(1);
-                        Expression on = getExpressionColumn(tableFilter, f.toUpperCase());
-                        a = Aggregate.create(Aggregate.SUM, on, select, false);
-                    } else {
-                        a = Aggregate.create(Aggregate.COUNT_ALL, null, select, false);
-                    }
-                    select.getExpressions().add(a);
-                    select.setGroupQuery();
-                    break;
-                }
-                case "$avg": {
-                    String f = accumulatorValue.asString().getValue();
-                    if (f.charAt(0) == '$')
-                        f = f.substring(1);
-                    Expression on = getExpressionColumn(tableFilter, f.toUpperCase());
-                    Expression a = Aggregate.create(Aggregate.AVG, on, select, false);
-                    select.getExpressions().add(a);
-                    select.setGroupQuery();
-                    break;
-                }
-                default:
-                    throw DbException.getUnsupportedException("accumulator " + accumulator);
-                }
+                parseAccumulator(v.asDocument(), select, tableFilter);
             }
         }
     }
