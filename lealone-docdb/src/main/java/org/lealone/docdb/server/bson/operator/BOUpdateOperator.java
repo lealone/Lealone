@@ -19,7 +19,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.Operation;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.Comparison;
-import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.optimizer.TableFilter;
 
 public class BOUpdateOperator extends BsonOperator {
@@ -39,7 +38,7 @@ public class BOUpdateOperator extends BsonOperator {
                 break;
             case "$currentDate":
                 setAssignment(doc, tableFilter, session, table, update, e2 -> {
-                    return Function.getFunction(session.getDatabase(), "CURRENT_DATE");
+                    return getFunction(session, "CURRENT_DATE");
                 });
                 break;
             case "$inc":
@@ -120,12 +119,7 @@ public class BOUpdateOperator extends BsonOperator {
             ExpressionColumn col = getExpressionColumn(tableFilter, e.getKey().toUpperCase());
             Expression v = toValueExpression(e.getValue());
             Comparison c = new Comparison(session, compareType, v, col);
-            Function f = Function.getFunction(session.getDatabase(), "CASEWHEN");
-            f.setParameter(0, c);
-            f.setParameter(1, v);
-            f.setParameter(2, col);
-            f.doneWithParameters();
-            return f;
+            return getFunction(session, "CASEWHEN", c, v, col);
         });
     }
 }
