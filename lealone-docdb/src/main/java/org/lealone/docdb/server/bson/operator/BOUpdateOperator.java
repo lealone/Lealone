@@ -3,20 +3,16 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.docdb.server.command;
+package org.lealone.docdb.server.bson.operator;
 
-import java.util.ArrayList;
 import java.util.Map.Entry;
 
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
-import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.docdb.server.DocDBServerConnection;
-import org.lealone.docdb.server.DocDBTask;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -26,74 +22,9 @@ import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.optimizer.TableFilter;
 
-public class BCUpdate extends BsonCommand {
+public class BOUpdateOperator extends BsonOperator {
 
-    public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument doc,
-            DocDBServerConnection conn, DocDBTask task) {
-        Table table = findTable(doc, "update", conn);
-        if (table != null) {
-            update(input, doc, conn, table, task);
-            return null;
-        } else {
-            return createResponseDocument(0);
-        }
-    }
-
-    private static void update(ByteBufferBsonInput input, BsonDocument doc, DocDBServerConnection conn,
-            Table table, DocDBTask task) {
-        ServerSession session = task.session;
-        Update update = new Update(session);
-        TableFilter tableFilter = new TableFilter(session, table, null, true, null);
-        update.setTableFilter(tableFilter);
-        ArrayList<BsonDocument> updates = readPayload(input, doc, conn, "updates");
-        for (BsonDocument updateDoc : updates) {
-            BsonDocument q = updateDoc.getDocument("q", null);
-            BsonDocument u = updateDoc.getDocument("u", null);
-            if (q != null) {
-                update.setCondition(toWhereCondition(q, tableFilter, session));
-            }
-            if (u != null) {
-                setAssignment(u, tableFilter, session, table, update);
-            }
-        }
-        update.prepare();
-        createAndSubmitYieldableUpdate(task, update);
-    }
-
-    private static void setOperation(BsonDocument doc, TableFilter tableFilter, Table table,
-            Update update, int opType) {
-        setAssignment(doc, tableFilter, null, table, update, e -> {
-            ExpressionColumn left = getExpressionColumn(tableFilter, e.getKey().toUpperCase());
-            return new Operation(opType, left, toValueExpression(e.getValue()));
-        });
-    }
-
-    private static void setAssignment(BsonDocument doc, TableFilter tableFilter, ServerSession session,
-            Table table, Update update,
-            java.util.function.Function<Entry<String, BsonValue>, Expression> function) {
-        for (Entry<String, BsonValue> e : doc.entrySet()) {
-            Column column = parseColumn(table, e.getKey());
-            Expression expression = function.apply(e);
-            update.setAssignment(column, expression);
-        }
-    }
-
-    private static void setMinMax(BsonDocument doc, TableFilter tableFilter, ServerSession session,
-            Table table, Update update, int compareType) {
-        setAssignment(doc, tableFilter, session, table, update, e -> {
-            ExpressionColumn col = getExpressionColumn(tableFilter, e.getKey().toUpperCase());
-            Expression v = toValueExpression(e.getValue());
-            Comparison c = new Comparison(session, compareType, v, col);
-            Function f = Function.getFunction(session.getDatabase(), "CASEWHEN");
-            f.setParameter(0, c);
-            f.setParameter(1, v);
-            f.setParameter(2, col);
-            f.doneWithParameters();
-            return f;
-        });
-    }
-
-    private static void setAssignment(BsonDocument u, TableFilter tableFilter, ServerSession session,
+    public static void setAssignment(BsonDocument u, TableFilter tableFilter, ServerSession session,
             Table table, Update update) {
         for (Entry<String, BsonValue> e : u.entrySet()) {
             String k = e.getKey();
@@ -163,5 +94,38 @@ public class BCUpdate extends BsonCommand {
                 throw DbException.getUnsupportedException("update operator " + k);
             }
         }
+    }
+
+    private static void setOperation(BsonDocument doc, TableFilter tableFilter, Table table,
+            Update update, int opType) {
+        setAssignment(doc, tableFilter, null, table, update, e -> {
+            ExpressionColumn left = getExpressionColumn(tableFilter, e.getKey().toUpperCase());
+            return new Operation(opType, left, toValueExpression(e.getValue()));
+        });
+    }
+
+    private static void setAssignment(BsonDocument doc, TableFilter tableFilter, ServerSession session,
+            Table table, Update update,
+            java.util.function.Function<Entry<String, BsonValue>, Expression> function) {
+        for (Entry<String, BsonValue> e : doc.entrySet()) {
+            Column column = parseColumn(table, e.getKey());
+            Expression expression = function.apply(e);
+            update.setAssignment(column, expression);
+        }
+    }
+
+    private static void setMinMax(BsonDocument doc, TableFilter tableFilter, ServerSession session,
+            Table table, Update update, int compareType) {
+        setAssignment(doc, tableFilter, session, table, update, e -> {
+            ExpressionColumn col = getExpressionColumn(tableFilter, e.getKey().toUpperCase());
+            Expression v = toValueExpression(e.getValue());
+            Comparison c = new Comparison(session, compareType, v, col);
+            Function f = Function.getFunction(session.getDatabase(), "CASEWHEN");
+            f.setParameter(0, c);
+            f.setParameter(1, v);
+            f.setParameter(2, col);
+            f.doneWithParameters();
+            return f;
+        });
     }
 }

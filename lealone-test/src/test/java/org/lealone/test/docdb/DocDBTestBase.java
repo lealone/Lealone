@@ -6,11 +6,13 @@
 package org.lealone.test.docdb;
 
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.lealone.test.UnitTestBase;
 
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -74,5 +76,11 @@ public class DocDBTestBase extends UnitTestBase {
                 + "/?serverSelectionTimeoutMS=200000";
         connectionString = "mongodb://127.0.0.1:" + port + "/?serverSelectionTimeoutMS=200000";
         return MongoClients.create(connectionString);
+    }
+
+    public static void printBson(Bson bson) {
+        System.out.println(
+                bson.toBsonDocument(bson.getClass(), MongoClientSettings.getDefaultCodecRegistry())
+                        .toJson());
     }
 }

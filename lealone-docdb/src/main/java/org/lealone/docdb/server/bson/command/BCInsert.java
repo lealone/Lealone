@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.docdb.server.command;
+package org.lealone.docdb.server.bson.command;
 
 import java.util.ArrayList;
 import java.util.HashSet;

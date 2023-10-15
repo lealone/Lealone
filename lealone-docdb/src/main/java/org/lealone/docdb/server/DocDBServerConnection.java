@@ -26,11 +26,11 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
-import org.lealone.docdb.server.command.BsonCommand;
-import org.lealone.docdb.server.legacy.OpcodeDelete;
-import org.lealone.docdb.server.legacy.OpcodeInsert;
-import org.lealone.docdb.server.legacy.OpcodeQuery;
-import org.lealone.docdb.server.legacy.OpcodeUpdate;
+import org.lealone.docdb.server.bson.command.BsonCommand;
+import org.lealone.docdb.server.bson.command.legacy.LCDelete;
+import org.lealone.docdb.server.bson.command.legacy.LCInsert;
+import org.lealone.docdb.server.bson.command.legacy.LCQuery;
+import org.lealone.docdb.server.bson.command.legacy.LCUpdate;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferOutputStream;
 import org.lealone.net.WritableChannel;
@@ -184,16 +184,16 @@ public class DocDBServerConnection extends AsyncServerConnection {
                 handleCompressedMessage(input, requestId, responseTo, buffer);
                 break;
             case 2001:
-                OpcodeUpdate.execute(input, this);
+                LCUpdate.execute(input, this);
                 break;
             case 2002:
-                OpcodeInsert.execute(input, this);
+                LCInsert.execute(input, this);
                 break;
             case 2004:
-                OpcodeQuery.execute(input, requestId, this);
+                LCQuery.execute(input, requestId, this);
                 break;
             case 2006:
-                OpcodeDelete.execute(input, this);
+                LCDelete.execute(input, this);
                 break;
             default:
                 logger.warn("Unknow opCode: {}", opCode);
