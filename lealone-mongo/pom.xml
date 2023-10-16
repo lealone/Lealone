@@ -13,30 +13,14 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>lealone-main</artifactId>
+    <artifactId>lealone-mongo</artifactId>
     <packaging>jar</packaging>
     <version>6.0.0-SNAPSHOT</version>
 
-    <!-- 刻意进行了冗余依赖声明，这样在父POM中定义profile时可以灵活配置exclusion -->
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-server</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-aote</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-aose</artifactId>
+            <artifactId>lealone-net</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -46,8 +30,13 @@
         </dependency>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-mongo</artifactId>
+            <artifactId>lealone-server</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson</artifactId>
+            <version>4.10.2</version>
         </dependency>
     </dependencies>
 </project>

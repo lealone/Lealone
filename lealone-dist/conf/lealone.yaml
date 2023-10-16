@@ -37,7 +37,7 @@ protocol_server_engines:
         allow_others: true,
         ssl: false
     }
-  - name: DocDB
+  - name: Mongo
     enabled: true
     parameters: {
         port: 9610,

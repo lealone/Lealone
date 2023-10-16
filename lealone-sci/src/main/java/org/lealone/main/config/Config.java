@@ -49,7 +49,7 @@ public class Config {
 
         protocol_server_engines = new ArrayList<>(2);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
-        protocol_server_engines.add(createEngineDef("DOCDB", true, false));
+        protocol_server_engines.add(createEngineDef("Mongo", true, false));
 
         scheduler = new SchedulerDef();
         // scheduler.name = "ScheduleService";
