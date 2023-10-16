@@ -17,7 +17,7 @@ import org.lealone.common.util.JdbcUtils;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.test.TcpServerStart;
+import org.lealone.test.LealoneStart;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestBase.ClientServerTest {
@@ -64,7 +64,7 @@ public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestB
             synchronized (getClass()) {
                 if (!tcpServerStarted) {
                     tcpServerStarted = true;
-                    TcpServerStart.run();
+                    LealoneStart.run();
                 }
             }
             synchronized (getClass()) {

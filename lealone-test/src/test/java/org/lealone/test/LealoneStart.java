@@ -7,7 +7,7 @@ package org.lealone.test;
 
 import org.lealone.main.Lealone;
 
-public class TcpServerStart {
+public class LealoneStart {
 
     public static void main(String[] args) {
         Lealone.main(args);
