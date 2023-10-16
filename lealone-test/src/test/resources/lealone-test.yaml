@@ -37,6 +37,12 @@ sql_engines:
         # key1: v1,
         # key2: v2,
     }
+  - name: MySQL
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
 
 protocol_server_engines:
   - name: TCP
@@ -47,6 +53,13 @@ protocol_server_engines:
         # white_list: "127.0.0.4,127.0.0.2",
         ssl: false,
         session_timeout: -1
+    }
+  - name: MySQL
+    enabled: true
+    parameters: {
+        port: 9310,
+        allow_others: true,
+        ssl: false
     }
   - name: Mongo
     enabled: true

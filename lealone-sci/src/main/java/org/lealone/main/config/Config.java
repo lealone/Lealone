@@ -47,8 +47,9 @@ public class Config {
         sql_engines = new ArrayList<>(1);
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(2);
+        protocol_server_engines = new ArrayList<>(3);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
+        protocol_server_engines.add(createEngineDef("MySQL", true, false));
         protocol_server_engines.add(createEngineDef("Mongo", true, false));
 
         scheduler = new SchedulerDef();

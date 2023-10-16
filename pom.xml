@@ -61,6 +61,7 @@
         <module>lealone-aose</module>
         <module>lealone-main</module>
         <module>lealone-mongo</module>
+        <module>lealone-mysql</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
     </modules>

@@ -28,12 +28,25 @@ sql_engines:
         # key1: v1,
         # key2: v2,
     }
+  - name: MySQL
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
 
 protocol_server_engines:
   - name: TCP
     enabled: true
     parameters: {
         port: 9210,
+        allow_others: true,
+        ssl: false
+    }
+  - name: MySQL
+    enabled: true
+    parameters: {
+        port: 9310,
         allow_others: true,
         ssl: false
     }
