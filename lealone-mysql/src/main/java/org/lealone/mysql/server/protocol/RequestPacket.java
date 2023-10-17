@@ -8,7 +8,7 @@ package org.lealone.mysql.server.protocol;
 public abstract class RequestPacket extends Packet {
     @Override
     public void read(PacketInput in) {
-        packetLength = in.readUB3();
-        packetId = in.read();
+        packetLength = in.getPacketLength();
+        packetId = in.getPacketId();
     }
 }

@@ -64,9 +64,7 @@ public class AuthPacket extends RequestPacket {
         int current = in.position();
         int len = (int) in.readLength();
         if (len > 0 && len < FILLER.length) {
-            byte[] ab = new byte[len];
-            System.arraycopy(in.bytes(), in.position(), ab, 0, len);
-            this.extra = ab;
+            extra = in.readBytes(len);
         }
         in.position(current + FILLER.length);
         user = in.readStringWithNull();

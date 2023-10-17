@@ -21,16 +21,19 @@ public class CommandPacketHandler implements PacketHandler {
     }
 
     private String readSql(PacketInput in) {
-        in.position(5);
         // 使用指定的编码来读取数据
-        return in.readString("utf-8");
+        String sql = in.readString("utf-8");
+        if (sql != null)
+            sql = sql.trim();
+        return sql;
     }
 
     @Override
     public void handle(PacketInput in) {
-        switch (in.type()) {
+        int type = in.read();
+        switch (type) {
         case PacketType.COM_QUERY: {
-            String sql = readSql(in).trim();
+            String sql = readSql(in);
             conn.executeStatement(sql);
             break;
         }
@@ -46,7 +49,6 @@ public class CommandPacketHandler implements PacketHandler {
             break;
         }
         case PacketType.COM_STMT_CLOSE:
-            in.position(5);
             conn.closeStatement(in.readInt());
             break;
         case PacketType.COM_INIT_DB:

@@ -7,7 +7,7 @@ package org.lealone.mysql.server;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
+import java.util.Calendar;
 import java.util.Properties;
 
 import org.lealone.common.exceptions.DbException;
@@ -31,25 +31,29 @@ import org.lealone.mysql.server.protocol.FieldPacket;
 import org.lealone.mysql.server.protocol.Fields;
 import org.lealone.mysql.server.protocol.HandshakePacket;
 import org.lealone.mysql.server.protocol.OkPacket;
+import org.lealone.mysql.server.protocol.Packet;
 import org.lealone.mysql.server.protocol.PacketInput;
 import org.lealone.mysql.server.protocol.PacketOutput;
 import org.lealone.mysql.server.protocol.PreparedOkPacket;
 import org.lealone.mysql.server.protocol.ResultSetHeaderPacket;
 import org.lealone.mysql.server.protocol.RowDataPacket;
 import org.lealone.mysql.server.util.PacketUtil;
-import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferOutputStream;
 import org.lealone.net.WritableChannel;
+import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
+import org.lealone.server.SessionInfo;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.StatementBase;
 
-public class MySQLServerConnection extends AsyncConnection {
+public class MySQLServerConnection extends AsyncServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(MySQLServerConnection.class);
     private static final byte[] AUTH_OK = new byte[] { 7, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0 };
     private static final byte[] EMPTY = new byte[0];
+
+    private final Calendar calendar = Calendar.getInstance();
 
     private final MySQLServer server;
     private final Scheduler scheduler;
@@ -67,8 +71,21 @@ public class MySQLServerConnection extends AsyncConnection {
         this.scheduler = scheduler;
     }
 
+    public Calendar getCalendar() {
+        return calendar;
+    }
+
     public ServerSession getSession() {
         return session;
+    }
+
+    @Override
+    public void closeSession(SessionInfo si) {
+    }
+
+    @Override
+    public int getSessionCount() {
+        return 1;
     }
 
     public byte[] getSeed() {
@@ -79,9 +96,8 @@ public class MySQLServerConnection extends AsyncConnection {
     void handshake(int threadId) {
         // 创建一个AuthPacketHandler用来鉴别是否是合法的用户
         packetHandler = new AuthPacketHandler(this);
-        PacketOutput out = getPacketOutput();
         HandshakePacket p = HandshakePacket.create(threadId);
-        scheduler.handle(() -> p.write(out)); // 交给调度器去写，可能通道还没有注册好
+        sendPacket(p);
 
         // 保存认证数据，不能用restOfScrambleBuff
         seed = new byte[p.seed.length + p.authPluginDataPart2.length];
@@ -307,11 +323,9 @@ public class MySQLServerConnection extends AsyncConnection {
         }
     }
 
-    private final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
-
-    @Override
-    public ByteBuffer getPacketLengthByteBuffer() {
-        return packetLengthByteBuffer;
+    private void sendPacket(Packet packet) {
+        PacketOutput out = getPacketOutput();
+        packet.write(out);
     }
 
     @Override
@@ -328,17 +342,13 @@ public class MySQLServerConnection extends AsyncConnection {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
         try {
-            int length = buffer.length();
-            byte[] packet = new byte[length + 4];
-            packetLengthByteBuffer.get(packet, 0, 4);
-            packetLengthByteBuffer.clear();
-            buffer.read(packet, 4, length);
-            buffer.recycle();
-            PacketInput input = new PacketInput(packet);
+            PacketInput input = new PacketInput(this, packetLengthByteBuffer.get(3), buffer);
             packetHandler.handle(input);
         } catch (Throwable e) {
             logger.error("Failed to handle packet", e);
             sendErrorMessage(e);
+        } finally {
+            buffer.recycle();
         }
     }
 }

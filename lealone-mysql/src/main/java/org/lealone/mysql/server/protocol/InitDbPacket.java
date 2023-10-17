@@ -17,7 +17,6 @@ public class InitDbPacket extends RequestPacket {
     @Override
     public void read(PacketInput in) {
         super.read(in);
-        in.position(5);
         database = in.readStringWithNull();
     }
 }

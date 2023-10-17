@@ -145,13 +145,6 @@ public class MongoServerConnection extends AsyncServerConnection {
         }
     }
 
-    private final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
-
-    @Override
-    public ByteBuffer getPacketLengthByteBuffer() {
-        return packetLengthByteBuffer;
-    }
-
     @Override
     public int getPacketLength() {
         int length = (packetLengthByteBuffer.get() & 0xff);
