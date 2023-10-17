@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * <pre>
  * From server to client, in response to prepared statement initialization packet. 
@@ -73,12 +69,12 @@ public class PreparedOkPacket extends ResponsePacket {
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        buffer.put(status);
-        BufferUtil.writeUB4(buffer, statementId);
-        BufferUtil.writeUB2(buffer, columnsNumber);
-        BufferUtil.writeUB2(buffer, parametersNumber);
-        buffer.put(filler);
-        BufferUtil.writeUB2(buffer, warningCount);
+    public void writeBody(PacketOutput out) {
+        out.write(status);
+        out.writeUB4(statementId);
+        out.writeUB2(columnsNumber);
+        out.writeUB2(parametersNumber);
+        out.write(filler);
+        out.writeUB2(warningCount);
     }
 }

@@ -37,7 +37,6 @@ import org.lealone.mysql.server.protocol.PacketOutput;
 import org.lealone.mysql.server.protocol.PreparedOkPacket;
 import org.lealone.mysql.server.protocol.ResultSetHeaderPacket;
 import org.lealone.mysql.server.protocol.RowDataPacket;
-import org.lealone.mysql.server.util.PacketUtil;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferOutputStream;
 import org.lealone.net.WritableChannel;
@@ -63,7 +62,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private AuthPacket authPacket;
     private int nextStatementId;
 
-    private byte[] seed;
+    private byte[] salt;
 
     protected MySQLServerConnection(MySQLServer server, WritableChannel channel, Scheduler scheduler) {
         super(channel, true);
@@ -88,21 +87,13 @@ public class MySQLServerConnection extends AsyncServerConnection {
         return 1;
     }
 
-    public byte[] getSeed() {
-        return seed;
-    }
-
     // 客户端连上来后，数据库先发回一个握手包
     void handshake(int threadId) {
         // 创建一个AuthPacketHandler用来鉴别是否是合法的用户
         packetHandler = new AuthPacketHandler(this);
-        HandshakePacket p = HandshakePacket.create(threadId);
+        HandshakePacket p = new HandshakePacket(threadId);
+        salt = p.getSalt();
         sendPacket(p);
-
-        // 保存认证数据，不能用restOfScrambleBuff
-        seed = new byte[p.seed.length + p.authPluginDataPart2.length];
-        System.arraycopy(p.seed, 0, seed, 0, p.seed.length);
-        System.arraycopy(p.authPluginDataPart2, 0, seed, p.seed.length, p.authPluginDataPart2.length);
     }
 
     public void authenticate(AuthPacket authPacket) {
@@ -134,7 +125,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
             String url = Constants.URL_PREFIX + Constants.URL_TCP + server.getHost() + ":"
                     + server.getPort() + "/" + MySQLServer.DATABASE_NAME;
             ConnectionInfo ci = new ConnectionInfo(url, info);
-            ci.setSalt(seed);
+            ci.setSalt(salt);
             ci.setRemote(false);
             session = (ServerSession) ci.createSession();
             session.prepareStatement("create schema if not exists " + MySQLServer.DATABASE_NAME)
@@ -212,13 +203,13 @@ public class MySQLServerConnection extends AsyncServerConnection {
 
     private void writeQueryResult(Result result) {
         int fieldCount = result.getVisibleColumnCount();
-        ResultSetHeaderPacket header = PacketUtil.getHeader(fieldCount);
+        ResultSetHeaderPacket header = Packet.getHeader(fieldCount);
         FieldPacket[] fields = new FieldPacket[fieldCount];
         EOFPacket eof = new EOFPacket();
         byte packetId = 0;
         header.packetId = ++packetId;
         for (int i = 0; i < fieldCount; i++) {
-            fields[i] = PacketUtil.getField(result.getColumnName(i).toLowerCase(),
+            fields[i] = Packet.getField(result.getColumnName(i).toLowerCase(),
                     Fields.toMySQLType(result.getColumnType(i)));
             fields[i].packetId = ++packetId;
         }
@@ -270,12 +261,11 @@ public class MySQLServerConnection extends AsyncServerConnection {
     }
 
     private void writeOkPacket(int updateCount) {
-        PacketOutput out = getPacketOutput();
         OkPacket packet = new OkPacket();
         packet.packetId = 1;
         packet.affectedRows = updateCount;
         packet.serverStatus = 2;
-        packet.write(out);
+        sendPacket(packet);
     }
 
     private final static byte[] encodeString(String src, String charset) {
@@ -306,7 +296,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
         err.packetId = 0;
         err.errno = errno;
         err.message = encodeString(msg, "utf-8");
-        err.write(getPacketOutput());
+        sendPacket(err);
     }
 
     private PacketOutput getPacketOutput() {

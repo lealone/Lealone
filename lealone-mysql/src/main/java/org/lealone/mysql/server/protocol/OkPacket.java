@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * From server to client in response to command, if no error and no result set.
  * 
@@ -55,24 +51,24 @@ public class OkPacket extends ResponsePacket {
     @Override
     public int calcPacketSize() {
         int i = 1;
-        i += BufferUtil.getLength(affectedRows);
-        i += BufferUtil.getLength(insertId);
+        i += getLength(affectedRows);
+        i += getLength(insertId);
         i += 4;
         if (message != null) {
-            i += BufferUtil.getLength(message);
+            i += getLength(message);
         }
         return i;
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        buffer.put(fieldCount);
-        BufferUtil.writeLength(buffer, affectedRows);
-        BufferUtil.writeLength(buffer, insertId);
-        BufferUtil.writeUB2(buffer, serverStatus);
-        BufferUtil.writeUB2(buffer, warningCount);
+    public void writeBody(PacketOutput out) {
+        out.write(fieldCount);
+        out.writeLength(affectedRows);
+        out.writeLength(insertId);
+        out.writeUB2(serverStatus);
+        out.writeUB2(warningCount);
         if (message != null) {
-            BufferUtil.writeWithLength(buffer, message);
+            out.writeWithLength(message);
         }
     }
 }

@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * From Server To Client, at the end of a series of Field Packets, and at the
  * end of a series of Data Packets.With prepared statements, EOF Packet can also
@@ -54,9 +50,9 @@ public class EOFPacket extends ResponsePacket {
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        buffer.put(fieldCount);
-        BufferUtil.writeUB2(buffer, warningCount);
-        BufferUtil.writeUB2(buffer, status);
+    public void writeBody(PacketOutput out) {
+        out.write(fieldCount);
+        out.writeUB2(warningCount);
+        out.writeUB2(status);
     }
 }

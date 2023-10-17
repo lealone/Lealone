@@ -5,10 +5,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 public abstract class ResponsePacket extends Packet {
 
     /**
@@ -16,18 +12,20 @@ public abstract class ResponsePacket extends Packet {
      */
     public abstract int calcPacketSize();
 
-    public abstract void writeBody(ByteBuffer buffer, PacketOutput out);
+    public abstract void writeBody(PacketOutput out);
 
     @Override
     public void write(PacketOutput out) {
-        int size = calcPacketSize();
-        ByteBuffer buffer = out.allocate(4 + size); // PacketHeader占4个字节
-
-        // write header
-        BufferUtil.writeUB3(buffer, size);
-        buffer.put(packetId);
-
-        writeBody(buffer, out);
+        writeHeader(out);
+        writeBody(out);
         out.flush();
+    }
+
+    // write header
+    private void writeHeader(PacketOutput out) {
+        int size = calcPacketSize();
+        out.allocate(4 + size); // PacketHeader占4个字节
+        out.writeUB3(size);
+        out.write(packetId);
     }
 }

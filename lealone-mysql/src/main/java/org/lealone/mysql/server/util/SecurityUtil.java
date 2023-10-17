@@ -24,6 +24,7 @@ import org.lealone.common.exceptions.DbException;
  * 加密解密工具类
  * 
  * @author xianmao.hexm 2010-4-14 下午03:22:05
+ * @author zhh
  */
 public final class SecurityUtil {
 
@@ -66,6 +67,7 @@ public final class SecurityUtil {
         return pass3;
     }
 
+    @Deprecated
     public static String scramble323(String pass, String seed) {
         if ((pass == null) || (pass.length() == 0)) {
             return pass;

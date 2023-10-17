@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * From server to client in response to command, if error.
  * 
@@ -64,13 +60,13 @@ public class ErrorPacket extends ResponsePacket {
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        buffer.put(fieldCount);
-        BufferUtil.writeUB2(buffer, errno);
-        buffer.put(mark);
-        buffer.put(sqlState);
+    public void writeBody(PacketOutput out) {
+        out.write(fieldCount);
+        out.writeUB2(errno);
+        out.write(mark);
+        out.write(sqlState);
         if (message != null) {
-            buffer = out.writeToBuffer(message, buffer);
+            out.writeOrFlush(message);
         }
     }
 }

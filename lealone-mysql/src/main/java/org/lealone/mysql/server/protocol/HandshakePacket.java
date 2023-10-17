@@ -1,66 +1,64 @@
 /*
- * Copyright 1999-2012 Alibaba Group.
- *  
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *  
- *      http://www.apache.org/licenses/LICENSE-2.0
- *  
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
 import org.lealone.db.Constants;
-import org.lealone.mysql.server.util.BufferUtil;
 import org.lealone.mysql.server.util.Capabilities;
 import org.lealone.mysql.server.util.CharsetUtil;
 import org.lealone.mysql.server.util.RandomUtil;
 
-/**
- * From server to client during initial handshake.
- * 
- * <pre>
- * Bytes                        Name
- * -----                        ----
- * 1                            protocol_version
- * n (Null-Terminated String)   server_version
- * 4                            thread_id
- * 8                            scramble_buff
- * 1                            (filler) always 0x00
- * 2                            server_capabilities
- * 1                            server_language
- * 2                            server_status
- * 13                           (filler) always 0x00 ...
- * 13                           rest of scramble_buff (4.1)
- * 
- * @see http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol#Handshake_Initialization_Packet
- * </pre>
- * 
- * @author xianmao.hexm 2010-7-14 下午05:18:15
- * @author zhh
- */
+// server发给client的第一个握手包
+// 包格式参考: https://dev.mysql.com/doc/dev/mysql-server/latest/
+// page_protocol_connection_phase_packets_protocol_handshake_v10.html
 public class HandshakePacket extends ResponsePacket {
 
     private static final byte[] FILLER_10 = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private static final byte[] mysql_native_password = "mysql_native_password".getBytes();
+    private static final byte[] MYSQL_NATIVE_PASSWORD = "mysql_native_password".getBytes();
 
-    public final byte[] authPluginDataPart2 = RandomUtil.randomBytes(12);
+    // 协议版本，Always 10
+    private static final byte PROTOCOL_VERSION = 10;
 
-    public byte protocolVersion;
-    public byte[] serverVersion;
-    public long threadId;
-    public byte[] seed;
-    public int serverCapabilities;
-    public byte serverCharsetIndex;
-    public int serverStatus;
-    public byte[] restOfScrambleBuff;
+    // 服务器版本
+    private static final byte[] SERVER_VERSION = ("5.1.48-" + //
+            Constants.PROJECT_NAME + "-" + Constants.RELEASE_VERSION).getBytes();
+
+    private byte protocolVersion;
+    private byte[] serverVersion;
+    private long threadId;
+    private byte[] seed;
+    private int serverCapabilities;
+    private byte serverCharsetIndex;
+    private int serverStatus;
+    private byte[] authPluginDataPart2;
+    private byte[] restOfScrambleBuff;
+
+    public HandshakePacket(int tid) {
+        // 生成认证数据
+        byte[] rand1 = RandomUtil.randomBytes(8);
+        byte[] rand2 = RandomUtil.randomBytes(12);
+
+        packetId = 0;
+        protocolVersion = PROTOCOL_VERSION;
+        serverVersion = SERVER_VERSION;
+        threadId = tid;
+        seed = rand1;
+        serverCapabilities = Capabilities.getServerCapabilities();
+        serverCharsetIndex = (byte) (CharsetUtil.getIndex("utf8") & 0xff);
+        serverStatus = 2;
+        authPluginDataPart2 = RandomUtil.randomBytes(12);
+        restOfScrambleBuff = rand2;
+    }
+
+    public byte[] getSalt() {
+        // 不能用restOfScrambleBuff
+        byte[] salt = new byte[seed.length + authPluginDataPart2.length];
+        System.arraycopy(seed, 0, salt, 0, seed.length);
+        System.arraycopy(authPluginDataPart2, 0, salt, seed.length, authPluginDataPart2.length);
+        return salt;
+    }
 
     @Override
     public String getPacketInfo() {
@@ -78,71 +76,24 @@ public class HandshakePacket extends ResponsePacket {
         size += 1; // 1
 
         size += authPluginDataPart2.length + 1;
-        size += mysql_native_password.length + 1;
+        size += MYSQL_NATIVE_PASSWORD.length + 1;
         return size;
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        buffer.put(protocolVersion);
-        BufferUtil.writeWithNull(buffer, serverVersion);
-        BufferUtil.writeUB4(buffer, threadId);
-        BufferUtil.writeWithNull(buffer, seed);
-        BufferUtil.writeUB2(buffer, serverCapabilities);
-        buffer.put(serverCharsetIndex);
-        BufferUtil.writeUB2(buffer, serverStatus);
-        BufferUtil.writeUB2(buffer, Capabilities.CLIENT_PLUGIN_AUTH >> 16);
-        buffer.put((byte) (20 + 1));
-        buffer.put(FILLER_10);
-        BufferUtil.writeWithNull(buffer, authPluginDataPart2);
-        BufferUtil.writeWithNull(buffer, mysql_native_password);
-        BufferUtil.writeWithNull(buffer, restOfScrambleBuff);
-    }
-
-    public static HandshakePacket create(int threadId) {
-        // 生成认证数据
-        byte[] rand1 = RandomUtil.randomBytes(8);
-        byte[] rand2 = RandomUtil.randomBytes(12);
-
-        // 发送握手数据包
-        HandshakePacket hs = new HandshakePacket();
-        hs.packetId = 0;
-        hs.protocolVersion = PROTOCOL_VERSION;
-        hs.serverVersion = SERVER_VERSION;
-        hs.threadId = threadId;
-        hs.seed = rand1;
-        hs.serverCapabilities = getServerCapabilities();
-        hs.serverCharsetIndex = (byte) (CharsetUtil.getIndex("utf8") & 0xff);
-        hs.serverStatus = 2;
-        hs.restOfScrambleBuff = rand2;
-        return hs;
-    }
-
-    /** 协议版本 */
-    private static byte PROTOCOL_VERSION = 10;
-
-    /** 服务器版本 */
-    private static byte[] SERVER_VERSION = ("5.1.48-" + //
-            Constants.PROJECT_NAME + "-" + Constants.RELEASE_VERSION).getBytes();
-
-    private static int getServerCapabilities() {
-        int flag = 0;
-        flag |= Capabilities.CLIENT_LONG_PASSWORD;
-        flag |= Capabilities.CLIENT_FOUND_ROWS;
-        flag |= Capabilities.CLIENT_LONG_FLAG;
-        flag |= Capabilities.CLIENT_CONNECT_WITH_DB;
-        // flag |= Capabilities.CLIENT_NO_SCHEMA;
-        // flag |= Capabilities.CLIENT_COMPRESS;
-        flag |= Capabilities.CLIENT_ODBC;
-        // flag |= Capabilities.CLIENT_LOCAL_FILES;
-        flag |= Capabilities.CLIENT_IGNORE_SPACE;
-        flag |= Capabilities.CLIENT_PROTOCOL_41;
-        flag |= Capabilities.CLIENT_INTERACTIVE;
-        // flag |= Capabilities.CLIENT_SSL;
-        flag |= Capabilities.CLIENT_IGNORE_SIGPIPE;
-        flag |= Capabilities.CLIENT_TRANSACTIONS;
-        // flag |= ServerDefs.CLIENT_RESERVED;
-        flag |= Capabilities.CLIENT_SECURE_CONNECTION;
-        return flag;
+    public void writeBody(PacketOutput out) {
+        out.write(protocolVersion);
+        out.writeWithNull(serverVersion);
+        out.writeUB4(threadId);
+        out.writeWithNull(seed);
+        out.writeUB2(serverCapabilities);
+        out.write(serverCharsetIndex);
+        out.writeUB2(serverStatus);
+        out.writeUB2(Capabilities.CLIENT_PLUGIN_AUTH >> 16);
+        out.write((byte) (20 + 1));
+        out.write(FILLER_10);
+        out.writeWithNull(authPluginDataPart2);
+        out.writeWithNull(MYSQL_NATIVE_PASSWORD);
+        out.writeWithNull(restOfScrambleBuff);
     }
 }

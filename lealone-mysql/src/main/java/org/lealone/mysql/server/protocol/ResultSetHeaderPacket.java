@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * From server to client after command, if no error and result set -- that is,
  * if the command was a query which returned a result set. The Result Set Header
@@ -55,18 +51,18 @@ public class ResultSetHeaderPacket extends ResponsePacket {
 
     @Override
     public int calcPacketSize() {
-        int size = BufferUtil.getLength(fieldCount);
+        int size = getLength(fieldCount);
         if (extra > 0) {
-            size += BufferUtil.getLength(extra);
+            size += getLength(extra);
         }
         return size;
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
-        BufferUtil.writeLength(buffer, fieldCount);
+    public void writeBody(PacketOutput out) {
+        out.writeLength(fieldCount);
         if (extra > 0) {
-            BufferUtil.writeLength(buffer, extra);
+            out.writeLength(extra);
         }
     }
 }

@@ -104,7 +104,7 @@ public class ExecutePacket extends RequestPacket {
     }
 
     public void read(PacketInput in, String charset, ServerSession session) {
-        super.read(in);
+        setHeader(in);
         code = in.read();
         statementId = in.readUB4();
         flags = in.read();

@@ -20,6 +20,7 @@ import java.util.Map;
 
 /**
  * @author xianmao.hexm 2010-8-3 下午06:12:53
+ * @author zhh
  */
 public final class CharsetUtil {
 
@@ -256,6 +257,7 @@ public final class CharsetUtil {
         }
     }
 
+    @Deprecated
     public static String getDbCharset(int index) {
         if (index < 0 || index > 98) {
             index = 83;
@@ -263,6 +265,7 @@ public final class CharsetUtil {
         return INDEX_TO_DB_CHARSET[index];
     }
 
+    @Deprecated
     public static int getDBIndex(String charset) {
         if (charset == null || charset.length() == 0) {
             return 0;

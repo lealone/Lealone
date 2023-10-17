@@ -17,6 +17,7 @@ package org.lealone.mysql.server.util;
 
 /**
  * @author xianmao.hexm 2010-1-21 上午10:39:54
+ * @author zhh
  */
 public final class RandomUtil {
 

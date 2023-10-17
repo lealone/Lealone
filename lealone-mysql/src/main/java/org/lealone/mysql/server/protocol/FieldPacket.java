@@ -15,10 +15,6 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.mysql.server.util.BufferUtil;
-
 /**
  * From Server To Client, part of Result Set Packets. One for each column in the
  * result set. Thus, if the value of field_columns in the Result Set Header
@@ -73,37 +69,37 @@ public class FieldPacket extends ResponsePacket {
 
     @Override
     public int calcPacketSize() {
-        int size = (catalog == null ? 1 : BufferUtil.getLength(catalog));
-        size += (db == null ? 1 : BufferUtil.getLength(db));
-        size += (table == null ? 1 : BufferUtil.getLength(table));
-        size += (orgTable == null ? 1 : BufferUtil.getLength(orgTable));
-        size += (name == null ? 1 : BufferUtil.getLength(name));
-        size += (orgName == null ? 1 : BufferUtil.getLength(orgName));
+        int size = (catalog == null ? 1 : getLength(catalog));
+        size += (db == null ? 1 : getLength(db));
+        size += (table == null ? 1 : getLength(table));
+        size += (orgTable == null ? 1 : getLength(orgTable));
+        size += (name == null ? 1 : getLength(name));
+        size += (orgName == null ? 1 : getLength(orgName));
         size += 13; // 1+2+4+1+2+1+2
         if (definition != null) {
-            size += BufferUtil.getLength(definition);
+            size += getLength(definition);
         }
         return size;
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
+    public void writeBody(PacketOutput out) {
         byte nullVal = 0;
-        BufferUtil.writeWithLength(buffer, catalog, nullVal);
-        BufferUtil.writeWithLength(buffer, db, nullVal);
-        BufferUtil.writeWithLength(buffer, table, nullVal);
-        BufferUtil.writeWithLength(buffer, orgTable, nullVal);
-        BufferUtil.writeWithLength(buffer, name, nullVal);
-        BufferUtil.writeWithLength(buffer, orgName, nullVal);
-        buffer.put((byte) 0x0C);
-        BufferUtil.writeUB2(buffer, charsetIndex);
-        BufferUtil.writeUB4(buffer, length);
-        buffer.put((byte) (type & 0xff));
-        BufferUtil.writeUB2(buffer, flags);
-        buffer.put(decimals);
-        buffer.position(buffer.position() + FILLER.length);
+        out.writeWithLength(catalog, nullVal);
+        out.writeWithLength(db, nullVal);
+        out.writeWithLength(table, nullVal);
+        out.writeWithLength(orgTable, nullVal);
+        out.writeWithLength(name, nullVal);
+        out.writeWithLength(orgName, nullVal);
+        out.write((byte) 0x0C);
+        out.writeUB2(charsetIndex);
+        out.writeUB4(length);
+        out.write((byte) (type & 0xff));
+        out.writeUB2(flags);
+        out.write(decimals);
+        out.getBuffer().position(out.getBuffer().position() + FILLER.length);
         if (definition != null) {
-            BufferUtil.writeWithLength(buffer, definition);
+            out.writeWithLength(definition);
         }
     }
 }

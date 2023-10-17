@@ -15,11 +15,8 @@
  */
 package org.lealone.mysql.server.protocol;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.lealone.mysql.server.util.BufferUtil;
 
 /**
  * From server to client. One packet for each row in the result set.
@@ -70,20 +67,20 @@ public class RowDataPacket extends ResponsePacket {
         int size = 0;
         for (int i = 0; i < fieldCount; i++) {
             byte[] v = fieldValues.get(i);
-            size += (v == null || v.length == 0) ? 1 : BufferUtil.getLength(v);
+            size += (v == null || v.length == 0) ? 1 : getLength(v);
         }
         return size;
     }
 
     @Override
-    public void writeBody(ByteBuffer buffer, PacketOutput out) {
+    public void writeBody(PacketOutput out) {
         for (int i = 0; i < fieldCount; i++) {
             byte[] fv = fieldValues.get(i);
             if (fv == null || fv.length == 0) {
-                buffer.put(RowDataPacket.NULL_MARK);
+                out.write(RowDataPacket.NULL_MARK);
             } else {
-                BufferUtil.writeLength(buffer, fv.length);
-                buffer = out.writeToBuffer(fv, buffer);
+                out.writeLength(fv.length);
+                out.writeOrFlush(fv);
             }
         }
     }

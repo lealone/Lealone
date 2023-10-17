@@ -56,10 +56,10 @@ public class AuthPacket extends RequestPacket {
 
     @Override
     public void read(PacketInput in) {
-        super.read(in);
+        setHeader(in);
         clientFlags = in.readUB4();
         maxPacketSize = in.readUB4();
-        charsetIndex = (in.read() & 0xff);
+        charsetIndex = in.read() & 0xff;
         // read extra
         int current = in.position();
         int len = (int) in.readLength();

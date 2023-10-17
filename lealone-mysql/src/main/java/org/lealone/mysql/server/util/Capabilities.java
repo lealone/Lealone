@@ -19,6 +19,7 @@ package org.lealone.mysql.server.util;
  * 处理能力标识定义
  * 
  * @author xianmao.hexm
+ * @author zhh
  */
 public interface Capabilities {
 
@@ -102,4 +103,25 @@ public interface Capabilities {
     int CLIENT_MULTI_RESULTS = 131072;
 
     int CLIENT_PLUGIN_AUTH = 0x00080000;
+
+    public static int getServerCapabilities() {
+        int flag = 0;
+        flag |= CLIENT_LONG_PASSWORD;
+        flag |= CLIENT_FOUND_ROWS;
+        flag |= CLIENT_LONG_FLAG;
+        flag |= CLIENT_CONNECT_WITH_DB;
+        // flag |= CLIENT_NO_SCHEMA;
+        // flag |= CLIENT_COMPRESS;
+        flag |= CLIENT_ODBC;
+        // flag |= CLIENT_LOCAL_FILES;
+        flag |= CLIENT_IGNORE_SPACE;
+        flag |= CLIENT_PROTOCOL_41;
+        flag |= CLIENT_INTERACTIVE;
+        // flag |= CLIENT_SSL;
+        flag |= CLIENT_IGNORE_SIGPIPE;
+        flag |= CLIENT_TRANSACTIONS;
+        // flag |= ServerDefs.CLIENT_RESERVED;
+        flag |= CLIENT_SECURE_CONNECTION;
+        return flag;
+    }
 }
