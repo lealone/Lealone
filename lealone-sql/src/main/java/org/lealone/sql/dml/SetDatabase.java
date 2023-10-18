@@ -194,14 +194,15 @@ public class SetDatabase extends SetStatement {
             break;
         }
         case MODE: {
-            Mode mode = Mode.getInstance(stringValue);
+            String m = getStringValue();
+            Mode mode = Mode.getInstance(m);
             if (mode == null) {
-                throw DbException.get(ErrorCode.UNKNOWN_MODE_1, stringValue);
+                throw DbException.get(ErrorCode.UNKNOWN_MODE_1, m);
             }
             if (database.getMode() != mode) {
                 database.setMode(mode);
             }
-            setDbSetting(stringValue);
+            setDbSetting(m);
             break;
         }
         case READ_ONLY: {

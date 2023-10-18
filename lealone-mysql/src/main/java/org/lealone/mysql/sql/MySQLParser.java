@@ -8,7 +8,6 @@ package org.lealone.mysql.sql;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
-import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -49,7 +48,6 @@ import org.lealone.db.table.DummyTable;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
-import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
@@ -4902,185 +4900,50 @@ public class MySQLParser implements SQLParser {
         throw getSyntaxError();
     }
 
-    private void readIfEqualOrTo() {
-        if (!readIf("=")) {
-            readIf("TO");
-        }
-    }
-
     private StatementBase parseUse() {
-        readIfEqualOrTo();
         SetSession command = new SetSession(session, SessionSetting.SCHEMA);
         command.setString(readAliasIdentifier());
         return command;
     }
 
-    private StatementBase parseSetCharSet() {
-        String charset;
-        if (readIf("DEFAULT"))
-            charset = "utf8";
-        else
-            charset = readString();
-        session.setVariable("__CHARSET__", ValueString.get(charset));
+    private StatementBase noOperation() {
         return new NoOperation(session);
+    }
+
+    private void readIfEqual() {
+        if (!readIf("=")) {
+            readIf(":=");
+        }
     }
 
     private StatementBase parseSet() {
         if (readIf("@")) { // session变量
-            if (readIf("@")) {
-                if (readIf("GLOBAL") || readIf("PERSIST") || readIf("PERSIST_ONLY")
-                        || readIf("SESSION")) {
-                    read(".");
-                }
-            }
-            SetSession command = new SetSession(session, SessionSetting.VARIABLE);
-            command.setString(readAliasIdentifier());
-            readIfEqualOrTo();
-            Expression e = readExpression();
-            if (e instanceof ExpressionColumn)
-                e = ValueExpression.get(ValueString.get(e.getSQL()));
-            command.setExpression(e);
-            return command;
+            return parseSetVariable();
+        } else if (readIf("ROLE")) {
+            return parseSetRole();
+        } else if (readIf("DEFAULT") && readIf("ROLE")) {
+            return parseSetDefaultRole();
+        } else if (readIf("PASSWORD")) {
+            return parseSetPassword();
+        } else if (readIf("RESOURCE")) {
+            return parseSetResourceGroup();
+        } else if (readIf("TRANSACTION")) {
+            return parseSetTransaction();
         } else if (readIf("CHARSET")) {
-            return parseSetCharSet();
+            return parseSetCharset();
         } else if (readIf("CHARACTER")) {
             read("SET");
-            return parseSetCharSet();
-        } else if (readIf("AUTOCOMMIT")) {
-            readIfEqualOrTo();
-            boolean value = readBooleanSetting();
-            int setting = value ? SQLStatement.SET_AUTOCOMMIT_TRUE : SQLStatement.SET_AUTOCOMMIT_FALSE;
-            return new TransactionStatement(session, setting);
-        } else if (readIf("PASSWORD")) {
-            readIfEqualOrTo();
-            AlterUser command = new AlterUser(session);
-            command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
-            command.setUser(session.getUser());
-            command.setPassword(readExpression());
-            return command;
-        } else if (readIf("SALT")) {
-            readIfEqualOrTo();
-            AlterUser command = new AlterUser(session);
-            command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
-            command.setUser(session.getUser());
-            command.setSalt(readExpression());
-            read("HASH");
-            command.setHash(readExpression());
-            return command;
-            // 以下是特殊的SetType
-        } else if (readIf(SessionSetting.SCHEMA.getName())) {
-            readIfEqualOrTo();
-            SetSession command = new SetSession(session, SessionSetting.SCHEMA);
-            command.setString(readAliasIdentifier());
-            return command;
-        } else if (readIf(SessionSetting.SCHEMA_SEARCH_PATH.getName())) {
-            readIfEqualOrTo();
-            SetSession command = new SetSession(session, SessionSetting.SCHEMA_SEARCH_PATH);
-            ArrayList<String> list = Utils.newSmallArrayList();
-            list.add(readAliasIdentifier());
-            while (readIf(",")) {
-                list.add(readAliasIdentifier());
-            }
-            String[] schemaNames = new String[list.size()];
-            list.toArray(schemaNames);
-            command.setStringArray(schemaNames);
-            return command;
-        } else if (readIf(DbSetting.ALLOW_LITERALS.getName())) {
-            readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.ALLOW_LITERALS);
-            if (readIf("NONE")) {
-                command.setInt(Constants.ALLOW_LITERALS_NONE);
-            } else if (readIf("ALL")) {
-                command.setInt(Constants.ALLOW_LITERALS_ALL);
-            } else if (readIf("NUMBERS")) {
-                command.setInt(Constants.ALLOW_LITERALS_NUMBERS);
-            } else {
-                command.setInt(readPositiveInt());
-            }
-            return command;
-        } else if (readIf(DbSetting.COLLATION.getName())) {
-            readIfEqualOrTo();
-            return parseSetCollation();
-        } else if (readIf(DbSetting.BINARY_COLLATION.getName())) {
-            readIfEqualOrTo();
-            return parseSetBinaryCollation();
-        } else if (readIf(DbSetting.LOB_COMPRESSION_ALGORITHM.getName())) {
-            readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.LOB_COMPRESSION_ALGORITHM);
-            if (currentTokenType == VALUE) {
-                command.setString(readString());
-            } else {
-                command.setString(readUniqueIdentifier());
-            }
-            return command;
-        } else if (readIf(DbSetting.DATABASE_EVENT_LISTENER.getName())) {
-            readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.DATABASE_EVENT_LISTENER);
-            command.setString(readString());
-            return command;
-        } else if (readIf(DbSetting.DEFAULT_TABLE_TYPE.getName())) {
-            readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.DEFAULT_TABLE_TYPE);
-            if (readIf("MEMORY")) {
-                command.setInt(Table.TYPE_MEMORY);
-            } else if (readIf("CACHED")) {
-                command.setInt(Table.TYPE_CACHED);
-            } else {
-                command.setInt(readPositiveInt());
-            }
-            return command;
-        } else if (readIf(DbSetting.MODE.getName())) {
-            readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.MODE);
-            if (currentTokenType == VALUE) {
-                command.setString(readString()); // 加单引号
-            } else {
-                command.setString(readUniqueIdentifier()); // 不加单引号
-            }
-            return command;
+            return parseSetCharset();
         } else if (readIf("NAMES")) {
-            readIfEqualOrTo();
-            if (currentTokenType == IDENTIFIER) {
-                readUniqueIdentifier(); // 不加单引号
-            } else {
-                if (currentTokenType == VALUE) {
-                    readString(); // 加单引号
-                } else {
-                    readUniqueIdentifier(); // 不加单引号
-                }
-                readIf("COLLATE");
-                if (currentTokenType == VALUE) {
-                    readString(); // 加单引号
-                } else {
-                    readUniqueIdentifier(); // 不加单引号
+            return parseSetNames();
+        } else {
+            if (readIf("GLOBAL") || readIf("SESSION")) {
+                if (readIf("TRANSACTION")) {
+                    return parseSetTransaction();
                 }
             }
-            return new NoOperation(session);
-        } else {
-            if (readIf("GLOBAL") || readIf("PERSIST") || readIf("PERSIST_ONLY") || readIf("SESSION")) {
-                if (readIf("TRANSACTION")) {
-                    if (readIf("ISOLATION")) {
-                        read("LEVEL");
-                        SetSession command = new SetSession(session,
-                                SessionSetting.TRANSACTION_ISOLATION_LEVEL);
-                        if (readIf("SERIALIZABLE")) {
-                            command.setString("SERIALIZABLE");
-                        } else if (readIf("REPEATABLE")) {
-                            read("READ");
-                            command.setString("REPEATABLE_READ");
-                        } else if (readIf("READ")) {
-                            if (readIf("COMMITTED"))
-                                command.setString("READ_COMMITTED");
-                            else if (readIf("UNCOMMITTED"))
-                                command.setString("READ_UNCOMMITTED");
-                        }
-                        return command;
-                    } else if (readIf("READ")) {
-                        if (!readIf("WRITE"))
-                            read("ONLY");
-                    }
-                    return new NoOperation(session);
-                }
+            if (!readIf("PERSIST")) {
+                readIf("PERSIST_ONLY");
             }
             // 先看看是否是session级的参数，然后再看是否是database级的
             SetStatement command;
@@ -5091,58 +4954,115 @@ public class MySQLParser implements SQLParser {
                     command = new SetDatabase(session, DbSetting.valueOf(currentToken));
                 } catch (Throwable t2) {
                     read();
-                    readIfEqualOrTo();
-                    if (currentTokenType == VALUE) {
-                        readString(); // 加单引号
-                    } else {
-                        readUniqueIdentifier(); // 不加单引号
-                    }
-                    return new NoOperation(session);
+                    readIfEqual();
+                    readStringOrIdentifier();
+                    return noOperation();
                     // throw getSyntaxError();
                 }
             }
             read();
-            readIfEqualOrTo();
+            readIfEqual();
             command.setExpression(readExpression());
             return command;
         }
     }
 
-    private SetDatabase parseSetCollation() {
-        SetDatabase command = new SetDatabase(session, DbSetting.COLLATION);
-        String name = readAliasIdentifier();
-        command.setString(name);
-        if (equalsToken(name, CompareMode.OFF)) {
-            return command;
-        }
-        Collator coll = CompareMode.getCollator(name);
-        if (coll == null) {
-            throw DbException.getInvalidValueException("collation", name);
-        }
-        if (readIf("STRENGTH")) {
-            if (readIf("PRIMARY")) {
-                command.setInt(Collator.PRIMARY);
-            } else if (readIf("SECONDARY")) {
-                command.setInt(Collator.SECONDARY);
-            } else if (readIf("TERTIARY")) {
-                command.setInt(Collator.TERTIARY);
-            } else if (readIf("IDENTICAL")) {
-                command.setInt(Collator.IDENTICAL);
+    private StatementBase parseSetVariable() {
+        if (readIf("@")) {
+            if (readIf("GLOBAL") || readIf("PERSIST") || readIf("PERSIST_ONLY") || readIf("SESSION")) {
+                read(".");
             }
-        } else {
-            command.setInt(coll.getStrength());
         }
+        SetSession command = new SetSession(session, SessionSetting.VARIABLE);
+        command.setString(readAliasIdentifier());
+        readIfEqual();
+        Expression e = readExpression();
+        if (e instanceof ExpressionColumn)
+            e = ValueExpression.get(ValueString.get(e.getSQL()));
+        command.setExpression(e);
         return command;
     }
 
-    private SetDatabase parseSetBinaryCollation() {
-        SetDatabase command = new SetDatabase(session, DbSetting.BINARY_COLLATION);
-        String name = readAliasIdentifier();
-        command.setString(name);
-        if (equalsToken(name, CompareMode.UNSIGNED) || equalsToken(name, CompareMode.SIGNED)) {
-            return command;
+    private StatementBase parseSetCharset() {
+        String charset;
+        if (readIf("DEFAULT"))
+            charset = "utf8";
+        else
+            charset = readString();
+        setCharsetVariable(charset);
+        return noOperation();
+    }
+
+    private void setCharsetVariable(String charset) {
+        session.setVariable("__CHARSET__", ValueString.get(charset));
+    }
+
+    private String readStringOrIdentifier() {
+        if (currentTokenType == VALUE) {
+            return readString(); // 加单引号
+        } else {
+            return readUniqueIdentifier(); // 不加单引号
         }
-        throw DbException.getInvalidValueException(DbSetting.BINARY_COLLATION.getName(), name);
+    }
+
+    private StatementBase parseSetNames() {
+        if (readIf("DEFAULT")) {
+            setCharsetVariable("utf8");
+        } else {
+            String charset = readStringOrIdentifier();
+            setCharsetVariable(charset);
+            if (readIf("COLLATE")) {
+                SetDatabase command = new SetDatabase(session, DbSetting.COLLATION);
+                String name = readStringOrIdentifier();
+                command.setString(name);
+                return command;
+            }
+        }
+        return noOperation();
+    }
+
+    private StatementBase parseSetRole() {
+        return noOperation();
+    }
+
+    private StatementBase parseSetDefaultRole() {
+        return noOperation();
+    }
+
+    private StatementBase parseSetPassword() {
+        readIfEqual();
+        AlterUser command = new AlterUser(session);
+        command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
+        command.setUser(session.getUser());
+        command.setPassword(readExpression());
+        return command;
+    }
+
+    private StatementBase parseSetResourceGroup() {
+        return noOperation();
+    }
+
+    private StatementBase parseSetTransaction() {
+        if (readIf("ISOLATION")) {
+            read("LEVEL");
+            SetSession command = new SetSession(session, SessionSetting.TRANSACTION_ISOLATION_LEVEL);
+            if (readIf("SERIALIZABLE")) {
+                command.setString("SERIALIZABLE");
+            } else if (readIf("REPEATABLE")) {
+                read("READ");
+                command.setString("REPEATABLE_READ");
+            } else if (readIf("READ")) {
+                if (readIf("COMMITTED"))
+                    command.setString("READ_COMMITTED");
+                else if (readIf("UNCOMMITTED"))
+                    command.setString("READ_UNCOMMITTED");
+            }
+            return command;
+        } else if (readIf("READ")) {
+            if (!readIf("WRITE"))
+                read("ONLY");
+        }
+        return noOperation();
     }
 
     private RunScript parseRunScript() {
