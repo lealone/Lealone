@@ -118,7 +118,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private ServerSession createSession(AuthPacket authPacket, String dbName) {
         if (session == null) {
             Properties info = new Properties();
-            info.put("MODE", "MySQL");
+            info.put("MODE", MySQLServerEngine.NAME);
             info.put("USER", authPacket.user);
             info.put("PASSWORD", StringUtils.convertBytesToHex(getPassword(authPacket)));
             info.put("PASSWORD_HASH", "true");
@@ -128,12 +128,9 @@ public class MySQLServerConnection extends AsyncServerConnection {
             ci.setSalt(salt);
             ci.setRemote(false);
             session = (ServerSession) ci.createSession();
-            session.prepareStatement("create schema if not exists " + MySQLServer.DATABASE_NAME)
-                    .executeUpdate();
-            session.prepareStatement("create schema if not exists sys").executeUpdate();
         }
         if (dbName == null)
-            dbName = Constants.SCHEMA_MAIN;
+            dbName = MySQLServerEngine.NAME;
         session.prepareStatement("use " + dbName).executeUpdate();
         return session;
     }

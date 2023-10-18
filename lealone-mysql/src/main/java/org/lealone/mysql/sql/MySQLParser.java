@@ -71,7 +71,6 @@ import org.lealone.sql.admin.ShutdownDatabase;
 import org.lealone.sql.admin.ShutdownServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
-import org.lealone.sql.ddl.AlterSchemaRename;
 import org.lealone.sql.ddl.AlterSequence;
 import org.lealone.sql.ddl.AlterTableAddConstraint;
 import org.lealone.sql.ddl.AlterTableAlterColumn;
@@ -88,7 +87,6 @@ import org.lealone.sql.ddl.CreateDatabase;
 import org.lealone.sql.ddl.CreateFunctionAlias;
 import org.lealone.sql.ddl.CreateIndex;
 import org.lealone.sql.ddl.CreateRole;
-import org.lealone.sql.ddl.CreateSchema;
 import org.lealone.sql.ddl.CreateSequence;
 import org.lealone.sql.ddl.CreateService;
 import org.lealone.sql.ddl.CreateTable;
@@ -103,7 +101,6 @@ import org.lealone.sql.ddl.DropDatabase;
 import org.lealone.sql.ddl.DropFunctionAlias;
 import org.lealone.sql.ddl.DropIndex;
 import org.lealone.sql.ddl.DropRole;
-import org.lealone.sql.ddl.DropSchema;
 import org.lealone.sql.ddl.DropSequence;
 import org.lealone.sql.ddl.DropService;
 import org.lealone.sql.ddl.DropTable;
@@ -930,11 +927,8 @@ public class MySQLParser implements SQLParser {
 
         ArrayList<Value> paramValues = Utils.newSmallArrayList();
         StringBuilder buff = new StringBuilder("SELECT ");
-        // if (readIf("DATABASES")) {
-        // buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
-        // } else
         if (readIf("SCHEMAS") || readIf("DATABASES")) {
-            buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMAS");
+            buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
         } else if (readIf("ENGINES")) {
             buff.append("'InnoDB' AS Engine, 'DEFAULT' AS Support, "
                     + "'Supports transactions, row-level locking, and foreign keys' AS Comment, "
@@ -1325,12 +1319,7 @@ public class MySQLParser implements SQLParser {
             command.setIfExists(ifExists);
             return command;
         } else if (readIf("SCHEMA") || readIf("DATABASE")) {
-            boolean ifExists = readIfExists(false);
-            DropSchema command = new DropSchema(session);
-            command.setSchemaName(readUniqueIdentifier());
-            ifExists = readIfExists(ifExists);
-            command.setIfExists(ifExists);
-            return command;
+            return parseDropDatabase();
         } else if (readIf("DOMAIN")) {
             return parseDropUserDataType();
         } else if (readIf("TYPE")) {
@@ -1339,8 +1328,6 @@ public class MySQLParser implements SQLParser {
             return parseDropUserDataType();
         } else if (readIf("AGGREGATE")) {
             return parseDropAggregate();
-        } else if (readIf("DATABASE")) {
-            return parseDropDatabase();
         } else if (readIf("ALL")) { // 兼容H2数据库遗留下来的老语法: DROP ALL OBJECTS
             read("OBJECTS");
             return parseDropDatabase();
@@ -4035,7 +4022,7 @@ public class MySQLParser implements SQLParser {
         } else if (readIf("ROLE")) {
             return parseCreateRole();
         } else if (readIf("SCHEMA") || readIf("DATABASE")) {
-            return parseCreateSchema();
+            return parseCreateDatabase();
         } else if (readIf("CONSTANT")) {
             return parseCreateConstant();
         } else if (readIf("DOMAIN")) {
@@ -4046,8 +4033,6 @@ public class MySQLParser implements SQLParser {
             return parseCreateUserDataType();
         } else if (readIf("AGGREGATE")) {
             return parseCreateAggregate(force);
-        } else if (readIf("DATABASE")) {
-            return parseCreateDatabase();
         } else if (readIf("SERVICE")) {
             return parseCreateService();
         }
@@ -4387,18 +4372,6 @@ public class MySQLParser implements SQLParser {
             }
         }
         return null;
-    }
-
-    private CreateSchema parseCreateSchema() {
-        CreateSchema command = new CreateSchema(session);
-        command.setIfNotExists(readIfNotExists());
-        command.setSchemaName(readUniqueIdentifier());
-        if (readIf("AUTHORIZATION")) {
-            command.setAuthorization(readUniqueIdentifier());
-        } else {
-            command.setAuthorization(session.getUser().getName());
-        }
-        return command;
     }
 
     private CaseInsensitiveMap<String> parseParameters() {
@@ -4744,13 +4717,11 @@ public class MySQLParser implements SQLParser {
         } else if (readIf("INDEX")) {
             return parseAlterIndex();
         } else if (readIf("SCHEMA") || readIf("DATABASE")) {
-            return parseAlterSchema();
+            return parseAlterDatabase();
         } else if (readIf("SEQUENCE")) {
             return parseAlterSequence();
         } else if (readIf("VIEW")) {
             return parseAlterView();
-        } else if (readIf("DATABASE")) {
-            return parseAlterDatabase();
         }
         throw getSyntaxError();
     }
@@ -4792,23 +4763,6 @@ public class MySQLParser implements SQLParser {
         TableView view = (TableView) tableView;
         command.setView(view);
         read("RECOMPILE");
-        return command;
-    }
-
-    private DefinitionStatement parseAlterSchema() {
-        String schemaName = readIdentifierWithSchema();
-        return parseAlterSchemaRename(schemaName);
-    }
-
-    private AlterSchemaRename parseAlterSchemaRename(String schemaName) {
-        Schema old = getSchema();
-        AlterSchemaRename command = new AlterSchemaRename(session);
-        command.setOldSchema(getSchema(schemaName));
-        read("RENAME");
-        read("TO");
-        String newName = readIdentifierWithSchema(old.getName());
-        checkSchema(old);
-        command.setNewName(newName);
         return command;
     }
 
@@ -4901,9 +4855,8 @@ public class MySQLParser implements SQLParser {
     }
 
     private StatementBase parseUse() {
-        SetSession command = new SetSession(session, SessionSetting.SCHEMA);
-        command.setString(readAliasIdentifier());
-        return command;
+        session.setDatabase(LealoneDatabase.getInstance().getDatabase(readAliasIdentifier()));
+        return noOperation();
     }
 
     private StatementBase noOperation() {

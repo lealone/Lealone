@@ -26,9 +26,18 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
     public void init(Map<String, String> config) {
         super.init(config);
 
-        // 创建默认的 mysql 数据库
-        String sql = "CREATE DATABASE IF NOT EXISTS " + DATABASE_NAME //
-                + " PARAMETERS(DEFAULT_SQL_ENGINE='" + MySQLServerEngine.NAME + "')";
+        // 创建默认的mysql数据库
+        createDefaultDatabase(DATABASE_NAME, true);
+        // 以下三个默认数据库不需要持久化
+        createDefaultDatabase("information_schema", false);
+        createDefaultDatabase("performance_schema", false);
+        createDefaultDatabase("sys", false);
+    }
+
+    private void createDefaultDatabase(String dbName, boolean persistent) {
+        String sql = "CREATE DATABASE IF NOT EXISTS " + dbName //
+                + " PARAMETERS(DEFAULT_SQL_ENGINE='" + MySQLServerEngine.NAME + "', PERSISTENT="
+                + persistent + ")";
         LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
     }
 
