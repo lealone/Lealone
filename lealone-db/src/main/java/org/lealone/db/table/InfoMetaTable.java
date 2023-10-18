@@ -1340,7 +1340,7 @@ public class InfoMetaTable extends MetaTable {
         }
         case DATABASES: {
             List<Database> databases;
-            if (session.getDatabase() == LealoneDatabase.getInstance()) {
+            if (LealoneDatabase.isSuperAdmin(session)) {
                 databases = LealoneDatabase.getInstance().getDatabases();
             } else {
                 databases = new ArrayList<>(1);
@@ -1351,7 +1351,7 @@ public class InfoMetaTable extends MetaTable {
                         // ID
                         database.getId() + "",
                         // DATABASE_NAME
-                        database.getShortName(),
+                        identifier(database.getShortName()),
                         // RUN_MODE
                         database.getRunMode().toString(),
                         // NODES

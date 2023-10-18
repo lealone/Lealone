@@ -67,6 +67,10 @@ public class Mode {
         return "PostgreSQL".equalsIgnoreCase(name);
     }
 
+    public boolean isMySQL() {
+        return "MySQL".equalsIgnoreCase(name);
+    }
+
     // Modes are also documented in the features section
 
     /**

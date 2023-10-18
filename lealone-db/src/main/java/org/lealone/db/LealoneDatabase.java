@@ -161,8 +161,17 @@ public class LealoneDatabase extends Database
 
     // 只有用管理员连接到LealoneDatabase才能执行某些语句，比如CREATE/ALTER/DROP DATABASE
     public static void checkAdminRight(ServerSession session, String stmt) {
-        if (!(LealoneDatabase.getInstance() == session.getDatabase() && session.getUser().isAdmin()))
+        if (!isSuperAdmin(session))
             throw DbException.get(ErrorCode.LEALONE_DATABASE_ADMIN_RIGHT_1, stmt);
+    }
+
+    public static boolean isSuperAdmin(ServerSession session) {
+        Database db = session.getDatabase();
+        // 在MySQL兼容模式下只需要当前用户是管理员即可
+        if (db.getMode().isMySQL())
+            return session.getUser().isAdmin();
+        else
+            return LealoneDatabase.getInstance() == db && session.getUser().isAdmin();
     }
 
     @Override
