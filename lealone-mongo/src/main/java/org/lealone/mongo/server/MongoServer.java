@@ -15,7 +15,7 @@ import org.lealone.server.Scheduler;
 public class MongoServer extends AsyncServer<MongoServerConnection> {
 
     public static final String DATABASE_NAME = "mongo";
-    public static final int DEFAULT_PORT = 9610;
+    public static final int DEFAULT_PORT = 27017;
 
     @Override
     public String getType() {

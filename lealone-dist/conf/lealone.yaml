@@ -46,14 +46,14 @@ protocol_server_engines:
   - name: MySQL
     enabled: true
     parameters: {
-        port: 9310,
+        port: 3306,
         allow_others: true,
         ssl: false
     }
   - name: Mongo
     enabled: true
     parameters: {
-        port: 9610,
+        port: 27017,
         allow_others: true,
         ssl: false
     }

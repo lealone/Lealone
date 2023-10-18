@@ -64,7 +64,7 @@ protocol_server_engines:
   - name: Mongo
     enabled: true
     parameters: {
-        port: 9610,
+        port: 9410,
         allow_others: true,
         ssl: false
     }

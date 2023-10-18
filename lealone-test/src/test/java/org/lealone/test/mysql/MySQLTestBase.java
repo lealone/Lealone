@@ -12,7 +12,6 @@ import java.util.Properties;
 
 import org.junit.Before;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.mysql.server.MySQLServer;
 import org.lealone.test.sql.SqlTestBase;
 
 public class MySQLTestBase extends SqlTestBase {
@@ -28,7 +27,7 @@ public class MySQLTestBase extends SqlTestBase {
     }
 
     public static Connection getMySQLConnection() throws Exception {
-        return getMySQLConnection(true, MySQLServer.DEFAULT_PORT);
+        return getMySQLConnection(true, 9310);
     }
 
     public static Connection getMySQLConnection(boolean autoCommit, int port) throws Exception {

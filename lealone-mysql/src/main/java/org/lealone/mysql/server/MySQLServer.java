@@ -15,7 +15,7 @@ import org.lealone.server.Scheduler;
 public class MySQLServer extends AsyncServer<MySQLServerConnection> {
 
     public static final String DATABASE_NAME = "mysql";
-    public static final int DEFAULT_PORT = 9310;
+    public static final int DEFAULT_PORT = 3306;
 
     @Override
     public String getType() {

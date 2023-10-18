@@ -2,10 +2,10 @@
 
 执行以下命令启动 MongoDB 客户端:
 
-`mongosh mongodb://127.0.0.1:9610/mydb?serverSelectionTimeoutMS=200000`
+`mongosh mongodb://127.0.0.1:27017/mydb?serverSelectionTimeoutMS=200000`
 
 ```sql
-Connecting to:          mongodb://127.0.0.1:9610/mydb?serverSelectionTimeoutMS=200000
+Connecting to:          mongodb://127.0.0.1:27017/mydb?serverSelectionTimeoutMS=200000
 Using MongoDB:          6.0.0
 Using Mongosh:          1.9.1
 

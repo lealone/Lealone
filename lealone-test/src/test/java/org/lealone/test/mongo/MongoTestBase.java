@@ -10,6 +10,7 @@ import org.bson.conversions.Bson;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.lealone.mongo.server.MongoServer;
 import org.lealone.test.UnitTestBase;
 
 import com.mongodb.MongoClientSettings;
@@ -70,8 +71,8 @@ public class MongoTestBase extends UnitTestBase {
     }
 
     public static MongoClient getMongoClient() {
-        int port = 9610;
-        // port = 27017;
+        int port = MongoServer.DEFAULT_PORT;
+        port = 9410;
         String connectionString = "mongodb://root:root@127.0.0.1:" + port
                 + "/?serverSelectionTimeoutMS=200000";
         connectionString = "mongodb://127.0.0.1:" + port + "/?serverSelectionTimeoutMS=200000";
