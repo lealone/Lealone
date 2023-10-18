@@ -8,7 +8,9 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
+import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.Mode;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
@@ -26,6 +28,8 @@ public class CreateDatabase extends DatabaseStatement {
     public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
             CaseInsensitiveMap<String> parameters) {
         super(session, dbName);
+        if (parameters == null)
+            parameters = new CaseInsensitiveMap<>();
         this.ifNotExists = ifNotExists;
         this.parameters = parameters;
         validateParameters();
@@ -49,6 +53,13 @@ public class CreateDatabase extends DatabaseStatement {
                 return 0;
             }
             throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
+        }
+        // 设置默认SQL引擎
+        if (!parameters.containsKey(DbSetting.DEFAULT_SQL_ENGINE.name())) {
+            Mode mode = session.getDatabase().getMode();
+            if (mode.isMySQL()) {
+                parameters.put(DbSetting.DEFAULT_SQL_ENGINE.name(), mode.getName());
+            }
         }
         int id = getObjectId(lealoneDB);
         Database newDB = new Database(id, dbName, parameters);
