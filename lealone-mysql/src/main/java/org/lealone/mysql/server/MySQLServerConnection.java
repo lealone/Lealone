@@ -180,6 +180,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private void executeStatement(PreparedSQLStatement ps, String sql) {
         if (logger.isDebugEnabled())
             logger.debug("execute sql: " + sql);
+        logger.info("execute sql: " + sql);
         try {
             if (ps == null)
                 ps = (PreparedSQLStatement) session.prepareSQLCommand(sql, -1);
@@ -206,7 +207,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
         byte packetId = 0;
         header.packetId = ++packetId;
         for (int i = 0; i < fieldCount; i++) {
-            fields[i] = Packet.getField(result.getColumnName(i).toLowerCase(),
+            fields[i] = Packet.getField(result.getAlias(i).toLowerCase(),
                     Fields.toMySQLType(result.getColumnType(i)));
             fields[i].packetId = ++packetId;
         }

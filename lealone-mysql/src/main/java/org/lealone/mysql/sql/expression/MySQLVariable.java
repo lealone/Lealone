@@ -34,6 +34,8 @@ public class MySQLVariable extends Variable {
         case "time_zone":
         case "system_time_zone":
             return ValueString.get(TimeZone.getDefault().getID());
+        case "warning_count":
+            return ValueInt.get(0);
         }
         return super.getValue(session);
     }

@@ -243,6 +243,11 @@ public class Constants {
     public static final String SCHEMA_MAIN = "PUBLIC";
 
     /**
+     * The name of the information schema.
+     */
+    public static final String SCHEMA_INFORMATION = "INFORMATION_SCHEMA";
+
+    /**
      * The default selectivity (used if the selectivity is not calculated).
      */
     public static final int SELECTIVITY_DEFAULT = 50;

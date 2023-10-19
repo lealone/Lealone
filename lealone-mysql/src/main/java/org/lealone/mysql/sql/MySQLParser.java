@@ -222,7 +222,6 @@ public class MySQLParser implements SQLParser {
     public MySQLParser(ServerSession session) {
         this.database = session.getDatabase();
         this.session = session;
-        this.session.setSchemaSearchPath(new String[] { "mysql" });
         this.identifiersToUpper = database.getSettings().databaseToUpper;
     }
 
@@ -383,6 +382,8 @@ public class MySQLParser implements SQLParser {
                     s = parseCreate();
                 } else if (readIf("DEALLOCATE")) {
                     s = parseDeallocate();
+                } else if (readIf("DESCRIBE") || readIf("DESC")) {
+                    s = parseExplain();
                 }
                 break;
             case 'e':
@@ -397,6 +398,8 @@ public class MySQLParser implements SQLParser {
             case 'F':
                 if (isToken("FROM")) {
                     s = parseSelect();
+                } else if (readIf("FLUSH")) {
+                    s = parseFlush();
                 }
                 break;
             case 'g':
@@ -878,6 +881,18 @@ public class MySQLParser implements SQLParser {
         return false;
     }
 
+    private static StatementBase prepare(ServerSession s, String sql, ArrayList<Value> paramValues) {
+        StatementBase prep = (StatementBase) s.prepareStatementLocal(sql);
+        ArrayList<Parameter> params = prep.getParameters();
+        if (params != null) {
+            for (int i = 0, size = params.size(); i < size; i++) {
+                Parameter p = params.get(i);
+                p.setValue(paramValues.get(i));
+            }
+        }
+        return prep;
+    }
+
     private StatementBase parseHelp() {
         StringBuilder buff = new StringBuilder("SELECT * FROM INFORMATION_SCHEMA.HELP");
         int i = 0;
@@ -897,7 +912,143 @@ public class MySQLParser implements SQLParser {
         return prepare(session, buff.toString(), paramValues);
     }
 
-    private void parseShowCharSet(StringBuilder buff) {
+    private StatementBase parseShow() {
+        readIf("GLOBAL");
+        readIf("SESSION");
+        readIf("EXTENDED");
+        readIf("FULL");
+        readIf("STORAGE");
+
+        ArrayList<Value> paramValues = Utils.newSmallArrayList();
+        StringBuilder buff = new StringBuilder("SELECT ");
+        if (readIf("DATABASES") || readIf("SCHEMAS")) {
+            buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
+        } else if (readIf("TABLES")) {
+            parseShowTable(buff, paramValues);
+        } else if (readIf("COLUMNS") || readIf("FIELDS")) {
+            parseShowColumns(buff, paramValues);
+        } else if (readIf("BINARY")) {
+            read("LOGS");
+            appendNullColumns(buff, true, "Log_name", "File_size", "Encrypted");
+        } else if (readIf("BINLOG")) {
+            read("EVENTS");
+            appendNullColumns(buff, true, "Log_name", "Pos", "Event_type", "Server_id", "End_log_pos",
+                    "Info");
+        } else if (readIf("CHARSET")) {
+            parseShowCharset(buff);
+        } else if (readIf("CHARACTER")) {
+            read("SET");
+            parseShowCharset(buff);
+        } else if (readIf("COLLATION")) {
+            parseShowCollation(buff);
+        } else if (readIf("CREATE")) {
+            parseShowCreate(buff, paramValues);
+        } else if (readIf("ENGINE")) {
+            readUniqueIdentifier();
+            buff.append("'InnoDB' AS Type, NULL AS Name, NULL AS Status FROM DUAL");
+        } else if (readIf("ENGINES")) {
+            buff.append("'InnoDB' AS Engine, 'DEFAULT' AS Support, "
+                    + "'Supports transactions, row-level locking, and foreign keys' AS Comment, "
+                    + "'YES' AS Transactions, 'YES' AS XA, 'YES' AS Savepoints FROM DUAL");
+        } else if (readIf("EVENTS")) {
+            appendNullColumns(buff, true, "Db", "Name", "Definer", "Time zone", "Type", "Execute at",
+                    "Interval value", "Interval field", "Starts", "Ends", "Status", "Originator",
+                    "character_set_client", "collation_connection", "Database Collation");
+            parseShowFromOrIn(null);
+            parseShowLikeOrWhere(buff, "Name", true);
+        } else if (readIf("GRANTS")) {
+            buff.append("* FROM INFORMATION_SCHEMA.TABLE_PRIVILEGES");
+        } else if (readIf("INDEX") || readIf("INDEXES") || readIf("KEYS")) {
+            parseShowIndexes(buff, paramValues);
+        } else if (readIf("MASTER")) {
+            if (readIf("LOGS")) {
+                appendNullColumns(buff, true, "Log_name", "File_size", "Encrypted");
+            } else {
+                read("STATUS");
+                appendNullColumns(buff, true, "File", "Position", "Binlog_Do_DB", "Binlog_Ignore_DB",
+                        "Executed_Gtid_Set");
+            }
+        } else if (readIf("OPEN")) {
+            read("TABLES");
+            parseShowOpenTables(buff, paramValues);
+        } else if (readIf("PLUGINS")) {
+            buff.append("'InnoDB' AS Name, 'ACTIVE' AS Status, "
+                    + "'STORAGE ENGINE' AS Type, NULL AS Library, 'GPL' AS License FROM DUAL");
+        } else if (readIf("PRIVILEGES")) {
+            appendNullColumns(buff, true, "Privilege", "Context", "Comment");
+        } else if (readIf("PROCEDURE") || readIf("FUNCTION")) {
+            if (readIf("STATUS")) {
+                appendNullColumns(buff, true, "Db", "Name", "Type", "Definer", "Modified", "Created",
+                        "Security_type", "Comment", "character_set_client", "collation_connection",
+                        "Database Collation");
+                parseShowLikeOrWhere(buff, "Name", false);
+            } else {
+                read("CODE");
+                appendNullColumns(buff, true, "Pos", "Instruction");
+            }
+        } else if (readIf("PROCESSLIST")) {
+            appendNullColumns(buff, true, "Id", "User", "Host", "db", "Command", "Time", "State",
+                    "Info");
+        } else if (readIf("PROFILES") || readIf("PROFILE")) {
+            appendNullColumns(buff, true, "Status ", "Duration");
+        } else if (readIf("RELAYLOG")) {
+            read("EVENTS");
+            appendNullColumns(buff, true, "Log_name ", "Pos", "Event_type", "Server_id ", "End_log_pos",
+                    "Info");
+        } else if (readIf("SLAVE")) {
+            if (readIf("STATUS"))
+                appendNullColumns(buff, true, "Replica_IO_State", "Source_Host", "Source_User");
+            else {
+                read("HOSTS");
+                appendNullColumns(buff, true, "Server_id ", "Host", "User", "Password ", "Port",
+                        "Source_id", "Replica_UUID");
+            }
+        } else if (readIf("REPLICAS")) {
+            appendNullColumns(buff, true, "Server_id ", "Host", "User", "Password ", "Port", "Source_id",
+                    "Replica_UUID");
+        } else if (readIf("REPLICA")) {
+            read("STATUS");
+            appendNullColumns(buff, true, "Replica_IO_State", "Source_Host", "Source_User");
+        } else if (readIf("TABLE")) {
+            read("STATUS");
+            parseShowTableStatus(buff, paramValues);
+        } else if (readIf("TRIGGERS")) {
+            parseShowTriggers(buff, paramValues);
+        } else if (readIf("VARIABLES") || readIf("STATUS")) {
+            buff.append(
+                    "NAME AS VARIABLE_NAME, VALUE AS VARIABLE_VALUE FROM INFORMATION_SCHEMA.SETTINGS");
+
+            parseShowLikeOrWhere(buff, "VARIABLE_NAME", true);
+        } else if (readIf("WARNINGS") || readIf("ERRORS")) {
+            appendNullColumns(buff, true, "Level", "Code", "Message");
+            if (readIf("LIMIT")) {
+                readInt();
+                if (readIf(","))
+                    readInt();
+            }
+        } else if (readIf("COUNT")) {
+            read("(");
+            read("*");
+            read(")");
+            if (readIf("WARNINGS")) {
+                buff.append("0 AS `@@session.warning_count` FROM DUAL");
+            } else {
+                read("ERRORS");
+                buff.append("0 AS `@@session.error_count` FROM DUAL");
+            }
+        }
+        boolean b = session.getAllowLiterals();
+        try {
+            // need to temporarily enable it, in case we are in
+            // ALLOW_LITERALS_NUMBERS mode
+            session.setAllowLiterals(true);
+            return prepare(session, buff.toString(), paramValues);
+        } finally {
+            session.setAllowLiterals(b);
+        }
+    }
+
+    private void parseShowCharset(StringBuilder buff) {
         buff.append("'utf8' AS Charset, 'UTF-8 Unicode' AS Description, "
                 + "'utf8_general_ci' AS `Default collation`, 3 AS Maxlen FROM DUAL");
         parseShowLikeOrWhere(buff, "Charset", true);
@@ -919,104 +1070,178 @@ public class MySQLParser implements SQLParser {
         }
     }
 
-    private StatementBase parseShow() {
-        readIf("GLOBAL");
-        readIf("SESSION");
-        readIf("EXTENDED");
-        readIf("FULL");
-
-        ArrayList<Value> paramValues = Utils.newSmallArrayList();
-        StringBuilder buff = new StringBuilder("SELECT ");
-        if (readIf("SCHEMAS") || readIf("DATABASES")) {
-            buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
-        } else if (readIf("ENGINES")) {
-            buff.append("'InnoDB' AS Engine, 'DEFAULT' AS Support, "
-                    + "'Supports transactions, row-level locking, and foreign keys' AS Comment, "
-                    + "'YES' AS Transactions, 'YES' AS XA, 'YES' AS Savepoints FROM DUAL");
-        } else if (readIf("CHARSET")) {
-            parseShowCharSet(buff);
-        } else if (readIf("CHARACTER")) {
-            read("SET");
-            parseShowCharSet(buff);
-        } else if (readIf("COLLATION")) {
-            parseShowCollation(buff);
-        } else if (readIf("PLUGINS")) {
-            buff.append("'InnoDB' AS Name, 'ACTIVE' AS Status, "
-                    + "'STORAGE ENGINE' AS Type, NULL AS Library, 'GPL' AS License FROM DUAL");
-        } else if (readIf("WARNINGS")) {
-            buff.append("NULL AS Level, NULL AS Code, NULL AS Message FROM DUAL WHERE 1=2");
-            if (readIf("LIMIT")) {
-                readInt();
-                if (readIf(","))
-                    readInt();
-            }
-        } else if (readIf("PROCESSLIST")) {
-            buff.append("NULL AS Id, NULL AS User, NULL AS Host FROM DUAL WHERE 1=2");
-        } else if (readIf("PRIVILEGES")) {
-            buff.append("NULL AS Privilege, NULL AS Context, NULL AS Comment FROM DUAL WHERE 1=2");
-        } else if (readIf("TABLES")) {
-            String schema = session.getCurrentSchemaName();
-            if (readIf("FROM") || readIf("IN")) {
-                schema = readUniqueIdentifier();
-            }
-            buff.append("TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=?");
-
-            parseShowLikeOrWhere(buff, "TABLE_NAME", false);
-            buff.append(" ORDER BY TABLE_NAME");
-
-            schema = identifier(schema);
-            paramValues.add(ValueString.get(schema));
-        } else if (readIf("GRANTS")) {
-            buff.append("* FROM INFORMATION_SCHEMA.TABLE_PRIVILEGES");
-        } else if (readIf("COLUMNS") || readIf("FIELDS")) {
-            if (!readIf("FROM"))
-                read("IN");
-            String tableName = readIdentifierWithSchema();
-            String schemaName = getSchema().getName();
-            paramValues.add(ValueString.get(tableName));
-            if (readIf("FROM") || readIf("IN")) {
-                schemaName = readUniqueIdentifier();
-            }
-            buff.append("C.COLUMN_NAME FIELD, "
-                    + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
-                    + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM "
-                    + "INFORMATION_SCHEMA.INDEXES I " + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA "
-                    + "AND I.TABLE_NAME=C.TABLE_NAME " + "AND I.COLUMN_NAME=C.COLUMN_NAME)"
-                    + "WHEN 'PRIMARY KEY' THEN 'PRI' "
-                    + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
-                    + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
-                    + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=?");
-
-            parseShowLikeOrWhere(buff, "C.COLUMN_NAME", false);
-            buff.append(" ORDER BY C.ORDINAL_POSITION");
-            paramValues.add(ValueString.get(schemaName));
-        } else if (readIf("VARIABLES") || readIf("STATUS")) {
-            buff.append(
-                    "NAME AS VARIABLE_NAME, VALUE AS VARIABLE_VALUE FROM INFORMATION_SCHEMA.SETTINGS");
-
-            parseShowLikeOrWhere(buff, "VARIABLE_NAME", true);
-        }
-        boolean b = session.getAllowLiterals();
-        try {
-            // need to temporarily enable it, in case we are in
-            // ALLOW_LITERALS_NUMBERS mode
-            session.setAllowLiterals(true);
-            return prepare(session, buff.toString(), paramValues);
-        } finally {
-            session.setAllowLiterals(b);
+    private String parseShowFromOrIn(String defaultName) {
+        if (readIf("FROM") || readIf("IN")) {
+            return readUniqueIdentifier();
+        } else {
+            return defaultName;
         }
     }
 
-    private static StatementBase prepare(ServerSession s, String sql, ArrayList<Value> paramValues) {
-        StatementBase prep = (StatementBase) s.prepareStatementLocal(sql);
-        ArrayList<Parameter> params = prep.getParameters();
-        if (params != null) {
-            for (int i = 0, size = params.size(); i < size; i++) {
-                Parameter p = params.get(i);
-                p.setValue(paramValues.get(i));
-            }
+    private void parseShowTable(StringBuilder buff, ArrayList<Value> paramValues) {
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("TABLE_NAME, TABLE_CATALOG FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+
+        parseShowLikeOrWhere(buff, "TABLE_NAME", false);
+        buff.append(" ORDER BY TABLE_NAME");
+
+        dbName = identifier(dbName);
+        paramValues.add(ValueString.get(dbName));
+    }
+
+    private void appendNullColumns(StringBuilder buff, boolean isEmptySet, String... columns) {
+        StatementBuilder b = new StatementBuilder();
+        for (String c : columns) {
+            b.appendExceptFirst(", ");
+            b.append("null as `").append(c).append("`");
         }
-        return prep;
+        b.append(" FROM DUAL");
+        if (isEmptySet)
+            b.append(" WHERE 1=2");
+        buff.append(b);
+    }
+
+    private void parseShowCreate(StringBuilder buff, ArrayList<Value> paramValues) {
+        if (readIf("DATABASE")) {
+            String dbName = readUniqueIdentifier();
+            Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+            String sql = db.getCreateSQL();
+            sql = StringUtils.quoteStringSQL(sql);
+            buff.append("'" + dbName + "' AS Database, " + sql + " AS `Create Database` FROM DUAL");
+        } else if (readIf("EVENT")) {
+            readUniqueIdentifier();
+            if (readIf("."))
+                readUniqueIdentifier();
+            appendNullColumns(buff, true, "Event", "sql_mode", "time_zone", "Create Event",
+                    "character_set_client", "collation_connection", "Database Collation");
+        } else if (readIf("FUNCTION")) {
+            readUniqueIdentifier();
+            if (readIf("."))
+                readUniqueIdentifier();
+            appendNullColumns(buff, true, "FUNCTION", "sql_mode", "Create Function",
+                    "character_set_client", "collation_connection", "Database Collation");
+        } else if (readIf("PROCEDURE")) {
+            readUniqueIdentifier();
+            if (readIf("."))
+                readUniqueIdentifier();
+            appendNullColumns(buff, true, "PROCEDURE", "sql_mode", "Create Procedure",
+                    "character_set_client", "collation_connection", "Database Collation");
+        } else if (readIf("TABLE")) {
+            Table table = readTableOrView();
+            String sql = table.getCreateSQL();
+            sql = StringUtils.quoteStringSQL(sql);
+            buff.append("'" + table.getName() + "' AS Table, " + sql + " AS `Create Table` FROM DUAL");
+        } else if (readIf("TRIGGER")) {
+            readUniqueIdentifier();
+            appendNullColumns(buff, true, "Trigger", "sql_mode", "SQL Original Statement",
+                    "character_set_client", "collation_connection", "Database Collation", "Created");
+        } else if (readIf("USER")) {
+            String userName = readStringOrIdentifier();
+            if (readIf("@"))
+                readStringOrIdentifier();
+            String columnName = "CREATE USER for " + userName;
+            String sql = database.getUser(session, userName).getCreateSQL();
+            sql = StringUtils.quoteStringSQL(sql);
+            buff.append(sql + " AS `" + columnName + "` FROM DUAL");
+        } else if (readIf("VIEW")) {
+            Table table = readTableOrView();
+            String sql = table.getCreateSQL();
+            sql = StringUtils.quoteStringSQL(sql);
+            buff.append("'" + table.getName() + "' AS View, " + sql + " AS `Create View` FROM DUAL");
+        }
+    }
+
+    private void parseShowColumns(StringBuilder buff, ArrayList<Value> paramValues) {
+        if (!readIf("FROM"))
+            read("IN");
+        String tableName = readIdentifierWithSchema();
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("C.COLUMN_NAME FIELD, " + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
+                + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM "
+                + "INFORMATION_SCHEMA.INDEXES I " + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA "
+                + "AND I.TABLE_NAME=C.TABLE_NAME " + "AND I.COLUMN_NAME=C.COLUMN_NAME)"
+                + "WHEN 'PRIMARY KEY' THEN 'PRI' " + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
+                + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
+                + "WHERE C.TABLE_NAME=? AND C.TABLE_CATALOG=?");
+
+        parseShowLikeOrWhere(buff, "C.COLUMN_NAME", false);
+        buff.append(" ORDER BY C.ORDINAL_POSITION");
+        paramValues.add(ValueString.get(tableName));
+        paramValues.add(ValueString.get(dbName));
+    }
+
+    private String getDatabaseName() {
+        return session.getDatabase().getName();
+    }
+
+    private void parseShowIndexes(StringBuilder buff, ArrayList<Value> paramValues) {
+        String tableName = parseShowFromOrIn(null);
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("TABLE_NAME AS Table, ");
+        buff.append("NON_UNIQUE AS Non_unique, COLUMN_NAME AS Column_name ");
+        buff.append("FROM INFORMATION_SCHEMA.INDEXES WHERE TABLE_CATALOG=? ");
+        parseShowLikeOrWhere(buff, "TABLE_NAME", false);
+        if (tableName != null)
+            buff.append(" AND TABLE_NAME=?");
+        buff.append(" ORDER BY TABLE_NAME");
+
+        dbName = identifier(dbName);
+        paramValues.add(ValueString.get(dbName));
+        if (tableName != null) {
+            tableName = identifier(tableName);
+            paramValues.add(ValueString.get(tableName));
+        }
+    }
+
+    private void parseShowOpenTables(StringBuilder buff, ArrayList<Value> paramValues) {
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("TABLE_CATALOG AS Database, TABLE_NAME AS Table, ");
+        buff.append("0 AS In_use, 0 AS Name_locked ");
+        buff.append("FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+        parseShowLikeOrWhere(buff, "TABLE_NAME", false);
+        buff.append(" ORDER BY TABLE_NAME");
+
+        dbName = identifier(dbName);
+        paramValues.add(ValueString.get(dbName));
+    }
+
+    private void parseShowTableStatus(StringBuilder buff, ArrayList<Value> paramValues) {
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("TABLE_NAME AS Name, 'InnoDB' AS Engine, NULL AS Version, ");
+        buff.append("'Fixed' AS Row_format, NULL AS Rows, 0 AS Avg_row_length, ");
+        buff.append("0 AS Data_length, 0 AS Max_data_length, ");
+        buff.append("0 AS Index_length, ");
+        buff.append("0 AS Data_free, ");
+        buff.append("NULL AS Auto_increment, ");
+        buff.append("NULL AS Create_time, ");
+        buff.append("NULL AS Update_time, ");
+        buff.append("NULL AS Check_time, ");
+        buff.append("NULL AS Collation, ");
+        buff.append("NULL AS Checksum, ");
+        buff.append("NULL AS Create_options, ");
+        buff.append("REMARKS AS Comment ");
+        buff.append("FROM " + dbName + ".INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+        parseShowLikeOrWhere(buff, "TABLE_NAME", false);
+        buff.append(" ORDER BY TABLE_NAME");
+
+        dbName = identifier(dbName);
+        paramValues.add(ValueString.get(dbName));
+    }
+
+    private void parseShowTriggers(StringBuilder buff, ArrayList<Value> paramValues) {
+        String dbName = parseShowFromOrIn(getDatabaseName());
+        buff.append("TRIGGER_NAME AS Trigger, TRIGGER_TYPE AS Event, TABLE_NAME AS Table, ");
+        buff.append("SQL AS Statement, CASEWHEN(BEFORE,'BEFORE','AFTER') AS Timing, 0 AS Created, ");
+        buff.append("NULL AS sql_mode, NULL AS Definer, ");
+        buff.append("'utf8mb4' AS character_set_client, ");
+        buff.append("'utf8mb4_0900_ai_ci' AS collation_connection, ");
+        buff.append("'utf8mb4_0900_ai_ci' AS `Database Collation` ");
+        buff.append("FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_CATALOG=?");
+        parseShowLikeOrWhere(buff, "TABLE_NAME", false);
+        buff.append(" ORDER BY TRIGGER_NAME");
+
+        dbName = identifier(dbName);
+        paramValues.add(ValueString.get(dbName));
     }
 
     private boolean isSelect() {
@@ -5100,26 +5325,48 @@ public class MySQLParser implements SQLParser {
     }
 
     private Table readTableOrView(String tableName) {
+        if (tableName.equalsIgnoreCase("SCHEMATA"))
+            tableName = "SCHEMAS";
         // same algorithm than readSequence
         if (schemaName != null) {
-            return getSchema().getTableOrView(session, tableName);
-        }
-        Table table = database.getSchema(session, session.getCurrentSchemaName())
-                .findTableOrView(session, tableName);
-        if (table != null) {
-            return table;
-        }
-        String[] schemaNames = session.getSchemaSearchPath();
-        if (schemaNames != null) {
-            for (String name : schemaNames) {
-                Schema s = database.getSchema(session, name);
-                table = s.findTableOrView(session, tableName);
-                if (table != null) {
-                    return table;
+            // if (Constants.SCHEMA_INFORMATION.equalsIgnoreCase(schemaName))
+            // return getSchema().getTableOrView(session, tableName);
+            Table table = findTableOrView(tableName);
+            if (table != null) {
+                return table;
+            }
+        } else {
+            Table table = database.getSchema(session, session.getCurrentSchemaName())
+                    .findTableOrView(session, tableName);
+            if (table != null) {
+                return table;
+            }
+            String[] schemaNames = session.getSchemaSearchPath();
+            if (schemaNames != null) {
+                for (String name : schemaNames) {
+                    Schema s = database.getSchema(session, name);
+                    table = s.findTableOrView(session, tableName);
+                    if (table != null) {
+                        return table;
+                    }
                 }
             }
         }
         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
+    }
+
+    private Table findTableOrView(String tableName) {
+        Database db;
+        // if (session.getDatabase().getName().equalsIgnoreCase(schemaName))
+        // db = session.getDatabase();
+        // else
+        // db = LealoneDatabase.getInstance().getDatabase(schemaName);
+        db = session.getDatabase();
+        Table table = db.getSchema(session, Constants.SCHEMA_MAIN).findTableOrView(session, tableName);
+        if (table == null)
+            table = db.getSchema(session, Constants.SCHEMA_INFORMATION).findTableOrView(session,
+                    tableName);
+        return table;
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {
@@ -5753,5 +6000,15 @@ public class MySQLParser implements SQLParser {
             return StringUtils.quoteIdentifier(s);
         }
         return s;
+    }
+
+    private StatementBase parseFlush() {
+        readIf("NO_WRITE_TO_BINLOG");
+        readIf("LOCAL");
+        if (readIf("TABLES")) {
+            readIf("WITH");
+        }
+        currentTokenType = END;
+        return noOperation();
     }
 }
