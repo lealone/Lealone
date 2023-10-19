@@ -15,6 +15,9 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.test.sql.SqlTestBase;
 
 public class MySQLTestBase extends SqlTestBase {
+
+    public final static int TEST_PORT = 9310;
+
     @Before
     @Override
     public void setUpBefore() {
@@ -27,14 +30,22 @@ public class MySQLTestBase extends SqlTestBase {
     }
 
     public static Connection getMySQLConnection() throws Exception {
-        return getMySQLConnection(true, 9310);
+        return getMySQLConnection(true, TEST_PORT);
+    }
+
+    public static Connection getMySQLConnection(String db) throws Exception {
+        return getMySQLConnection(db, true, TEST_PORT);
     }
 
     public static Connection getMySQLConnection(boolean autoCommit, int port) throws Exception {
+        String db = "mysql";
+        return getMySQLConnection(db, autoCommit, port);
+    }
+
+    public static Connection getMySQLConnection(String db, boolean autoCommit, int port)
+            throws Exception {
         // String driver = "com.mysql.jdbc.Driver";
         // Class.forName(driver);
-
-        String db = "mysql";
         String password = "";
         // db = "test";
         // password = "zhh";

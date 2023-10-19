@@ -71,6 +71,7 @@ import org.lealone.sql.admin.ShutdownDatabase;
 import org.lealone.sql.admin.ShutdownServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
+import org.lealone.sql.ddl.AlterSchemaRename;
 import org.lealone.sql.ddl.AlterSequence;
 import org.lealone.sql.ddl.AlterTableAddConstraint;
 import org.lealone.sql.ddl.AlterTableAlterColumn;
@@ -87,6 +88,7 @@ import org.lealone.sql.ddl.CreateDatabase;
 import org.lealone.sql.ddl.CreateFunctionAlias;
 import org.lealone.sql.ddl.CreateIndex;
 import org.lealone.sql.ddl.CreateRole;
+import org.lealone.sql.ddl.CreateSchema;
 import org.lealone.sql.ddl.CreateSequence;
 import org.lealone.sql.ddl.CreateService;
 import org.lealone.sql.ddl.CreateTable;
@@ -101,6 +103,7 @@ import org.lealone.sql.ddl.DropDatabase;
 import org.lealone.sql.ddl.DropFunctionAlias;
 import org.lealone.sql.ddl.DropIndex;
 import org.lealone.sql.ddl.DropRole;
+import org.lealone.sql.ddl.DropSchema;
 import org.lealone.sql.ddl.DropSequence;
 import org.lealone.sql.ddl.DropService;
 import org.lealone.sql.ddl.DropTable;
@@ -600,7 +603,7 @@ public class MySQLParser implements SQLParser {
     }
 
     private StatementBase parseShutdownDatabase() {
-        read("DATABASE");
+        read("CATALOG");
         String dbName = readUniqueIdentifier();
         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         boolean immediately = readIf("IMMEDIATELY");
@@ -921,8 +924,10 @@ public class MySQLParser implements SQLParser {
 
         ArrayList<Value> paramValues = Utils.newSmallArrayList();
         StringBuilder buff = new StringBuilder("SELECT ");
-        if (readIf("DATABASES") || readIf("SCHEMAS")) {
-            buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
+        if (readIf("CATALOGS")) {
+            buff.append("DATABASE_NAME AS CATALOG_NAME FROM INFORMATION_SCHEMA.DATABASES");
+        } else if (readIf("DATABASES") || readIf("SCHEMAS")) {
+            buff.append("SCHEMA_NAME AS DATABASE_NAME FROM INFORMATION_SCHEMA.SCHEMAS");
         } else if (readIf("TABLES")) {
             parseShowTable(buff, paramValues);
         } else if (readIf("COLUMNS") || readIf("FIELDS")) {
@@ -1080,7 +1085,8 @@ public class MySQLParser implements SQLParser {
 
     private void parseShowTable(StringBuilder buff, ArrayList<Value> paramValues) {
         String dbName = parseShowFromOrIn(getDatabaseName());
-        buff.append("TABLE_NAME, TABLE_CATALOG FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+        buff.append("TABLE_NAME, TABLE_SCHEMA, TABLE_CATALOG "
+                + "FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=?");
 
         parseShowLikeOrWhere(buff, "TABLE_NAME", false);
         buff.append(" ORDER BY TABLE_NAME");
@@ -1103,11 +1109,11 @@ public class MySQLParser implements SQLParser {
 
     private void parseShowCreate(StringBuilder buff, ArrayList<Value> paramValues) {
         if (readIf("DATABASE")) {
-            String dbName = readUniqueIdentifier();
-            Database db = LealoneDatabase.getInstance().getDatabase(dbName);
-            String sql = db.getCreateSQL();
+            String schemaName = readUniqueIdentifier();
+            Schema schema = session.getDatabase().getSchema(session, schemaName);
+            String sql = schema.getCreateSQL();
             sql = StringUtils.quoteStringSQL(sql);
-            buff.append("'" + dbName + "' AS Database, " + sql + " AS `Create Database` FROM DUAL");
+            buff.append("'" + schemaName + "' AS Database, " + sql + " AS `Create Database` FROM DUAL");
         } else if (readIf("EVENT")) {
             readUniqueIdentifier();
             if (readIf("."))
@@ -1162,7 +1168,7 @@ public class MySQLParser implements SQLParser {
                 + "AND I.TABLE_NAME=C.TABLE_NAME " + "AND I.COLUMN_NAME=C.COLUMN_NAME)"
                 + "WHEN 'PRIMARY KEY' THEN 'PRI' " + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
                 + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
-                + "WHERE C.TABLE_NAME=? AND C.TABLE_CATALOG=?");
+                + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=?");
 
         parseShowLikeOrWhere(buff, "C.COLUMN_NAME", false);
         buff.append(" ORDER BY C.ORDINAL_POSITION");
@@ -1171,7 +1177,7 @@ public class MySQLParser implements SQLParser {
     }
 
     private String getDatabaseName() {
-        return session.getDatabase().getName();
+        return session.getCurrentSchemaName();
     }
 
     private void parseShowIndexes(StringBuilder buff, ArrayList<Value> paramValues) {
@@ -1179,7 +1185,7 @@ public class MySQLParser implements SQLParser {
         String dbName = parseShowFromOrIn(getDatabaseName());
         buff.append("TABLE_NAME AS Table, ");
         buff.append("NON_UNIQUE AS Non_unique, COLUMN_NAME AS Column_name ");
-        buff.append("FROM INFORMATION_SCHEMA.INDEXES WHERE TABLE_CATALOG=? ");
+        buff.append("FROM INFORMATION_SCHEMA.INDEXES WHERE TABLE_SCHEMA=? ");
         parseShowLikeOrWhere(buff, "TABLE_NAME", false);
         if (tableName != null)
             buff.append(" AND TABLE_NAME=?");
@@ -1197,7 +1203,7 @@ public class MySQLParser implements SQLParser {
         String dbName = parseShowFromOrIn(getDatabaseName());
         buff.append("TABLE_CATALOG AS Database, TABLE_NAME AS Table, ");
         buff.append("0 AS In_use, 0 AS Name_locked ");
-        buff.append("FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+        buff.append("FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=?");
         parseShowLikeOrWhere(buff, "TABLE_NAME", false);
         buff.append(" ORDER BY TABLE_NAME");
 
@@ -1220,7 +1226,7 @@ public class MySQLParser implements SQLParser {
         buff.append("NULL AS Checksum, ");
         buff.append("NULL AS Create_options, ");
         buff.append("REMARKS AS Comment ");
-        buff.append("FROM " + dbName + ".INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG=?");
+        buff.append("FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=?");
         parseShowLikeOrWhere(buff, "TABLE_NAME", false);
         buff.append(" ORDER BY TABLE_NAME");
 
@@ -1543,8 +1549,15 @@ public class MySQLParser implements SQLParser {
             ifExists = readIfExists(ifExists);
             command.setIfExists(ifExists);
             return command;
-        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+        } else if (readIf("CATALOG")) {
             return parseDropDatabase();
+        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+            boolean ifExists = readIfExists(false);
+            DropSchema command = new DropSchema(session);
+            command.setSchemaName(readUniqueIdentifier());
+            ifExists = readIfExists(ifExists);
+            command.setIfExists(ifExists);
+            return command;
         } else if (readIf("DOMAIN")) {
             return parseDropUserDataType();
         } else if (readIf("TYPE")) {
@@ -4246,8 +4259,10 @@ public class MySQLParser implements SQLParser {
             return parseCreateTrigger(force);
         } else if (readIf("ROLE")) {
             return parseCreateRole();
-        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+        } else if (readIf("CATALOG")) {
             return parseCreateDatabase();
+        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+            return parseCreateSchema();
         } else if (readIf("CONSTANT")) {
             return parseCreateConstant();
         } else if (readIf("DOMAIN")) {
@@ -4381,6 +4396,18 @@ public class MySQLParser implements SQLParser {
             command.addRoleName(readUniqueIdentifier());
             return false;
         }
+    }
+
+    private CreateSchema parseCreateSchema() {
+        CreateSchema command = new CreateSchema(session);
+        command.setIfNotExists(readIfNotExists());
+        command.setSchemaName(readUniqueIdentifier());
+        if (readIf("AUTHORIZATION")) {
+            command.setAuthorization(readUniqueIdentifier());
+        } else {
+            command.setAuthorization(session.getUser().getName());
+        }
+        return command;
     }
 
     private GrantRevoke parseGrantRevoke(int operationType) {
@@ -4941,8 +4968,10 @@ public class MySQLParser implements SQLParser {
             return parseAlterUser();
         } else if (readIf("INDEX")) {
             return parseAlterIndex();
-        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+        } else if (readIf("CATALOG")) {
             return parseAlterDatabase();
+        } else if (readIf("SCHEMA") || readIf("DATABASE")) {
+            return parseAlterSchema();
         } else if (readIf("SEQUENCE")) {
             return parseAlterSequence();
         } else if (readIf("VIEW")) {
@@ -4988,6 +5017,23 @@ public class MySQLParser implements SQLParser {
         TableView view = (TableView) tableView;
         command.setView(view);
         read("RECOMPILE");
+        return command;
+    }
+
+    private DefinitionStatement parseAlterSchema() {
+        String schemaName = readIdentifierWithSchema();
+        return parseAlterSchemaRename(schemaName);
+    }
+
+    private AlterSchemaRename parseAlterSchemaRename(String schemaName) {
+        Schema old = getSchema();
+        AlterSchemaRename command = new AlterSchemaRename(session);
+        command.setOldSchema(getSchema(schemaName));
+        read("RENAME");
+        read("TO");
+        String newName = readIdentifierWithSchema(old.getName());
+        checkSchema(old);
+        command.setNewName(newName);
         return command;
     }
 
@@ -5080,7 +5126,8 @@ public class MySQLParser implements SQLParser {
     }
 
     private StatementBase parseUse() {
-        session.setDatabase(LealoneDatabase.getInstance().getDatabase(readAliasIdentifier()));
+        String schemaName = readAliasIdentifier();
+        session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));
         return noOperation();
     }
 
@@ -5325,48 +5372,31 @@ public class MySQLParser implements SQLParser {
     }
 
     private Table readTableOrView(String tableName) {
-        if (tableName.equalsIgnoreCase("SCHEMATA"))
-            tableName = "SCHEMAS";
+        if (tableName.equalsIgnoreCase("SCHEMATA")) {
+            if (schemaName != null && schemaName.equalsIgnoreCase(Constants.SCHEMA_INFORMATION)
+                    || session.getCurrentSchemaName().equalsIgnoreCase(tableName))
+                tableName = "SCHEMAS";
+        }
         // same algorithm than readSequence
         if (schemaName != null) {
-            // if (Constants.SCHEMA_INFORMATION.equalsIgnoreCase(schemaName))
-            // return getSchema().getTableOrView(session, tableName);
-            Table table = findTableOrView(tableName);
-            if (table != null) {
-                return table;
-            }
-        } else {
-            Table table = database.getSchema(session, session.getCurrentSchemaName())
-                    .findTableOrView(session, tableName);
-            if (table != null) {
-                return table;
-            }
-            String[] schemaNames = session.getSchemaSearchPath();
-            if (schemaNames != null) {
-                for (String name : schemaNames) {
-                    Schema s = database.getSchema(session, name);
-                    table = s.findTableOrView(session, tableName);
-                    if (table != null) {
-                        return table;
-                    }
+            return getSchema().getTableOrView(session, tableName);
+        }
+        Table table = database.getSchema(session, session.getCurrentSchemaName())
+                .findTableOrView(session, tableName);
+        if (table != null) {
+            return table;
+        }
+        String[] schemaNames = session.getSchemaSearchPath();
+        if (schemaNames != null) {
+            for (String name : schemaNames) {
+                Schema s = database.getSchema(session, name);
+                table = s.findTableOrView(session, tableName);
+                if (table != null) {
+                    return table;
                 }
             }
         }
         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
-    }
-
-    private Table findTableOrView(String tableName) {
-        Database db;
-        // if (session.getDatabase().getName().equalsIgnoreCase(schemaName))
-        // db = session.getDatabase();
-        // else
-        // db = LealoneDatabase.getInstance().getDatabase(schemaName);
-        db = session.getDatabase();
-        Table table = db.getSchema(session, Constants.SCHEMA_MAIN).findTableOrView(session, tableName);
-        if (table == null)
-            table = db.getSchema(session, Constants.SCHEMA_INFORMATION).findTableOrView(session,
-                    tableName);
-        return table;
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {

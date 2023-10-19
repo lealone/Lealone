@@ -44,7 +44,9 @@ import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
+import org.lealone.sql.ddl.CreateDatabase;
 
 public class MySQLServerConnection extends AsyncServerConnection {
 
@@ -100,7 +102,8 @@ public class MySQLServerConnection extends AsyncServerConnection {
         this.authPacket = authPacket;
         try {
             session = createSession(authPacket, authPacket.database);
-            String sql = "CREATE ALIAS IF NOT EXISTS CONNECTION_ID DETERMINISTIC FOR "
+            String sql = "CREATE ALIAS IF NOT EXISTS " + Constants.SCHEMA_MAIN
+                    + ".CONNECTION_ID DETERMINISTIC FOR "
                     + "\"org.lealone.mysql.sql.expression.MySQLFunction.getConnectionId\"";
             session.prepareStatement(sql).executeUpdate();
         } catch (Throwable e) {
@@ -115,7 +118,18 @@ public class MySQLServerConnection extends AsyncServerConnection {
         sendMessage(AUTH_OK);
     }
 
-    private ServerSession createSession(AuthPacket authPacket, String dbName) {
+    private ServerSession createSession(AuthPacket authPacket, String schemaName) {
+        String dbName = MySQLServer.DATABASE_NAME;
+        if (schemaName != null) {
+            int pos = schemaName.indexOf('.');
+            if (pos > 0) {
+                dbName = schemaName.substring(0, pos);
+                schemaName = schemaName.substring(pos + 1);
+            }
+        }
+        if (schemaName == null)
+            schemaName = Constants.SCHEMA_MAIN;
+
         if (session == null) {
             Properties info = new Properties();
             info.put("MODE", MySQLServerEngine.NAME);
@@ -123,15 +137,13 @@ public class MySQLServerConnection extends AsyncServerConnection {
             info.put("PASSWORD", StringUtils.convertBytesToHex(getPassword(authPacket)));
             info.put("PASSWORD_HASH", "true");
             String url = Constants.URL_PREFIX + Constants.URL_TCP + server.getHost() + ":"
-                    + server.getPort() + "/" + MySQLServer.DATABASE_NAME;
+                    + server.getPort() + "/" + dbName;
             ConnectionInfo ci = new ConnectionInfo(url, info);
             ci.setSalt(salt);
             ci.setRemote(false);
             session = (ServerSession) ci.createSession();
         }
-        if (dbName == null)
-            dbName = MySQLServerEngine.NAME;
-        session.prepareStatement("use " + dbName).executeUpdate();
+        session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));
         return session;
     }
 
@@ -180,7 +192,6 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private void executeStatement(PreparedSQLStatement ps, String sql) {
         if (logger.isDebugEnabled())
             logger.debug("execute sql: " + sql);
-        logger.info("execute sql: " + sql);
         try {
             if (ps == null)
                 ps = (PreparedSQLStatement) session.prepareSQLCommand(sql, -1);
@@ -192,6 +203,9 @@ public class MySQLServerConnection extends AsyncServerConnection {
             } else {
                 int updateCount = ps.executeUpdate().get();
                 writeUpdateResult(updateCount);
+                if (ps.getType() == SQLStatement.CREATE_DATABASE) {
+                    MySQLServer.createBuiltInSchemas(((CreateDatabase) ps).getDatabaseName());
+                }
             }
         } catch (Throwable e) {
             logger.error("Failed to execute statement: " + sql, e);

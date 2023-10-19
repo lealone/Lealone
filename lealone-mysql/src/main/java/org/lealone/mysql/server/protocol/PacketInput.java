@@ -162,7 +162,9 @@ public class PacketInput {
         }
         if (offset > position) {
             length = offset - position;
-            return new String(readBytes(length));
+            String str = new String(readBytes(length));
+            read();
+            return str;
         } else {
             read();
             return null;

@@ -15,6 +15,7 @@ import org.lealone.db.session.ServerSession;
 public abstract class DatabaseStatement extends DefinitionStatement {
 
     protected final String dbName;
+
     protected CaseInsensitiveMap<String> parameters;
 
     protected DatabaseStatement(ServerSession session, String dbName) {
@@ -25,6 +26,10 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     @Override
     public boolean isDatabaseStatement() {
         return true;
+    }
+
+    public String getDatabaseName() {
+        return dbName;
     }
 
     protected void validateParameters() {

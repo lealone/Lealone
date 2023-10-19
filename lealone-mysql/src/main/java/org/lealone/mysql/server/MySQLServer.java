@@ -5,6 +5,7 @@
  */
 package org.lealone.mysql.server;
 
+import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.AsyncServer;
@@ -24,20 +25,32 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
     public synchronized void start() {
         super.start();
 
-        // 以下三个默认数据库不需要持久化
-        createDefaultDatabase("information_schema", false);
-        createDefaultDatabase("performance_schema", false);
-        createDefaultDatabase("sys", false);
+        // 创建内置的mysql数据库
+        createBuiltInDatabase(DATABASE_NAME);
 
-        // 创建默认的mysql数据库
-        createDefaultDatabase(DATABASE_NAME, true);
+        // mysql数据库内置了5个schema：information_schema、performance_schema、public、mysql、sys
+        // 前三个在执行create database时自动创建了，这里需要再创建mysql、sys
+        createBuiltInSchemas(DATABASE_NAME);
     }
 
-    private void createDefaultDatabase(String dbName, boolean persistent) {
+    private void createBuiltInDatabase(String dbName) {
         String sql = "CREATE DATABASE IF NOT EXISTS " + dbName //
-                + " PARAMETERS(DEFAULT_SQL_ENGINE='" + MySQLServerEngine.NAME + "', PERSISTENT="
-                + persistent + ", MODE='" + MySQLServerEngine.NAME + "')";
+                + " PARAMETERS(DEFAULT_SQL_ENGINE='" + MySQLServerEngine.NAME //
+                + "', MODE='" + MySQLServerEngine.NAME + "')";
         LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
+    }
+
+    public static void createBuiltInSchemas(String dbName) {
+        createBuiltInSchema(dbName, DATABASE_NAME);
+        createBuiltInSchema(dbName, "sys");
+    }
+
+    private static void createBuiltInSchema(String dbName, String schemaName) {
+        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+        if (!db.isInitialized())
+            db.init();
+        String sql = "CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION root";
+        db.getSystemSession().prepareStatementLocal(sql).executeUpdate();
     }
 
     @Override
