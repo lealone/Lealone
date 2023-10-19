@@ -5,8 +5,6 @@
  */
 package org.lealone.mongo.server;
 
-import java.util.Map;
-
 import org.lealone.db.LealoneDatabase;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.AsyncServer;
@@ -23,8 +21,8 @@ public class MongoServer extends AsyncServer<MongoServerConnection> {
     }
 
     @Override
-    public void init(Map<String, String> config) {
-        super.init(config);
+    public synchronized void start() {
+        super.start();
 
         // 创建默认的 mongodb 数据库
         String sql = "CREATE DATABASE IF NOT EXISTS " + DATABASE_NAME;
