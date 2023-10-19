@@ -78,6 +78,16 @@ public class Config {
         }
     }
 
+    public void mergeProtocolServerParameters(String name, String host, String port) {
+        if (host == null && port == null)
+            return;
+        Map<String, String> parameters = getProtocolServerParameters(name);
+        if (host != null)
+            parameters.put("host", host);
+        if (port != null)
+            parameters.put("port", port);
+    }
+
     public Map<String, String> getProtocolServerParameters(String name) {
         if (protocol_server_engines != null) {
             for (PluggableEngineDef def : protocol_server_engines) {
