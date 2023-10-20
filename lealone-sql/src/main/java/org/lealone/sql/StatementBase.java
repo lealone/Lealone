@@ -407,6 +407,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 currentRowNumber, 0);
     }
 
+    @Override
     public void setExecutor(SQLStatementExecutor executor) {
         this.executor = executor;
     }

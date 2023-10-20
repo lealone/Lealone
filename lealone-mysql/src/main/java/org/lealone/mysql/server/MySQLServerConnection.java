@@ -16,6 +16,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.ManualCloseable;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
@@ -45,7 +46,6 @@ import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.ddl.CreateDatabase;
 
 public class MySQLServerConnection extends AsyncServerConnection {
@@ -59,6 +59,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private final MySQLServer server;
     private final Scheduler scheduler;
     private ServerSession session;
+    private SessionInfo si;
 
     private PacketHandler packetHandler;
     private AuthPacket authPacket;
@@ -107,8 +108,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
                     + "\"org.lealone.mysql.sql.expression.MySQLFunction.getConnectionId\"";
             session.prepareStatement(sql).executeUpdate();
         } catch (Throwable e) {
-            logger.error("Failed to create session", e);
-            sendErrorMessage(e);
+            logAndSendErrorMessage("Failed to create session", e);
             close();
             server.removeConnection(this);
             return;
@@ -142,6 +142,8 @@ public class MySQLServerConnection extends AsyncServerConnection {
             ci.setSalt(salt);
             ci.setRemote(false);
             session = (ServerSession) ci.createSession();
+            si = new SessionInfo(scheduler, this, session, -1, -1);
+            scheduler.addSessionInfo(si);
         }
         session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));
         return session;
@@ -158,59 +160,92 @@ public class MySQLServerConnection extends AsyncServerConnection {
     }
 
     public void closeStatement(int statementId) {
-        PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(statementId, true);
-        if (command != null) {
-            command.close();
+        ManualCloseable stmt = session.removeCache(statementId, true);
+        if (stmt != null) {
+            stmt.close();
         }
     }
 
     public void prepareStatement(String sql) {
-        PreparedSQLStatement command = session.prepareStatement(sql, -1);
-        int statementId = ++nextStatementId;
-        command.setId(statementId);
-        session.addCache(statementId, command);
+        PreparedSQLStatement stmt = prepareStatement(sql, true);
+        if (stmt != null) {
+            PreparedOkPacket packet = new PreparedOkPacket();
+            packet.packetId = 1;
+            packet.statementId = stmt.getId();
+            packet.columnsNumber = stmt.getMetaData().getVisibleColumnCount();
+            packet.parametersNumber = stmt.getParameters().size();
+            sendPacket(packet);
+        }
+    }
 
-        PacketOutput out = getPacketOutput();
-        PreparedOkPacket packet = new PreparedOkPacket();
-        packet.packetId = 1;
-        packet.statementId = statementId;
-        packet.columnsNumber = command.getMetaData().getVisibleColumnCount();
-        packet.parametersNumber = command.getParameters().size();
-        packet.write(out);
+    private PreparedSQLStatement prepareStatement(String sql, boolean cache) {
+        if (logger.isDebugEnabled())
+            logger.debug("prepare statement: " + sql);
+        try {
+            PreparedSQLStatement stmt = session.prepareStatement(sql, -1);
+            stmt.setExecutor(scheduler);
+            if (cache) {
+                int statementId = ++nextStatementId;
+                stmt.setId(statementId);
+                session.addCache(statementId, stmt);
+            }
+            return stmt;
+        } catch (Throwable e) {
+            logAndSendErrorMessage("Failed to prepare statement: " + sql, e);
+            return null;
+        }
     }
 
     public void executeStatement(ExecutePacket packet) {
-        PreparedSQLStatement ps = (PreparedSQLStatement) session.getCache((int) packet.statementId);
-        String sql = ps.getSQL();
-        executeStatement(ps, sql);
+        PreparedSQLStatement stmt = (PreparedSQLStatement) session.getCache((int) packet.statementId);
+        executeStatement(stmt);
     }
 
     public void executeStatement(String sql) {
-        executeStatement(null, sql);
+        PreparedSQLStatement stmt = prepareStatement(sql, false);
+        if (stmt != null) {
+            executeStatement(stmt);
+        }
     }
 
-    private void executeStatement(PreparedSQLStatement ps, String sql) {
+    private void executeStatement(PreparedSQLStatement stmt) {
         if (logger.isDebugEnabled())
-            logger.debug("execute sql: " + sql);
+            logger.debug("execute statement: " + stmt.getSQL());
         try {
-            if (ps == null)
-                ps = (PreparedSQLStatement) session.prepareSQLCommand(sql, -1);
-            if (ps instanceof StatementBase)
-                ((StatementBase) ps).setExecutor(scheduler);
-            if (ps.isQuery()) {
-                Result result = ps.executeQuery(-1).get();
-                writeQueryResult(result);
-            } else {
-                int updateCount = ps.executeUpdate().get();
-                writeUpdateResult(updateCount);
-                if (ps.getType() == SQLStatement.CREATE_DATABASE) {
-                    MySQLServer.createBuiltInSchemas(((CreateDatabase) ps).getDatabaseName());
-                }
-            }
+            submitYieldableCommand(stmt);
         } catch (Throwable e) {
-            logger.error("Failed to execute statement: " + sql, e);
-            sendErrorMessage(e);
+            logAndSendErrorMessage("Failed to submit statement: " + stmt.getSQL(), e);
         }
+    }
+
+    // 异步执行SQL语句
+    private void submitYieldableCommand(PreparedSQLStatement stmt) {
+        PreparedSQLStatement.Yieldable<?> yieldable;
+        if (stmt.isQuery()) {
+            yieldable = stmt.createYieldableQuery(-1, false, ar -> {
+                if (ar.isSucceeded()) {
+                    writeQueryResult(ar.getResult());
+                } else {
+                    writeFailedResult(stmt, ar.getCause());
+                }
+            });
+        } else {
+            yieldable = stmt.createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    writeUpdateResult(ar.getResult());
+                    if (stmt.getType() == SQLStatement.CREATE_DATABASE) {
+                        MySQLServer.createBuiltInSchemas(((CreateDatabase) stmt).getDatabaseName());
+                    }
+                } else {
+                    writeFailedResult(stmt, ar.getCause());
+                }
+            });
+        }
+        si.submitYieldableCommand(0, yieldable);
+    }
+
+    private void writeFailedResult(PreparedSQLStatement stmt, Throwable cause) {
+        logAndSendErrorMessage("Failed to execute statement: " + stmt.getSQL(), cause);
     }
 
     private void writeQueryResult(Result result) {
@@ -280,18 +315,9 @@ public class MySQLServerConnection extends AsyncServerConnection {
         sendPacket(packet);
     }
 
-    private final static byte[] encodeString(String src, String charset) {
-        if (src == null) {
-            return null;
-        }
-        if (charset == null) {
-            return src.getBytes();
-        }
-        try {
-            return src.getBytes(charset);
-        } catch (UnsupportedEncodingException e) {
-            return src.getBytes();
-        }
+    private void logAndSendErrorMessage(String message, Throwable e) {
+        logger.error(message, e);
+        sendErrorMessage(e);
     }
 
     private void sendErrorMessage(Throwable e) {
@@ -311,8 +337,18 @@ public class MySQLServerConnection extends AsyncServerConnection {
         sendPacket(err);
     }
 
-    private PacketOutput getPacketOutput() {
-        return new PacketOutput(writableChannel, scheduler.getDataBufferFactory());
+    private static byte[] encodeString(String src, String charset) {
+        if (src == null) {
+            return null;
+        }
+        if (charset == null) {
+            return src.getBytes();
+        }
+        try {
+            return src.getBytes(charset);
+        } catch (UnsupportedEncodingException e) {
+            return src.getBytes();
+        }
     }
 
     private void sendMessage(byte[] data) {
@@ -328,6 +364,10 @@ public class MySQLServerConnection extends AsyncServerConnection {
     private void sendPacket(Packet packet) {
         PacketOutput out = getPacketOutput();
         packet.write(out);
+    }
+
+    private PacketOutput getPacketOutput() {
+        return new PacketOutput(writableChannel, scheduler.getDataBufferFactory());
     }
 
     @Override
@@ -347,8 +387,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
             PacketInput input = new PacketInput(this, packetLengthByteBuffer.get(3), buffer);
             packetHandler.handle(input);
         } catch (Throwable e) {
-            logger.error("Failed to handle packet", e);
-            sendErrorMessage(e);
+            logAndSendErrorMessage("Failed to handle packet", e);
         } finally {
             buffer.recycle();
         }
