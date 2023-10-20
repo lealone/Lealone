@@ -8,6 +8,7 @@ package org.lealone.mysql.sql.expression;
 import java.sql.Connection;
 import java.util.TimeZone;
 
+import org.lealone.db.Constants;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
@@ -24,20 +25,56 @@ public class MySQLVariable extends Variable {
     public Value getValue(ServerSession session) {
         switch (getName().toLowerCase()) {
         case "max_allowed_packet":
+            return getInt(4194304);
+        case "net_write_timeout":
+            return getInt(60);
         case "net_buffer_length":
-            return ValueInt.get(-1);
+            return getInt(-1);
         case "auto_increment_increment":
-            return ValueInt.get(1);
+            return getInt(1);
         case "tx_isolation":
         case "transaction_isolation":
-            return ValueString.get(getTransactionIsolationLevel(session));
+            return getString(getTransactionIsolationLevel(session));
         case "time_zone":
         case "system_time_zone":
-            return ValueString.get(TimeZone.getDefault().getID());
+            return getString(TimeZone.getDefault().getID());
         case "warning_count":
-            return ValueInt.get(0);
+            return getInt(0);
+        case "license":
+            return getString("SSPL");
+        case "version_comment":
+            return getString("Lealone-" + Constants.RELEASE_VERSION + " Community Server - SSPL");
+        case "character_set_client":
+        case "character_set_connection":
+        case "character_set_results":
+        case "character_set_server":
+            return getString("utf-8");
+        case "query_cache_size":
+            return getInt(1048576);
+        case "query_cache_type":
+            return getString("ON");
+        case "wait_timeout":
+            return getInt(28800);
+        case "performance_schema":
+            return getInt(1);
+        case "sql_mode":
+            return getString("STRICT_TRANS_TABLES");
+        case "lower_case_table_names":
+            return getInt(1);
+        case "init_connect":
+            return getString("");
+        case "interactive_timeout":
+            return getInt(28800);
         }
         return super.getValue(session);
+    }
+
+    private static ValueString getString(String v) {
+        return ValueString.get(v);
+    }
+
+    private static ValueInt getInt(int v) {
+        return ValueInt.get(v);
     }
 
     public String getTransactionIsolationLevel(ServerSession session) {

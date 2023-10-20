@@ -5223,7 +5223,11 @@ public class MySQLParser implements SQLParser {
     }
 
     private String readStringOrIdentifier() {
-        if (currentTokenType == VALUE) {
+        // 支持SET character_set_results = NULL
+        if (currentTokenType == NULL) {
+            read();
+            return null;
+        } else if (currentTokenType == VALUE) {
             return readString(); // 加单引号
         } else {
             return readUniqueIdentifier(); // 不加单引号
