@@ -16,7 +16,6 @@ import org.bson.BsonDocument;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.Table;
 import org.lealone.mongo.server.MongoServerConnection;
 
 public class BCOther extends BsonCommand {
@@ -46,18 +45,6 @@ public class BCOther extends BsonCommand {
             BsonDocument v = new BsonDocument();
             append(v, "version", "6.0");
             document.append("featureCompatibilityVersion", v);
-            setOk(document);
-            return document;
-        }
-        case "drop": {
-            Table table = findTable(doc, "drop", conn);
-            if (table != null) {
-                try (ServerSession session = getSession(table.getDatabase(), conn)) {
-                    String sql = "DROP TABLE IF EXISTS " + table.getSQL();
-                    session.prepareStatementLocal(sql).executeUpdate();
-                }
-            }
-            BsonDocument document = new BsonDocument();
             setOk(document);
             return document;
         }

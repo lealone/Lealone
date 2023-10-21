@@ -10,15 +10,7 @@ import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.session.ServerSession;
-import org.lealone.mongo.server.bson.command.BCAggregate;
-import org.lealone.mongo.server.bson.command.BCDelete;
-import org.lealone.mongo.server.bson.command.BCFind;
-import org.lealone.mongo.server.bson.command.BCInsert;
-import org.lealone.mongo.server.bson.command.BCOther;
-import org.lealone.mongo.server.bson.command.BCUpdate;
-import org.lealone.mongo.server.bson.command.index.ICCreateIndexes;
-import org.lealone.mongo.server.bson.command.index.ICDropIndexes;
-import org.lealone.mongo.server.bson.command.index.ICListIndexes;
+import org.lealone.mongo.server.bson.command.BsonCommand;
 import org.lealone.net.NetBuffer;
 import org.lealone.server.LinkableTask;
 import org.lealone.server.SessionInfo;
@@ -49,7 +41,7 @@ public class MongoTask extends LinkableTask {
     @Override
     public void run() {
         try {
-            BsonDocument response = executeCommand();
+            BsonDocument response = BsonCommand.execute(input, doc, conn, this);
             if (response != null) {
                 conn.sendResponse(requestId, response);
             }
@@ -60,30 +52,6 @@ public class MongoTask extends LinkableTask {
             // 确保无论出现什么情况都回收
             buffer.recycle();
             input.close();
-        }
-    }
-
-    private BsonDocument executeCommand() throws Exception {
-        String command = doc.getFirstKey().toLowerCase();
-        switch (command) {
-        case "insert":
-            return BCInsert.execute(input, doc, conn, this);
-        case "update":
-            return BCUpdate.execute(input, doc, conn, this);
-        case "delete":
-            return BCDelete.execute(input, doc, conn, this);
-        case "find":
-            return BCFind.execute(input, doc, conn, this);
-        case "aggregate":
-            return BCAggregate.execute(input, doc, conn, this);
-        case "createindexes":
-            return ICCreateIndexes.execute(input, doc, conn, this);
-        case "dropindexes":
-            return ICDropIndexes.execute(input, doc, conn, this);
-        case "listindexes":
-            return ICListIndexes.execute(input, doc, conn, this);
-        default:
-            return BCOther.execute(input, doc, conn, command);
         }
     }
 }

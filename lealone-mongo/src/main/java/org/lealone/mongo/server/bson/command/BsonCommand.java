@@ -30,6 +30,11 @@ import org.lealone.mongo.server.MongoServer;
 import org.lealone.mongo.server.MongoServerConnection;
 import org.lealone.mongo.server.MongoTask;
 import org.lealone.mongo.server.bson.BsonBase;
+import org.lealone.mongo.server.bson.command.admin.ACCreate;
+import org.lealone.mongo.server.bson.command.admin.ACDrop;
+import org.lealone.mongo.server.bson.command.index.ICCreateIndexes;
+import org.lealone.mongo.server.bson.command.index.ICDropIndexes;
+import org.lealone.mongo.server.bson.command.index.ICListIndexes;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 
@@ -196,5 +201,34 @@ public abstract class BsonCommand extends BsonBase {
             }
         }
         return documents;
+    }
+
+    public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument doc,
+            MongoServerConnection conn, MongoTask task) {
+        String command = doc.getFirstKey().toLowerCase();
+        switch (command) {
+        case "insert":
+            return BCInsert.execute(input, doc, conn, task);
+        case "update":
+            return BCUpdate.execute(input, doc, conn, task);
+        case "delete":
+            return BCDelete.execute(input, doc, conn, task);
+        case "find":
+            return BCFind.execute(input, doc, conn, task);
+        case "aggregate":
+            return BCAggregate.execute(input, doc, conn, task);
+        case "createindexes":
+            return ICCreateIndexes.execute(input, doc, conn, task);
+        case "dropindexes":
+            return ICDropIndexes.execute(input, doc, conn, task);
+        case "listindexes":
+            return ICListIndexes.execute(input, doc, conn, task);
+        case "create":
+            return ACCreate.execute(input, doc, conn, task);
+        case "drop":
+            return ACDrop.execute(input, doc, conn, task);
+        default:
+            return BCOther.execute(input, doc, conn, command);
+        }
     }
 }
