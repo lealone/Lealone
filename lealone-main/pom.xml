@@ -45,13 +45,18 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.lealone</groupId>
+            <groupId>org.lealone.plugins</groupId>
             <artifactId>lealone-mongo</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.lealone</groupId>
+            <groupId>org.lealone.plugins</groupId>
             <artifactId>lealone-mysql</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone.plugins</groupId>
+            <artifactId>lealone-postgresql</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

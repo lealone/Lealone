@@ -8,12 +8,12 @@ package org.lealone.main.config;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
-import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Constants;
 
 public class Config {
@@ -47,10 +47,11 @@ public class Config {
         sql_engines = new ArrayList<>(1);
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(3);
+        protocol_server_engines = new ArrayList<>(4);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
-        protocol_server_engines.add(createEngineDef("MySQL", true, false));
         protocol_server_engines.add(createEngineDef("Mongo", true, false));
+        protocol_server_engines.add(createEngineDef("MySQL", true, false));
+        protocol_server_engines.add(createEngineDef("PostgreSQL", true, false));
 
         scheduler = new SchedulerDef();
         // scheduler.name = "ScheduleService";
@@ -155,14 +156,15 @@ public class Config {
             return newList;
         if (newList == null)
             return defaultList;
-        CaseInsensitiveMap<PluggableEngineDef> map = new CaseInsensitiveMap<>();
+        LinkedHashMap<String, PluggableEngineDef> map = new LinkedHashMap<>();
         for (PluggableEngineDef e : defaultList) {
-            map.put(e.name, e);
+            map.put(e.name.toUpperCase(), e);
         }
         for (PluggableEngineDef e : newList) {
-            PluggableEngineDef defaultE = map.get(e.name);
+            String name = e.name.toUpperCase();
+            PluggableEngineDef defaultE = map.get(name);
             if (defaultE == null) {
-                map.put(e.name, e);
+                map.put(name, e);
             } else {
                 defaultE.enabled = e.enabled;
                 defaultE.parameters.putAll(e.parameters);

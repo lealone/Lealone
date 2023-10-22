@@ -34,12 +34,25 @@ sql_engines:
         # key1: v1,
         # key2: v2,
     }
+  - name: PostgreSQL
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
 
 protocol_server_engines:
   - name: TCP
     enabled: true
     parameters: {
         port: 9210,
+        allow_others: true,
+        ssl: false
+    }
+  - name: Mongo
+    enabled: true
+    parameters: {
+        port: 27017,
         allow_others: true,
         ssl: false
     }
@@ -50,10 +63,10 @@ protocol_server_engines:
         allow_others: true,
         ssl: false
     }
-  - name: Mongo
+  - name: PostgreSQL
     enabled: true
     parameters: {
-        port: 27017,
+        port: 5432,
         allow_others: true,
         ssl: false
     }
