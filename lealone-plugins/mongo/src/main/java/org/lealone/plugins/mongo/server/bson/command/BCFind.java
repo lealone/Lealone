@@ -38,10 +38,15 @@ public class BCFind extends BsonCommand {
     }
 
     private static BsonDocument createResponseDocument(BsonDocument doc, BsonArray documents) {
+        return createResponseDocument(doc, documents, doc.getString("find").getValue());
+    }
+
+    public static BsonDocument createResponseDocument(BsonDocument doc, BsonArray documents,
+            String collectionName) {
         BsonDocument document = new BsonDocument();
         BsonDocument cursor = new BsonDocument();
         append(cursor, "id", 0L);
-        append(cursor, "ns", doc.getString("$db").getValue() + "." + doc.getString("find").getValue());
+        append(cursor, "ns", doc.getString("$db").getValue() + "." + collectionName);
         cursor.append("firstBatch", documents);
         document.append("cursor", cursor);
         setOk(document);

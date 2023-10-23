@@ -8,7 +8,7 @@ package org.lealone.plugins.mongo.server.bson.command.legacy;
 import org.bson.BsonDocument;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
-import org.lealone.plugins.mongo.server.bson.command.BCOther;
+import org.lealone.plugins.mongo.server.bson.command.BsonCommand;
 
 public class LCQuery extends LegacyCommand {
 
@@ -26,9 +26,9 @@ public class LCQuery extends LegacyCommand {
                 logger.info("returnFieldsSelector: {}", returnFieldsSelector.toJson());
         }
         input.close();
-        String command = doc.getFirstKey().toLowerCase();
-        if (command.equals("ismaster")) {
-            conn.sendResponse(requestId, BCOther.execute(input, doc, conn, command, null));
+        String command = doc.getFirstKey();
+        if (command.equals("isMaster") || command.equals("hello")) {
+            conn.sendResponse(requestId, BsonCommand.execute(input, doc, conn, null));
         } else {
             conn.sendResponse(requestId);
         }

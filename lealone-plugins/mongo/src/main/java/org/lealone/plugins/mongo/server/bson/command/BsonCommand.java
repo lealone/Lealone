@@ -16,6 +16,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.StatementBuilder;
@@ -30,11 +31,14 @@ import org.lealone.plugins.mongo.server.MongoServer;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
 import org.lealone.plugins.mongo.server.bson.BsonBase;
-import org.lealone.plugins.mongo.server.bson.command.admin.ACCreate;
-import org.lealone.plugins.mongo.server.bson.command.admin.ACDrop;
-import org.lealone.plugins.mongo.server.bson.command.index.ICCreateIndexes;
-import org.lealone.plugins.mongo.server.bson.command.index.ICDropIndexes;
-import org.lealone.plugins.mongo.server.bson.command.index.ICListIndexes;
+import org.lealone.plugins.mongo.server.bson.command.admin.AdminCommand;
+import org.lealone.plugins.mongo.server.bson.command.auth.AuthCommand;
+import org.lealone.plugins.mongo.server.bson.command.auth.SaslStart;
+import org.lealone.plugins.mongo.server.bson.command.diagnostic.DiagnosticCommand;
+import org.lealone.plugins.mongo.server.bson.command.index.IndexCommand;
+import org.lealone.plugins.mongo.server.bson.command.role.RoleCommand;
+import org.lealone.plugins.mongo.server.bson.command.sessions.SessionsCommand;
+import org.lealone.plugins.mongo.server.bson.command.user.UserCommand;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 
@@ -42,6 +46,7 @@ public abstract class BsonCommand extends BsonBase {
 
     public static final Logger logger = LoggerFactory.getLogger(BsonCommand.class);
     public static final boolean DEBUG = true;
+    public static final BsonDocument NOT_FOUND = new BsonDocument();
 
     public static BsonDocument newOkBsonDocument() {
         BsonDocument document = new BsonDocument();
@@ -205,8 +210,9 @@ public abstract class BsonCommand extends BsonBase {
 
     public static BsonDocument execute(ByteBufferBsonInput input, BsonDocument doc,
             MongoServerConnection conn, MongoTask task) {
-        String command = doc.getFirstKey().toLowerCase();
+        String command = doc.getFirstKey();
         switch (command) {
+        // 最常用的几个crud命令
         case "insert":
             return BCInsert.execute(input, doc, conn, task);
         case "update":
@@ -217,18 +223,53 @@ public abstract class BsonCommand extends BsonBase {
             return BCFind.execute(input, doc, conn, task);
         case "aggregate":
             return BCAggregate.execute(input, doc, conn, task);
-        case "createindexes":
-            return ICCreateIndexes.execute(input, doc, conn, task);
-        case "dropindexes":
-            return ICDropIndexes.execute(input, doc, conn, task);
-        case "listindexes":
-            return ICListIndexes.execute(input, doc, conn, task);
-        case "create":
-            return ACCreate.execute(input, doc, conn, task);
-        case "drop":
-            return ACDrop.execute(input, doc, conn, task);
-        default:
-            return BCOther.execute(input, doc, conn, command, task);
+        // 握手命令
+        case "hello":
+        case "ismaster":
+        case "isMaster": {
+            BsonDocument document = new BsonDocument();
+            BsonDocument speculativeAuthenticate = doc.getDocument("speculativeAuthenticate", null);
+            if (speculativeAuthenticate != null) {
+                BsonDocument res = SaslStart.execute(input, speculativeAuthenticate, conn, task);
+                BsonArray saslSupportedMechs = new BsonArray();
+                saslSupportedMechs.add(new BsonString("SCRAM-SHA-256"));
+                saslSupportedMechs.add(new BsonString("SCRAM-SHA-1"));
+                document.append("saslSupportedMechs", saslSupportedMechs);
+                document.append("speculativeAuthenticate", res);
+            }
+            append(document, "ismaster", true);
+            append(document, "connectionId", conn.getConnectionId());
+            append(document, "readOnly", false);
+            setWireVersion(document);
+            setOk(document);
+            append(document, "isWritablePrimary", true);
+            return document;
         }
+        default:
+            BsonDocument ret = AdminCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = DiagnosticCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = IndexCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = UserCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = RoleCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = AuthCommand.execute(input, doc, conn, command, task);
+            if (ret == NOT_FOUND)
+                ret = SessionsCommand.execute(input, doc, conn, command, task);
+            if (ret != NOT_FOUND)
+                return ret;
+            // BsonDocument document = new BsonDocument();
+            // setWireVersion(document);
+            // setOk(document);
+            // setN(document, 0);
+            throw getCUE(command);
+        }
+    }
+
+    public static DbException getCUE(String command) {
+        return DbException.getUnsupportedException("command " + command);
     }
 }

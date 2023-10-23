@@ -28,12 +28,18 @@ public class BsonAuthenticationCommandTest extends MongoTestBase {
     }
 
     @Test
-    public void testAuthentication() {
+    public void testAuthentication1() {
         String authMechanism = "SCRAM-SHA-1";
-        authMechanism = "SCRAM-SHA-256";
-        // authMechanism = "SCRAM-SHA-512";
         MongoClient mongoClient = getMongoClient("myUserAdmin", "mongo", authMechanism);
         mongoClient.getDatabase("admin").getCollection(collectionName).countDocuments();
+        mongoClient.close();
+    }
+
+    @Test
+    public void testAuthentication256() {
+        String authMechanism = "SCRAM-SHA-256";
+        // authMechanism = "SCRAM-SHA-512"; //不支持
+        MongoClient mongoClient = getMongoClient("myUserAdmin", "mongo", authMechanism);
         mongoClient.getDatabase("admin").getCollection(collectionName).countDocuments();
         mongoClient.close();
     }

@@ -36,10 +36,6 @@ public abstract class BsonOperator extends BsonBase {
         return f;
     }
 
-    public static DbException getUE(String message) {
-        return DbException.getUnsupportedException(message);
-    }
-
     public static DbException getAUE(String operator) {
         return DbException.getUnsupportedException("aggregate operator " + operator);
     }

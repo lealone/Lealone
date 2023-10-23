@@ -15,6 +15,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -31,6 +32,10 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.TableFilter;
 
 public abstract class BsonBase {
+
+    public static DbException getUE(String message) {
+        return DbException.getUnsupportedException(message);
+    }
 
     public static Value toValue(BsonValue bv) {
         switch (bv.getBsonType()) {
@@ -102,5 +107,14 @@ public abstract class BsonBase {
                 return Long.valueOf(id.asInt64().getValue());
         }
         return null;
+    }
+
+    public static String getString(BsonDocument doc, String key) {
+        return doc.getString(key).getValue();
+    }
+
+    public static String getStringOrNull(BsonDocument doc, String key) {
+        BsonString v = doc.getString(key, null);
+        return v == null ? null : v.getValue();
     }
 }
