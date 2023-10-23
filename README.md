@@ -5,7 +5,7 @@
 
 * 也是一个兼容 MongoDB 的高性能文档数据库
 
-* 同时还高度兼容 MySQL 的协议和 SQL 语法
+* 同时还高度兼容 MySQL 和 PostgreSQL 的协议和 SQL 语法
 
 
 ### Lealone 有哪些特性
