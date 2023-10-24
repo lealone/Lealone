@@ -7,45 +7,43 @@ package org.lealone.plugins.postgresql.server;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.sql.Connection;
-import java.sql.ParameterMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 
-import org.lealone.client.jdbc.JdbcConnection;
-import org.lealone.client.jdbc.JdbcPreparedStatement;
-import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.Database;
 import org.lealone.db.PluginManager;
+import org.lealone.db.result.Result;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.net.AsyncConnection;
+import org.lealone.db.table.Column;
+import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueString;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.postgresql.io.NetBufferInput;
 import org.lealone.plugins.postgresql.io.NetBufferOutput;
+import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
+import org.lealone.server.SessionInfo;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLStatement;
 
@@ -60,7 +58,8 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class PgServerConnection extends AsyncConnection {
+// 最新官方协议文档: https://www.postgresql.org/docs/15/protocol-message-formats.html
+public class PgServerConnection extends AsyncServerConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(PgServerConnection.class);
 
@@ -68,7 +67,8 @@ public class PgServerConnection extends AsyncConnection {
 
     private final PgServer server;
     private final Scheduler scheduler;
-    private Connection conn;
+    private ServerSession session;
+    private SessionInfo si;
     private boolean stop;
     private NetBufferInput in;
     private NetBufferOutput out;
@@ -78,8 +78,8 @@ public class PgServerConnection extends AsyncConnection {
     private int processId;
     private String clientEncoding = Utils.getProperty("pgClientEncoding", "UTF-8");
     private String dateStyle = "ISO";
-    private final HashMap<String, Prepared> prepared = new CaseInsensitiveMap<Prepared>();
-    private final HashMap<String, Portal> portals = new CaseInsensitiveMap<Portal>();
+    private final CaseInsensitiveMap<Prepared> prepared = new CaseInsensitiveMap<>();
+    private final CaseInsensitiveMap<Portal> portals = new CaseInsensitiveMap<>();
     private final ArrayList<NetBufferOutput> outList = new ArrayList<>();
     private boolean isQuery;
 
@@ -87,6 +87,15 @@ public class PgServerConnection extends AsyncConnection {
         super(writableChannel, true);
         this.server = server;
         this.scheduler = scheduler;
+    }
+
+    @Override
+    public void closeSession(SessionInfo si) {
+    }
+
+    @Override
+    public int getSessionCount() {
+        return 1;
     }
 
     private String readString() throws IOException {
@@ -117,9 +126,9 @@ public class PgServerConnection extends AsyncConnection {
         in.readFully(buff);
     }
 
-    private JdbcConnection createJdbcConnection(String password) throws SQLException {
+    private void createSession(String password) {
         Properties info = new Properties();
-        info.put("MODE", "PostgreSQL");
+        info.put("MODE", PgServerEngine.NAME);
         info.put("USER", userName);
         info.put("PASSWORD", password);
         info.put("DEFAULT_SQL_ENGINE", PgServerEngine.NAME);
@@ -127,10 +136,10 @@ public class PgServerConnection extends AsyncConnection {
                 + "/" + databaseName;
         ConnectionInfo ci = new ConnectionInfo(url, info);
         ci.setRemote(false);
-        JdbcConnection conn = new JdbcConnection(ci);
-        ((ServerSession) conn.getSession())
-                .setSQLEngine(PluginManager.getPlugin(SQLEngine.class, PgServerEngine.NAME));
-        return conn;
+        session = (ServerSession) ci.createSession();
+        si = new SessionInfo(scheduler, this, session, -1, -1);
+        scheduler.addSessionInfo(si);
+        session.setSQLEngine(PluginManager.getPlugin(SQLEngine.class, PgServerEngine.NAME));
     }
 
     private void process(int x) throws IOException {
@@ -179,10 +188,7 @@ public class PgServerConnection extends AsyncConnection {
             server.trace("PasswordMessage");
             String password = readString();
             try {
-                conn = createJdbcConnection(password);
-                // can not do this because when called inside
-                // DriverManager.getConnection, a deadlock occurs
-                // conn = DriverManager.getConnection(url, userName, password);
+                createSession(password);
                 initDb();
                 sendAuthenticationOk();
             } catch (Exception e) {
@@ -196,15 +202,31 @@ public class PgServerConnection extends AsyncConnection {
             Prepared p = new Prepared();
             p.name = readString();
             p.sql = getSQL(readString());
-            int count = readShort();
-            p.paramType = new int[count];
-            for (int i = 0; i < count; i++) {
-                int type = readInt();
-                server.checkType(type);
-                p.paramType[i] = type;
+            int paramTypesCount = readShort();
+            int[] paramTypes = null;
+            if (paramTypesCount > 0) {
+                paramTypes = new int[paramTypesCount];
+                for (int i = 0; i < paramTypesCount; i++) {
+                    int type = readInt();
+                    server.checkType(type);
+                    paramTypes[i] = type;
+                }
             }
             try {
-                p.prep = (JdbcPreparedStatement) conn.prepareStatement(p.sql);
+                p.prep = session.prepareStatementLocal(p.sql);
+                List<? extends CommandParameter> parameters = p.prep.getParameters();
+                int count = parameters.size();
+                p.paramTypes = new int[count];
+                for (int i = 0; i < count; i++) {
+                    int type;
+                    if (i < paramTypesCount && paramTypes[i] != 0) {
+                        type = paramTypes[i];
+                        server.checkType(type);
+                    } else {
+                        type = PgType.convertType(parameters.get(i).getType());
+                    }
+                    p.paramTypes[i] = type;
+                }
                 prepared.put(p.name, p);
                 sendParseComplete();
             } catch (Exception e) {
@@ -256,7 +278,7 @@ public class PgServerConnection extends AsyncConnection {
             if (type == 'S') {
                 Prepared p = prepared.remove(name);
                 if (p != null) {
-                    JdbcUtils.closeSilently(p.prep);
+                    p.prep.close();
                 }
             } else if (type == 'P') {
                 portals.remove(name);
@@ -284,10 +306,8 @@ public class PgServerConnection extends AsyncConnection {
                 if (p == null) {
                     sendErrorResponse("Portal not found: " + name);
                 } else {
-                    PreparedStatement prep = p.prep.prep;
                     try {
-                        ResultSetMetaData meta = prep.getMetaData();
-                        sendRowDescription(meta);
+                        sendRowDescription(p.prep.prep.getMetaData(), p.resultColumnFormat);
                     } catch (Exception e) {
                         sendErrorResponse(e);
                     }
@@ -308,27 +328,10 @@ public class PgServerConnection extends AsyncConnection {
             }
             int maxRows = readShort();
             Prepared prepared = p.prep;
-            JdbcPreparedStatement prep = prepared.prep;
+            PreparedSQLStatement prep = prepared.prep;
             server.trace(prepared.sql);
             try {
-                prep.setMaxRows(maxRows);
-                boolean result = prep.execute();
-                if (result) {
-                    try {
-                        ResultSet rs = prep.getResultSet();
-                        // 不需要发送RowDescription
-                        // ResultSetMetaData meta = rs.getMetaData();
-                        // sendRowDescription(meta);
-                        while (rs.next()) {
-                            sendDataRow(rs);
-                        }
-                        sendCommandComplete(prep, 0);
-                    } catch (Exception e) {
-                        sendErrorResponse(e);
-                    }
-                } else {
-                    sendCommandComplete(prep, prep.getUpdateCount());
-                }
+                submitYieldableCommand(prep, maxRows, false); // 不需要发送RowDescription
             } catch (Exception e) {
                 sendErrorResponse(e);
             }
@@ -345,36 +348,18 @@ public class PgServerConnection extends AsyncConnection {
             String query = readString();
             ScriptReader reader = new ScriptReader(new StringReader(query));
             while (true) {
-                JdbcStatement stat = null;
+                PreparedSQLStatement prep = null;
                 try {
                     String s = reader.readStatement();
                     if (s == null) {
                         break;
                     }
                     s = getSQL(s);
-                    stat = (JdbcStatement) conn.createStatement();
-                    boolean result = stat.execute(s);
-                    if (result) {
-                        ResultSet rs = stat.getResultSet();
-                        ResultSetMetaData meta = rs.getMetaData();
-                        try {
-                            sendRowDescription(meta);
-                            while (rs.next()) {
-                                sendDataRow(rs);
-                            }
-                            sendCommandComplete(stat, 0);
-                        } catch (Exception e) {
-                            sendErrorResponse(e);
-                            break;
-                        }
-                    } else {
-                        sendCommandComplete(stat, stat.getUpdateCount());
-                    }
-                } catch (SQLException e) {
+                    prep = session.prepareStatement(s);
+                    submitYieldableCommand(prep, -1, true);
+                } catch (Exception e) {
                     sendErrorResponse(e);
                     break;
-                } finally {
-                    JdbcUtils.closeSilently(stat);
                 }
             }
             isQuery = false;
@@ -392,6 +377,44 @@ public class PgServerConnection extends AsyncConnection {
         }
     }
 
+    // 异步执行SQL语句
+    private void submitYieldableCommand(PreparedSQLStatement stmt, int maxRows,
+            boolean sendRowDescription) {
+        PreparedSQLStatement.Yieldable<?> yieldable;
+        if (stmt.isQuery()) {
+            yieldable = stmt.createYieldableQuery(maxRows, false, ar -> {
+                if (ar.isSucceeded()) {
+                    try {
+                        Result result = ar.getResult();
+                        if (sendRowDescription)
+                            sendRowDescription(stmt.getMetaData(), null);
+                        while (result.next()) {
+                            sendDataRow(result);
+                        }
+                        sendCommandComplete(stmt, 0);
+                    } catch (Exception e) {
+                        sendErrorResponse(e);
+                    }
+                } else {
+                    sendErrorResponse(ar.getCause());
+                }
+            });
+        } else {
+            yieldable = stmt.createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    try {
+                        sendCommandComplete(stmt, ar.getResult());
+                    } catch (Exception e) {
+                        sendErrorResponse(e);
+                    }
+                } else {
+                    sendErrorResponse(ar.getCause());
+                }
+            });
+        }
+        si.submitYieldableCommand(0, yieldable);
+    }
+
     private String getSQL(String s) {
         String lower = StringUtils.toLowerEnglish(s);
         if (lower.startsWith("show max_identifier_length")) {
@@ -406,9 +429,9 @@ public class PgServerConnection extends AsyncConnection {
         return s;
     }
 
-    private void sendCommandComplete(JdbcStatement stat, int updateCount) throws IOException {
+    private void sendCommandComplete(PreparedSQLStatement stat, int updateCount) throws IOException {
         startMessage('C');
-        switch (stat.getLastExecutedCommandType()) {
+        switch (stat.getType()) {
         case SQLStatement.INSERT:
             writeStringPart("CommandInterfaceINSERT 0 ");
             writeString(Integer.toString(updateCount));
@@ -436,11 +459,11 @@ public class PgServerConnection extends AsyncConnection {
         sendMessage();
     }
 
-    private void sendDataRow(ResultSet rs) throws Exception {
-        int columns = rs.getMetaData().getColumnCount();
+    private void sendDataRow(Result rs) throws Exception {
+        int columns = rs.getVisibleColumnCount();
         String[] values = new String[columns];
         for (int i = 0; i < columns; i++) {
-            values[i] = rs.getString(i + 1);
+            values[i] = rs.currentRow()[i].getString();
         }
         startMessage('D');
         writeShort(columns);
@@ -464,7 +487,7 @@ public class PgServerConnection extends AsyncConnection {
         return clientEncoding;
     }
 
-    private void setParameter(PreparedStatement prep, int i, byte[] d2, int[] formatCodes)
+    private void setParameter(PreparedSQLStatement prep, int i, byte[] d2, int[] formatCodes)
             throws SQLException {
         boolean text = (i >= formatCodes.length) || (formatCodes[i] == 0);
         String s;
@@ -479,13 +502,10 @@ public class PgServerConnection extends AsyncConnection {
             server.traceError(e);
             s = null;
         }
-        // if(server.getLog()) {
-        // server.log(" " + i + ": " + s);
-        // }
-        prep.setString(i + 1, s);
+        prep.getParameters().get(i).setValue(ValueString.get(s));
     }
 
-    private void sendErrorResponse(Exception re) throws IOException {
+    private void sendErrorResponse(Throwable re) {
         SQLException e = DbException.toSQLException(re);
         server.traceError(e);
         startMessage('E');
@@ -503,15 +523,14 @@ public class PgServerConnection extends AsyncConnection {
 
     private void sendParameterDescription(Prepared p) throws IOException {
         try {
-            PreparedStatement prep = p.prep;
-            ParameterMetaData meta = prep.getParameterMetaData();
-            int count = meta.getParameterCount();
+            List<? extends CommandParameter> parameters = p.prep.getParameters();
+            int count = parameters.size();
             startMessage('t');
             writeShort(count);
             for (int i = 0; i < count; i++) {
                 int type;
-                if (p.paramType != null && p.paramType[i] != 0) {
-                    type = p.paramType[i];
+                if (p.paramTypes != null && p.paramTypes[i] != 0) {
+                    type = p.paramTypes[i];
                 } else {
                     type = PgType.PG_TYPE_VARCHAR;
                 }
@@ -529,48 +548,85 @@ public class PgServerConnection extends AsyncConnection {
         sendMessage();
     }
 
-    private void sendRowDescription(ResultSetMetaData meta) throws Exception {
-        if (meta == null) {
+    private void sendRowDescription(Result result, int[] formatCodes) throws IOException {
+        if (result == null) {
             sendNoData();
         } else {
-            int columns = meta.getColumnCount();
+            int columns = result.getVisibleColumnCount();
+            int[] oids = new int[columns];
+            int[] attnums = new int[columns];
             int[] types = new int[columns];
             int[] precision = new int[columns];
             String[] names = new String[columns];
+            Database database = session.getDatabase();
             for (int i = 0; i < columns; i++) {
-                String name = meta.getColumnName(i + 1);
+                String name = result.getColumnName(i);
+                Schema schema = database.findSchema(session, result.getSchemaName(i));
+                if (schema != null) {
+                    Table table = schema.findTableOrView(session, result.getTableName(i));
+                    if (table != null) {
+                        oids[i] = table.getId();
+                        Column column = table.getColumn(name);
+                        if (column != null) {
+                            attnums[i] = column.getColumnId() + 1;
+                        }
+                    }
+                }
                 names[i] = name;
-                int type = meta.getColumnType(i + 1);
-                type = PgType.convertType(type);
+                int type = result.getColumnType(i);
+                int pgType = PgType.convertValueType(type);
                 // the ODBC client needs the column pg_catalog.pg_index
                 // to be of type 'int2vector'
                 // if (name.equalsIgnoreCase("indkey") &&
-                // "pg_index".equalsIgnoreCase(meta.getTableName(i + 1))) {
+                // "pg_index".equalsIgnoreCase(
+                // meta.getTableName(i + 1))) {
                 // type = PgServer.PG_TYPE_INT2VECTOR;
                 // }
-                precision[i] = meta.getColumnDisplaySize(i + 1);
-                server.checkType(type);
-                types[i] = type;
+                precision[i] = result.getDisplaySize(i);
+                if (type != Value.NULL) {
+                    server.checkType(pgType);
+                }
+                types[i] = pgType;
             }
             startMessage('T');
             writeShort(columns);
             for (int i = 0; i < columns; i++) {
                 writeString(StringUtils.toLowerEnglish(names[i]));
                 // object ID
-                writeInt(0);
+                writeInt(oids[i]);
                 // attribute number of the column
-                writeShort(0);
+                writeShort(attnums[i]);
                 // data type
                 writeInt(types[i]);
                 // pg_type.typlen
                 writeShort(getTypeSize(types[i], precision[i]));
                 // pg_attribute.atttypmod
                 writeInt(-1);
-                // text
-                writeShort(0);
+                // the format type: text = 0, binary = 1
+                writeShort(formatAsText(types[i], formatCodes, i) ? 0 : 1);
             }
             sendMessage();
         }
+    }
+
+    /**
+     * Check whether the given type should be formatted as text.
+     *
+     * @param pgType data type
+     * @param formatCodes format codes, or {@code null}
+     * @param column 0-based column number
+     * @return true for text
+     */
+    private static boolean formatAsText(int pgType, int[] formatCodes, int column) {
+        boolean text = true;
+        if (formatCodes != null && formatCodes.length > 0) {
+            if (formatCodes.length == 1) {
+                text = formatCodes[0] == 0;
+            } else if (column < formatCodes.length) {
+                text = formatCodes[column] == 0;
+            }
+        }
+        return text;
     }
 
     private static int getTypeSize(int pgType, int precision) {
@@ -611,62 +667,36 @@ public class PgServerConnection extends AsyncConnection {
     }
 
     private void initDb() throws SQLException {
-        Statement stat = null;
-        ResultSet rs = null;
-        try {
-            synchronized (server) {
-                // better would be: set the database to exclusive mode
-                rs = conn.getMetaData().getTables(null, "PG_CATALOG", "PG_VERSION", null);
-                boolean tableFound = rs.next();
-                stat = conn.createStatement();
-                if (!tableFound) {
-                    installPgCatalog(stat);
-                }
-                JdbcUtils.closeSilently(rs);
-                rs = stat.executeQuery("SELECT * FROM PG_CATALOG.PG_VERSION");
-                if (!rs.next() || rs.getInt(1) < 2) {
-                    // installation incomplete, or old version
-                    installPgCatalog(stat);
-                } else {
-                    // version 2 or newer: check the read version
-                    int versionRead = rs.getInt(2);
-                    if (versionRead > 2) {
-                        throw DbException.throwInternalError("Incompatible PG_VERSION");
-                    }
-                }
-                JdbcUtils.closeSilently(rs);
+        synchronized (server) {
+            // better would be: set the database to exclusive mode
+            // rs = conn.getMetaData().getTables(null, "PG_CATALOG", "PG_VERSION", null);
+            Schema schema = session.getDatabase().findSchema(session, "PG_CATALOG");
+            if (schema == null || schema.getTableOrView(session, "PG_VERSION") != null) {
+                PgServer.installPgCatalog(session, false);
             }
-            stat.execute("set search_path = PUBLIC, pg_catalog");
-            HashSet<Integer> typeSet = server.getTypeSet();
-            if (typeSet.isEmpty()) {
-                rs = stat.executeQuery("SELECT OID FROM PG_CATALOG.PG_TYPE");
-                while (rs.next()) {
-                    typeSet.add(rs.getInt(1));
+            Result r = session.prepareStatementLocal("SELECT * FROM PG_CATALOG.PG_VERSION")
+                    .executeQuery(-1).get();
+            if (!r.next() || r.currentRow()[0].getInt() < 2) {
+                // installation incomplete, or old version
+                PgServer.installPgCatalog(session, false);
+            } else {
+                // version 2 or newer: check the read version
+                int versionRead = r.currentRow()[1].getInt();
+                if (versionRead > 2) {
+                    throw DbException.throwInternalError("Incompatible PG_VERSION");
                 }
-                JdbcUtils.closeSilently(rs);
             }
-        } finally {
-            JdbcUtils.closeSilently(stat);
+            r.close();
         }
-    }
-
-    private static void installPgCatalog(Statement stat) throws SQLException {
-        Reader r = null;
-        try {
-            r = Utils.getResourceAsReader(PgServer.PG_CATALOG_FILE);
-            ScriptReader reader = new ScriptReader(r);
-            while (true) {
-                String sql = reader.readStatement();
-                if (sql == null) {
-                    break;
-                }
-                stat.execute(sql);
+        session.prepareStatementLocal("set search_path = PUBLIC, pg_catalog").executeUpdate().get();
+        HashSet<Integer> typeSet = server.getTypeSet();
+        if (typeSet.isEmpty()) {
+            Result r = session.prepareStatementLocal("SELECT OID FROM PG_CATALOG.PG_TYPE")
+                    .executeQuery(-1).get();
+            while (r.next()) {
+                typeSet.add(r.currentRow()[0].getInt());
             }
-            reader.close();
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, "Can not read pg_catalog resource");
-        } finally {
-            IOUtils.closeSilently(r);
+            r.close();
         }
     }
 
@@ -675,17 +705,17 @@ public class PgServerConnection extends AsyncConnection {
      */
     @Override
     public void close() {
-        if (conn == null)
+        if (session == null)
             return;
         try {
             stop = true;
-            JdbcUtils.closeSilently(conn);
+            session.close();
             server.trace("Close");
             super.close();
         } catch (Exception e) {
             server.traceError(e);
         }
-        conn = null;
+        session = null;
         server.removeConnection(this);
     }
 
@@ -716,17 +746,12 @@ public class PgServerConnection extends AsyncConnection {
     private void sendReadyForQuery() throws IOException {
         startMessage('Z');
         char c;
-        try {
-            if (conn.getAutoCommit()) {
-                // idle
-                c = 'I';
-            } else {
-                // in a transaction block
-                c = 'T';
-            }
-        } catch (SQLException e) {
-            // failed transaction block
-            c = 'E';
+        if (session.isAutoCommit()) {
+            // idle
+            c = 'I';
+        } else {
+            // in a transaction block
+            c = 'T';
         }
         write((byte) c);
         sendMessage();
@@ -817,12 +842,12 @@ public class PgServerConnection extends AsyncConnection {
         /**
          * The prepared statement.
          */
-        JdbcPreparedStatement prep;
+        PreparedSQLStatement prep;
 
         /**
          * The list of parameter types (if set).
          */
-        int[] paramType;
+        int[] paramTypes;
     }
 
     /**
@@ -846,7 +871,6 @@ public class PgServerConnection extends AsyncConnection {
         Prepared prep;
     }
 
-    private final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
     private final ByteBuffer packetLengthByteBufferInitDone = ByteBuffer.allocateDirect(5);
 
     @Override
@@ -873,6 +897,15 @@ public class PgServerConnection extends AsyncConnection {
 
     @Override
     public void handle(NetBuffer buffer) {
+        // postgresql执行一条sql要分成5个包: Parse Bind Describe Execute Sync
+        // 执行到Execute这一步时会异步提交sql，此时不能继续处理Sync包，否则客户端会提前收到Sync的响应，但sql的结果还看不到
+        if (si == null)
+            handlePacket(buffer);
+        else
+            si.submitTask(new PgTask(this, buffer));
+    }
+
+    void handlePacket(NetBuffer buffer) {
         if (!buffer.isOnlyOnePacket()) {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
@@ -898,7 +931,7 @@ public class PgServerConnection extends AsyncConnection {
             logger.error("Parse packet exception", e);
             try {
                 sendErrorResponse(e);
-            } catch (IOException e1) {
+            } catch (Exception e1) {
                 logger.error("sendErrorResponse exception", e);
             }
         }

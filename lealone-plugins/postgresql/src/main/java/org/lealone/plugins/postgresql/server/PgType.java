@@ -7,6 +7,8 @@ package org.lealone.plugins.postgresql.server;
 
 import java.sql.Types;
 
+import org.lealone.db.value.Value;
+
 public class PgType {
 
     /**
@@ -42,7 +44,7 @@ public class PgType {
      * @param type the SQL type
      * @return the PostgreSQL type
      */
-    public static int convertType(final int type) {
+    public static int convertType(int type) {
         switch (type) {
         case Types.BOOLEAN:
             return PG_TYPE_BOOL;
@@ -75,6 +77,45 @@ public class PgType {
         case Types.BLOB:
             return PG_TYPE_OID;
         case Types.ARRAY:
+            return PG_TYPE_TEXTARRAY;
+        default:
+            return PG_TYPE_UNKNOWN;
+        }
+    }
+
+    public static int convertValueType(int type) {
+        switch (type) {
+        case Value.BOOLEAN:
+            return PG_TYPE_BOOL;
+        case Value.STRING:
+            return PG_TYPE_VARCHAR;
+        case Value.CLOB:
+            return PG_TYPE_TEXT;
+        // case Types.CHAR:
+        // return PG_TYPE_BPCHAR;
+        case Value.SHORT:
+            return PG_TYPE_INT2;
+        case Value.INT:
+            return PG_TYPE_INT4;
+        case Value.LONG:
+            return PG_TYPE_INT8;
+        case Value.DECIMAL:
+            return PG_TYPE_NUMERIC;
+        case Value.FLOAT:
+            return PG_TYPE_FLOAT4;
+        case Value.DOUBLE:
+            return PG_TYPE_FLOAT8;
+        case Value.TIME:
+            return PG_TYPE_TIME;
+        case Value.DATE:
+            return PG_TYPE_DATE;
+        case Value.TIMESTAMP:
+            return PG_TYPE_TIMESTAMP_NO_TMZONE;
+        case Value.BYTES:
+            return PG_TYPE_BYTEA;
+        case Value.BLOB:
+            return PG_TYPE_OID;
+        case Value.ARRAY:
             return PG_TYPE_TEXTARRAY;
         default:
             return PG_TYPE_UNKNOWN;

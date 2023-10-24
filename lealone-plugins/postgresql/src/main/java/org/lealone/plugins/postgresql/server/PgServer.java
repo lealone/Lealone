@@ -5,16 +5,26 @@
  */
 package org.lealone.plugins.postgresql.server;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Map;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.ScriptReader;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.session.ServerSession;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.AsyncServer;
 import org.lealone.server.Scheduler;
+import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.SQLStatement;
 
 public class PgServer extends AsyncServer<PgServerConnection> {
 
@@ -36,6 +46,11 @@ public class PgServer extends AsyncServer<PgServerConnection> {
     public void init(Map<String, String> config) {
         super.init(config);
         trace = Boolean.parseBoolean(config.get("trace"));
+    }
+
+    @Override
+    public synchronized void start() {
+        super.start();
 
         // 创建默认的 postgres 数据库
         String sql = "CREATE DATABASE IF NOT EXISTS postgres" //
@@ -96,6 +111,34 @@ public class PgServer extends AsyncServer<PgServerConnection> {
     void checkType(int type) {
         if (!typeSet.contains(type)) {
             logger.info("Unsupported type: " + type);
+        }
+    }
+
+    public static void installPgCatalog(ServerSession session, boolean trace) throws SQLException {
+        Reader r = null;
+        try {
+            r = Utils.getResourceAsReader(PgServer.PG_CATALOG_FILE);
+            ScriptReader reader = new ScriptReader(r);
+            while (true) {
+                String sql = reader.readStatement();
+                if (sql == null) {
+                    break;
+                }
+                if (trace)
+                    logger.info("execute sql: " + sql);
+                PreparedSQLStatement stmt = session.prepareStatementLocal(sql);
+                if (SQLStatement.NO_OPERATION == stmt.getType())
+                    continue;
+                if (stmt.isQuery())
+                    stmt.executeQuery(-1);
+                else
+                    stmt.executeUpdate();
+            }
+            reader.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Can not read pg_catalog resource");
+        } finally {
+            IOUtils.closeSilently(r);
         }
     }
 }
