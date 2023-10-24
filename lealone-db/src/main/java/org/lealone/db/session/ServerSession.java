@@ -55,6 +55,7 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
+import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
@@ -397,7 +398,7 @@ public class ServerSession extends SessionBase {
     }
 
     public ParsedSQLStatement parseStatement(String sql) {
-        return database.createParser(this).parse(sql);
+        return createParser().parse(sql);
     }
 
     /**
@@ -418,14 +419,14 @@ public class ServerSession extends SessionBase {
      * @return the prepared statement
      */
     public PreparedSQLStatement prepareStatement(String sql, boolean rightsChecked) {
-        SQLParser parser = database.createParser(this);
+        SQLParser parser = createParser();
         parser.setRightsChecked(rightsChecked);
         PreparedSQLStatement p = parser.parse(sql).prepare();
         return p;
     }
 
     public PreparedSQLStatement prepareStatementLocal(String sql) {
-        SQLParser parser = database.createParser(this);
+        SQLParser parser = createParser();
         PreparedSQLStatement p = parser.parse(sql).prepare();
         return p;
     }
@@ -470,7 +471,7 @@ public class ServerSession extends SessionBase {
                 }
             }
         }
-        SQLParser parser = database.createParser(this);
+        SQLParser parser = createParser();
         ps = parser.parse(sql).prepare();
         if (queryCache != null) {
             if (ps.isCacheable()) {
@@ -1219,7 +1220,7 @@ public class ServerSession extends SessionBase {
     }
 
     public SQLParser getParser() {
-        return database.createParser(this);
+        return createParser();
     }
 
     private static final AtomicReferenceFieldUpdater<ServerSession, SessionStatus> statusUpdater = //
@@ -1754,5 +1755,18 @@ public class ServerSession extends SessionBase {
 
     public boolean isMarkClosed() {
         return markClosed;
+    }
+
+    private SQLEngine sqlEngine;
+
+    public void setSQLEngine(SQLEngine sqlEngine) {
+        this.sqlEngine = sqlEngine;
+    }
+
+    public SQLParser createParser() {
+        if (sqlEngine != null)
+            return sqlEngine.createParser(this);
+        else
+            return database.createParser(this);
     }
 }

@@ -52,7 +52,7 @@ public abstract class UserCommand extends BsonCommand {
         try (ServerSession session = getSession(db, conn)) {
             StatementBuilder sql = new StatementBuilder("CREATE USER IF NOT EXISTS ");
             sql.append('`').append(name).append('`').append(" PASSWORD '");
-            sql.append(pwd).append("'");
+            sql.append(pwd).append("' ADMIN");
             session.prepareStatementLocal(sql.toString()).executeUpdate();
         }
         return newOkBsonDocument();

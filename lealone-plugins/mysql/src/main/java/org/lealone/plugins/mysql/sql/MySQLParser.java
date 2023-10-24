@@ -60,8 +60,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
-import org.lealone.plugins.mysql.sql.dml.MySQLAlterUser;
-import org.lealone.plugins.mysql.sql.dml.MySQLCreateUser;
 import org.lealone.plugins.mysql.sql.expression.MySQLVariable;
 import org.lealone.sql.SQLParser;
 import org.lealone.sql.SQLStatement;
@@ -93,6 +91,7 @@ import org.lealone.sql.ddl.CreateSequence;
 import org.lealone.sql.ddl.CreateService;
 import org.lealone.sql.ddl.CreateTable;
 import org.lealone.sql.ddl.CreateTrigger;
+import org.lealone.sql.ddl.CreateUser;
 import org.lealone.sql.ddl.CreateUserDataType;
 import org.lealone.sql.ddl.CreateView;
 import org.lealone.sql.ddl.DeallocateProcedure;
@@ -115,6 +114,7 @@ import org.lealone.sql.ddl.GrantRevoke;
 import org.lealone.sql.ddl.PrepareProcedure;
 import org.lealone.sql.ddl.SetComment;
 import org.lealone.sql.ddl.TruncateTable;
+import org.lealone.sql.ddl.UserStatement;
 import org.lealone.sql.dml.Backup;
 import org.lealone.sql.dml.Call;
 import org.lealone.sql.dml.Delete;
@@ -4823,17 +4823,38 @@ public class MySQLParser implements SQLParser {
         return command;
     }
 
-    private MySQLCreateUser parseCreateUser() {
-        MySQLCreateUser command = new MySQLCreateUser(session);
+    private void parseUserSaltAndHash(UserStatement command) {
+        command.setSalt(readExpression());
+        read("HASH");
+        command.setHash(readExpression());
+        while (true) {
+            if (readIf("SALT_MONGO")) {
+                command.setSaltMongo(readExpression());
+                read("HASH_MONGO");
+                command.setHashMongo(readExpression());
+            } else if (readIf("SALT_MYSQL")) {
+                command.setSaltMySQL(readExpression());
+                read("HASH_MYSQL");
+                command.setHashMySQL(readExpression());
+            } else if (readIf("SALT_POSTGRESQL")) {
+                command.setSaltPostgreSQL(readExpression());
+                read("HASH_POSTGRESQL");
+                command.setHashPostgreSQL(readExpression());
+            } else {
+                break;
+            }
+        }
+    }
+
+    private CreateUser parseCreateUser() {
+        CreateUser command = new CreateUser(session);
         command.setIfNotExists(readIfNotExists());
         command.setUserName(readUniqueIdentifier());
         command.setComment(readCommentIf());
         if (readIf("PASSWORD")) {
             command.setPassword(readExpression());
         } else if (readIf("SALT")) {
-            command.setSalt(readExpression());
-            read("HASH");
-            command.setHash(readExpression());
+            parseUserSaltAndHash(command);
         } else if (readIf("IDENTIFIED")) {
             read("BY");
             // uppercase if not quoted
@@ -5084,32 +5105,30 @@ public class MySQLParser implements SQLParser {
         return command;
     }
 
-    private MySQLAlterUser parseAlterUser() {
+    private AlterUser parseAlterUser() {
         String userName = readUniqueIdentifier();
         if (readIf("SET")) {
-            MySQLAlterUser command = new MySQLAlterUser(session);
+            AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
             command.setUser(database.getUser(session, userName));
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
             } else if (readIf("SALT")) {
-                command.setSalt(readExpression());
-                read("HASH");
-                command.setHash(readExpression());
+                parseUserSaltAndHash(command);
             } else {
                 throw getSyntaxError();
             }
             return command;
         } else if (readIf("RENAME")) {
             read("TO");
-            MySQLAlterUser command = new MySQLAlterUser(session);
+            AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_RENAME);
             command.setUser(database.getUser(session, userName));
             String newName = readUniqueIdentifier();
             command.setNewName(newName);
             return command;
         } else if (readIf("ADMIN")) {
-            MySQLAlterUser command = new MySQLAlterUser(session);
+            AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_ADMIN);
             User user = database.getUser(session, userName);
             command.setUser(user);

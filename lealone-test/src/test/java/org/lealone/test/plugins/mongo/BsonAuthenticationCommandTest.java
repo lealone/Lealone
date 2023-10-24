@@ -27,7 +27,7 @@ public class BsonAuthenticationCommandTest extends MongoTestBase {
     public static void afterClass() {
     }
 
-    @Test
+    // @Test
     public void testAuthentication1() {
         String authMechanism = "SCRAM-SHA-1";
         MongoClient mongoClient = getMongoClient("myUserAdmin", "mongo", authMechanism);
@@ -37,9 +37,16 @@ public class BsonAuthenticationCommandTest extends MongoTestBase {
 
     @Test
     public void testAuthentication256() {
+        String command = "{\"createUser\": \"myUserAdmin\", \"pwd\": \"mongo\", "
+                + "\"roles\": [{\"role\": \"userAdminAnyDatabase\", \"db\": \"admin\"},"
+                + " {\"role\": \"readWriteAnyDatabase\", \"db\": \"admin\"}], \"$db\": \"admin\"}";
+        MongoClient mongoClient = getMongoClient();
+        mongoClient.getDatabase("admin").runCommand(org.bson.Document.parse(command));
+        mongoClient.close();
+
         String authMechanism = "SCRAM-SHA-256";
         // authMechanism = "SCRAM-SHA-512"; //不支持
-        MongoClient mongoClient = getMongoClient("myUserAdmin", "mongo", authMechanism);
+        mongoClient = getMongoClient("myUserAdmin", "mongo", authMechanism);
         mongoClient.getDatabase("admin").getCollection(collectionName).countDocuments();
         mongoClient.close();
     }

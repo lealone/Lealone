@@ -592,7 +592,7 @@ public class Column {
         if (checkConstraint == null) {
             return null;
         }
-        org.lealone.sql.SQLParser parser = session.getDatabase().createParser(session);
+        org.lealone.sql.SQLParser parser = session.createParser();
         String sql;
         synchronized (this) {
             String oldName = name;

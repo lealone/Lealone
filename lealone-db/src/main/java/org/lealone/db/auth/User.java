@@ -12,11 +12,11 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
@@ -34,10 +34,19 @@ import org.lealone.db.table.TableView;
 public class User extends RightOwner {
 
     private final boolean systemUser;
+    private boolean admin;
     private byte[] salt;
     private byte[] passwordHash;
-    private boolean admin;
     private byte[] userPasswordHash;
+
+    private byte[] saltMongo;
+    private byte[] passwordHashMongo;
+
+    private byte[] saltMySQL;
+    private byte[] passwordHashMySQL;;
+
+    private byte[] saltPostgreSQL;
+    private byte[] passwordHashPostgreSQL;
 
     public User(Database database, int id, String userName, boolean systemUser) {
         super(database, id, userName);
@@ -68,6 +77,53 @@ public class User extends RightOwner {
         this.passwordHash = hash;
     }
 
+    public void setSaltAndHashMongo(byte[] salt, byte[] hash) {
+        this.saltMongo = salt;
+        this.passwordHashMongo = hash;
+    }
+
+    public void setSaltAndHashMySQL(byte[] salt, byte[] hash) {
+        this.saltMySQL = salt;
+        this.passwordHashMySQL = hash;
+    }
+
+    public void setSaltAndHashPostgreSQL(byte[] salt, byte[] hash) {
+        this.saltPostgreSQL = salt;
+        this.passwordHashPostgreSQL = hash;
+    }
+
+    public byte[] getSalt() {
+        return salt;
+    }
+
+    public byte[] getPasswordHash() {
+        return passwordHash;
+    }
+
+    public byte[] getSaltMongo() {
+        return saltMongo;
+    }
+
+    public byte[] getPasswordHashMongo() {
+        return passwordHashMongo;
+    }
+
+    public byte[] getSaltMySQL() {
+        return saltMySQL;
+    }
+
+    public byte[] getPasswordHashMySQL() {
+        return passwordHashMySQL;
+    }
+
+    public byte[] getSaltPostgreSQL() {
+        return saltPostgreSQL;
+    }
+
+    public byte[] getPasswordHashPostgreSQL() {
+        return passwordHashPostgreSQL;
+    }
+
     /**
      * Set the user name password hash. A random salt is generated as well.
      * The parameter is filled with zeros after use.
@@ -89,10 +145,6 @@ public class User extends RightOwner {
 
     public byte[] getUserPasswordHash() {
         return userPasswordHash;
-    }
-
-    public byte[] getPasswordHash() {
-        return passwordHash;
     }
 
     /**
@@ -187,17 +239,8 @@ public class User extends RightOwner {
      * @param userPasswordHash the password data (the user password hash)
      * @return true if the user password hash is correct
      */
-    public boolean validateUserPasswordHash(byte[] userPasswordHash, byte[] salt) {
-        if (userPasswordHash.length == 0 && passwordHash.length == 0) {
-            return true;
-        }
-        if (userPasswordHash.length == 0) {
-            userPasswordHash = SHA256.getKeyPasswordHash(getName(), new char[0]);
-        }
-        if (salt == null)
-            salt = this.salt;
-        byte[] hash = SHA256.getHashWithSalt(userPasswordHash, salt);
-        return Utils.compareSecure(hash, passwordHash);
+    public boolean validateUserPasswordHash(byte[] userPasswordHash, byte[] salt, Mode mode) {
+        return PasswordHash.validateUserPasswordHash(this, userPasswordHash, salt, mode);
     }
 
     /**
@@ -260,6 +303,15 @@ public class User extends RightOwner {
         if (password) {
             buff.append(" SALT '").append(StringUtils.convertBytesToHex(salt)).append("' HASH '")
                     .append(StringUtils.convertBytesToHex(passwordHash)).append('\'');
+            buff.append(" SALT_MONGO '").append(StringUtils.convertBytesToHex(saltMongo))
+                    .append("' HASH_MONGO '").append(StringUtils.convertBytesToHex(passwordHashMongo))
+                    .append('\'');
+            buff.append(" SALT_MYSQL '").append(StringUtils.convertBytesToHex(saltMySQL))
+                    .append("' HASH_MYSQL '").append(StringUtils.convertBytesToHex(passwordHashMySQL))
+                    .append('\'');
+            buff.append(" SALT_POSTGRESQL '").append(StringUtils.convertBytesToHex(saltPostgreSQL))
+                    .append("' HASH_POSTGRESQL '")
+                    .append(StringUtils.convertBytesToHex(passwordHashPostgreSQL)).append('\'');
         } else {
             buff.append(" PASSWORD ''");
         }

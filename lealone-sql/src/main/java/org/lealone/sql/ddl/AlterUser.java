@@ -12,7 +12,6 @@ import org.lealone.db.auth.User;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statements
@@ -23,15 +22,12 @@ import org.lealone.sql.expression.Expression;
  * @author H2 Group
  * @author zhh
  */
-public class AlterUser extends AuthStatement {
+public class AlterUser extends UserStatement {
 
     private int type;
     private User user;
     private String newName;
     private boolean admin;
-    private Expression password;
-    private Expression salt;
-    private Expression hash;
 
     public AlterUser(ServerSession session) {
         super(session);
@@ -56,18 +52,6 @@ public class AlterUser extends AuthStatement {
 
     public void setAdmin(boolean admin) {
         this.admin = admin;
-    }
-
-    public void setPassword(Expression password) {
-        this.password = password;
-    }
-
-    public void setSalt(Expression e) {
-        salt = e;
-    }
-
-    public void setHash(Expression e) {
-        hash = e;
     }
 
     @Override

@@ -38,12 +38,15 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.PluginManager;
+import org.lealone.db.session.ServerSession;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.postgresql.io.NetBufferInput;
 import org.lealone.plugins.postgresql.io.NetBufferOutput;
 import org.lealone.server.Scheduler;
+import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -124,7 +127,10 @@ public class PgServerConnection extends AsyncConnection {
                 + "/" + databaseName;
         ConnectionInfo ci = new ConnectionInfo(url, info);
         ci.setRemote(false);
-        return new JdbcConnection(ci);
+        JdbcConnection conn = new JdbcConnection(ci);
+        ((ServerSession) conn.getSession())
+                .setSQLEngine(PluginManager.getPlugin(SQLEngine.class, PgServerEngine.NAME));
+        return conn;
     }
 
     private void process(int x) throws IOException {

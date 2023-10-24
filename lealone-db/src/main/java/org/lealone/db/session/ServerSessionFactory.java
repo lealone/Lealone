@@ -11,6 +11,7 @@ import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Database;
 import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
@@ -123,7 +124,9 @@ public class ServerSessionFactory implements SessionFactory {
                 ci.getFilePasswordHash())) {
             user = database.findUser(null, ci.getUserName());
             if (user != null) {
-                if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt())) {
+                Mode mode = Mode.getInstance(
+                        ci.getProperty(DbSetting.MODE.name(), Mode.getDefaultMode().getName()));
+                if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt(), mode)) {
                     user = null;
                 } else {
                     database.setLastConnectionInfo(ci);

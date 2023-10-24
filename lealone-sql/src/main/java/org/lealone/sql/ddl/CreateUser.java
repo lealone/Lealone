@@ -7,9 +7,9 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.auth.PasswordHash;
 import org.lealone.db.auth.User;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
@@ -23,13 +23,10 @@ import org.lealone.sql.expression.Expression;
  * @author H2 Group
  * @author zhh
  */
-public class CreateUser extends AuthStatement {
+public class CreateUser extends UserStatement {
 
     private String userName;
     private boolean admin;
-    private Expression password;
-    private Expression salt;
-    private Expression hash;
     private String comment;
     private boolean ifNotExists;
 
@@ -48,18 +45,6 @@ public class CreateUser extends AuthStatement {
 
     public void setAdmin(boolean b) {
         admin = b;
-    }
-
-    public void setPassword(Expression password) {
-        this.password = password;
-    }
-
-    public void setSalt(Expression e) {
-        salt = e;
-    }
-
-    public void setHash(Expression e) {
-        hash = e;
     }
 
     public void setComment(String comment) {
@@ -98,6 +83,13 @@ public class CreateUser extends AuthStatement {
         } else {
             throw DbException.getInternalError();
         }
+        if (hashMongo != null && saltMongo != null)
+            user.setSaltAndHashMongo(getByteArray(session, saltMongo), getByteArray(session, hashMongo));
+        if (hashMySQL != null && saltMySQL != null)
+            user.setSaltAndHashMySQL(getByteArray(session, saltMySQL), getByteArray(session, hashMySQL));
+        if (hashPostgreSQL != null && saltPostgreSQL != null)
+            user.setSaltAndHashPostgreSQL(getByteArray(session, saltPostgreSQL),
+                    getByteArray(session, hashPostgreSQL));
         db.addDatabaseObject(session, user, lock);
         return 0;
     }
@@ -128,8 +120,6 @@ public class CreateUser extends AuthStatement {
      */
     static void setPassword(User user, ServerSession session, Expression password) {
         String pwd = password.optimize(session).getValue(session).getString();
-        char[] passwordChars = pwd == null ? new char[0] : pwd.toCharArray();
-        byte[] userPasswordHash = ConnectionInfo.createUserPasswordHash(user.getName(), passwordChars);
-        user.setUserPasswordHash(userPasswordHash);
+        PasswordHash.setPassword(user, pwd);
     }
 }

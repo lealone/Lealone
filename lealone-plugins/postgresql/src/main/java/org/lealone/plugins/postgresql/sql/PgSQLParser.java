@@ -115,6 +115,7 @@ import org.lealone.sql.ddl.GrantRevoke;
 import org.lealone.sql.ddl.PrepareProcedure;
 import org.lealone.sql.ddl.SetComment;
 import org.lealone.sql.ddl.TruncateTable;
+import org.lealone.sql.ddl.UserStatement;
 import org.lealone.sql.dml.Backup;
 import org.lealone.sql.dml.Call;
 import org.lealone.sql.dml.Delete;
@@ -4530,6 +4531,29 @@ public class PgSQLParser implements SQLParser {
         return command;
     }
 
+    private void parseUserSaltAndHash(UserStatement command) {
+        command.setSalt(readExpression());
+        read("HASH");
+        command.setHash(readExpression());
+        while (true) {
+            if (readIf("SALT_MONGO")) {
+                command.setSaltMongo(readExpression());
+                read("HASH_MONGO");
+                command.setHashMongo(readExpression());
+            } else if (readIf("SALT_MYSQL")) {
+                command.setSaltMySQL(readExpression());
+                read("HASH_MYSQL");
+                command.setHashMySQL(readExpression());
+            } else if (readIf("SALT_POSTGRESQL")) {
+                command.setSaltPostgreSQL(readExpression());
+                read("HASH_POSTGRESQL");
+                command.setHashPostgreSQL(readExpression());
+            } else {
+                break;
+            }
+        }
+    }
+
     private CreateUser parseCreateUser() {
         CreateUser command = new CreateUser(session);
         command.setIfNotExists(readIfNotExists());
@@ -4538,9 +4562,7 @@ public class PgSQLParser implements SQLParser {
         if (readIf("PASSWORD")) {
             command.setPassword(readExpression());
         } else if (readIf("SALT")) {
-            command.setSalt(readExpression());
-            read("HASH");
-            command.setHash(readExpression());
+            parseUserSaltAndHash(command);
         } else if (readIf("IDENTIFIED")) {
             read("BY");
             // uppercase if not quoted
@@ -4800,9 +4822,7 @@ public class PgSQLParser implements SQLParser {
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
             } else if (readIf("SALT")) {
-                command.setSalt(readExpression());
-                read("HASH");
-                command.setHash(readExpression());
+                parseUserSaltAndHash(command);
             } else {
                 throw getSyntaxError();
             }
@@ -4869,9 +4889,7 @@ public class PgSQLParser implements SQLParser {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
             command.setUser(session.getUser());
-            command.setSalt(readExpression());
-            read("HASH");
-            command.setHash(readExpression());
+            parseUserSaltAndHash(command);
             return command;
             // 以下是特殊的SetType
         } else if (readIf(SessionSetting.SCHEMA.getName())) {

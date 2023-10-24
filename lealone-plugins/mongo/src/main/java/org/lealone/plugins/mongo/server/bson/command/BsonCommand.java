@@ -33,7 +33,6 @@ import org.lealone.plugins.mongo.server.MongoTask;
 import org.lealone.plugins.mongo.server.bson.BsonBase;
 import org.lealone.plugins.mongo.server.bson.command.admin.AdminCommand;
 import org.lealone.plugins.mongo.server.bson.command.auth.AuthCommand;
-import org.lealone.plugins.mongo.server.bson.command.auth.SaslStart;
 import org.lealone.plugins.mongo.server.bson.command.diagnostic.DiagnosticCommand;
 import org.lealone.plugins.mongo.server.bson.command.index.IndexCommand;
 import org.lealone.plugins.mongo.server.bson.command.role.RoleCommand;
@@ -45,7 +44,7 @@ import org.lealone.sql.SQLStatement;
 public abstract class BsonCommand extends BsonBase {
 
     public static final Logger logger = LoggerFactory.getLogger(BsonCommand.class);
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
     public static final BsonDocument NOT_FOUND = new BsonDocument();
 
     public static BsonDocument newOkBsonDocument() {
@@ -230,7 +229,7 @@ public abstract class BsonCommand extends BsonBase {
             BsonDocument document = new BsonDocument();
             BsonDocument speculativeAuthenticate = doc.getDocument("speculativeAuthenticate", null);
             if (speculativeAuthenticate != null) {
-                BsonDocument res = SaslStart.execute(input, speculativeAuthenticate, conn, task);
+                BsonDocument res = AuthCommand.saslStart(input, speculativeAuthenticate, conn, task);
                 BsonArray saslSupportedMechs = new BsonArray();
                 saslSupportedMechs.add(new BsonString("SCRAM-SHA-256"));
                 saslSupportedMechs.add(new BsonString("SCRAM-SHA-1"));

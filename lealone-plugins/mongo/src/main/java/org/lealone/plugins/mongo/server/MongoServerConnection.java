@@ -30,6 +30,7 @@ import org.lealone.net.NetBuffer;
 import org.lealone.net.NetBufferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.mongo.server.bson.command.BsonCommand;
+import org.lealone.plugins.mongo.server.bson.command.auth.ScramSaslProcessor;
 import org.lealone.plugins.mongo.server.bson.command.legacy.LCDelete;
 import org.lealone.plugins.mongo.server.bson.command.legacy.LCInsert;
 import org.lealone.plugins.mongo.server.bson.command.legacy.LCQuery;
@@ -58,12 +59,22 @@ public class MongoServerConnection extends AsyncServerConnection {
     private final Scheduler scheduler;
     private final int connectionId;
 
+    private ScramSaslProcessor scramSaslServerProcessor;
+
     public MongoServerConnection(MongoServer server, WritableChannel channel, Scheduler scheduler,
             int connectionId) {
         super(channel, true);
         this.server = server;
         this.scheduler = scheduler;
         this.connectionId = connectionId;
+    }
+
+    public ScramSaslProcessor getScramSaslServerProcessor() {
+        return scramSaslServerProcessor;
+    }
+
+    public void setScramSaslServerProcessor(ScramSaslProcessor scramSaslServerProcessor) {
+        this.scramSaslServerProcessor = scramSaslServerProcessor;
     }
 
     @Override

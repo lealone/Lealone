@@ -17,6 +17,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.ManualCloseable;
+import org.lealone.db.PluginManager;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
@@ -45,6 +46,7 @@ import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.ddl.CreateDatabase;
 
@@ -103,6 +105,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
         this.authPacket = authPacket;
         try {
             session = createSession(authPacket, authPacket.database);
+            session.setSQLEngine(PluginManager.getPlugin(SQLEngine.class, MySQLServerEngine.NAME));
             String sql = "CREATE ALIAS IF NOT EXISTS " + Constants.SCHEMA_MAIN
                     + ".CONNECTION_ID DETERMINISTIC FOR "
                     + "\"org.lealone.plugins.mysql.sql.expression.MySQLFunction.getConnectionId\"";

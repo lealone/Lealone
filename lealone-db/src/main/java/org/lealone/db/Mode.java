@@ -30,6 +30,9 @@ public class Mode {
         mode.indexDefinitionInCreateTable = true;
         add(mode);
 
+        mode = new Mode("Mongo");
+        add(mode);
+
         mode = new Mode("MySQL");
         mode.convertInsertNullToZero = true;
         mode.indexDefinitionInCreateTable = true;
@@ -63,12 +66,16 @@ public class Mode {
         return MODES.get(name);
     }
 
-    public boolean isPostgreSQL() {
-        return "PostgreSQL".equalsIgnoreCase(name);
+    public boolean isMongo() {
+        return "Mongo".equalsIgnoreCase(name);
     }
 
     public boolean isMySQL() {
         return "MySQL".equalsIgnoreCase(name);
+    }
+
+    public boolean isPostgreSQL() {
+        return "PostgreSQL".equalsIgnoreCase(name);
     }
 
     // Modes are also documented in the features section
