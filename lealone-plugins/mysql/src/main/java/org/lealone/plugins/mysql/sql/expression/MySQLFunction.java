@@ -6,6 +6,7 @@
 package org.lealone.plugins.mysql.sql.expression;
 
 public class MySQLFunction {
+
     public static int getConnectionId() {
         return 0;
     }
