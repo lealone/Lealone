@@ -303,15 +303,18 @@ public class User extends RightOwner {
         if (password) {
             buff.append(" SALT '").append(StringUtils.convertBytesToHex(salt)).append("' HASH '")
                     .append(StringUtils.convertBytesToHex(passwordHash)).append('\'');
-            buff.append(" SALT_MONGO '").append(StringUtils.convertBytesToHex(saltMongo))
-                    .append("' HASH_MONGO '").append(StringUtils.convertBytesToHex(passwordHashMongo))
-                    .append('\'');
-            buff.append(" SALT_MYSQL '").append(StringUtils.convertBytesToHex(saltMySQL))
-                    .append("' HASH_MYSQL '").append(StringUtils.convertBytesToHex(passwordHashMySQL))
-                    .append('\'');
-            buff.append(" SALT_POSTGRESQL '").append(StringUtils.convertBytesToHex(saltPostgreSQL))
-                    .append("' HASH_POSTGRESQL '")
-                    .append(StringUtils.convertBytesToHex(passwordHashPostgreSQL)).append('\'');
+            if (passwordHashMongo != null && saltMongo != null)
+                buff.append(" SALT_MONGO '").append(StringUtils.convertBytesToHex(saltMongo))
+                        .append("' HASH_MONGO '")
+                        .append(StringUtils.convertBytesToHex(passwordHashMongo)).append('\'');
+            if (passwordHashMySQL != null && saltMySQL != null)
+                buff.append(" SALT_MYSQL '").append(StringUtils.convertBytesToHex(saltMySQL))
+                        .append("' HASH_MYSQL '")
+                        .append(StringUtils.convertBytesToHex(passwordHashMySQL)).append('\'');
+            if (passwordHashPostgreSQL != null && saltPostgreSQL != null)
+                buff.append(" SALT_POSTGRESQL '").append(StringUtils.convertBytesToHex(saltPostgreSQL))
+                        .append("' HASH_POSTGRESQL '")
+                        .append(StringUtils.convertBytesToHex(passwordHashPostgreSQL)).append('\'');
         } else {
             buff.append(" PASSWORD ''");
         }
