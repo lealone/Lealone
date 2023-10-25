@@ -208,7 +208,8 @@ public class CommandPacketHandler extends PacketHandler {
                 }
             }
             isQuery = false;
-            sendReadyForQuery();
+            // 异步执行sql，不能在此时发
+            // sendReadyForQuery();
             break;
         }
         case 'X': {
@@ -237,6 +238,8 @@ public class CommandPacketHandler extends PacketHandler {
                             sendDataRow(result);
                         }
                         sendCommandComplete(stmt, 0);
+                        if (sendRowDescription)
+                            sendReadyForQuery();
                     } catch (Exception e) {
                         sendErrorResponse(e);
                     }

@@ -7,16 +7,56 @@ package org.lealone.plugins.postgresql.sql;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
+import org.lealone.plugins.postgresql.sql.expression.PgVariable;
 import org.lealone.sql.SQLParserBase;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.SetSession;
+import org.lealone.sql.expression.Expression;
 
 public class PgSQLParser extends SQLParserBase {
 
     public PgSQLParser(ServerSession session) {
         super(session);
-        this.session.setSchemaSearchPath(new String[] { "pg_catalog" });
+        this.session.setSchemaSearchPath(new String[] { "public", "pg_catalog" });
+    }
+
+    @Override
+    protected Expression parseVariable() {
+        read("@");
+        String vname = readAliasIdentifier();
+        if (vname.equalsIgnoreCase("session") || vname.equalsIgnoreCase("global")) {
+            readIf(".");
+            vname = readAliasIdentifier();
+        }
+        return new PgVariable(session, vname);
+    }
+
+    @Override
+    protected boolean parseShowOther(StringBuilder buff) {
+        if (readIf("CLIENT_ENCODING")) {
+            buff.append("'UNICODE' AS CLIENT_ENCODING");
+        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
+            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION");
+        } else if (readIf("TRANSACTION")) {
+            read("ISOLATION");
+            read("LEVEL");
+            buff.append("'read committed' AS TRANSACTION_ISOLATION");
+        } else if (readIf("DATESTYLE")) {
+            buff.append("'ISO' AS DATESTYLE");
+        } else if (readIf("SERVER_VERSION")) {
+            buff.append("'8.1.4' AS SERVER_VERSION");
+        } else if (readIf("SERVER_ENCODING")) {
+            buff.append("'UTF8' AS SERVER_ENCODING");
+        } else if (readIf("ALL")) {
+            buff.append("* FROM INFORMATION_SCHEMA.SETTINGS");
+            return true;
+        } else {
+            String name = readStringOrIdentifier();
+            buff.append("@").append(name);
+        }
+        buff.append(" FROM DUAL");
+        return true;
     }
 
     @Override
