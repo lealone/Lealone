@@ -929,6 +929,11 @@ public class ServerSession extends SessionBase {
         this.currentSchemaName = schema.getName();
     }
 
+    public void setCurrentSchemaName(String currentSchemaName) {
+        modificationId++;
+        this.currentSchemaName = currentSchemaName;
+    }
+
     public String getCurrentSchemaName() {
         return currentSchemaName;
     }

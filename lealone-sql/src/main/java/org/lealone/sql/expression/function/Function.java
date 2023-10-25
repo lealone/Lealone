@@ -36,7 +36,7 @@ public abstract class Function extends Expression {
         TableFunction.init();
     }
 
-    protected static void addFunction(String name, int type, int parameterCount, int dataType,
+    protected static FunctionInfo addFunction(String name, int type, int parameterCount, int dataType,
             boolean nullIfParameterIsNull, boolean deterministic) {
         FunctionInfo info = new FunctionInfo();
         info.name = name;
@@ -46,19 +46,21 @@ public abstract class Function extends Expression {
         info.nullIfParameterIsNull = nullIfParameterIsNull;
         info.deterministic = deterministic;
         FUNCTIONS.put(name, info);
+        return info;
     }
 
-    protected static void addFunctionNotDeterministic(String name, int type, int parameterCount,
+    protected static FunctionInfo addFunctionNotDeterministic(String name, int type, int parameterCount,
             int dataType) {
-        addFunction(name, type, parameterCount, dataType, true, false);
+        return addFunction(name, type, parameterCount, dataType, true, false);
     }
 
-    protected static void addFunction(String name, int type, int parameterCount, int dataType) {
-        addFunction(name, type, parameterCount, dataType, true, true);
+    protected static FunctionInfo addFunction(String name, int type, int parameterCount, int dataType) {
+        return addFunction(name, type, parameterCount, dataType, true, true);
     }
 
-    protected static void addFunctionWithNull(String name, int type, int parameterCount, int dataType) {
-        addFunction(name, type, parameterCount, dataType, false, true);
+    protected static FunctionInfo addFunctionWithNull(String name, int type, int parameterCount,
+            int dataType) {
+        return addFunction(name, type, parameterCount, dataType, false, true);
     }
 
     /**
@@ -68,7 +70,7 @@ public abstract class Function extends Expression {
      * @param name the function name
      * @return the function info
      */
-    private static FunctionInfo getFunctionInfo(String name) {
+    public static FunctionInfo getFunctionInfo(String name) {
         return FUNCTIONS.get(name);
     }
 
@@ -89,15 +91,10 @@ public abstract class Function extends Expression {
         if (info == null) {
             return null;
         }
-        if (info.type < StringFunction.ASCII)
-            return new NumericFunction(database, info);
-        if (info.type < DateTimeFunction.CURDATE)
-            return new StringFunction(database, info);
-        if (info.type < SystemFunction.DATABASE)
-            return new DateTimeFunction(database, info);
-        if (info.type < TableFunction.TABLE)
-            return new SystemFunction(database, info);
-        return new TableFunction(database, info);
+        if (info.factory != null)
+            return info.factory.createFunction(database, info);
+        else
+            return BuiltInFunctionFactory.INSTANCE.createFunction(database, info);
     }
 
     protected Expression[] args;

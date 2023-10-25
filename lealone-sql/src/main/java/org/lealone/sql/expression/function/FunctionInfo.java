@@ -11,7 +11,7 @@ package org.lealone.sql.expression.function;
  * @author H2 Group
  * @author zhh
  */
-class FunctionInfo {
+public class FunctionInfo {
 
     /**
      * The name of the function.
@@ -21,7 +21,7 @@ class FunctionInfo {
     /**
      * The function type.
      */
-    int type;
+    public int type;
 
     /**
      * The data type of the return value.
@@ -42,5 +42,7 @@ class FunctionInfo {
      * If this function always returns the same value for the same parameters.
      */
     boolean deterministic;
+
+    public FunctionFactory factory;
 
 }
