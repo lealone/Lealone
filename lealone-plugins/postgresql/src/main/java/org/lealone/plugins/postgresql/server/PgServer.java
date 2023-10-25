@@ -19,6 +19,8 @@ import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.result.Result;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.AsyncServer;
@@ -80,37 +82,59 @@ public class PgServer extends AsyncServer<PgServerConnection> {
         conn.setProcessId(getConnectionSize());
     }
 
-    void trace(String msg) {
+    public void trace(String msg) {
         if (trace)
             logger.info(msg);
     }
 
-    void traceError(Throwable e) {
+    public void traceError(Throwable e) {
         logger.error("", e);
     }
 
-    boolean getTrace() {
+    public boolean getTrace() {
         return trace;
     }
 
-    /**
-     * Get the type hash set.
-     *
-     * @return the type set
-     */
-    HashSet<Integer> getTypeSet() {
+    public HashSet<Integer> getTypeSet() {
         return typeSet;
     }
 
-    /**
-     * Check whether a data type is supported.
-     * A warning is logged if not.
-     *
-     * @param type the type
-     */
-    void checkType(int type) {
+    public void checkType(int type) {
         if (!typeSet.contains(type)) {
             logger.info("Unsupported type: " + type);
+        }
+    }
+
+    public void createBuiltInSchemas(ServerSession session) throws SQLException {
+        synchronized (this) {
+            // better would be: set the database to exclusive mode
+            Schema schema = session.getDatabase().findSchema(session, "PG_CATALOG");
+            if (schema == null || schema.getTableOrView(session, "PG_VERSION") != null) {
+                PgServer.installPgCatalog(session, false);
+            }
+            Result r = session.prepareStatementLocal("SELECT * FROM PG_CATALOG.PG_VERSION")
+                    .executeQuery(-1).get();
+            if (!r.next() || r.currentRow()[0].getInt() < 2) {
+                // installation incomplete, or old version
+                PgServer.installPgCatalog(session, false);
+            } else {
+                // version 2 or newer: check the read version
+                int versionRead = r.currentRow()[1].getInt();
+                if (versionRead > 2) {
+                    throw DbException.throwInternalError("Incompatible PG_VERSION");
+                }
+            }
+            r.close();
+        }
+        session.prepareStatementLocal("set search_path = public, pg_catalog").executeUpdate().get();
+        HashSet<Integer> typeSet = getTypeSet();
+        if (typeSet.isEmpty()) {
+            Result r = session.prepareStatementLocal("SELECT OID FROM PG_CATALOG.PG_TYPE")
+                    .executeQuery(-1).get();
+            while (r.next()) {
+                typeSet.add(r.currentRow()[0].getInt());
+            }
+            r.close();
         }
     }
 

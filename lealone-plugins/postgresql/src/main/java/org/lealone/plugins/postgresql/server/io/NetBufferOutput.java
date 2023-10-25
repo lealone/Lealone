@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.plugins.postgresql.io;
+package org.lealone.plugins.postgresql.server.io;
 
 import org.lealone.db.DataBufferFactory;
 import org.lealone.net.NetBuffer;

@@ -1,9 +1,9 @@
 /*
  * Copyright Lealone Database Group.
  * Licensed under the Server Side Public License, v 1.
- * Initial Developer: zhh
+ * Initial Developer: zhh, H2 Group
  */
-;
+ 
 drop schema if exists pg_catalog;
 create schema pg_catalog;
 
@@ -92,7 +92,8 @@ merge into pg_catalog.pg_type values(
     -1
 );
 
-create view pg_catalog.pg_class -- (oid, relname, relnamespace, relkind, relam, reltuples, relpages, relhasrules, relhasoids)
+-- (oid, relname, relnamespace, relkind, relam, reltuples, relpages, relhasrules, relhasoids)
+create view pg_catalog.pg_class
 as
 select
     id oid,
@@ -150,7 +151,8 @@ select
 from information_schema.tables where 1=0;
 grant select on pg_catalog.pg_attrdef to public;
 
-create view pg_catalog.pg_attribute -- (oid, attrelid, attname, atttypid, attlen, attnum, atttypmod, attnotnull, attisdropped, atthasdef)
+-- (oid, attrelid, attname, atttypid, attlen, attnum, atttypmod, attnotnull, attisdropped, atthasdef)
+create view pg_catalog.pg_attribute
 as
 select
     t.id*10000 + c.ordinal_position oid,
@@ -185,7 +187,8 @@ and t.table_name = c.table_name
 and t.table_schema = c.table_schema;
 grant select on pg_catalog.pg_attribute to public;
 
-create view pg_catalog.pg_index -- (oid, indexrelid, indrelid, indisclustered, indisunique, indisprimary, indexprs, indkey)
+ -- (oid, indexrelid, indrelid, indisclustered, indisunique, indisprimary, indexprs, indkey)
+create view pg_catalog.pg_index
 as
 select
     i.id oid,

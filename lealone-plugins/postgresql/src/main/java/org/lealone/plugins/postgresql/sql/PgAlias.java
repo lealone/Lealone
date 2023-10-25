@@ -25,6 +25,7 @@ import org.lealone.plugins.postgresql.server.PgType;
  * @author Sergi Vladykin 2009-07-03 (convertType)
  * @author zhh
  */
+// 以下方法在pg_catalog.sql中用到
 public class PgAlias {
 
     /**
