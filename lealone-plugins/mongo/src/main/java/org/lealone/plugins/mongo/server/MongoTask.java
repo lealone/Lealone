@@ -11,7 +11,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetBuffer;
-import org.lealone.plugins.mongo.server.bson.command.BsonCommand;
+import org.lealone.plugins.mongo.bson.command.BsonCommand;
 import org.lealone.server.LinkableTask;
 import org.lealone.server.SessionInfo;
 
