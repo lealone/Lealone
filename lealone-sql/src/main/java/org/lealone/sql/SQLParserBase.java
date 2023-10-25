@@ -948,9 +948,7 @@ public abstract class SQLParserBase implements SQLParser {
                     + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
         } else {
-            if (session.getDatabase().getMode().isPostgreSQL()) {
-                parseShowPostgreSQL(buff);
-            } else {
+            if (!parseShowOther(buff)) {
                 throw getSyntaxError();
             }
         }
@@ -965,25 +963,8 @@ public abstract class SQLParserBase implements SQLParser {
         }
     }
 
-    // for PostgreSQL compatibility
-    private void parseShowPostgreSQL(StringBuilder buff) {
-        if (readIf("CLIENT_ENCODING")) {
-            buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
-        } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
-            buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("TRANSACTION")) {
-            read("ISOLATION");
-            read("LEVEL");
-            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
-        } else if (readIf("DATESTYLE")) {
-            buff.append("'ISO' AS DATESTYLE FROM DUAL");
-        } else if (readIf("SERVER_VERSION")) {
-            buff.append("'8.1.4' AS SERVER_VERSION FROM DUAL");
-        } else if (readIf("SERVER_ENCODING")) {
-            buff.append("'UTF8' AS SERVER_ENCODING FROM DUAL");
-        } else {
-            throw getSyntaxError();
-        }
+    protected boolean parseShowOther(StringBuilder buff) {
+        return false;
     }
 
     protected static StatementBase prepare(ServerSession s, String sql, ArrayList<Value> paramValues) {
