@@ -22,6 +22,7 @@ import org.lealone.sql.SQLParserBase;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.ddl.AlterUser;
+import org.lealone.sql.ddl.CreateSchema;
 import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.SetDatabase;
 import org.lealone.sql.dml.SetSession;
@@ -51,7 +52,12 @@ public class MySQLParser extends SQLParserBase {
 
     @Override
     protected StatementBase parseCreateDatabase() {
-        return super.parseCreateSchema();
+        return parseCreateDatabaseOrSchema();
+    }
+
+    @Override
+    protected CreateSchema parseCreateSchema() {
+        return parseCreateDatabaseOrSchema();
     }
 
     @Override
@@ -61,7 +67,12 @@ public class MySQLParser extends SQLParserBase {
 
     @Override
     protected StatementBase parseAlterDatabase() {
-        return super.parseAlterSchema();
+        return parseAlterDatabaseOrSchema();
+    }
+
+    @Override
+    protected StatementBase parseAlterSchema() {
+        return parseAlterDatabaseOrSchema();
     }
 
     @Override
@@ -72,6 +83,45 @@ public class MySQLParser extends SQLParserBase {
     @Override
     protected StatementBase parseDropDatabase() {
         return super.parseDropSchema();
+    }
+
+    private CreateSchema parseCreateDatabaseOrSchema() {
+        CreateSchema command = super.parseCreateSchema();
+        parseSchemaOption();
+        return command;
+    }
+
+    private void parseSchemaOption() {
+        while (true) {
+            readIf("DEFAULT");
+            if (readIf("CHARACTER")) {
+                read("SET");
+                readIfEqualOrTo();
+                String charset = readStringOrIdentifier();
+                setCharsetVariable(charset);
+            } else if (readIf("COLLATE")) {
+                readIfEqualOrTo();
+                String name = readStringOrIdentifier();
+                session.getDatabase().setDbSetting(session, DbSetting.COLLATION, name);
+            } else if (readIf("ENCRYPTION")) {
+                readIfEqualOrTo();
+                readStringOrIdentifier();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private StatementBase parseAlterDatabaseOrSchema() {
+        String schemaName = readIdentifierWithSchema();
+        session.getDatabase().getSchema(session, schemaName); // 确保存在
+        parseSchemaOption();
+        if (readIf("READ")) {
+            read("ONLY");
+            readIfEqualOrTo();
+            readExpression();
+        }
+        return noOperation();
     }
 
     @Override

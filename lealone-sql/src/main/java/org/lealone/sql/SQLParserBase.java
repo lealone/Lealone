@@ -4910,7 +4910,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    protected DefinitionStatement parseAlterSchema() {
+    protected StatementBase parseAlterSchema() {
         String schemaName = readIdentifierWithSchema();
         return parseAlterSchemaRename(schemaName);
     }
