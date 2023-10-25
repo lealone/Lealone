@@ -203,6 +203,7 @@ public class CommandPacketHandler extends PacketHandler {
                     prep = session.prepareStatement(s);
                     submitYieldableCommand(prep, -1, true);
                 } catch (Exception e) {
+                    isQuery = false;
                     sendErrorResponse(e);
                     break;
                 }

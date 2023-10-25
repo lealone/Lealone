@@ -23,6 +23,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.WritableChannel;
+import org.lealone.plugins.postgresql.sql.expression.function.PgFunction;
 import org.lealone.server.AsyncServer;
 import org.lealone.server.Scheduler;
 import org.lealone.sql.PreparedSQLStatement;
@@ -65,6 +66,7 @@ public class PgServer extends AsyncServer<PgServerConnection> {
         if (!db.isInitialized())
             db.init();
         db.getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        PgFunction.init();
     }
 
     @Override
@@ -139,6 +141,8 @@ public class PgServer extends AsyncServer<PgServerConnection> {
     }
 
     public static void installPgCatalog(ServerSession session, boolean trace) throws SQLException {
+        String schemaName = session.getCurrentSchemaName();
+        session.setCurrentSchemaName("PG_CATALOG");
         Reader r = null;
         try {
             r = Utils.getResourceAsReader(PgServer.PG_CATALOG_FILE);
@@ -162,6 +166,7 @@ public class PgServer extends AsyncServer<PgServerConnection> {
         } catch (IOException e) {
             throw DbException.convertIOException(e, "Can not read pg_catalog resource");
         } finally {
+            session.setCurrentSchemaName(schemaName);
             IOUtils.closeSilently(r);
         }
     }

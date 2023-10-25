@@ -98,7 +98,8 @@ as
 select
     id oid,
     cast(table_name as varchar_ignorecase) relname,
-    (select id from information_schema.schemas where schema_name = table_schema) relnamespace,
+    cast((select id from information_schema.schemas where schema_name = table_schema) as varchar_ignorecase)
+    as relnamespace,
     case table_type when 'TABLE' then 'r' else 'v' end relkind,
     0 relam,
     cast(0 as float) reltuples,
@@ -110,7 +111,8 @@ union all
 select
     id oid,
     cast(index_name as varchar_ignorecase) relname,
-    (select id from information_schema.schemas where schema_name = table_schema) relnamespace,
+    cast((select id from information_schema.schemas where schema_name = table_schema) as varchar_ignorecase)
+    as relnamespace,
     'i' relkind,
     0 relam,
     cast(0 as float) reltuples,
@@ -218,6 +220,9 @@ create alias current_schema for "org.lealone.plugins.postgresql.sql.PgAlias.getC
 
 drop alias if exists pg_encoding_to_char;
 create alias pg_encoding_to_char for "org.lealone.plugins.postgresql.sql.PgAlias.getEncodingName";
+
+drop alias if exists pg_char_to_encoding;
+create alias pg_char_to_encoding for "org.lealone.plugins.postgresql.sql.PgAlias.getEncodingCode";
 
 drop alias if exists format_type;
 create alias format_type for "org.lealone.plugins.postgresql.sql.PgAlias.formatType";
@@ -339,3 +344,15 @@ select
     cast('' as varchar_ignorecase) groname
 from pg_catalog.pg_database where 1=0;
 grant select on pg_catalog.pg_group to public;
+
+create table pg_catalog.pg_conversion(
+    oid oid,
+    conname varchar_ignorecase,
+    connamespace oid,
+    conowner oid,
+    conforencoding int,
+    contoencoding  int,
+    conproc oid,
+    condefault boolean
+);
+grant select on pg_catalog.pg_conversion to public;

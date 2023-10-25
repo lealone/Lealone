@@ -117,6 +117,19 @@ public class PgAlias {
         }
     }
 
+    public static int getEncodingCode(String name) {
+        switch (name) {
+        case "SQL_ASCII":
+            return 0;
+        case "UTF8":
+            return 6;
+        case "LATIN1":
+            return 8;
+        default:
+            return 1;
+        }
+    }
+
     /**
      * Get the version. This method must return PostgreSQL to keep some clients
      * happy. This method is called by the database.
