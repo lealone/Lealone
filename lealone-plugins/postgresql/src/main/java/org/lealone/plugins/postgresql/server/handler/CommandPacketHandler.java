@@ -40,212 +40,235 @@ public class CommandPacketHandler extends PacketHandler {
 
     @Override
     public void handle(int x) throws IOException {
-        isQuery = false;
-        switchBlock: switch (x) {
-        case 'P': {
-            server.trace("Parse");
-            Prepared p = new Prepared();
-            p.name = readString();
-            p.sql = getSQL(readString());
-            int paramTypesCount = readShort();
-            int[] paramTypes = null;
-            if (paramTypesCount > 0) {
-                paramTypes = new int[paramTypesCount];
-                for (int i = 0; i < paramTypesCount; i++) {
-                    int type = readInt();
-                    server.checkType(type);
-                    paramTypes[i] = type;
-                }
-            }
-            try {
-                p.prep = session.prepareStatementLocal(p.sql);
-                List<? extends CommandParameter> parameters = p.prep.getParameters();
-                int count = parameters.size();
-                p.paramTypes = new int[count];
-                for (int i = 0; i < count; i++) {
-                    int type;
-                    if (i < paramTypesCount && paramTypes[i] != 0) {
-                        type = paramTypes[i];
-                        server.checkType(type);
-                    } else {
-                        type = PgType.convertType(parameters.get(i).getType());
-                    }
-                    p.paramTypes[i] = type;
-                }
-                prepared.put(p.name, p);
-                sendParseComplete();
-            } catch (Exception e) {
-                sendErrorResponse(e);
-            }
+        switch (x) {
+        case 'P':
+            parse();
             break;
-        }
-        case 'B': {
-            server.trace("Bind");
-            Portal portal = new Portal();
-            portal.name = readString();
-            String prepName = readString();
-            Prepared prep = prepared.get(prepName);
-            if (prep == null) {
-                sendErrorResponse("Prepared not found");
-                break;
-            }
-            portal.prep = prep;
-            portals.put(portal.name, portal);
-            int formatCodeCount = readShort();
-            int[] formatCodes = new int[formatCodeCount];
-            for (int i = 0; i < formatCodeCount; i++) {
-                formatCodes[i] = readShort();
-            }
-            int paramCount = readShort();
-            for (int i = 0; i < paramCount; i++) {
-                int paramLen = readInt();
-                byte[] d2 = DataUtils.newBytes(paramLen);
-                readFully(d2);
-                try {
-                    setParameter(prep.prep, i, d2, formatCodes);
-                } catch (Exception e) {
-                    sendErrorResponse(e);
-                    break switchBlock;
-                }
-            }
-            int resultCodeCount = readShort();
-            portal.resultColumnFormat = new int[resultCodeCount];
-            for (int i = 0; i < resultCodeCount; i++) {
-                portal.resultColumnFormat[i] = readShort();
-            }
-            sendBindComplete();
+        case 'B':
+            bind();
             break;
-        }
-        case 'C': {
-            char type = (char) readByte();
-            String name = readString();
-            server.trace("Close");
-            if (type == 'S') {
-                Prepared p = prepared.remove(name);
-                if (p != null) {
-                    p.prep.close();
-                }
-            } else if (type == 'P') {
-                portals.remove(name);
-            } else {
-                server.trace("expected S or P, got " + type);
-                sendErrorResponse("expected S or P");
-                break;
-            }
-            sendCloseComplete();
+        case 'C':
+            close();
             break;
-        }
-        case 'D': {
-            char type = (char) readByte();
-            String name = readString();
-            server.trace("Describe");
-            if (type == 'S') {
-                Prepared p = prepared.get(name);
-                if (p == null) {
-                    sendErrorResponse("Prepared not found: " + name);
-                } else {
-                    sendParameterDescription(p);
-                }
-            } else if (type == 'P') {
-                Portal p = portals.get(name);
-                if (p == null) {
-                    sendErrorResponse("Portal not found: " + name);
-                } else {
-                    try {
-                        sendRowDescription(p.prep.prep.getMetaData(), p.resultColumnFormat);
-                    } catch (Exception e) {
-                        sendErrorResponse(e);
-                    }
-                }
-            } else {
-                server.trace("expected S or P, got " + type);
-                sendErrorResponse("expected S or P");
-            }
+        case 'D':
+            describe();
             break;
-        }
-        case 'E': {
-            String name = readString();
-            server.trace("Execute");
-            Portal p = portals.get(name);
-            if (p == null) {
-                sendErrorResponse("Portal not found: " + name);
-                break;
-            }
-            int maxRows = readShort();
-            Prepared prepared = p.prep;
-            PreparedSQLStatement prep = prepared.prep;
-            server.trace(prepared.sql);
-            try {
-                submitYieldableCommand(prep, maxRows, false); // 不需要发送RowDescription
-            } catch (Exception e) {
-                sendErrorResponse(e);
-            }
+        case 'E':
+            execute();
             break;
-        }
-        case 'S': {
+        case 'S':
             server.trace("Sync");
             sendReadyForQuery();
             break;
-        }
-        case 'Q': {
-            isQuery = true;
-            server.trace("Query");
-            String query = readString();
-            ScriptReader reader = new ScriptReader(new StringReader(query));
-            while (true) {
-                PreparedSQLStatement prep = null;
-                try {
-                    String s = reader.readStatement();
-                    if (s == null) {
-                        break;
-                    }
-                    s = getSQL(s);
-                    prep = session.prepareStatement(s);
-                    submitYieldableCommand(prep, -1, true);
-                } catch (Exception e) {
-                    isQuery = false;
-                    sendErrorResponse(e);
-                    break;
-                }
-            }
-            isQuery = false;
-            // 异步执行sql，不能在此时发
-            // sendReadyForQuery();
+        case 'Q':
+            query();
             break;
-        }
-        case 'X': {
+        case 'X':
             server.trace("Terminate");
             conn.close();
             break;
-        }
         default:
             server.trace("Unsupported: " + x + " (" + (char) x + ")");
             break;
         }
     }
 
+    private void parse() throws IOException {
+        server.trace("Parse");
+        Prepared p = new Prepared();
+        p.name = readString();
+        p.sql = getSQL(readString());
+        int paramTypesCount = readShort();
+        int[] paramTypes = null;
+        if (paramTypesCount > 0) {
+            paramTypes = new int[paramTypesCount];
+            for (int i = 0; i < paramTypesCount; i++) {
+                int type = readInt();
+                server.checkType(type);
+                paramTypes[i] = type;
+            }
+        }
+        try {
+            p.prep = session.prepareStatementLocal(p.sql);
+            List<? extends CommandParameter> parameters = p.prep.getParameters();
+            int count = parameters.size();
+            p.paramTypes = new int[count];
+            for (int i = 0; i < count; i++) {
+                int type;
+                if (i < paramTypesCount && paramTypes[i] != 0) {
+                    type = paramTypes[i];
+                    server.checkType(type);
+                } else {
+                    type = PgType.convertType(parameters.get(i).getType());
+                }
+                p.paramTypes[i] = type;
+            }
+            prepared.put(p.name, p);
+            sendParseComplete();
+        } catch (Exception e) {
+            sendErrorResponse(e);
+        }
+    }
+
+    private void bind() throws IOException {
+        server.trace("Bind");
+        Portal portal = new Portal();
+        portal.name = readString();
+        String prepName = readString();
+        Prepared prep = prepared.get(prepName);
+        if (prep == null) {
+            sendErrorResponse("Prepared not found");
+            return;
+        }
+        portal.prep = prep;
+        portals.put(portal.name, portal);
+        int formatCodeCount = readShort();
+        int[] formatCodes = new int[formatCodeCount];
+        for (int i = 0; i < formatCodeCount; i++) {
+            formatCodes[i] = readShort();
+        }
+        int paramCount = readShort();
+        for (int i = 0; i < paramCount; i++) {
+            int paramLen = readInt();
+            byte[] d2 = DataUtils.newBytes(paramLen);
+            readFully(d2);
+            try {
+                setParameter(prep.prep, i, d2, formatCodes);
+            } catch (Exception e) {
+                sendErrorResponse(e);
+                return;
+            }
+        }
+        int resultCodeCount = readShort();
+        portal.resultColumnFormat = new int[resultCodeCount];
+        for (int i = 0; i < resultCodeCount; i++) {
+            portal.resultColumnFormat[i] = readShort();
+        }
+        sendBindComplete();
+    }
+
+    private void describe() throws IOException {
+        server.trace("Describe");
+        char type = (char) readByte();
+        String name = readString();
+        if (type == 'S') {
+            Prepared p = prepared.get(name);
+            if (p == null) {
+                sendErrorResponse("Prepared not found: " + name);
+            } else {
+                sendParameterDescription(p);
+            }
+        } else if (type == 'P') {
+            Portal p = portals.get(name);
+            if (p == null) {
+                sendErrorResponse("Portal not found: " + name);
+            } else {
+                try {
+                    sendRowDescription(p.prep.prep.getMetaData(), p.resultColumnFormat);
+                } catch (Exception e) {
+                    sendErrorResponse(e);
+                }
+            }
+        } else {
+            server.trace("expected S or P, got " + type);
+            sendErrorResponse("expected S or P");
+        }
+    }
+
+    private void execute() throws IOException {
+        server.trace("Execute");
+        String name = readString();
+        Portal p = portals.get(name);
+        if (p == null) {
+            sendErrorResponse("Portal not found: " + name);
+            return;
+        }
+        int maxRows = readShort();
+        Prepared prepared = p.prep;
+        PreparedSQLStatement prep = prepared.prep;
+        server.trace(prepared.sql);
+        try {
+            submitYieldableCommand(prep, maxRows, false); // 不需要发送RowDescription
+        } catch (Exception e) {
+            sendErrorResponse(e);
+        }
+    }
+
+    private void query() throws IOException {
+        server.trace("Query");
+        String query = readString();
+        ScriptReader reader = new ScriptReader(new StringReader(query));
+        while (true) {
+            PreparedSQLStatement prep = null;
+            try {
+                String s = reader.readStatement();
+                if (s == null) {
+                    break;
+                }
+                s = getSQL(s);
+                prep = session.prepareStatement(s);
+                submitYieldableCommand(prep, -1, true);
+            } catch (Exception e) {
+                sendErrorResponse(e);
+                sendReadyForQuery();
+                break;
+            }
+        }
+        // 异步执行sql，不能在此时发
+        // sendReadyForQuery();
+    }
+
+    private void close() throws IOException {
+        server.trace("Close");
+        char type = (char) readByte();
+        String name = readString();
+        if (type == 'S') {
+            Prepared p = prepared.remove(name);
+            if (p != null) {
+                p.prep.close();
+            }
+        } else if (type == 'P') {
+            portals.remove(name);
+        } else {
+            server.trace("expected S or P, got " + type);
+            sendErrorResponse("expected S or P");
+            return;
+        }
+        sendCloseComplete();
+    }
+
     // 异步执行SQL语句
-    private void submitYieldableCommand(PreparedSQLStatement stmt, int maxRows,
-            boolean sendRowDescription) {
+    private void submitYieldableCommand(PreparedSQLStatement stmt, int maxRows, boolean isQuery) {
         PreparedSQLStatement.Yieldable<?> yieldable;
         if (stmt.isQuery()) {
             yieldable = stmt.createYieldableQuery(maxRows, false, ar -> {
                 if (ar.isSucceeded()) {
+                    batch = true;
                     try {
                         Result result = ar.getResult();
-                        if (sendRowDescription)
+                        if (isQuery)
                             sendRowDescription(stmt.getMetaData(), null);
                         while (result.next()) {
                             sendDataRow(result);
                         }
                         sendCommandComplete(stmt, 0);
-                        if (sendRowDescription)
+                        if (isQuery)
                             sendReadyForQuery();
                     } catch (Exception e) {
                         sendErrorResponse(e);
+                    } finally {
+                        batch = false;
+                        flush();
                     }
                 } else {
                     sendErrorResponse(ar.getCause());
+                    if (isQuery) {
+                        try {
+                            sendReadyForQuery();
+                        } catch (IOException e) {
+                            sendErrorResponse(e);
+                        }
+                    }
                 }
             });
         } else {

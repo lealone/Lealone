@@ -91,8 +91,8 @@ public class PgType {
             return PG_TYPE_VARCHAR;
         case Value.CLOB:
             return PG_TYPE_TEXT;
-        // case Types.CHAR:
-        // return PG_TYPE_BPCHAR;
+        case Value.STRING_FIXED:
+            return PG_TYPE_BPCHAR;
         case Value.SHORT:
             return PG_TYPE_INT2;
         case Value.INT:

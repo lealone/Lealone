@@ -9,7 +9,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
@@ -28,8 +27,6 @@ public abstract class PacketHandler {
     private static final Logger logger = LoggerFactory.getLogger(PacketHandler.class);
     private static final int BUFFER_SIZE = 4 * 1024;
 
-    private final ArrayList<NetBufferOutput> outList = new ArrayList<>();
-
     protected final PgServer server;
     protected final PgServerConnection conn;
 
@@ -40,7 +37,8 @@ public abstract class PacketHandler {
     protected NetBufferOutput out;
 
     protected String clientEncoding = Utils.getProperty("pgClientEncoding", "UTF-8");
-    protected boolean isQuery;
+    protected boolean batch;
+    protected int startPos;
 
     protected PacketHandler(PgServer server, PgServerConnection conn) {
         this.server = server;
@@ -50,8 +48,9 @@ public abstract class PacketHandler {
     public abstract void handle(int x) throws IOException;
 
     public void handle(NetBuffer buffer, int x) {
-        out = createOutput();
         in = new NetBufferInput(buffer);
+        out = new NetBufferOutput(conn.getWritableChannel(), BUFFER_SIZE,
+                conn.getScheduler().getDataBufferFactory());
         try {
             handle(x);
             in.close();
@@ -180,26 +179,18 @@ public abstract class PacketHandler {
 
     protected void startMessage(int newMessageType) {
         out.write(newMessageType);
+        startPos = out.length();
         out.writeInt(0); // 占位
     }
 
     protected void sendMessage() {
-        out.setInt(1, out.length() - 1); // 回填
-        if (isQuery) {
-            outList.add(out);
-            out = createOutput();
-        } else {
-            if (!outList.isEmpty()) {
-                for (NetBufferOutput o : outList)
-                    o.flush();
-                outList.clear();
-            }
+        out.setInt(startPos, out.length() - startPos); // 回填
+        if (!batch) {
             out.flush();
         }
     }
 
-    private NetBufferOutput createOutput() {
-        return new NetBufferOutput(conn.getWritableChannel(), BUFFER_SIZE,
-                conn.getScheduler().getDataBufferFactory());
+    protected void flush() {
+        out.flush();
     }
 }
