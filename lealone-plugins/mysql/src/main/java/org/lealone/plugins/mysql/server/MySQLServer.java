@@ -8,6 +8,7 @@ package org.lealone.plugins.mysql.server;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.net.WritableChannel;
+import org.lealone.plugins.mysql.sql.expression.function.MySQLFunctionFactory;
 import org.lealone.server.AsyncServer;
 import org.lealone.server.Scheduler;
 
@@ -15,6 +16,7 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
 
     public static final String DATABASE_NAME = "mysql";
     public static final int DEFAULT_PORT = 3306;
+    public static final String SERVER_VERSION = "5.7.35";
 
     @Override
     public String getType() {
@@ -31,6 +33,9 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
         // mysql数据库内置了5个schema：information_schema、performance_schema、public、mysql、sys
         // 前三个在执行create database时自动创建了，这里需要再创建mysql、sys
         createBuiltInSchemas(DATABASE_NAME);
+
+        // 注册内置函数工厂
+        MySQLFunctionFactory.register();
     }
 
     private void createBuiltInDatabase(String dbName) {

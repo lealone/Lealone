@@ -106,10 +106,6 @@ public class MySQLServerConnection extends AsyncServerConnection {
         try {
             session = createSession(authPacket, authPacket.database);
             session.setSQLEngine(PluginManager.getPlugin(SQLEngine.class, MySQLServerEngine.NAME));
-            String sql = "CREATE ALIAS IF NOT EXISTS " + Constants.SCHEMA_MAIN
-                    + ".CONNECTION_ID DETERMINISTIC FOR "
-                    + "\"org.lealone.plugins.mysql.sql.expression.MySQLFunction.getConnectionId\"";
-            session.prepareStatement(sql).executeUpdate();
         } catch (Throwable e) {
             logAndSendErrorMessage("Failed to create session", e);
             close();
@@ -147,6 +143,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
             session = (ServerSession) ci.createSession();
             si = new SessionInfo(scheduler, this, session, -1, -1);
             scheduler.addSessionInfo(si);
+            session.setTransactionHandler(scheduler);
         }
         session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));
         return session;

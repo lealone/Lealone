@@ -5,6 +5,7 @@
  */
 package org.lealone.plugins.mysql.server.protocol;
 
+import org.lealone.plugins.mysql.server.MySQLServer;
 import org.lealone.plugins.mysql.server.util.Capabilities;
 import org.lealone.plugins.mysql.server.util.CharsetUtil;
 import org.lealone.plugins.mysql.server.util.RandomUtil;
@@ -21,7 +22,7 @@ public class HandshakePacket extends ResponsePacket {
     private static final byte PROTOCOL_VERSION = 10;
 
     // 服务器版本
-    private static final byte[] SERVER_VERSION = ("5.7.35").getBytes();
+    private static final byte[] SERVER_VERSION = MySQLServer.SERVER_VERSION.getBytes();
 
     private byte protocolVersion;
     private byte[] serverVersion;
