@@ -14,6 +14,15 @@ public class PgFunctionFactory implements FunctionFactory {
 
     public static final PgFunctionFactory INSTANCE = new PgFunctionFactory();
 
+    public static void register() {
+        Function.registerFunctionFactory(INSTANCE);
+    }
+
+    @Override
+    public void init() {
+        SystemCatalogInformationFunction.init();
+    }
+
     @Override
     public Function createFunction(Database database, FunctionInfo info) {
         return new SystemCatalogInformationFunction(database, info);

@@ -6,15 +6,11 @@
 package org.lealone.plugins.postgresql.sql.expression.function;
 
 import org.lealone.db.Database;
-import org.lealone.sql.expression.function.BuiltInFunction;
+import org.lealone.sql.expression.function.BuiltInFunctionExt;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.FunctionInfo;
 
-public abstract class PgFunction extends BuiltInFunction {
-
-    public static void init() {
-        SystemCatalogInformationFunction.init();
-    }
+public abstract class PgFunction extends BuiltInFunctionExt {
 
     protected static FunctionInfo addFunctionNotDeterministic(String name, int type, int parameterCount,
             int dataType) {

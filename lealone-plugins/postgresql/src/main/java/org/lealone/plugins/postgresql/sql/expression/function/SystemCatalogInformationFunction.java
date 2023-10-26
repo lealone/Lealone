@@ -15,12 +15,9 @@ import org.lealone.sql.expression.function.FunctionInfo;
 
 public class SystemCatalogInformationFunction extends PgFunction {
 
-    public static void init() {
-    }
-
     public static final int PG_CHAR_TO_ENCODING = 0, PG_ENCODING_TO_CHAR = 1;
 
-    static {
+    public static void init() {
         // addFunctionNotDeterministic("PG_CHAR_TO_ENCODING", PG_CHAR_TO_ENCODING, 1, Value.STRING_FIXED);
         // addFunctionNotDeterministic("PG_ENCODING_TO_CHAR", PG_ENCODING_TO_CHAR, 1, Value.INT);
     }

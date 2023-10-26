@@ -23,7 +23,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.WritableChannel;
-import org.lealone.plugins.postgresql.sql.expression.function.PgFunction;
+import org.lealone.plugins.postgresql.sql.expression.function.PgFunctionFactory;
 import org.lealone.server.AsyncServer;
 import org.lealone.server.Scheduler;
 import org.lealone.sql.PreparedSQLStatement;
@@ -66,7 +66,9 @@ public class PgServer extends AsyncServer<PgServerConnection> {
         if (!db.isInitialized())
             db.init();
         db.getSystemSession().prepareStatementLocal(sql).executeUpdate();
-        PgFunction.init();
+
+        // 注册内置函数工厂
+        PgFunctionFactory.register();
     }
 
     @Override
