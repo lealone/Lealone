@@ -11,6 +11,19 @@ public class BuiltInFunctionFactory implements FunctionFactory {
 
     public static final BuiltInFunctionFactory INSTANCE = new BuiltInFunctionFactory();
 
+    public static void register() {
+        Function.registerFunctionFactory(INSTANCE);
+    }
+
+    @Override
+    public void init() {
+        DateTimeFunction.init();
+        NumericFunction.init();
+        StringFunction.init();
+        SystemFunction.init();
+        TableFunction.init();
+    }
+
     @Override
     public Function createFunction(Database database, FunctionInfo info) {
         if (info.type < StringFunction.ASCII)

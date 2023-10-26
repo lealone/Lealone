@@ -54,9 +54,6 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class SystemFunction extends BuiltInFunction {
 
-    public static void init() {
-    }
-
     public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153,
             SCOPE_IDENTITY = 154, AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157,
             LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
@@ -75,7 +72,7 @@ public class SystemFunction extends BuiltInFunction {
     public static final int LEALONE_VERSION = 229;
     public static final int ROW_NUMBER = 230;
 
-    static {
+    public static void init() {
         addFunctionNotDeterministic("DATABASE", DATABASE, 0, Value.STRING);
         addFunctionNotDeterministic("USER", USER, 0, Value.STRING);
         addFunctionNotDeterministic("CURRENT_USER", CURRENT_USER, 0, Value.STRING);

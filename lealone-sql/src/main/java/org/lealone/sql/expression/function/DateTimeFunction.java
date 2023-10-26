@@ -40,9 +40,6 @@ import org.lealone.sql.expression.ValueExpression;
  */
 public class DateTimeFunction extends BuiltInFunction {
 
-    public static void init() {
-    }
-
     public static final int CURDATE = 100, CURTIME = 101, DATE_ADD = 102, DATE_DIFF = 103,
             DAY_NAME = 104, DAY_OF_MONTH = 105, DAY_OF_WEEK = 106, DAY_OF_YEAR = 107, HOUR = 108,
             MINUTE = 109, MONTH = 110, MONTH_NAME = 111, NOW = 112, QUARTER = 113, SECOND = 114,
@@ -52,7 +49,7 @@ public class DateTimeFunction extends BuiltInFunction {
 
     private static final HashMap<String, Integer> DATE_PART = new HashMap<>();
 
-    static {
+    public static void init() {
         // DATE_PART
         DATE_PART.put("SQL_TSI_YEAR", Calendar.YEAR);
         DATE_PART.put("YEAR", Calendar.YEAR);

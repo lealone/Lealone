@@ -37,9 +37,6 @@ import org.lealone.sql.expression.ValueExpression;
  */
 public class NumericFunction extends BuiltInFunction {
 
-    public static void init() {
-    }
-
     public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6,
             BITXOR = 7, CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14,
             LOG10 = 15, MOD = 16, PI = 17, POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21,
@@ -47,7 +44,7 @@ public class NumericFunction extends BuiltInFunction {
             HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32, EXPAND = 33, ZERO = 34,
             RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
 
-    static {
+    public static void init() {
         addFunction("ABS", ABS, 1, Value.NULL);
         addFunction("ACOS", ACOS, 1, Value.DOUBLE);
         addFunction("ASIN", ASIN, 1, Value.DOUBLE);

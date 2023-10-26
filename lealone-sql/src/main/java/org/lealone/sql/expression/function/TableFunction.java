@@ -34,12 +34,9 @@ import org.lealone.sql.expression.visitor.ExpressionVisitor;
  */
 public class TableFunction extends BuiltInFunction {
 
-    public static void init() {
-    }
-
     public static final int TABLE = 300, TABLE_DISTINCT = 301;
 
-    static {
+    public static void init() {
         addFunctionWithNull("TABLE", TABLE, VAR_ARGS, Value.RESULT_SET);
         addFunctionWithNull("TABLE_DISTINCT", TABLE_DISTINCT, VAR_ARGS, Value.RESULT_SET);
     }

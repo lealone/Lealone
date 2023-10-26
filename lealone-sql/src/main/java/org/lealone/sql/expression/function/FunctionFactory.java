@@ -9,6 +9,8 @@ import org.lealone.db.Database;
 
 public interface FunctionFactory {
 
+    void init();
+
     Function createFunction(Database database, FunctionInfo info);
 
 }

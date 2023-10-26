@@ -32,9 +32,6 @@ import org.lealone.sql.expression.ValueExpression;
  */
 public class StringFunction extends BuiltInFunction {
 
-    public static void init() {
-    }
-
     public static final int ASCII = 50, BIT_LENGTH = 51, CHAR = 52, CHAR_LENGTH = 53, CONCAT = 54,
             DIFFERENCE = 55, HEXTORAW = 56, INSERT = 57, INSTR = 58, LCASE = 59, LEFT = 60, LENGTH = 61,
             LOCATE = 62, LTRIM = 63, OCTET_LENGTH = 64, RAWTOHEX = 65, REPEAT = 66, REPLACE = 67,
@@ -46,7 +43,7 @@ public class StringFunction extends BuiltInFunction {
 
     private static final char[] SOUNDEX_INDEX = new char[128];
 
-    static {
+    public static void init() {
         // SOUNDEX_INDEX
         String index = "7AEIOUY8HW1BFPV2CGJKQSXZ3DT4L5MN6R";
         char number = 0;
