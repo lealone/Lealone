@@ -295,13 +295,15 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     @Override
     public void fullGc(int schedulerCount, int schedulerId) {
         ArrayList<String> names = new ArrayList<>(maps.keySet());
+        // 要进行排序，这样多个线程执行fullGc时可以按固定的顺序挑选跟自己的schedulerId匹配的StorageMap进行操作
         Collections.sort(names);
         int size = names.size();
         for (int i = 0; i < size; i++) {
             int index = i % schedulerCount;
             if (index == schedulerId) {
                 StorageMap<?, ?> map = maps.get(names.get(i));
-                if (!map.isClosed())
+                // 此时有可能在另一个线程中把StorageMap删除了，所以要判断一下map是否为null
+                if (map != null && !map.isClosed())
                     map.fullGc(this);
             }
         }
