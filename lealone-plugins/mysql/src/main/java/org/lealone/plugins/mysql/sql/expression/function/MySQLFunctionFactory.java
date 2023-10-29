@@ -5,6 +5,7 @@
  */
 package org.lealone.plugins.mysql.sql.expression.function;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.sql.expression.function.Function;
 import org.lealone.sql.expression.function.FunctionFactory;
@@ -21,13 +22,20 @@ public class MySQLFunctionFactory implements FunctionFactory {
     @Override
     public void init() {
         InformationFunction.init();
+        BitFunction.init();
+        PerformanceSchemaFunction.init();
     }
 
     @Override
     public Function createFunction(Database database, FunctionInfo info) {
         if (info.type < 0)
             return new UserFunction(database, info);
-        else
+        else if (info.type < 100)
             return new InformationFunction(database, info);
+        else if (info.type < 110)
+            return new BitFunction(database, info);
+        else if (info.type < 120)
+            return new PerformanceSchemaFunction(database, info);
+        throw DbException.getInternalError();
     }
 }
