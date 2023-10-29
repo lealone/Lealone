@@ -14,16 +14,18 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
+import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
+import org.lealone.plugins.mysql.sql.ddl.CreateProcedure;
+import org.lealone.plugins.mysql.sql.ddl.CreateRoutine;
 import org.lealone.plugins.mysql.sql.expression.MySQLVariable;
 import org.lealone.sql.SQLParserBase;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.ddl.AlterUser;
 import org.lealone.sql.ddl.CreateSchema;
-import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.SetDatabase;
 import org.lealone.sql.dml.SetSession;
 import org.lealone.sql.dml.SetStatement;
@@ -43,6 +45,21 @@ public class MySQLParser extends SQLParserBase {
             s = s == null ? null : StringUtils.toLowerEnglish(s);
         }
         return s;
+    }
+
+    @Override
+    protected StatementBase parseCreate() {
+        String definer = null;
+        if (readIf("DEFINER")) {
+            definer = readStringOrIdentifier();
+        }
+        if (readIf("PROCEDURE")) {
+            return parseCreateProcedure(definer);
+        } else if (readIf("PROCEDURE")) {
+            return parseCreateFunction(definer);
+        } else {
+            return super.parseCreate();
+        }
     }
 
     @Override
@@ -149,10 +166,6 @@ public class MySQLParser extends SQLParserBase {
         String schemaName = readAliasIdentifier();
         session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));
         return noOperation();
-    }
-
-    private StatementBase noOperation() {
-        return new NoOperation(session);
     }
 
     private void readIfEqual() {
@@ -637,5 +650,93 @@ public class MySQLParser extends SQLParserBase {
 
         dbName = identifier(dbName);
         paramValues.add(ValueString.get(dbName));
+    }
+
+    private StatementBase parseCreateProcedure(String definer) {
+        boolean ifNotExists = readIfNotExists();
+        String name = readIdentifierWithSchema();
+        CreateProcedure command = new CreateProcedure(session, getSchema());
+        command.setName(name);
+        command.setIfNotExists(ifNotExists);
+        if (readIf("(")) {
+            do {
+                if (readIf("IN")) {
+                } else if (readIf("OUT")) {
+                } else if (readIf("INOUT")) {
+                }
+                Column column = parseParameter();
+                command.addParameter(column);
+            } while (readIfMore());
+        }
+        parseCharacteristic(command);
+        parseRoutinebody(command);
+        return noOperation();
+    }
+
+    private StatementBase parseCreateFunction(String definer) {
+        boolean ifNotExists = readIfNotExists();
+        String name = readIdentifierWithSchema();
+        CreateProcedure command = new CreateProcedure(session, getSchema());
+        command.setName(name);
+        command.setIfNotExists(ifNotExists);
+        if (readIf("(")) {
+            do {
+                Column column = parseParameter();
+                command.addParameter(column);
+            } while (readIfMore());
+        }
+        read("RETURNS");
+        parseColumnWithType("R");
+        parseCharacteristic(command);
+        parseRoutinebody(command);
+        return noOperation();
+    }
+
+    private Column parseParameter() {
+        String columnName = readColumnIdentifier();
+        return parseColumnForTable(columnName, true);
+    }
+
+    private void parseCharacteristic(CreateRoutine command) {
+        while (true) {
+            if (readIf("COMMENT")) {
+                readString();
+            } else if (readIf("LANGUAGE")) {
+                read("SQL");
+            } else if (readIf("NOT")) {
+                read("DETERMINISTIC");
+                command.setDeterministic(false);
+            } else if (readIf("DETERMINISTIC")) {
+                command.setDeterministic(true);
+            } else if (readIf("CONTAINS")) {
+                read("SQL");
+            } else if (readIf("NO")) {
+                read("SQL");
+            } else if (readIf("READS")) {
+                read("SQL");
+                read("DATA");
+            } else if (readIf("MODIFIES")) {
+                read("SQL");
+                read("DATA");
+            } else if (readIf("SQL")) {
+                read("SECURITY");
+                if (readIf("DEFINER")) {
+                } else {
+                    read("INVOKER");
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void parseRoutinebody(CreateRoutine command) {
+        if (readIf("BEGIN")) {
+            command.setPrepared(parseStatement());
+            read("END");
+        } else {
+            readIf("RETURN");
+            command.setExpression(readExpression());
+        }
     }
 }
