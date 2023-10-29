@@ -322,7 +322,7 @@ public abstract class SQLParserBase implements SQLParser {
         return parseStatement();
     }
 
-    private StatementBase parseStatement() {
+    protected StatementBase parseStatement() {
         int start = lastParseIndex;
         StatementBase s = null;
         String token = currentToken;
@@ -694,7 +694,7 @@ public abstract class SQLParserBase implements SQLParser {
         return schema;
     }
 
-    private Schema getSchema() {
+    protected Schema getSchema() {
         return getSchema(schemaName);
     }
 
@@ -886,7 +886,7 @@ public abstract class SQLParserBase implements SQLParser {
         return table.getColumn(columnName);
     }
 
-    private boolean readIfMore() {
+    protected boolean readIfMore() {
         if (readIf(",")) {
             return !readIf(")");
         }
@@ -2985,7 +2985,7 @@ public abstract class SQLParserBase implements SQLParser {
         return readColumnIdentifier();
     }
 
-    private String readColumnIdentifier() {
+    protected String readColumnIdentifier() {
         if (currentTokenType != IDENTIFIER) {
             throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
         }
@@ -3756,7 +3756,7 @@ public abstract class SQLParserBase implements SQLParser {
         return parseColumnForTable(columnName, true);
     }
 
-    private Column parseColumnForTable(String columnName, boolean defaultNullable) {
+    protected Column parseColumnForTable(String columnName, boolean defaultNullable) {
         Column column;
         boolean isIdentity = false;
         if (readIf("IDENTITY") || readIf("BIGSERIAL")) {
@@ -3874,7 +3874,7 @@ public abstract class SQLParserBase implements SQLParser {
         return null;
     }
 
-    private Column parseColumnWithType(String columnName) {
+    protected Column parseColumnWithType(String columnName) {
         String original = currentToken;
         boolean regular = false;
         if (readIf("LONG")) {
@@ -4057,7 +4057,7 @@ public abstract class SQLParserBase implements SQLParser {
         return column;
     }
 
-    private StatementBase parseCreate() {
+    protected StatementBase parseCreate() {
         boolean orReplace = false;
         if (readIf("OR")) {
             read("REPLACE");
@@ -4542,7 +4542,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    private boolean readIfNotExists() {
+    protected boolean readIfNotExists() {
         if (readIf("IF")) {
             read("NOT");
             read("EXISTS");
@@ -5949,5 +5949,9 @@ public abstract class SQLParserBase implements SQLParser {
 
     protected boolean currentTokenIsValueType() {
         return currentTokenType == VALUE;
+    }
+
+    protected StatementBase noOperation() {
+        return new NoOperation(session);
     }
 }

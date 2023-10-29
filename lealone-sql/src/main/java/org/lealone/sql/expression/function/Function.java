@@ -81,6 +81,12 @@ public abstract class Function extends Expression {
         return addFunction(name, type, parameterCount, dataType, false, true);
     }
 
+    // 允许一个函数有多个别名
+    protected static FunctionInfo addFunction(String name, FunctionInfo info) {
+        FUNCTIONS.put(name, info);
+        return info;
+    }
+
     /**
      * Get the function info object for this function, or null if there is no
      * such function.
