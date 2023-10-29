@@ -1540,9 +1540,16 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public void addDirtyPage(IPage page) {
+    public void addDirtyPage(IPage old, IPage page) {
+        // 切割page可能是异步的，如果事务已经结束那就直接标记脏页
+        if (transaction == null) {
+            page.markDirtyBottomUp();
+            return;
+        }
         if (dirtyPages == null)
             dirtyPages = new HashSet<>();
+        else if (old != null)
+            dirtyPages.remove(old);
         dirtyPages.add(page);
     }
 

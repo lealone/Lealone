@@ -96,6 +96,7 @@ public abstract class PageOperations {
         private void writeLocal(PageOperationHandler poHandler) {
             session = poHandler.getCurrentSession();
             p = pRef.getOrReadPage(); // 使用最新的page
+            Page old = p;
             int index = getKeyIndex();
             result = (R) writeLocal(index, poHandler);
 
@@ -110,7 +111,7 @@ public abstract class PageOperations {
 
             Session s = session;
             if (s != null) {
-                s.addDirtyPage(p);
+                s.addDirtyPage(old != p ? old : null, p);
             }
             if (resultHandler != null) {
                 resultHandler.handle(new AsyncResult<>(result));
@@ -377,7 +378,8 @@ public abstract class PageOperations {
                 bgc.addUsedMemory(tmpNodePage.left.getPageInfo().getTotalMemory());
                 bgc.addUsedMemory(tmpNodePage.right.getPageInfo().getTotalMemory());
 
-                PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
+                PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent,
+                        poHandler);
 
                 if (p.isNode())
                     setParentRef(tmpNodePage);
@@ -387,7 +389,7 @@ public abstract class PageOperations {
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
-                PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent);
+                PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent, poHandler);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
                     asyncSplitPage(poHandler, parentRef);

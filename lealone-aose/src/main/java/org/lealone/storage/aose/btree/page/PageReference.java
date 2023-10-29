@@ -268,10 +268,8 @@ public class PageReference {
     public void markDirtyPage() {
         while (true) {
             PageInfo pInfoOld = this.pInfo;
-            if (pInfoOld.isSplitted()) {
-                pInfoOld.getLeftRef().markDirtyPage();
-                pInfoOld.getRightRef().markDirtyPage();
-                break;
+            if (pInfoOld.isSplitted() || pInfoOld.page == null) {
+                return;
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
             pInfoNew.buff = null; // 废弃了
@@ -396,9 +394,10 @@ public class PageReference {
     }
 
     public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
-            PageReference ref, Page newPage) {
+            PageReference ref, Page newPage, PageOperationHandler poHandler) {
         PageReference lRef = tmpNodePage.left;
         PageReference rRef = tmpNodePage.right;
+        Session session = poHandler.getCurrentSession();
         TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
         while (true) {
             // 先取出旧值再进行addPageReference，否则会有并发问题
@@ -410,6 +409,8 @@ public class PageReference {
             pInfoNew.updateTime(pInfoOld1);
             if (!parentRef.replacePage(pInfoOld1, pInfoNew))
                 continue;
+            if (session != null)
+                session.addDirtyPage(pInfoOld1.page, newPage);
             if (ref != parentRef) {
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
                 PageReference tmpRef = tmpNodePage.parent.getRef();
@@ -418,6 +419,11 @@ public class PageReference {
                 pInfoNew.page = tmpNodePage.parent;
                 if (!ref.replacePage(pInfoOld2, pInfoNew))
                     continue;
+                if (session != null) {
+                    session.addDirtyPage(pInfoOld2.page, tmpRef.getPage());
+                    session.addDirtyPage(pInfoOld2.page, lRef.getPage());
+                    session.addDirtyPage(pInfoOld2.page, rRef.getPage());
+                }
             }
             break;
         }

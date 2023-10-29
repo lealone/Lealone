@@ -117,7 +117,7 @@ public class Constants {
     /**
      * The default maximum number of rows to be kept in memory in a result set.
      */
-    public static final int DEFAULT_MAX_MEMORY_ROWS = 10000;
+    public static final int DEFAULT_MAX_MEMORY_ROWS = 100000;
 
     /**
      * The default value for the MAX_MEMORY_UNDO setting.
