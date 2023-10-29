@@ -256,6 +256,10 @@ public interface Session extends Closeable {
     }
 
     default void addDirtyPage(IPage page) {
+        addDirtyPage(null, page);
+    }
+
+    default void addDirtyPage(IPage old, IPage page) {
     }
 
     default void markDirtyPages() {
