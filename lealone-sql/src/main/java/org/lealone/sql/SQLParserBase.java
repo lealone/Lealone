@@ -459,9 +459,7 @@ public abstract class SQLParserBase implements SQLParser {
                 } else if (readIf("SHOW")) {
                     s = parseShow();
                 } else if (readIf("START")) {
-                    if (readIf("SERVER")) {
-                        s = parseStartServer();
-                    }
+                    s = parseStart();
                 }
                 break;
             case 't':
@@ -496,6 +494,8 @@ public abstract class SQLParserBase implements SQLParser {
             default:
                 throw getSyntaxError();
             }
+            if (s == null)
+                s = parseStatement(first);
             if (indexedParameterList != null) {
                 for (int i = 0, size = indexedParameterList.size(); i < size; i++) {
                     if (indexedParameterList.get(i) == null) {
@@ -531,6 +531,10 @@ public abstract class SQLParserBase implements SQLParser {
         }
         setSQL(s, null, start);
         return s;
+    }
+
+    protected StatementBase parseStatement(char first) {
+        return null;
     }
 
     protected DbException getSyntaxError() {
@@ -599,7 +603,15 @@ public abstract class SQLParserBase implements SQLParser {
         return new StartServer(session, name, parameters);
     }
 
-    private TransactionStatement parseBegin() {
+    protected StatementBase parseStart() {
+        if (readIf("SERVER")) {
+            return parseStartServer();
+        } else {
+            throw getSyntaxError();
+        }
+    }
+
+    protected TransactionStatement parseBegin() {
         TransactionStatement command;
         if (!readIf("WORK")) {
             readIf("TRANSACTION");
@@ -608,7 +620,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    private TransactionStatement parseCommit() {
+    protected TransactionStatement parseCommit() {
         TransactionStatement command;
         if (readIf("TRANSACTION")) {
             command = new TransactionStatement(session, SQLStatement.COMMIT_TRANSACTION);

@@ -9,9 +9,11 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.plugins.postgresql.sql.expression.PgVariable;
 import org.lealone.sql.SQLParserBase;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.SetSession;
+import org.lealone.sql.dml.TransactionStatement;
 import org.lealone.sql.expression.Expression;
 
 public class PgSQLParser extends SQLParserBase {
@@ -19,6 +21,57 @@ public class PgSQLParser extends SQLParserBase {
     public PgSQLParser(ServerSession session) {
         super(session);
         this.session.setSchemaSearchPath(new String[] { "public", "pg_catalog" });
+    }
+
+    @Override
+    protected StatementBase parseStatement(char first) {
+        StatementBase s = null;
+        switch (first) {
+        case 'e':
+        case 'E':
+            if (readIf("END")) { // END和COMMIT是同义词
+                s = parseCommit();
+            }
+            break;
+        }
+        return s;
+    }
+
+    @Override
+    protected StatementBase parseStart() {
+        if (readIf("TRANSACTION")) {
+            TransactionStatement command = new TransactionStatement(session, SQLStatement.BEGIN);
+            parseTransactionMode().update();
+            session.getTransaction(); // 如果上一条提交事务了重新启动事务
+            return command;
+        } else {
+            return super.parseStart();
+        }
+    }
+
+    @Override
+    protected TransactionStatement parseBegin() {
+        TransactionStatement command = super.parseBegin();
+        parseTransactionMode().update();
+        session.getTransaction(); // 如果上一条提交事务了重新启动事务
+        return command;
+    }
+
+    @Override
+    protected TransactionStatement parseCommit() {
+        TransactionStatement command = super.parseCommit();
+        if (readIf("AND")) {
+            boolean startNewTransaction = true;
+            if (readIf("NO")) {
+                startNewTransaction = false;
+            }
+            read("CHAIN");
+            if (startNewTransaction) {
+                command.update();
+                command = new TransactionStatement(session, SQLStatement.BEGIN);
+            }
+        }
+        return command;
     }
 
     @Override
@@ -65,31 +118,7 @@ public class PgSQLParser extends SQLParserBase {
             if (readIf("CHARACTERISTICS")) {
                 read("AS");
                 read("TRANSACTION");
-                if (readIf("ISOLATION")) {
-                    read("LEVEL");
-                    SetSession command = new SetSession(session,
-                            SessionSetting.TRANSACTION_ISOLATION_LEVEL);
-                    if (readIf("SERIALIZABLE")) {
-                        command.setString("SERIALIZABLE");
-                    } else if (readIf("REPEATABLE")) {
-                        read("READ");
-                        command.setString("REPEATABLE_READ");
-                    } else if (readIf("READ")) {
-                        if (readIf("COMMITTED"))
-                            command.setString("READ_COMMITTED");
-                        else if (readIf("UNCOMMITTED"))
-                            command.setString("READ_UNCOMMITTED");
-                    }
-                    return command;
-                } else if (readIf("READ")) {
-                    if (!readIf("WRITE"))
-                        read("ONLY");
-                } else if (readIf("NOT")) {
-                    read("DEFERRABLE");
-                } else {
-                    readIf("DEFERRABLE");
-                }
-                return new NoOperation(session);
+                return parseTransactionMode();
             }
         }
         if (readIf("STATEMENT_TIMEOUT")) {
@@ -121,5 +150,34 @@ public class PgSQLParser extends SQLParserBase {
             return new NoOperation(session);
         }
         return null;
+    }
+
+    private StatementBase parseTransactionMode() {
+        SetSession command = null;
+        while (true) {
+            if (readIf("ISOLATION")) {
+                read("LEVEL");
+                command = new SetSession(session, SessionSetting.TRANSACTION_ISOLATION_LEVEL);
+                if (readIf("SERIALIZABLE")) {
+                    command.setString("SERIALIZABLE");
+                } else if (readIf("REPEATABLE")) {
+                    read("READ");
+                    command.setString("REPEATABLE_READ");
+                } else if (readIf("READ")) {
+                    if (readIf("COMMITTED"))
+                        command.setString("READ_COMMITTED");
+                    else if (readIf("UNCOMMITTED"))
+                        command.setString("READ_UNCOMMITTED");
+                }
+            } else if (readIf("READ")) {
+                if (!readIf("WRITE"))
+                    read("ONLY");
+            } else if (readIf("NOT")) {
+                read("DEFERRABLE");
+            } else if (!readIf("DEFERRABLE")) {
+                break;
+            }
+        }
+        return command != null ? command : new NoOperation(session);
     }
 }

@@ -20,4 +20,12 @@ public class PgSyntaxTest extends PgTestBase {
         assertEquals("public,pg_catalog", getStringValue(1));
         executeQuery("SHOW ALL");
     }
+
+    @Test
+    public void testTransactionStatement() throws Exception {
+        executeUpdate("BEGIN ISOLATION LEVEL SERIALIZABLE READ WRITE DEFERRABLE");
+        executeUpdate("END");
+        executeUpdate("START TRANSACTION ISOLATION LEVEL SERIALIZABLE READ WRITE DEFERRABLE");
+        executeUpdate("COMMIT");
+    }
 }

@@ -282,6 +282,13 @@ public class CommandPacketHandler extends PacketHandler {
                 } else {
                     sendErrorResponse(ar.getCause());
                 }
+                if (isQuery) {
+                    try {
+                        sendReadyForQuery();
+                    } catch (IOException e) {
+                        sendErrorResponse(e);
+                    }
+                }
             });
         }
         si.submitYieldableCommand(0, yieldable);
