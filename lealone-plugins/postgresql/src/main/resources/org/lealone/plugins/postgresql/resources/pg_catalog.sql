@@ -212,9 +212,6 @@ grant select on pg_catalog.pg_index to public;
 drop alias if exists pg_get_indexdef;
 create alias pg_get_indexdef for "org.lealone.plugins.postgresql.sql.PgAlias.getIndexColumn";
 
-drop alias if exists version;
-create alias version for "org.lealone.plugins.postgresql.sql.PgAlias.getVersion";
-
 drop alias if exists current_schema;
 create alias current_schema for "org.lealone.plugins.postgresql.sql.PgAlias.getCurrentSchema";
 

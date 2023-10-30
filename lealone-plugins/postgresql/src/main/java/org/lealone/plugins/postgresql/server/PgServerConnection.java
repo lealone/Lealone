@@ -19,6 +19,7 @@ import org.lealone.net.WritableChannel;
 import org.lealone.plugins.postgresql.server.handler.AuthPacketHandler;
 import org.lealone.plugins.postgresql.server.handler.CommandPacketHandler;
 import org.lealone.plugins.postgresql.server.handler.PacketHandler;
+import org.lealone.plugins.postgresql.sql.PgAlias;
 import org.lealone.server.AsyncServerConnection;
 import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
@@ -87,6 +88,7 @@ public class PgServerConnection extends AsyncServerConnection {
         si = new SessionInfo(scheduler, this, session, -1, -1);
         scheduler.addSessionInfo(si);
         session.setSQLEngine(PluginManager.getPlugin(SQLEngine.class, PgServerEngine.NAME));
+        session.setVersion(PgAlias.getVersion());
 
         packetHandler.setSession(session, si); // 旧的设置一次
         packetHandler = new CommandPacketHandler(server, this);

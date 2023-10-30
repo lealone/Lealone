@@ -19,7 +19,6 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
-import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
@@ -65,11 +64,7 @@ public class SystemFunction extends BuiltInFunction {
             CANCEL_SESSION = 220, SET = 221, FILE_READ = 222, TRANSACTION_ID = 223, TRUNCATE_VALUE = 224,
             NVL2 = 225, DECODE = 226, ARRAY_CONTAINS = 227;
 
-    /**
-     * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
-     * for VERSION() when running under the PostgreSQL ODBC driver.
-     */
-    public static final int LEALONE_VERSION = 229;
+    public static final int VERSION = 229;
     public static final int ROW_NUMBER = 230;
 
     public static void init() {
@@ -117,10 +112,13 @@ public class SystemFunction extends BuiltInFunction {
         addFunctionNotDeterministic("TRANSACTION_ID", TRANSACTION_ID, 0, Value.STRING);
         addFunctionWithNull("DECODE", DECODE, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("DISK_SPACE_USED", DISK_SPACE_USED, 1, Value.LONG);
-        addFunction("LEALONE_VERSION", LEALONE_VERSION, 0, Value.STRING);
+        addFunction("VERSION", VERSION, 0, Value.STRING);
 
         // pseudo function
         addFunctionWithNull("ROW_NUMBER", ROW_NUMBER, 0, Value.LONG);
+
+        // LEALONE_VERSION是VERSION的别名
+        addFunction("LEALONE_VERSION", Function.getFunctionInfo("VERSION"));
     }
 
     protected SystemFunction(Database database, FunctionInfo info) {
@@ -179,8 +177,8 @@ public class SystemFunction extends BuiltInFunction {
             result = session.getTransactionId();
             break;
         }
-        case LEALONE_VERSION:
-            result = ValueString.get(Constants.getVersion());
+        case VERSION:
+            result = ValueString.get(session.getVersion());
             break;
         default:
             throw getUnsupportedException();

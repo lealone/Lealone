@@ -1781,4 +1781,14 @@ public class ServerSession extends SessionBase {
         else
             return database.createParser(this);
     }
+
+    private String version;
+
+    public String getVersion() {
+        return version == null ? Constants.getVersion() : version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
 }

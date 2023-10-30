@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 
 import org.lealone.db.Constants;
+import org.lealone.plugins.postgresql.server.PgServer;
 import org.lealone.plugins.postgresql.server.PgType;
 
 /**
@@ -137,7 +138,8 @@ public class PgAlias {
      * @return the server name and version
      */
     public static String getVersion() {
-        return "PostgreSQL 8.1.4  server protocol using Lealone " + Constants.getFullVersion();
+        return "PostgreSQL " + PgServer.PG_VERSION + ", compiled by Lealone "
+                + Constants.getFullVersion() + ", 64-bit";
     }
 
     public static String formatType(final int type, final int typmod) {

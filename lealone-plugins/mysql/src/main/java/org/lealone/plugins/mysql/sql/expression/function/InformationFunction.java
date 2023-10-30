@@ -19,7 +19,8 @@ public class InformationFunction extends MySQLFunction {
 
     public static void init() {
         addFunction("CONNECTION_ID", CONNECTION_ID, 0, Value.LONG);
-        addFunction("VERSION", VERSION, 0, Value.STRING);
+        // 使用Lealone自带的
+        // addFunction("VERSION", VERSION, 0, Value.STRING);
     }
 
     public InformationFunction(Database database, FunctionInfo info) {

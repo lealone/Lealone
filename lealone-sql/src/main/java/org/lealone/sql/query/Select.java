@@ -695,7 +695,8 @@ public class Select extends Query {
 
     @Override
     public Result getMetaData() {
-        LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
+        LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount,
+                rawExpressionInfoList);
         result.done();
         return result;
     }
