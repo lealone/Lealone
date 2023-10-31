@@ -27,6 +27,12 @@ public class PgSQLParser extends SQLParserBase {
     protected StatementBase parseStatement(char first) {
         StatementBase s = null;
         switch (first) {
+        case 'a':
+        case 'A':
+            if (readIf("ABORT")) { // ABORT和COMMIT是同义词
+                s = parseRollback(true);
+            }
+            break;
         case 'e':
         case 'E':
             if (readIf("END")) { // END和COMMIT是同义词
@@ -66,6 +72,11 @@ public class PgSQLParser extends SQLParserBase {
     @Override
     protected TransactionStatement parseCommit() {
         TransactionStatement command = super.parseCommit();
+        command = parseChain(command);
+        return command;
+    }
+
+    private TransactionStatement parseChain(TransactionStatement command) {
         if (readIf("AND")) {
             boolean startNewTransaction = true;
             if (readIf("NO")) {
@@ -76,6 +87,32 @@ public class PgSQLParser extends SQLParserBase {
                 command.update();
                 command = new TransactionStatement(session, SQLStatement.BEGIN);
             }
+        }
+        return command;
+    }
+
+    @Override
+    protected TransactionStatement parseRollback() {
+        return parseRollback(false);
+    }
+
+    private TransactionStatement parseRollback(boolean abort) {
+        TransactionStatement command;
+        if (!abort && readIf("PREPARED")) {
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK_TRANSACTION);
+            command.setTransactionName(readUniqueIdentifier());
+            return command;
+        }
+        if (!readIf("TRANSACTION")) {
+            readIf("WORK");
+        }
+        if (!abort && readIf("TO")) {
+            readIf("SAVEPOINT");
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK_TO_SAVEPOINT);
+            command.setSavepointName(readUniqueIdentifier());
+        } else {
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK);
+            command = parseChain(command);
         }
         return command;
     }

@@ -632,7 +632,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    private TransactionStatement parseRollback() {
+    protected TransactionStatement parseRollback() {
         TransactionStatement command;
         if (readIf("TRANSACTION")) {
             command = new TransactionStatement(session, SQLStatement.ROLLBACK_TRANSACTION);
