@@ -5021,11 +5021,7 @@ public abstract class SQLParserBase implements SQLParser {
 
     protected StatementBase parseSet() {
         if (readIf("@")) { // session变量
-            SetSession command = new SetSession(session, SessionSetting.VARIABLE);
-            command.setString(readAliasIdentifier());
-            readIfEqualOrTo();
-            command.setExpression(readExpression());
-            return command;
+            return parseSetVariable();
         } else if (readIf("AUTOCOMMIT")) {
             readIfEqualOrTo();
             boolean value = readBooleanSetting();
@@ -5151,6 +5147,14 @@ public abstract class SQLParserBase implements SQLParser {
 
     protected StatementBase parseSetOther() {
         return null;
+    }
+
+    protected StatementBase parseSetVariable() {
+        SetSession command = new SetSession(session, SessionSetting.VARIABLE);
+        command.setString(readAliasIdentifier());
+        readIfEqualOrTo();
+        command.setExpression(readExpression());
+        return command;
     }
 
     private SetDatabase parseSetCollation() {
@@ -5957,10 +5961,6 @@ public abstract class SQLParserBase implements SQLParser {
             return StringUtils.quoteIdentifier(s);
         }
         return s;
-    }
-
-    protected boolean currentTokenIsValueType() {
-        return currentTokenType == VALUE;
     }
 
     protected StatementBase noOperation() {

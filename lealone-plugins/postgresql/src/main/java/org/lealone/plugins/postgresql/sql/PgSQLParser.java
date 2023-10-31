@@ -5,16 +5,16 @@
  */
 package org.lealone.plugins.postgresql.sql;
 
+import java.util.ArrayList;
+
+import org.lealone.common.util.Utils;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
-import org.lealone.plugins.postgresql.sql.expression.PgVariable;
 import org.lealone.sql.SQLParserBase;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.SetSession;
 import org.lealone.sql.dml.TransactionStatement;
-import org.lealone.sql.expression.Expression;
 
 public class PgSQLParser extends SQLParserBase {
 
@@ -31,6 +31,12 @@ public class PgSQLParser extends SQLParserBase {
         case 'E':
             if (readIf("END")) { // END和COMMIT是同义词
                 s = parseCommit();
+            }
+            break;
+        case 'r':
+        case 'R':
+            if (readIf("RESET")) {
+                s = parseReset();
             }
             break;
         }
@@ -75,17 +81,6 @@ public class PgSQLParser extends SQLParserBase {
     }
 
     @Override
-    protected Expression parseVariable() {
-        read("@");
-        String vname = readAliasIdentifier();
-        if (vname.equalsIgnoreCase("session") || vname.equalsIgnoreCase("global")) {
-            readIf(".");
-            vname = readAliasIdentifier();
-        }
-        return new PgVariable(session, vname);
-    }
-
-    @Override
     protected boolean parseShowOther(StringBuilder buff) {
         if (readIf("CLIENT_ENCODING")) {
             buff.append("'UNICODE' AS CLIENT_ENCODING");
@@ -114,42 +109,85 @@ public class PgSQLParser extends SQLParserBase {
 
     @Override
     protected StatementBase parseSetOther() {
-        if (readIf("SESSION")) {
-            if (readIf("CHARACTERISTICS")) {
-                read("AS");
-                read("TRANSACTION");
-                return parseTransactionMode();
+        if (readIf("TRANSACTION")) {
+            if (readIf("SNAPSHOT")) {
+                readStringOrIdentifier();
+                return noOperation();
+            }
+            return parseTransactionMode();
+        } else if (readIf("CONSTRAINTS")) {
+            if (!readIf("ALL")) {
+                do {
+                    readStringOrIdentifier();
+                } while (readIf(","));
+            }
+            if (!readIf("DEFERRED")) {
+                read("IMMEDIATE");
+            }
+            return noOperation();
+        } else {
+            if (readIf("SESSION")) {
+                if (readIf("CHARACTERISTICS")) {
+                    read("AS");
+                    read("TRANSACTION");
+                    return parseTransactionMode();
+                } else if (readIf("AUTHORIZATION")) {
+                    if (!readIf("DEFAULT")) {
+                        readStringOrIdentifier();
+                    }
+                    return noOperation();
+                }
+            } else {
+                readIf("LOCAL");
+            }
+            if (readIf("SESSION")) {
+                read("AUTHORIZATION");
+                if (!readIf("DEFAULT")) {
+                    readStringOrIdentifier();
+                }
+                return noOperation();
+            } else if (readIf("ROLE")) {
+                if (!readIf("NONE")) {
+                    readStringOrIdentifier();
+                }
+                return noOperation();
+            } else if (readIf("TIME")) {
+                read("ZONE");
+                if (readIf("LOCAL") || readIf("DEFAULT")) {
+                    return noOperation();
+                } else {
+                    readStringOrIdentifier();
+                    return noOperation();
+                }
+            } else if (readIf("DATESTYLE")) {
+                readIfEqualOrTo();
+                if (!readIf("ISO")) {
+                    String s = readString();
+                    if (!equalsToken(s, "ISO")) {
+                        throw getSyntaxError();
+                    }
+                }
+                return noOperation();
+            } else if (readIf("SEARCH_PATH")) {
+                readIfEqualOrTo();
+                SetSession command = new SetSession(session, SessionSetting.SCHEMA_SEARCH_PATH);
+                ArrayList<String> list = Utils.newSmallArrayList();
+                do {
+                    // some PG clients will send single-quoted alias
+                    String s = readStringOrIdentifier();
+                    if ("$user".equals(s)) {
+                        continue;
+                    }
+                    list.add(s);
+                } while (readIf(","));
+                String[] schemaNames = new String[list.size()];
+                list.toArray(schemaNames);
+                command.setStringArray(schemaNames);
+                return command;
+            } else {
+                return parseSetVariable();
             }
         }
-        if (readIf("STATEMENT_TIMEOUT")) {
-            readIfEqualOrTo();
-            return new NoOperation(session);
-        } else if (readIf("CLIENT_ENCODING") || readIf("CLIENT_MIN_MESSAGES")
-                || readIf("JOIN_COLLAPSE_LIMIT")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("DATESTYLE")) {
-            readIfEqualOrTo();
-            if (!readIf("ISO")) {
-                String s = readString();
-                if (!equalsToken(s, "ISO")) {
-                    throw getSyntaxError();
-                }
-            }
-            return new NoOperation(session);
-        } else if (readIf("SEARCH_PATH")) {
-            readIfEqualOrTo();
-            do {
-                // some PG clients will send single-quoted alias
-                String s = currentTokenIsValueType() ? readString() : readUniqueIdentifier();
-                if ("$user".equals(s)) {
-                    continue;
-                }
-            } while (readIf(","));
-            return new NoOperation(session);
-        }
-        return null;
     }
 
     private StatementBase parseTransactionMode() {
@@ -178,6 +216,20 @@ public class PgSQLParser extends SQLParserBase {
                 break;
             }
         }
-        return command != null ? command : new NoOperation(session);
+        return command != null ? command : noOperation();
+    }
+
+    private StatementBase parseReset() {
+        if (readIf("ALL")) {
+            return noOperation();
+        } else if (readIf("SESSION")) {
+            read("AUTHORIZATION");
+            return noOperation();
+        } else if (readIf("ROLE")) {
+            return noOperation();
+        } else {
+            readAliasIdentifier();
+            return noOperation();
+        }
     }
 }

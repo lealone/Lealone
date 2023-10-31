@@ -226,7 +226,8 @@ public class MySQLParser extends SQLParserBase {
         }
     }
 
-    private StatementBase parseSetVariable() {
+    @Override
+    protected StatementBase parseSetVariable() {
         if (readIf("@")) {
             if (readIf("GLOBAL") || readIf("PERSIST") || readIf("PERSIST_ONLY") || readIf("SESSION")) {
                 read(".");
