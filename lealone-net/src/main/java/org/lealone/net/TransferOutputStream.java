@@ -456,6 +456,11 @@ public class TransferOutputStream implements NetOutputStream {
             }
             break;
         }
+        case Value.ENUM: {
+            writeString(v.getString());
+            writeInt(v.getInt());
+            break;
+        }
         default:
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);
         }

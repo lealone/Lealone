@@ -158,11 +158,12 @@ public abstract class Value implements Comparable<Value> {
     public static final int LIST = 22;
     public static final int SET = 23;
     public static final int MAP = 24;
+    public static final int ENUM = 25;
 
     /**
      * The number of value types.
      */
-    public static final int TYPE_COUNT = MAP + 1;
+    public static final int TYPE_COUNT = ENUM + 1;
 
     private static SoftReference<Value[]> softCache = new SoftReference<Value[]>(null);
     private static final BigDecimal MAX_LONG_DECIMAL = BigDecimal.valueOf(Long.MAX_VALUE);
@@ -319,6 +320,8 @@ public abstract class Value implements Comparable<Value> {
             return 53;
         case MAP:
             return 54;
+        case ENUM:
+            return 55;
         default:
             throw DbException.getInternalError("type:" + type);
         }
@@ -844,6 +847,17 @@ public abstract class Value implements Comparable<Value> {
                 default:
                     Value[] values = { this };
                     return ValueSet.get(values);
+                }
+            }
+            case ENUM: {
+                switch (getType()) {
+                case STRING:
+                case STRING_IGNORECASE:
+                case STRING_FIXED:
+                    String label = getString();
+                    return ValueEnum.get(label, 0);
+                default:
+                    return ValueEnum.get(getInt());
                 }
             }
             }

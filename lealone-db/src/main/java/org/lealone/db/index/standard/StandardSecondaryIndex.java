@@ -22,6 +22,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueEnum;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
@@ -157,7 +158,15 @@ public class StandardSecondaryIndex extends StandardIndex {
             int idx = c.getColumnId();
             Value v = r.getValue(idx);
             if (v != null) {
-                array[i] = v.convertTo(c.getType());
+                if (c.isEnumType()) {
+                    try {
+                        array[i] = c.convert(v);
+                    } catch (Throwable t) {
+                        array[i] = ValueEnum.get(-1);
+                    }
+                } else {
+                    array[i] = v.convertTo(c.getType());
+                }
             }
         }
         array[keyColumns - 1] = ValueLong.get(r.getKey());
@@ -279,6 +288,8 @@ public class StandardSecondaryIndex extends StandardIndex {
             Column c = cols[i];
             int idx = c.getColumnId();
             Value v = array[i];
+            if (c.isEnumType())
+                v = c.convert(v);
             searchRow.setValue(idx, v);
         }
         return searchRow;

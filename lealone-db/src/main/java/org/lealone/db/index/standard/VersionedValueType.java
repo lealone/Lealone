@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DataHandler;
+import org.lealone.db.table.Column.EnumColumn;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -17,11 +18,18 @@ import org.lealone.db.value.ValueArray;
 public class VersionedValueType extends ValueDataType {
 
     final int columnCount;
+    final EnumColumn[] enumColumns;
 
     public VersionedValueType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
             int columnCount) {
+        this(handler, compareMode, sortTypes, columnCount, null);
+    }
+
+    public VersionedValueType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
+            int columnCount, EnumColumn[] enumColumns) {
         super(handler, compareMode, sortTypes);
         this.columnCount = columnCount;
+        this.enumColumns = enumColumns;
     }
 
     @Override
@@ -64,6 +72,8 @@ public class VersionedValueType extends ValueDataType {
     public Object read(ByteBuffer buff) {
         int vertion = DataUtils.readVarInt(buff);
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
+        if (enumColumns != null)
+            setEnumColumns(a);
         return new VersionedValue(vertion, a.getList());
     }
 
@@ -102,6 +112,8 @@ public class VersionedValueType extends ValueDataType {
         if (columnIndex >= 0 && columnIndex < columns.length) {
             Value value = DataBuffer.readValue(buff);
             columns[columnIndex] = value;
+            if (enumColumns != null)
+                setEnumColumn(value, columnIndex);
         }
     }
 
@@ -136,6 +148,17 @@ public class VersionedValueType extends ValueDataType {
             return columns[columnIndex].getMemory();
         } else {
             return 0;
+        }
+    }
+
+    private void setEnumColumn(Value value, int columnIndex) {
+        if (enumColumns[columnIndex] != null)
+            enumColumns[columnIndex].setLabel(value);
+    }
+
+    private void setEnumColumns(ValueArray a) {
+        for (int i = 0, len = a.getList().length; i < len; i++) {
+            setEnumColumn(a.getValue(i), i);
         }
     }
 }

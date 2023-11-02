@@ -287,6 +287,11 @@ public class DataType {
         mapType.suffix = "')";
         add(Value.MAP, Types.OTHER, "Object", mapType, new String[] { "MAP" }, 32);
 
+        DataType enumType = createString(false);
+        enumType.supportsPrecision = false;
+        // enumType.params = "ELEMENT [,...]";
+        add(Value.ENUM, Types.OTHER, "Object", enumType, new String[] { "ENUM" }, 32);
+
         // 验证一下是否有遗漏
         for (int i = 0, size = Value.TYPE_COUNT; i < size; i++) {
             DataType dt = TYPES_BY_VALUE_TYPE[i];

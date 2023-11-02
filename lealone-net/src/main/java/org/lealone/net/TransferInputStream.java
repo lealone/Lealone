@@ -29,6 +29,7 @@ import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueDecimal;
 import org.lealone.db.value.ValueDouble;
+import org.lealone.db.value.ValueEnum;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
@@ -341,6 +342,9 @@ public class TransferInputStream implements NetInputStream {
                 values[i + 1] = readValue();
             }
             return ValueMap.get(kType, vType, values);
+        }
+        case Value.ENUM: {
+            return ValueEnum.get(readString(), readInt());
         }
         default:
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);

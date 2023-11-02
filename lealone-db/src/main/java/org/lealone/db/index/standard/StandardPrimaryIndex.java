@@ -69,7 +69,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         VersionedValueType vvType = new VersionedValueType(database, database.getCompareMode(),
-                sortTypes, columns.length);
+                sortTypes, columns.length, table.getEnumColumns());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

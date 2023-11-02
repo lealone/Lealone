@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.test.misc;
+package org.lealone.test.sql.type;
 
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;

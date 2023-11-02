@@ -45,6 +45,7 @@ import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Column.EnumColumn;
 import org.lealone.db.table.Column.ListColumn;
 import org.lealone.db.table.Column.MapColumn;
 import org.lealone.db.table.Column.SetColumn;
@@ -3960,6 +3961,14 @@ public abstract class SQLParserBase implements SQLParser {
                     value = new Column("V", Value.JAVA_OBJECT);
                 }
                 return new MapColumn(columnName, key, value);
+            } else if (original.equals("ENUM")) {
+                read();
+                read("(");
+                ArrayList<String> enumerators = new ArrayList<>();
+                do {
+                    enumerators.add(readString());
+                } while (readIfMore());
+                return new EnumColumn(columnName, enumerators);
             }
             if (dataType == null) {
                 Table table = null;

@@ -32,6 +32,7 @@ import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueDecimal;
 import org.lealone.db.value.ValueDouble;
+import org.lealone.db.value.ValueEnum;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
@@ -727,6 +728,11 @@ public class DataBuffer implements AutoCloseable {
             }
             break;
         }
+        case Value.ENUM: {
+            buff.put((byte) type);
+            putVarInt(v.getInt());
+            break;
+        }
         default:
             TYPES[type].writeValue(buff, v);
         }
@@ -847,6 +853,10 @@ public class DataBuffer implements AutoCloseable {
                 values[i + 1] = readValue(buff);
             }
             return ValueMap.get(kType, vType, values);
+        }
+        case Value.ENUM: {
+            int ordinal = readVarInt(buff);
+            return ValueEnum.get(ordinal);
         }
         default:
             int type2 = StorageDataType.getTypeId(type);

@@ -44,6 +44,7 @@ import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.Column.EnumColumn;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
@@ -670,5 +671,17 @@ public class StandardTable extends Table {
     @Override
     public DataHandler getDataHandler() {
         return dataHandler;
+    }
+
+    public EnumColumn[] getEnumColumns() {
+        EnumColumn[] enumColumns = null;
+        for (int i = 0, len = columns.length; i < len; i++) {
+            if (columns[i].isEnumType()) {
+                if (enumColumns == null)
+                    enumColumns = new EnumColumn[len];
+                enumColumns[i] = (EnumColumn) columns[i];
+            }
+        }
+        return enumColumns;
     }
 }
