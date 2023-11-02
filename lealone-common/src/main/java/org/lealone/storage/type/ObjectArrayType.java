@@ -6,11 +6,17 @@
 package org.lealone.storage.type;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.UUID;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 
 public class ObjectArrayType extends StorageDataTypeBase {
@@ -30,8 +36,8 @@ public class ObjectArrayType extends StorageDataTypeBase {
         Class<?> type = aObj.getClass().getComponentType();
         Class<?> bType = bObj.getClass().getComponentType();
         if (type != bType) {
-            Integer classA = ObjectDataType.getCommonClassId(type);
-            Integer classB = ObjectDataType.getCommonClassId(bType);
+            Integer classA = getCommonClassId(type);
+            Integer classB = getCommonClassId(bType);
             if (classA != null) {
                 if (classB != null) {
                     return classA.compareTo(classB);
@@ -128,7 +134,7 @@ public class ObjectArrayType extends StorageDataTypeBase {
     @Override
     public void write(DataBuffer buff, Object obj) {
         Class<?> type = obj.getClass().getComponentType();
-        Integer classId = ObjectDataType.getCommonClassId(type);
+        Integer classId = getCommonClassId(type);
         if (classId != null) {
             if (type.isPrimitive()) {
                 if (type == byte.class) {
@@ -198,7 +204,7 @@ public class ObjectArrayType extends StorageDataTypeBase {
                         "Could not get class {0}", componentType, e);
             }
         } else {
-            clazz = ObjectDataType.COMMON_CLASSES[ct];
+            clazz = COMMON_CLASSES[ct];
         }
         int len = DataUtils.readVarInt(buff);
         try {
@@ -236,8 +242,49 @@ public class ObjectArrayType extends StorageDataTypeBase {
         return obj;
     }
 
-    @Override
-    public void writeValue(DataBuffer buff, Value v) {
-        throw newInternalError();
+    private static final Class<?>[] COMMON_CLASSES = {
+            boolean.class,
+            byte.class,
+            short.class,
+            char.class,
+            int.class,
+            long.class,
+            float.class,
+            double.class,
+            Object.class,
+            Boolean.class,
+            Byte.class,
+            Short.class,
+            Character.class,
+            Integer.class,
+            Long.class,
+            BigInteger.class,
+            Float.class,
+            Double.class,
+            BigDecimal.class,
+            String.class,
+            UUID.class,
+            Date.class,
+            Time.class,
+            Timestamp.class };
+
+    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = new HashMap<>(
+            COMMON_CLASSES.length);
+
+    /**
+     * Get the class id, or null if not found.
+     *
+     * @param clazz the class
+     * @return the class id or null
+     */
+    private static Integer getCommonClassId(Class<?> clazz) {
+        HashMap<Class<?>, Integer> map = COMMON_CLASSES_MAP;
+        if (map.isEmpty()) {
+            // lazy initialization
+            for (int i = 0, size = COMMON_CLASSES.length; i < size; i++) {
+                COMMON_CLASSES_MAP.put(COMMON_CLASSES[i], i);
+            }
+        }
+        return map.get(clazz);
     }
 }

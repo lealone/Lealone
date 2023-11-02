@@ -15,7 +15,9 @@ public abstract class StorageDataTypeBase implements StorageDataType {
 
     public abstract int getType();
 
-    public abstract void writeValue(DataBuffer buff, Value v);
+    public void writeValue(DataBuffer buff, Value v) {
+        throw newInternalError();
+    }
 
     @Override
     public Object read(ByteBuffer buff) {

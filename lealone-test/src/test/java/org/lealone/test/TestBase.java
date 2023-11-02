@@ -70,6 +70,10 @@ public class TestBase extends Assert {
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
 
         setConsoleLoggerFactory();
+
+        // 不启动mysql-cj-abandoned-connection-cleanup线程
+        System.setProperty(com.mysql.cj.conf.PropertyDefinitions.SYSP_disableAbandonedConnectionCleanup,
+                "true");
     }
 
     public TestBase() {

@@ -58,7 +58,7 @@ import org.lealone.storage.type.StorageDataTypeBase;
  */
 public class DataBuffer implements AutoCloseable {
 
-    public static final StorageDataTypeBase[] TYPES = new StorageDataTypeBase[Value.TYPE_COUNT];
+    private static final StorageDataTypeBase[] TYPES = new StorageDataTypeBase[Value.TYPE_COUNT];
     static {
         TYPES[Value.NULL] = ValueNull.type;
         TYPES[Value.BOOLEAN] = ValueBoolean.type;
@@ -595,6 +595,7 @@ public class DataBuffer implements AutoCloseable {
         writeValue(this, v);
     }
 
+    // 通过ValueDataType写入硬盘的数据格式
     private void writeValue(DataBuffer buff, Value v) {
         int type = v.getType();
         switch (type) {
@@ -727,9 +728,7 @@ public class DataBuffer implements AutoCloseable {
             break;
         }
         default:
-            type = StorageDataType.getTypeId(type);
             TYPES[type].writeValue(buff, v);
-            // DbException.throwInternalError("type=" + v.getType());
         }
     }
 
@@ -742,11 +741,7 @@ public class DataBuffer implements AutoCloseable {
         return readValue(this.buff);
     }
 
-    /**
-     * Read a value.
-     *
-     * @return the value
-     */
+    // 通过ValueDataType从硬盘把数据变成各种Value的子类
     public static Value readValue(ByteBuffer buff) {
         int type = buff.get() & 255;
         switch (type) {
@@ -855,10 +850,10 @@ public class DataBuffer implements AutoCloseable {
         }
         default:
             int type2 = StorageDataType.getTypeId(type);
+            if (type2 >= TYPES.length)
+                throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "type: " + type);
             return TYPES[type2].readValue(buff, type);
-        // throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "type: " + type);
         }
-
     }
 
     private static int readVarInt(ByteBuffer buff) {

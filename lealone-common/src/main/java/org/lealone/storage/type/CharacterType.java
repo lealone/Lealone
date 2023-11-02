@@ -8,7 +8,6 @@ package org.lealone.storage.type;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.Value;
 
 public class CharacterType extends StorageDataTypeBase {
 
@@ -38,10 +37,5 @@ public class CharacterType extends StorageDataTypeBase {
     @Override
     public Object read(ByteBuffer buff, int tag) {
         return Character.valueOf(buff.getChar());
-    }
-
-    @Override
-    public void writeValue(DataBuffer buff, Value v) {
-        throw newInternalError();
     }
 }

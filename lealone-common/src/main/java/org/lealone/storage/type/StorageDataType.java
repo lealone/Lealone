@@ -14,6 +14,9 @@ import org.lealone.db.value.ValueArray;
 
 /**
  * A data type.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface StorageDataType {
 
@@ -26,18 +29,19 @@ public interface StorageDataType {
     public static final int TYPE_SHORT = Value.SHORT;
     public static final int TYPE_INT = Value.INT;
     public static final int TYPE_LONG = Value.LONG;
-    public static final int TYPE_BIG_INTEGER = Value.TYPE_COUNT;
     public static final int TYPE_FLOAT = Value.FLOAT;
     public static final int TYPE_DOUBLE = Value.DOUBLE;
     public static final int TYPE_BIG_DECIMAL = Value.DECIMAL;
-    public static final int TYPE_CHAR = Value.TYPE_COUNT + 1;
     public static final int TYPE_STRING = Value.STRING;
     public static final int TYPE_UUID = Value.UUID;
     public static final int TYPE_DATE = Value.DATE;
     public static final int TYPE_TIME = Value.TIME;
     public static final int TYPE_TIMESTAMP = Value.TIMESTAMP;
-    public static final int TYPE_ARRAY = Value.TYPE_COUNT + 2;
-    public static final int TYPE_SERIALIZED_OBJECT = Value.TYPE_COUNT + 3;
+
+    public static final int TYPE_BIG_INTEGER = 25;
+    public static final int TYPE_CHAR = 26;
+    public static final int TYPE_ARRAY = 27;
+    public static final int TYPE_SERIALIZED_OBJECT = 28;
 
     /**
      * For very common values (e.g. 0 and 1) we save space by encoding the value

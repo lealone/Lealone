@@ -14,7 +14,6 @@ import java.util.Arrays;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.Value;
 
 public class SerializedObjectType extends StorageDataTypeBase {
 
@@ -26,8 +25,8 @@ public class SerializedObjectType extends StorageDataTypeBase {
         return TYPE_SERIALIZED_OBJECT;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public int compare(Object aObj, Object bObj) {
         if (aObj == bObj) {
             return 0;
@@ -92,11 +91,6 @@ public class SerializedObjectType extends StorageDataTypeBase {
         byte[] data = DataUtils.newBytes(len);
         buff.get(data);
         return deserialize(data);
-    }
-
-    @Override
-    public void writeValue(DataBuffer buff, Value v) {
-        throw newInternalError();
     }
 
     /**

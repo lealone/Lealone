@@ -11,7 +11,6 @@ import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.common.util.DataUtils;
@@ -32,39 +31,14 @@ import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 
 /**
- * A data type implementation for the most common data types, including
- * serializable objects.
+ * A data type implementation for the most common data types, including serializable objects.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
+// 这个类是单独使用存储引擎时，如果没未指定key和value的编解码类型，就用它自动对各种java对象进行编解码
+// 而ValueDataType是把记录的字段按指定类型进行编解码，跟ObjectDataType保存的数据不一样
 public class ObjectDataType implements StorageDataType {
-
-    static final Class<?>[] COMMON_CLASSES = {
-            boolean.class,
-            byte.class,
-            short.class,
-            char.class,
-            int.class,
-            long.class,
-            float.class,
-            double.class,
-            Object.class,
-            Boolean.class,
-            Byte.class,
-            Short.class,
-            Character.class,
-            Integer.class,
-            Long.class,
-            BigInteger.class,
-            Float.class,
-            Double.class,
-            BigDecimal.class,
-            String.class,
-            UUID.class,
-            Date.class,
-            Time.class,
-            Timestamp.class };
-
-    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = new HashMap<>(
-            COMMON_CLASSES.length);
 
     private StorageDataTypeBase last = ValueString.type;
 
@@ -89,15 +63,81 @@ public class ObjectDataType implements StorageDataType {
     @Override
     public Object read(ByteBuffer buff) {
         int tag = buff.get();
-        int typeId = StorageDataType.getTypeId(tag);
-        StorageDataTypeBase t = last;
-        if (typeId != t.getType()) {
-            last = t = newType(typeId);
-        }
-        return t.read(buff, tag);
+        int typeId = getTypeId(tag);
+        return switchType(typeId).read(buff, tag);
     }
 
-    private StorageDataTypeBase newType(int typeId) {
+    private StorageDataTypeBase switchType(int typeId) {
+        StorageDataTypeBase l = last;
+        if (typeId != l.getType()) {
+            last = l = newType(typeId);
+        }
+        return l;
+    }
+
+    /**
+    * Switch the last remembered type to match the type of the given object.
+    *
+    * @param obj the object
+    * @return the auto-detected type used
+    */
+    StorageDataTypeBase switchType(Object obj) {
+        int typeId = getTypeId(obj);
+        return switchType(typeId);
+    }
+
+    /**
+     * Compare the contents of two byte arrays. If the content or length of the
+     * first array is smaller than the second array, -1 is returned. If the
+     * content or length of the second array is smaller than the first array, 1
+     * is returned. If the contents and lengths are the same, 0 is returned.
+     * <p>
+     * This method interprets bytes as unsigned.
+     *
+     * @param data1 the first byte array (must not be null)
+     * @param data2 the second byte array (must not be null)
+     * @return the result of the comparison (-1, 1 or 0)
+     */
+    static int compareNotNull(byte[] data1, byte[] data2) {
+        if (data1 == data2) {
+            return 0;
+        }
+        int len = Math.min(data1.length, data2.length);
+        for (int i = 0; i < len; i++) {
+            int b = data1[i] & 255;
+            int b2 = data2[i] & 255;
+            if (b != b2) {
+                return b > b2 ? 1 : -1;
+            }
+        }
+        return Integer.signum(data1.length - data2.length);
+    }
+
+    private static boolean isBigInteger(Object obj) {
+        return obj instanceof BigInteger && obj.getClass() == BigInteger.class;
+    }
+
+    private static boolean isBigDecimal(Object obj) {
+        return obj instanceof BigDecimal && obj.getClass() == BigDecimal.class;
+    }
+
+    private static boolean isDate(Object obj) {
+        return obj instanceof Date && obj.getClass() == Date.class;
+    }
+
+    private static boolean isTime(Object obj) {
+        return obj instanceof Time && obj.getClass() == Time.class;
+    }
+
+    private static boolean isTimestamp(Object obj) {
+        return obj instanceof Timestamp && obj.getClass() == Timestamp.class;
+    }
+
+    private static boolean isArray(Object obj) {
+        return obj != null && obj.getClass().isArray();
+    }
+
+    private static StorageDataTypeBase newType(int typeId) {
         switch (typeId) {
         case TYPE_NULL:
             return ValueNull.type;
@@ -140,21 +180,6 @@ public class ObjectDataType implements StorageDataType {
                 typeId);
     }
 
-    /**
-    * Switch the last remembered type to match the type of the given object.
-    *
-    * @param obj the object
-    * @return the auto-detected type used
-    */
-    StorageDataTypeBase switchType(Object obj) {
-        int typeId = getTypeId(obj);
-        StorageDataTypeBase l = last;
-        if (typeId != l.getType()) {
-            last = l = newType(typeId);
-        }
-        return l;
-    }
-
     private static int getTypeId(Object obj) {
         if (obj instanceof Integer) {
             return TYPE_INT;
@@ -188,101 +213,9 @@ public class ObjectDataType implements StorageDataType {
             return TYPE_BIG_INTEGER;
         } else if (isBigDecimal(obj)) {
             return TYPE_BIG_DECIMAL;
-        } else if (obj.getClass().isArray()) {
+        } else if (isArray(obj)) {
             return TYPE_ARRAY;
         }
         return TYPE_SERIALIZED_OBJECT;
-    }
-
-    /**
-     * Check whether this object is a BigInteger.
-     *
-     * @param obj the object
-     * @return true if yes
-     */
-    private static boolean isBigInteger(Object obj) {
-        return obj instanceof BigInteger && obj.getClass() == BigInteger.class;
-    }
-
-    /**
-     * Check whether this object is a BigDecimal.
-     *
-     * @param obj the object
-     * @return true if yes
-     */
-    private static boolean isBigDecimal(Object obj) {
-        return obj instanceof BigDecimal && obj.getClass() == BigDecimal.class;
-    }
-
-    /**
-     * Check whether this object is a date.
-     *
-     * @param obj the object
-     * @return true if yes
-     */
-    private static boolean isDate(Object obj) {
-        return obj instanceof Date && obj.getClass() == Date.class;
-    }
-
-    private static boolean isTime(Object obj) {
-        return obj instanceof Time && obj.getClass() == Time.class;
-    }
-
-    private static boolean isTimestamp(Object obj) {
-        return obj instanceof Timestamp && obj.getClass() == Timestamp.class;
-    }
-
-    // /**
-    // * Check whether this object is an array.
-    // *
-    // * @param obj the object
-    // * @return true if yes
-    // */
-    // private static boolean isArray(Object obj) {
-    // return obj != null && obj.getClass().isArray();
-    // }
-
-    /**
-     * Get the class id, or null if not found.
-     *
-     * @param clazz the class
-     * @return the class id or null
-     */
-    static Integer getCommonClassId(Class<?> clazz) {
-        HashMap<Class<?>, Integer> map = COMMON_CLASSES_MAP;
-        if (map.isEmpty()) {
-            // lazy initialization
-            for (int i = 0, size = COMMON_CLASSES.length; i < size; i++) {
-                COMMON_CLASSES_MAP.put(COMMON_CLASSES[i], i);
-            }
-        }
-        return map.get(clazz);
-    }
-
-    /**
-     * Compare the contents of two byte arrays. If the content or length of the
-     * first array is smaller than the second array, -1 is returned. If the
-     * content or length of the second array is smaller than the first array, 1
-     * is returned. If the contents and lengths are the same, 0 is returned.
-     * <p>
-     * This method interprets bytes as unsigned.
-     *
-     * @param data1 the first byte array (must not be null)
-     * @param data2 the second byte array (must not be null)
-     * @return the result of the comparison (-1, 1 or 0)
-     */
-    static int compareNotNull(byte[] data1, byte[] data2) {
-        if (data1 == data2) {
-            return 0;
-        }
-        int len = Math.min(data1.length, data2.length);
-        for (int i = 0; i < len; i++) {
-            int b = data1[i] & 255;
-            int b2 = data2[i] & 255;
-            if (b != b2) {
-                return b > b2 ? 1 : -1;
-            }
-        }
-        return Integer.signum(data1.length - data2.length);
     }
 }

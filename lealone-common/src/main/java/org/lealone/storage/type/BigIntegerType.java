@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.Value;
 
 public class BigIntegerType extends StorageDataTypeBase {
 
@@ -63,10 +62,5 @@ public class BigIntegerType extends StorageDataTypeBase {
         byte[] bytes = DataUtils.newBytes(len);
         buff.get(bytes);
         return new BigInteger(bytes);
-    }
-
-    @Override
-    public void writeValue(DataBuffer buff, Value v) {
-        throw newInternalError();
     }
 }
