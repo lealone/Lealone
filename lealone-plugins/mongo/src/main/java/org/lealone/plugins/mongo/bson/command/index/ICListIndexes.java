@@ -29,7 +29,10 @@ public class ICListIndexes extends IndexCommand {
                 append(indexDoc, "v", 2);
                 BsonDocument keyDoc = new BsonDocument();
                 for (IndexColumn ic : index.getIndexColumns()) {
-                    append(keyDoc, ic.columnName, ic.sortType == SortOrder.ASCENDING ? 1 : -1);
+                    String columnName = ic.columnName;
+                    if (columnName == null)
+                        columnName = ic.column.getName();
+                    append(keyDoc, columnName, ic.sortType == SortOrder.ASCENDING ? 1 : -1);
                 }
                 indexDoc.append("key", keyDoc);
                 append(indexDoc, "name", index.getName());

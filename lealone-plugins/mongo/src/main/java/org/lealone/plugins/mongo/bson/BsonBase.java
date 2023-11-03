@@ -8,13 +8,16 @@ package org.lealone.plugins.mongo.bson;
 import java.sql.Date;
 import java.util.ArrayList;
 
+import org.bson.BsonBinary;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.types.ObjectId;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
@@ -53,7 +56,7 @@ public abstract class BsonBase {
         }
     }
 
-    public static BsonValue toBsonValue(Value v) {
+    public static BsonValue toBsonValue(String fieldName, Value v) {
         switch (v.getType()) {
         case Value.INT:
             return new BsonInt32(v.getInt());
@@ -61,6 +64,11 @@ public abstract class BsonBase {
             return new BsonInt64(v.getLong());
         case Value.NULL:
             return BsonNull.VALUE;
+        case Value.BYTES:
+            if (fieldName.equalsIgnoreCase("_id"))
+                return new BsonObjectId(new ObjectId(v.getBytes()));
+            else
+                return new BsonBinary(v.getBytes());
         default:
             return new BsonString(v.getString());
         }
@@ -70,7 +78,7 @@ public abstract class BsonBase {
         int len = fieldNames.length;
         ArrayList<BsonElement> bsonElements = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
-            BsonValue bv = toBsonValue(values[i]);
+            BsonValue bv = toBsonValue(fieldNames[i], values[i]);
             bsonElements.add(new BsonElement(fieldNames[i], bv));
         }
         return new BsonDocument(bsonElements);
@@ -86,9 +94,9 @@ public abstract class BsonBase {
     }
 
     public static Column parseColumn(Table table, String columnName) {
-        if ("_id".equalsIgnoreCase(columnName)) {
-            return table.getRowIdColumn();
-        }
+        // if ("_id".equalsIgnoreCase(columnName)) {
+        // return table.getRowIdColumn();
+        // }
         return table.getColumn(columnName.toUpperCase());
     }
 

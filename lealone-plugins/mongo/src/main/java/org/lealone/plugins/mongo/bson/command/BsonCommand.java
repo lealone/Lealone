@@ -104,13 +104,19 @@ public abstract class BsonCommand extends BsonBase {
         if (table == null) {
             StatementBuilder sql = new StatementBuilder();
             sql.append("CREATE TABLE IF NOT EXISTS ").append(Constants.SCHEMA_MAIN).append(".")
-                    .append(tableName).append("(");
+                    .append(tableName).append("(_id ");
+            BsonValue id = firstDoc.get("_id", null);
+            if (id == null || id.isInt32() || id.isInt64()) {
+                sql.append("long auto_increment primary key");
+            } else {
+                sql.append("binary primary key");
+            }
             for (Entry<String, BsonValue> e : firstDoc.entrySet()) {
                 String columnName = e.getKey();
                 if (columnName.equalsIgnoreCase("_id"))
                     continue;
-                sql.appendExceptFirst(", ");
-                sql.append(e.getKey()).append(" ");
+                sql.append(", ");
+                sql.append(columnName).append(" ");
                 BsonValue v = e.getValue();
                 switch (v.getBsonType()) {
                 case INT32:
@@ -118,6 +124,36 @@ public abstract class BsonCommand extends BsonBase {
                     break;
                 case INT64:
                     sql.append("long");
+                    break;
+                case DOUBLE:
+                    sql.append("double");
+                    break;
+                case STRING:
+                    sql.append("varchar");
+                    break;
+                case ARRAY:
+                    sql.append("array");
+                    break;
+                case BINARY:
+                    sql.append("binary");
+                    break;
+                case OBJECT_ID:
+                    sql.append("binary");
+                    break;
+                case BOOLEAN:
+                    sql.append("boolean");
+                    break;
+                // case DATE_TIME:
+                // sql.append("datetime");
+                // break;
+                // case TIMESTAMP:
+                // sql.append("timestamp");
+                // break;
+                case REGULAR_EXPRESSION:
+                    sql.append("varchar");
+                    break;
+                case DECIMAL128:
+                    sql.append("decimal");
                     break;
                 default:
                     sql.append("varchar");

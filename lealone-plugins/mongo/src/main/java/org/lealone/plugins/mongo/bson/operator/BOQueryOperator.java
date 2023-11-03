@@ -13,7 +13,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.Column;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
@@ -48,9 +47,9 @@ public class BOQueryOperator extends BsonOperator {
                 }
             } else {
                 String columnName = k.toUpperCase();
-                if ("_ID".equals(columnName)) {
-                    columnName = Column.ROWID;
-                }
+                // if ("_ID".equals(columnName)) {
+                // columnName = Column.ROWID;
+                // }
                 Expression left = getExpressionColumn(tableFilter, columnName);
                 Expression right = null;
                 Expression cond = null;

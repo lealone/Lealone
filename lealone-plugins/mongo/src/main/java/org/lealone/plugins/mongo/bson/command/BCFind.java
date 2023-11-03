@@ -13,7 +13,6 @@ import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.util.Utils;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
@@ -66,7 +65,7 @@ public class BCFind extends BsonCommand {
         }
 
         ArrayList<Expression> selectExpressions = Utils.newSmallArrayList();
-        selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
+        // selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
         selectExpressions.add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
         select.setExpressions(selectExpressions);
         select.init();
@@ -91,11 +90,12 @@ public class BCFind extends BsonCommand {
         String[] fieldNames = new String[len];
         for (int i = 0; i < len; i++) {
             String columnName = result.getColumnName(i);
-            if (Column.ROWID.equals(columnName)) {
-                fieldNames[i] = "_id";
-            } else {
-                fieldNames[i] = columnName.toLowerCase();
-            }
+            // if (Column.ROWID.equals(columnName)) {
+            // fieldNames[i] = "_id";
+            // } else {
+            // fieldNames[i] = columnName.toLowerCase();
+            // }
+            fieldNames[i] = columnName.toLowerCase();
         }
 
         BsonArray documents = new BsonArray();
