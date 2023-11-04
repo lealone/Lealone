@@ -8,6 +8,7 @@ package org.lealone.plugins.mongo.bson;
 import java.sql.Date;
 import java.util.ArrayList;
 
+import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
@@ -23,6 +24,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueInt;
@@ -50,10 +52,21 @@ public abstract class BsonBase {
             return ValueBytes.get(bv.asObjectId().getValue().toByteArray());
         case DATE_TIME:
             return ValueDate.get(new Date(bv.asDateTime().getValue()));
+        case ARRAY:
+            return toValueArray(bv.asArray());
         // case STRING:
         default:
             return ValueString.get(bv.asString().getValue());
         }
+    }
+
+    public static ValueArray toValueArray(BsonArray ba) {
+        int size = ba.size();
+        Value[] values = new Value[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = toValue(ba.get(i));
+        }
+        return ValueArray.get(values);
     }
 
     public static BsonValue toBsonValue(String fieldName, Value v) {
@@ -64,6 +77,8 @@ public abstract class BsonBase {
             return new BsonInt64(v.getLong());
         case Value.NULL:
             return BsonNull.VALUE;
+        case Value.ARRAY:
+            return toBsonArray(fieldName, (ValueArray) v);
         case Value.BYTES:
             if (fieldName.equalsIgnoreCase("_id"))
                 return new BsonObjectId(new ObjectId(v.getBytes()));
@@ -72,6 +87,16 @@ public abstract class BsonBase {
         default:
             return new BsonString(v.getString());
         }
+    }
+
+    public static BsonArray toBsonArray(String fieldName, ValueArray va) {
+        BsonArray ba = new BsonArray();
+        Value[] values = va.getList();
+        int length = values.length;
+        for (int i = 0; i < length; i++) {
+            ba.add(toBsonValue(fieldName, values[i]));
+        }
+        return ba;
     }
 
     public static BsonDocument toBsonDocument(String[] fieldNames, Value[] values) {
