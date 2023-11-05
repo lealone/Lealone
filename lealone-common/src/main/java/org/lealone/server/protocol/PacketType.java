@@ -45,14 +45,7 @@ public enum PacketType {
     LOB_READ(60),
     LOB_READ_ACK(61),
 
-    P2P_ECHO(150),
-    P2P_GOSSIP_DIGEST_SYN(151),
-    P2P_GOSSIP_DIGEST_ACK(152),
-    P2P_GOSSIP_DIGEST_ACK2(153),
-    P2P_GOSSIP_SHUTDOWN(154),
-    P2P_REQUEST_RESPONSE(155),
-
-    VOID(155 + 1);
+    VOID(61 + 1);
 
     public final int value;
 
