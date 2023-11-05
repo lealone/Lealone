@@ -48,6 +48,46 @@ public class BCAggregate extends BsonCommand {
         }
     }
 
+    public static BsonDocument distinct(ByteBufferBsonInput input, BsonDocument doc,
+            MongoServerConnection conn, MongoTask task) {
+        Table table = findTable(doc, "distinct", conn);
+        if (table != null) {
+            ServerSession session = task.session;
+            Select select = new Select(session);
+            select.setDistinct(true);
+            TableFilter tableFilter = new TableFilter(session, table, null, true, select);
+            select.addTableFilter(tableFilter, true);
+            String key = getString(doc, "key");
+            BsonDocument filter = doc.getDocument("query", null);
+            if (filter != null) {
+                select.addCondition(toWhereCondition(filter, tableFilter, session));
+            }
+
+            ArrayList<Expression> selectExpressions = new ArrayList<>(1);
+            selectExpressions.add(getExpressionColumn(tableFilter, key.toUpperCase()));
+            select.setExpressions(selectExpressions);
+            select.init();
+            select.prepare();
+
+            PreparedSQLStatement.Yieldable<?> yieldable = select.createYieldableQuery(-1, false, ar -> {
+                if (ar.isSucceeded()) {
+                    Result result = ar.getResult();
+                    BsonArray ba = new BsonArray();
+                    while (result.next()) {
+                        ba.add(toBsonValue(key, result.currentRow()[0]));
+                    }
+                    task.conn.sendResponse(task.requestId, newOkBsonDocument().append("values", ba));
+                } else {
+                    task.conn.sendError(task.session, task.requestId, ar.getCause());
+                }
+            });
+            task.si.submitYieldableCommand(task.requestId, yieldable);
+            return null;
+        } else {
+            return newOkBsonDocument().append("values", new BsonArray());
+        }
+    }
+
     private static BsonDocument createResponseDocument(BsonDocument doc, int rowCount) {
         BsonDocument document = new BsonDocument();
         BsonDocument cursor = new BsonDocument();
