@@ -266,6 +266,8 @@ public abstract class BsonCommand extends BsonBase {
             return BCFind.execute(input, doc, conn, task);
         case "aggregate":
             return BCAggregate.execute(input, doc, conn, task);
+        case "count":
+            return BCAggregate.count(input, doc, conn, task);
         // 握手命令
         case "hello":
         case "ismaster":

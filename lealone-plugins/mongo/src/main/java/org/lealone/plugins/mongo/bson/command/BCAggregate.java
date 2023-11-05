@@ -38,6 +38,16 @@ public class BCAggregate extends BsonCommand {
         }
     }
 
+    public static BsonDocument count(ByteBufferBsonInput input, BsonDocument doc,
+            MongoServerConnection conn, MongoTask task) {
+        Table table = findTable(doc, "count", conn);
+        if (table != null) {
+            return createResponseDocument((int) table.getRowCount(task.session));
+        } else {
+            return createResponseDocument(0);
+        }
+    }
+
     private static BsonDocument createResponseDocument(BsonDocument doc, int rowCount) {
         BsonDocument document = new BsonDocument();
         BsonDocument cursor = new BsonDocument();
@@ -70,6 +80,11 @@ public class BCAggregate extends BsonCommand {
                 BsonDocument document = pipeline.get(i).asDocument();
                 for (Entry<String, BsonValue> e : document.entrySet()) {
                     String stage = e.getKey();
+                    if (stage.equals("$count")) {
+                        task.conn.sendResponse(task.requestId,
+                                createResponseDocument(task.doc, (int) table.getRowCount(task.session)));
+                        return;
+                    }
                     BsonDocument stageDoc = e.getValue().asDocument();
                     parseStage(stage, stageDoc, select, tableFilter);
                 }
