@@ -10,11 +10,13 @@ import java.util.ArrayList;
 import org.lealone.common.util.Utils;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionSetting;
+import org.lealone.plugins.postgresql.sql.expression.PgVariable;
 import org.lealone.sql.SQLParserBase;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.dml.SetSession;
 import org.lealone.sql.dml.TransactionStatement;
+import org.lealone.sql.expression.Expression;
 
 public class PgSQLParser extends SQLParserBase {
 
@@ -268,5 +270,11 @@ public class PgSQLParser extends SQLParserBase {
             readAliasIdentifier();
             return noOperation();
         }
+    }
+
+    @Override
+    protected Expression parseVariable() {
+        read();
+        return new PgVariable(session, readAliasIdentifier());
     }
 }
