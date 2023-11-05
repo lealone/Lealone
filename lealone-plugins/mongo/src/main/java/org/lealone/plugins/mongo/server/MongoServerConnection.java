@@ -278,7 +278,6 @@ public class MongoServerConnection extends AsyncServerConnection {
 
     @Override
     public void sendError(Session session, int requestId, Throwable t) {
-        logger.error("send error", t);
         BsonDocument document = new BsonDocument();
         BsonCommand.setWireVersion(document);
         BsonCommand.append(document, "ok", 0);

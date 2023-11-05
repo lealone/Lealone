@@ -5,7 +5,9 @@
  */
 package org.lealone.plugins.mongo.bson.command.diagnostic;
 
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.plugins.mongo.bson.command.BsonCommand;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
@@ -22,10 +24,22 @@ public abstract class DiagnosticCommand extends BsonCommand {
             setOk(document);
             return document;
         }
+        case "collStats":
+        case "connPoolStats":
+        case "connectionStatus":
         case "getCmdLineOpts":
         case "getLog":
         case "ping":
+        case "listCommands":
+        case "top":
+        case "_isSelf":
+        case "hostInfo":
             return newOkBsonDocument();
+        case "lockInfo":
+            return newOkBsonDocument().append("lockInfo", new BsonArray());
+        case "whatsmyuri":
+            return newOkBsonDocument().append("you", new BsonString(
+                    conn.getWritableChannel().getHost() + ":" + conn.getWritableChannel().getPort()));
         default:
             return NOT_FOUND;
         }
