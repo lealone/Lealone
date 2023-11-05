@@ -7,6 +7,7 @@ package org.lealone.plugins.mongo.bson;
 
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Map.Entry;
 
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
@@ -29,6 +30,7 @@ import org.lealone.db.value.ValueBytes;
 import org.lealone.db.value.ValueDate;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueString;
 import org.lealone.plugins.mongo.bson.operator.BOQueryOperator;
 import org.lealone.sql.expression.Expression;
@@ -54,7 +56,10 @@ public abstract class BsonBase {
             return ValueDate.get(new Date(bv.asDateTime().getValue()));
         case ARRAY:
             return toValueArray(bv.asArray());
-        // case STRING:
+        case DOCUMENT:
+            // return ValueString.get(bv.asDocument().toJson());
+            return toValueMap(bv.asDocument());
+        case STRING:
         default:
             return ValueString.get(bv.asString().getValue());
         }
@@ -67,6 +72,16 @@ public abstract class BsonBase {
             values[i] = toValue(ba.get(i));
         }
         return ValueArray.get(values);
+    }
+
+    public static ValueMap toValueMap(BsonDocument doc) {
+        Value[] values = new Value[doc.size() * 2];
+        int index = 0;
+        for (Entry<String, BsonValue> e : doc.entrySet()) {
+            values[index++] = ValueString.get(e.getKey());
+            values[index++] = toValue(e.getValue());
+        }
+        return ValueMap.get(values);
     }
 
     public static BsonValue toBsonValue(String fieldName, Value v) {
@@ -84,6 +99,8 @@ public abstract class BsonBase {
                 return new BsonObjectId(new ObjectId(v.getBytes()));
             else
                 return new BsonBinary(v.getBytes());
+        case Value.MAP:
+            return toBsonDocument(fieldName, (ValueMap) v);
         default:
             return new BsonString(v.getString());
         }
@@ -97,6 +114,16 @@ public abstract class BsonBase {
             ba.add(toBsonValue(fieldName, values[i]));
         }
         return ba;
+    }
+
+    public static BsonDocument toBsonDocument(String fieldName, ValueMap vm) {
+        ArrayList<BsonElement> bsonElements = new ArrayList<>(vm.getMap().size());
+        for (Entry<Value, Value> e : vm.getMap().entrySet()) {
+            String name = e.getKey().getString();
+            BsonValue value = toBsonValue(fieldName, e.getValue());
+            bsonElements.add(new BsonElement(name, value));
+        }
+        return new BsonDocument(bsonElements);
     }
 
     public static BsonDocument toBsonDocument(String[] fieldNames, Value[] values) {

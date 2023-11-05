@@ -102,67 +102,75 @@ public abstract class BsonCommand extends BsonBase {
         String tableName = topDoc.getString(key).getValue();
         Table table = schema.findTableOrView(null, tableName);
         if (table == null) {
-            StatementBuilder sql = new StatementBuilder();
-            sql.append("CREATE TABLE IF NOT EXISTS ").append(Constants.SCHEMA_MAIN).append(".")
-                    .append(tableName).append("(_id ");
-            BsonValue id = firstDoc.get("_id", null);
-            if (id == null || id.isInt32() || id.isInt64()) {
-                sql.append("long auto_increment primary key");
-            } else {
-                sql.append("binary primary key");
-            }
-            for (Entry<String, BsonValue> e : firstDoc.entrySet()) {
-                String columnName = e.getKey();
-                if (columnName.equalsIgnoreCase("_id"))
-                    continue;
-                sql.append(", ");
-                sql.append(columnName).append(" ");
-                BsonValue v = e.getValue();
-                switch (v.getBsonType()) {
-                case INT32:
-                    sql.append("int");
-                    break;
-                case INT64:
-                    sql.append("long");
-                    break;
-                case DOUBLE:
-                    sql.append("double");
-                    break;
-                case STRING:
-                    sql.append("varchar");
-                    break;
-                case ARRAY:
-                    sql.append("array");
-                    break;
-                case BINARY:
-                    sql.append("binary");
-                    break;
-                case OBJECT_ID:
-                    sql.append("binary");
-                    break;
-                case BOOLEAN:
-                    sql.append("boolean");
-                    break;
-                // case DATE_TIME:
-                // sql.append("datetime");
-                // break;
-                // case TIMESTAMP:
-                // sql.append("timestamp");
-                // break;
-                case REGULAR_EXPRESSION:
-                    sql.append("varchar");
-                    break;
-                case DECIMAL128:
-                    sql.append("decimal");
-                    break;
-                default:
-                    sql.append("varchar");
-                }
-            }
-            sql.append(")");
-            session.prepareStatementLocal(sql.toString()).executeUpdate();
+            createTable(tableName, firstDoc, session);
         }
         return schema.getTableOrView(null, tableName);
+    }
+
+    public static void createTable(String tableName, BsonDocument firstDoc, ServerSession session) {
+        StatementBuilder sql = new StatementBuilder();
+        sql.append("CREATE TABLE IF NOT EXISTS ").append(Constants.SCHEMA_MAIN).append(".")
+                .append(tableName).append("(_id ");
+        BsonValue id = firstDoc.get("_id", null);
+        if (id == null || id.isInt32() || id.isInt64()) {
+            sql.append("long auto_increment primary key");
+        } else {
+            sql.append("binary primary key");
+        }
+        for (Entry<String, BsonValue> e : firstDoc.entrySet()) {
+            String columnName = e.getKey();
+            if (columnName.equalsIgnoreCase("_id"))
+                continue;
+            sql.append(", ");
+            sql.append(columnName).append(" ");
+            BsonValue v = e.getValue();
+            switch (v.getBsonType()) {
+            case INT32:
+                sql.append("int");
+                break;
+            case INT64:
+                sql.append("long");
+                break;
+            case DOUBLE:
+                sql.append("double");
+                break;
+            case STRING:
+                sql.append("varchar");
+                break;
+            case ARRAY:
+                sql.append("array");
+                break;
+            case BINARY:
+                sql.append("binary");
+                break;
+            case OBJECT_ID:
+                sql.append("binary");
+                break;
+            case BOOLEAN:
+                sql.append("boolean");
+                break;
+            // case DATE_TIME:
+            // sql.append("datetime");
+            // break;
+            // case TIMESTAMP:
+            // sql.append("timestamp");
+            // break;
+            case REGULAR_EXPRESSION:
+                sql.append("varchar");
+                break;
+            case DECIMAL128:
+                sql.append("decimal");
+                break;
+            case DOCUMENT:
+                sql.append("map");
+                // createTable(tableName + "_" + columnName, v.asDocument(), session);
+                break;
+            default:
+                sql.append("varchar");
+            }
+        }
+        sql.append(")");
+        session.prepareStatementLocal(sql.toString()).executeUpdate();
     }
 
     public static ServerSession createSession(Database db) {
