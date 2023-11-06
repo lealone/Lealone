@@ -55,6 +55,9 @@ public class BsonUpdateOperatorTest extends MongoTestBase {
                     assertTrue(doc.get(fieldName) instanceof BsonNull);
                 else if (expected instanceof Integer)
                     assertEquals(expected, doc.get(fieldName).asInt32().getValue());
+                else if (expected instanceof Date)
+                    assertEquals(expected.toString(),
+                            new Date(doc.get(fieldName).asDateTime().getValue()).toString());
                 else
                     assertEquals(expected.toString(), doc.get(fieldName).asString().getValue());
                 break;

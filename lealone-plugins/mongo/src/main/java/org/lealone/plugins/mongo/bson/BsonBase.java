@@ -5,20 +5,26 @@
  */
 package org.lealone.plugins.mongo.bson;
 
-import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
+import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.ServerSession;
@@ -26,12 +32,16 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueBytes;
-import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueDecimal;
+import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueMap;
 import org.lealone.db.value.ValueString;
+import org.lealone.db.value.ValueTime;
+import org.lealone.db.value.ValueTimestamp;
 import org.lealone.plugins.mongo.bson.operator.BOQueryOperator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -50,14 +60,23 @@ public abstract class BsonBase {
             return ValueInt.get(bv.asInt32().getValue());
         case INT64:
             return ValueLong.get(bv.asInt64().getValue());
-        case OBJECT_ID:
-            return ValueBytes.get(bv.asObjectId().getValue().toByteArray());
-        case DATE_TIME:
-            return ValueDate.get(new Date(bv.asDateTime().getValue()));
+        case DOUBLE:
+            return ValueDouble.get(bv.asDouble().getValue());
         case ARRAY:
             return toValueArray(bv.asArray());
+        case BINARY:
+            return ValueBytes.get(bv.asBinary().getData());
+        case OBJECT_ID:
+            return ValueBytes.get(bv.asObjectId().getValue().toByteArray());
+        case BOOLEAN:
+            return ValueBoolean.get(bv.asBoolean().getValue());
+        case DATE_TIME:
+            return ValueTimestamp.get(new Timestamp(bv.asDateTime().getValue()));
+        case TIMESTAMP:
+            return ValueTime.fromNanos(bv.asTimestamp().getValue());
+        case DECIMAL128:
+            return ValueDecimal.get(bv.asDecimal128().getValue().bigDecimalValue());
         case DOCUMENT:
-            // return ValueString.get(bv.asDocument().toJson());
             return toValueMap(bv.asDocument());
         case STRING:
         default:
@@ -90,8 +109,8 @@ public abstract class BsonBase {
             return new BsonInt32(v.getInt());
         case Value.LONG:
             return new BsonInt64(v.getLong());
-        case Value.NULL:
-            return BsonNull.VALUE;
+        case Value.DOUBLE:
+            return new BsonDouble(v.getDouble());
         case Value.ARRAY:
             return toBsonArray(fieldName, (ValueArray) v);
         case Value.BYTES:
@@ -99,8 +118,18 @@ public abstract class BsonBase {
                 return new BsonObjectId(new ObjectId(v.getBytes()));
             else
                 return new BsonBinary(v.getBytes());
+        case Value.BOOLEAN:
+            return new BsonBoolean(v.getBoolean());
+        case Value.TIMESTAMP:
+            return new BsonDateTime(v.getTimestamp().getTime());
+        case Value.TIME:
+            return new BsonTimestamp(((ValueTime) v).getNanos());
+        case Value.DECIMAL:
+            return new BsonDecimal128(new Decimal128(v.getBigDecimal()));
         case Value.MAP:
             return toBsonDocument(fieldName, (ValueMap) v);
+        case Value.NULL:
+            return BsonNull.VALUE;
         default:
             return new BsonString(v.getString());
         }

@@ -149,12 +149,13 @@ public abstract class BsonCommand extends BsonBase {
             case BOOLEAN:
                 sql.append("boolean");
                 break;
-            // case DATE_TIME:
-            // sql.append("datetime");
-            // break;
-            // case TIMESTAMP:
-            // sql.append("timestamp");
-            // break;
+            case DATE_TIME:
+                sql.append("datetime");
+                break;
+            case TIMESTAMP:
+                // MongoDB的TIMESTAMP只是一种内部使用的特殊类型并不是直的TIMESTAMP，为了跟DATE_TIME区分，这里直接用time表示
+                sql.append("time");
+                break;
             case REGULAR_EXPRESSION:
                 sql.append("varchar");
                 break;

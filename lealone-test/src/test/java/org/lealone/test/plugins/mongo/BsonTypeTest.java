@@ -6,6 +6,7 @@
 package org.lealone.test.plugins.mongo;
 
 import org.bson.Document;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.client.MongoCursor;
@@ -13,14 +14,25 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.result.InsertOneResult;
 
+//各种类型的用法参考: https://www.mongodb.com/docs/mongodb-shell/reference/data-types/
 public class BsonTypeTest extends MongoTestBase {
 
-    @Test
-    public void crud() {
+    @Before
+    @Override
+    public void before() {
+        super.before();
         collection.drop();
+    }
+
+    @Test
+    public void testDocumentType() {
         insert();
         query();
     }
+
+    // @Test
+    // public void testDateTimeType() {
+    // }
 
     static Document createDocument(int f1, String f2) {
         String json = "{f1: " + f1 + ",f2: " + f2 + "}";
