@@ -318,6 +318,8 @@ public class ErrorCode {
 
     public static final int SERVICE_ALREADY_EXISTS_1 = 42104;
 
+    public static final int PLUGIN_ALREADY_EXISTS_1 = 42105;
+
     /**
      * The error with code <code>42111</code> is thrown when
      * trying to create an index if an index with the same name already exists.
@@ -1924,6 +1926,8 @@ public class ErrorCode {
     public static final int NETWORK_TIMEOUT_1 = 90147;
 
     public static final int ACCESS_DENIED_TO_SCHEMA_1 = 90148;
+
+    public static final int PLUGIN_NOT_FOUND_1 = 90149;
 
     // next are 90056, 90110, 90122, 90149
 

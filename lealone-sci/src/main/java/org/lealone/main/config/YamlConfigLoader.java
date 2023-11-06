@@ -6,7 +6,6 @@
 package org.lealone.main.config;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -17,6 +16,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.main.config.Config.MapPropertyTypeDef;
 import org.yaml.snakeyaml.TypeDescription;
 import org.yaml.snakeyaml.Yaml;
@@ -45,21 +45,7 @@ public class YamlConfigLoader implements ConfigLoader {
     }
 
     private static URL getConfigURL(String configUrl) throws ConfigException {
-        URL url;
-        try {
-            url = new URL(configUrl);
-            url.openStream().close(); // catches well-formed but bogus URLs
-        } catch (Exception e) {
-            try {
-                File file = new File(configUrl).getCanonicalFile();
-                url = file.toURI().toURL();
-                url.openStream().close();
-                return url;
-            } catch (Exception e2) {
-            }
-            url = YamlConfigLoader.class.getClassLoader().getResource(configUrl);
-        }
-        return url;
+        return Utils.toURL(configUrl);
     }
 
     @Override

@@ -460,6 +460,26 @@ public interface SQLStatement extends SQLCommand {
     int START_SERVER = 142;
 
     /**
+     * The type of a CREATE PLUGIN statement.
+     */
+    int CREATE_PLUGIN = 143;
+
+    /**
+     * The type of a DROP PLUGIN statement.
+     */
+    int DROP_PLUGIN = 144;
+
+    /**
+     * The type of a START PLUGIN statement.
+     */
+    int START_PLUGIN = 145;
+
+    /**
+     * The type of a SHUTDOWN PLUGIN statement.
+     */
+    int SHUTDOWN_PLUGIN = 146;
+
+    /**
      * The type of a REPAIR TABLE statement.
      */
     int REPAIR_TABLE = 150;

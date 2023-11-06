@@ -7,6 +7,7 @@ package org.lealone.common.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,6 +18,7 @@ import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -1004,5 +1006,23 @@ public class Utils {
             DbException.traceThrowable(e);
             return def;
         }
+    }
+
+    public static URL toURL(String path) {
+        URL url;
+        try {
+            url = new URL(path);
+            url.openStream().close(); // catches well-formed but bogus URLs
+        } catch (Exception e) {
+            try {
+                File file = new File(path).getCanonicalFile();
+                url = file.toURI().toURL();
+                url.openStream().close();
+                return url;
+            } catch (Exception e2) {
+            }
+            url = Utils.class.getClassLoader().getResource(path);
+        }
+        return url;
     }
 }

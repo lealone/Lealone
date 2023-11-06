@@ -91,9 +91,14 @@ public enum DbObjectType {
     /**
      * This object is a service.
      */
-    SERVICE(15, 100);
+    SERVICE(15, 100),
 
-    private static final int MAX = 16;
+    /**
+     * This object is a plugin.
+     */
+    PLUGIN(16, 101, false);
+
+    private static final int MAX = 17;
 
     public final int value; // 值被存入SYS表中，不能随意改动
 

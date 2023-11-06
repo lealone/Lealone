@@ -17,4 +17,9 @@ public interface Plugin {
 
     void close();
 
+    default void start() {
+    }
+
+    default void stop() {
+    }
 }

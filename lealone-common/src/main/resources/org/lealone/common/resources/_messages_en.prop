@@ -22,6 +22,7 @@
 42001=Syntax error in SQL statement {0}; expected {1}
 42103=Database {0} already exists
 42104=Service {0} already exists
+42105=Plugin {0} already exists
 42S01=Table {0} already exists
 42S02=Table {0} not found
 42S11=Index {0} already exists
@@ -173,6 +174,7 @@
 90146=The database is closing
 90147=Network timeout: {0}
 90148=Access to the schema {0} is denied
+90149=Plugin {0} not found
 HY000=General error: {0}
 HY004=Unknown data type: {0}
 HYC00=Feature not supported: {0}

@@ -67,8 +67,12 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
+import org.lealone.sql.admin.CreatePlugin;
+import org.lealone.sql.admin.DropPlugin;
 import org.lealone.sql.admin.ShutdownDatabase;
+import org.lealone.sql.admin.ShutdownPlugin;
 import org.lealone.sql.admin.ShutdownServer;
+import org.lealone.sql.admin.StartPlugin;
 import org.lealone.sql.admin.StartServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
@@ -455,7 +459,7 @@ public abstract class SQLParserBase implements SQLParser {
                     s = parseSavepoint();
                 } else if (readIf("SCRIPT")) {
                     s = parseScript();
-                } else if (readIf("SHUTDOWN")) {
+                } else if (readIf("SHUTDOWN") || readIf("STOP")) {
                     s = parseShutdown();
                 } else if (readIf("SHOW")) {
                     s = parseShow();
@@ -572,6 +576,8 @@ public abstract class SQLParserBase implements SQLParser {
     private StatementBase parseShutdown() {
         if (readIf("SERVER")) {
             return parseShutdownServer();
+        } else if (readIf("PLUGIN")) {
+            return parseShutdownPlugin();
         } else {
             return parseShutdownDatabase();
         }
@@ -587,6 +593,10 @@ public abstract class SQLParserBase implements SQLParser {
         return new ShutdownServer(session, port);
     }
 
+    private StatementBase parseShutdownPlugin() {
+        return new ShutdownPlugin(session, readUniqueIdentifier());
+    }
+
     private StatementBase parseShutdownDatabase() {
         read("DATABASE");
         String dbName = readUniqueIdentifier();
@@ -598,6 +608,10 @@ public abstract class SQLParserBase implements SQLParser {
         return new ShutdownDatabase(session, db, immediately);
     }
 
+    private StatementBase parseStartPlugin() {
+        return new StartPlugin(session, readUniqueIdentifier());
+    }
+
     private StatementBase parseStartServer() {
         String name = readString();
         CaseInsensitiveMap<String> parameters = parseParameters();
@@ -607,6 +621,8 @@ public abstract class SQLParserBase implements SQLParser {
     protected StatementBase parseStart() {
         if (readIf("SERVER")) {
             return parseStartServer();
+        } else if (readIf("PLUGIN")) {
+            return parseStartPlugin();
         } else {
             throw getSyntaxError();
         }
@@ -1316,6 +1332,8 @@ public abstract class SQLParserBase implements SQLParser {
         } else if (readIf("ALL")) { // 兼容H2数据库遗留下来的老语法: DROP ALL OBJECTS
             read("OBJECTS");
             return parseDropDatabase();
+        } else if (readIf("PLUGIN")) {
+            return parseDropPlugin();
         }
         throw getSyntaxError();
     }
@@ -1332,6 +1350,15 @@ public abstract class SQLParserBase implements SQLParser {
         if (readIf("DELETE")) { // 保持兼容
             read("FILES");
         }
+        return command;
+    }
+
+    protected StatementBase parseDropPlugin() {
+        boolean ifExists = readIfExists(false);
+        String name = readUniqueIdentifier();
+        DropPlugin command = new DropPlugin(session);
+        command.setIfExists(ifExists);
+        command.setPluginName(name);
         return command;
     }
 
@@ -4115,6 +4142,8 @@ public abstract class SQLParserBase implements SQLParser {
             return parseCreateCatalog();
         } else if (readIf("SERVICE")) {
             return parseCreateService();
+        } else if (readIf("PLUGIN")) {
+            return parseCreatePlugin();
         }
         // table or index
         boolean memory = false, cached = false;
@@ -4390,6 +4419,26 @@ public abstract class SQLParserBase implements SQLParser {
         RunMode runMode = parseRunMode();
         CaseInsensitiveMap<String> parameters = parseParameters();
         return new CreateDatabase(session, dbName, ifNotExists, runMode, parameters);
+    }
+
+    protected StatementBase parseCreatePlugin() {
+        CreatePlugin command = new CreatePlugin(session);
+        boolean ifNotExists = readIfNotExists();
+        command.setIfNotExists(ifNotExists);
+        String name = readUniqueIdentifier();
+        command.setPluginName(name);
+        read("IMPLEMENT");
+        read("BY");
+        String implementBy = readString();
+        command.setImplementBy(implementBy);
+        if (readIf("CLASS")) {
+            read("PATH");
+            String classPath = readExpression().getValue(session).getString();
+            command.setClassPath(classPath);
+        }
+        CaseInsensitiveMap<String> parameters = parseParameters();
+        command.setParameters(parameters);
+        return command;
     }
 
     private CreateService parseCreateService() {

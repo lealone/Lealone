@@ -110,6 +110,7 @@ public class Database extends DbObjectBase implements DataHandler {
     private final DbObjectLock schemasLock = new DbObjectLock(DbObjectType.SCHEMA);
     private final DbObjectLock commentsLock = new DbObjectLock(DbObjectType.COMMENT);
     private final DbObjectLock databasesLock = new DbObjectLock(DbObjectType.DATABASE);
+    private final DbObjectLock pluginsLock = new DbObjectLock(DbObjectType.PLUGIN);
 
     public DbObjectLock tryExclusiveAuthLock(ServerSession session) {
         return tryExclusiveLock(session, authLock);
@@ -125,6 +126,10 @@ public class Database extends DbObjectBase implements DataHandler {
 
     public DbObjectLock tryExclusiveDatabaseLock(ServerSession session) {
         return tryExclusiveLock(session, databasesLock);
+    }
+
+    public DbObjectLock tryExclusivePluginLock(ServerSession session) {
+        return tryExclusiveLock(session, pluginsLock);
     }
 
     private DbObjectLock tryExclusiveLock(ServerSession session, DbObjectLock lock) {
@@ -1998,5 +2003,14 @@ public class Database extends DbObjectBase implements DataHandler {
             // 先标记为关闭状态，然后由调度器优雅关闭
             s.markClosed();
         }
+    }
+
+    public PluginObject findPluginObject(ServerSession session, String name) {
+        return find(DbObjectType.PLUGIN, session, name);
+    }
+
+    public ArrayList<PluginObject> getAllPluginObjects() {
+        HashMap<String, PluginObject> map = getDbObjects(DbObjectType.PLUGIN);
+        return new ArrayList<>(map.values());
     }
 }

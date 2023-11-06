@@ -31,6 +31,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Plugin;
 import org.lealone.db.PluginManager;
+import org.lealone.db.PluginObject;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
@@ -107,6 +108,7 @@ public class InfoMetaTable extends MetaTable {
     private static final int DATABASES = 27;
     private static final int DB_OBJECTS = 28; // 对应SYS表
     private static final int SERVICES = 29;
+    private static final int PLUGINS = 30;
 
     /**
      * Get the number of meta table types. Supported meta table
@@ -115,7 +117,7 @@ public class InfoMetaTable extends MetaTable {
      * @return the number of meta table types
      */
     public static int getMetaTableTypeCount() {
-        return SERVICES + 1;
+        return PLUGINS + 1;
     }
 
     public InfoMetaTable(Schema schema, int id, int type) {
@@ -297,7 +299,11 @@ public class InfoMetaTable extends MetaTable {
             break;
         case SERVICES:
             setObjectName("SERVICES");
-            cols = createColumns("SERVICE_CATALOG", "SERVICE_SCHEMA", "SERVICET_NAME", "SQL", "ID INT");
+            cols = createColumns("ID INT", "SERVICE_CATALOG", "SERVICE_SCHEMA", "SERVICET_NAME", "SQL");
+            break;
+        case PLUGINS:
+            setObjectName("PLUGINS");
+            cols = createColumns("ID INT", "PLUGIN_CATALOG", "PLUGIN_NAME", "STATE", "SQL");
             break;
         default:
             throw DbException.getInternalError("type=" + type);
@@ -1379,12 +1385,34 @@ public class InfoMetaTable extends MetaTable {
         case SERVICES: {
             for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.SERVICE)) {
                 Service service = (Service) obj;
-                add(rows, catalog, identifier(service.getSchema().getName()),
+                add(rows,
+                        // ID
+                        "" + service.getId(), catalog, identifier(service.getSchema().getName()),
                         identifier(service.getName()),
                         // SQL
-                        service.getCreateSQL(),
+                        service.getCreateSQL());
+            }
+            break;
+        }
+        case PLUGINS: {
+            List<PluginObject> pluginObjects;
+            if (LealoneDatabase.isSuperAdmin(session)) {
+                pluginObjects = LealoneDatabase.getInstance().getAllPluginObjects();
+            } else {
+                pluginObjects = new ArrayList<>(0);
+            }
+            for (PluginObject pluginObject : pluginObjects) {
+                add(rows,
                         // ID
-                        "" + service.getId());
+                        "" + pluginObject.getId(),
+                        // CATALOG
+                        catalog,
+                        // NAME
+                        identifier(pluginObject.getName()),
+                        // STATE
+                        pluginObject.getState(),
+                        // SQL
+                        pluginObject.getCreateSQL());
             }
             break;
         }
