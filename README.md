@@ -56,6 +56,13 @@
 * [文档首页](https://github.com/lealone/Lealone-Docs)
 
 
+### Lealone 插件
+
+* 除了内置的 MongoDB、MySQL、PostgreSQL 插件外还有一大批可用的外部插件
+
+* [插件首页](https://github.com/lealone-plugins)
+
+
 ### Lealone 微服务框架
 
 * 非常新颖的基于数据库技术实现的微服务框架，开发分布式微服务应用跟开发单体应用一样简单
