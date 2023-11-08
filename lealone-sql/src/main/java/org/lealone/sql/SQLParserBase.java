@@ -5968,6 +5968,10 @@ public abstract class SQLParserBase implements SQLParser {
             String codePath = readExpression().getValue(session).getString();
             command.setGenCode(true);
             command.setCodePath(codePath);
+            if (readIf("GENERATOR")) {
+                readIf("NAME");
+                command.setCodeGenerator(readStringOrIdentifier());
+            }
         }
         if (readIf("AS")) {
             command.setQuery(parseSelect());
