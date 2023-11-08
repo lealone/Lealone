@@ -58,6 +58,10 @@ public class LobStreamMap {
         map.clear();
     }
 
+    public void close() {
+        map.close();
+    }
+
     public boolean isEmpty() {
         return map.isEmpty();
     }

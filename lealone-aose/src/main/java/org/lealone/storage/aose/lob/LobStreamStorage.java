@@ -87,8 +87,9 @@ public class LobStreamStorage implements LobStorage {
 
     @Override
     public void close() {
-        if (storage != null) {
-            storage.close();
+        if (lobMap != null) {
+            lobMap.close();
+            lobStreamMap.close();
         }
     }
 
