@@ -6,7 +6,6 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
@@ -60,9 +59,6 @@ public class Scheduler extends PageOperationHandlerBase //
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
 
-    // 注册网络ACCEPT事件，固定是protocol server的个数
-    private final RegisterAccepterTask[] registerAccepterTasks;
-
     private final long loopInterval;
     private final NetEventLoop netEventLoop;
 
@@ -78,12 +74,6 @@ public class Scheduler extends PageOperationHandlerBase //
         netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval, true);
         netEventLoop.setOwner(this);
         netEventLoop.setAccepter(this);
-
-        int protocolServerCount = MapUtils.getInt(config, "protocol_server_count", 1);
-        registerAccepterTasks = new RegisterAccepterTask[protocolServerCount];
-        for (int i = 0; i < protocolServerCount; i++) {
-            registerAccepterTasks[i] = new RegisterAccepterTask();
-        }
     }
 
     @Override
@@ -514,52 +504,18 @@ public class Scheduler extends PageOperationHandlerBase //
         netEventLoop.register(conn);
     }
 
-    private class RegisterAccepterTask {
-
-        private AsyncServer<?> asyncServer;
-        private ServerSocketChannel serverChannel;
-        private boolean needRegisterAccepter;
-
-        private void run() {
-            if (!needRegisterAccepter)
-                return;
-            try {
-                serverChannel.register(netEventLoop.getSelector(), SelectionKey.OP_ACCEPT, this);
-            } catch (ClosedChannelException e) {
-                logger.warn("Failed to register server channel: " + serverChannel);
-            }
-            needRegisterAccepter = false;
-        }
-    }
-
     public void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
-        RegisterAccepterTask task = registerAccepterTasks[asyncServer.getServerId()];
-        task.asyncServer = asyncServer;
-        task.serverChannel = serverChannel;
-        task.needRegisterAccepter = true;
+        AsyncServerManager.registerAccepter(asyncServer, serverChannel, this);
         wakeUp();
     }
 
     private void runRegisterAccepterTasks() {
-        for (int i = 0; i < registerAccepterTasks.length; i++) {
-            registerAccepterTasks[i].run();
-        }
+        AsyncServerManager.runRegisterAccepterTasks(this);
     }
 
     @Override
     public void accept(SelectionKey key) {
-        RegisterAccepterTask task = (RegisterAccepterTask) key.attachment();
-        task.asyncServer.getProtocolServer().accept(this);
-        if (task.asyncServer.isRoundRobinAcceptEnabled()) {
-            Scheduler scheduler = SchedulerFactory.getScheduler();
-            // 如果下一个负责处理网络accept事件的调度器又是当前调度器，那么不需要做什么
-            if (scheduler != this) {
-                key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
-                scheduler.registerAccepter(task.asyncServer, task.serverChannel);
-                task.asyncServer = null;
-                task.serverChannel = null;
-            }
-        }
+        AsyncServerManager.accept(key, this);
     }
 
     // --------------------- 实现 TransactionHandler 接口 ---------------------

@@ -118,10 +118,8 @@ public class Config {
 
     public static Config mergeDefaultConfig(Config c) { // c是custom config
         Config d = getDefaultConfig();
-        if (c == null) {
-            initServerIds(d);
+        if (c == null)
             return d;
-        }
         c.storage_engines = mergeEngines(c.storage_engines, d.storage_engines);
         c.transaction_engines = mergeEngines(c.transaction_engines, d.transaction_engines);
         c.sql_engines = mergeEngines(c.sql_engines, d.sql_engines);
@@ -129,25 +127,7 @@ public class Config {
 
         c.scheduler = mergeMap(d.scheduler, c.scheduler);
         c.mergeSchedulerParametersToEngines();
-
-        initServerIds(c);
         return c;
-    }
-
-    private static void initServerIds(Config c) {
-        int protocolServerCount = 0;
-        for (PluggableEngineDef e : c.protocol_server_engines) {
-            if (e.enabled) {
-                protocolServerCount++;
-            }
-        }
-        int id = 0;
-        for (PluggableEngineDef e : c.protocol_server_engines) {
-            if (e.enabled) {
-                e.parameters.put("server_id", (id++) + "");
-                e.parameters.put("protocol_server_count", protocolServerCount + "");
-            }
-        }
     }
 
     private static List<PluggableEngineDef> mergeEngines(List<PluggableEngineDef> newList,

@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.MapUtils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
@@ -35,7 +34,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
             config.put("port", String.valueOf(getDefaultPort()));
         if (!config.containsKey("name"))
             config.put("name", getName());
-        serverId = MapUtils.getInt(config, "server_id", 0);
+        serverId = AsyncServerManager.allocateServerId();
+        AsyncServerManager.addServer(this);
 
         NetFactory factory = NetFactoryManager.getFactory(config);
         NetServer netServer = factory.createNetServer();
@@ -62,6 +62,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
                 return;
             super.stop();
             ProtocolServerEngine.startedServers.remove(this);
+            AsyncServerManager.removeServer(this);
         }
         // 同步块不能包含下面的代码，否则执行System.exit时会触发ShutdownHook又调用到stop，
         // 而System.exit又需要等所有ShutdownHook结束后才能退出，所以就死锁了
