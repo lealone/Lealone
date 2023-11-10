@@ -39,6 +39,8 @@ public class StartPlugin extends AdminStatement {
             throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, pluginName);
         }
         pluginObject.start();
+        // 将缓存过期掉
+        lealoneDB.getNextModificationMetaId();
         return 0;
     }
 }
