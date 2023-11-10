@@ -78,7 +78,7 @@ public class CreatePlugin extends AdminStatement {
             for (int i = 0; i < a.length; i++) {
                 urls[i] = Utils.toURL(a[i]);
             }
-            cl = new URLClassLoader(urls);
+            cl = new URLClassLoader(urls, Plugin.class.getClassLoader());
             try {
                 plugin = Utils.newInstance(cl.loadClass(implementBy));
             } catch (Throwable t) {

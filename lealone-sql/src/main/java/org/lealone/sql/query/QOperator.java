@@ -18,27 +18,27 @@ import org.lealone.sql.operator.Operator;
 import org.lealone.sql.optimizer.TableIterator;
 
 // 由子类实现具体的查询操作
-abstract class QOperator implements Operator {
+public abstract class QOperator implements Operator {
 
     protected final Select select;
     protected final ServerSession session;
     protected final ExpressionEvaluator conditionEvaluator;
     protected final TableIterator tableIterator;
 
-    int columnCount;
-    ResultTarget target;
-    ResultTarget result;
-    LocalResult localResult;
-    int maxRows; // 实际返回的最大行数
-    long limitRows; // 有可能超过maxRows
-    int sampleSize;
-    int rowCount; // 满足条件的记录数
-    int loopCount; // 循环次数，有可能大于rowCount
-    boolean loopEnd;
+    protected int columnCount;
+    protected ResultTarget target;
+    protected ResultTarget result;
+    protected LocalResult localResult;
+    protected int maxRows; // 实际返回的最大行数
+    protected long limitRows; // 有可能超过maxRows
+    protected int sampleSize;
+    protected int rowCount; // 满足条件的记录数
+    protected int loopCount; // 循环次数，有可能大于rowCount
+    protected boolean loopEnd;
 
-    YieldableSelect yieldableSelect;
+    protected YieldableSelect yieldableSelect;
 
-    QOperator(Select select) {
+    public QOperator(Select select) {
         this.select = select;
         session = select.getSession();
         tableIterator = new TableIterator(session, select.getTopTableFilter());
@@ -52,15 +52,15 @@ abstract class QOperator implements Operator {
     }
 
     // 允许子类覆盖
-    ExpressionEvaluator createConditionEvaluator(Expression c) {
+    public ExpressionEvaluator createConditionEvaluator(Expression c) {
         return new ExpressionInterpreter(session, c);
     }
 
-    boolean yieldIfNeeded(int rowNumber) {
+    public boolean yieldIfNeeded(int rowNumber) {
         return yieldableSelect.yieldIfNeeded(rowNumber);
     }
 
-    boolean canBreakLoop() {
+    public boolean canBreakLoop() {
         // 不需要排序时，如果超过行数限制了可以退出循环
         if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowCount >= limitRows) {
             return true;
@@ -141,7 +141,7 @@ abstract class QOperator implements Operator {
         return localResult;
     }
 
-    Value[] createRow() {
+    public Value[] createRow() {
         Value[] row = new Value[columnCount];
         for (int i = 0; i < columnCount; i++) {
             Expression expr = select.expressions.get(i);
@@ -153,5 +153,18 @@ abstract class QOperator implements Operator {
     @Override
     public void onLockedException() {
         tableIterator.onLockedException();
+    }
+
+    public void copyStatusTo(QOperator o) {
+        o.columnCount = columnCount;
+        o.target = target;
+        o.result = result;
+        o.localResult = localResult;
+        o.maxRows = maxRows;
+        o.limitRows = limitRows;
+        o.sampleSize = sampleSize;
+        o.rowCount = rowCount;
+        o.loopCount = loopCount;
+        o.yieldableSelect = yieldableSelect;
     }
 }

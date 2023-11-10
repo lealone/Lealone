@@ -16,7 +16,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 
 // 只处理group by，且group by的字段没有索引
-class QGroup extends QOperator {
+public class QGroup extends QOperator {
 
     private final ValueHashMap<HashMap<Expression, Object>> groups;
 
@@ -55,7 +55,7 @@ class QGroup extends QOperator {
         loopEnd = true;
     }
 
-    static Value getKey(Select select) {
+    public static Value getKey(Select select) {
         // 避免在ExpressionColumn.getValue中取到旧值
         // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
         select.currentGroup = null;
@@ -63,7 +63,7 @@ class QGroup extends QOperator {
     }
 
     // 分组key，包括一到多个字段
-    static Value[] getKeyValues(Select select) {
+    public static Value[] getKeyValues(Select select) {
         Value[] keyValues = new Value[select.groupIndex.length];
         for (int i = 0; i < select.groupIndex.length; i++) {
             int idx = select.groupIndex[i];
@@ -73,8 +73,8 @@ class QGroup extends QOperator {
         return keyValues;
     }
 
-    static HashMap<Expression, Object> getOrCreateGroup(ValueHashMap<HashMap<Expression, Object>> groups,
-            Value key) {
+    public static HashMap<Expression, Object> getOrCreateGroup(
+            ValueHashMap<HashMap<Expression, Object>> groups, Value key) {
         HashMap<Expression, Object> values = groups.get(key);
         if (values == null) {
             values = new HashMap<>();
@@ -83,7 +83,7 @@ class QGroup extends QOperator {
         return values;
     }
 
-    static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select,
+    public static void addGroupRows(ValueHashMap<HashMap<Expression, Object>> groups, Select select,
             int columnCount, ResultTarget result) {
         for (Value v : groups.keys()) {
             ValueArray key = (ValueArray) v;
@@ -93,7 +93,8 @@ class QGroup extends QOperator {
         }
     }
 
-    static void addGroupRow(Select select, Value[] keyValues, int columnCount, ResultTarget result) {
+    public static void addGroupRow(Select select, Value[] keyValues, int columnCount,
+            ResultTarget result) {
         Value[] row = new Value[columnCount];
         for (int i = 0; select.groupIndex != null && i < select.groupIndex.length; i++) {
             row[select.groupIndex[i]] = keyValues[i];
@@ -123,7 +124,7 @@ class QGroup extends QOperator {
     }
 
     // 不包含having和group by中加入的列
-    static Value[] toResultRow(Value[] row, int columnCount, int resultColumnCount) {
+    public static Value[] toResultRow(Value[] row, int columnCount, int resultColumnCount) {
         if (columnCount == resultColumnCount) {
             return row;
         }

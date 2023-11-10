@@ -105,6 +105,10 @@ public class Select extends Query {
         this.expressions = expressions;
     }
 
+    public int getResultColumnCount() {
+        return resultColumnCount;
+    }
+
     /**
      * Called if this query contains aggregate functions.
      */
@@ -114,6 +118,14 @@ public class Select extends Query {
 
     public boolean isGroupQuery() {
         return isGroupQuery;
+    }
+
+    public boolean isGroupSortedQuery() {
+        return isGroupSortedQuery;
+    }
+
+    public boolean isDistinctQuery() {
+        return isDistinctQuery;
     }
 
     public void setGroupBy(ArrayList<Expression> group) {
@@ -132,8 +144,24 @@ public class Select extends Query {
         return currentGroup;
     }
 
+    public void setCurrentGroup(HashMap<Expression, Object> currentGroup) {
+        this.currentGroup = currentGroup;
+    }
+
     public int getCurrentGroupRowId() {
         return currentGroupRowId;
+    }
+
+    public void incrementCurrentGroupRowId() {
+        currentGroupRowId++;
+    }
+
+    public int[] getGroupIndex() {
+        return groupIndex;
+    }
+
+    public boolean[] getGroupByExpression() {
+        return groupByExpression;
     }
 
     public int getLimitRows() {

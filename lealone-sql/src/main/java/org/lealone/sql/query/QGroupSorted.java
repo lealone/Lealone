@@ -11,7 +11,7 @@ import java.util.HashMap;
 import org.lealone.db.value.Value;
 
 // 只处理group by，且group by的字段有对应的索引
-class QGroupSorted extends QOperator {
+public class QGroupSorted extends QOperator {
 
     private Value[] previousKeyValues;
 
