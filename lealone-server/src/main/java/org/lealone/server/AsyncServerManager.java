@@ -76,11 +76,13 @@ public class AsyncServerManager {
         private AsyncServer<?> asyncServer;
         private ServerSocketChannel serverChannel;
         private Scheduler currentScheduler;
+        private boolean needRegisterAccepter; // 避免重复注册ACCEPT事件
 
         private void run(Scheduler currentScheduler) {
             try {
                 serverChannel.register(currentScheduler.getNetEventLoop().getSelector(),
                         SelectionKey.OP_ACCEPT, this);
+                needRegisterAccepter = false;
             } catch (ClosedChannelException e) {
                 currentScheduler.getLogger().warn("Failed to register server channel: " + serverChannel);
             }
@@ -93,13 +95,14 @@ public class AsyncServerManager {
         task.asyncServer = asyncServer;
         task.serverChannel = serverChannel;
         task.currentScheduler = currentScheduler;
+        task.needRegisterAccepter = true;
     }
 
     public static void runRegisterAccepterTasks(Scheduler currentScheduler) {
         RegisterAccepterTask[] tasks = registerAccepterTasks;
         for (int i = 0; i < tasks.length; i++) {
             RegisterAccepterTask task = tasks[i];
-            if (task != null && task.currentScheduler == currentScheduler)
+            if (task != null && task.needRegisterAccepter && task.currentScheduler == currentScheduler)
                 task.run(currentScheduler);
         }
     }
