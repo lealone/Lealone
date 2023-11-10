@@ -92,6 +92,11 @@ public class AsyncServerManager {
     public static void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel,
             Scheduler currentScheduler) {
         RegisterAccepterTask task = registerAccepterTasks[asyncServer.getServerId()];
+        // Server重新启动后对应的元素可能为null，重新创建一个即可
+        if (task == null) {
+            task = new RegisterAccepterTask();
+            registerAccepterTasks[asyncServer.getServerId()] = task;
+        }
         task.asyncServer = asyncServer;
         task.serverChannel = serverChannel;
         task.currentScheduler = currentScheduler;

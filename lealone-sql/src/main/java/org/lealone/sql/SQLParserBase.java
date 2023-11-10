@@ -584,13 +584,17 @@ public abstract class SQLParserBase implements SQLParser {
     }
 
     private StatementBase parseShutdownServer() {
-        int port;
+        String name = null;
+        int port = 0;
         if (currentTokenType == END || isToken(";")) {
             port = -1;
         } else {
-            port = readInt();
+            if (currentTokenType == IDENTIFIER)
+                name = readUniqueIdentifier();
+            else
+                port = readInt();
         }
-        return new ShutdownServer(session, port);
+        return new ShutdownServer(session, port, name);
     }
 
     private StatementBase parseShutdownPlugin() {
@@ -613,7 +617,7 @@ public abstract class SQLParserBase implements SQLParser {
     }
 
     private StatementBase parseStartServer() {
-        String name = readString();
+        String name = readUniqueIdentifier();
         CaseInsensitiveMap<String> parameters = parseParameters();
         return new StartServer(session, name, parameters);
     }

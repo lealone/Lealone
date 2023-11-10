@@ -7,9 +7,7 @@ package org.lealone.sql.admin;
 
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.PluginManager;
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.sql.SQLStatement;
 
@@ -17,7 +15,6 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * START SERVER
  */
-// TODO 还未完全实现
 public class StartServer extends AdminStatement {
 
     private final String name;
@@ -39,21 +36,10 @@ public class StartServer extends AdminStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "start server");
-        for (ProtocolServerEngine e : PluginManager.getPlugins(ProtocolServerEngine.class)) {
-            if (e.getName().equalsIgnoreCase(name)) {
-                CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
-                if (e.getConfig() != null) {
-                    parameters.putAll(e.getConfig());
-                }
-                parameters.putAll(this.parameters);
-                if (!e.isInited())
-                    e.init(parameters);
-                ProtocolServer server = e.getProtocolServer();
-                if (!server.isStarted()) {
-                    server.start();
-                }
-            }
-        }
+        ProtocolServerEngine e = ShutdownServer.getProtocolServerEngine(name);
+        if (!e.isInited())
+            e.init(parameters);
+        e.start();
         return 0;
     }
 }
