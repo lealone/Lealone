@@ -63,7 +63,7 @@ public class ObjectDataType implements StorageDataType {
     @Override
     public Object read(ByteBuffer buff) {
         int tag = buff.get();
-        int typeId = getTypeId(tag);
+        int typeId = StorageDataType.getTypeId(tag);
         return switchType(typeId).read(buff, tag);
     }
 
