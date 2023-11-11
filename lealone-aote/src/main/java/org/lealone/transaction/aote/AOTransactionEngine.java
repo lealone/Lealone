@@ -208,6 +208,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             this.logSyncService = null;
             this.checkpointService = null;
         }
+        super.close();
     }
 
     public long nextTransactionId() {

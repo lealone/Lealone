@@ -5,6 +5,7 @@
  */
 package org.lealone.transaction;
 
+import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
 
 public abstract class TransactionEngineBase extends PluginBase implements TransactionEngine {
@@ -20,5 +21,10 @@ public abstract class TransactionEngineBase extends PluginBase implements Transa
 
     @Override
     public void checkpoint() {
+    }
+
+    @Override
+    public Class<? extends Plugin> getPluginClass() {
+        return TransactionEngine.class;
     }
 }

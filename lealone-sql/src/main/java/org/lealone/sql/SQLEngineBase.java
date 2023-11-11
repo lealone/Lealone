@@ -6,6 +6,7 @@
 package org.lealone.sql;
 
 import org.lealone.db.CommandParameter;
+import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
@@ -49,5 +50,10 @@ public abstract class SQLEngineBase extends PluginBase implements SQLEngine {
     public IExpression createConditionAndOr(boolean and, IExpression left, IExpression right) {
         return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR, (Expression) left,
                 (Expression) right);
+    }
+
+    @Override
+    public Class<? extends Plugin> getPluginClass() {
+        return SQLEngine.class;
     }
 }

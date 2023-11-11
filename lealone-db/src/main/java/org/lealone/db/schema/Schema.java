@@ -740,7 +740,7 @@ public class Schema extends DbObjectBase {
                     engine = Utils.newInstance(data.storageEngineName);
                     PluginManager.register(engine);
                 } catch (Exception e) {
-                    throw DbException.convert(e);
+                    throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, data.storageEngineName);
                 }
             }
 

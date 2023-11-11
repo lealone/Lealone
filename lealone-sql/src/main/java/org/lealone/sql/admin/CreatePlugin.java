@@ -93,6 +93,7 @@ public class CreatePlugin extends AdminStatement {
         }
         if (parameters == null)
             parameters = new CaseInsensitiveMap<>();
+        parameters.put("plugin_name", pluginName);
         plugin.init(parameters);
 
         int id = getObjectId(lealoneDB);

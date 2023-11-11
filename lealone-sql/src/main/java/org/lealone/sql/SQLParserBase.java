@@ -5938,7 +5938,7 @@ public abstract class SQLParserBase implements SQLParser {
         }
         if (readIf("ENGINE")) {
             readIf("=");
-            command.setStorageEngineName(readUniqueIdentifier());
+            command.setStorageEngineName(readStringOrIdentifier());
         } else if (database.getSettings().defaultStorageEngine != null) {
             command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }

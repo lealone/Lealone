@@ -7,8 +7,8 @@ package org.lealone.server;
 
 import java.util.Map;
 
+import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
-import org.lealone.db.PluginManager;
 
 public abstract class ProtocolServerEngineBase extends PluginBase implements ProtocolServerEngine {
 
@@ -30,6 +30,7 @@ public abstract class ProtocolServerEngineBase extends PluginBase implements Pro
 
     @Override
     public void init(Map<String, String> config) {
+        super.init(config);
         getProtocolServer().init(config);
         inited = true;
     }
@@ -42,7 +43,7 @@ public abstract class ProtocolServerEngineBase extends PluginBase implements Pro
     @Override
     public void close() {
         stop();
-        PluginManager.deregister(this);
+        super.close();
     }
 
     @Override
@@ -53,5 +54,10 @@ public abstract class ProtocolServerEngineBase extends PluginBase implements Pro
     @Override
     public void stop() {
         getProtocolServer().stop();
+    }
+
+    @Override
+    public Class<? extends Plugin> getPluginClass() {
+        return ProtocolServerEngine.class;
     }
 }

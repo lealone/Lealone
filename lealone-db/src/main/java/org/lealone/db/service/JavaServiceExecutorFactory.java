@@ -5,9 +5,7 @@
  */
 package org.lealone.db.service;
 
-import org.lealone.db.PluginBase;
-
-public class JavaServiceExecutorFactory extends PluginBase implements ServiceExecutorFactory {
+public class JavaServiceExecutorFactory extends ServiceExecutorFactoryBase {
 
     public JavaServiceExecutorFactory() {
         super("java");

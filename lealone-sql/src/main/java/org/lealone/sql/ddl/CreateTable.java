@@ -230,7 +230,7 @@ public class CreateTable extends SchemaStatement {
         // 数据库在启动阶段执行建表语句时不用再生成代码
         if (genCode && !session.getDatabase().isStarting()) {
             if (codeGenerator == null)
-                codeGenerator = "model_code_generator"; // 采用ORM框架的默认值，兼容老版本
+                codeGenerator = "default_table_code_generator"; // 采用ORM框架的默认值，兼容老版本
             TableCodeGenerator tGenerator = PluginManager.getPlugin(TableCodeGenerator.class,
                     codeGenerator);
             if (tGenerator == null)
