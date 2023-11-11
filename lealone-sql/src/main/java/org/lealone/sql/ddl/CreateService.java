@@ -191,7 +191,7 @@ public class CreateService extends SchemaStatement {
         // 最后才创建执行器，此时implementBy肯定存在了
         // 如果没有提前生成ServiceExecutor才去使用JavaServiceExecutor
         if (!genCode) {
-            if (isJava) {
+            if (isJava && methodSize > 0) {
                 service.setExecutorCode(genServiceExecutorCode(false));
             } else {
                 ServiceExecutor executor = factory.createServiceExecutor(service);

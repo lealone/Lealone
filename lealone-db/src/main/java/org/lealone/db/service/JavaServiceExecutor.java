@@ -6,6 +6,7 @@
 package org.lealone.db.service;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,21 +40,30 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
         int size = service.getServiceMethods().size();
         serviceMethodMap = new HashMap<>(size);
         objectMethodMap = new HashMap<>(size);
-        for (ServiceMethod serviceMethod : service.getServiceMethods()) {
-            String serviceMethodName = serviceMethod.getMethodName();
-            serviceMethodMap.put(serviceMethodName, serviceMethod);
-
-            String objectMethodName = CamelCaseHelper.toCamelFromUnderscore(serviceMethodName);
-            try {
-                // 不使用getDeclaredMethod，因为这里不考虑参数，只要方法名匹配即可
-                for (Method m : implementClass.getDeclaredMethods()) {
-                    if (m.getName().equals(objectMethodName)) {
-                        objectMethodMap.put(serviceMethodName, m);
-                        break;
-                    }
+        if (size <= 0) {
+            for (Method m : implementClass.getDeclaredMethods()) {
+                int modifiers = m.getModifiers();
+                if (Modifier.isPublic(modifiers)) {
+                    objectMethodMap.put(m.getName().toUpperCase(), m);
                 }
-            } catch (Exception e) {
-                throw new RuntimeException("Method not found: " + objectMethodName, e);
+            }
+        } else {
+            for (ServiceMethod serviceMethod : service.getServiceMethods()) {
+                String serviceMethodName = serviceMethod.getMethodName();
+                serviceMethodMap.put(serviceMethodName, serviceMethod);
+
+                String objectMethodName = CamelCaseHelper.toCamelFromUnderscore(serviceMethodName);
+                try {
+                    // 不使用getDeclaredMethod，因为这里不考虑参数，只要方法名匹配即可
+                    for (Method m : implementClass.getDeclaredMethods()) {
+                        if (m.getName().equals(objectMethodName)) {
+                            objectMethodMap.put(serviceMethodName, m);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("Method not found: " + objectMethodName, e);
+                }
             }
         }
     }

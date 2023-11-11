@@ -17,79 +17,91 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
     protected Map<String, ServiceMethod> serviceMethodMap;
 
     protected Object[] getServiceMethodArgs(String methodName, Value[] methodArgs) {
-        ServiceMethod m = serviceMethodMap.get(methodName);
-        List<Column> parameters = m.getParameters();
         Object[] args = new Object[methodArgs.length];
-        for (int i = 0; i < parameters.size(); i++) {
-            Column c = parameters.get(i);
-            Object arg = null;
-            Value v = methodArgs[i];
-            switch (c.getType()) {
-            case Value.BOOLEAN:
-                arg = v.getBoolean();
-                break;
-            case Value.BYTE:
-                arg = v.getByte();
-                break;
-            case Value.SHORT:
-                arg = v.getShort();
-                break;
-            case Value.INT:
-                arg = v.getInt();
-                break;
-            case Value.LONG:
-                arg = v.getLong();
-                break;
-            case Value.DECIMAL:
-                arg = v.getBigDecimal();
-                break;
-            case Value.TIME:
-                arg = v.getFloat();
-                break;
-            case Value.DATE:
-                arg = v.getDate();
-                break;
-            case Value.TIMESTAMP:
-                arg = v.getTimestamp();
-                break;
-            case Value.BYTES:
-                arg = v.getBytes();
-                break;
-            case Value.UUID:
-                arg = v.getUuid();
-                break;
-            case Value.STRING:
-            case Value.STRING_IGNORECASE:
-            case Value.STRING_FIXED:
-                arg = v.getString();
-                break;
-            case Value.BLOB:
-                arg = v.getBlob();
-                break;
-            case Value.CLOB:
-                arg = v.getClob();
-                break;
-            case Value.ARRAY:
-                arg = v.getArray();
-                break;
-            case Value.DOUBLE:
-                arg = v.getDouble();
-                break;
-            case Value.FLOAT:
-                arg = v.getFloat();
-                break;
-            case Value.NULL:
-            case Value.JAVA_OBJECT:
-            case Value.UNKNOWN:
-            case Value.RESULT_SET:
-                arg = v.getObject();
-                break;
-            default:
-                throw DbException.getInternalError("type=" + c.getType());
+        // 如果没有定义服务方法，直接把传递进来的方法参数转成对象
+        if (serviceMethodMap.isEmpty()) {
+            for (int i = 0; i < methodArgs.length; i++) {
+                Value v = methodArgs[i];
+                args[i] = getServiceMethodArg(v.getType(), v);
             }
-            args[i] = arg;
+        } else {
+            ServiceMethod m = serviceMethodMap.get(methodName);
+            List<Column> parameters = m.getParameters();
+            for (int i = 0; i < parameters.size(); i++) {
+                Column c = parameters.get(i);
+                Value v = methodArgs[i];
+                args[i] = getServiceMethodArg(c.getType(), v);
+            }
         }
         return args;
+    }
+
+    protected Object getServiceMethodArg(int type, Value v) {
+        Object arg = null;
+        switch (type) {
+        case Value.BOOLEAN:
+            arg = v.getBoolean();
+            break;
+        case Value.BYTE:
+            arg = v.getByte();
+            break;
+        case Value.SHORT:
+            arg = v.getShort();
+            break;
+        case Value.INT:
+            arg = v.getInt();
+            break;
+        case Value.LONG:
+            arg = v.getLong();
+            break;
+        case Value.DECIMAL:
+            arg = v.getBigDecimal();
+            break;
+        case Value.TIME:
+            arg = v.getFloat();
+            break;
+        case Value.DATE:
+            arg = v.getDate();
+            break;
+        case Value.TIMESTAMP:
+            arg = v.getTimestamp();
+            break;
+        case Value.BYTES:
+            arg = v.getBytes();
+            break;
+        case Value.UUID:
+            arg = v.getUuid();
+            break;
+        case Value.STRING:
+        case Value.STRING_IGNORECASE:
+        case Value.STRING_FIXED:
+            arg = v.getString();
+            break;
+        case Value.BLOB:
+            arg = v.getBlob();
+            break;
+        case Value.CLOB:
+            arg = v.getClob();
+            break;
+        case Value.ARRAY:
+            arg = v.getArray();
+            break;
+        case Value.DOUBLE:
+            arg = v.getDouble();
+            break;
+        case Value.FLOAT:
+            arg = v.getFloat();
+            break;
+        case Value.NULL:
+        case Value.JAVA_OBJECT:
+        case Value.UNKNOWN:
+        case Value.RESULT_SET:
+            arg = v.getObject();
+            break;
+        default:
+            throw DbException.getInternalError("type=" + type);
+        }
+        return arg;
     }
 
     protected Object[] getServiceMethodArgs(String methodName, Map<String, Object> methodArgs) {
