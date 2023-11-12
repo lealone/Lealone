@@ -54,6 +54,8 @@ public class PluginManager<T extends Plugin> {
             for (String a : alias)
                 plugins.remove(a.toUpperCase());
         }
+        if (plugins.isEmpty())
+            loaded = false; // 可以重新加载
     }
 
     private synchronized void loadPlugins() {
