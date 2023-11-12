@@ -15,25 +15,23 @@ public class PluginManagerTest extends TestBase {
     @Test
     public void run() {
         StorageEngine se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
-        StorageEngine old = se;
         assertTrue(se instanceof AOStorageEngine);
 
         // 默认是用StorageEngine.class为key，所以用AOStorageEngine.class时找不到
         se = PluginManager.getPlugin(AOStorageEngine.class, AOStorageEngine.NAME);
         assertNull(se);
 
-        PluginManager.deregister(StorageEngine.class, old);
-        se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
-        assertNull(se);
+        AOStorageEngine ase = new AOStorageEngine();
+        ase.setName("myaose");
+        PluginManager.register(ase); // 用AOStorageEngine.class为key注册
 
-        se = new AOStorageEngine();
-        PluginManager.register(se, "myaose");
         se = PluginManager.getPlugin(AOStorageEngine.class, "myaose");
         assertNotNull(se);
+        se = PluginManager.getPlugin(StorageEngine.class, "myaose");
+        assertNull(se);
 
-        // 重新注册回去，避免集成测试时影响其他测试用例
-        PluginManager.register(StorageEngine.class, old);
-        se = PluginManager.getPlugin(StorageEngine.class, AOStorageEngine.NAME);
-        assertNotNull(se);
+        PluginManager.deregister(ase);
+        se = PluginManager.getPlugin(AOStorageEngine.class, "myaose");
+        assertNull(se);
     }
 }

@@ -5,15 +5,12 @@
  */
 package org.lealone.test.aote;
 
-import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageBuilder;
-import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -22,65 +19,30 @@ import org.lealone.transaction.aote.log.LogSyncService;
 
 public class TransactionEngineTest extends AoteTestBase {
 
-    public static Storage getStorage() {
-        StorageEngine se = StorageEngine.getDefaultStorageEngine();
-        assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
+    private static TransactionEngine te;
+    private static Storage storage;
 
-        StorageBuilder storageBuilder = se.getStorageBuilder();
-        storageBuilder.storagePath(joinDirs("aote", "data"));
-        Storage storage = storageBuilder.openStorage();
-        return storage;
-    }
-
-    public static TransactionEngine getTransactionEngine() {
-        return getTransactionEngine(null, false);
-    }
-
-    public static TransactionEngine getTransactionEngine(boolean isDistributed) {
-        return getTransactionEngine(null, isDistributed);
-    }
-
-    public static TransactionEngine getTransactionEngine(Map<String, String> config) {
-        return getTransactionEngine(config, false);
-    }
-
-    public static TransactionEngine getTransactionEngine(Map<String, String> config,
-            boolean isDistributed) {
-        TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-        assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
-        if (config == null)
-            config = getDefaultConfig();
-        if (isDistributed) {
-            config.put("host_and_port", Constants.DEFAULT_HOST + ":" + Constants.DEFAULT_TCP_PORT);
-        }
-        te.init(config);
-        return te;
-    }
-
-    public static Map<String, String> getDefaultConfig() {
-        Map<String, String> config = new HashMap<>();
-        config.put("base_dir", joinDirs("aote"));
-        config.put("redo_log_dir", "redo_log");
-        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_INSTANT);
-        // config.put("checkpoint_service_loop_interval", "10"); // 10ms
+    @BeforeClass
+    public static void beforeClass() { // 不会触发父类的before
+        Map<String, String> config = getDefaultConfig(joinDirs("aote", "TransactionEngineTest"));
+        config.put("dirty_page_cache_size_in_mb", "1");
+        config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-        // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_NO_SYNC);
-        config.put("log_sync_period", "500"); // 500ms
-        config.put("embedded", "true");
-        return config;
+
+        // 避免覆盖存在的TransactionEngine
+        config.put("plugin_name", "TransactionEngineTest");
+        te = new AOTransactionEngine();
+        te.init(config);
+        storage = getStorage();
     }
 
-    @Before
-    @Override
-    public void before() {
+    @AfterClass
+    public static void afterClass() {
+        te.close();
     }
 
     @Test
     public void testEngine() {
-        te = new AOTransactionEngine();
-        te.init(getDefaultConfig());
-        storage = getStorage();
-
         Transaction t1 = te.beginTransaction(false);
         t1.openMap("testEngine", storage);
         assertNotNull(te.getTransactionMap("testEngine", t1));
@@ -90,13 +52,7 @@ public class TransactionEngineTest extends AoteTestBase {
 
     @Test
     public void testCheckpoint() {
-        Map<String, String> config = getDefaultConfig();
-        config.put("dirty_page_cache_size_in_mb", "1");
-        config.put("checkpoint_service_loop_interval", "100"); // 100ms
-        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-        te = getTransactionEngine(config);
-        storage = getStorage();
-
+        // 1. 超过脏页大小时自动执行一次检查点
         Transaction t1 = te.beginTransaction(false);
         TransactionMap<String, String> map = t1.openMap("testCheckpoint", storage);
         map.remove();
@@ -110,16 +66,10 @@ public class TransactionEngineTest extends AoteTestBase {
         t1.commit();
         assertEquals(50000, map.size());
 
-        // 在进行集成测试时可能在其他地方已经初始化TransactionEngine了
-        String v = te.getConfig().get("dirty_page_cache_size_in_mb");
-        if (v != null && v.equals("1")) {
-            sleep(map);
-        } else {
-            executeCheckpoint();
-            sleep(map);
-        }
+        sleep(map);
         assertTrue(map.getDiskSpaceUsed() > 0);
 
+        // 2. 手动执行检查点
         map.remove();
         Transaction t2 = te.beginTransaction(false);
         map = t2.openMap("testCheckpoint", storage);
@@ -127,24 +77,20 @@ public class TransactionEngineTest extends AoteTestBase {
         map.put("abc", "value123");
         t2.commit();
 
-        executeCheckpoint();
+        te.checkpoint();
 
         sleep(map);
         assertTrue(map.getDiskSpaceUsed() > 0);
-    }
-
-    private void executeCheckpoint() {
-        te.checkpoint();
     }
 
     private void sleep(TransactionMap<String, String> map) {
         long sleep = 0;
         while (map.getDiskSpaceUsed() <= 0 || sleep > 3000) {
             try {
-                Thread.sleep(500); // 等待后端检查点线程完成数据保存
+                Thread.sleep(100); // 等待后端检查点线程完成数据保存
             } catch (InterruptedException e) {
             }
-            sleep += 500;
+            sleep += 100;
         }
     }
 }

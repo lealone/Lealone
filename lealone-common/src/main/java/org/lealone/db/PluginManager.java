@@ -40,8 +40,8 @@ public class PluginManager<T extends Plugin> {
 
     public void registerPlugin(T plugin, String... alias) {
         plugins.put(plugin.getName().toUpperCase(), plugin);
-        plugins.put(plugin.getClass().getName().toUpperCase(), plugin);
-        if (alias != null) {
+        // plugins.put(plugin.getClass().getName().toUpperCase(), plugin);
+        if (alias != null && alias.length > 0) {
             for (String a : alias)
                 plugins.put(a.toUpperCase(), plugin);
         }
@@ -49,8 +49,8 @@ public class PluginManager<T extends Plugin> {
 
     public void deregisterPlugin(T plugin, String... alias) {
         plugins.remove(plugin.getName().toUpperCase());
-        plugins.remove(plugin.getClass().getName().toUpperCase());
-        if (alias != null) {
+        // plugins.remove(plugin.getClass().getName().toUpperCase());
+        if (alias != null && alias.length > 0) {
             for (String a : alias)
                 plugins.remove(a.toUpperCase());
         }

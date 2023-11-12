@@ -84,12 +84,11 @@ public class TransactionMapTest extends AoteTestBase {
         map = map.getInstance(t5);
         map.put("6", "g");
         assertEquals(2, map.size());
-        t5.asyncCommit(); // 提交到后台，由LogSyncService线程在sync完事务日志后自动提交事务
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-        }
-        assertTrue(t5.isClosed());
+
+        // 提交到后台，由LogSyncService线程在sync完事务日志后自动提交事务
+        t5.asyncCommit(() -> {
+            assertTrue(t5.isClosed());
+        });
     }
 
     void testTryOperations() {
