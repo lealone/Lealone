@@ -521,24 +521,7 @@ public class ErrorCode {
      */
     public static final int INVALID_TO_CHAR_FORMAT = 90010;
 
-    /**
-     * The error with code <code>90011</code> is thrown when
-     * trying to open a connection to a database using an implicit relative
-     * path, such as "jdbc:h2:test" (in which case the database file would be
-     * stored in the current working directory of the application). This is not
-     * allowed because it can lead to confusion where the database file is, and
-     * can result in multiple databases because different working directories
-     * are used. Instead, use "jdbc:h2:~/name" (relative to the current user
-     * home directory), use an absolute path, set the base directory (baseDir),
-     * use "jdbc:h2:./name" (explicit relative path), or set the system property
-     * "lealone.implicitRelativePath" to "true" (to prevent this check). For Windows,
-     * an absolute path also needs to include the drive ("C:/..."). Please see
-     * the documentation on the supported URL format. Example:
-     * <pre>
-     * jdbc:h2:test
-     * </pre>
-     */
-    public static final int URL_RELATIVE_TO_CWD = 90011;
+    // 90011 已经废弃
 
     /**
      * The error with code <code>90012</code> is thrown when
