@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.test.misc;
+package org.lealone.test.plugins;
 
 import org.junit.Test;
 import org.lealone.db.PluginManager;

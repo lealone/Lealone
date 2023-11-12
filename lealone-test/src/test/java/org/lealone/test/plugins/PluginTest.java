@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.test.sql.plugin;
+package org.lealone.test.plugins;
 
 import java.util.Map;
 
