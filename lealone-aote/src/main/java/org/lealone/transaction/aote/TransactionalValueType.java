@@ -14,9 +14,16 @@ import org.lealone.storage.type.StorageDataType;
 public class TransactionalValueType implements StorageDataType {
 
     public final StorageDataType valueType;
+    private final boolean isByteStorage;
 
     public TransactionalValueType(StorageDataType valueType) {
         this.valueType = valueType;
+        this.isByteStorage = false;
+    }
+
+    public TransactionalValueType(StorageDataType valueType, boolean isByteStorage) {
+        this.valueType = valueType;
+        this.isByteStorage = isByteStorage;
     }
 
     @Override
@@ -64,7 +71,7 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public void write(DataBuffer buff, Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
-        v.write(buff, valueType);
+        v.write(buff, valueType, isByteStorage);
     }
 
     @Override

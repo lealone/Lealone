@@ -62,4 +62,9 @@ public interface Storage {
     void registerEventListener(StorageEventListener listener);
 
     void unregisterEventListener(StorageEventListener listener);
+
+    // 一些存储引擎写入key和value前都需要事先转成字节数组
+    default boolean isByteStorage() {
+        return false;
+    }
 }

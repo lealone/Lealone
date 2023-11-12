@@ -221,9 +221,9 @@ public class TransactionalValue implements ITransactionalValue {
         this.value = oldValue;
     }
 
-    public void write(DataBuffer buff, StorageDataType valueType) {
+    public void write(DataBuffer buff, StorageDataType valueType, boolean isByteStorage) {
         writeMeta(buff);
-        writeValue(buff, valueType);
+        writeValue(buff, valueType, isByteStorage);
     }
 
     public void writeMeta(DataBuffer buff) {
@@ -236,8 +236,9 @@ public class TransactionalValue implements ITransactionalValue {
         buff.putVarLong(0); // 兼容老版本
     }
 
-    private void writeValue(DataBuffer buff, StorageDataType valueType) {
-        Object value = getCommittedValue();
+    private void writeValue(DataBuffer buff, StorageDataType valueType, boolean isByteStorage) {
+        // 一些存储引擎写入key和value前都需要事先转成字节数组，所以需要先写未提交的数据
+        Object value = isByteStorage ? this.value : getCommittedValue();
         if (value == null) {
             buff.put((byte) 0);
         } else {

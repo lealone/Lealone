@@ -96,7 +96,7 @@ public enum DbObjectType {
     /**
      * This object is a plugin.
      */
-    PLUGIN(16, 101, false);
+    PLUGIN(16, 3, false); // PLUGIN的优先级要高一些
 
     private static final int MAX = 17;
 

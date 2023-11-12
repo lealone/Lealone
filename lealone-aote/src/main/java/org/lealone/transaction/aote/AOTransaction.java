@@ -191,7 +191,7 @@ public class AOTransaction implements Transaction {
             keyType = new ObjectDataType();
         if (valueType == null)
             valueType = new ObjectDataType();
-        valueType = new TransactionalValueType(valueType);
+        valueType = new TransactionalValueType(valueType, storage.isByteStorage());
 
         if (parameters == null)
             parameters = new HashMap<>(1);
