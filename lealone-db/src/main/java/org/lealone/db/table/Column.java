@@ -17,7 +17,6 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
-import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
@@ -864,7 +863,6 @@ public class Column {
     }
 
     private SQLEngine getSQLEngine() {
-        return table != null ? table.getDatabase().getSQLEngine()
-                : PluginManager.getPlugin(SQLEngine.class, Constants.DEFAULT_SQL_ENGINE_NAME);
+        return table != null ? table.getDatabase().getSQLEngine() : SQLEngine.getDefaultSQLEngine();
     }
 }

@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.db.Constants;
-import org.lealone.db.PluginManager;
 import org.lealone.storage.StorageEngine;
 
 public abstract class PageOperationHandlerFactory {
@@ -21,8 +19,7 @@ public abstract class PageOperationHandlerFactory {
     protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
         if (handlers != null) {
             setPageOperationHandlers(handlers);
-            StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
-                    Constants.DEFAULT_STORAGE_ENGINE_NAME);
+            StorageEngine se = StorageEngine.getDefaultStorageEngine();
             if (se != null)
                 se.setPageOperationHandlerFactory(this);
             return;

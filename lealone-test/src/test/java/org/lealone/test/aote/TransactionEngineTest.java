@@ -11,7 +11,6 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.lealone.db.Constants;
-import org.lealone.db.PluginManager;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
@@ -24,8 +23,7 @@ import org.lealone.transaction.aote.log.LogSyncService;
 public class TransactionEngineTest extends AoteTestBase {
 
     public static Storage getStorage() {
-        StorageEngine se = PluginManager.getPlugin(StorageEngine.class,
-                Constants.DEFAULT_STORAGE_ENGINE_NAME);
+        StorageEngine se = StorageEngine.getDefaultStorageEngine();
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
