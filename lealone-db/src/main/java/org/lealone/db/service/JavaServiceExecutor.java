@@ -7,11 +7,15 @@ package org.lealone.db.service;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
+import org.lealone.db.table.Column;
+import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
@@ -41,10 +45,26 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
         serviceMethodMap = new HashMap<>(size);
         objectMethodMap = new HashMap<>(size);
         if (size <= 0) {
-            for (Method m : implementClass.getDeclaredMethods()) {
+            Method[] methods = implementClass.getDeclaredMethods();
+            for (int i = 0, len = methods.length; i < len; i++) {
+                Method m = methods[i];
                 int modifiers = m.getModifiers();
-                if (Modifier.isPublic(modifiers)) {
-                    objectMethodMap.put(m.getName().toUpperCase(), m);
+                if (!Modifier.isStatic(modifiers) && Modifier.isPublic(modifiers)) {
+                    String name = m.getName().toUpperCase();
+                    objectMethodMap.put(name, m);
+                    ServiceMethod sm = new ServiceMethod();
+                    sm.setMethodName(name);
+                    Parameter[] parameters = m.getParameters();
+                    ArrayList<Column> columns = new ArrayList<>(parameters.length);
+                    for (int c = 0; c < parameters.length; c++) {
+                        Parameter p = parameters[c];
+                        int type = DataType.getTypeFromClass(p.getType());
+                        Column column = new Column(p.getName().toUpperCase(), type);
+                        columns.add(column);
+                    }
+                    sm.setParameters(columns);
+                    sm.setReturnType(new Column("R", DataType.getTypeFromClass(m.getReturnType())));
+                    serviceMethodMap.put(name, sm);
                 }
             }
         } else {
@@ -71,8 +91,8 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
     @Override
     public Value executeService(String methodName, Value[] methodArgs) {
         init();
-        Object[] args = getServiceMethodArgs(methodName, methodArgs);
         Method method = objectMethodMap.get(methodName);
+        Object[] args = getServiceMethodArgs(methodName, methodArgs);
         try {
             Object ret = method.invoke(implementClassObject, args);
             if (ret == null)
@@ -86,8 +106,8 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
     @Override
     public String executeService(String methodName, Map<String, Object> methodArgs) {
         init();
-        Object[] args = getServiceMethodArgs(methodName, methodArgs);
         Method method = objectMethodMap.get(methodName);
+        Object[] args = getServiceMethodArgs(methodName, methodArgs);
         try {
             Object ret = method.invoke(implementClassObject, args);
             if (ret == null)
@@ -101,8 +121,8 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
     @Override
     public String executeService(String methodName, String json) {
         init();
-        Object[] args = getServiceMethodArgs(methodName, json);
         Method method = objectMethodMap.get(methodName);
+        Object[] args = getServiceMethodArgs(methodName, json);
         try {
             Object ret = method.invoke(implementClassObject, args);
             if (ret == null)
