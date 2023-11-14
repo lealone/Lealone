@@ -291,6 +291,10 @@ public abstract class BsonCommand extends BsonBase {
             setWireVersion(document);
             setOk(document);
             append(document, "isWritablePrimary", true);
+
+            append(document, "maxBsonObjectSize", 16777216);
+            append(document, "maxMessageSizeBytes", 48000000);
+            append(document, "maxWriteBatchSize", 100000);
             return document;
         }
         default:
