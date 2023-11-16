@@ -59,7 +59,7 @@ public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestB
 
     @Before
     public void setUpBefore() {
-        if (autoStartTcpServer()) {
+        if (autoStartTcpServer() && !isEmbedded()) {
             synchronized (getClass()) {
                 if (!tcpServerStarted) {
                     tcpServerStarted = true;
@@ -67,7 +67,7 @@ public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestB
                 }
             }
         }
-        if (!testDatabaseCreated) {
+        if (!testDatabaseCreated && !isEmbedded()) {
             synchronized (getClass()) {
                 if (!testDatabaseCreated) {
                     if (!LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {

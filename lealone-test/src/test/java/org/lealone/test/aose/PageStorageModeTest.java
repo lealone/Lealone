@@ -64,7 +64,7 @@ public class PageStorageModeTest extends AoseTestBase {
 
     private void testStorage(ValueDataType keyType, TransactionalValueType tvType, PageStorageMode mode,
             String mapName) {
-        AOStorage storage = AOStorageTest.openStorage(pageSize, cacheSize);
+        AOStorage storage = openStorage(pageSize, cacheSize);
         BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap(mapName, keyType, tvType,
                 null);
         map.setPageStorageMode(mode);

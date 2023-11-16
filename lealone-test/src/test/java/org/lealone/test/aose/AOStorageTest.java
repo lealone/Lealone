@@ -6,7 +6,6 @@
 package org.lealone.test.aose;
 
 import org.junit.Test;
-import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
@@ -78,36 +77,5 @@ public class AOStorageTest extends AoseTestBase {
             fail();
         } catch (Exception e) {
         }
-    }
-
-    public static AOStorage openStorage() {
-        AOStorageBuilder builder = new AOStorageBuilder();
-        return openStorage(builder);
-    }
-
-    public static AOStorage openStorage(int pageSize) {
-        AOStorageBuilder builder = new AOStorageBuilder();
-        builder.pageSize(pageSize);
-        return openStorage(builder);
-    }
-
-    public static AOStorage openStorage(int pageSize, int cacheSize) {
-        AOStorageBuilder builder = new AOStorageBuilder();
-        builder.pageSize(pageSize);
-        builder.cacheSize(cacheSize);
-        return openStorage(builder);
-    }
-
-    public static AOStorage openStorage(AOStorageBuilder builder) {
-        return openStorage(builder, null);
-    }
-
-    public static AOStorage openStorage(AOStorageBuilder builder, String storagePath) {
-        if (storagePath == null)
-            storagePath = joinDirs("aose");
-        builder.compressHigh();
-        builder.storagePath(storagePath).minFillRate(30);
-        AOStorage storage = builder.openStorage();
-        return storage;
     }
 }

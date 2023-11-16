@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
@@ -31,7 +32,7 @@ public abstract class AoseTestBase extends TestBase implements TestBase.Embedded
     }
 
     protected void init(String mapName, boolean clearMap) {
-        storage = AOStorageTest.openStorage(pageSize);
+        storage = openStorage(pageSize);
         map = storage.openBTreeMap(mapName);
         if (clearMap)
             map.clear();
@@ -49,5 +50,36 @@ public abstract class AoseTestBase extends TestBase implements TestBase.Embedded
             count.incrementAndGet();
         });
         assertEquals(expectedSsize, count.get());
+    }
+
+    public static AOStorage openStorage() {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        return openStorage(builder);
+    }
+
+    public static AOStorage openStorage(int pageSize) {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        builder.pageSize(pageSize);
+        return openStorage(builder);
+    }
+
+    public static AOStorage openStorage(int pageSize, int cacheSize) {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        builder.pageSize(pageSize);
+        builder.cacheSize(cacheSize);
+        return openStorage(builder);
+    }
+
+    public static AOStorage openStorage(AOStorageBuilder builder) {
+        return openStorage(builder, null);
+    }
+
+    public static AOStorage openStorage(AOStorageBuilder builder, String storagePath) {
+        if (storagePath == null)
+            storagePath = joinDirs("aose");
+        builder.compressHigh();
+        builder.storagePath(storagePath).minFillRate(30);
+        AOStorage storage = builder.openStorage();
+        return storage;
     }
 }

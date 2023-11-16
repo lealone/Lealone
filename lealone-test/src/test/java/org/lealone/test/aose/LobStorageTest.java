@@ -18,7 +18,7 @@ import org.lealone.storage.aose.lob.LobStreamStorage;
 public class LobStorageTest extends AoseTestBase {
     @Test
     public void run() throws Exception {
-        AOStorage storage = AOStorageTest.openStorage();
+        AOStorage storage = openStorage();
         String name = LobStorageTest.class.getName();
         name = "/" + name.replace('.', '/') + ".class";
         InputStream in = LobStorageTest.class.getResourceAsStream(name);

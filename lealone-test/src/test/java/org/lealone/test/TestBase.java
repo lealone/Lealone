@@ -162,6 +162,10 @@ public class TestBase extends Assert {
         return this;
     }
 
+    public boolean isEmbedded() {
+        return embedded;
+    }
+
     public TestBase setInMemory(boolean inMemory) {
         this.inMemory = inMemory;
         return this;

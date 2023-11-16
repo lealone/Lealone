@@ -24,12 +24,13 @@ public class AOStorageEngineTest extends AoseTestBase {
         StorageBuilder builder = se.getStorageBuilder();
         assertTrue(builder instanceof AOStorageBuilder);
 
-        // 在进行集成测试时可能在其他地方已经设置了
-        // try {
-        // builder.openStorage(); // 还没有设置storagePath
-        // fail();
-        // } catch (Exception e) {
-        // }
+        se = new AOStorageEngine();
+        builder = se.getStorageBuilder();
+        try {
+            builder.openStorage(); // 还没有设置storagePath
+            fail();
+        } catch (Exception e) {
+        }
 
         String storagePath = joinDirs("aose", "AOStorageEngineTest");
         builder.storagePath(storagePath);
