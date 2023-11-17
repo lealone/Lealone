@@ -5,7 +5,6 @@
  */
 package org.lealone.net.nio;
 
-import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -14,6 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ThreadUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncTask;
@@ -66,17 +66,14 @@ class NioClient extends NetClientBase {
     @Override
     protected synchronized void openInternal(Map<String, String> config) {
         if (nioEventLoop == null) {
-            try {
-                // 默认1秒
-                nioEventLoop = new NioEventLoop(config, "client_nio_event_loop_interval", 1000, false);
-                nioEventLoop.setOwner(this);
-                nioEventLoop.setNetClient(this);
-                ThreadUtils.start("ClientNioEventLoopService-" + id, () -> {
-                    NioClient.this.run();
-                });
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to open NioEventLoop", e);
-            }
+            // 默认1秒
+            long loopInterval = MapUtils.getLong(config, "client_nio_event_loop_interval", 1000);
+            nioEventLoop = new NioEventLoop(config, loopInterval, false);
+            nioEventLoop.setOwner(this);
+            nioEventLoop.setNetClient(this);
+            ThreadUtils.start("ClientNioEventLoopService-" + id, () -> {
+                NioClient.this.run();
+            });
         }
     }
 

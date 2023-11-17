@@ -10,7 +10,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.MapUtils;
+import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetFactory;
@@ -20,6 +24,28 @@ import org.lealone.net.WritableChannel;
 
 public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedProtocolServer
         implements AsyncConnectionManager {
+
+    private static SchedulerFactory schedulerFactory;
+
+    public static SchedulerFactory getSchedulerFactory() {
+        return schedulerFactory;
+    }
+
+    public static synchronized void initSchedulerFactory(Map<String, String> config) {
+        SchedulerFactory schedulerFactory = AsyncServer.schedulerFactory;
+        if (schedulerFactory == null) {
+            String sf = MapUtils.getString(config, "scheduler_factory", null);
+            if (sf != null) {
+                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
+            } else {
+                GlobalScheduler[] schedulers = GlobalScheduler.createSchedulers(config);
+                schedulerFactory = SchedulerFactory.create(config, schedulers);
+            }
+            if (!schedulerFactory.isInited())
+                schedulerFactory.init(config);
+            AsyncServer.schedulerFactory = schedulerFactory;
+        }
+    }
 
     private final AtomicInteger connectionSize = new AtomicInteger();
     private int serverId;
@@ -42,7 +68,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         netServer.setConnectionManager(this);
         setProtocolServer(netServer);
         netServer.init(config);
-        SchedulerFactory.init(config);
+
+        initSchedulerFactory(config);
     }
 
     @Override
@@ -67,7 +94,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         // 同步块不能包含下面的代码，否则执行System.exit时会触发ShutdownHook又调用到stop，
         // 而System.exit又需要等所有ShutdownHook结束后才能退出，所以就死锁了
         if (ProtocolServerEngine.startedServers.isEmpty()) {
-            SchedulerFactory.stop();
+            schedulerFactory.stop();
             // 如果当前线程是ShutdownHook不能再执行System.exit，否则无法退出
             if (!Thread.currentThread().getName().contains("ShutdownHook"))
                 System.exit(0);
@@ -93,9 +120,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     }
 
     @Override
-    public T createConnection(WritableChannel writableChannel, boolean isServer, Object schedulerObj) {
+    public T createConnection(WritableChannel writableChannel, boolean isServer, Scheduler scheduler) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            Scheduler scheduler = (Scheduler) schedulerObj;
             T conn = createConnection(writableChannel, scheduler);
             connectionSize.incrementAndGet();
             beforeRegister(conn, scheduler);
@@ -116,7 +142,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public void registerAccepter(ServerSocketChannel serverChannel) {
-        Scheduler scheduler = SchedulerFactory.getScheduler();
+        Scheduler scheduler = schedulerFactory.getScheduler();
         scheduler.registerAccepter(this, serverChannel);
     }
 

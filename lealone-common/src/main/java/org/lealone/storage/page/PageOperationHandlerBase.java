@@ -14,7 +14,7 @@ import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 
-public abstract class PageOperationHandlerBase extends Thread implements PageOperationHandler {
+public abstract class PageOperationHandlerBase implements PageOperationHandler {
 
     private static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
         final PageOperation po;
@@ -25,24 +25,14 @@ public abstract class PageOperationHandlerBase extends Thread implements PageOpe
     }
 
     protected final LinkableList<LinkablePageOperation> lockedTasks = new LinkableList<>();
-
-    protected final int handlerId;
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
 
-    public PageOperationHandlerBase(int handlerId, String name, int waitingQueueSize) {
-        super(name);
-        setDaemon(false);
-        this.handlerId = handlerId;
+    public PageOperationHandlerBase(int waitingQueueSize) {
         waitingHandlers = new AtomicReferenceArray<>(waitingQueueSize);
     }
 
     protected abstract Logger getLogger();
-
-    @Override
-    public int getHandlerId() {
-        return handlerId;
-    }
 
     @Override
     public long getLoad() {

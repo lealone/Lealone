@@ -13,6 +13,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.PluginManager;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.WritableChannel;
@@ -21,7 +22,6 @@ import org.lealone.plugins.postgresql.server.handler.CommandPacketHandler;
 import org.lealone.plugins.postgresql.server.handler.PacketHandler;
 import org.lealone.plugins.postgresql.sql.PgAlias;
 import org.lealone.server.AsyncServerConnection;
-import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
 import org.lealone.sql.SQLEngine;
 

@@ -17,9 +17,22 @@ public interface Plugin {
 
     void close();
 
-    default void start() {
-    }
+    void start();
 
-    default void stop() {
+    void stop();
+
+    boolean isInited();
+
+    boolean isStarted();
+
+    boolean isStopped();
+
+    State getState();
+
+    enum State {
+        NONE,
+        INITED,
+        STARTED,
+        STOPPED;
     }
 }

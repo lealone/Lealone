@@ -7,10 +7,12 @@ package org.lealone.net;
 
 import java.nio.channels.ServerSocketChannel;
 
+import org.lealone.db.scheduler.Scheduler;
+
 public interface AsyncConnectionManager {
 
     AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer,
-            Object scheduler);
+            Scheduler scheduler);
 
     void removeConnection(AsyncConnection conn);
 

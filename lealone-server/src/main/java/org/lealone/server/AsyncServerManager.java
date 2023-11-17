@@ -11,6 +11,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.util.ArrayList;
 
 import org.lealone.common.util.BitField;
+import org.lealone.db.scheduler.Scheduler;
 
 public class AsyncServerManager {
 
@@ -80,8 +81,7 @@ public class AsyncServerManager {
 
         private void run(Scheduler currentScheduler) {
             try {
-                serverChannel.register(currentScheduler.getNetEventLoop().getSelector(),
-                        SelectionKey.OP_ACCEPT, this);
+                serverChannel.register(currentScheduler.getSelector(), SelectionKey.OP_ACCEPT, this);
                 needRegisterAccepter = false;
             } catch (ClosedChannelException e) {
                 currentScheduler.getLogger().warn("Failed to register server channel: " + serverChannel);
@@ -116,7 +116,7 @@ public class AsyncServerManager {
         RegisterAccepterTask task = (RegisterAccepterTask) key.attachment();
         task.asyncServer.getProtocolServer().accept(currentScheduler);
         if (task.asyncServer.isRoundRobinAcceptEnabled()) {
-            Scheduler scheduler = SchedulerFactory.getScheduler();
+            Scheduler scheduler = currentScheduler.getSchedulerFactory().getScheduler();
             // 如果下一个负责处理网络accept事件的调度器又是当前调度器，那么不需要做什么
             if (scheduler != currentScheduler) {
                 key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);

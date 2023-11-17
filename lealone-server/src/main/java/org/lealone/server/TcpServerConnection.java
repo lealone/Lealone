@@ -14,6 +14,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.TransferInputStream;

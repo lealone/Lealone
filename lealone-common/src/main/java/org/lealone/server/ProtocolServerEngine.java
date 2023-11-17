@@ -16,6 +16,4 @@ public interface ProtocolServerEngine extends PluggableEngine {
 
     ProtocolServer getProtocolServer();
 
-    boolean isInited();
-
 }

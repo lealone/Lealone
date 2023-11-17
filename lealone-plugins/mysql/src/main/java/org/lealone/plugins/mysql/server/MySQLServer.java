@@ -7,10 +7,10 @@ package org.lealone.plugins.mysql.server;
 
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.mysql.sql.expression.function.MySQLFunctionFactory;
 import org.lealone.server.AsyncServer;
-import org.lealone.server.Scheduler;
 
 public class MySQLServer extends AsyncServer<MySQLServerConnection> {
 

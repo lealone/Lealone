@@ -753,20 +753,25 @@ public class Utils {
      * @param params the constructor parameters
      * @return the newly created object
      */
-    public static Object newInstance(String className, Object... params) throws Exception {
-        Constructor<?> best = null;
-        int bestMatch = 0;
-        for (Constructor<?> c : Class.forName(className).getConstructors()) {
-            int p = match(c.getParameterTypes(), params);
-            if (p > bestMatch) {
-                bestMatch = p;
-                best = c;
+    @SuppressWarnings("unchecked")
+    public static <T> T newInstance(String className, Object... params) {
+        try {
+            Constructor<?> best = null;
+            int bestMatch = 0;
+            for (Constructor<?> c : Class.forName(className).getConstructors()) {
+                int p = match(c.getParameterTypes(), params);
+                if (p > bestMatch) {
+                    bestMatch = p;
+                    best = c;
+                }
             }
+            if (best == null) {
+                throw new NoSuchMethodException(className);
+            }
+            return (T) best.newInstance(params);
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
-        if (best == null) {
-            throw new NoSuchMethodException(className);
-        }
-        return best.newInstance(params);
     }
 
     public static <T> T newInstance(String className) {

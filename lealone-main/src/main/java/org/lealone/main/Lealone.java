@@ -26,6 +26,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.main.config.Config;
 import org.lealone.main.config.Config.PluggableEngineDef;
 import org.lealone.main.config.ConfigLoader;
@@ -35,7 +36,6 @@ import org.lealone.plugins.mysql.server.MySQLServerEngine;
 import org.lealone.plugins.postgresql.server.PgServerEngine;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
-import org.lealone.server.SchedulerFactory;
 import org.lealone.server.TcpServerEngine;
 import org.lealone.sql.SQLEngine;
 import org.lealone.storage.StorageEngine;
@@ -187,9 +187,10 @@ public class Lealone {
 
             startProtocolServers();
 
-            // 等所有的Server启动完成后再调用SchedulerFactory.start
+            // 等所有的Server启动完成后再启动Scheduler
             // 确保所有的初始PeriodicTask都在main线程中注册
-            SchedulerFactory.start();
+            for (SchedulerFactory sf : PluginManager.getPlugins(SchedulerFactory.class))
+                sf.start();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;

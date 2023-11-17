@@ -20,12 +20,12 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.result.Result;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.postgresql.sql.expression.function.PgFunctionFactory;
 import org.lealone.server.AsyncServer;
-import org.lealone.server.Scheduler;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 

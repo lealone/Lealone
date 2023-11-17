@@ -12,7 +12,6 @@ import org.lealone.db.PluginBase;
 
 public abstract class ProtocolServerEngineBase extends PluginBase implements ProtocolServerEngine {
 
-    protected boolean inited;
     protected ProtocolServer protocolServer;
 
     public ProtocolServerEngineBase(String name) {
@@ -32,12 +31,6 @@ public abstract class ProtocolServerEngineBase extends PluginBase implements Pro
     public void init(Map<String, String> config) {
         super.init(config);
         getProtocolServer().init(config);
-        inited = true;
-    }
-
-    @Override
-    public boolean isInited() {
-        return inited;
     }
 
     @Override
@@ -49,11 +42,13 @@ public abstract class ProtocolServerEngineBase extends PluginBase implements Pro
     @Override
     public void start() {
         getProtocolServer().start();
+        super.start();
     }
 
     @Override
     public void stop() {
         getProtocolServer().stop();
+        super.stop();
     }
 
     @Override

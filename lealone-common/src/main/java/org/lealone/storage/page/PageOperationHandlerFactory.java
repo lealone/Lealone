@@ -5,149 +5,15 @@
  */
 package org.lealone.storage.page;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.storage.StorageEngine;
+import org.lealone.db.scheduler.SchedulerFactory;
 
-public abstract class PageOperationHandlerFactory {
+public interface PageOperationHandlerFactory {
 
-    protected PageOperationHandler[] pageOperationHandlers;
-
-    protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
-        if (handlers != null) {
-            setPageOperationHandlers(handlers);
-            StorageEngine se = StorageEngine.getDefaultStorageEngine();
-            if (se != null)
-                se.setPageOperationHandlerFactory(this);
-            return;
-        }
-        // 如果未指定处理器集，那么使用默认的
-        int handlerCount;
-        if (config.containsKey("page_operation_handler_count"))
-            handlerCount = Math.max(1, Integer.parseInt(config.get("page_operation_handler_count")));
-        else
-            handlerCount = Runtime.getRuntime().availableProcessors();
-
-        pageOperationHandlers = new PageOperationHandler[handlerCount];
-        for (int i = 0; i < handlerCount; i++) {
-            pageOperationHandlers[i] = new DefaultPageOperationHandler(i, handlerCount, config);
-        }
-        startHandlers();
-    }
-
-    public abstract PageOperationHandler getPageOperationHandler();
-
-    public PageOperationHandler[] getPageOperationHandlers() {
-        return pageOperationHandlers;
-    }
-
-    public void setPageOperationHandlers(PageOperationHandler[] handlers) {
-        pageOperationHandlers = new PageOperationHandler[handlers.length];
-        System.arraycopy(handlers, 0, pageOperationHandlers, 0, handlers.length);
-    }
-
-    public void startHandlers() {
-        for (PageOperationHandler h : pageOperationHandlers) {
-            if (h instanceof DefaultPageOperationHandler) {
-                ((DefaultPageOperationHandler) h).startHandler();
-            }
-        }
-    }
-
-    public void stopHandlers() {
-        for (PageOperationHandler h : pageOperationHandlers) {
-            if (h instanceof DefaultPageOperationHandler) {
-                ((DefaultPageOperationHandler) h).stopHandler();
-            }
-        }
-    }
+    PageOperationHandler getPageOperationHandler();
 
     public static PageOperationHandlerFactory create(Map<String, String> config) {
-        return create(config, null);
-    }
-
-    public static synchronized PageOperationHandlerFactory create(Map<String, String> config,
-            PageOperationHandler[] handlers) {
-        if (config == null)
-            config = new HashMap<>(0);
-        PageOperationHandlerFactory factory = null;
-        String key = "page_operation_handler_factory_type";
-        String type = config.get(key);
-        if (type == null || type.equalsIgnoreCase("RoundRobin"))
-            factory = new RoundRobinFactory(config, handlers);
-        else if (type.equalsIgnoreCase("Random"))
-            factory = new RandomFactory(config, handlers);
-        else if (type.equalsIgnoreCase("LoadBalance"))
-            factory = new LoadBalanceFactory(config, handlers);
-        else {
-            throw new RuntimeException("Unknow " + key + ": " + type);
-        }
-        return factory;
-    }
-
-    private static class RandomFactory extends PageOperationHandlerFactory {
-
-        private static final Random random = new Random();
-
-        protected RandomFactory(Map<String, String> config, PageOperationHandler[] handlers) {
-            super(config, handlers);
-        }
-
-        @Override
-        public PageOperationHandler getPageOperationHandler() {
-            int index = random.nextInt(pageOperationHandlers.length);
-            return pageOperationHandlers[index];
-        }
-    }
-
-    private static class RoundRobinFactory extends PageOperationHandlerFactory {
-
-        private static final AtomicInteger index = new AtomicInteger(0);
-
-        protected RoundRobinFactory(Map<String, String> config, PageOperationHandler[] handlers) {
-            super(config, handlers);
-        }
-
-        @Override
-        public PageOperationHandler getPageOperationHandler() {
-            return pageOperationHandlers[getAndIncrementIndex(index) % pageOperationHandlers.length];
-        }
-    }
-
-    private static class LoadBalanceFactory extends PageOperationHandlerFactory {
-
-        protected LoadBalanceFactory(Map<String, String> config, PageOperationHandler[] handlers) {
-            super(config, handlers);
-        }
-
-        @Override
-        public PageOperationHandler getPageOperationHandler() {
-            long minLoad = Long.MAX_VALUE;
-            int index = 0;
-            for (int i = 0, size = pageOperationHandlers.length; i < size; i++) {
-                long load = pageOperationHandlers[i].getLoad();
-                if (load < minLoad) {
-                    index = i;
-                    minLoad = load;
-                }
-            }
-            return pageOperationHandlers[index];
-        }
-    }
-
-    // 变成负数时从0开始
-    public static int getAndIncrementIndex(AtomicInteger index) {
-        int i = index.getAndIncrement();
-        if (i < 0) {
-            if (index.compareAndSet(i, 1)) {
-                i = 0;
-            } else {
-                i = index.getAndIncrement();
-            }
-        }
-        return i;
+        return SchedulerFactory.create(config);
     }
 }

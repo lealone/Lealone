@@ -11,12 +11,17 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 import org.lealone.db.DataBufferFactory;
+import org.lealone.db.scheduler.Scheduler;
 
 public interface NetEventLoop {
 
     Object getOwner();
 
     void setOwner(Object owner);
+
+    Scheduler getScheduler();
+
+    void setScheduler(Scheduler scheduler);
 
     void setPreferBatchWrite(boolean preferBatchWrite);
 

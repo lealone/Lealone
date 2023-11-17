@@ -11,6 +11,7 @@ import java.nio.channels.SocketChannel;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
@@ -51,7 +52,7 @@ class NioServerAccepter extends NetServerBase {
     }
 
     @Override
-    public void accept(Object scheduler) {
+    public void accept(Scheduler scheduler) {
         SocketChannel channel = null;
         AsyncConnection conn = null;
         try {

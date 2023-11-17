@@ -7,9 +7,9 @@ package org.lealone.server;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -17,10 +17,11 @@ import org.lealone.common.util.MapUtils;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.link.LinkableList;
+import org.lealone.db.scheduler.ISessionInfo;
+import org.lealone.db.scheduler.ISessionInitTask;
+import org.lealone.db.scheduler.SchedulerBase;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.Session;
@@ -28,21 +29,14 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.sql.SQLStatementExecutor;
-import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.storage.page.PageOperationHandlerBase;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
-public class Scheduler extends PageOperationHandlerBase //
-        implements SQLStatementExecutor, AsyncTaskHandler, //
-        PageOperation.ListenerFactory<Object>, //
-        TransactionHandler, TransactionListener, NetEventLoop.Accepter {
+public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accepter {
 
-    private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
+    private static final Logger logger = LoggerFactory.getLogger(GlobalScheduler.class);
 
     // 预防客户端不断创建新连接试探用户名和密码，试错多次后降低接入新连接的速度
     private final SessionValidator sessionValidator = new SessionValidator();
@@ -59,20 +53,16 @@ public class Scheduler extends PageOperationHandlerBase //
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
 
-    private final long loopInterval;
     private final NetEventLoop netEventLoop;
 
-    private boolean end;
     private YieldableCommand nextBestCommand;
     private Session currentSession;
 
-    public Scheduler(int id, int waitingQueueSize, Map<String, String> config) {
-        super(id, "ScheduleService-" + id, waitingQueueSize);
-        String key = "scheduler_loop_interval";
-        // 默认100毫秒
-        loopInterval = MapUtils.getLong(config, key, 100);
-        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(key, loopInterval, true);
+    public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
+        super(id, "ScheduleService-" + id, schedulerCount, config);
+        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(loopInterval, true);
         netEventLoop.setOwner(this);
+        netEventLoop.setScheduler(this);
         netEventLoop.setAccepter(this);
     }
 
@@ -97,7 +87,7 @@ public class Scheduler extends PageOperationHandlerBase //
     }
 
     @Override
-    protected Logger getLogger() {
+    public Logger getLogger() {
         return logger;
     }
 
@@ -106,14 +96,9 @@ public class Scheduler extends PageOperationHandlerBase //
         return sessions.size() + super.getLoad();
     }
 
-    public void end() {
-        end = true;
-        wakeUp();
-    }
-
     @Override
     public void run() {
-        while (!end) {
+        while (!stopped) {
             runRegisterAccepterTasks();
             runSessionInitTasks();
             runMiscTasks();
@@ -216,7 +201,8 @@ public class Scheduler extends PageOperationHandlerBase //
         }
     }
 
-    void validateSession(boolean isUserAndPasswordCorrect) {
+    @Override
+    public void validateSession(boolean isUserAndPasswordCorrect) {
         sessionValidator.validate(isUserAndPasswordCorrect);
     }
 
@@ -257,7 +243,7 @@ public class Scheduler extends PageOperationHandlerBase //
                 si = si.next;
             }
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-            te.fullGc(SchedulerFactory.getSchedulerCount(), getHandlerId());
+            te.fullGc(schedulerFactory.getSchedulerCount(), getHandlerId());
         }
     }
 
@@ -372,50 +358,6 @@ public class Scheduler extends PageOperationHandlerBase //
 
     // --------------------- 实现 TransactionListener 接口，用同步方式执行 ---------------------
 
-    private AtomicInteger syncCounter;
-    private RuntimeException syncException;
-    private boolean needWakeUp = true;
-
-    @Override
-    public void setNeedWakeUp(boolean needWakeUp) {
-        this.needWakeUp = needWakeUp;
-    }
-
-    @Override
-    public int getListenerId() {
-        return getHandlerId();
-    }
-
-    @Override
-    public void beforeOperation() {
-        syncException = null;
-        syncCounter = new AtomicInteger(1);
-    }
-
-    @Override
-    public void operationUndo() {
-        syncCounter.decrementAndGet();
-        if (needWakeUp)
-            wakeUp();
-    }
-
-    @Override
-    public void operationComplete() {
-        syncCounter.decrementAndGet();
-        if (needWakeUp)
-            wakeUp();
-    }
-
-    @Override
-    public void setException(RuntimeException e) {
-        syncException = e;
-    }
-
-    @Override
-    public RuntimeException getException() {
-        return syncException;
-    }
-
     @Override
     public void await() {
         for (;;) {
@@ -447,37 +389,6 @@ public class Scheduler extends PageOperationHandlerBase //
         // 不删除root session
         if (!si.getSession().isRoot())
             removeSessionInfo(si);
-    }
-
-    // --------------------- 实现 PageOperation.ListenerFactory 接口 ---------------------
-
-    @Override
-    public PageOperation.Listener<Object> createListener() {
-        return new PageOperation.Listener<Object>() {
-
-            private Object result;
-
-            @Override
-            public void startListen() {
-                beforeOperation();
-            }
-
-            @Override
-            public void handle(AsyncResult<Object> ar) {
-                if (ar.isSucceeded()) {
-                    result = ar.getResult();
-                } else {
-                    setException(ar.getCause());
-                }
-                operationComplete();
-            }
-
-            @Override
-            public Object await() {
-                Scheduler.this.await();
-                return result;
-            }
-        };
     }
 
     // --------------------- 网络事件循环 ---------------------
@@ -566,4 +477,47 @@ public class Scheduler extends PageOperationHandlerBase //
     public void wakeUpWaitingTransactionListeners() {
         wakeUpWaitingHandlers();
     }
+
+    // --------------------- 实现 Scheduler 接口 ---------------------
+
+    @Override
+    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
+        AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
+        wakeUp();
+    }
+
+    @Override
+    public Selector getSelector() {
+        return getNetEventLoop().getSelector();
+    }
+
+    @Override
+    public void register(Object conn) {
+        register((AsyncConnection) conn);
+    }
+
+    @Override
+    public void addSessionInitTask(ISessionInitTask task) {
+        addSessionInitTask((SessionInitTask) task);
+    }
+
+    @Override
+    public void addSessionInfo(ISessionInfo si) {
+        addSessionInfo((SessionInfo) si);
+    }
+
+    @Override
+    public void removeSessionInfo(ISessionInfo si) {
+        removeSessionInfo((SessionInfo) si);
+    }
+
+    public static synchronized GlobalScheduler[] createSchedulers(Map<String, String> config) {
+        int schedulerCount = MapUtils.getSchedulerCount(config);
+        GlobalScheduler[] schedulers = new GlobalScheduler[schedulerCount];
+        for (int i = 0; i < schedulerCount; i++) {
+            schedulers[i] = new GlobalScheduler(i, schedulerCount, config);
+        }
+        return schedulers;
+    }
+
 }

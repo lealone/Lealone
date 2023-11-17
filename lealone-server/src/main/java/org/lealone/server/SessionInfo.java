@@ -10,11 +10,14 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
+import org.lealone.db.scheduler.ISessionInfo;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.sql.PreparedSQLStatement;
 
-public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSession.TimeoutListener {
+public class SessionInfo extends LinkableBase<SessionInfo>
+        implements ServerSession.TimeoutListener, ISessionInfo {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 

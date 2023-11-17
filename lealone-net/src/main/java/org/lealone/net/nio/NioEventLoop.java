@@ -32,6 +32,7 @@ import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DataBufferFactory;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetClient;
@@ -60,19 +61,24 @@ class NioEventLoop implements NetEventLoop {
     private NetClient netClient;
     private Accepter accepter;
     private Object owner;
+    private Scheduler scheduler;
 
     private final boolean isLoggerEnabled;
     private final boolean isDebugEnabled;
 
-    public NioEventLoop(Map<String, String> config, String loopIntervalKey, long defaultLoopInterval,
-            boolean isThreadSafe) throws IOException {
-        loopInterval = MapUtils.getLong(config, loopIntervalKey, defaultLoopInterval);
+    public NioEventLoop(Map<String, String> config, long loopInterval, boolean isThreadSafe) {
         // 设置过大会占用内存，有可能影响GC暂停时间
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 8);
         maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
         // client端不安全，所以不用批量写
         preferBatchWrite = MapUtils.getBoolean(config, "prefer_batch_write", isThreadSafe);
-        selector = Selector.open();
+        try {
+            selector = Selector.open();
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
+
+        this.loopInterval = loopInterval;
         this.isThreadSafe = isThreadSafe;
         if (isThreadSafe) {
             channels = new HashMap<>();
@@ -96,6 +102,16 @@ class NioEventLoop implements NetEventLoop {
     @Override
     public void setOwner(Object owner) {
         this.owner = owner;
+    }
+
+    @Override
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -422,7 +438,7 @@ class NioEventLoop implements NetEventLoop {
             NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
             AsyncConnection conn;
             if (attachment.connectionManager != null) {
-                conn = attachment.connectionManager.createConnection(writableChannel, false, accepter);
+                conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);
             } else {
                 conn = new TcpClientConnection(writableChannel, netClient, attachment.maxSharedSize);
             }

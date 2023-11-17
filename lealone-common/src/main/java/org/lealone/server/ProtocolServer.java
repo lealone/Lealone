@@ -8,6 +8,7 @@ package org.lealone.server;
 import java.util.Map;
 
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.db.scheduler.Scheduler;
 
 /**
  * Classes implementing this interface usually provide a TCP/IP listener such as an TCP server.
@@ -116,6 +117,6 @@ public interface ProtocolServer {
         return -1;
     }
 
-    default void accept(Object scheduler) {
+    default void accept(Scheduler scheduler) {
     }
 }

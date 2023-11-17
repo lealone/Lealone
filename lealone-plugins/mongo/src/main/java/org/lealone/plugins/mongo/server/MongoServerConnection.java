@@ -24,6 +24,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetBuffer;
@@ -36,7 +37,6 @@ import org.lealone.plugins.mongo.bson.command.legacy.LCInsert;
 import org.lealone.plugins.mongo.bson.command.legacy.LCQuery;
 import org.lealone.plugins.mongo.bson.command.legacy.LCUpdate;
 import org.lealone.server.AsyncServerConnection;
-import org.lealone.server.Scheduler;
 import org.lealone.server.SessionInfo;
 
 public class MongoServerConnection extends AsyncServerConnection {

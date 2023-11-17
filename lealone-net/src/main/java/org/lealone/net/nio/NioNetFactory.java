@@ -5,11 +5,9 @@
  */
 package org.lealone.net.nio;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
@@ -62,12 +60,7 @@ public class NioNetFactory extends NetFactoryBase {
     }
 
     @Override
-    public NioEventLoop createNetEventLoop(String loopIntervalKey, long defaultLoopInterval,
-            boolean isThreadSafe) {
-        try {
-            return new NioEventLoop(config, loopIntervalKey, defaultLoopInterval, isThreadSafe);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
+    public NioEventLoop createNetEventLoop(long loopInterval, boolean isThreadSafe) {
+        return new NioEventLoop(config, loopInterval, isThreadSafe);
     }
 }
