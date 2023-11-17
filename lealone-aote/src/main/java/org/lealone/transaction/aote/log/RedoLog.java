@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
@@ -90,20 +92,24 @@ public class RedoLog {
     }
 
     // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
+    // 有可能多个线程同时调用redo，所以需要加synchronized
     @SuppressWarnings("unchecked")
-    public <K> void redo(StorageMap<K, TransactionalValue> map) {
+    public synchronized <K> void redo(StorageMap<K, TransactionalValue> map) {
         List<ByteBuffer> pendingKeyValues = pendingRedoLog.remove(map.getName());
         if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
+            // 异步redo，忽略操作结果
+            AsyncHandler<AsyncResult<TransactionalValue>> handler = ar -> {
+            };
             for (ByteBuffer kv : pendingKeyValues) {
                 K key = (K) kt.read(kv);
                 if (kv.get() == 0)
-                    map.remove(key);
+                    map.remove(key, handler);
                 else {
                     Object value = vt.read(kv);
                     TransactionalValue tv = TransactionalValue.createCommitted(value);
-                    map.put(key, tv);
+                    map.put(key, tv, handler);
                 }
             }
         }
