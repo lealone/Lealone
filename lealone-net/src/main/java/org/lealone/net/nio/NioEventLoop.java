@@ -33,6 +33,7 @@ import org.lealone.common.util.SystemPropertyUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetBuffer;
 import org.lealone.net.NetClient;
@@ -185,7 +186,8 @@ class NioEventLoop implements NetEventLoop {
             if (!preferBatchWrite) {
                 SelectionKey key = keyFor(channel);
                 // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
-                if (key != null && key.isValid() && (isThreadSafe || Thread.currentThread() == owner)
+                if (key != null && key.isValid()
+                        && (isThreadSafe || SchedulerThread.currentObject() == owner)
                         && queue.isEmpty()) {
                     if (write(key, channel, nioBuffer)) {
                         if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {

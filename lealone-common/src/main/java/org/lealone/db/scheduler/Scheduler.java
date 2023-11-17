@@ -32,7 +32,7 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     boolean isStopped();
 
-    Thread getThread();
+    SchedulerThread getThread();
 
     @Override
     DataBufferFactory getDataBufferFactory();

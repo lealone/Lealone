@@ -16,6 +16,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
@@ -157,9 +158,9 @@ public class AOTransaction implements Transaction {
     public TransactionHandler getTransactionHandler() {
         if (transactionHandler == null) {
             // 嵌套执行的sql可能没有设置TransactionHandler
-            Object obj = Thread.currentThread();
-            if (obj instanceof TransactionHandler)
-                transactionHandler = (TransactionHandler) obj;
+            TransactionHandler handler = SchedulerThread.currentTransactionHandler();
+            if (handler != null)
+                transactionHandler = handler;
             else
                 transactionHandler = TransactionHandler.defaultTHandler;
         }

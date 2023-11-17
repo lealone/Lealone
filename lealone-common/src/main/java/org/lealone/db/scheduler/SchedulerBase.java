@@ -25,18 +25,20 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
     protected SchedulerFactory schedulerFactory;
 
     protected final long loopInterval;
-    protected boolean daemon;
     protected boolean started;
     protected boolean stopped;
-    protected Thread thread;
+    protected SchedulerThread thread;
 
     public SchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
         super(schedulerCount);
         this.id = id;
         this.name = name;
-        this.daemon = RunMode.isEmbedded(config);
         // 默认100毫秒
         this.loopInterval = MapUtils.getLong(config, "scheduler_loop_interval", 100);
+
+        thread = new SchedulerThread(this);
+        thread.setName(name);
+        thread.setDaemon(RunMode.isEmbedded(config));
     }
 
     @Override
@@ -73,7 +75,7 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
     }
 
     @Override
-    public Thread getThread() {
+    public SchedulerThread getThread() {
         return thread;
     }
 
@@ -81,9 +83,6 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
     public synchronized void start() {
         if (started)
             return;
-        thread = new Thread(this);
-        thread.setName(name);
-        thread.setDaemon(daemon);
         ShutdownHookUtils.addShutdownHook(getName(), () -> {
             stop();
         });

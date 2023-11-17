@@ -26,7 +26,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     private volatile boolean waiting;
 
     public EmbeddedScheduler(int id, int schedulerCount, Map<String, String> config) {
-        super(id, "EmbeddedScheduleService-" + id, schedulerCount, config);
+        super(id, "EScheduleService-" + id, schedulerCount, config);
     }
 
     @Override

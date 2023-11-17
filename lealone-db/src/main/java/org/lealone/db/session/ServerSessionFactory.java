@@ -16,6 +16,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetNode;
 import org.lealone.transaction.TransactionListener;
 
@@ -98,8 +99,7 @@ public class ServerSessionFactory implements SessionFactory {
     // 只能有一个线程初始化数据库
     private boolean initDatabase(Database database, ConnectionInfo ci) {
         ServerSession session = new ServerSession(database, null, 0);
-        Object t = Thread.currentThread();
-        TransactionListener tl = (t instanceof TransactionListener) ? (TransactionListener) t : null;
+        TransactionListener tl = SchedulerThread.currentTransactionListener();
         session.setTransactionListener(tl);
         DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
         if (lock != null) {

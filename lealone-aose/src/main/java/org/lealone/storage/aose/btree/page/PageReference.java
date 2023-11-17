@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
@@ -142,12 +143,11 @@ public class PageReference {
         if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
-        Object t = Thread.currentThread();
-        boolean ok = lockOwner != t && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
+        PageOperationHandler poHandler = SchedulerThread.currentPageOperationHandler();
+        boolean ok = lockOwner != poHandler && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
         if (ok) {
-            if (t instanceof PageOperationHandler) {
-                PageOperationHandler poHandler = (PageOperationHandler) t;
-                Session s = ((PageOperationHandler) t).getCurrentSession();
+            if (poHandler != null) {
+                Session s = poHandler.getCurrentSession();
                 if (s != null) {
                     s.addPageReference(this);
                 } else {

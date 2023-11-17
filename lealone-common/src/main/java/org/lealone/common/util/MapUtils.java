@@ -52,7 +52,7 @@ public class MapUtils {
     }
 
     public static int getSchedulerCount(Map<String, String> map) {
-        if (map.containsKey("scheduler_count"))
+        if (map != null && map.containsKey("scheduler_count"))
             return Math.max(1, Integer.parseInt(map.get("scheduler_count")));
         else
             return Runtime.getRuntime().availableProcessors();

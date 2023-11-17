@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.util.Map;
 
 import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
@@ -112,21 +113,14 @@ public interface Transaction {
     int addWaitingTransaction(Object key, Session session, AsyncHandler<SessionStatus> asyncHandler);
 
     public static TransactionListener getTransactionListener() {
-        Object object = Thread.currentThread();
-        TransactionListener listener;
-        if (object instanceof TransactionListener)
-            listener = (TransactionListener) object;
-        else
+        TransactionListener listener = SchedulerThread.currentTransactionListener();
+        if (listener == null)
             listener = new SyncTransactionListener();
         listener.beforeOperation();
         return listener;
     }
 
     public static TransactionHandler getCurrentTransactionHandler() {
-        Object object = Thread.currentThread();
-        if (object instanceof TransactionHandler)
-            return (TransactionHandler) object;
-        else
-            return null;
+        return SchedulerThread.currentTransactionHandler();
     }
 }

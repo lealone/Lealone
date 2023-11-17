@@ -15,6 +15,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.StorageMapBase;
@@ -692,9 +693,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // 如果当前线程不是PageOperationHandler，第一次运行时创建一个DummyPageOperationHandler
     // 第二次运行时需要加到现有线程池某个PageOperationHandler的队列中
     private PageOperationHandler getPageOperationHandler(boolean useThreadPool) {
-        Object t = Thread.currentThread();
-        if (t instanceof PageOperationHandler) {
-            return (PageOperationHandler) t;
+        PageOperationHandler handler = SchedulerThread.currentPageOperationHandler();
+        if (handler != null) {
+            return handler;
         } else {
             if (useThreadPool) {
                 return pohFactory.getPageOperationHandler();
@@ -706,7 +707,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @SuppressWarnings("unchecked")
     private <R> PageOperation.Listener<R> getPageOperationListener() {
-        Object object = Thread.currentThread();
+        Object object = SchedulerThread.currentObject();
         PageOperation.Listener<R> listener;
         if (object instanceof PageOperation.Listener)
             listener = (PageOperation.Listener<R>) object;
