@@ -32,32 +32,4 @@ public interface PageOperationHandler {
     default boolean isScheduler() {
         return false;
     }
-
-    class DummyPageOperationHandler implements PageOperationHandler {
-        @Override
-        public int getHandlerId() {
-            return -1;
-        }
-
-        @Override
-        public long getLoad() {
-            return 0;
-        }
-
-        @Override
-        public void handlePageOperation(PageOperation po) {
-        }
-
-        @Override
-        public void addWaitingHandler(PageOperationHandler handler) {
-        }
-
-        @Override
-        public void wakeUpWaitingHandlers() {
-        }
-
-        @Override
-        public void wakeUp() {
-        }
-    }
 }

@@ -653,17 +653,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private <R> R runPageOperation(Session session, WriteOperation<?, ?, R> po) {
         PageOperationHandler poHandler;
-        boolean useSessionPoHandler;
         // 启动阶段session不为null，但PageOperationHandler为null
         if (session != null && session.getPageOperationHandler() != null) {
             po.setSession(session);
             poHandler = session.getPageOperationHandler();
-            useSessionPoHandler = true;
         } else {
-            poHandler = getPageOperationHandler(false);
-            useSessionPoHandler = false;
+            poHandler = SchedulerThread.currentPageOperationHandler();
+            // 如果当前线程不是PageOperationHandler，需要分配一个PageOperationHandler然后让它去处理。
+            // 把PageOperation提交给PageOperationHandler后，如果当前线程执行的是异步调用那就直接返回，否则需要等待。
+            if (poHandler == null) {
+                poHandler = pohFactory.getPageOperationHandler();
+                return handlePageOperation(poHandler, po);
+            }
         }
-        // 先快速试3次，如果不成功再用异步等待的方式
+        // 第一步:
+        // 如果当前线程就是一个PageOperationHandler，可以直接进行写操作
+        // 先快速试3次，如果不成功再转到第二步
         int maxRetryCount = 3;
         while (true) {
             PageOperationResult result = po.run(poHandler, maxRetryCount == 1);
@@ -677,8 +682,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (maxRetryCount < 1)
                 break;
         }
-        if (!useSessionPoHandler)
-            poHandler = getPageOperationHandler(true);
+        // 第二步:
+        // 其他PageOperationHandler占用了锁时，当前PageOperationHandler把PageOperation放到自己的等待队列。
+        // 如果当前线程(也就是PageOperationHandler)执行的是异步调用那就直接返回，否则需要等待。
+        return handlePageOperation(poHandler, po);
+    }
+
+    private <R> R handlePageOperation(PageOperationHandler poHandler, WriteOperation<?, ?, R> po) {
         if (po.getResultHandler() == null) { // 同步
             PageOperation.Listener<R> listener = getPageOperationListener();
             po.setResultHandler(listener);
@@ -687,21 +697,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         } else { // 异步
             poHandler.handlePageOperation(po);
             return null;
-        }
-    }
-
-    // 如果当前线程不是PageOperationHandler，第一次运行时创建一个DummyPageOperationHandler
-    // 第二次运行时需要加到现有线程池某个PageOperationHandler的队列中
-    private PageOperationHandler getPageOperationHandler(boolean useThreadPool) {
-        PageOperationHandler handler = SchedulerThread.currentPageOperationHandler();
-        if (handler != null) {
-            return handler;
-        } else {
-            if (useThreadPool) {
-                return pohFactory.getPageOperationHandler();
-            } else {
-                return new PageOperationHandler.DummyPageOperationHandler();
-            }
         }
     }
 
