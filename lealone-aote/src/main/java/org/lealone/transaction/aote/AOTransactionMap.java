@@ -89,76 +89,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public V put(K key, V value) {
-        DataUtils.checkNotNull(value, "value");
-        return setSync(key, value);
-    }
-
-    @Override
-    public V putIfAbsent(K key, V value) {
-        V v = get(key);
-        if (v == null)
-            v = put(key, value);
-        return v;
-    }
-
-    @Override
-    public V remove(K key) {
-        return setSync(key, null);
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        V old = get(key);
-        if (areValuesEqual(old, oldValue)) {
-            put(key, newValue);
-            return true;
-        }
-        return false;
-    }
-
-    private V setSync(K key, V value) {
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean result = new AtomicBoolean();
-        TransactionListener listener = new TransactionListener() {
-            @Override
-            public void operationUndo() {
-                result.set(false);
-                latch.countDown();
-            }
-
-            @Override
-            public void operationComplete() {
-                result.set(true);
-                latch.countDown();
-            }
-        };
-
-        TransactionalValue oldTValue = map.get(key);
-        // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
-        V retValue = getUnwrapValue(key, oldTValue);
-        // insert
-        if (oldTValue == null) {
-            addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
-                    .onFailure(t -> listener.operationUndo());
-        } else {
-            if (tryUpdateOrRemove(key, value, null, oldTValue, false) == Transaction.OPERATION_COMPLETE)
-                listener.operationComplete();
-            else
-                listener.operationUndo();
-        }
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            DbException.convert(e);
-        }
-        if (result.get()) {
-            return retValue;
-        }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
-    }
-
-    @Override
     public K firstKey() {
         TransactionMapCursor<K, V> cursor = cursor();
         return cursor.next() ? cursor.getKey() : null;
@@ -457,41 +387,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public K append(V value) {
-        return append0(value, null);
-    }
-
-    @Override
-    public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
-        append0(value, handler);
-    }
-
-    private K append0(V value, AsyncHandler<AsyncResult<K>> handler) { // 追加新记录时不会产生事务冲突
-        Session session = transaction.getSession();
-        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
-        TransactionalValue newTV;
-        if (isUndoLogEnabled)
-            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
-        else
-            newTV = new TransactionalValue(value); // 内部没有增加行锁
-        if (handler != null) {
-            map.append(session, newTV, ar -> {
-                if (isUndoLogEnabled && ar.isSucceeded())
-                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
-                handler.handle(ar);
-            });
-            return null;
-        } else {
-            K key = map.append(newTV);
-            // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
-            // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-            if (isUndoLogEnabled)
-                transaction.undoLog.add(getName(), key, null, newTV);
-            return key;
-        }
-    }
-
-    @Override
     public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
             boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
@@ -560,5 +455,203 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Object getTransactionalValue(K key) {
         return map.get(key);
+    }
+
+    //////////////////// 以下是StorageMap与写操作相关的同步和异步API的实现 ////////////////////////////////
+
+    @Override
+    public V put(K key, V value) {
+        return put0(transaction.getSession(), key, value, null);
+    }
+
+    @Override
+    public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put0(transaction.getSession(), key, value, handler);
+    }
+
+    @Override
+    public void put(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put0(session, key, value, handler);
+    }
+
+    private V put0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        DataUtils.checkNotNull(value, "value");
+        return setSync(session, key, value, handler);
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value) {
+        return putIfAbsent0(transaction.getSession(), key, value, null);
+    }
+
+    @Override
+    public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent0(transaction.getSession(), key, value, handler);
+    }
+
+    @Override
+    public void putIfAbsent(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent0(session, key, value, handler);
+    }
+
+    private V putIfAbsent0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        V v = get(key);
+        if (v == null) {
+            DataUtils.checkNotNull(value, "value");
+            v = setSync(session, key, value, handler);
+        }
+        return v;
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        return replace0(transaction.getSession(), key, oldValue, newValue, null);
+    }
+
+    @Override
+    public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace0(transaction.getSession(), key, oldValue, newValue, handler);
+    }
+
+    @Override
+    public void replace(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace0(session, key, oldValue, newValue, handler);
+    }
+
+    private boolean replace0(Session session, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        V old = get(key);
+        if (areValuesEqual(old, oldValue)) {
+            DataUtils.checkNotNull(newValue, "value");
+            setSync(session, key, newValue, ar -> {
+                if (ar.isSucceeded())
+                    handler.handle(new AsyncResult<>(true));
+                else
+                    handler.handle(new AsyncResult<>(ar.getCause()));
+            });
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public K append(V value) {
+        return append0(transaction.getSession(), value, null);
+    }
+
+    @Override
+    public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        append0(transaction.getSession(), value, handler);
+    }
+
+    @Override
+    public void append(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+        append0(session, value, handler);
+    }
+
+    // 追加新记录时不会产生事务冲突
+    private K append0(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+        DataUtils.checkNotNull(value, "value");
+        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
+        TransactionalValue newTV;
+        if (isUndoLogEnabled)
+            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
+        else
+            newTV = new TransactionalValue(value); // 内部没有增加行锁
+        if (handler != null) {
+            map.append(session, newTV, ar -> {
+                if (isUndoLogEnabled && ar.isSucceeded())
+                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
+                handler.handle(ar);
+            });
+            return null;
+        } else {
+            K key = map.append(newTV);
+            // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
+            // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
+            if (isUndoLogEnabled)
+                transaction.undoLog.add(getName(), key, null, newTV);
+            return key;
+        }
+    }
+
+    @Override
+    public V remove(K key) {
+        return remove0(transaction.getSession(), key, null);
+    }
+
+    @Override
+    public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove0(transaction.getSession(), key, handler);
+    }
+
+    @Override
+    public void remove(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove0(session, key, handler);
+    }
+
+    private V remove0(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+        return setSync(session, key, null, handler);
+    }
+
+    private V setSync(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        TransactionalValue oldTValue = map.get(key);
+        // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
+        V retValue = getUnwrapValue(key, oldTValue);
+
+        if (handler != null) {
+            // insert
+            if (oldTValue == null) {
+                addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))
+                        .onFailure(t -> handler.handle(new AsyncResult<>(t)));
+            } else {
+                if (tryUpdateOrRemove(key, value, null, oldTValue,
+                        false) == Transaction.OPERATION_COMPLETE)
+                    handler.handle(new AsyncResult<>(retValue));
+                else
+                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
+                            "Entry is locked");
+            }
+            return retValue;
+        } else {
+            CountDownLatch latch = new CountDownLatch(1);
+            AtomicBoolean result = new AtomicBoolean();
+            TransactionListener listener = new TransactionListener() {
+                @Override
+                public void operationUndo() {
+                    result.set(false);
+                    latch.countDown();
+                }
+
+                @Override
+                public void operationComplete() {
+                    result.set(true);
+                    latch.countDown();
+                }
+            };
+
+            // insert
+            if (oldTValue == null) {
+                addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
+                        .onFailure(t -> listener.operationUndo());
+            } else {
+                if (tryUpdateOrRemove(key, value, null, oldTValue,
+                        false) == Transaction.OPERATION_COMPLETE)
+                    listener.operationComplete();
+                else
+                    listener.operationUndo();
+            }
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                DbException.convert(e);
+            }
+            if (result.get()) {
+                return retValue;
+            }
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
+                    "Entry is locked");
+        }
     }
 }
