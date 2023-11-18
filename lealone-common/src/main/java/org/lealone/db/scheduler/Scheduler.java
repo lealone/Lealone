@@ -24,6 +24,8 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     String getName();
 
+    long getLoad();
+
     void start();
 
     void stop();
@@ -58,6 +60,5 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     void validateSession(boolean isUserAndPasswordCorrect);
 
     @Override
-    default void wakeUp() {
-    }
+    void wakeUp();
 }

@@ -18,6 +18,7 @@ import org.lealone.db.DataBufferFactory;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
+import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.scheduler.ISessionInfo;
 import org.lealone.db.scheduler.ISessionInitTask;
@@ -29,6 +30,8 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionEngine;
@@ -56,7 +59,9 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
     private final NetEventLoop netEventLoop;
 
     private YieldableCommand nextBestCommand;
-    private Session currentSession;
+
+    // 用于实现 PageOperationHandler 接口
+    private final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config);
@@ -64,21 +69,6 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
         netEventLoop.setOwner(this);
         netEventLoop.setScheduler(this);
         netEventLoop.setAccepter(this);
-    }
-
-    @Override
-    public Session getCurrentSession() {
-        return currentSession;
-    }
-
-    @Override
-    public void setCurrentSession(Session currentSession) {
-        this.currentSession = currentSession;
-    }
-
-    @Override
-    public boolean isScheduler() {
-        return true;
     }
 
     @Override
@@ -93,7 +83,7 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
 
     @Override
     public long getLoad() {
-        return sessions.size() + super.getLoad();
+        return sessions.size() + lockedPageOperationTasks.size();
     }
 
     @Override
@@ -511,7 +501,66 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
         removeSessionInfo((SessionInfo) si);
     }
 
-    public static synchronized GlobalScheduler[] createSchedulers(Map<String, String> config) {
+    // --------------------- 实现 PageOperationHandler 接口 ---------------------
+
+    private static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
+        final PageOperation po;
+
+        public LinkablePageOperation(PageOperation po) {
+            this.po = po;
+        }
+    }
+
+    @Override
+    public void handlePageOperation(PageOperation po) {
+        lockedPageOperationTasks.add(new LinkablePageOperation(po));
+    }
+
+    private void runPageOperationTasks() {
+        if (lockedPageOperationTasks.isEmpty())
+            return;
+        while (lockedPageOperationTasks.getHead() != null) {
+            int size = lockedPageOperationTasks.size();
+            LinkablePageOperation task = lockedPageOperationTasks.getHead();
+            LinkablePageOperation last = null;
+            while (task != null) {
+                Session old = getCurrentSession();
+                setCurrentSession(task.po.getSession());
+                try {
+                    PageOperationResult result = task.po.run(this);
+                    if (result == PageOperationResult.LOCKED) {
+                        last = task;
+                        task = task.next;
+                        continue;
+                    } else if (result == PageOperationResult.RETRY) {
+                        continue;
+                    }
+                    task = task.next;
+                    if (last == null)
+                        lockedPageOperationTasks.setHead(task);
+                    else
+                        last.next = task;
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run page operation: " + task, e);
+                } finally {
+                    setCurrentSession(old);
+                }
+                lockedPageOperationTasks.decrementSize();
+            }
+            if (lockedPageOperationTasks.getHead() == null)
+                lockedPageOperationTasks.setTail(null);
+            else
+                lockedPageOperationTasks.setTail(last);
+
+            // 全都锁住了，没必要再试了
+            if (size == lockedPageOperationTasks.size())
+                break;
+        }
+    }
+
+    // --------------------- 创建所有的调度器 ---------------------
+
+    public static GlobalScheduler[] createSchedulers(Map<String, String> config) {
         int schedulerCount = MapUtils.getSchedulerCount(config);
         GlobalScheduler[] schedulers = new GlobalScheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
@@ -519,5 +568,4 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
         }
         return schedulers;
     }
-
 }

@@ -8,15 +8,20 @@ package org.lealone.db.scheduler;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.MapUtils;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.transaction.PendingTransaction;
 
 public class EmbeddedScheduler extends SchedulerBase {
@@ -25,6 +30,14 @@ public class EmbeddedScheduler extends SchedulerBase {
     private final Semaphore haveWork = new Semaphore(1);
     private volatile boolean waiting;
 
+    // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
+
+    // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
+    // 外部线程和调度线程会并发访问这个队列
+    private final ConcurrentLinkedQueue<PageOperation> pageOperations = new ConcurrentLinkedQueue<>();
+    private final AtomicLong pageOperationSize = new AtomicLong();
+    private PageOperation lockedPageOperation;
+
     public EmbeddedScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "EScheduleService-" + id, schedulerCount, config);
     }
@@ -32,6 +45,11 @@ public class EmbeddedScheduler extends SchedulerBase {
     @Override
     public Logger getLogger() {
         return logger;
+    }
+
+    @Override
+    public long getLoad() {
+        return pageOperationSize.get();
     }
 
     @Override
@@ -137,5 +155,51 @@ public class EmbeddedScheduler extends SchedulerBase {
         needWakeUp = true;
         if (syncException != null)
             throw syncException;
+    }
+
+    // --------------------- 实现 PageOperationHandler 接口 ---------------------
+
+    @Override
+    public void handlePageOperation(PageOperation po) {
+        pageOperationSize.incrementAndGet();
+        pageOperations.add(po);
+        wakeUp();
+    }
+
+    private void runPageOperationTasks() {
+        PageOperation po;
+        // 先执行上一个被锁定的PageOperation，严格保证每个PageOperation的执行顺序
+        if (lockedPageOperation != null) {
+            po = lockedPageOperation;
+            lockedPageOperation = null;
+        } else {
+            po = pageOperations.poll();
+        }
+        while (po != null) {
+            try {
+                PageOperationResult result = po.run(this);
+                if (result == PageOperationResult.LOCKED) {
+                    lockedPageOperation = po;
+                    break;
+                } else if (result == PageOperationResult.RETRY) {
+                    continue;
+                }
+            } catch (Throwable e) {
+                getLogger().warn("Failed to run page operation: " + po, e);
+            }
+            pageOperationSize.decrementAndGet();
+            po = pageOperations.poll();
+        }
+    }
+
+    // --------------------- 创建所有的调度器 ---------------------
+
+    public static EmbeddedScheduler[] createSchedulers(Map<String, String> config) {
+        int schedulerCount = MapUtils.getSchedulerCount(config);
+        EmbeddedScheduler[] schedulers = new EmbeddedScheduler[schedulerCount];
+        for (int i = 0; i < schedulerCount; i++) {
+            schedulers[i] = new EmbeddedScheduler(i, schedulerCount, config);
+        }
+        return schedulers;
     }
 }

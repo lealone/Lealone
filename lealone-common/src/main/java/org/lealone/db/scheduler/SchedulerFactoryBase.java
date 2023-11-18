@@ -28,12 +28,8 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             if (se != null)
                 se.setPageOperationHandlerFactory(this);
         } else {
-            int schedulerCount = MapUtils.getSchedulerCount(config);
-            schedulers = new Scheduler[schedulerCount];
             // 如果未指定调度器，那么使用嵌入式调度器
-            for (int i = 0; i < schedulerCount; i++) {
-                schedulers[i] = new EmbeddedScheduler(i, schedulerCount, config);
-            }
+            schedulers = EmbeddedScheduler.createSchedulers(config);
             embedded = true;
         }
         init(config);

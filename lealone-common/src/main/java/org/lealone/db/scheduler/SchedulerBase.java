@@ -6,7 +6,9 @@
 package org.lealone.db.scheduler;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
@@ -15,10 +17,9 @@ import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperationHandlerBase;
+import org.lealone.storage.page.PageOperationHandler;
 
-public abstract class SchedulerBase extends PageOperationHandlerBase
-        implements Scheduler, PageOperation.ListenerFactory<Object> {
+public abstract class SchedulerBase implements Scheduler, PageOperation.ListenerFactory<Object> {
 
     protected int id;
     protected String name;
@@ -29,21 +30,23 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
     protected boolean stopped;
     protected SchedulerThread thread;
 
+    // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
+
+    protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
+    protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
+    protected Session currentSession;
+
     public SchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
-        super(schedulerCount);
         this.id = id;
         this.name = name;
         // 默认100毫秒
         this.loopInterval = MapUtils.getLong(config, "scheduler_loop_interval", 100);
 
+        waitingHandlers = new AtomicReferenceArray<>(schedulerCount);
+
         thread = new SchedulerThread(this);
         thread.setName(name);
         thread.setDaemon(RunMode.isEmbedded(config));
-    }
-
-    @Override
-    public int getHandlerId() {
-        return id;
     }
 
     @Override
@@ -122,7 +125,7 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
 
     @Override
     public int getListenerId() {
-        return getHandlerId();
+        return id;
     }
 
     @Override
@@ -200,5 +203,49 @@ public abstract class SchedulerBase extends PageOperationHandlerBase
                 return result;
             }
         };
+    }
+
+    // --------------------- 实现部分 PageOperationHandler 接口 ---------------------
+
+    @Override
+    public int getHandlerId() {
+        return id;
+    }
+
+    @Override
+    public void addWaitingHandler(PageOperationHandler handler) {
+        int id = handler.getHandlerId();
+        if (id >= 0) {
+            waitingHandlers.set(id, handler);
+            hasWaitingHandlers.set(true);
+        }
+    }
+
+    @Override
+    public void wakeUpWaitingHandlers() {
+        if (hasWaitingHandlers.compareAndSet(true, false)) {
+            for (int i = 0, length = waitingHandlers.length(); i < length; i++) {
+                PageOperationHandler handler = waitingHandlers.get(i);
+                if (handler != null) {
+                    handler.wakeUp();
+                    waitingHandlers.compareAndSet(i, handler, null);
+                }
+            }
+        }
+    }
+
+    @Override
+    public Session getCurrentSession() {
+        return currentSession;
+    }
+
+    @Override
+    public void setCurrentSession(Session currentSession) {
+        this.currentSession = currentSession;
+    }
+
+    @Override
+    public boolean isScheduler() {
+        return true;
     }
 }
