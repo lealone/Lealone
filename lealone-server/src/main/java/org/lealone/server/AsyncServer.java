@@ -31,7 +31,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         return schedulerFactory;
     }
 
-    public static synchronized void initSchedulerFactory(Map<String, String> config) {
+    public static synchronized SchedulerFactory initSchedulerFactory(Map<String, String> config) {
         SchedulerFactory schedulerFactory = AsyncServer.schedulerFactory;
         if (schedulerFactory == null) {
             String sf = MapUtils.getString(config, "scheduler_factory", null);
@@ -45,6 +45,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
                 schedulerFactory.init(config);
             AsyncServer.schedulerFactory = schedulerFactory;
         }
+        return schedulerFactory;
     }
 
     private final AtomicInteger connectionSize = new AtomicInteger();

@@ -68,6 +68,11 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     }
 
     @Override
+    public String toString() {
+        return name;
+    }
+
+    @Override
     public SchedulerFactory getSchedulerFactory() {
         return schedulerFactory;
     }

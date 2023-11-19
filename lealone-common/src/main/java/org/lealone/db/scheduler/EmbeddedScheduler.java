@@ -7,8 +7,10 @@ package org.lealone.db.scheduler;
 
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -29,6 +31,9 @@ public class EmbeddedScheduler extends SchedulerBase {
     private static final Logger logger = LoggerFactory.getLogger(EmbeddedScheduler.class);
     private final Semaphore haveWork = new Semaphore(1);
     private volatile boolean waiting;
+
+    // 杂七杂八的任务，数量不多，执行完就删除
+    private final CopyOnWriteArrayList<AsyncTask> miscTasks = new CopyOnWriteArrayList<>();
 
     // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
 
@@ -62,6 +67,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     public void run() {
         while (!stopped) {
             runPageOperationTasks();
+            runMiscTasks();
             doAwait();
         }
     }
@@ -78,6 +84,21 @@ public class EmbeddedScheduler extends SchedulerBase {
         }
     }
 
+    private void runMiscTasks() {
+        if (!miscTasks.isEmpty()) {
+            Iterator<AsyncTask> iterator = miscTasks.iterator();
+            while (iterator.hasNext()) {
+                AsyncTask task = iterator.next();
+                try {
+                    task.run();
+                } catch (Throwable e) {
+                    logger.warn("Failed to run misc task: " + task, e);
+                }
+                iterator.remove();
+            }
+        }
+    }
+
     @Override
     public void executeNextStatement() {
     }
@@ -89,6 +110,7 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     @Override
     public void handle(AsyncTask task) {
+        miscTasks.add(task);
     }
 
     @Override

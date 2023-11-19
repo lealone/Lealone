@@ -59,6 +59,8 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
 
     @Override
     public synchronized void start() {
+        if (isStarted())
+            return;
         Scheduler[] schedulers = this.schedulers;
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
@@ -68,6 +70,8 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
 
     @Override
     public synchronized void stop() {
+        if (isStopped())
+            return;
         Scheduler[] schedulers = this.schedulers;
         for (Scheduler scheduler : schedulers) {
             scheduler.stop();

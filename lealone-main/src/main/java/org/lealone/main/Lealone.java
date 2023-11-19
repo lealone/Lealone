@@ -26,6 +26,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.SysProperties;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.main.config.Config;
 import org.lealone.main.config.Config.PluggableEngineDef;
@@ -34,6 +35,7 @@ import org.lealone.main.config.YamlConfigLoader;
 import org.lealone.plugins.mongo.server.MongoServerEngine;
 import org.lealone.plugins.mysql.server.MySQLServerEngine;
 import org.lealone.plugins.postgresql.server.PgServerEngine;
+import org.lealone.server.AsyncServer;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.TcpServerEngine;
@@ -182,15 +184,28 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            if (embedded)
-                return;
+            SchedulerFactory schedulerFactory = AsyncServer
+                    .initSchedulerFactory(config.scheduler.parameters);
+            Scheduler scheduler = schedulerFactory.getScheduler();
+            initLealoneDatabase(scheduler);
 
-            startProtocolServers();
+            if (embedded) {
+                scheduler.start();
+                return;
+            }
+
+            // 在一个调度线程中启动ProtocolServer，保证它们执行数据库各种操作时是单线程的
+            CountDownLatch latch0 = new CountDownLatch(1);
+            scheduler.handle(() -> {
+                startProtocolServers();
+                latch0.countDown();
+            });
+            scheduler.start();
+            latch0.await();
 
             // 等所有的Server启动完成后再启动Scheduler
             // 确保所有的初始PeriodicTask都在main线程中注册
-            for (SchedulerFactory sf : PluginManager.getPlugins(SchedulerFactory.class))
-                sf.start();
+            AsyncServer.getSchedulerFactory().start();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
@@ -242,11 +257,16 @@ public class Lealone {
     private void init() {
         initBaseDir();
         initPluggableEngines();
+    }
 
-        long t1 = System.currentTimeMillis();
-        LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
-        long t2 = System.currentTimeMillis();
-        logger.info("Init lealone database: " + (t2 - t1) + " ms");
+    // 在一个调度线程中初始化LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
+    private void initLealoneDatabase(Scheduler scheduler) {
+        scheduler.handle(() -> {
+            long t1 = System.currentTimeMillis();
+            LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
+            long t2 = System.currentTimeMillis();
+            logger.info("Init lealone database: " + (t2 - t1) + " ms");
+        });
     }
 
     private void initBaseDir() {
@@ -391,7 +411,7 @@ public class Lealone {
         pe.init(parameters);
     }
 
-    private void startProtocolServers() throws Exception {
+    private void startProtocolServers() {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
@@ -404,7 +424,7 @@ public class Lealone {
         }
     }
 
-    private void startProtocolServer(final ProtocolServer server) throws Exception {
+    private void startProtocolServer(final ProtocolServer server) {
         server.setServerEncryptionOptions(config.server_encryption_options);
         server.start();
         final String name = server.getName();
