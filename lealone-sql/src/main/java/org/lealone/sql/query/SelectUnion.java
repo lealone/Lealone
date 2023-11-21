@@ -15,6 +15,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
@@ -73,11 +74,11 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         int columnCount = left.getColumnCount();
         LocalResult result = new LocalResult(session, expressionArray, columnCount);
         result.done();
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override

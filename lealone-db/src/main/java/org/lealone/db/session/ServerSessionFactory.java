@@ -13,9 +13,12 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.scheduler.EmbeddedScheduler;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetNode;
 import org.lealone.transaction.TransactionListener;
@@ -40,6 +43,17 @@ public class ServerSessionFactory implements SessionFactory {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
+        if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {
+            Scheduler scheduler = EmbeddedScheduler.getScheduler(ci);
+            AsyncCallback<Session> ac = AsyncCallback.create(ci.isSingleThreadCallback());
+            scheduler.handle(() -> {
+                ServerSession session = createServerSession(ci);
+                scheduler.addSession(session, session.getDatabase().getId());
+                session.setScheduler(scheduler);
+                ac.setAsyncResult(session);
+            });
+            return ac;
+        }
         return Future.succeededFuture(createServerSession(ci));
     }
 

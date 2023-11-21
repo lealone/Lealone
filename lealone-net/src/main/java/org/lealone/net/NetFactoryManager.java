@@ -37,17 +37,13 @@ public class NetFactoryManager extends PluginManager<NetFactory> {
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
-        return getFactory(config, false);
-    }
-
-    public static NetFactory getFactory(Map<String, String> config, boolean initClient) {
         String netFactoryName = MapUtils.getString(config, Constants.NET_FACTORY_NAME_KEY,
                 Constants.DEFAULT_NET_FACTORY_NAME);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {
             throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");
         }
-        factory.init(config, initClient);
+        factory.init(config);
         return factory;
     }
 

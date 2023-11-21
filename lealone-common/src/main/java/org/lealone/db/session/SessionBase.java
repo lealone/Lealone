@@ -20,6 +20,11 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncTask;
+import org.lealone.db.async.PendingTask;
+import org.lealone.db.link.LinkableList;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.storage.fs.FileUtils;
 
 public abstract class SessionBase implements Session {
@@ -205,5 +210,54 @@ public abstract class SessionBase implements Session {
             }
         }
         return buff.toString();
+    }
+
+    protected Scheduler scheduler;
+
+    @Override
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
+    }
+
+    private final LinkableList<PendingTask> pendingTasks = new LinkableList<>();
+
+    @Override
+    public void submitTask(AsyncTask task) {
+        if (SchedulerThread.currentScheduler() == scheduler) {
+            task.run();
+        } else {
+            addPendingTask(new PendingTask(task));
+            // getScheduler().submitTask(this, task);
+            if (pendingTasks.size() > 1)
+                removeCompletedTasks();
+        }
+    }
+
+    private void addPendingTask(PendingTask pt) {
+        pendingTasks.add(pt);
+        scheduler.wakeUp();
+    }
+
+    private void removeCompletedTasks() {
+        if (pendingTasks.isEmpty())
+            return;
+        PendingTask pt = pendingTasks.getHead();
+        while (pt != null && pt.isCompleted()) {
+            pt = pt.getNext();
+            pendingTasks.decrementSize();
+            pendingTasks.setHead(pt);
+        }
+        if (pendingTasks.getHead() == null)
+            pendingTasks.setTail(null);
+    }
+
+    @Override
+    public PendingTask getPendingTask() {
+        return pendingTasks.getHead();
     }
 }

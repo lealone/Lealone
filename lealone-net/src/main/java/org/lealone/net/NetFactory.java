@@ -5,19 +5,15 @@
  */
 package org.lealone.net;
 
-import java.util.Map;
-
 import org.lealone.db.Plugin;
 
 public interface NetFactory extends Plugin {
 
     NetServer createNetServer();
 
-    NetClient getNetClient();
+    NetClient createNetClient();
 
     default NetEventLoop createNetEventLoop(long loopInterval, boolean isThreadSafe) {
         return null;
     }
-
-    void init(Map<String, String> config, boolean initClient);
 }

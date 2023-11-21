@@ -164,24 +164,24 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public SQLCommand createSQLCommand(String sql, int fetchSize) {
+    public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
         checkClosed();
-        return new ClientSQLCommand(this, sql, fetchSize);
-    }
-
-    @Override
-    public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        checkClosed();
-        return new ClientPreparedSQLCommand(this, sql, fetchSize);
+        if (prepared)
+            return new ClientPreparedSQLCommand(this, sql, fetchSize);
+        else
+            return new ClientSQLCommand(this, sql, fetchSize);
     }
 
     @Override
     public void close() {
-        if (closed)
-            return;
-        try {
-            RuntimeException closeError = null;
-            synchronized (this) {
+        AsyncCallback<Boolean> ac = AsyncCallback.createConcurrentCallback();
+        submitTask(() -> {
+            if (closed) {
+                ac.setAsyncResult(true);
+                return;
+            }
+            try {
+                RuntimeException closeError = null;
                 try {
                     // 只有当前Session有效时服务器端才持有对应的session
                     if (isValid()) {
@@ -195,13 +195,16 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                     trace.error(e, "close");
                 }
                 closeTraceSystem();
+                if (closeError != null) {
+                    ac.setAsyncResult(closeError);
+                } else {
+                    ac.setAsyncResult(true);
+                }
+            } finally {
+                super.close();
             }
-            if (closeError != null) {
-                throw closeError;
-            }
-        } finally {
-            super.close();
-        }
+        });
+        ac.get();
     }
 
     public Trace getTrace() {
@@ -229,11 +232,23 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off,
             int length) {
         try {
-            LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
-            if (ack.buff != null && ack.buff.length > 0) {
-                System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
-                return ack.buff.length;
-            }
+            AsyncCallback<Integer> ac = createCallback();
+            submitTask(() -> {
+                this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).onComplete(ar -> {
+                    if (ar.isSucceeded()) {
+                        LobReadAck ack = ar.getResult();
+                        if (ack.buff != null && ack.buff.length > 0) {
+                            System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
+                            ac.setAsyncResult(ack.buff.length);
+                        } else {
+                            ac.setAsyncResult(-1);
+                        }
+                    } else {
+                        ac.setAsyncResult(ar.getCause());
+                    }
+                });
+            });
+            return ac.get();
         } catch (Exception e) {
             handleException(e);
         }

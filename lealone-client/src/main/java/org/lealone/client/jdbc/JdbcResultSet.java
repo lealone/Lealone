@@ -73,6 +73,9 @@ import org.lealone.db.value.ValueTimestamp;
  * with NULL could exist). In updatable result sets, own changes are visible,
  * but not own inserts and deletes.
  * </p>
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     private final boolean closeStatement;

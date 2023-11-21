@@ -16,6 +16,9 @@ import org.lealone.db.value.DataType;
 
 /**
  * Represents the meta data for a ResultSet.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcResultSetMetaData extends JdbcWrapper implements ResultSetMetaData {
 
@@ -457,5 +460,4 @@ public class JdbcResultSetMetaData extends JdbcWrapper implements ResultSetMetaD
     public String toString() {
         return getTraceObjectName() + ": columns=" + columnCount;
     }
-
 }

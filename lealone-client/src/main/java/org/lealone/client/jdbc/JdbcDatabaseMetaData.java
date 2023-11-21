@@ -20,6 +20,9 @@ import org.lealone.db.SysProperties;
 
 /**
  * Represents the meta data for a database.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaData {
 
@@ -235,7 +238,8 @@ public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaDat
                     + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATALOG, "
                     + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_SCHEMA, "
                     + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_TABLE, " + "SOURCE_DATA_TYPE, "
-                    + "CASE WHEN SEQUENCE_NAME IS NULL THEN CAST(? AS VARCHAR) ELSE CAST(? AS VARCHAR) END IS_AUTOINCREMENT, "
+                    + "CASE WHEN SEQUENCE_NAME IS NULL "
+                    + "THEN CAST(? AS VARCHAR) ELSE CAST(? AS VARCHAR) END IS_AUTOINCREMENT, "
                     + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATLOG "
                     + "FROM INFORMATION_SCHEMA.COLUMNS " + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? "
                     + "AND TABLE_SCHEMA LIKE ? ESCAPE ? " + "AND TABLE_NAME LIKE ? ESCAPE ? "

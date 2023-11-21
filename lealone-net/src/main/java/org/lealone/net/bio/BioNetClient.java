@@ -7,37 +7,29 @@ package org.lealone.net.bio;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.channels.SocketChannel;
 import java.util.Map;
 
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 
 class BioNetClient extends NetClientBase {
 
     BioNetClient() {
-        super(true);
-    }
-
-    @Override
-    protected void openInternal(Map<String, String> config) {
-    }
-
-    @Override
-    protected void closeInternal() {
+        super(false);
     }
 
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac) {
+            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,
+            Scheduler scheduler) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int networkTimeout = MapUtils.getInt(config, ConnectionSetting.NETWORK_TIMEOUT.name(),
                 Constants.DEFAULT_NETWORK_TIMEOUT);
@@ -68,20 +60,5 @@ class BioNetClient extends NetClientBase {
             }
             ac.setAsyncResult(e);
         }
-    }
-
-    @Override
-    public boolean isThreadSafe() {
-        return false;
-    }
-
-    @Override
-    protected NetEventLoop getNetEventLoop() {
-        return null;
-    }
-
-    @Override
-    protected void registerConnectOperation(SocketChannel channel, ClientAttachment attachment,
-            AsyncCallback<AsyncConnection> ac) {
     }
 }

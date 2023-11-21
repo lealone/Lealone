@@ -34,6 +34,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.Future;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -142,10 +143,10 @@ public class GenScript extends ScriptBase {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         LocalResult r = createResult();
         r.done();
-        return r;
+        return Future.succeededFuture(r);
     }
 
     private LocalResult createResult() {

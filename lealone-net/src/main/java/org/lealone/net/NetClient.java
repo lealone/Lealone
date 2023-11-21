@@ -9,15 +9,17 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 
 import org.lealone.db.async.Future;
+import org.lealone.db.scheduler.Scheduler;
 
 public interface NetClient {
 
-    default Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node) {
-        return createConnection(config, node, null);
+    default Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node,
+            Scheduler scheduler) {
+        return createConnection(config, node, null, scheduler);
     }
 
     Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager);
+            AsyncConnectionManager connectionManager, Scheduler scheduler);
 
     void addConnection(InetSocketAddress inetSocketAddress, AsyncConnection conn);
 
@@ -28,5 +30,7 @@ public interface NetClient {
     boolean isClosed();
 
     boolean isThreadSafe();
+
+    void checkTimeout(long currentTime);
 
 }

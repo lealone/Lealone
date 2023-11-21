@@ -18,6 +18,7 @@ import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.db.session.SessionSetting;
@@ -724,6 +725,7 @@ public class ConnectionInfo implements Cloneable {
         ci.traceEnabled = traceEnabled;
         ci.singleThreadCallback = singleThreadCallback;
         ci.transactionHandler = transactionHandler;
+        ci.scheduler = scheduler;
         return ci;
     }
 
@@ -790,5 +792,15 @@ public class ConnectionInfo implements Cloneable {
 
     public void setDatabaseId(int databaseId) {
         this.databaseId = databaseId;
+    }
+
+    private Scheduler scheduler;
+
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
     }
 }

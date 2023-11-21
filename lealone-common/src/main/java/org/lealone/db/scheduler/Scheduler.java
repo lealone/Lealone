@@ -5,12 +5,16 @@
  */
 package org.lealone.db.scheduler;
 
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.db.DataBufferFactory;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
+import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperationHandler;
@@ -45,6 +49,10 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     void register(Object conn);
 
+    default void registerConnectOperation(SocketChannel channel, Object attachment)
+            throws ClosedChannelException {
+    }
+
     Logger getLogger();
 
     SchedulerFactory getSchedulerFactory();
@@ -55,10 +63,14 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     void addSessionInfo(ISessionInfo si);
 
+    void addSession(Session session, int databaseId);
+
     void removeSessionInfo(ISessionInfo si);
 
     void validateSession(boolean isUserAndPasswordCorrect);
 
     @Override
     void wakeUp();
+
+    void submitTask(Session session, AsyncTask task);
 }

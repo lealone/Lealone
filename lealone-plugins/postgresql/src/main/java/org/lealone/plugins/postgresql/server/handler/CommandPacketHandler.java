@@ -164,7 +164,7 @@ public class CommandPacketHandler extends PacketHandler {
                 sendErrorResponse("Portal not found: " + name);
             } else {
                 try {
-                    sendRowDescription(p.prep.prep.getMetaData(), p.resultColumnFormat);
+                    sendRowDescription(p.prep.prep.getMetaData().get(), p.resultColumnFormat);
                 } catch (Exception e) {
                     sendErrorResponse(e);
                 }
@@ -247,7 +247,7 @@ public class CommandPacketHandler extends PacketHandler {
                     try {
                         Result result = ar.getResult();
                         if (isQuery)
-                            sendRowDescription(stmt.getMetaData(), null);
+                            sendRowDescription(stmt.getMetaData().get(), null);
                         while (result.next()) {
                             sendDataRow(result);
                         }

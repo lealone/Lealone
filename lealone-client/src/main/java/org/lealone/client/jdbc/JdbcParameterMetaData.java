@@ -19,6 +19,9 @@ import org.lealone.sql.SQLCommand;
 
 /**
  * Information about the parameters of a prepared statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcParameterMetaData extends JdbcWrapper implements ParameterMetaData {
 
@@ -223,5 +226,4 @@ public class JdbcParameterMetaData extends JdbcWrapper implements ParameterMetaD
     public String toString() {
         return getTraceObjectName() + ": parameterCount=" + paramCount;
     }
-
 }

@@ -15,7 +15,10 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
+import org.lealone.db.async.PendingTask;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
@@ -40,16 +43,7 @@ public interface Session extends Closeable {
 
     int getId();
 
-    SQLCommand createSQLCommand(String sql, int fetchSize);
-
-    /**
-     * Parse a command and prepare it for execution.
-     *
-     * @param sql the SQL statement
-     * @param fetchSize the number of rows to fetch in one step
-     * @return the prepared command
-     */
-    SQLCommand prepareSQLCommand(String sql, int fetchSize);
+    SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared);
 
     public default SessionStatus getStatus() {
         return SessionStatus.TRANSACTION_NOT_START;
@@ -264,4 +258,12 @@ public interface Session extends Closeable {
 
     default void markDirtyPages() {
     }
+
+    Scheduler getScheduler();
+
+    void setScheduler(Scheduler scheduler);
+
+    void submitTask(AsyncTask task);
+
+    PendingTask getPendingTask();
 }

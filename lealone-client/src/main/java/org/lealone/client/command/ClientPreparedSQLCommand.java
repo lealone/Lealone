@@ -5,7 +5,6 @@
  */
 package org.lealone.client.command;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +16,7 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.SysProperties;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
@@ -44,7 +44,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         super(session, sql, fetchSize);
         // commandId重新prepare时会变，但是parameters不会变
         parameters = Utils.newSmallArrayList();
-        prepare(true);
     }
 
     @Override
@@ -52,22 +51,39 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         return CLIENT_PREPARED_SQL_COMMAND;
     }
 
-    private void prepare(boolean readParams) {
+    @Override
+    public Future<Boolean> prepare(boolean readParams) {
+        AsyncCallback<Boolean> ac = AsyncCallback.createSingleThreadCallback();
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
             PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId,
                     sql);
             Future<PreparedStatementPrepareReadParamsAck> f = session.send(packet);
-            PreparedStatementPrepareReadParamsAck ack = f.get();
-            isQuery = ack.isQuery;
-            parameters = new ArrayList<>(ack.params);
+            f.onComplete(ar -> {
+                if (ar.isFailed()) {
+                    ac.setAsyncResult(ar.getCause());
+                } else {
+                    PreparedStatementPrepareReadParamsAck ack = ar.getResult();
+                    isQuery = ack.isQuery;
+                    parameters = new ArrayList<>(ack.params);
+                    ac.setAsyncResult(isQuery);
+                }
+            });
         } else {
             PreparedStatementPrepare packet = new PreparedStatementPrepare(commandId, sql);
             Future<PreparedStatementPrepareAck> f = session.send(packet);
-            PreparedStatementPrepareAck ack = f.get();
-            isQuery = ack.isQuery;
+            f.onComplete(ar -> {
+                if (ar.isFailed()) {
+                    ac.setAsyncResult(ar.getCause());
+                } else {
+                    PreparedStatementPrepareAck ack = ar.getResult();
+                    isQuery = ack.isQuery;
+                    ac.setAsyncResult(isQuery);
+                }
+            });
         }
+        return ac;
     }
 
     private void prepareIfRequired() {
@@ -84,22 +100,33 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         if (!isQuery) {
-            return null;
+            return Future.succeededFuture(null);
         }
         prepareIfRequired();
+        AsyncCallback<Result> ac = AsyncCallback.createSingleThreadCallback();
         try {
             Future<PreparedStatementGetMetaDataAck> f = session
                     .send(new PreparedStatementGetMetaData(commandId));
-            PreparedStatementGetMetaDataAck ack = f.get();
-            ClientResult result = new RowCountDeterminedClientResult(session,
-                    (TransferInputStream) ack.in, -1, ack.columnCount, 0, 0);
-            return result;
-        } catch (IOException e) {
-            session.handleException(e);
+            f.onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    try {
+                        PreparedStatementGetMetaDataAck ack = ar.getResult();
+                        ClientResult result = new RowCountDeterminedClientResult(session,
+                                (TransferInputStream) ack.in, -1, ack.columnCount, 0, 0);
+                        ac.setAsyncResult(result);
+                    } catch (Throwable t) {
+                        ac.setAsyncResult(t);
+                    }
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+        } catch (Throwable t) {
+            ac.setAsyncResult(t);
         }
-        return null;
+        return ac;
     }
 
     @Override
@@ -174,15 +201,21 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         return sql + Trace.formatParams(getParameters());
     }
 
-    public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
+    public AsyncCallback<int[]> executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
+        AsyncCallback<int[]> ac = AsyncCallback.createSingleThreadCallback();
         try {
             Future<BatchStatementUpdateAck> f = session.send(new BatchStatementPreparedUpdate(commandId,
                     batchParameters.size(), batchParameters));
-            BatchStatementUpdateAck ack = f.get();
-            return ack.results;
+            f.onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    ac.setAsyncResult(ar.getResult().results);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
         } catch (Exception e) {
-            session.handleException(e);
+            ac.setAsyncResult(e);
         }
-        return null;
+        return ac;
     }
 }

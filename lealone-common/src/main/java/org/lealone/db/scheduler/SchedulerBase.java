@@ -15,6 +15,7 @@ import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
@@ -85,6 +86,16 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     @Override
     public SchedulerThread getThread() {
         return thread;
+    }
+
+    @Override
+    public void addSession(Session session, int databaseId) {
+
+    }
+
+    @Override
+    public void submitTask(Session session, AsyncTask task) {
+        handle(task);
     }
 
     @Override

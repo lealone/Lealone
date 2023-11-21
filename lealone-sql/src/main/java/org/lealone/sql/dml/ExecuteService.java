@@ -5,6 +5,7 @@
  */
 package org.lealone.sql.dml;
 
+import org.lealone.db.async.Future;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.service.Service;
@@ -44,10 +45,10 @@ public class ExecuteService extends ExecuteStatement {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         LocalResult result = new LocalResult(session, resultExpressions, 1);
         result.done();
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override

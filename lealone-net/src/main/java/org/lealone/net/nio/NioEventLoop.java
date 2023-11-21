@@ -465,6 +465,11 @@ class NioEventLoop implements NetEventLoop {
     }
 
     @Override
+    public NetClient getNetClient() {
+        return netClient;
+    }
+
+    @Override
     public void setAccepter(Accepter accepter) {
         this.accepter = accepter;
     }

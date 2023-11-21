@@ -74,7 +74,7 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
         @Override
         public Packet handle(ServerSession session, PreparedStatementGetMetaData packet) {
             PreparedSQLStatement command = (PreparedSQLStatement) session.getCache(packet.commandId);
-            Result result = command.getMetaData();
+            Result result = command.getMetaData().get();
             return new PreparedStatementGetMetaDataAck(result);
         }
     }

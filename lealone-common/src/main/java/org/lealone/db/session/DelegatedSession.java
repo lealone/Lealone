@@ -12,7 +12,10 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
+import org.lealone.db.async.PendingTask;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
@@ -39,13 +42,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public SQLCommand createSQLCommand(String sql, int fetchSize) {
-        return session.createSQLCommand(sql, fetchSize);
-    }
-
-    @Override
-    public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        return session.prepareSQLCommand(sql, fetchSize);
+    public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
+        return session.createSQLCommand(sql, fetchSize, prepared);
     }
 
     @Override
@@ -224,5 +222,25 @@ public class DelegatedSession implements Session {
     @Override
     public <T> AsyncCallback<T> createCallback() {
         return session.createCallback();
+    }
+
+    @Override
+    public Scheduler getScheduler() {
+        return session.getScheduler();
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        session.setScheduler(scheduler);
+    }
+
+    @Override
+    public void submitTask(AsyncTask task) {
+        session.submitTask(task);
+    }
+
+    @Override
+    public PendingTask getPendingTask() {
+        return session.getPendingTask();
     }
 }

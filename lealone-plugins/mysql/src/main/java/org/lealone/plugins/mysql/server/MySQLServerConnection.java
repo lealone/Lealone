@@ -173,7 +173,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
             PreparedOkPacket packet = new PreparedOkPacket();
             packet.packetId = 1;
             packet.statementId = stmt.getId();
-            packet.columnsNumber = stmt.getMetaData().getVisibleColumnCount();
+            packet.columnsNumber = stmt.getMetaData().get().getVisibleColumnCount();
             packet.parametersNumber = stmt.getParameters().size();
             sendPacket(packet);
         }

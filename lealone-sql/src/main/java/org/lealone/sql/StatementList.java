@@ -7,6 +7,7 @@ package org.lealone.sql;
 
 import java.util.ArrayList;
 
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.Parameter;
@@ -42,7 +43,7 @@ public class StatementList extends StatementBase {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         return firstStatement.getMetaData();
     }
 

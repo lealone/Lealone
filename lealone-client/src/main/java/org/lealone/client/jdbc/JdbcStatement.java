@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.client.command.ClientSQLCommand;
 import org.lealone.common.exceptions.DbException;
@@ -20,7 +23,6 @@ import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
@@ -72,47 +74,40 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        try {
-            return executeQueryInternal(sql, true).get();
-        } catch (Exception e) {
-            throw logAndConvert(e); // 抛出SQLException
-        }
+        return executeQueryInternal(sql, false).get(this);
     }
 
     public Future<ResultSet> executeQueryAsync(String sql) {
-        try {
-            return executeQueryInternal(sql, false);
-        } catch (Exception e) {
-            return Future.failedFuture(logAndConvert(e)); // 返回失败Future
-        }
+        return executeQueryInternal(sql, true);
     }
 
-    private Future<ResultSet> executeQueryInternal(String sql, boolean sync) throws SQLException {
+    private JdbcAsyncCallback<ResultSet> executeQueryInternal(String sql, boolean async) {
         int id = getNextTraceId(TraceObjectType.RESULT_SET);
         if (isDebugEnabled()) {
             debugCodeAssign(TraceObjectType.RESULT_SET, id,
-                    "executeQuery" + (sync ? "" : "Async") + "(" + quote(sql) + ")");
+                    "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
         }
-        checkClosed();
-        closeOldResultSet();
-        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-        SQLCommand command = conn.createSQLCommand(sql, fetchSize);
-        setExecutingStatement(command);
-        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        AsyncCallback<ResultSet> ac = AsyncCallback.createConcurrentCallback();
-        command.executeQuery(maxRows, scrollable).onComplete(ar -> {
-            setExecutingStatement(null);
-            if (ar.isSucceeded()) {
-                Result r = ar.getResult();
-                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id,
-                        closedByResultSet, scrollable, updatable);
-                resultSet.setCommand(command); // 关闭结果集时再关闭
-                ac.setAsyncResult(resultSet);
-            } else {
-                // 转换成SQLException
-                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
-            }
+        JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
+        conn.submitTask(ac, async, () -> {
+            checkClosed();
+            closeOldResultSet();
+            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            SQLCommand command = conn.createSQLCommand(tsql, fetchSize);
+            setExecutingStatement(command);
+            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+                setExecutingStatement(null);
+                if (ar.isSucceeded()) {
+                    Result r = ar.getResult();
+                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id,
+                            closedByResultSet, scrollable, updatable);
+                    resultSet.setCommand(command); // 关闭结果集时再关闭
+                    ac.setAsyncResult(resultSet);
+                } else {
+                    setAsyncResult(ac, ar.getCause());
+                }
+            });
         });
         return ac;
     }
@@ -206,38 +201,31 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
 
     public Future<Integer> executeUpdateAsync(String sql) {
         debugCodeCall("executeUpdateAsync", sql);
-        try {
-            return executeUpdateInternal(sql);
-        } catch (Exception e) {
-            return Future.failedFuture(logAndConvert(e)); // 返回失败Future
-        }
+        return executeUpdateInternal(true, sql);
     }
 
     private int executeUpdateSync(String sql) throws SQLException {
-        try {
-            return executeUpdateInternal(sql).get();
-        } catch (Exception e) {
-            throw logAndConvert(e); // 抛出SQLException
-        }
+        return executeUpdateInternal(false, sql).get(this);
     }
 
-    private Future<Integer> executeUpdateInternal(String sql) throws SQLException {
-        checkClosed();
-        closeOldResultSet();
-        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-        SQLCommand command = conn.createSQLCommand(sql, fetchSize);
-        setExecutingStatement(command);
-        AsyncCallback<Integer> ac = AsyncCallback.createConcurrentCallback();
-        command.executeUpdate().onComplete(ar -> {
-            // 设置完后再调用close，否则有可能当前语句提前关闭了
-            setExecutingStatement(null);
-            command.close();
-            if (ar.isFailed()) {
-                // 转换成SQLException
-                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
-            } else {
-                ac.setAsyncResult(ar);
-            }
+    private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async, String sql) {
+        JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
+        conn.submitTask(ac, async, () -> {
+            checkClosed();
+            closeOldResultSet();
+            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            SQLCommand command = conn.createSQLCommand(tsql, fetchSize);
+            setExecutingStatement(command);
+            command.executeUpdate().onComplete(ar -> {
+                // 设置完后再调用close，否则有可能当前语句提前关闭了
+                setExecutingStatement(null);
+                command.close();
+                if (ar.isFailed()) {
+                    setAsyncResult(ac, ar.getCause());
+                } else {
+                    ac.setAsyncResult(ar);
+                }
+            });
         });
         return ac;
     }
@@ -347,35 +335,56 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         // }
         // }
-        try {
+        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        conn.submitTask(ac, false, () -> {
             checkClosed();
             closeOldResultSet();
-            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            SQLCommand command = conn.prepareSQLCommand(sql, fetchSize);
-            setExecutingStatement(command);
-            if (command.isQuery()) {
-                resultSet = executeQuerySQLCommand(command);
-                resultSet.setCommand(command);
-                // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
-                return true;
-            } else {
-                updateCount = command.executeUpdate().get();
-                command.close();
-                return false;
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        } finally {
-            setExecutingStatement(null);
-        }
+            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            SQLCommand command = conn.createSQLCommand(tsql, fetchSize, true);
+            command.prepare(false).onComplete(ar -> {
+                if (ar.isSucceeded())
+                    executeInternal(ac, command, false);
+                else
+                    setAsyncResult(ac, ar.getCause());
+            });
+        });
+        return ac.get(this).booleanValue();
     }
 
-    JdbcResultSet executeQuerySQLCommand(SQLCommand command) {
-        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-        Result result = command.executeQuery(maxRows, scrollable).get();
-        int id = getNextTraceId(TraceObjectType.RESULT_SET);
-        return new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+    void executeInternal(JdbcAsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
+        setExecutingStatement(command);
+        if (command.isQuery()) {
+            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+                setExecutingStatement(null);
+                if (ar.isFailed()) {
+                    command.close();
+                    setAsyncResult(ac, ar.getCause());
+                    return;
+                }
+                Result result = ar.getResult();
+                int id = getNextTraceId(TraceObjectType.RESULT_SET);
+                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable,
+                        updatable);
+                resultSet.setCommand(command);
+                // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
+                ac.setAsyncResult(true);
+            });
+        } else {
+            command.executeUpdate().onComplete(ar -> {
+                // 设置完后再调用close，否则有可能当前语句提前关闭了
+                setExecutingStatement(null);
+                if (!prepared)
+                    command.close();
+                if (ar.isFailed()) {
+                    setAsyncResult(ac, ar.getCause());
+                } else {
+                    updateCount = ar.getResult();
+                    ac.setAsyncResult(false);
+                }
+            });
+        }
     }
 
     /**
@@ -460,52 +469,65 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public int[] executeBatch() throws SQLException {
-        try {
-            debugCodeCall("executeBatch");
+        debugCodeCall("executeBatch");
+        ArrayList<String> batchCommands = this.batchCommands;
+        this.batchCommands = null;
+        JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
+        conn.submitTask(ac, false, () -> {
             checkClosed();
-            if (batchCommands == null || batchCommands.isEmpty())
-                return new int[0];
-
+            if (batchCommands == null || batchCommands.isEmpty()) {
+                ac.setAsyncResult(new int[0]);
+                return;
+            }
             ConnectionInfo ci = session.getConnectionInfo();
             if (ci != null && ci.isRemote()) {
-                ClientSQLCommand command = (ClientSQLCommand) session.createSQLCommand(null, -1);
+                ClientSQLCommand command = (ClientSQLCommand) session.createSQLCommand(null, -1, false);
                 setExecutingStatement(command);
-                try {
-                    return command.executeBatchSQLCommands(batchCommands);
-                } finally {
-                    batchCommands = null;
+                command.executeBatchSQLCommands(batchCommands).onComplete(ar -> {
                     setExecutingStatement(null);
-                }
+                    if (ar.isSucceeded()) {
+                        ac.setAsyncResult(ar.getResult());
+                    } else {
+                        ac.setAsyncResult(ar.getCause());
+                    }
+                });
             } else {
                 int size = batchCommands.size();
                 int[] result = new int[size];
-                boolean error = false;
-                SQLException next = null;
+                AtomicReference<SQLException> nextRef = new AtomicReference<>();
+                AtomicBoolean error = new AtomicBoolean(false);
+                AtomicInteger counter = new AtomicInteger(size);
                 for (int i = 0; i < size; i++) {
+                    int index = i;
                     String sql = batchCommands.get(i);
-                    try {
-                        result[i] = executeUpdateInternal(sql).get();
-                    } catch (Exception re) {
-                        SQLException e = logAndConvert(re);
-                        if (next == null) {
-                            next = e;
+                    executeUpdateAsync(sql).onComplete(ar -> {
+                        if (ar.isSucceeded()) {
+                            result[index] = ar.getResult();
                         } else {
-                            e.setNextException(next);
-                            next = e;
+                            result[index] = Statement.EXECUTE_FAILED;
+                            error.set(true);
+                            SQLException e = logAndConvert(DbException.convert(ar.getCause()));
+                            SQLException next = nextRef.get();
+                            if (next == null) {
+                                nextRef.set(e);
+                            } else {
+                                e.setNextException(next);
+                                nextRef.set(e);
+                            }
                         }
-                        result[i] = Statement.EXECUTE_FAILED;
-                        error = true;
-                    }
+                        if (counter.decrementAndGet() == 0) {
+                            if (error.get()) {
+                                ac.setAsyncResult(new JdbcBatchUpdateException(nextRef.get(), result));
+                            } else {
+                                ac.setAsyncResult(result);
+                            }
+                        }
+                    });
                 }
-                batchCommands = null;
-                if (error) {
-                    throw new JdbcBatchUpdateException(next, result);
-                }
-                return result;
             }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
+        });
+        return ac.get(this);
+
     }
 
     /**

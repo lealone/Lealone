@@ -432,7 +432,11 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public SQLCommand createSQLCommand(String sql, int fetchSize) {
+    public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
+        if (prepared) {
+            SQLParser parser = createParser();
+            return parser.parse(sql);
+        }
         return prepareStatement(sql, fetchSize);
     }
 
@@ -443,11 +447,6 @@ public class ServerSession extends SessionBase {
      * @param sql the SQL statement
      * @return the prepared statement
      */
-    @Override
-    public synchronized SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        return prepareStatement(sql, fetchSize);
-    }
-
     public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");

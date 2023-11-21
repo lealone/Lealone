@@ -151,8 +151,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Result getMetaData() {
-        return null;
+    public Future<Result> getMetaData() {
+        return Future.succeededFuture(null);
     }
 
     /**
@@ -469,6 +469,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public PreparedSQLStatement prepare() {
         // nothing to do
         return this;
+    }
+
+    @Override
+    public Future<Boolean> prepare(boolean readParams) {
+        prepare();
+        return Future.succeededFuture(isQuery());
     }
 
     /**

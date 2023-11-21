@@ -7,6 +7,7 @@ package org.lealone.sql.dml;
 
 import java.sql.ResultSet;
 
+import org.lealone.db.async.Future;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
@@ -49,7 +50,7 @@ public class Call extends ManipulationStatement {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         LocalResult result;
         if (isResultSet) {
             Expression[] expr = expression.getExpressionColumns(session);
@@ -58,7 +59,7 @@ public class Call extends ManipulationStatement {
             result = new LocalResult(session, expressions, 1);
         }
         result.done();
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override

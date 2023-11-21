@@ -8,7 +8,6 @@ package org.lealone.net;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +17,7 @@ import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.nio.NioAttachment;
 
 public abstract class NetClientBase implements NetClient {
@@ -26,83 +26,33 @@ public abstract class NetClientBase implements NetClient {
     // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。
     private final Map<InetSocketAddress, AsyncConnectionPool> asyncConnections;
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    private final AtomicBoolean opened = new AtomicBoolean(false);
     private final boolean isThreadSafe;
 
     public NetClientBase(boolean isThreadSafe) {
         asyncConnections = isThreadSafe ? new HashMap<>() : new ConcurrentHashMap<>();
         this.isThreadSafe = isThreadSafe;
-    }
-
-    protected void openInternal(Map<String, String> config) {
-    }
-
-    protected void closeInternal() {
-    }
-
-    protected abstract NetEventLoop getNetEventLoop();
-
-    protected abstract void registerConnectOperation(SocketChannel channel, ClientAttachment attachment,
-            AsyncCallback<AsyncConnection> ac);
-
-    protected void createConnectionInternal(Map<String, String> config, NetNode node, //
-            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac) {
-        InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        SocketChannel channel = null;
-        NetEventLoop eventLoop = getNetEventLoop();
-        try {
-            channel = SocketChannel.open();
-            channel.configureBlocking(false);
-            initSocket(channel.socket(), config);
-
-            ClientAttachment attachment = new ClientAttachment();
-            attachment.connectionManager = connectionManager;
-            attachment.inetSocketAddress = inetSocketAddress;
-            attachment.ac = ac;
-            attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
-
-            registerConnectOperation(channel, attachment, ac);
-            channel.connect(inetSocketAddress);
-            if (isThreadSafe) {
-                // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
-                // 否则两次删除SelectionKey会出现java.util.ConcurrentModificationException
-                if (!eventLoop.isInLoop()) {
-                    if (eventLoop.getSelector().selectNow() > 0) {
-                        eventLoop.handleSelectedKeys();
-                    }
-                }
-            } else {
-                eventLoop.wakeup();
-            }
-        } catch (Exception e) {
-            eventLoop.closeChannel(channel);
-            ac.setAsyncResult(e);
-        }
-    }
-
-    public synchronized void open(Map<String, String> config) {
-        if (opened.get())
-            return;
-        openInternal(config);
         ShutdownHookUtils.addShutdownHook(this, () -> {
             close();
         });
-        opened.set(true);
     }
 
     @Override
+    public boolean isThreadSafe() {
+        return isThreadSafe;
+    }
+
+    protected abstract void createConnectionInternal(Map<String, String> config, NetNode node, //
+            AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,
+            Scheduler scheduler);
+
+    @Override
     public Future<AsyncConnection> createConnection(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager) {
-        // checkClosed(); //创建连接时不检查关闭状态，这样允许重用NetClient实例，如果之前的实例关闭了，重新打开即可
-        if (!opened.get()) {
-            open(config);
-        }
+            AsyncConnectionManager connectionManager, Scheduler scheduler) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
-            AsyncCallback<AsyncConnection> ac = isThreadSafe ? AsyncCallback.createSingleThreadCallback()
-                    : AsyncCallback.createConcurrentCallback();
-            createConnectionInternal(config, node, connectionManager, ac);
+            AsyncCallback<AsyncConnection> ac = AsyncCallback.create(isThreadSafe);
+            createConnectionInternal(config, node, connectionManager, ac, scheduler);
             return ac;
         } else {
             return Future.succeededFuture(asyncConnection);
@@ -117,7 +67,6 @@ public abstract class NetClientBase implements NetClient {
 
     @Override
     public void removeConnection(AsyncConnection conn) {
-        // checkClosed(); //不做检查
         if (conn == null)
             return;
         AsyncConnectionPool pool = asyncConnections.get(conn.getInetSocketAddress());
@@ -157,8 +106,6 @@ public abstract class NetClientBase implements NetClient {
             pool.close();
         }
         asyncConnections.clear();
-        closeInternal();
-        opened.set(false);
     }
 
     protected void checkClosed() {
@@ -167,9 +114,12 @@ public abstract class NetClientBase implements NetClient {
         }
     }
 
+    @Override
     public void checkTimeout(long currentTime) {
-        for (AsyncConnectionPool pool : asyncConnections.values()) {
-            pool.checkTimeout(currentTime);
+        if (!asyncConnections.isEmpty()) {
+            for (AsyncConnectionPool pool : asyncConnections.values()) {
+                pool.checkTimeout(currentTime);
+            }
         }
     }
 

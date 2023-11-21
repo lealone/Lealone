@@ -56,6 +56,9 @@ import org.lealone.common.util.StringUtils;
  *
  * In this example the user name and password are serialized as
  * well; this may be a security problem in some cases.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcDataSource extends JdbcWrapper
         implements DataSource, Serializable, Referenceable, XADataSource {

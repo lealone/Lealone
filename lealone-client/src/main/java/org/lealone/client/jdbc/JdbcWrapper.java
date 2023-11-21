@@ -10,6 +10,7 @@ import java.sql.Wrapper;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.db.async.AsyncCallback;
 
 public class JdbcWrapper extends TraceObject implements Wrapper {
 
@@ -29,5 +30,15 @@ public class JdbcWrapper extends TraceObject implements Wrapper {
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return iface != null && iface.isAssignableFrom(getClass());
+    }
+
+    @Override
+    public SQLException logAndConvert(Exception ex) { // 只是把protected变成public，允许在其他代码中调用
+        return super.logAndConvert(ex);
+    }
+
+    public static void setAsyncResult(AsyncCallback<?> ac, Throwable cause) {
+        // 转换成SQLException
+        ac.setAsyncResult(DbException.toSQLException(cause));
     }
 }

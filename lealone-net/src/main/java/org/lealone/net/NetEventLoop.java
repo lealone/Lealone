@@ -49,6 +49,8 @@ public interface NetEventLoop {
 
     void setNetClient(NetClient netClient);
 
+    NetClient getNetClient();
+
     void setAccepter(Accepter accepter);
 
     void handleSelectedKeys();

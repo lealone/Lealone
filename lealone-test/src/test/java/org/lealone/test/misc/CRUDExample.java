@@ -11,14 +11,13 @@ import java.sql.Statement;
 
 import org.junit.Assert;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.net.bio.BioNetFactory;
 import org.lealone.test.TestBase;
 
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
-        test.setNetFactoryName(BioNetFactory.NAME);
+        // test.setNetFactoryName(BioNetFactory.NAME);
         Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }
@@ -43,9 +42,12 @@ public class CRUDExample {
             sql += " ENGINE = " + storageEngineName;
         stmt.executeUpdate(sql);
 
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.execute("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
+        // ((JdbcStatement) stmt).executeQueryAsync("SELECT2 * FROM test").onComplete(ar -> {
+        // ar.getCause().printStackTrace();
+        // });
         Assert.assertTrue(rs.next());
         System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         Assert.assertFalse(rs.next());
@@ -57,8 +59,12 @@ public class CRUDExample {
     }
 
     public static void batchInsert(Statement stmt) throws Exception {
-        for (int i = 1; i <= 60000; i++)
+        for (int i = 1; i <= 6000; i++)
             stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
+        stmt.setFetchSize(10);
+        ResultSet rs = stmt.executeQuery("SELECT * FROM test");
+        while (rs.next())
+            rs.getInt(1);
     }
 
     public static void batchDelete(Statement stmt) throws Exception {

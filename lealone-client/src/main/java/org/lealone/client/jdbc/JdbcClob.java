@@ -21,6 +21,9 @@ import org.lealone.db.value.Value;
 
 /**
  * Represents a CLOB value.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcClob extends ClobBase {
 

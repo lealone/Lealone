@@ -22,6 +22,9 @@ import org.lealone.db.SysProperties;
 /**
  * This class is used to create new DataSource objects.
  * An application should not use this class directly.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcDataSourceFactory implements ObjectFactory {
 

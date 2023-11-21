@@ -5,8 +5,6 @@
  */
 package org.lealone.net.bio;
 
-import java.util.Map;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.net.NetClient;
 import org.lealone.net.NetFactoryBase;
@@ -17,25 +15,17 @@ public class BioNetFactory extends NetFactoryBase {
     public static final String NAME = "bio";
     public static final BioNetFactory INSTANCE = new BioNetFactory();
 
-    private BioNetClient netClient = new BioNetClient();
-
     public BioNetFactory() {
         super(NAME);
     }
 
     @Override
-    public void init(Map<String, String> config, boolean initClient) {
-        super.init(config);
-    }
-
-    @Override
-    public NetClient getNetClient() {
-        return netClient;
+    public NetClient createNetClient() {
+        return new BioNetClient();
     }
 
     @Override
     public NetServer createNetServer() {
         throw DbException.getInternalError();
     }
-
 }

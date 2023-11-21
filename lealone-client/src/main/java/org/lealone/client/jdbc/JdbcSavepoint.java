@@ -19,6 +19,9 @@ import org.lealone.db.api.ErrorCode;
  * A savepoint is a point inside a transaction to where a transaction can be
  * rolled back. The tasks that where done before the savepoint are not rolled
  * back in this case.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcSavepoint extends TraceObject implements Savepoint {
 
@@ -61,10 +64,9 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
     /**
      * Roll back to this savepoint.
      */
-    void rollback() {
+    void rollback() throws SQLException {
         checkValid();
-        conn.prepareSQLCommand("ROLLBACK TO SAVEPOINT " + getName(name, savepointId), Integer.MAX_VALUE)
-                .executeUpdate();
+        conn.createStatement().executeUpdateAsync("ROLLBACK TO SAVEPOINT " + getName(name, savepointId));
     }
 
     private void checkValid() {
@@ -116,5 +118,4 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
     public String toString() {
         return getTraceObjectName() + ": id=" + savepointId + " name=" + name;
     }
-
 }

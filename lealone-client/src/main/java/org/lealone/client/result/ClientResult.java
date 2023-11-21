@@ -8,10 +8,12 @@ package org.lealone.client.result;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.lealone.client.jdbc.JdbcAsyncCallback;
 import org.lealone.client.session.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.SysProperties;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.TransferInputStream;
@@ -122,7 +124,9 @@ public abstract class ClientResult implements Result {
         if (resultId > 0) {
             session.checkClosed();
             try {
-                session.send(new ResultReset(resultId));
+                submitTask(() -> {
+                    session.send(new ResultReset(resultId));
+                });
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -153,27 +157,43 @@ public abstract class ClientResult implements Result {
         return result.size();
     }
 
+    // 调度线程和外部线程都会调用
     protected void sendClose() {
         if (session == null) {
             return;
         }
         try {
             if (resultId > 0) {
-                session.send(new ResultClose(resultId));
+                submitTask(() -> {
+                    if (session != null) {
+                        session.send(new ResultClose(resultId));
+                        session = null;
+                    }
+                });
+            } else {
+                session = null;
             }
         } catch (Exception e) {
             session.getTrace().error(e, "close");
-        } finally {
-            session = null;
         }
     }
 
     protected void sendFetch(int fetchSize) throws IOException {
         // 释放buffer
         in.closeInputStream();
-        ResultFetchRowsAck ack = session
-                .<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).get();
-        in = (TransferInputStream) ack.in;
+        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        submitTask(() -> {
+            session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize))
+                    .onComplete(ar -> {
+                        if (ar.isSucceeded()) {
+                            in = (TransferInputStream) ar.getResult().in;
+                            ac.setAsyncResult(true);
+                        } else {
+                            ac.setAsyncResult(ar.getCause());
+                        }
+                    });
+        });
+        ac.get();
     }
 
     @Override
@@ -189,10 +209,12 @@ public abstract class ClientResult implements Result {
         try {
             if (resultId > 0
                     && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
-                // object is too old - we need to map it to a new id
-                int newId = session.getNextId();
-                session.send(new ResultChangeId(resultId, newId));
-                resultId = newId;
+                submitTask(() -> {
+                    // object is too old - we need to map it to a new id
+                    int newId = session.getNextId();
+                    session.send(new ResultChangeId(resultId, newId)); // 不需要响应
+                    resultId = newId;
+                });
             }
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -217,5 +239,9 @@ public abstract class ClientResult implements Result {
     @Override
     public boolean needToClose() {
         return true;
+    }
+
+    private void submitTask(AsyncTask task) {
+        session.submitTask(task);
     }
 }

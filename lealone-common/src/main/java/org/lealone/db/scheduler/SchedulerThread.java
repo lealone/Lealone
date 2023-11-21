@@ -71,4 +71,17 @@ public class SchedulerThread extends Thread {
             return t;
         }
     }
+
+    public static Scheduler currentScheduler() {
+        Object t = Thread.currentThread();
+        if (t instanceof SchedulerThread) {
+            return ((SchedulerThread) t).getScheduler();
+        } else {
+            return null;
+        }
+    }
+
+    public static boolean isScheduler() {
+        return Thread.currentThread() instanceof SchedulerThread;
+    }
 }

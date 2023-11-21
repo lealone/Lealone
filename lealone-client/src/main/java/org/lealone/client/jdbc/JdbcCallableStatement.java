@@ -32,12 +32,14 @@ import org.lealone.common.util.BitField;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.SQLCommand;
 
 /**
  * Represents a callable statement.
  *
  * @author Sergi Vladykin
  * @author Thomas Mueller
+ * @author zhh
  */
 public class JdbcCallableStatement extends JdbcPreparedStatement implements CallableStatement {
 
@@ -46,8 +48,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     private HashMap<String, Integer> namedParameters;
 
     JdbcCallableStatement(JdbcConnection conn, String sql, int id, int resultSetType,
-            int resultSetConcurrency) {
-        super(conn, sql, id, resultSetType, resultSetConcurrency);
+            int resultSetConcurrency, SQLCommand command) {
+        super(conn, sql, id, resultSetType, resultSetConcurrency, false, command);
         trace = conn.getTrace(TraceObjectType.CALLABLE_STATEMENT, id);
     }
 

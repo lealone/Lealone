@@ -12,6 +12,9 @@ import java.sql.SQLException;
 
 /**
  * Represents a batch update database exception.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcBatchUpdateException extends BatchUpdateException {
 
@@ -62,5 +65,4 @@ public class JdbcBatchUpdateException extends BatchUpdateException {
             }
         }
     }
-
 }

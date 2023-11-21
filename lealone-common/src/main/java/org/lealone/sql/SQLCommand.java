@@ -30,7 +30,7 @@ public interface SQLCommand extends Command {
      *
      * @return the empty result
      */
-    Result getMetaData();
+    Future<Result> getMetaData();
 
     /**
      * Check if this is a query.
@@ -65,4 +65,5 @@ public interface SQLCommand extends Command {
      */
     Future<Integer> executeUpdate();
 
+    Future<Boolean> prepare(boolean readParams);
 }

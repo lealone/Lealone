@@ -602,7 +602,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         replace0(session, key, oldValue, newValue, handler);
     }
 
-    private boolean replace0(Session session, K key, V oldValue, V newValue,
+    private Boolean replace0(Session session, K key, V oldValue, V newValue,
             AsyncHandler<AsyncResult<Boolean>> handler) {
         checkWrite(newValue);
         Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);

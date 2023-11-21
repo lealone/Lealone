@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.lealone.db.Database;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
@@ -55,8 +56,9 @@ public class Explain extends ManipulationStatement {
     }
 
     @Override
-    public Result getMetaData() {
-        return query(-1);
+    public Future<Result> getMetaData() {
+        Result r = query(-1);
+        return Future.succeededFuture(r);
     }
 
     @Override

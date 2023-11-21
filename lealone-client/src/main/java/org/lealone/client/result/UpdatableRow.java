@@ -25,6 +25,9 @@ import org.lealone.db.value.ValueNull;
 /**
  * This class is used for updatable result sets.
  * An updatable row provides functions to update the current row in a result set.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class UpdatableRow {
 

@@ -21,6 +21,9 @@ import org.lealone.db.async.Future;
 
 /**
  * The database driver. An application should not use this class directly. 
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcDriver implements java.sql.Driver {
 

@@ -20,6 +20,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
@@ -722,11 +723,11 @@ public class Select extends Query {
     }
 
     @Override
-    public Result getMetaData() {
+    public Future<Result> getMetaData() {
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount,
                 rawExpressionInfoList);
         result.done();
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override

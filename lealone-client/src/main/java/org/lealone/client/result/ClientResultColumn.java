@@ -11,6 +11,9 @@ import org.lealone.net.TransferInputStream;
 
 /**
  * A column of the client result.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class ClientResultColumn {
 
