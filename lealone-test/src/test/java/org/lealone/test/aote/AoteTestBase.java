@@ -19,6 +19,8 @@ import org.lealone.transaction.aote.log.LogSyncService;
 
 public abstract class AoteTestBase extends TestBase implements TestBase.EmbeddedTest {
 
+    protected final String mapName = getClass().getSimpleName();
+
     protected static TransactionEngine te;
     protected static Storage storage;
 

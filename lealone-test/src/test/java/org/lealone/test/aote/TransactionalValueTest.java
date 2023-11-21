@@ -19,6 +19,7 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.TransactionalValue;
 
 public class TransactionalValueTest extends AoteTestBase {
+
     @Test
     public void run() {
         testExclusiveCommit();
@@ -28,7 +29,7 @@ public class TransactionalValueTest extends AoteTestBase {
     }
 
     void testExclusiveCommit() {
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map = t.openMap("testExclusiveCommit", storage);
         map.clear();
         map.put("2", "b1");
@@ -36,7 +37,7 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put("2", "b3");
         t.commit();
 
-        t = te.beginTransaction(false);
+        t = te.beginTransaction();
         map = t.openMap("testExclusiveCommit", storage);
         map.put("2", "b4");
         map.put("2", "b5");
@@ -46,7 +47,7 @@ public class TransactionalValueTest extends AoteTestBase {
     }
 
     void testExclusiveRollback() {
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map = t.openMap("testExclusiveRollback", storage);
         map.clear();
         map.put("2", "b1");
@@ -56,7 +57,7 @@ public class TransactionalValueTest extends AoteTestBase {
         TransactionalValue tv = (TransactionalValue) map.getTransactionalValue("2");
         assertNull(tv);
 
-        t = te.beginTransaction(false);
+        t = te.beginTransaction();
         map = t.openMap("testExclusiveRollback", storage);
         map.clear();
         map.put("2", "b1");
@@ -78,7 +79,7 @@ public class TransactionalValueTest extends AoteTestBase {
         }
         VersionedValueType vvType = new VersionedValueType(null, null, sortTypes, columns);
 
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
         map.clear();
 
@@ -89,13 +90,13 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put(key, vv);
         t.commit();
 
-        Transaction t1 = te.beginTransaction(false);
+        Transaction t1 = te.beginTransaction();
         TransactionMap<String, VersionedValue> map1 = t1.openMap(mapName, storage);
 
-        Transaction t2 = te.beginTransaction(false);
+        Transaction t2 = te.beginTransaction();
         TransactionMap<String, VersionedValue> map2 = t2.openMap(mapName, storage);
 
-        Transaction t3 = te.beginTransaction(false);
+        Transaction t3 = te.beginTransaction();
         TransactionMap<String, VersionedValue> map3 = t3.openMap(mapName, storage);
 
         vv = createVersionedValue(map1, key, 0, 10);
@@ -162,16 +163,16 @@ public class TransactionalValueTest extends AoteTestBase {
     }
 
     void testRemove() {
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map = t.openMap("testRemove", storage);
         map.clear();
         map.put("2", "b1");
         t.commit();
 
-        Transaction t1 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
+        Transaction t1 = te.beginTransaction(Transaction.IL_REPEATABLE_READ);
         TransactionMap<String, String> map1 = t1.openMap("testRemove", storage);
 
-        Transaction t2 = te.beginTransaction(false);
+        Transaction t2 = te.beginTransaction();
         TransactionMap<String, String> map2 = t2.openMap("testRemove", storage);
         map2.remove("2");
         t2.commit();

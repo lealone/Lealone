@@ -43,7 +43,7 @@ public class TransactionEngineTest extends AoteTestBase {
 
     @Test
     public void testEngine() {
-        Transaction t1 = te.beginTransaction(false);
+        Transaction t1 = te.beginTransaction();
         t1.openMap("testEngine", storage);
         assertNotNull(te.getTransactionMap("testEngine", t1));
         storage.close();
@@ -53,7 +53,7 @@ public class TransactionEngineTest extends AoteTestBase {
     @Test
     public void testCheckpoint() {
         // 1. 超过脏页大小时自动执行一次检查点
-        Transaction t1 = te.beginTransaction(false);
+        Transaction t1 = te.beginTransaction();
         TransactionMap<String, String> map = t1.openMap("testCheckpoint", storage);
         map.remove();
         map = t1.openMap("testCheckpoint", storage);
@@ -71,7 +71,7 @@ public class TransactionEngineTest extends AoteTestBase {
 
         // 2. 手动执行检查点
         map.remove();
-        Transaction t2 = te.beginTransaction(false);
+        Transaction t2 = te.beginTransaction();
         map = t2.openMap("testCheckpoint", storage);
         assertEquals(0, map.getDiskSpaceUsed());
         map.put("abc", "value123");

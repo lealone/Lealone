@@ -15,8 +15,7 @@ import org.lealone.transaction.aote.TransactionalValue;
 public class TransactionTest extends AoteTestBase {
     @Test
     public void run() {
-        String mapName = TransactionTest.class.getSimpleName();
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map1 = t.openMap(mapName + "1", storage);
         map1.clear();
         map1.put("1", "a");
@@ -47,7 +46,7 @@ public class TransactionTest extends AoteTestBase {
         tv = (TransactionalValue) map2.getTransactionalValue("1");
         assertTrue(tv.isCommitted());
 
-        t = te.beginTransaction(false);
+        t = te.beginTransaction();
         map1 = t.openMap(mapName + "1", storage);
         map1.put("3", "c");
         t.commit();

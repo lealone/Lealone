@@ -11,8 +11,6 @@ import org.lealone.transaction.TransactionMap;
 
 public class IsolationLevelTest extends AoteTestBase {
 
-    private final String mapName = IsolationLevelTest.class.getSimpleName();
-
     @Test
     public void run() {
         test1();
@@ -20,26 +18,26 @@ public class IsolationLevelTest extends AoteTestBase {
     }
 
     private void test1() {
-        Transaction t1 = te.beginTransaction(false);
+        Transaction t1 = te.beginTransaction();
         TransactionMap<String, String> map = t1.openMap(mapName + "_test1", storage);
         map.clear();
         map.put("1", "a");
         map.put("2", "b");
 
         // 只有t2能读到t1未提交的值，其他都读不到
-        Transaction t2 = te.beginTransaction(false, Transaction.IL_READ_UNCOMMITTED);
+        Transaction t2 = te.beginTransaction(Transaction.IL_READ_UNCOMMITTED);
         map = map.getInstance(t2);
         assertEquals("a", map.get("1"));
 
-        Transaction t3 = te.beginTransaction(false, Transaction.IL_READ_COMMITTED);
+        Transaction t3 = te.beginTransaction(Transaction.IL_READ_COMMITTED);
         map = map.getInstance(t3);
         assertNull(map.get("1"));
 
-        Transaction t4 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
+        Transaction t4 = te.beginTransaction(Transaction.IL_REPEATABLE_READ);
         map = map.getInstance(t4);
         assertNull(map.get("1"));
 
-        Transaction t5 = te.beginTransaction(false, Transaction.IL_SERIALIZABLE);
+        Transaction t5 = te.beginTransaction(Transaction.IL_SERIALIZABLE);
         map = map.getInstance(t5);
         assertNull(map.get("1"));
 

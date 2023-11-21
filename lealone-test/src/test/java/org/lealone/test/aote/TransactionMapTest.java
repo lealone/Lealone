@@ -18,11 +18,11 @@ public class TransactionMapTest extends AoteTestBase {
     }
 
     private String createMapName(String name) {
-        return TransactionMapTest.class.getSimpleName() + "-" + name;
+        return mapName + "-" + name;
     }
 
     void testSyncOperations() {
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map = t.openMap(createMapName("testSyncOperations"), storage);
         map.clear();
         assertTrue(map.getValueType() instanceof ObjectDataType);
@@ -43,7 +43,7 @@ public class TransactionMapTest extends AoteTestBase {
         } catch (IllegalStateException e) {
         }
 
-        t = te.beginTransaction(false);
+        t = te.beginTransaction();
         map = map.getInstance(t);
 
         assertNull(map.get("1"));
@@ -63,24 +63,24 @@ public class TransactionMapTest extends AoteTestBase {
 
         assertEquals(2, map.size());
 
-        Transaction t2 = te.beginTransaction(false);
+        Transaction t2 = te.beginTransaction();
         map = map.getInstance(t2);
         map.put("3", "c");
         map.put("4", "d");
         assertEquals(4, map.size());
 
-        Transaction t3 = te.beginTransaction(false);
+        Transaction t3 = te.beginTransaction();
         map = map.getInstance(t3);
         map.put("5", "f");
         assertEquals(3, map.size()); // t2未提交，所以读不到它put的数据
 
-        Transaction t4 = te.beginTransaction(false);
+        Transaction t4 = te.beginTransaction();
         map = map.getInstance(t4);
         map.remove("1");
         assertEquals(1, map.size());
         t4.commit();
 
-        Transaction t5 = te.beginTransaction(false);
+        Transaction t5 = te.beginTransaction();
         map = map.getInstance(t5);
         map.put("6", "g");
         assertEquals(2, map.size());
@@ -92,7 +92,7 @@ public class TransactionMapTest extends AoteTestBase {
     }
 
     void testTryOperations() {
-        Transaction t = te.beginTransaction(false);
+        Transaction t = te.beginTransaction();
         TransactionMap<String, String> map = t.openMap(createMapName("testTryOperations"), storage);
         map.clear();
 
@@ -100,12 +100,12 @@ public class TransactionMapTest extends AoteTestBase {
         t.commit();
         assertNotNull(map.get("1"));
 
-        Transaction t2 = te.beginTransaction(false);
+        Transaction t2 = te.beginTransaction();
         map = map.getInstance(t2);
         assertTrue(map.tryUpdate("1", "a2") == Transaction.OPERATION_COMPLETE);
         assertEquals("a2", map.get("1"));
 
-        Transaction t3 = te.beginTransaction(false);
+        Transaction t3 = te.beginTransaction();
         map = map.getInstance(t3);
         assertTrue(map.tryUpdate("1", "a3") == Transaction.OPERATION_NEED_WAIT);
         assertEquals("a", map.get("1"));
@@ -113,11 +113,11 @@ public class TransactionMapTest extends AoteTestBase {
         t2.commit();
         t3.rollback();
 
-        Transaction t4 = te.beginTransaction(false);
+        Transaction t4 = te.beginTransaction();
         map = map.getInstance(t4);
         assertTrue(map.tryRemove("1") == Transaction.OPERATION_COMPLETE);
 
-        Transaction t5 = te.beginTransaction(false);
+        Transaction t5 = te.beginTransaction();
         map = map.getInstance(t5);
         assertTrue(map.tryRemove("1") == Transaction.OPERATION_NEED_WAIT);
 

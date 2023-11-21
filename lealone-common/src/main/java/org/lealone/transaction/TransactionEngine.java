@@ -19,12 +19,20 @@ public interface TransactionEngine extends PluggableEngine {
                 Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
     }
 
+    default Transaction beginTransaction() {
+        return beginTransaction(false);
+    }
+
     default Transaction beginTransaction(boolean autoCommit) {
         return beginTransaction(autoCommit, RunMode.CLIENT_SERVER);
     }
 
     default Transaction beginTransaction(boolean autoCommit, RunMode runMode) {
         return beginTransaction(autoCommit, runMode, Transaction.IL_READ_COMMITTED);
+    }
+
+    default Transaction beginTransaction(int isolationLevel) {
+        return beginTransaction(false, isolationLevel);
     }
 
     default Transaction beginTransaction(boolean autoCommit, int isolationLevel) {
