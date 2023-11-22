@@ -165,7 +165,7 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
             if (handler != null)
                 transactionHandler = handler;
             else
-                transactionHandler = TransactionHandler.defaultTHandler;
+                DbException.throwInternalError();
         }
         return transactionHandler;
     }

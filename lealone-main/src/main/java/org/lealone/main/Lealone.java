@@ -177,31 +177,25 @@ public class Lealone {
             long t1 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            beforeInit();
-            init();
-            afterInit(config);
-
-            long t2 = (System.currentTimeMillis() - t);
-            t = System.currentTimeMillis();
-
             SchedulerFactory schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(
                     GlobalScheduler.class.getName(), config.scheduler.parameters);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
             CountDownLatch latch1 = new CountDownLatch(1);
-            // 在一个调度线程中初始化LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
+            // 在一个调度线程中初始化各类插件和LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
             scheduler.handle(() -> {
-                long t10 = System.currentTimeMillis();
-                LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
-                long t20 = System.currentTimeMillis();
-                logger.info("Init lealone database: " + (t20 - t10) + " ms");
+                beforeInit();
+                init();
+                afterInit(config);
                 latch1.countDown();
             });
             scheduler.start();
             latch1.await();
 
+            long t2 = (System.currentTimeMillis() - t);
+            t = System.currentTimeMillis();
+
             if (embedded) {
-                scheduler.start();
                 return;
             }
 
@@ -215,7 +209,7 @@ public class Lealone {
 
             // 等所有的Server启动完成后再启动Scheduler
             // 确保所有的初始PeriodicTask都在main线程中注册
-            SchedulerFactory.getDefaultSchedulerFactory().start();
+            schedulerFactory.start();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
@@ -230,9 +224,7 @@ public class Lealone {
             Thread.currentThread().setName("CheckpointService");
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
             te.getCheckpointService().run();
-        } catch (
-
-        Exception e) {
+        } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
@@ -269,6 +261,15 @@ public class Lealone {
     private void init() {
         initBaseDir();
         initPluggableEngines();
+        // 提前触发对LealoneDatabase的初始化
+        initLealoneDatabase();
+    }
+
+    private void initLealoneDatabase() {
+        long t1 = System.currentTimeMillis();
+        LealoneDatabase.getInstance();
+        long t2 = System.currentTimeMillis();
+        logger.info("Init lealone database: " + (t2 - t1) + " ms");
     }
 
     private void initBaseDir() {
