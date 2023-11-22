@@ -65,7 +65,8 @@ public class EmbeddedScheduler extends SchedulerBase {
         awaiter.doAwait(loopInterval);
     }
 
-    private void runMiscTasks() {
+    @Override
+    protected void runMiscTasks() {
         if (!miscTasks.isEmpty()) {
             AsyncTask task = miscTasks.poll();
             while (task != null) {
@@ -77,16 +78,6 @@ public class EmbeddedScheduler extends SchedulerBase {
                 task = miscTasks.poll();
             }
         }
-    }
-
-    @Override
-    public void addSession(Session session, int databaseId) {
-        addPendingTaskHandler(session);
-    }
-
-    @Override
-    public void removeSession(Session session) {
-        removePendingTaskHandler(session);
     }
 
     @Override
@@ -130,7 +121,6 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     @Override
     public void removeSessionInfo(Object si) {
-
     }
 
     @Override

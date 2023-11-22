@@ -7,10 +7,6 @@ package org.lealone.transaction;
 
 public interface TransactionListener {
 
-    default int getListenerId() {
-        return -1;
-    }
-
     default void beforeOperation() {
     }
 

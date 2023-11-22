@@ -56,6 +56,7 @@ public abstract class NetScheduler extends SchedulerBase {
         netEventLoop.wakeup();
     }
 
+    @Override
     protected void runEventLoop() {
         try {
             netEventLoop.write();

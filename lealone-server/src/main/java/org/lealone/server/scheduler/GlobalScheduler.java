@@ -89,7 +89,8 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         miscTasks.add(ltask);
     }
 
-    private void runMiscTasks() {
+    @Override
+    protected void runMiscTasks() {
         if (!miscTasks.isEmpty()) {
             LinkableTask task = miscTasks.getHead();
             while (task != null) {
@@ -111,11 +112,11 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         }
     }
 
-    public void addSessionInfo(SessionInfo si) {
+    private void addSessionInfo(SessionInfo si) {
         sessions.add(si);
     }
 
-    void removeSessionInfo(SessionInfo si) {
+    private void removeSessionInfo(SessionInfo si) {
         sessions.remove(si);
     }
 
@@ -164,7 +165,7 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         }
     }
 
-    void addSessionInitTask(SessionInitTask task) {
+    private void addSessionInitTask(SessionInitTask task) {
         sessionInitTasks.add(task);
     }
 
@@ -349,32 +350,14 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         return best;
     }
 
-    // --------------------- 实现 TransactionListener 接口，用同步方式执行 ---------------------
-
-    @Override
-    public void await() {
-        for (;;) {
-            if (syncCounter.get() < 1)
-                break;
-            runMiscTasks();
-            runPageOperationTasks();
-            if (syncCounter.get() < 1)
-                break;
-            runEventLoop();
-        }
-        needWakeUp = true;
-        if (syncException != null)
-            throw syncException;
-    }
-
     // --------------------- 注册 Accepter 和新的 AsyncConnection ---------------------
 
-    public void register(AsyncConnection conn) {
+    private void register(AsyncConnection conn) {
         conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
         netEventLoop.register(conn);
     }
 
-    public void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
+    private void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
         AsyncServerManager.registerAccepter(asyncServer, serverChannel, this);
         wakeUp();
     }
@@ -392,8 +375,7 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     @Override
     public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
-        wakeUp();
+        registerAccepter((AsyncServer<?>) server, serverChannel);
     }
 
     @Override

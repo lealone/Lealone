@@ -117,7 +117,8 @@ public class ClientScheduler extends NetScheduler {
         netEventLoop.close();
     }
 
-    private void runMiscTasks() {
+    @Override
+    protected void runMiscTasks() {
         if (!miscTasks.isEmpty()) {
             AsyncTask task = miscTasks.poll();
             while (task != null) {

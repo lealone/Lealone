@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBufferFactory;
@@ -111,6 +110,11 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
+    public void removeSession(Session session) {
+        removePendingTaskHandler(session);
+    }
+
+    @Override
     public synchronized void start() {
         if (started)
             return;
@@ -147,16 +151,6 @@ public abstract class SchedulerBase implements Scheduler {
     protected boolean needWakeUp = true;
 
     @Override
-    public void setNeedWakeUp(boolean needWakeUp) {
-        this.needWakeUp = needWakeUp;
-    }
-
-    @Override
-    public int getListenerId() {
-        return id;
-    }
-
-    @Override
     public void beforeOperation() {
         syncException = null;
         syncCounter = new AtomicInteger(1);
@@ -188,13 +182,39 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public void await() {
+        for (;;) {
+            if (syncCounter.get() < 1)
+                break;
+            runMiscTasks();
+            runPageOperationTasks();
+            if (syncCounter.get() < 1)
+                break;
+            runEventLoop();
+        }
+        needWakeUp = true;
+        if (syncException != null)
+            throw syncException;
     }
 
-    // protected abstract void runLoopTasks();
+    @Override
+    public void setNeedWakeUp(boolean needWakeUp) {
+        this.needWakeUp = needWakeUp;
+    }
 
     @Override
-    public void removeSession(Session session) {
-        throw DbException.getInternalError();
+    public void addWaitingTransactionListener(TransactionListener listener) {
+        addWaitingHandler((PageOperationHandler) listener);
+    }
+
+    @Override
+    public void wakeUpWaitingTransactionListeners() {
+        wakeUpWaitingHandlers();
+    }
+
+    protected void runMiscTasks() {
+    }
+
+    protected void runEventLoop() {
     }
 
     // --------------------- 实现 PageOperation.ListenerFactory 接口 ---------------------
@@ -228,7 +248,7 @@ public abstract class SchedulerBase implements Scheduler {
         };
     }
 
-    // --------------------- 实现部分 PageOperationHandler 接口 ---------------------
+    // --------------------- 实现 PageOperationHandler 接口 ---------------------
 
     @Override
     public int getHandlerId() {
@@ -327,16 +347,7 @@ public abstract class SchedulerBase implements Scheduler {
         }
     }
 
-    // --------------------- 实现 PendingTaskHandler 接口 ---------------------
-
-    protected static class PendingTaskHandlerInfo extends LinkableBase<PendingTaskHandlerInfo> {
-
-        final PendingTaskHandler handler;
-
-        public PendingTaskHandlerInfo(PendingTaskHandler handler) {
-            this.handler = handler;
-        }
-    }
+    // --------------------- 与 PendingTaskHandler 相关的代码 ---------------------
 
     protected final LinkableList<PendingTaskHandler> pendingTaskHandlers = new LinkableList<>();
 
@@ -405,15 +416,5 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public PendingTransaction getTransaction() {
         return pendingTransactions.getHead();
-    }
-
-    @Override
-    public void addWaitingTransactionListener(TransactionListener listener) {
-        addWaitingHandler((PageOperationHandler) listener);
-    }
-
-    @Override
-    public void wakeUpWaitingTransactionListeners() {
-        wakeUpWaitingHandlers();
     }
 }
