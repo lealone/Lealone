@@ -54,6 +54,7 @@ import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLParser;
@@ -759,7 +760,7 @@ public class ServerSession extends SessionBase {
                 cleanTempTables(true);
                 database.removeSession(this);
                 if (getScheduler() != null)
-                    getScheduler().removeSession(sessionInfo);
+                    getScheduler().removeSession(this);
             } finally {
                 super.close();
             }
@@ -1272,58 +1273,7 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public static class YieldableCommand {
-
-        private final int packetId;
-        private final PreparedSQLStatement.Yieldable<?> yieldable;
-        private final int sessionId;
-
-        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable,
-                int sessionId) {
-            this.packetId = packetId;
-            this.yieldable = yieldable;
-            this.sessionId = sessionId;
-        }
-
-        public int getPacketId() {
-            return packetId;
-        }
-
-        public int getSessionId() {
-            return sessionId;
-        }
-
-        public Session getSession() {
-            return yieldable.getSession();
-        }
-
-        public int getPriority() {
-            return yieldable.getPriority();
-        }
-
-        public void run() {
-            yieldable.run();
-        }
-
-        public void stop() {
-            yieldable.stop();
-        }
-    }
-
-    public static interface TimeoutListener {
-        void onTimeout(YieldableCommand c, Throwable e);
-    }
-
-    private YieldableCommand yieldableCommand;
-
-    public void setYieldableCommand(YieldableCommand yieldableCommand) {
-        this.yieldableCommand = yieldableCommand;
-    }
-
-    public YieldableCommand getYieldableCommand() {
-        return yieldableCommand;
-    }
-
+    @Override
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         if (yieldableCommand == null)
             return null;
@@ -1390,7 +1340,6 @@ public class ServerSession extends SessionBase {
 
     private TransactionListener transactionListener;
     private TransactionHandler transactionHandler;
-    private Object sessionInfo;
 
     @Override
     public TransactionListener getTransactionListener() {
@@ -1407,14 +1356,6 @@ public class ServerSession extends SessionBase {
 
     public void setTransactionHandler(TransactionHandler transactionHandler) {
         this.transactionHandler = transactionHandler;
-    }
-
-    public Object getSessionInfo() {
-        return sessionInfo;
-    }
-
-    public void setSessionInfo(Object sessionInfo) {
-        this.sessionInfo = sessionInfo;
     }
 
     private void reset(SessionStatus sessionStatus) {
@@ -1789,5 +1730,25 @@ public class ServerSession extends SessionBase {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    public int executeUpdateLocal(String sql) {
+        return prepareStatementLocal(sql).executeUpdate().get();
+    }
+
+    public int executeUpdateLocal(PreparedSQLStatement stmt) {
+        return stmt.executeUpdate().get();
+    }
+
+    public Result executeQueryLocal(String sql) {
+        return prepareStatementLocal(sql).executeQuery(-1).get();
+    }
+
+    public Result executeQueryLocal(String sql, int maxRows, boolean scrollable) {
+        return prepareStatementLocal(sql).executeQuery(maxRows, scrollable).get();
+    }
+
+    public Result executeQueryLocal(PreparedSQLStatement stmt) {
+        return stmt.executeQuery(-1).get();
     }
 }

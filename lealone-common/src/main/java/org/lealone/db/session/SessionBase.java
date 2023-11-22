@@ -21,6 +21,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.PendingTaskHandlerBase;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.storage.fs.FileUtils;
 
 public abstract class SessionBase extends PendingTaskHandlerBase implements Session {
@@ -206,5 +207,22 @@ public abstract class SessionBase extends PendingTaskHandlerBase implements Sess
             }
         }
         return buff.toString();
+    }
+
+    protected YieldableCommand yieldableCommand;
+
+    @Override
+    public void setYieldableCommand(YieldableCommand yieldableCommand) {
+        this.yieldableCommand = yieldableCommand;
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand() {
+        return yieldableCommand;
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
+        return yieldableCommand;
     }
 }

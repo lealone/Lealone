@@ -20,7 +20,7 @@ public class ACDrop extends AdminCommand {
         if (table != null && table.getDropSQL() != null) {
             try (ServerSession session = getSession(table.getDatabase(), conn)) {
                 String sql = table.getDropSQL();
-                session.prepareStatementLocal(sql).executeUpdate();
+                session.executeUpdateLocal(sql);
             }
         }
         BsonDocument document = new BsonDocument();

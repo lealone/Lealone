@@ -110,6 +110,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         this.session = session;
         this.user = user;
         this.url = url;
+        scheduler = session.getScheduler();
         trace = getTrace(TraceObjectType.CONNECTION);
     }
 

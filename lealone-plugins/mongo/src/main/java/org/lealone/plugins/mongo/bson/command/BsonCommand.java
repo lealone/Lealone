@@ -77,8 +77,7 @@ public abstract class BsonCommand extends BsonBase {
                 db = LealoneDatabase.getInstance().findDatabase(dbName);
                 if (db == null) {
                     String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
-                    LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql)
-                            .executeUpdate();
+                    LealoneDatabase.getInstance().getSystemSession().executeUpdateLocal(sql);
                     db = LealoneDatabase.getInstance().getDatabase(dbName);
                 }
             }
@@ -171,7 +170,7 @@ public abstract class BsonCommand extends BsonBase {
             }
         }
         sql.append(")");
-        session.prepareStatementLocal(sql.toString()).executeUpdate();
+        session.executeUpdateLocal(sql.toString());
     }
 
     public static ServerSession createSession(Database db) {

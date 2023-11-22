@@ -42,7 +42,7 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
         String sql = "CREATE DATABASE IF NOT EXISTS " + dbName //
                 + " PARAMETERS(DEFAULT_SQL_ENGINE='" + MySQLServerEngine.NAME //
                 + "', MODE='" + MySQLServerEngine.NAME + "')";
-        LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        LealoneDatabase.getInstance().getSystemSession().executeUpdateLocal(sql);
     }
 
     public static void createBuiltInSchemas(String dbName) {
@@ -55,7 +55,7 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
         if (!db.isInitialized())
             db.init();
         String sql = "CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION root";
-        db.getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        db.getSystemSession().executeUpdateLocal(sql);
     }
 
     @Override

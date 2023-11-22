@@ -59,7 +59,7 @@ public class BOUpdateOperator extends BsonOperator {
                     String newName = e2.getValue().asString().getValue();
                     String sql = "ALTER TABLE " + table.getName() + " ALTER COLUMN " + oldName
                             + " RENAME TO " + newName;
-                    session.prepareStatementLocal(sql).executeUpdate();
+                    session.executeUpdateLocal(sql);
                 }
                 break;
             case "$unset":

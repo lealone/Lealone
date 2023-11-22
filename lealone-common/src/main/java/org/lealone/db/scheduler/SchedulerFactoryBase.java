@@ -6,12 +6,17 @@
 package org.lealone.db.scheduler;
 
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
+import org.lealone.common.util.Utils;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
+import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.page.PageOperationHandler;
@@ -29,7 +34,7 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
                 se.setPageOperationHandlerFactory(this);
         } else {
             // 如果未指定调度器，那么使用嵌入式调度器
-            schedulers = EmbeddedScheduler.createSchedulers(config);
+            schedulers = createSchedulers(EmbeddedScheduler.class.getName(), config);
             embedded = true;
         }
         init(config);
@@ -172,5 +177,89 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             }
         }
         return i;
+    }
+
+    private static SchedulerFactory defaultSchedulerFactory;
+
+    public static void setDefaultSchedulerFactory(SchedulerFactory defaultSchedulerFactory) {
+        SchedulerFactoryBase.defaultSchedulerFactory = defaultSchedulerFactory;
+    }
+
+    public static SchedulerFactory getDefaultSchedulerFactory() {
+        return defaultSchedulerFactory;
+    }
+
+    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
+            Properties prop) {
+        if (SchedulerFactoryBase.getDefaultSchedulerFactory() == null) {
+            Map<String, String> config;
+            if (prop != null)
+                config = new CaseInsensitiveMap<>(prop);
+            else
+                config = new CaseInsensitiveMap<>();
+            initDefaultSchedulerFactory(schedulerClassName, config);
+        }
+        return SchedulerFactoryBase.getDefaultSchedulerFactory();
+    }
+
+    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
+            Map<String, String> config) {
+        if (SchedulerFactoryBase.getDefaultSchedulerFactory() == null)
+            initDefaultSchedulerFactory(schedulerClassName, config);
+        return SchedulerFactoryBase.getDefaultSchedulerFactory();
+    }
+
+    public static synchronized SchedulerFactory initDefaultSchedulerFactory(String schedulerClassName,
+            Map<String, String> config) {
+        SchedulerFactory schedulerFactory = SchedulerFactoryBase.getDefaultSchedulerFactory();
+        if (schedulerFactory == null) {
+            String sf = MapUtils.getString(config, "scheduler_factory", null);
+            if (sf != null) {
+                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
+            } else {
+                Scheduler[] schedulers = createSchedulers(schedulerClassName, config);
+                schedulerFactory = SchedulerFactory.create(config, schedulers);
+            }
+            if (!schedulerFactory.isInited())
+                schedulerFactory.init(config);
+            SchedulerFactoryBase.setDefaultSchedulerFactory(schedulerFactory);
+        }
+        return schedulerFactory;
+    }
+
+    public static Scheduler[] createSchedulers(String schedulerClassName, Map<String, String> config) {
+        int schedulerCount = MapUtils.getSchedulerCount(config);
+        Scheduler[] schedulers = new Scheduler[schedulerCount];
+        for (int i = 0; i < schedulerCount; i++) {
+            schedulers[i] = Utils.newInstance(schedulerClassName, i, schedulerCount, config);
+        }
+        return schedulers;
+    }
+
+    public static Scheduler getScheduler(String schedulerClassName, ConnectionInfo ci) {
+        Scheduler scheduler = ci.getScheduler();
+        if (scheduler == null) {
+            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, ci.getProperties());
+            scheduler = getScheduler(sf, ci);
+        }
+        return scheduler;
+    }
+
+    public static Scheduler getScheduler(String schedulerClassName, ConnectionInfo ci,
+            Map<String, String> config) {
+        Scheduler scheduler = ci.getScheduler();
+        if (scheduler == null) {
+            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, config);
+            scheduler = getScheduler(sf, ci);
+        }
+        return scheduler;
+    }
+
+    private static Scheduler getScheduler(SchedulerFactory sf, ConnectionInfo ci) {
+        Scheduler scheduler = sf.getScheduler();
+        ci.setScheduler(scheduler);
+        if (!sf.isStarted())
+            sf.start();
+        return scheduler;
     }
 }

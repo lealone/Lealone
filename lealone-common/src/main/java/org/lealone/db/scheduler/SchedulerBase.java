@@ -27,7 +27,7 @@ import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
 
-public abstract class SchedulerBase implements Scheduler, PageOperation.ListenerFactory<Object> {
+public abstract class SchedulerBase implements Scheduler {
 
     protected int id;
     protected String name;
@@ -193,12 +193,7 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     // protected abstract void runLoopTasks();
 
     @Override
-    public Object addSession(Session session, Object parentSessionInfo) {
-        throw DbException.getInternalError();
-    }
-
-    @Override
-    public void removeSession(Object sessionInfo) {
+    public void removeSession(Session session) {
         throw DbException.getInternalError();
     }
 
@@ -348,6 +343,20 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     @Override
     public void addPendingTaskHandler(PendingTaskHandler handler) {
         pendingTaskHandlers.add(new PendingTaskHandlerInfo(handler));
+    }
+
+    @Override
+    public void removePendingTaskHandler(PendingTaskHandler handler) {
+        if (pendingTaskHandlers.isEmpty())
+            return;
+        PendingTaskHandlerInfo pi = pendingTaskHandlers.getHead();
+        while (pi != null) {
+            if (pi.handler == handler) {
+                pendingTaskHandlers.remove(pi);
+                break;
+            }
+            pi = pi.next;
+        }
     }
 
     protected void runPendingTasks() {

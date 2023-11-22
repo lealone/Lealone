@@ -6,6 +6,8 @@
 package org.lealone.db.async;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetInputStream;
 
 // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
@@ -35,7 +37,16 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
 
     @Override
     protected T await(long timeoutMillis) {
-        throw DbException.getInternalError();
+        Scheduler scheduler = SchedulerThread.currentScheduler();
+        if (scheduler != null) {
+            scheduler.executeNextStatement();
+            if (asyncResult.isSucceeded())
+                return asyncResult.getResult();
+            else
+                throw DbException.convert(asyncResult.getCause());
+        } else {
+            throw DbException.getInternalError();
+        }
     }
 
     @Override

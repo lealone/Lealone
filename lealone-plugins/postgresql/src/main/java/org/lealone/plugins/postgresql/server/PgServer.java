@@ -58,14 +58,14 @@ public class PgServer extends AsyncServer<PgServerConnection> {
         // 创建默认的 postgres 数据库
         String sql = "CREATE DATABASE IF NOT EXISTS postgres" //
                 + " PARAMETERS(DEFAULT_SQL_ENGINE='" + PgServerEngine.NAME + "')";
-        LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        LealoneDatabase.getInstance().getSystemSession().executeUpdateLocal(sql);
 
         // 创建默认的 postgres 用户
         sql = "CREATE USER IF NOT EXISTS postgres PASSWORD 'postgres' ADMIN";
         Database db = LealoneDatabase.getInstance().findDatabase("postgres");
         if (!db.isInitialized())
             db.init();
-        db.getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        db.getSystemSession().executeUpdateLocal(sql);
 
         // 注册内置函数工厂
         PgFunctionFactory.register();
@@ -116,8 +116,7 @@ public class PgServer extends AsyncServer<PgServerConnection> {
             if (schema == null || schema.getTableOrView(session, "PG_VERSION") != null) {
                 PgServer.installPgCatalog(session, false);
             }
-            Result r = session.prepareStatementLocal("SELECT * FROM PG_CATALOG.PG_VERSION")
-                    .executeQuery(-1).get();
+            Result r = session.executeQueryLocal("SELECT * FROM PG_CATALOG.PG_VERSION");
             if (!r.next() || r.currentRow()[0].getInt() < 2) {
                 // installation incomplete, or old version
                 PgServer.installPgCatalog(session, false);
@@ -130,11 +129,10 @@ public class PgServer extends AsyncServer<PgServerConnection> {
             }
             r.close();
         }
-        session.prepareStatementLocal("set search_path = public, pg_catalog").executeUpdate().get();
+        session.executeUpdateLocal("set search_path = public, pg_catalog");
         HashSet<Integer> typeSet = getTypeSet();
         if (typeSet.isEmpty()) {
-            Result r = session.prepareStatementLocal("SELECT OID FROM PG_CATALOG.PG_TYPE")
-                    .executeQuery(-1).get();
+            Result r = session.executeQueryLocal("SELECT OID FROM PG_CATALOG.PG_TYPE");
             while (r.next()) {
                 typeSet.add(r.currentRow()[0].getInt());
             }
@@ -160,9 +158,9 @@ public class PgServer extends AsyncServer<PgServerConnection> {
                 if (SQLStatement.NO_OPERATION == stmt.getType())
                     continue;
                 if (stmt.isQuery())
-                    stmt.executeQuery(-1);
+                    session.executeQueryLocal(stmt);
                 else
-                    stmt.executeUpdate();
+                    session.executeUpdateLocal(stmt);
             }
             reader.close();
         } catch (IOException e) {

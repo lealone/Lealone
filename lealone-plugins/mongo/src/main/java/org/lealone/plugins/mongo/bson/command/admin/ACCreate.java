@@ -26,7 +26,7 @@ public class ACCreate extends AdminCommand {
         if (viewOn == null) {
             try (ServerSession session = getSession(getDatabase(doc), conn)) {
                 String sql = "CREATE TABLE IF NOT EXISTS " + name;
-                session.prepareStatementLocal(sql).executeUpdate();
+                session.executeUpdateLocal(sql);
             }
         } else {
             BsonArray pipeline = doc.getArray("pipeline");
@@ -39,7 +39,7 @@ public class ACCreate extends AdminCommand {
             }
             sql.append(" FROM ").append(viewOn.getValue());
             try (ServerSession session = getSession(getDatabase(doc), conn)) {
-                session.prepareStatementLocal(sql.toString()).executeUpdate();
+                session.executeUpdateLocal(sql.toString());
             }
         }
         BsonDocument document = new BsonDocument();

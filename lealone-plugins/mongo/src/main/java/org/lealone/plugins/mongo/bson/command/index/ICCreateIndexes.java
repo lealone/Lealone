@@ -40,7 +40,7 @@ public class ICCreateIndexes extends IndexCommand {
                             sql.append(" DESC");
                     }
                     sql.append(')');
-                    session.prepareStatementLocal(sql.toString()).executeUpdate();
+                    session.executeUpdateLocal(sql.toString());
                 }
             }
         }

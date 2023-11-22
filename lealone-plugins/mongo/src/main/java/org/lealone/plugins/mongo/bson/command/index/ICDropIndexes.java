@@ -44,6 +44,6 @@ public class ICDropIndexes extends IndexCommand {
     private static void dropIndex(ServerSession session, String name) {
         StatementBuilder sql = new StatementBuilder("DROP INDEX IF EXISTS ");
         sql.append('`').append(name).append('`');
-        session.prepareStatementLocal(sql.toString()).executeUpdate();
+        session.executeUpdateLocal(sql.toString());
     }
 }

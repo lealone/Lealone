@@ -20,8 +20,8 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.sql.executor.YieldableBase;
@@ -530,59 +530,42 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return executeQuery0(maxRows, scrollable);
-    }
-
-    private Future<Result> executeQuery0(int maxRows, boolean scrollable) {
-        if (session.getScheduler() != null) {
-            // 放到调度线程中运行
-            AsyncCallback<Result> ac = session.createCallback();
-            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
-                if (ar.isSucceeded()) {
-                    Result result = ar.getResult();
-                    ac.setAsyncResult(result);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            session.getScheduler().addSession(session, session.getSessionInfo());
-            return ac;
-        } else {
-            // 在当前线程中同步执行
-            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            return Future.succeededFuture(syncExecute(yieldable));
-        }
+        checkScheduler();
+        AsyncCallback<Result> ac = session.createCallback();
+        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
+            if (ar.isSucceeded()) {
+                Result result = ar.getResult();
+                ac.setAsyncResult(result);
+            } else {
+                ac.setAsyncResult(ar.getCause());
+            }
+        });
+        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+        session.setYieldableCommand(c);
+        return ac;
     }
 
     @Override
     public Future<Integer> executeUpdate() {
-        if (session.getTransactionListener() != null) {
-            // 放到调度线程中运行
-            AsyncCallback<Integer> ac = session.createCallback();
-            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
-                if (ar.isSucceeded()) {
-                    Integer updateCount = ar.getResult();
-                    ac.setAsyncResult(updateCount);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            session.getScheduler().addSession(session, session.getSessionInfo());
-            return ac;
-        } else {
-            // 在当前线程中同步执行
-            YieldableBase<Integer> yieldable = createYieldableUpdate(null);
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-            Integer updateCount = syncExecute(yieldable);
-            return Future.succeededFuture(updateCount);
-        }
+        checkScheduler();
+        AsyncCallback<Integer> ac = session.createCallback();
+        YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+            if (ar.isSucceeded()) {
+                Integer updateCount = ar.getResult();
+                ac.setAsyncResult(updateCount);
+            } else {
+                ac.setAsyncResult(ar.getCause());
+            }
+        });
+        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+        session.setYieldableCommand(c);
+        return ac;
+    }
+
+    private void checkScheduler() {
+        if (session.getScheduler() == null
+                || SchedulerThread.currentScheduler() != session.getScheduler())
+            throw DbException.getInternalError();
     }
 
     @Override

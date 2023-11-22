@@ -66,7 +66,7 @@ public class MetaRecord implements Comparable<MetaRecord> {
             PreparedSQLStatement command = systemSession.prepareStatementLocal(sql);
             // 设置好数据库对象id，这样在执行create语句创建数据库对象时就能复用上一次得到的id了
             command.setObjectId(id);
-            command.executeUpdate();
+            systemSession.executeUpdateLocal(command);
         } catch (DbException e) {
             e = e.addSQL(sql);
             SQLException s = e.getSQLException();

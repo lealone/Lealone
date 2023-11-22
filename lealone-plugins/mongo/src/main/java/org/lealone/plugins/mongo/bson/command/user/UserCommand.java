@@ -53,7 +53,7 @@ public abstract class UserCommand extends BsonCommand {
             StatementBuilder sql = new StatementBuilder("CREATE USER IF NOT EXISTS ");
             sql.append('`').append(name).append('`').append(" PASSWORD '");
             sql.append(pwd).append("' ADMIN");
-            session.prepareStatementLocal(sql.toString()).executeUpdate();
+            session.executeUpdateLocal(sql.toString());
         }
         return newOkBsonDocument();
     }
@@ -82,7 +82,7 @@ public abstract class UserCommand extends BsonCommand {
             StatementBuilder sql = new StatementBuilder("ALTER USER ");
             sql.append('`').append(name).append('`').append(" SET PASSWORD '");
             sql.append(pwd).append("'");
-            session.prepareStatementLocal(sql.toString()).executeUpdate();
+            session.executeUpdateLocal(sql.toString());
         }
         return newOkBsonDocument();
     }
@@ -100,7 +100,7 @@ public abstract class UserCommand extends BsonCommand {
     private static void dropUser(ServerSession session, String name) {
         StatementBuilder sql = new StatementBuilder("DROP USER IF EXISTS ");
         sql.append('`').append(name).append('`');
-        session.prepareStatementLocal(sql.toString()).executeUpdate();
+        session.executeUpdateLocal(sql.toString());
     }
 
     public static BsonDocument usersInfo(ByteBufferBsonInput input, BsonDocument doc,

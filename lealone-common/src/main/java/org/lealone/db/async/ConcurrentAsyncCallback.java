@@ -10,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetInputStream;
 
 public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
@@ -56,6 +58,9 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
 
     @Override
     protected T await(long timeoutMillis) {
+        Scheduler scheduler = SchedulerThread.currentScheduler();
+        if (scheduler != null)
+            scheduler.executeNextStatement();
         if (latchObjectRef.compareAndSet(null, new LatchObject(new CountDownLatch(1)))) {
             CountDownLatch latch = latchObjectRef.get().latch;
             try {

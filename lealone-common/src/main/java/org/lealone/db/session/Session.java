@@ -23,6 +23,7 @@ import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.page.IPage;
 import org.lealone.storage.page.PageOperationHandler;
@@ -260,11 +261,26 @@ public interface Session extends Closeable, PendingTaskHandler {
     default void markDirtyPages() {
     }
 
+    @Override
     Scheduler getScheduler();
 
+    @Override
     void setScheduler(Scheduler scheduler);
 
+    @Override
     void submitTask(AsyncTask task);
 
+    @Override
     PendingTask getPendingTask();
+
+    void setYieldableCommand(YieldableCommand yieldableCommand);
+
+    YieldableCommand getYieldableCommand();
+
+    YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener);
+
+    public static interface TimeoutListener {
+        void onTimeout(YieldableCommand c, Throwable e);
+    }
+
 }

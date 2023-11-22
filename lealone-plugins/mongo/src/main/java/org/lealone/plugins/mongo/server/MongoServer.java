@@ -26,7 +26,7 @@ public class MongoServer extends AsyncServer<MongoServerConnection> {
 
         // 创建默认的 mongodb 数据库
         String sql = "CREATE DATABASE IF NOT EXISTS " + DATABASE_NAME;
-        LealoneDatabase.getInstance().getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        LealoneDatabase.getInstance().getSystemSession().executeUpdateLocal(sql);
     }
 
     @Override

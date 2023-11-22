@@ -44,6 +44,8 @@ import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
@@ -496,6 +498,7 @@ public class Database extends DbObjectBase implements DataHandler {
             addDatabaseObject(null, perfSchema, null);
 
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
+            setSessionScheduler(systemSession);
 
             // 在一个新事务中打开sys(meta)表
             systemSession.setAutoCommit(false);
@@ -1050,6 +1053,7 @@ public class Database extends DbObjectBase implements DataHandler {
         session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}",
                 session.getId(), name);
         lastSessionRemovedAt = -1;
+        setSessionScheduler(session);
         return session;
     }
 
@@ -1931,9 +1935,16 @@ public class Database extends DbObjectBase implements DataHandler {
         // 新建session，避免使用system session
         try (ServerSession session = createSession(systemUser)) {
             // executeUpdate()会自动提交，所以不需要再调用一次commit
-            session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN")
-                    .executeUpdate();
+            session.executeUpdateLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN");
         }
+    }
+
+    private void setSessionScheduler(ServerSession session) {
+        Scheduler scheduler = SchedulerThread.currentScheduler();
+        if (scheduler == null)
+            DbException.throwInternalError();
+        session.setScheduler(scheduler);
+        scheduler.addSession(session, getId());
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {

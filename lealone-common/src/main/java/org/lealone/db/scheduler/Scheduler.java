@@ -17,12 +17,13 @@ import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
+import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
 public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, AsyncTaskHandler,
-        TransactionListener, TransactionHandler, Runnable {
+        TransactionListener, TransactionHandler, Runnable, PageOperation.ListenerFactory<Object> {
 
     int getId();
 
@@ -62,20 +63,16 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     void setSchedulerFactory(SchedulerFactory schedulerFactory);
 
-    void addSessionInitTask(ISessionInitTask task);
+    void addSessionInitTask(Object task);
 
-    void addSessionInfo(ISessionInfo si);
+    void addSessionInfo(Object si);
 
     void addSession(Session session, int databaseId);
 
-    default Object addSession(Session session, Object parentSessionInfo) {
-        return null;
+    default void removeSession(Session session) {
     }
 
-    default void removeSession(Object sessionInfo) {
-    }
-
-    void removeSessionInfo(ISessionInfo si);
+    void removeSessionInfo(Object si);
 
     void validateSession(boolean isUserAndPasswordCorrect);
 
@@ -83,4 +80,6 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     void wakeUp();
 
     void addPendingTaskHandler(PendingTaskHandler hdandler);
+
+    void removePendingTaskHandler(PendingTaskHandler hdandler);
 }

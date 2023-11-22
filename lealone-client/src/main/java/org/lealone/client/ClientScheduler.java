@@ -9,7 +9,6 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.logging.Logger;
@@ -18,12 +17,9 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
-import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.scheduler.ISessionInfo;
-import org.lealone.db.scheduler.ISessionInitTask;
 import org.lealone.db.scheduler.Scheduler;
-import org.lealone.db.scheduler.SchedulerFactory;
+import org.lealone.db.scheduler.SchedulerFactoryBase;
 import org.lealone.net.NetClient;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
@@ -61,15 +57,15 @@ public class ClientScheduler extends NetScheduler {
     }
 
     @Override
-    public void addSessionInitTask(ISessionInitTask task) {
+    public void addSessionInitTask(Object task) {
     }
 
     @Override
-    public void addSessionInfo(ISessionInfo si) {
+    public void addSessionInfo(Object si) {
     }
 
     @Override
-    public void removeSessionInfo(ISessionInfo si) {
+    public void removeSessionInfo(Object si) {
     }
 
     @Override
@@ -154,71 +150,7 @@ public class ClientScheduler extends NetScheduler {
         }
     }
 
-    private static SchedulerFactory defaultSchedulerFactory;
-
-    public static void setDefaultSchedulerFactory(SchedulerFactory defaultSchedulerFactory) {
-        ClientScheduler.defaultSchedulerFactory = defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory() {
-        return defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory(Properties prop) {
-        if (ClientScheduler.defaultSchedulerFactory == null) {
-            Map<String, String> config;
-            if (prop != null)
-                config = new CaseInsensitiveMap<>(prop);
-            else
-                config = new CaseInsensitiveMap<>();
-            initDefaultSchedulerFactory(config);
-        }
-        return defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory(Map<String, String> config) {
-        if (ClientScheduler.defaultSchedulerFactory == null)
-            initDefaultSchedulerFactory(config);
-        return defaultSchedulerFactory;
-    }
-
-    public static synchronized SchedulerFactory initDefaultSchedulerFactory(Map<String, String> config) {
-        SchedulerFactory schedulerFactory = ClientScheduler.defaultSchedulerFactory;
-        if (schedulerFactory == null) {
-            String sf = MapUtils.getString(config, "scheduler_factory", null);
-            if (sf != null) {
-                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
-            } else {
-                ClientScheduler[] schedulers = createSchedulers(config);
-                schedulerFactory = SchedulerFactory.create(config, schedulers);
-            }
-            if (!schedulerFactory.isInited())
-                schedulerFactory.init(config);
-            ClientScheduler.defaultSchedulerFactory = schedulerFactory;
-        }
-        return schedulerFactory;
-    }
-
     public static Scheduler getScheduler(ConnectionInfo ci, CaseInsensitiveMap<String> config) {
-        Scheduler scheduler = ci.getScheduler();
-        if (scheduler == null) {
-            SchedulerFactory sf = ClientScheduler.getDefaultSchedulerFactory(config);
-            scheduler = sf.getScheduler();
-            ci.setScheduler(scheduler);
-            if (!sf.isStarted())
-                sf.start();
-        }
-        return scheduler;
-    }
-
-    // --------------------- 创建所有的调度器 ---------------------
-
-    public static ClientScheduler[] createSchedulers(Map<String, String> config) {
-        int schedulerCount = MapUtils.getSchedulerCount(config);
-        ClientScheduler[] schedulers = new ClientScheduler[schedulerCount];
-        for (int i = 0; i < schedulerCount; i++) {
-            schedulers[i] = new ClientScheduler(i, schedulerCount, config);
-        }
-        return schedulers;
+        return SchedulerFactoryBase.getScheduler(ClientScheduler.class.getName(), ci, config);
     }
 }

@@ -6,11 +6,10 @@
 package org.lealone.server;
 
 import org.lealone.db.link.LinkableBase;
-import org.lealone.db.scheduler.ISessionInitTask;
 import org.lealone.server.protocol.session.SessionInit;
 
 //如果数据库还没有初始化，只会有一个线程去初始化它，这时其他线程就不能创建session，会返回null，所以可能会run多次。
-public class SessionInitTask extends LinkableBase<SessionInitTask> implements ISessionInitTask {
+public class SessionInitTask extends LinkableBase<SessionInitTask> {
 
     private final TcpServerConnection conn;
     private final SessionInit packet;

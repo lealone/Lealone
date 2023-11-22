@@ -8,7 +8,6 @@ package org.lealone.db.scheduler;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -16,13 +15,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTask;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
+import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
 public class EmbeddedScheduler extends SchedulerBase {
 
@@ -33,6 +33,17 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     // 杂七杂八的任务，数量不多，执行完就删除
     private final ConcurrentLinkedQueue<AsyncTask> miscTasks = new ConcurrentLinkedQueue<>();
+    private final LinkableList<SessionInfo> sessions = new LinkableList<>();
+    private YieldableCommand nextBestCommand;
+
+    protected static class SessionInfo extends LinkableBase<SessionInfo> {
+
+        final Session session;
+
+        public SessionInfo(Session session) {
+            this.session = session;
+        }
+    }
 
     public EmbeddedScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "EScheduleService-" + id, schedulerCount, config);
@@ -63,6 +74,7 @@ public class EmbeddedScheduler extends SchedulerBase {
             runPageOperationTasks();
             runPendingTransactions();
             runPendingTasks();
+            executeNextStatement();
             doAwait();
         }
     }
@@ -98,7 +110,24 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
-    public void executeNextStatement() {
+    public void addSession(Session session, int databaseId) {
+        addPendingTaskHandler(session);
+        sessions.add(new SessionInfo(session));
+    }
+
+    @Override
+    public void removeSession(Session session) {
+        removePendingTaskHandler(session);
+        if (sessions.isEmpty())
+            return;
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            if (si.session == session) {
+                sessions.remove(si);
+                break;
+            }
+            si = si.next;
+        }
     }
 
     @Override
@@ -133,15 +162,15 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
-    public void addSessionInitTask(ISessionInitTask task) {
+    public void addSessionInitTask(Object task) {
     }
 
     @Override
-    public void addSessionInfo(ISessionInfo si) {
+    public void addSessionInfo(Object si) {
     }
 
     @Override
-    public void removeSessionInfo(ISessionInfo si) {
+    public void removeSessionInfo(Object si) {
 
     }
 
@@ -164,71 +193,74 @@ public class EmbeddedScheduler extends SchedulerBase {
             throw syncException;
     }
 
-    // --------------------- 创建所有的调度器 ---------------------
-
-    public static EmbeddedScheduler[] createSchedulers(Map<String, String> config) {
-        int schedulerCount = MapUtils.getSchedulerCount(config);
-        EmbeddedScheduler[] schedulers = new EmbeddedScheduler[schedulerCount];
-        for (int i = 0; i < schedulerCount; i++) {
-            schedulers[i] = new EmbeddedScheduler(i, schedulerCount, config);
-        }
-        return schedulers;
-    }
-
-    private static SchedulerFactory defaultSchedulerFactory;
-
-    public static void setDefaultSchedulerFactory(SchedulerFactory defaultSchedulerFactory) {
-        EmbeddedScheduler.defaultSchedulerFactory = defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory() {
-        return defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory(Properties prop) {
-        if (EmbeddedScheduler.defaultSchedulerFactory == null) {
-            Map<String, String> config;
-            if (prop != null)
-                config = new CaseInsensitiveMap<>(prop);
-            else
-                config = new CaseInsensitiveMap<>();
-            initDefaultSchedulerFactory(config);
-        }
-        return defaultSchedulerFactory;
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory(Map<String, String> config) {
-        if (EmbeddedScheduler.defaultSchedulerFactory == null)
-            initDefaultSchedulerFactory(config);
-        return defaultSchedulerFactory;
-    }
-
-    public static synchronized SchedulerFactory initDefaultSchedulerFactory(Map<String, String> config) {
-        SchedulerFactory schedulerFactory = EmbeddedScheduler.defaultSchedulerFactory;
-        if (schedulerFactory == null) {
-            String sf = MapUtils.getString(config, "scheduler_factory", null);
-            if (sf != null) {
-                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
+    @Override
+    public void executeNextStatement() {
+        int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
+        YieldableCommand last = null;
+        while (true) {
+            YieldableCommand c;
+            if (nextBestCommand != null) {
+                c = nextBestCommand;
+                nextBestCommand = null;
             } else {
-                EmbeddedScheduler[] schedulers = createSchedulers(config);
-                schedulerFactory = SchedulerFactory.create(config, schedulers);
+                c = getNextBestCommand(null, priority, true);
             }
-            if (!schedulerFactory.isInited())
-                schedulerFactory.init(config);
-            EmbeddedScheduler.defaultSchedulerFactory = schedulerFactory;
+            if (c == null) {
+                runMiscTasks();
+                c = getNextBestCommand(null, priority, true);
+            }
+            if (c == null) {
+                runPageOperationTasks();
+                runPendingTransactions();
+                runPendingTasks();
+                runMiscTasks();
+                c = getNextBestCommand(null, priority, true);
+                if (c == null) {
+                    break;
+                }
+            }
+            try {
+                currentSession = c.getSession();
+                c.run();
+                // 说明没有新的命令了，一直在轮循
+                if (last == c) {
+                    runPageOperationTasks();
+                    runPendingTransactions();
+                    runPendingTasks();
+                    runMiscTasks();
+                }
+                last = c;
+            } catch (Throwable e) {
+                logger.warn("Failed to statement: " + c, e);
+            }
         }
-        return schedulerFactory;
+    }
+
+    private YieldableCommand getNextBestCommand(Session currentSession, int priority,
+            boolean checkTimeout) {
+        if (sessions.isEmpty())
+            return null;
+        YieldableCommand best = null;
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            // 执行yieldIfNeeded时，不需要检查当前session
+            if (currentSession == si.session) {
+                si = si.next;
+                continue;
+            }
+            YieldableCommand c = si.session.getYieldableCommand(false, null);
+            si = si.next;
+            if (c == null)
+                continue;
+            if (c.getPriority() > priority) {
+                best = c;
+                priority = c.getPriority();
+            }
+        }
+        return best;
     }
 
     public static Scheduler getScheduler(ConnectionInfo ci) {
-        Scheduler scheduler = ci.getScheduler();
-        if (scheduler == null) {
-            SchedulerFactory sf = EmbeddedScheduler.getDefaultSchedulerFactory(ci.getProperties());
-            scheduler = sf.getScheduler();
-            ci.setScheduler(scheduler);
-            if (!sf.isStarted())
-                sf.start();
-        }
-        return scheduler;
+        return SchedulerFactoryBase.getScheduler(EmbeddedScheduler.class.getName(), ci);
     }
 }

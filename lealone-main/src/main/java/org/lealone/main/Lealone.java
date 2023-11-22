@@ -35,7 +35,7 @@ import org.lealone.main.config.YamlConfigLoader;
 import org.lealone.plugins.mongo.server.MongoServerEngine;
 import org.lealone.plugins.mysql.server.MySQLServerEngine;
 import org.lealone.plugins.postgresql.server.PgServerEngine;
-import org.lealone.server.AsyncServer;
+import org.lealone.server.GlobalScheduler;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.TcpServerEngine;
@@ -184,28 +184,38 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            SchedulerFactory schedulerFactory = AsyncServer
-                    .initSchedulerFactory(config.scheduler.parameters);
+            SchedulerFactory schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(
+                    GlobalScheduler.class.getName(), config.scheduler.parameters);
             Scheduler scheduler = schedulerFactory.getScheduler();
-            initLealoneDatabase(scheduler);
+
+            CountDownLatch latch1 = new CountDownLatch(1);
+            // 在一个调度线程中初始化LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
+            scheduler.handle(() -> {
+                long t10 = System.currentTimeMillis();
+                LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
+                long t20 = System.currentTimeMillis();
+                logger.info("Init lealone database: " + (t20 - t10) + " ms");
+                latch1.countDown();
+            });
+            scheduler.start();
+            latch1.await();
 
             if (embedded) {
                 scheduler.start();
                 return;
             }
 
+            CountDownLatch latch2 = new CountDownLatch(1);
             // 在一个调度线程中启动ProtocolServer，保证它们执行数据库各种操作时是单线程的
-            CountDownLatch latch0 = new CountDownLatch(1);
             scheduler.handle(() -> {
                 startProtocolServers();
-                latch0.countDown();
+                latch2.countDown();
             });
-            scheduler.start();
-            latch0.await();
+            latch2.await();
 
             // 等所有的Server启动完成后再启动Scheduler
             // 确保所有的初始PeriodicTask都在main线程中注册
-            AsyncServer.getSchedulerFactory().start();
+            SchedulerFactory.getDefaultSchedulerFactory().start();
 
             long t3 = (System.currentTimeMillis() - t);
             long totalTime = t1 + t2 + t3;
@@ -220,7 +230,9 @@ public class Lealone {
             Thread.currentThread().setName("CheckpointService");
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
             te.getCheckpointService().run();
-        } catch (Exception e) {
+        } catch (
+
+        Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
@@ -257,16 +269,6 @@ public class Lealone {
     private void init() {
         initBaseDir();
         initPluggableEngines();
-    }
-
-    // 在一个调度线程中初始化LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
-    private void initLealoneDatabase(Scheduler scheduler) {
-        scheduler.handle(() -> {
-            long t1 = System.currentTimeMillis();
-            LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
-            long t2 = System.currentTimeMillis();
-            logger.info("Init lealone database: " + (t2 - t1) + " ms");
-        });
     }
 
     private void initBaseDir() {

@@ -48,8 +48,6 @@ public class ServerSessionFactory implements SessionFactory {
             AsyncCallback<Session> ac = AsyncCallback.create(ci.isSingleThreadCallback());
             scheduler.handle(() -> {
                 ServerSession session = createServerSession(ci);
-                scheduler.addSession(session, session.getDatabase().getId());
-                session.setScheduler(scheduler);
                 ac.setAsyncResult(session);
             });
             return ac;
@@ -167,7 +165,7 @@ public class ServerSessionFactory implements SessionFactory {
                 try {
                     String sql = "SET " + session.getDatabase().quoteIdentifier(key) + " '"
                             + ci.getProperty(key) + "'";
-                    session.prepareStatementLocal(sql).executeUpdate();
+                    session.executeUpdateLocal(sql);
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
                         session.close();

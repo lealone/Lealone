@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.MapUtils;
-import org.lealone.db.PluginManager;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
@@ -25,31 +23,13 @@ import org.lealone.net.WritableChannel;
 public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedProtocolServer
         implements AsyncConnectionManager {
 
-    private static SchedulerFactory schedulerFactory;
-
-    public static SchedulerFactory getSchedulerFactory() {
-        return schedulerFactory;
-    }
-
-    public static synchronized SchedulerFactory initSchedulerFactory(Map<String, String> config) {
-        SchedulerFactory schedulerFactory = AsyncServer.schedulerFactory;
-        if (schedulerFactory == null) {
-            String sf = MapUtils.getString(config, "scheduler_factory", null);
-            if (sf != null) {
-                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
-            } else {
-                GlobalScheduler[] schedulers = GlobalScheduler.createSchedulers(config);
-                schedulerFactory = SchedulerFactory.create(config, schedulers);
-            }
-            if (!schedulerFactory.isInited())
-                schedulerFactory.init(config);
-            AsyncServer.schedulerFactory = schedulerFactory;
-        }
-        return schedulerFactory;
-    }
-
     private final AtomicInteger connectionSize = new AtomicInteger();
+    private SchedulerFactory schedulerFactory;
     private int serverId;
+
+    public SchedulerFactory getSchedulerFactory() {
+        return schedulerFactory;
+    }
 
     public int getServerId() {
         return serverId;
@@ -70,7 +50,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         setProtocolServer(netServer);
         netServer.init(config);
 
-        initSchedulerFactory(config);
+        schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(GlobalScheduler.class.getName(),
+                config);
     }
 
     @Override

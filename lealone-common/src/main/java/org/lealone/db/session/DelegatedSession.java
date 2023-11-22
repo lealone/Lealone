@@ -19,6 +19,7 @@ import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.sql.SQLCommand;
 
 public class DelegatedSession implements Session {
@@ -247,5 +248,20 @@ public class DelegatedSession implements Session {
     @Override
     public PendingTask getPendingTask() {
         return session.getPendingTask();
+    }
+
+    @Override
+    public void setYieldableCommand(YieldableCommand yieldableCommand) {
+        session.setYieldableCommand(yieldableCommand);
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand() {
+        return session.getYieldableCommand();
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
+        return session.getYieldableCommand(checkTimeout, timeoutListener);
     }
 }

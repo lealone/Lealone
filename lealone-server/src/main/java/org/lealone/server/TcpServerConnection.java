@@ -156,7 +156,6 @@ public class TcpServerConnection extends AsyncServerConnection {
                     }));
             SessionInfo si = new SessionInfo(scheduler, this, session, sessionId,
                     tcpServer.getSessionTimeout());
-            session.setSessionInfo(si);
             scheduler.addSessionInfo(si);
             sessions.put(sessionId, si);
         }

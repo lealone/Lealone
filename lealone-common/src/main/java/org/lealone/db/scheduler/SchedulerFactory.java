@@ -23,4 +23,17 @@ public interface SchedulerFactory extends Plugin, PageOperationHandlerFactory {
     public static SchedulerFactory create(Map<String, String> config, Scheduler[] schedulers) {
         return SchedulerFactoryBase.create(config, schedulers);
     }
+
+    public static void setDefaultSchedulerFactory(SchedulerFactory defaultSchedulerFactory) {
+        SchedulerFactoryBase.setDefaultSchedulerFactory(defaultSchedulerFactory);
+    }
+
+    public static SchedulerFactory getDefaultSchedulerFactory() {
+        return SchedulerFactoryBase.getDefaultSchedulerFactory();
+    }
+
+    public static SchedulerFactory initDefaultSchedulerFactory(String schedulerClassName,
+            Map<String, String> config) {
+        return SchedulerFactoryBase.initDefaultSchedulerFactory(schedulerClassName, config);
+    }
 }

@@ -12,20 +12,17 @@ import java.util.Map;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.MapUtils;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableList;
-import org.lealone.db.scheduler.ISessionInfo;
-import org.lealone.db.scheduler.ISessionInitTask;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetScheduler;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.transaction.TransactionEngine;
 
 public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accepter {
@@ -93,14 +90,18 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         if (!miscTasks.isEmpty()) {
             LinkableTask task = miscTasks.getHead();
             while (task != null) {
-                try {
-                    task.run();
-                } catch (Throwable e) {
-                    logger.warn("Failed to run misc task: " + task, e);
-                }
+                // 先取出旧的，避免重复执行
+                LinkableTask old = task;
                 task = task.next;
                 miscTasks.setHead(task);
                 miscTasks.decrementSize();
+                if (miscTasks.getHead() == null)
+                    miscTasks.setTail(null);
+                try {
+                    old.run();
+                } catch (Throwable e) {
+                    logger.warn("Failed to run misc task: " + old, e);
+                }
             }
             if (miscTasks.getHead() == null)
                 miscTasks.setTail(null);
@@ -113,6 +114,29 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     void removeSessionInfo(SessionInfo si) {
         sessions.remove(si);
+    }
+
+    @Override
+    public void addSession(Session session, int databaseId) {
+        addPendingTaskHandler(session);
+        ServerSession s = (ServerSession) session;
+        SessionInfo si = new SessionInfo(this, null, s, -1, -1);
+        addSessionInfo(si);
+    }
+
+    @Override
+    public void removeSession(Session session) {
+        removePendingTaskHandler(session);
+        if (sessions.isEmpty())
+            return;
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            if (si.getSession() == session) {
+                sessions.remove(si);
+                break;
+            }
+            si = si.next;
+        }
     }
 
     private void runSessionTasks() {
@@ -340,23 +364,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
             throw syncException;
     }
 
-    @Override
-    public Object addSession(Session session, Object parentSessionInfo) {
-        SessionInfo parent = (SessionInfo) parentSessionInfo;
-        SessionInfo si = parent.copy((ServerSession) session);
-        ((ServerSession) session).setSessionInfo(si);
-        addSessionInfo(si);
-        return si;
-    }
-
-    @Override
-    public void removeSession(Object sessionInfo) {
-        SessionInfo si = (SessionInfo) sessionInfo;
-        // 不删除root session
-        if (!si.getSession().isRoot())
-            removeSessionInfo(si);
-    }
-
     // --------------------- 注册 Accepter 和新的 AsyncConnection ---------------------
 
     public void register(AsyncConnection conn) {
@@ -392,28 +399,17 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
     }
 
     @Override
-    public void addSessionInitTask(ISessionInitTask task) {
+    public void addSessionInitTask(Object task) {
         addSessionInitTask((SessionInitTask) task);
     }
 
     @Override
-    public void addSessionInfo(ISessionInfo si) {
+    public void addSessionInfo(Object si) {
         addSessionInfo((SessionInfo) si);
     }
 
     @Override
-    public void removeSessionInfo(ISessionInfo si) {
+    public void removeSessionInfo(Object si) {
         removeSessionInfo((SessionInfo) si);
-    }
-
-    // --------------------- 创建所有的调度器 ---------------------
-
-    public static GlobalScheduler[] createSchedulers(Map<String, String> config) {
-        int schedulerCount = MapUtils.getSchedulerCount(config);
-        GlobalScheduler[] schedulers = new GlobalScheduler[schedulerCount];
-        for (int i = 0; i < schedulerCount; i++) {
-            schedulers[i] = new GlobalScheduler(i, schedulerCount, config);
-        }
-        return schedulers;
     }
 }
