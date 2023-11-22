@@ -12,8 +12,8 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetBuffer;
 import org.lealone.plugins.mongo.bson.command.BsonCommand;
-import org.lealone.server.LinkableTask;
-import org.lealone.server.SessionInfo;
+import org.lealone.server.scheduler.LinkableTask;
+import org.lealone.server.scheduler.SessionInfo;
 
 public class MongoTask extends LinkableTask {
 

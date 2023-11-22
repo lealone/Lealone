@@ -37,7 +37,7 @@ import org.lealone.plugins.mongo.bson.command.legacy.LCInsert;
 import org.lealone.plugins.mongo.bson.command.legacy.LCQuery;
 import org.lealone.plugins.mongo.bson.command.legacy.LCUpdate;
 import org.lealone.server.AsyncServerConnection;
-import org.lealone.server.SessionInfo;
+import org.lealone.server.scheduler.SessionInfo;
 
 public class MongoServerConnection extends AsyncServerConnection {
 

@@ -44,7 +44,7 @@ import org.lealone.plugins.mysql.server.protocol.PreparedOkPacket;
 import org.lealone.plugins.mysql.server.protocol.ResultSetHeaderPacket;
 import org.lealone.plugins.mysql.server.protocol.RowDataPacket;
 import org.lealone.server.AsyncServerConnection;
-import org.lealone.server.SessionInfo;
+import org.lealone.server.scheduler.SessionInfo;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLStatement;

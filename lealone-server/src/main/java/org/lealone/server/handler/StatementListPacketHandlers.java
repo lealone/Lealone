@@ -10,13 +10,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.server.LinkableTask;
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.handler.PacketHandlers.QueryPacketHandler;
 import org.lealone.server.handler.PacketHandlers.UpdatePacketHandler;
 import org.lealone.server.protocol.QueryPacket;
 import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.server.scheduler.LinkableTask;
+import org.lealone.server.scheduler.PacketHandleTask;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.StatementList;
 

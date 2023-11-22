@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.server;
+package org.lealone.server.scheduler;
 
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableBase;

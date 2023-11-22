@@ -6,8 +6,8 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
+import org.lealone.server.scheduler.PacketHandleTask;
 
 public interface PacketHandler<P extends Packet> {
 

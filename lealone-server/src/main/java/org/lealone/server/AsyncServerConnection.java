@@ -7,6 +7,7 @@ package org.lealone.server;
 
 import org.lealone.net.TransferConnection;
 import org.lealone.net.WritableChannel;
+import org.lealone.server.scheduler.SessionInfo;
 
 public abstract class AsyncServerConnection extends TransferConnection {
 

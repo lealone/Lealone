@@ -12,13 +12,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.server.LinkableTask;
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
+import org.lealone.server.scheduler.LinkableTask;
+import org.lealone.server.scheduler.PacketHandleTask;
 import org.lealone.sql.PreparedSQLStatement;
 
 //先把批量语句转成AsyncTask再按先后顺序一个个处理

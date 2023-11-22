@@ -19,6 +19,7 @@ import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetServer;
 import org.lealone.net.WritableChannel;
+import org.lealone.server.scheduler.GlobalScheduler;
 
 public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedProtocolServer
         implements AsyncConnectionManager {

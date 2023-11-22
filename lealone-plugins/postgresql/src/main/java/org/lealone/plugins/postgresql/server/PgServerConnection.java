@@ -22,7 +22,7 @@ import org.lealone.plugins.postgresql.server.handler.CommandPacketHandler;
 import org.lealone.plugins.postgresql.server.handler.PacketHandler;
 import org.lealone.plugins.postgresql.sql.PgAlias;
 import org.lealone.server.AsyncServerConnection;
-import org.lealone.server.SessionInfo;
+import org.lealone.server.scheduler.SessionInfo;
 import org.lealone.sql.SQLEngine;
 
 public class PgServerConnection extends AsyncServerConnection {

@@ -6,7 +6,7 @@
 package org.lealone.plugins.postgresql.server;
 
 import org.lealone.net.NetBuffer;
-import org.lealone.server.LinkableTask;
+import org.lealone.server.scheduler.LinkableTask;
 
 public class PgTask extends LinkableTask {
 

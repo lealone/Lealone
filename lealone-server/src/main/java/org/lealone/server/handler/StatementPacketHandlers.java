@@ -5,11 +5,11 @@
  */
 package org.lealone.server.handler;
 
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.server.scheduler.PacketHandleTask;
 
 public class StatementPacketHandlers extends PacketHandlers {
 

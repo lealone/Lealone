@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package org.lealone.server;
+package org.lealone.server.scheduler;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -12,6 +12,7 @@ import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
+import org.lealone.server.AsyncServerConnection;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
@@ -53,7 +54,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         return session;
     }
 
-    int getSessionId() {
+    public int getSessionId() {
         return sessionId;
     }
 
@@ -82,7 +83,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         // 执行此方法的当前线程就是scheduler，所以不用唤醒scheduler
     }
 
-    void remove() {
+    public void remove() {
         scheduler.removeSessionInfo(this);
     }
 

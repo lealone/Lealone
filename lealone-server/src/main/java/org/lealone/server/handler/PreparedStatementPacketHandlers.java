@@ -7,7 +7,6 @@ package org.lealone.server.handler;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
@@ -19,6 +18,7 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
+import org.lealone.server.scheduler.PacketHandleTask;
 import org.lealone.sql.PreparedSQLStatement;
 
 class PreparedStatementPacketHandlers extends PacketHandlers {

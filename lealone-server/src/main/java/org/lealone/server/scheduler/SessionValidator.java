@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.server;
+package org.lealone.server.scheduler;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;

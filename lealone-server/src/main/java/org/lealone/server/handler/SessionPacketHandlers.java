@@ -6,12 +6,12 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.PacketHandleTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
+import org.lealone.server.scheduler.PacketHandleTask;
 import org.lealone.sql.PreparedSQLStatement;
 
 class SessionPacketHandlers extends PacketHandlers {

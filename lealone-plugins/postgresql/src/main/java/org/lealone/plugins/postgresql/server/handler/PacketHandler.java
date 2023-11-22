@@ -20,7 +20,7 @@ import org.lealone.plugins.postgresql.server.PgServer;
 import org.lealone.plugins.postgresql.server.PgServerConnection;
 import org.lealone.plugins.postgresql.server.io.NetBufferInput;
 import org.lealone.plugins.postgresql.server.io.NetBufferOutput;
-import org.lealone.server.SessionInfo;
+import org.lealone.server.scheduler.SessionInfo;
 
 public abstract class PacketHandler {
 

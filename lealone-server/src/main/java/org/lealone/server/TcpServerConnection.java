@@ -24,6 +24,9 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
+import org.lealone.server.scheduler.PacketHandleTask;
+import org.lealone.server.scheduler.SessionInfo;
+import org.lealone.server.scheduler.SessionInitTask;
 
 /**
  * 这里只处理客户端通过TCP连到服务器端后的协议，可以在一个TCP连接中打开多个session
@@ -109,7 +112,7 @@ public class TcpServerConnection extends AsyncServerConnection {
         scheduler.addSessionInitTask(task);
     }
 
-    boolean createSession(SessionInit packet, int packetId, int sessionId) {
+    public boolean createSession(SessionInit packet, int packetId, int sessionId) {
         try {
             ServerSession session = (ServerSession) packet.ci.createSession();
             if (session == null) {
