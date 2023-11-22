@@ -7,37 +7,28 @@ package org.lealone.server;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
-import org.lealone.db.DataBufferFactory;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.scheduler.ISessionInfo;
 import org.lealone.db.scheduler.ISessionInitTask;
-import org.lealone.db.scheduler.SchedulerBase;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.Session;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
-import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetScheduler;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperation.PageOperationResult;
-import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionListener;
 
-public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accepter {
+public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accepter {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalScheduler.class);
 
@@ -50,30 +41,14 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
     // 用LinkableList是安全的，所有的初始PeriodicTask都在main线程中注册，新的PeriodicTask在当前调度线程中注册
     private final LinkableList<AsyncPeriodicTask> periodicTasks = new LinkableList<>();
 
-    // 存放还没有给客户端发送响应结果的事务
-    private final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
-
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
 
-    private final NetEventLoop netEventLoop;
-
     private YieldableCommand nextBestCommand;
-
-    // 用于实现 PageOperationHandler 接口
-    private final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config);
-        netEventLoop = NetFactoryManager.getFactory(config).createNetEventLoop(loopInterval, true);
-        netEventLoop.setOwner(this);
-        netEventLoop.setScheduler(this);
         netEventLoop.setAccepter(this);
-    }
-
-    @Override
-    public NetEventLoop getNetEventLoop() {
-        return netEventLoop;
     }
 
     @Override
@@ -83,7 +58,7 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
 
     @Override
     public long getLoad() {
-        return sessions.size() + lockedPageOperationTasks.size();
+        return super.getLoad() + sessions.size();
     }
 
     @Override
@@ -96,6 +71,7 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
             runPageOperationTasks();
             runSessionTasks();
             runPendingTransactions();
+            runPendingTasks();
             executeNextStatement();
             runEventLoop();
         }
@@ -233,7 +209,7 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
                 si = si.next;
             }
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-            te.fullGc(schedulerFactory.getSchedulerCount(), getHandlerId());
+            te.fullGc(schedulerFactory.getSchedulerCount(), getId());
         }
     }
 
@@ -381,23 +357,6 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
             removeSessionInfo(si);
     }
 
-    // --------------------- 网络事件循环 ---------------------
-
-    @Override
-    public void wakeUp() {
-        netEventLoop.wakeup();
-    }
-
-    private void runEventLoop() {
-        try {
-            netEventLoop.write();
-            netEventLoop.select();
-            netEventLoop.handleSelectedKeys();
-        } catch (Throwable t) {
-            logger.warn("Failed to runEventLoop", t);
-        }
-    }
-
     // --------------------- 注册 Accepter 和新的 AsyncConnection ---------------------
 
     public void register(AsyncConnection conn) {
@@ -419,66 +378,12 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
         AsyncServerManager.accept(key, this);
     }
 
-    // --------------------- 实现 TransactionHandler 接口 ---------------------
-
-    // runPendingTransactions和addTransaction已经确保只有一个调度线程执行，所以是单线程安全的
-    private void runPendingTransactions() {
-        if (pendingTransactions.isEmpty())
-            return;
-        PendingTransaction pt = pendingTransactions.getHead();
-        while (pt != null && pt.isSynced()) {
-            if (!pt.isCompleted()) {
-                try {
-                    pt.getTransaction().asyncCommitComplete();
-                } catch (Throwable e) {
-                    if (logger != null)
-                        logger.warn("Failed to run pending transaction: " + pt, e);
-                }
-            }
-            pt = pt.getNext();
-            pendingTransactions.decrementSize();
-            pendingTransactions.setHead(pt);
-        }
-        if (pendingTransactions.getHead() == null)
-            pendingTransactions.setTail(null);
-    }
-
-    @Override
-    public void addTransaction(PendingTransaction pt) {
-        pendingTransactions.add(pt);
-    }
-
-    @Override
-    public PendingTransaction getTransaction() {
-        return pendingTransactions.getHead();
-    }
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return netEventLoop.getDataBufferFactory();
-    }
-
-    @Override
-    public void addWaitingTransactionListener(TransactionListener listener) {
-        addWaitingHandler((PageOperationHandler) listener);
-    }
-
-    @Override
-    public void wakeUpWaitingTransactionListeners() {
-        wakeUpWaitingHandlers();
-    }
-
     // --------------------- 实现 Scheduler 接口 ---------------------
 
     @Override
     public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
         AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
         wakeUp();
-    }
-
-    @Override
-    public Selector getSelector() {
-        return getNetEventLoop().getSelector();
     }
 
     @Override
@@ -499,63 +404,6 @@ public class GlobalScheduler extends SchedulerBase implements NetEventLoop.Accep
     @Override
     public void removeSessionInfo(ISessionInfo si) {
         removeSessionInfo((SessionInfo) si);
-    }
-
-    // --------------------- 实现 PageOperationHandler 接口 ---------------------
-
-    private static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
-        final PageOperation po;
-
-        public LinkablePageOperation(PageOperation po) {
-            this.po = po;
-        }
-    }
-
-    @Override
-    public void handlePageOperation(PageOperation po) {
-        lockedPageOperationTasks.add(new LinkablePageOperation(po));
-    }
-
-    private void runPageOperationTasks() {
-        if (lockedPageOperationTasks.isEmpty())
-            return;
-        while (lockedPageOperationTasks.getHead() != null) {
-            int size = lockedPageOperationTasks.size();
-            LinkablePageOperation task = lockedPageOperationTasks.getHead();
-            LinkablePageOperation last = null;
-            while (task != null) {
-                Session old = getCurrentSession();
-                setCurrentSession(task.po.getSession());
-                try {
-                    PageOperationResult result = task.po.run(this);
-                    if (result == PageOperationResult.LOCKED) {
-                        last = task;
-                        task = task.next;
-                        continue;
-                    } else if (result == PageOperationResult.RETRY) {
-                        continue;
-                    }
-                    task = task.next;
-                    if (last == null)
-                        lockedPageOperationTasks.setHead(task);
-                    else
-                        last.next = task;
-                } catch (Throwable e) {
-                    getLogger().warn("Failed to run page operation: " + task, e);
-                } finally {
-                    setCurrentSession(old);
-                }
-                lockedPageOperationTasks.decrementSize();
-            }
-            if (lockedPageOperationTasks.getHead() == null)
-                lockedPageOperationTasks.setTail(null);
-            else
-                lockedPageOperationTasks.setTail(last);
-
-            // 全都锁住了，没必要再试了
-            if (size == lockedPageOperationTasks.size())
-                break;
-        }
     }
 
     // --------------------- 创建所有的调度器 ---------------------

@@ -240,6 +240,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void submitTask(PendingTask task) {
+        session.submitTask(task);
+    }
+
+    @Override
     public PendingTask getPendingTask() {
         return session.getPendingTask();
     }

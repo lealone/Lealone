@@ -50,8 +50,6 @@ public class InformationFunction extends MySQLFunction {
     }
 
     public static ValueLong getSchedulerId(ServerSession session) {
-        return ValueLong.get(
-                session.getTransactionHandler() != null ? session.getTransactionHandler().getHandlerId()
-                        : 0);
+        return ValueLong.get(session.getScheduler() != null ? session.getScheduler().getId() : 0);
     }
 }

@@ -7,8 +7,6 @@ package org.lealone.transaction;
 
 import java.util.concurrent.LinkedTransferQueue;
 
-import org.lealone.db.DataBufferFactory;
-
 public interface TransactionHandler {
 
     int getHandlerId();
@@ -18,12 +16,6 @@ public interface TransactionHandler {
     PendingTransaction getTransaction();
 
     void wakeUp();
-
-    DataBufferFactory getDataBufferFactory();
-
-    public default Object getNetEventLoop() {
-        return null;
-    }
 
     public static final DefaultTransactionHandler defaultTHandler = new DefaultTransactionHandler();
 
@@ -49,11 +41,6 @@ public interface TransactionHandler {
 
         @Override
         public void wakeUp() {
-        }
-
-        @Override
-        public DataBufferFactory getDataBufferFactory() {
-            return DataBufferFactory.getConcurrentFactory();
         }
     }
 }

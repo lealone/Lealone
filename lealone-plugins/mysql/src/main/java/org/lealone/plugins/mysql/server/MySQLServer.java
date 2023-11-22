@@ -71,7 +71,7 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
 
     @Override
     protected void afterRegister(MySQLServerConnection conn, Scheduler scheduler) {
-        int threadId = scheduler.getHandlerId();
+        int threadId = scheduler.getId();
         // 连接创建成功后先握手
         conn.handshake(threadId);
     }

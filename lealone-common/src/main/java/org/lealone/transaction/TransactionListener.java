@@ -5,8 +5,6 @@
  */
 package org.lealone.transaction;
 
-import org.lealone.db.session.Session;
-
 public interface TransactionListener {
 
     default int getListenerId() {
@@ -38,13 +36,6 @@ public interface TransactionListener {
     }
 
     default void setNeedWakeUp(boolean needWakeUp) {
-    }
-
-    default Object addSession(Session session, Object parentSessionInfo) {
-        return null;
-    }
-
-    default void removeSession(Object sessionInfo) {
     }
 
     default void addWaitingTransactionListener(TransactionListener listener) {

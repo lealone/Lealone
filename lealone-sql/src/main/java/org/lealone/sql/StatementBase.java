@@ -534,7 +534,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     private Future<Result> executeQuery0(int maxRows, boolean scrollable) {
-        if (session.getTransactionListener() != null) {
+        if (session.getScheduler() != null) {
             // 放到调度线程中运行
             AsyncCallback<Result> ac = session.createCallback();
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
@@ -547,7 +547,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             });
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
-            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            session.getScheduler().addSession(session, session.getSessionInfo());
             return ac;
         } else {
             // 在当前线程中同步执行
@@ -573,7 +573,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             });
             YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
             session.setYieldableCommand(c);
-            session.getTransactionListener().addSession(session, session.getSessionInfo());
+            session.getScheduler().addSession(session, session.getSessionInfo());
             return ac;
         } else {
             // 在当前线程中同步执行

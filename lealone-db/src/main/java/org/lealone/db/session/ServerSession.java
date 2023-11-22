@@ -758,8 +758,8 @@ public class ServerSession extends SessionBase {
                 closeAllCache();
                 cleanTempTables(true);
                 database.removeSession(this);
-                if (getTransactionListener() != null)
-                    getTransactionListener().removeSession(sessionInfo);
+                if (getScheduler() != null)
+                    getScheduler().removeSession(sessionInfo);
             } finally {
                 super.close();
             }

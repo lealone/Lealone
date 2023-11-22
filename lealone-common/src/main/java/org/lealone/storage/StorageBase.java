@@ -20,6 +20,7 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.db.Constants;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.page.PageOperationHandlerFactory;
 
 //子类通常只需要实现openMap方法
 public abstract class StorageBase implements Storage {
@@ -72,6 +73,11 @@ public abstract class StorageBase implements Storage {
     @Override
     public String getStoragePath() {
         return (String) config.get(StorageSetting.STORAGE_PATH.name());
+    }
+
+    @Override
+    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
+        return (PageOperationHandlerFactory) config.get(StorageSetting.POH_FACTORY.name());
     }
 
     @Override

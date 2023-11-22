@@ -18,6 +18,7 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
 import org.lealone.db.async.PendingTask;
+import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
@@ -34,7 +35,7 @@ import org.lealone.transaction.TransactionListener;
  * @author H2 Group
  * @author zhh
  */
-public interface Session extends Closeable {
+public interface Session extends Closeable, PendingTaskHandler {
 
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;

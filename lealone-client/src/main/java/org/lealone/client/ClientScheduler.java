@@ -7,60 +7,38 @@ package org.lealone.client;
 
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.lealone.client.session.ClientSession;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
-import org.lealone.db.DataBufferFactory;
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.async.PendingTask;
-import org.lealone.db.link.LinkableBase;
-import org.lealone.db.link.LinkableList;
 import org.lealone.db.scheduler.ISessionInfo;
 import org.lealone.db.scheduler.ISessionInitTask;
 import org.lealone.db.scheduler.Scheduler;
-import org.lealone.db.scheduler.SchedulerBase;
 import org.lealone.db.scheduler.SchedulerFactory;
-import org.lealone.db.session.Session;
 import org.lealone.net.NetClient;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
-import org.lealone.server.ProtocolServer;
+import org.lealone.net.NetScheduler;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.transaction.PendingTransaction;
 
-public class ClientScheduler extends SchedulerBase {
+public class ClientScheduler extends NetScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientScheduler.class);
 
+    // 杂七杂八的任务，数量不多，执行完就删除
     private final ConcurrentLinkedQueue<AsyncTask> miscTasks = new ConcurrentLinkedQueue<>();
-    private final NetEventLoop netEventLoop;
     private final NetClient netClient;
-
-    public static class SessionInfo extends LinkableBase<SessionInfo> {
-
-        ClientSession session;
-
-        public SessionInfo(ClientSession session) {
-            this.session = session;
-        }
-    }
-
-    private final LinkableList<SessionInfo> sessions = new LinkableList<>();
 
     public ClientScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "CScheduleService-" + id,
@@ -68,45 +46,13 @@ public class ClientScheduler extends SchedulerBase {
                 config);
         NetFactory netFactory = NetFactoryManager.getFactory(config);
         netClient = netFactory.createNetClient();
-        netEventLoop = netFactory.createNetEventLoop(loopInterval, true);
-        netEventLoop.setOwner(this);
-        netEventLoop.setScheduler(this);
         netEventLoop.setNetClient(netClient);
         getThread().setDaemon(true);
     }
 
     @Override
     public long getLoad() {
-        return sessions.size() + miscTasks.size();
-    }
-
-    @Override
-    public void addSession(Session session, int databaseId) {
-        sessions.add(new SessionInfo((ClientSession) session));
-    }
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return netEventLoop.getDataBufferFactory();
-    }
-
-    @Override
-    public Object getNetEventLoop() {
-        return netEventLoop;
-    }
-
-    @Override
-    public Selector getSelector() {
-        return netEventLoop.getSelector();
-    }
-
-    @Override
-    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        DbException.throwInternalError();
-    }
-
-    @Override
-    public void register(Object conn) {
+        return super.getLoad() + miscTasks.size();
     }
 
     @Override
@@ -163,7 +109,7 @@ public class ClientScheduler extends SchedulerBase {
         long lastTime = System.currentTimeMillis();
         while (!stopped) {
             runMiscTasks();
-            runSessionTasks();
+            runPendingTasks();
             runEventLoop();
 
             long currentTime = System.currentTimeMillis();
@@ -194,44 +140,6 @@ public class ClientScheduler extends SchedulerBase {
             netClient.checkTimeout(currentTime);
         } catch (Throwable t) {
             logger.warn("Failed to checkTimeout", t);
-        }
-    }
-
-    private void runSessionTasks() {
-        if (sessions.isEmpty())
-            return;
-        SessionInfo si = sessions.getHead();
-        while (si != null) {
-            PendingTask pt = si.session.getPendingTask();
-            while (pt != null) {
-                if (!pt.isCompleted()) {
-                    try {
-                        pt.getTask().run();
-                    } catch (Throwable e) {
-                        logger.warn("Failed to run pending task: " + pt.getTask(), e);
-                    }
-                    pt.setCompleted(true);
-                }
-                pt = pt.getNext();
-            }
-            si = si.next;
-        }
-    }
-
-    // --------------------- 网络事件循环 ---------------------
-
-    @Override
-    public void wakeUp() {
-        netEventLoop.wakeup();
-    }
-
-    private void runEventLoop() {
-        try {
-            netEventLoop.write();
-            netEventLoop.select();
-            netEventLoop.handleSelectedKeys();
-        } catch (Throwable t) {
-            logger.warn("Failed to runEventLoop", t);
         }
     }
 

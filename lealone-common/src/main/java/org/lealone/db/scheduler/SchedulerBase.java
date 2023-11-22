@@ -13,12 +13,19 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.DataBufferFactory;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.AsyncTask;
+import org.lealone.db.async.PendingTask;
+import org.lealone.db.async.PendingTaskHandler;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
+import org.lealone.transaction.PendingTransaction;
+import org.lealone.transaction.TransactionListener;
 
 public abstract class SchedulerBase implements Scheduler, PageOperation.ListenerFactory<Object> {
 
@@ -32,7 +39,7 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     protected SchedulerThread thread;
 
     // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
-
+    protected final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
     protected Session currentSession;
@@ -89,13 +96,18 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     }
 
     @Override
-    public void addSession(Session session, int databaseId) {
-
+    public DataBufferFactory getDataBufferFactory() {
+        return DataBufferFactory.getConcurrentFactory();
     }
 
     @Override
-    public void submitTask(Session session, AsyncTask task) {
-        handle(task);
+    public long getLoad() {
+        return pendingTaskHandlers.size() + lockedPageOperationTasks.size();
+    }
+
+    @Override
+    public void addSession(Session session, int databaseId) {
+        addPendingTaskHandler(session);
     }
 
     @Override
@@ -263,5 +275,145 @@ public abstract class SchedulerBase implements Scheduler, PageOperation.Listener
     @Override
     public boolean isScheduler() {
         return true;
+    }
+
+    protected static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
+        final PageOperation po;
+
+        public LinkablePageOperation(PageOperation po) {
+            this.po = po;
+        }
+    }
+
+    @Override
+    public void handlePageOperation(PageOperation po) {
+        lockedPageOperationTasks.add(new LinkablePageOperation(po));
+    }
+
+    protected void runPageOperationTasks() {
+        if (lockedPageOperationTasks.isEmpty())
+            return;
+        while (lockedPageOperationTasks.getHead() != null) {
+            int size = lockedPageOperationTasks.size();
+            LinkablePageOperation task = lockedPageOperationTasks.getHead();
+            LinkablePageOperation last = null;
+            while (task != null) {
+                Session old = getCurrentSession();
+                setCurrentSession(task.po.getSession());
+                try {
+                    PageOperationResult result = task.po.run(this);
+                    if (result == PageOperationResult.LOCKED) {
+                        last = task;
+                        task = task.next;
+                        continue;
+                    } else if (result == PageOperationResult.RETRY) {
+                        continue;
+                    }
+                    task = task.next;
+                    if (last == null)
+                        lockedPageOperationTasks.setHead(task);
+                    else
+                        last.next = task;
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run page operation: " + task, e);
+                } finally {
+                    setCurrentSession(old);
+                }
+                lockedPageOperationTasks.decrementSize();
+            }
+            if (lockedPageOperationTasks.getHead() == null)
+                lockedPageOperationTasks.setTail(null);
+            else
+                lockedPageOperationTasks.setTail(last);
+
+            // 全都锁住了，没必要再试了
+            if (size == lockedPageOperationTasks.size())
+                break;
+        }
+    }
+
+    // --------------------- 实现 PendingTaskHandler 接口 ---------------------
+
+    protected static class PendingTaskHandlerInfo extends LinkableBase<PendingTaskHandlerInfo> {
+
+        final PendingTaskHandler handler;
+
+        public PendingTaskHandlerInfo(PendingTaskHandler handler) {
+            this.handler = handler;
+        }
+    }
+
+    protected final LinkableList<PendingTaskHandlerInfo> pendingTaskHandlers = new LinkableList<>();
+
+    @Override
+    public void addPendingTaskHandler(PendingTaskHandler handler) {
+        pendingTaskHandlers.add(new PendingTaskHandlerInfo(handler));
+    }
+
+    protected void runPendingTasks() {
+        if (pendingTaskHandlers.isEmpty())
+            return;
+        PendingTaskHandlerInfo pi = pendingTaskHandlers.getHead();
+        while (pi != null) {
+            PendingTask pt = pi.handler.getPendingTask();
+            while (pt != null) {
+                if (!pt.isCompleted()) {
+                    try {
+                        pt.getTask().run();
+                    } catch (Throwable e) {
+                        getLogger().warn("Failed to run pending task: " + pt.getTask(), e);
+                    }
+                    pt.setCompleted(true);
+                }
+                pt = pt.getNext();
+            }
+            pi = pi.next;
+        }
+    }
+
+    // --------------------- 实现 TransactionHandler 接口 ---------------------
+
+    // 存放还没有给客户端发送响应结果的事务
+    protected final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
+
+    // runPendingTransactions和addTransaction已经确保只有一个调度线程执行，所以是单线程安全的
+    protected void runPendingTransactions() {
+        if (pendingTransactions.isEmpty())
+            return;
+        PendingTransaction pt = pendingTransactions.getHead();
+        while (pt != null && pt.isSynced()) {
+            if (!pt.isCompleted()) {
+                try {
+                    pt.getTransaction().asyncCommitComplete();
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run pending transaction: " + pt, e);
+                }
+            }
+            pt = pt.getNext();
+            pendingTransactions.decrementSize();
+            pendingTransactions.setHead(pt);
+        }
+        if (pendingTransactions.getHead() == null)
+            pendingTransactions.setTail(null);
+    }
+
+    @Override
+    public void addTransaction(PendingTransaction pt) {
+        pendingTransactions.add(pt);
+    }
+
+    @Override
+    public PendingTransaction getTransaction() {
+        return pendingTransactions.getHead();
+    }
+
+    @Override
+    public void addWaitingTransactionListener(TransactionListener listener) {
+        addWaitingHandler((PageOperationHandler) listener);
+    }
+
+    @Override
+    public void wakeUpWaitingTransactionListeners() {
+        wakeUpWaitingHandlers();
     }
 }

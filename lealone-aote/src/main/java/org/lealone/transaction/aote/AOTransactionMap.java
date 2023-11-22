@@ -39,6 +39,10 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         this.map = map;
     }
 
+    public AOTransaction getTransaction() {
+        return transaction;
+    }
+
     ///////////////////////// 以下是StorageMap接口API的实现 ，有一部分是直接委派的，在后面列出 /////////////////////////
 
     @Override
