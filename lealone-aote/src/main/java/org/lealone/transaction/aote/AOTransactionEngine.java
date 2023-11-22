@@ -16,13 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Awaiter;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.MemoryManager;
@@ -410,7 +409,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         // 关闭CheckpointService时等待它结束
         private final CountDownLatch latch = new CountDownLatch(1);
-        private final Semaphore semaphore = new Semaphore(1);
+        private final Awaiter awaiter = new Awaiter(logger);
 
         private final long dirtyPageCacheSize;
         private final long checkpointPeriod;
@@ -419,7 +418,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
         private volatile boolean isRunning;
-        private volatile boolean waiting;
 
         private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
 
@@ -439,7 +437,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         void close() {
             if (!isClosed) {
                 isClosed = true;
-                semaphore.release();
+                wakeUp();
             }
         }
 
@@ -449,7 +447,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
                 return;
             // 异步执行checkpoint命令
             forceCheckpointTasks.add(() -> checkpoint(true));
-            semaphore.release();
+            wakeUp();
         }
 
         // 按周期自动触发
@@ -513,18 +511,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             latch.countDown();
         }
 
-        private void await() {
-            waiting = true;
-            try {
-                semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                semaphore.drainPermits();
-            } catch (Throwable t) {
-                logger.warn("Semaphore tryAcquire exception", t);
-            } finally {
-                waiting = false;
-            }
-        }
-
         @Override
         public void executeCheckpoint() {
             try {
@@ -577,8 +563,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         @Override
         public void wakeUp() {
-            if (waiting || isClosed)
-                semaphore.release();
+            awaiter.wakeUp(isClosed);
+        }
+
+        private void await() {
+            awaiter.doAwait(loopInterval);
         }
     }
 }

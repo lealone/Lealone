@@ -7,13 +7,12 @@ package org.lealone.transaction.aote.log;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Awaiter;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.RunMode;
 import org.lealone.transaction.PendingTransaction;
@@ -28,7 +27,7 @@ public abstract class LogSyncService extends Thread {
     public static final String LOG_SYNC_TYPE_INSTANT = "instant";
     public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
-    private final Semaphore haveWork = new Semaphore(1);
+    private final Awaiter awaiter = new Awaiter(logger);
     private final AtomicLong asyncLogQueueSize = new AtomicLong();
     private final AtomicLong lastLogId = new AtomicLong();
 
@@ -39,7 +38,6 @@ public abstract class LogSyncService extends Thread {
     private final RedoLog redoLog;
 
     private volatile boolean running = true;
-    private volatile boolean waiting;
 
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected long syncIntervalMillis;
@@ -96,15 +94,7 @@ public abstract class LogSyncService extends Thread {
             long sleep = syncStarted + syncIntervalMillis - now;
             if (sleep < 0)
                 continue;
-            waiting = true;
-            try {
-                haveWork.tryAcquire(sleep, TimeUnit.MILLISECONDS);
-                haveWork.drainPermits();
-            } catch (InterruptedException e) {
-                throw new AssertionError();
-            } finally {
-                waiting = false;
-            }
+            awaiter.doAwait(sleep);
         }
         // 结束前最后sync一次
         sync();
@@ -121,8 +111,7 @@ public abstract class LogSyncService extends Thread {
     }
 
     private void wakeUp() {
-        if (waiting)
-            haveWork.release();
+        awaiter.wakeUp();
     }
 
     public void asyncWakeUp() {
@@ -161,8 +150,7 @@ public abstract class LogSyncService extends Thread {
         addRedoLogRecord(t, r, logId, null);
     }
 
-    private void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId,
-            CountDownLatch latch) {
+    private void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId, CountDownLatch latch) {
         PendingTransaction pt = new PendingTransaction(t, r, logId);
         pt.setCompleted(true);
         pt.setLatch(latch);

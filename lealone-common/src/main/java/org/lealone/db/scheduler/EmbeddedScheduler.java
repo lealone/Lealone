@@ -9,12 +9,10 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Awaiter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.PendingTaskHandler;
@@ -26,9 +24,7 @@ import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 public class EmbeddedScheduler extends SchedulerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(EmbeddedScheduler.class);
-    private final Semaphore semaphore = new Semaphore(1);
-    private final AtomicBoolean waiting = new AtomicBoolean(false);
-    private volatile boolean haveWork;
+    private final Awaiter awaiter = new Awaiter(logger);
 
     // 杂七杂八的任务，数量不多，执行完就删除
     private final ConcurrentLinkedQueue<AsyncTask> miscTasks = new ConcurrentLinkedQueue<>();
@@ -50,10 +46,7 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     @Override
     public void wakeUp() {
-        haveWork = true;
-        if (waiting.compareAndSet(true, false)) {
-            semaphore.release(1);
-        }
+        awaiter.wakeUp();
     }
 
     @Override
@@ -69,19 +62,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     private void doAwait() {
-        if (waiting.compareAndSet(false, true)) {
-            if (haveWork) {
-                haveWork = false;
-            } else {
-                try {
-                    semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                    semaphore.drainPermits();
-                } catch (InterruptedException e) {
-                    logger.warn("", e);
-                }
-            }
-            waiting.set(false);
-        }
+        awaiter.doAwait(loopInterval);
     }
 
     private void runMiscTasks() {
