@@ -5,7 +5,7 @@
  */
 package org.lealone.db.link;
 
-public class LinkableBase<E extends LinkableBase<E>> implements Linkable<E> {
+public class LinkableBase<E extends Linkable<E>> implements Linkable<E> {
 
     public E next;
 

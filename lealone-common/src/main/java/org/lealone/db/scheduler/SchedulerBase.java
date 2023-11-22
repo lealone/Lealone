@@ -338,33 +338,24 @@ public abstract class SchedulerBase implements Scheduler {
         }
     }
 
-    protected final LinkableList<PendingTaskHandlerInfo> pendingTaskHandlers = new LinkableList<>();
+    protected final LinkableList<PendingTaskHandler> pendingTaskHandlers = new LinkableList<>();
 
     @Override
     public void addPendingTaskHandler(PendingTaskHandler handler) {
-        pendingTaskHandlers.add(new PendingTaskHandlerInfo(handler));
+        pendingTaskHandlers.add(handler);
     }
 
     @Override
     public void removePendingTaskHandler(PendingTaskHandler handler) {
-        if (pendingTaskHandlers.isEmpty())
-            return;
-        PendingTaskHandlerInfo pi = pendingTaskHandlers.getHead();
-        while (pi != null) {
-            if (pi.handler == handler) {
-                pendingTaskHandlers.remove(pi);
-                break;
-            }
-            pi = pi.next;
-        }
+        pendingTaskHandlers.remove(handler);
     }
 
     protected void runPendingTasks() {
         if (pendingTaskHandlers.isEmpty())
             return;
-        PendingTaskHandlerInfo pi = pendingTaskHandlers.getHead();
-        while (pi != null) {
-            PendingTask pt = pi.handler.getPendingTask();
+        PendingTaskHandler handler = pendingTaskHandlers.getHead();
+        while (handler != null) {
+            PendingTask pt = handler.getPendingTask();
             while (pt != null) {
                 if (!pt.isCompleted()) {
                     try {
@@ -376,7 +367,7 @@ public abstract class SchedulerBase implements Scheduler {
                 }
                 pt = pt.getNext();
             }
-            pi = pi.next;
+            handler = handler.getNext();
         }
     }
 

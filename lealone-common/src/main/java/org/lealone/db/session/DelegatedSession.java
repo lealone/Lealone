@@ -15,6 +15,7 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
 import org.lealone.db.async.PendingTask;
+import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
@@ -263,5 +264,15 @@ public class DelegatedSession implements Session {
     @Override
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         return session.getYieldableCommand(checkTimeout, timeoutListener);
+    }
+
+    @Override
+    public void setNext(PendingTaskHandler next) {
+        session.setNext(next);
+    }
+
+    @Override
+    public PendingTaskHandler getNext() {
+        return session.getNext();
     }
 }

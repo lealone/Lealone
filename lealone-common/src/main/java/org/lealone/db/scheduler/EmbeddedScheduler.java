@@ -17,8 +17,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.link.LinkableBase;
-import org.lealone.db.link.LinkableList;
+import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
@@ -33,17 +32,7 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     // 杂七杂八的任务，数量不多，执行完就删除
     private final ConcurrentLinkedQueue<AsyncTask> miscTasks = new ConcurrentLinkedQueue<>();
-    private final LinkableList<SessionInfo> sessions = new LinkableList<>();
     private YieldableCommand nextBestCommand;
-
-    protected static class SessionInfo extends LinkableBase<SessionInfo> {
-
-        final Session session;
-
-        public SessionInfo(Session session) {
-            this.session = session;
-        }
-    }
 
     public EmbeddedScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "EScheduleService-" + id, schedulerCount, config);
@@ -112,22 +101,11 @@ public class EmbeddedScheduler extends SchedulerBase {
     @Override
     public void addSession(Session session, int databaseId) {
         addPendingTaskHandler(session);
-        sessions.add(new SessionInfo(session));
     }
 
     @Override
     public void removeSession(Session session) {
         removePendingTaskHandler(session);
-        if (sessions.isEmpty())
-            return;
-        SessionInfo si = sessions.getHead();
-        while (si != null) {
-            if (si.session == session) {
-                sessions.remove(si);
-                break;
-            }
-            si = si.next;
-        }
     }
 
     @Override
@@ -238,18 +216,18 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     private YieldableCommand getNextBestCommand(Session currentSession, int priority,
             boolean checkTimeout) {
-        if (sessions.isEmpty())
+        if (pendingTaskHandlers.isEmpty())
             return null;
         YieldableCommand best = null;
-        SessionInfo si = sessions.getHead();
-        while (si != null) {
+        PendingTaskHandler pi = pendingTaskHandlers.getHead();
+        while (pi != null) {
             // 执行yieldIfNeeded时，不需要检查当前session
-            if (currentSession == si.session) {
-                si = si.next;
+            if (currentSession == pi) {
+                pi = pi.getNext();
                 continue;
             }
-            YieldableCommand c = si.session.getYieldableCommand(false, null);
-            si = si.next;
+            YieldableCommand c = pi.getYieldableCommand(false, null);
+            pi = pi.getNext();
             if (c == null)
                 continue;
             if (c.getPriority() > priority) {

@@ -5,11 +5,14 @@
  */
 package org.lealone.db.async;
 
+import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerThread;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
-public abstract class PendingTaskHandlerBase implements PendingTaskHandler {
+public abstract class PendingTaskHandlerBase extends LinkableBase<PendingTaskHandler>
+        implements PendingTaskHandler {
 
     protected final LinkableList<PendingTask> pendingTasks = new LinkableList<>();
     protected Scheduler scheduler;
@@ -30,7 +33,7 @@ public abstract class PendingTaskHandlerBase implements PendingTaskHandler {
             task.run();
         } else {
             addPendingTask(new PendingTask(task));
-            // getScheduler().submitTask(this, task);
+            // scheduler.submitTask(this, task);
             if (pendingTasks.size() > 1)
                 removeCompletedTasks();
         }
@@ -62,5 +65,22 @@ public abstract class PendingTaskHandlerBase implements PendingTaskHandler {
     @Override
     public PendingTask getPendingTask() {
         return pendingTasks.getHead();
+    }
+
+    protected YieldableCommand yieldableCommand;
+
+    @Override
+    public void setYieldableCommand(YieldableCommand yieldableCommand) {
+        this.yieldableCommand = yieldableCommand;
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand() {
+        return yieldableCommand;
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
+        return yieldableCommand;
     }
 }
