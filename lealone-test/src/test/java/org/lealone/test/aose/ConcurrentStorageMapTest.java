@@ -33,5 +33,6 @@ public class ConcurrentStorageMapTest extends AoseTestBase {
         v = map.get(10);
         assertTrue("a".equals(v) || "b".equals(v));
         assertTrue(map.containsKey(10));
+        map.clear();
     }
 }

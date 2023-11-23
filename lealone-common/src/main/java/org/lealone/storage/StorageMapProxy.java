@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.ConcurrentAsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.async.PendingTaskHandlerBase;
 import org.lealone.db.scheduler.Scheduler;
@@ -154,14 +153,14 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void clear() {
-        submitTask(() -> {
+        _WT(() -> {
             map.clear();
         });
     }
 
     @Override
     public void remove() {
-        submitTask(() -> {
+        _WT(() -> {
             map.remove();
         });
     }
@@ -173,21 +172,21 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void close() {
-        submitTask(() -> {
+        _WT(() -> {
             map.close();
         });
     }
 
     @Override
     public void save() {
-        submitTask(() -> {
+        _WT(() -> {
             map.save();
         });
     }
 
     @Override
     public void save(long dirtyMemory) {
-        submitTask(() -> {
+        _WT(() -> {
             map.save(dirtyMemory);
         });
     }
@@ -199,28 +198,28 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void gc() {
-        submitTask(() -> {
+        _WT(() -> {
             map.gc();
         });
     }
 
     @Override
     public void gc(TransactionEngine te) {
-        submitTask(() -> {
+        _WT(() -> {
             map.gc(te);
         });
     }
 
     @Override
     public void fullGc(TransactionEngine te) {
-        submitTask(() -> {
+        _WT(() -> {
             map.fullGc(te);
         });
     }
 
     @Override
     public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
-        AsyncCallback<Long> ac = createCallback();
+        AsyncCallback<Long> ac = _AC();
         submitTask(() -> {
             ac.setAsyncResult(map.collectDirtyMemory(te, usedMemory));
         });
@@ -229,7 +228,7 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void markDirty(Object key) {
-        submitTask(() -> {
+        _WT(() -> {
             map.markDirty(key);
         });
     }
@@ -266,19 +265,16 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void repair() {
-        AsyncCallback<Integer> ac = createCallback();
-        submitTask(() -> {
+        _WT(() -> {
             map.repair();
-            ac.setAsyncResult(1);
         });
-        ac.get();
     }
 
     @Override
     public V put(K key, V value) {
-        AsyncCallback<V> ac = createCallback();
+        AsyncCallback<V> ac = _AC();
         submitTask(() -> {
-            map.put(key, value, createAsyncHandler(ac)); // 转成异步
+            map.put(key, value, _AH(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -299,9 +295,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public V putIfAbsent(K key, V value) {
-        AsyncCallback<V> ac = createCallback();
+        AsyncCallback<V> ac = _AC();
         submitTask(() -> {
-            map.putIfAbsent(key, value, createAsyncHandler(ac)); // 转成异步
+            map.putIfAbsent(key, value, _AH(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -322,9 +318,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
-        AsyncCallback<Boolean> ac = createCallback();
+        AsyncCallback<Boolean> ac = _AC();
         submitTask(() -> {
-            map.replace(key, oldValue, newValue, createAsyncHandler(ac)); // 转成异步
+            map.replace(key, oldValue, newValue, _AH(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -346,9 +342,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public K append(V value) {
-        AsyncCallback<K> ac = createCallback();
+        AsyncCallback<K> ac = _AC();
         submitTask(() -> {
-            map.append(value, createAsyncHandler(ac)); // 转成异步
+            map.append(value, _AH(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -369,10 +365,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public V remove(K key) {
-        AsyncCallback<V> ac = createCallback();
+        AsyncCallback<V> ac = _AC();
         submitTask(() -> {
-            map.remove(key, createAsyncHandler(ac)); // 转成异步
-
+            map.remove(key, _AH(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -389,18 +384,5 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
         submitTask(() -> {
             map.remove(session, key, handler);
         });
-    }
-
-    public static <T> AsyncHandler<AsyncResult<T>> createAsyncHandler(AsyncCallback<T> ac) {
-        return ar -> {
-            if (ar.isSucceeded())
-                ac.setAsyncResult(ar.getResult());
-            else
-                ac.setAsyncResult(ar.getCause());
-        };
-    }
-
-    public static <T> AsyncCallback<T> createCallback() {
-        return new ConcurrentAsyncCallback<>();
     }
 }

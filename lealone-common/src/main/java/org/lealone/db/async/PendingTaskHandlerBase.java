@@ -74,4 +74,29 @@ public abstract class PendingTaskHandlerBase extends LinkableBase<PendingTaskHan
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         return yieldableCommand;
     }
+
+    // WT: Wait Task
+    protected void _WT(AsyncTask task) {
+        AsyncCallback<Integer> ac = _AC();
+        submitTask(() -> {
+            task.run();
+            ac.setAsyncResult(Integer.MAX_VALUE);
+        });
+        ac.get();
+    }
+
+    // AH: Async Handler
+    protected static <T> AsyncHandler<AsyncResult<T>> _AH(AsyncCallback<T> ac) {
+        return ar -> {
+            if (ar.isSucceeded())
+                ac.setAsyncResult(ar.getResult());
+            else
+                ac.setAsyncResult(ar.getCause());
+        };
+    }
+
+    // AC: Async Callback
+    protected static <T> AsyncCallback<T> _AC() {
+        return new ConcurrentAsyncCallback<>();
+    }
 }
