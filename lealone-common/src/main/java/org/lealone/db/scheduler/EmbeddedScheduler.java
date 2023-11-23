@@ -124,21 +124,6 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
-    public void await() {
-        for (;;) {
-            if (syncCounter.get() < 1)
-                break;
-            runPageOperationTasks();
-            runPendingTransactions();
-            if (syncCounter.get() < 1)
-                break;
-        }
-        needWakeUp = true;
-        if (syncException != null)
-            throw syncException;
-    }
-
-    @Override
     public void executeNextStatement() {
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;

@@ -29,29 +29,20 @@ public abstract class PendingTaskHandlerBase extends LinkableBase<PendingTaskHan
 
     @Override
     public void submitTask(AsyncTask task) {
-        if (scheduler != null && SchedulerThread.currentScheduler() == scheduler) {
+        if (scheduler == null)
+            throw new IllegalStateException("scheduler is null");
+        if (SchedulerThread.currentScheduler() == scheduler) {
             task.run();
         } else {
-            addPendingTask(new PendingTask(task));
-            // scheduler.submitTask(this, task);
+            PendingTask pt = new PendingTask(task);
+            pendingTasks.add(pt);
+            scheduler.wakeUp();
             if (pendingTasks.size() > 1)
                 removeCompletedTasks();
         }
     }
 
-    @Override
-    public void submitTask(PendingTask task) {
-        addPendingTask(task);
-    }
-
-    private void addPendingTask(PendingTask pt) {
-        pendingTasks.add(pt);
-        scheduler.wakeUp();
-    }
-
     private void removeCompletedTasks() {
-        if (pendingTasks.isEmpty())
-            return;
         PendingTask pt = pendingTasks.getHead();
         while (pt != null && pt.isCompleted()) {
             pt = pt.getNext();

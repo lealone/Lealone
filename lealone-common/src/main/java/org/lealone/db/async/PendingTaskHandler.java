@@ -17,11 +17,7 @@ public interface PendingTaskHandler extends Linkable<PendingTaskHandler> {
 
     PendingTask getPendingTask();
 
-    void submitTask(PendingTask task);
-
-    default void submitTask(AsyncTask task) {
-        submitTask(new PendingTask(task));
-    }
+    void submitTask(AsyncTask task);
 
     void setYieldableCommand(YieldableCommand yieldableCommand);
 

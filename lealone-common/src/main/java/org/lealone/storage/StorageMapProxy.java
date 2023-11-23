@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.async.AsyncTask;
+import org.lealone.db.async.ConcurrentAsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.async.PendingTaskHandlerBase;
 import org.lealone.db.scheduler.Scheduler;
@@ -65,11 +65,6 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
     @Override
     public StorageMapCursor<K, V> cursor() {
         return map.cursor();
-    }
-
-    @Override
-    public void gc() {
-        map.gc();
     }
 
     @Override
@@ -159,12 +154,16 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void clear() {
-        map.clear();
+        submitTask(() -> {
+            map.clear();
+        });
     }
 
     @Override
     public void remove() {
-        map.remove();
+        submitTask(() -> {
+            map.remove();
+        });
     }
 
     @Override
@@ -174,17 +173,23 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void close() {
-        map.close();
+        submitTask(() -> {
+            map.close();
+        });
     }
 
     @Override
     public void save() {
-        map.save();
+        submitTask(() -> {
+            map.save();
+        });
     }
 
     @Override
     public void save(long dirtyMemory) {
-        map.save(dirtyMemory);
+        submitTask(() -> {
+            map.save(dirtyMemory);
+        });
     }
 
     @Override
@@ -193,23 +198,40 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
     }
 
     @Override
+    public void gc() {
+        submitTask(() -> {
+            map.gc();
+        });
+    }
+
+    @Override
     public void gc(TransactionEngine te) {
-        map.gc(te);
+        submitTask(() -> {
+            map.gc(te);
+        });
     }
 
     @Override
     public void fullGc(TransactionEngine te) {
-        map.fullGc(te);
+        submitTask(() -> {
+            map.fullGc(te);
+        });
     }
 
     @Override
     public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
-        return map.collectDirtyMemory(te, usedMemory);
+        AsyncCallback<Long> ac = createCallback();
+        submitTask(() -> {
+            ac.setAsyncResult(map.collectDirtyMemory(te, usedMemory));
+        });
+        return ac.get();
     }
 
     @Override
     public void markDirty(Object key) {
-        map.markDirty(key);
+        submitTask(() -> {
+            map.markDirty(key);
+        });
     }
 
     @Override
@@ -244,7 +266,7 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public void repair() {
-        AsyncCallback<Integer> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<Integer> ac = createCallback();
         submitTask(() -> {
             map.repair();
             ac.setAsyncResult(1);
@@ -254,14 +276,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public V put(K key, V value) {
-        AsyncCallback<V> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<V> ac = createCallback();
         submitTask(() -> {
-            map.put(key, value, ar -> {
-                if (ar.isSucceeded())
-                    ac.setAsyncResult(ar.getResult());
-                else
-                    ac.setAsyncResult(ar.getCause());
-            });
+            map.put(key, value, createAsyncHandler(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -282,10 +299,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public V putIfAbsent(K key, V value) {
-        AsyncCallback<V> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<V> ac = createCallback();
         submitTask(() -> {
-            V v = map.putIfAbsent(key, value);
-            ac.setAsyncResult(v);
+            map.putIfAbsent(key, value, createAsyncHandler(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -306,9 +322,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
-        AsyncCallback<Boolean> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<Boolean> ac = createCallback();
         submitTask(() -> {
-            ac.setAsyncResult(map.replace(key, oldValue, newValue));
+            map.replace(key, oldValue, newValue, createAsyncHandler(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -330,10 +346,9 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public K append(V value) {
-        AsyncCallback<K> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<K> ac = createCallback();
         submitTask(() -> {
-            K k = map.append(value);
-            ac.setAsyncResult(k);
+            map.append(value, createAsyncHandler(ac)); // 转成异步
         });
         return ac.get();
     }
@@ -354,10 +369,10 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
 
     @Override
     public V remove(K key) {
-        AsyncCallback<V> ac = AsyncCallback.createConcurrentCallback();
+        AsyncCallback<V> ac = createCallback();
         submitTask(() -> {
-            V v = map.remove(key);
-            ac.setAsyncResult(v);
+            map.remove(key, createAsyncHandler(ac)); // 转成异步
+
         });
         return ac.get();
     }
@@ -376,12 +391,16 @@ public class StorageMapProxy<K, V> extends PendingTaskHandlerBase implements Sto
         });
     }
 
-    @Override
-    public void submitTask(AsyncTask task) {
-        if (scheduler == null) {
-            task.run();
-        } else {
-            super.submitTask(task);
-        }
+    public static <T> AsyncHandler<AsyncResult<T>> createAsyncHandler(AsyncCallback<T> ac) {
+        return ar -> {
+            if (ar.isSucceeded())
+                ac.setAsyncResult(ar.getResult());
+            else
+                ac.setAsyncResult(ar.getCause());
+        };
+    }
+
+    public static <T> AsyncCallback<T> createCallback() {
+        return new ConcurrentAsyncCallback<>();
     }
 }
