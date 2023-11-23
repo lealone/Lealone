@@ -21,8 +21,6 @@ import org.lealone.net.NetClient;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetScheduler;
-import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.page.PageOperation;
 
 public class ClientScheduler extends NetScheduler {
 
@@ -43,48 +41,24 @@ public class ClientScheduler extends NetScheduler {
     }
 
     @Override
-    public long getLoad() {
-        return super.getLoad() + miscTasks.size();
-    }
-
-    @Override
     public Logger getLogger() {
         return logger;
     }
 
     @Override
-    public void addSessionInitTask(Object task) {
-    }
-
-    @Override
-    public void addSessionInfo(Object si) {
-    }
-
-    @Override
-    public void removeSessionInfo(Object si) {
-    }
-
-    @Override
-    public void validateSession(boolean isUserAndPasswordCorrect) {
-    }
-
-    @Override
-    public void handlePageOperation(PageOperation po) {
-    }
-
-    @Override
-    public void executeNextStatement() {
-    }
-
-    @Override
-    public boolean yieldIfNeeded(PreparedSQLStatement current) {
-        return false;
+    public long getLoad() {
+        return super.getLoad() + miscTasks.size();
     }
 
     @Override
     public void handle(AsyncTask task) {
         miscTasks.add(task);
         wakeUp();
+    }
+
+    @Override
+    protected void runMiscTasks() {
+        runMiscTasks(miscTasks);
     }
 
     @Override
@@ -102,21 +76,6 @@ public class ClientScheduler extends NetScheduler {
             }
         }
         netEventLoop.close();
-    }
-
-    @Override
-    protected void runMiscTasks() {
-        if (!miscTasks.isEmpty()) {
-            AsyncTask task = miscTasks.poll();
-            while (task != null) {
-                try {
-                    task.run();
-                } catch (Throwable e) {
-                    logger.warn("Failed to run misc task: " + task, e);
-                }
-                task = miscTasks.poll();
-            }
-        }
     }
 
     private void checkTimeout(long currentTime) {

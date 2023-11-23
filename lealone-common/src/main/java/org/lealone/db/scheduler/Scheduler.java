@@ -27,7 +27,15 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     String getName();
 
+    Logger getLogger();
+
     long getLoad();
+
+    SchedulerThread getThread();
+
+    SchedulerFactory getSchedulerFactory();
+
+    void setSchedulerFactory(SchedulerFactory schedulerFactory);
 
     void start();
 
@@ -37,32 +45,21 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     boolean isStopped();
 
-    SchedulerThread getThread();
+    void addSession(Session session, int databaseId);
+
+    void removeSession(Session session);
 
     DataBufferFactory getDataBufferFactory();
 
-    default Object getNetEventLoop() {
-        return null;
-    }
+    Object getNetEventLoop();
 
     Selector getSelector();
 
     void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
 
-    Logger getLogger();
-
-    SchedulerFactory getSchedulerFactory();
-
-    void setSchedulerFactory(SchedulerFactory schedulerFactory);
-
     void addSessionInitTask(Object task);
 
     void addSessionInfo(Object si);
-
-    void addSession(Session session, int databaseId);
-
-    default void removeSession(Session session) {
-    }
 
     void removeSessionInfo(Object si);
 

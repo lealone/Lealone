@@ -5,7 +5,10 @@
  */
 package org.lealone.db.scheduler;
 
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -15,11 +18,14 @@ import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.PendingTask;
 import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
+import org.lealone.server.ProtocolServer;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -28,14 +34,15 @@ import org.lealone.transaction.TransactionListener;
 
 public abstract class SchedulerBase implements Scheduler {
 
-    protected int id;
-    protected String name;
-    protected SchedulerFactory schedulerFactory;
+    protected final int id;
+    protected final String name;
 
     protected final long loopInterval;
     protected boolean started;
     protected boolean stopped;
+
     protected SchedulerThread thread;
+    protected SchedulerFactory schedulerFactory;
 
     // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
     protected final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
@@ -47,7 +54,7 @@ public abstract class SchedulerBase implements Scheduler {
         this.id = id;
         this.name = name;
         // 默认100毫秒
-        this.loopInterval = MapUtils.getLong(config, "scheduler_loop_interval", 100);
+        loopInterval = MapUtils.getLong(config, "scheduler_loop_interval", 100);
 
         waitingHandlers = new AtomicReferenceArray<>(schedulerCount);
 
@@ -61,22 +68,24 @@ public abstract class SchedulerBase implements Scheduler {
         return id;
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
     @Override
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     @Override
     public String toString() {
         return name;
+    }
+
+    @Override
+    public long getLoad() {
+        return pendingTaskHandlers.size() + lockedPageOperationTasks.size();
+    }
+
+    @Override
+    public SchedulerThread getThread() {
+        return thread;
     }
 
     @Override
@@ -87,31 +96,6 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public void setSchedulerFactory(SchedulerFactory schedulerFactory) {
         this.schedulerFactory = schedulerFactory;
-    }
-
-    @Override
-    public SchedulerThread getThread() {
-        return thread;
-    }
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return DataBufferFactory.getConcurrentFactory();
-    }
-
-    @Override
-    public long getLoad() {
-        return pendingTaskHandlers.size() + lockedPageOperationTasks.size();
-    }
-
-    @Override
-    public void addSession(Session session, int databaseId) {
-        addPendingTaskHandler(session);
-    }
-
-    @Override
-    public void removeSession(Session session) {
-        removePendingTaskHandler(session);
     }
 
     @Override
@@ -142,6 +126,51 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public boolean isStopped() {
         return stopped;
+    }
+
+    @Override
+    public void addSession(Session session, int databaseId) {
+        addPendingTaskHandler(session);
+    }
+
+    @Override
+    public void removeSession(Session session) {
+        removePendingTaskHandler(session);
+    }
+
+    @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return DataBufferFactory.getConcurrentFactory();
+    }
+
+    @Override
+    public Object getNetEventLoop() {
+        return null;
+    }
+
+    @Override
+    public Selector getSelector() {
+        return null;
+    }
+
+    @Override
+    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
+    }
+
+    @Override
+    public void addSessionInitTask(Object task) {
+    }
+
+    @Override
+    public void addSessionInfo(Object si) {
+    }
+
+    @Override
+    public void removeSessionInfo(Object si) {
+    }
+
+    @Override
+    public void validateSession(boolean isUserAndPasswordCorrect) {
     }
 
     // --------------------- 实现 TransactionListener 接口，用同步方式执行 ---------------------
@@ -211,10 +240,24 @@ public abstract class SchedulerBase implements Scheduler {
         wakeUpWaitingHandlers();
     }
 
+    protected void runEventLoop() {
+    }
+
     protected void runMiscTasks() {
     }
 
-    protected void runEventLoop() {
+    protected void runMiscTasks(ConcurrentLinkedQueue<AsyncTask> miscTasks) {
+        if (!miscTasks.isEmpty()) {
+            AsyncTask task = miscTasks.poll();
+            while (task != null) {
+                try {
+                    task.run();
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run misc task: " + task, e);
+                }
+                task = miscTasks.poll();
+            }
+        }
     }
 
     // --------------------- 实现 PageOperation.ListenerFactory 接口 ---------------------
@@ -416,5 +459,16 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public PendingTransaction getPendingTransaction() {
         return pendingTransactions.getHead();
+    }
+
+    // --------------------- 实现 SQLStatementExecutor 接口 ---------------------
+
+    @Override
+    public void executeNextStatement() {
+    }
+
+    @Override
+    public boolean yieldIfNeeded(PreparedSQLStatement current) {
+        return false;
     }
 }

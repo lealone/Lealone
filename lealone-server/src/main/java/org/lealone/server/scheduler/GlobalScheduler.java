@@ -240,6 +240,8 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         }
     }
 
+    // --------------------- 实现 SQLStatementExecutor 接口 ---------------------
+
     @Override
     public void executeNextStatement() {
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
@@ -353,7 +355,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     @Override
     public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        registerAccepter(server, serverChannel);
         AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
         wakeUp();
     }
