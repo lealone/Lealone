@@ -18,9 +18,9 @@ import java.util.zip.ZipOutputStream;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.db.Constants;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.page.PageOperationHandlerFactory;
 
 //子类通常只需要实现openMap方法
 public abstract class StorageBase implements Storage {
@@ -32,6 +32,8 @@ public abstract class StorageBase implements Storage {
     protected final Map<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     protected final Map<String, Object> config;
     protected boolean closed;
+
+    protected SchedulerFactory schedulerFactory;
 
     public StorageBase(Map<String, Object> config) {
         this.config = config;
@@ -73,11 +75,6 @@ public abstract class StorageBase implements Storage {
     @Override
     public String getStoragePath() {
         return (String) config.get(StorageSetting.STORAGE_PATH.name());
-    }
-
-    @Override
-    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
-        return (PageOperationHandlerFactory) config.get(StorageSetting.POH_FACTORY.name());
     }
 
     @Override
@@ -166,6 +163,16 @@ public abstract class StorageBase implements Storage {
     @Override
     public void unregisterEventListener(StorageEventListener listener) {
         listeners.remove(listener);
+    }
+
+    @Override
+    public SchedulerFactory getSchedulerFactory() {
+        return schedulerFactory;
+    }
+
+    @Override
+    public void setSchedulerFactory(SchedulerFactory schedulerFactory) {
+        this.schedulerFactory = schedulerFactory;
     }
 
     protected InputStream getInputStream(String mapName, FilePath file) throws IOException {

@@ -40,7 +40,6 @@ import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.storage.page.PageOperationHandlerFactory;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngine;
 
@@ -65,7 +64,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final boolean inMemory;
     private final Map<String, Object> config;
     private final BTreeStorage btreeStorage;
-    private final PageOperationHandlerFactory pohFactory;
     private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     private static class RootPageReference extends PageReference {
@@ -108,7 +106,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         inMemory = config.containsKey(StorageSetting.IN_MEMORY.name());
 
         this.config = config;
-        this.pohFactory = (PageOperationHandlerFactory) config.get(StorageSetting.POH_FACTORY.name());
         Object mode = config.get(StorageSetting.PAGE_STORAGE_MODE.name());
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString().toUpperCase());
@@ -139,10 +136,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public void newRoot(Page newRoot) {
         rootRef.replacePage(newRoot);
-    }
-
-    public PageOperationHandlerFactory getPohFactory() {
-        return pohFactory;
     }
 
     public Map<String, Object> getConfig() {
@@ -666,7 +659,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // 如果当前线程不是PageOperationHandler，需要分配一个PageOperationHandler然后让它去处理。
             // 把PageOperation提交给PageOperationHandler后，如果当前线程执行的是异步调用那就直接返回，否则需要等待。
             if (poHandler == null) {
-                poHandler = pohFactory.getPageOperationHandler();
+                poHandler = getStorage().getSchedulerFactory().getScheduler();
                 if (isSingleThreadAccess) { // 只用于测试
                     po.run(poHandler, false);
                     return po.getResult();

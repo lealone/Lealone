@@ -76,7 +76,7 @@ public class AOStorage extends StorageBase {
                 return map;
             } else {
                 AsyncCallback<StorageMap<K, V>> ac = AsyncCallback.createConcurrentCallback();
-                Scheduler scheduler = (Scheduler) map.getPohFactory().getPageOperationHandler();
+                Scheduler scheduler = getSchedulerFactory().getScheduler();
                 scheduler.handle(() -> {
                     AOStorageMapProxy<K, V> proxy = new AOStorageMapProxy<>(map, scheduler);
                     scheduler.addPendingTaskHandler(proxy);

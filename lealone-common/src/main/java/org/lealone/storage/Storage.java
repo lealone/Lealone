@@ -9,8 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipOutputStream;
 
-import org.lealone.db.PluginManager;
-import org.lealone.storage.page.PageOperationHandlerFactory;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 
@@ -69,13 +68,13 @@ public interface Storage {
 
     void unregisterEventListener(StorageEventListener listener);
 
+    void setSchedulerFactory(SchedulerFactory schedulerFactory);
+
+    SchedulerFactory getSchedulerFactory();
+
     // 一些存储引擎写入key和value前都需要事先转成字节数组
     default boolean isByteStorage() {
         return false;
     }
 
-    default PageOperationHandlerFactory getPageOperationHandlerFactory() {
-        StorageEngine se = PluginManager.getPlugin(StorageEngine.class, getStorageName());
-        return se.getPageOperationHandlerFactory();
-    }
 }

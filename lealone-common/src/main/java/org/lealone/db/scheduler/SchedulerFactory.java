@@ -8,9 +8,8 @@ package org.lealone.db.scheduler;
 import java.util.Map;
 
 import org.lealone.db.Plugin;
-import org.lealone.storage.page.PageOperationHandlerFactory;
 
-public interface SchedulerFactory extends Plugin, PageOperationHandlerFactory {
+public interface SchedulerFactory extends Plugin {
 
     Scheduler getScheduler();
 
@@ -30,6 +29,11 @@ public interface SchedulerFactory extends Plugin, PageOperationHandlerFactory {
 
     public static SchedulerFactory getDefaultSchedulerFactory() {
         return SchedulerFactoryBase.getDefaultSchedulerFactory();
+    }
+
+    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
+            Map<String, String> config) {
+        return SchedulerFactoryBase.getDefaultSchedulerFactory(schedulerClassName, config);
     }
 
     public static SchedulerFactory initDefaultSchedulerFactory(String schedulerClassName,

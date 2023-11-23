@@ -173,8 +173,7 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
             return openMap0(name, keyType, valueType, storage, parameters);
         } else {
             AsyncCallback<AOTransactionMapProxy<K, V>> ac = AsyncCallback.createConcurrentCallback();
-            Scheduler scheduler = (Scheduler) storage.getPageOperationHandlerFactory()
-                    .getPageOperationHandler();
+            Scheduler scheduler = storage.getSchedulerFactory().getScheduler();
             scheduler.handle(() -> {
                 AOTransactionMap<K, V> map = openMap0(name, keyType, valueType, storage, parameters);
                 AOTransactionMapProxy<K, V> proxy = new AOTransactionMapProxy<>(map, scheduler);

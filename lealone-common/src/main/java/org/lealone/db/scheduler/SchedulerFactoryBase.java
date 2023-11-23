@@ -18,8 +18,6 @@ import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
 import org.lealone.db.PluginManager;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
-import org.lealone.storage.StorageEngine;
-import org.lealone.storage.page.PageOperationHandler;
 
 public abstract class SchedulerFactoryBase extends PluginBase implements SchedulerFactory {
 
@@ -28,11 +26,7 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     protected SchedulerFactoryBase(Map<String, String> config, Scheduler[] schedulers) {
         super("SchedulerFactory");
         boolean embedded = false;
-        if (schedulers != null) {
-            StorageEngine se = StorageEngine.getDefaultStorageEngine();
-            if (se != null)
-                se.setPageOperationHandlerFactory(this);
-        } else {
+        if (schedulers == null) {
             // 如果未指定调度器，那么使用嵌入式调度器
             schedulers = createSchedulers(EmbeddedScheduler.class.getName(), config);
             embedded = true;
@@ -55,11 +49,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     @Override
     public int getSchedulerCount() {
         return schedulers.length;
-    }
-
-    @Override
-    public PageOperationHandler getPageOperationHandler() {
-        return getScheduler();
     }
 
     @Override

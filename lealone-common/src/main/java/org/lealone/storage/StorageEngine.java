@@ -9,8 +9,8 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.storage.lob.LobStorage;
-import org.lealone.storage.page.PageOperationHandlerFactory;
 
 public interface StorageEngine extends PluggableEngine {
 
@@ -22,8 +22,12 @@ public interface StorageEngine extends PluggableEngine {
 
     LobStorage getLobStorage(DataHandler dataHandler, Storage storage);
 
-    void setPageOperationHandlerFactory(PageOperationHandlerFactory pohFactory);
+    default Storage openStorage(String storagePath) {
+        return getStorageBuilder().storagePath(storagePath).openStorage();
+    }
 
-    PageOperationHandlerFactory getPageOperationHandlerFactory();
-
+    default Storage openStorage(String storagePath, SchedulerFactory schedulerFactory) {
+        return getStorageBuilder().storagePath(storagePath).schedulerFactory(schedulerFactory)
+                .openStorage();
+    }
 }
