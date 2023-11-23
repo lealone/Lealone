@@ -15,6 +15,7 @@ import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
+import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetServer;
@@ -102,14 +103,20 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         // do nothing
     }
 
+    protected void register(T conn, Scheduler scheduler, WritableChannel writableChannel) {
+        beforeRegister(conn, scheduler);
+        NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
+        writableChannel.setEventLoop(eventLoop); // 替换掉原来的
+        eventLoop.register(conn);
+        afterRegister(conn, scheduler);
+    }
+
     @Override
     public T createConnection(WritableChannel writableChannel, boolean isServer, Scheduler scheduler) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
             T conn = createConnection(writableChannel, scheduler);
             connectionSize.incrementAndGet();
-            beforeRegister(conn, scheduler);
-            scheduler.register(conn);
-            afterRegister(conn, scheduler);
+            register(conn, scheduler, writableChannel);
             return conn;
         } else {
             writableChannel.close();

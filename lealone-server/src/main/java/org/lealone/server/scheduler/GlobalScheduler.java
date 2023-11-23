@@ -18,7 +18,6 @@ import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
-import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetScheduler;
 import org.lealone.server.AsyncServer;
@@ -350,15 +349,12 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
         return best;
     }
 
-    // --------------------- 注册 Accepter 和新的 AsyncConnection ---------------------
+    // --------------------- 注册 Accepter ---------------------
 
-    private void register(AsyncConnection conn) {
-        conn.getWritableChannel().setEventLoop(netEventLoop); // 替换掉原来的
-        netEventLoop.register(conn);
-    }
-
-    private void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel) {
-        AsyncServerManager.registerAccepter(asyncServer, serverChannel, this);
+    @Override
+    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
+        registerAccepter(server, serverChannel);
+        AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
         wakeUp();
     }
 
@@ -372,16 +368,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
     }
 
     // --------------------- 实现 Scheduler 接口 ---------------------
-
-    @Override
-    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        registerAccepter((AsyncServer<?>) server, serverChannel);
-    }
-
-    @Override
-    public void register(Object conn) {
-        register((AsyncConnection) conn);
-    }
 
     @Override
     public void addSessionInitTask(Object task) {

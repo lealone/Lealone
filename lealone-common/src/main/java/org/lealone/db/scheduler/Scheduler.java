@@ -5,10 +5,8 @@
  */
 package org.lealone.db.scheduler;
 
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.db.DataBufferFactory;
@@ -50,12 +48,6 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     Selector getSelector();
 
     void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
-
-    void register(Object conn);
-
-    default void registerConnectOperation(SocketChannel channel, Object attachment)
-            throws ClosedChannelException {
-    }
 
     Logger getLogger();
 

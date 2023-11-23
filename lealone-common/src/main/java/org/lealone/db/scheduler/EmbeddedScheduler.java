@@ -108,10 +108,6 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
-    public void register(Object conn) {
-    }
-
-    @Override
     public void addSessionInitTask(Object task) {
     }
 

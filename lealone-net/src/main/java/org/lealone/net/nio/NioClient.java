@@ -6,6 +6,7 @@
 package org.lealone.net.nio;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 
@@ -42,7 +43,7 @@ class NioClient extends NetClientBase {
             attachment.ac = ac;
             attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
 
-            scheduler.registerConnectOperation(channel, attachment);
+            channel.register(eventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
             if (isThreadSafe()) {
                 // 如果前面已经在执行事件循环，此时就不能再次进入事件循环

@@ -45,10 +45,6 @@ public abstract class NetScheduler extends SchedulerBase {
         DbException.throwInternalError();
     }
 
-    @Override
-    public void register(Object conn) {
-    }
-
     // --------------------- 网络事件循环 ---------------------
 
     @Override

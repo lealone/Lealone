@@ -5,9 +5,6 @@
  */
 package org.lealone.client;
 
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -127,17 +124,6 @@ public class ClientScheduler extends NetScheduler {
             netClient.checkTimeout(currentTime);
         } catch (Throwable t) {
             logger.warn("Failed to checkTimeout", t);
-        }
-    }
-
-    @Override
-    public void registerConnectOperation(SocketChannel channel, Object attachment)
-            throws ClosedChannelException {
-        try {
-            channel.register(netEventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
-        } catch (ClosedChannelException e) {
-            netEventLoop.closeChannel(channel);
-            throw e;
         }
     }
 
