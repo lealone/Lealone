@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.util.Map;
 
 import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
@@ -57,9 +58,9 @@ public interface Transaction {
 
     Session getSession();
 
-    TransactionHandler getTransactionHandler();
+    Scheduler getScheduler();
 
-    void setTransactionHandler(TransactionHandler transactionHandler);
+    void setScheduler(Scheduler scheduler);
 
     /**
      * Open a data map.
@@ -118,9 +119,5 @@ public interface Transaction {
             listener = new SyncTransactionListener();
         listener.beforeOperation();
         return listener;
-    }
-
-    public static TransactionHandler getCurrentTransactionHandler() {
-        return SchedulerThread.currentTransactionHandler();
     }
 }

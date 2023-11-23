@@ -23,7 +23,6 @@ import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
 import org.lealone.db.session.SessionSetting;
 import org.lealone.storage.fs.impl.encrypt.FilePathEncrypt;
-import org.lealone.transaction.TransactionHandler;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -724,7 +723,6 @@ public class ConnectionInfo implements Cloneable {
         ci.networkTimeout = networkTimeout;
         ci.traceEnabled = traceEnabled;
         ci.singleThreadCallback = singleThreadCallback;
-        ci.transactionHandler = transactionHandler;
         ci.scheduler = scheduler;
         return ci;
     }
@@ -772,16 +770,6 @@ public class ConnectionInfo implements Cloneable {
 
     public void setSingleThreadCallback(boolean singleThreadCallback) {
         this.singleThreadCallback = singleThreadCallback;
-    }
-
-    private TransactionHandler transactionHandler;
-
-    public TransactionHandler getTransactionHandler() {
-        return transactionHandler;
-    }
-
-    public void setTransactionHandler(TransactionHandler transactionHandler) {
-        this.transactionHandler = transactionHandler;
     }
 
     private int databaseId = -1;

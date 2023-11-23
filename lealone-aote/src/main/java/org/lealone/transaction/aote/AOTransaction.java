@@ -27,7 +27,6 @@ import org.lealone.storage.StorageSetting;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.lock.RowLock;
 import org.lealone.transaction.aote.log.LogSyncService;
@@ -55,7 +54,6 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
     private Session session;
     private final int isolationLevel;
     private boolean autoCommit;
-    private TransactionHandler transactionHandler;
 
     // 仅用于测试
     private LinkedList<RowLock> locks; // 行锁
@@ -158,24 +156,6 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
     }
 
     @Override
-    public TransactionHandler getTransactionHandler() {
-        if (transactionHandler == null) {
-            // 嵌套执行的sql可能没有设置TransactionHandler
-            TransactionHandler handler = SchedulerThread.currentTransactionHandler();
-            if (handler != null)
-                transactionHandler = handler;
-            else
-                DbException.throwInternalError();
-        }
-        return transactionHandler;
-    }
-
-    @Override
-    public void setTransactionHandler(TransactionHandler transactionHandler) {
-        this.transactionHandler = transactionHandler;
-    }
-
-    @Override
     public <K, V> TransactionMap<K, V> openMap(String name, Storage storage) {
         return openMap(name, null, null, storage);
     }
@@ -200,7 +180,6 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
                 AOTransactionMapProxy<K, V> proxy = new AOTransactionMapProxy<>(map, scheduler);
                 scheduler.addPendingTaskHandler(AOTransaction.this);
                 AOTransaction.this.setScheduler(scheduler);
-                AOTransaction.this.setTransactionHandler(scheduler);
                 ac.setAsyncResult(proxy);
             });
             return ac.get();

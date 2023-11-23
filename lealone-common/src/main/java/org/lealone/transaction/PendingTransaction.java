@@ -8,6 +8,7 @@ package org.lealone.transaction;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.db.link.LinkableBase;
+import org.lealone.db.scheduler.Scheduler;
 
 public class PendingTransaction extends LinkableBase<PendingTransaction> {
 
@@ -60,7 +61,7 @@ public class PendingTransaction extends LinkableBase<PendingTransaction> {
         this.completed = completed;
     }
 
-    public TransactionHandler getTransactionHandler() {
-        return transaction.getTransactionHandler();
+    public Scheduler getScheduler() {
+        return transaction.getScheduler();
     }
 }

@@ -19,11 +19,11 @@ import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.transaction.TransactionHandler;
+import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
 
 public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, AsyncTaskHandler,
-        TransactionListener, TransactionHandler, Runnable, PageOperation.ListenerFactory<Object> {
+        TransactionListener, Runnable, PageOperation.ListenerFactory<Object> {
 
     int getId();
 
@@ -82,4 +82,8 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     void addPendingTaskHandler(PendingTaskHandler hdandler);
 
     void removePendingTaskHandler(PendingTaskHandler hdandler);
+
+    void addPendingTransaction(PendingTransaction pt);
+
+    PendingTransaction getPendingTransaction();
 }

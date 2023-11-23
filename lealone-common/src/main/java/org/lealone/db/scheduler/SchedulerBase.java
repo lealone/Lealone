@@ -382,7 +382,7 @@ public abstract class SchedulerBase implements Scheduler {
         }
     }
 
-    // --------------------- 实现 TransactionHandler 接口 ---------------------
+    // --------------------- 跟 PendingTransaction 相关 ---------------------
 
     // 存放还没有给客户端发送响应结果的事务
     protected final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
@@ -409,12 +409,12 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
-    public void addTransaction(PendingTransaction pt) {
+    public void addPendingTransaction(PendingTransaction pt) {
         pendingTransactions.add(pt);
     }
 
     @Override
-    public PendingTransaction getTransaction() {
+    public PendingTransaction getPendingTransaction() {
         return pendingTransactions.getHead();
     }
 }

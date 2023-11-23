@@ -7,7 +7,6 @@ package org.lealone.db.scheduler;
 
 import org.lealone.db.session.Session;
 import org.lealone.storage.page.PageOperationHandler;
-import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
 public class SchedulerThread extends Thread {
@@ -37,15 +36,6 @@ public class SchedulerThread extends Thread {
     }
 
     public static TransactionListener currentTransactionListener() {
-        Object t = Thread.currentThread();
-        if (t instanceof SchedulerThread) {
-            return ((SchedulerThread) t).getScheduler();
-        } else {
-            return null;
-        }
-    }
-
-    public static TransactionHandler currentTransactionHandler() {
         Object t = Thread.currentThread();
         if (t instanceof SchedulerThread) {
             return ((SchedulerThread) t).getScheduler();

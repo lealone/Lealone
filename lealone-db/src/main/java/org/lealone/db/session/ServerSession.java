@@ -63,7 +63,6 @@ import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.page.IPage;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.TransactionListener;
 
 /**
@@ -1212,7 +1211,7 @@ public class ServerSession extends SessionBase {
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode,
                 transactionIsolationLevel);
         transaction.setSession(this);
-        transaction.setTransactionHandler(transactionHandler);
+        transaction.setScheduler(getScheduler());
 
         sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         this.transaction = transaction;
@@ -1339,7 +1338,6 @@ public class ServerSession extends SessionBase {
     }
 
     private TransactionListener transactionListener;
-    private TransactionHandler transactionHandler;
 
     @Override
     public TransactionListener getTransactionListener() {
@@ -1348,14 +1346,6 @@ public class ServerSession extends SessionBase {
 
     public void setTransactionListener(TransactionListener transactionListener) {
         this.transactionListener = transactionListener;
-    }
-
-    public TransactionHandler getTransactionHandler() {
-        return transactionHandler;
-    }
-
-    public void setTransactionHandler(TransactionHandler transactionHandler) {
-        this.transactionHandler = transactionHandler;
     }
 
     private void reset(SessionStatus sessionStatus) {
@@ -1600,15 +1590,9 @@ public class ServerSession extends SessionBase {
             getTransactionListener().wakeUpWaitingTransactionListeners();
     }
 
-    private PageOperationHandler pageOperationHandler;
-
     @Override
     public PageOperationHandler getPageOperationHandler() {
-        return pageOperationHandler;
-    }
-
-    public void setPageOperationHandler(PageOperationHandler pageOperationHandler) {
-        this.pageOperationHandler = pageOperationHandler;
+        return getScheduler();
     }
 
     public void clearQueryCache() {

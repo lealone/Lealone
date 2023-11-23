@@ -26,7 +26,6 @@ import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetScheduler;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.transaction.PendingTransaction;
 
 public class ClientScheduler extends NetScheduler {
 
@@ -89,15 +88,6 @@ public class ClientScheduler extends NetScheduler {
     public void handle(AsyncTask task) {
         miscTasks.add(task);
         wakeUp();
-    }
-
-    @Override
-    public void addTransaction(PendingTransaction pt) {
-    }
-
-    @Override
-    public PendingTransaction getTransaction() {
-        return null;
     }
 
     @Override

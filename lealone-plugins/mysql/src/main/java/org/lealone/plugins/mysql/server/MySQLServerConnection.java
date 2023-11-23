@@ -143,7 +143,7 @@ public class MySQLServerConnection extends AsyncServerConnection {
             session = (ServerSession) ci.createSession();
             si = new SessionInfo(scheduler, this, session, -1, -1);
             scheduler.addSessionInfo(si);
-            session.setTransactionHandler(scheduler);
+            session.setScheduler(scheduler);
             session.setVersion(MySQLServer.SERVER_VERSION);
         }
         session.setCurrentSchema(session.getDatabase().getSchema(session, schemaName));

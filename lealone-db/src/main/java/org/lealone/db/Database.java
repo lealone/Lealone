@@ -76,7 +76,6 @@ import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionHandler;
 
 /**
  * There is one database object per open database.
@@ -498,7 +497,7 @@ public class Database extends DbObjectBase implements DataHandler {
             addDatabaseObject(null, perfSchema, null);
 
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
-            setSessionScheduler(systemSession);
+            setSessionScheduler(systemSession, null);
 
             // 在一个新事务中打开sys(meta)表
             systemSession.setAutoCommit(false);
@@ -1031,6 +1030,16 @@ public class Database extends DbObjectBase implements DataHandler {
         return role;
     }
 
+    private void setSessionScheduler(ServerSession session, Scheduler scheduler) {
+        if (scheduler == null) {
+            scheduler = SchedulerThread.currentScheduler();
+            if (scheduler == null)
+                DbException.throwInternalError();
+        }
+        session.setScheduler(scheduler);
+        scheduler.addSession(session, getId());
+    }
+
     /**
      * Create a session for the given user.
      *
@@ -1039,11 +1048,19 @@ public class Database extends DbObjectBase implements DataHandler {
      * @throws DbException if the database is in exclusive mode
      */
     public ServerSession createSession(User user) {
-        return createSession(user, null);
+        return createSession(user, null, null);
+    }
+
+    public synchronized ServerSession createSession(User user, ConnectionInfo ci) {
+        return createSession(user, ci, null);
+    }
+
+    public ServerSession createSession(User user, Scheduler scheduler) {
+        return createSession(user, null, scheduler);
     }
 
     // 创建session是低频且不耗时的操作，所以直接用synchronized即可，不必搞成异步增加复杂性
-    public synchronized ServerSession createSession(User user, ConnectionInfo ci) {
+    public synchronized ServerSession createSession(User user, ConnectionInfo ci, Scheduler scheduler) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }
@@ -1053,7 +1070,7 @@ public class Database extends DbObjectBase implements DataHandler {
         session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}",
                 session.getId(), name);
         lastSessionRemovedAt = -1;
-        setSessionScheduler(session);
+        setSessionScheduler(session, scheduler);
         return session;
     }
 
@@ -1702,13 +1719,16 @@ public class Database extends DbObjectBase implements DataHandler {
     }
 
     public Connection getInternalConnection() {
-        return systemSession.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
+        return getInternalConnection(systemSession);
     }
 
-    public Connection getInternalConnection(TransactionHandler th) {
-        ServerSession s = createSession(getSystemUser());
-        s.setTransactionHandler(th);
-        return s.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
+    public Connection getInternalConnection(Scheduler scheduler) {
+        ServerSession session = createSession(getSystemUser(), scheduler);
+        return getInternalConnection(session);
+    }
+
+    private Connection getInternalConnection(ServerSession session) {
+        return session.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
     }
 
     public int getDefaultTableType() {
@@ -1937,14 +1957,6 @@ public class Database extends DbObjectBase implements DataHandler {
             // executeUpdate()会自动提交，所以不需要再调用一次commit
             session.executeUpdateLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN");
         }
-    }
-
-    private void setSessionScheduler(ServerSession session) {
-        Scheduler scheduler = SchedulerThread.currentScheduler();
-        if (scheduler == null)
-            DbException.throwInternalError();
-        session.setScheduler(scheduler);
-        scheduler.addSession(session, getId());
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {

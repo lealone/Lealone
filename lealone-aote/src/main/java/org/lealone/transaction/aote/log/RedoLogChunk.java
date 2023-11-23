@@ -17,11 +17,11 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.MapUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.PendingTransaction;
-import org.lealone.transaction.TransactionHandler;
 import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
 import org.lealone.transaction.aote.log.RedoLogRecord.CheckpointRLR;
 import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
@@ -110,8 +110,8 @@ class RedoLogChunk {
     }
 
     void save() {
-        TransactionHandler[] waitingHandlers = logSyncService.getWaitingHandlers();
-        int waitingQueueSize = waitingHandlers.length;
+        Scheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
+        int waitingQueueSize = waitingSchedulers.length;
         AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
         long chunkLength = 0;
         while (logQueueSize.get() > 0) {
@@ -119,17 +119,17 @@ class RedoLogChunk {
             PendingTransaction[] pts = new PendingTransaction[waitingQueueSize];
             for (int i = 0; i < waitingQueueSize; i++) {
                 lastPts[i] = null;
-                TransactionHandler handler = waitingHandlers[i];
-                if (handler == null) {
+                Scheduler scheduler = waitingSchedulers[i];
+                if (scheduler == null) {
                     continue;
                 }
-                PendingTransaction pt = handler.getTransaction();
+                PendingTransaction pt = scheduler.getPendingTransaction();
                 while (pt != null) {
                     if (pt.isSynced()) {
                         pt = pt.getNext();
                         continue;
                     }
-                    pts[handler.getHandlerId()] = pt;
+                    pts[scheduler.getId()] = pt;
                     break;
                 }
             }
@@ -148,7 +148,7 @@ class RedoLogChunk {
                         // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
                         if (logSyncService.isPeriodic())
                             pt.setSynced(true);
-                        int index = pt.getTransactionHandler().getHandlerId();
+                        int index = pt.getScheduler().getId();
                         lastPts[index] = pt;
                         pts[index] = pt.getNext();
                         pt = nextPendingTransaction(pts);
@@ -170,12 +170,12 @@ class RedoLogChunk {
                 fileStorage.sync();
             }
             for (int i = 0; i < waitingQueueSize; i++) {
-                TransactionHandler handler = waitingHandlers[i];
-                if (handler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
+                Scheduler scheduler = waitingSchedulers[i];
+                if (scheduler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
                     continue;
                 }
                 if (!logSyncService.isPeriodic()) {
-                    pt = handler.getTransaction();
+                    pt = scheduler.getPendingTransaction();
                     while (pt != null) {
                         pt.setSynced(true);
                         if (pt == lastPts[i])
@@ -183,7 +183,7 @@ class RedoLogChunk {
                         pt = pt.getNext();
                     }
                 }
-                handler.wakeUp();
+                scheduler.wakeUp();
             }
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)
