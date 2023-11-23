@@ -71,7 +71,7 @@ public class AOStorage extends StorageBase {
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("BTreeMap")) {
-            BTreeMap<K, V> map = openBTreeMap(name, keyType, valueType, parameters);
+            BTreeMap<K, V> map = openBTreeMap(name, keyType, valueType, parameters, false);
             if (SchedulerThread.isScheduler()) {
                 return map;
             } else {
@@ -89,13 +89,20 @@ public class AOStorage extends StorageBase {
         }
     }
 
+    // 只用于测试，返回的BTreeMap只能用单线程访问
     public <K, V> BTreeMap<K, V> openBTreeMap(String name) {
-        return openBTreeMap(name, null, null, null);
+        return openBTreeMap(name, null, null, null, true);
+    }
+
+    // 只用于测试，返回的BTreeMap只能用单线程访问
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters) {
+        return openBTreeMap(name, keyType, valueType, parameters, true);
     }
 
     @SuppressWarnings("unchecked")
-    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
-            StorageDataType valueType, Map<String, String> parameters) {
+    private <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters, boolean isSingleThreadAccess) {
         StorageMap<?, ?> map = maps.get(name);
         if (map == null) {
             synchronized (this) {
@@ -104,7 +111,7 @@ public class AOStorage extends StorageBase {
                     CaseInsensitiveMap<Object> c = new CaseInsensitiveMap<>(config);
                     if (parameters != null)
                         c.putAll(parameters);
-                    map = new BTreeMap<>(name, keyType, valueType, c, this);
+                    map = new BTreeMap<>(name, keyType, valueType, c, this, isSingleThreadAccess);
                     maps.put(name, map);
                 }
             }

@@ -16,6 +16,10 @@ import org.lealone.storage.type.StorageDataType;
 
 public interface Storage {
 
+    default <K, V> StorageMap<K, V> openMap(String name) {
+        return openMap(name, null);
+    }
+
     default <K, V> StorageMap<K, V> openMap(String name, Map<String, String> parameters) {
         return openMap(name, new ObjectDataType(), new ObjectDataType(), parameters);
     }

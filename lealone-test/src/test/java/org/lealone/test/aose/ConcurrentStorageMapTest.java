@@ -28,7 +28,7 @@ public class ConcurrentStorageMapTest extends AoseTestBase {
     }
 
     void testSyncOperations(String v) {
-        StorageMap<Integer, String> map = storage.openMap(mapName, null);
+        StorageMap<Integer, String> map = storage.openMap(mapName);
         map.put(10, v);
         v = map.get(10);
         assertTrue("a".equals(v) || "b".equals(v));

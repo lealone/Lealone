@@ -95,10 +95,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // btree的root page引用，最开始是一个leaf page，随时都会指向新的page
     private final RootPageReference rootRef;
 
+    // 只用于测试，如果为true，返回的BTreeMap只能用单线程访问
+    private final boolean isSingleThreadAccess;
+
     public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, Object> config, AOStorage aoStorage) {
+            Map<String, Object> config, AOStorage aoStorage, boolean isSingleThreadAccess) {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
+        this.isSingleThreadAccess = isSingleThreadAccess;
         // 只要包含就为true
         readOnly = config.containsKey(DbSetting.READ_ONLY.name());
         inMemory = config.containsKey(StorageSetting.IN_MEMORY.name());
@@ -663,7 +667,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // 把PageOperation提交给PageOperationHandler后，如果当前线程执行的是异步调用那就直接返回，否则需要等待。
             if (poHandler == null) {
                 poHandler = pohFactory.getPageOperationHandler();
-                return handlePageOperation(poHandler, po);
+                if (isSingleThreadAccess) { // 只用于测试
+                    po.run(poHandler, false);
+                    return po.getResult();
+                } else {
+                    return handlePageOperation(poHandler, po);
+                }
             }
         }
         // 第一步:
