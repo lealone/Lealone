@@ -236,7 +236,7 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
                 si = si.next;
             }
             TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-            te.fullGc(schedulerFactory.getSchedulerCount(), getId());
+            te.fullGc(getId());
         }
     }
 

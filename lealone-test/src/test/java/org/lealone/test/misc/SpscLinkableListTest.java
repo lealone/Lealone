@@ -5,9 +5,12 @@
  */
 package org.lealone.test.misc;
 
+import java.util.concurrent.CountDownLatch;
+
 public class SpscLinkableListTest {
 
     public static void main(String[] args) throws Exception {
+        // for (int i = 0; i < 100; i++)
         new SpscLinkableListTest().run();
     }
 
@@ -34,25 +37,41 @@ public class SpscLinkableListTest {
                 runPendingTasks();
             }
         });
+        long t = System.currentTimeMillis();
         producer.start();
         consumer.start();
         producer.join();
         consumer.join();
+        t = System.currentTimeMillis() - t;
 
         // 如果result跟except相同，说明代码是ok的，如果不同，那就说明代码有bug
         long except = (1 + pendingTaskCount) * pendingTaskCount / 2;
         if (result == except) {
-            System.out.println("result: " + result + ", ok");
+            System.out.println("result: " + result + ", ok, cost " + t + "ms");
         } else {
             System.out.println("result: " + result + ", not ok, except: " + except);
         }
     }
 
     private void submitTask(AsyncTask task) {
-        PendingTask pt = new PendingTask(task);
-        pendingTasks.add(pt);
-        if (pendingTasks.size() > 1)
-            removeCompletedTasks();
+        if (pendingTasks.size() > 1000) {
+            CountDownLatch latch = new CountDownLatch(1);
+            task.latch = latch;
+            PendingTask pt = new PendingTask(task);
+            pendingTasks.add(pt);
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if (pendingTasks.size() > 1)
+                removeCompletedTasks();
+        } else {
+            PendingTask pt = new PendingTask(task);
+            pendingTasks.add(pt);
+            if (pendingTasks.size() > 1)
+                removeCompletedTasks();
+        }
     }
 
     private void removeCompletedTasks() {
@@ -80,6 +99,7 @@ public class SpscLinkableListTest {
 
     public class AsyncTask {
         int value;
+        CountDownLatch latch;
 
         AsyncTask(int value) {
             this.value = value;
@@ -87,6 +107,8 @@ public class SpscLinkableListTest {
 
         void compute() {
             result += value;
+            if (latch != null)
+                latch.countDown();
         }
     }
 

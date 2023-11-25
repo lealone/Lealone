@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
@@ -22,7 +23,8 @@ import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.PendingTransaction;
-import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
+import org.lealone.transaction.aote.CheckpointService;
+import org.lealone.transaction.aote.CheckpointService.FsyncTask;
 import org.lealone.transaction.aote.log.RedoLogRecord.CheckpointRLR;
 import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
 
@@ -57,7 +59,7 @@ class RedoLogChunk {
     private FileStorage checkpointChunk;
     private int checkpointChunkId;
 
-    private CheckpointServiceImpl checkpointService;
+    private CheckpointService checkpointService;
 
     private int id;
     private FileStorage fileStorage;
@@ -69,6 +71,8 @@ class RedoLogChunk {
     private final String archiveDir;
 
     private final long logChunkSize;
+
+    private final ConcurrentLinkedQueue<FsyncTask> fsyncTasks = new ConcurrentLinkedQueue<>();
 
     RedoLogChunk(int id, Map<String, String> config, LogSyncService logSyncService) {
         this.id = id;
@@ -110,6 +114,12 @@ class RedoLogChunk {
     }
 
     void save() {
+        FsyncTask ft = fsyncTasks.poll();
+        while (ft != null) {
+            ft.getFsyncingFileStorage().sync();
+            ft.onSynced();
+            ft = fsyncTasks.poll();
+        }
         Scheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
         int waitingQueueSize = waitingSchedulers.length;
         AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
@@ -134,7 +144,7 @@ class RedoLogChunk {
                 }
             }
             PendingCheckpoint pendingCheckpoint = nextPendingCheckpoint(
-                    checkpointService.getCheckpoint());
+                    checkpointService.getPendingCheckpoint());
             PendingTransaction pt = nextPendingTransaction(pts);
             while (pt != null || pendingCheckpoint != null) {
                 if (pt != null) {
@@ -311,12 +321,16 @@ class RedoLogChunk {
         }
     }
 
-    void setCheckpointService(CheckpointServiceImpl checkpointService) {
+    void setCheckpointService(CheckpointService checkpointService) {
         this.checkpointService = checkpointService;
     }
 
-    CheckpointServiceImpl getCheckpointService() {
+    CheckpointService getCheckpointService() {
         return checkpointService;
+    }
+
+    void addFsyncTask(FsyncTask task) {
+        fsyncTasks.add(task);
     }
 
     @Override

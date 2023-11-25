@@ -26,6 +26,7 @@ import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
@@ -470,5 +471,30 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         return false;
+    }
+
+    // --------------------- 实现 fsync 相关的代码 ---------------------
+
+    protected boolean fsyncDisabled;
+    protected FileStorage fsyncingFileStorage;
+
+    @Override
+    public boolean isFsyncDisabled() {
+        return fsyncDisabled;
+    }
+
+    @Override
+    public void setFsyncDisabled(boolean fsyncDisabled) {
+        this.fsyncDisabled = fsyncDisabled;
+    }
+
+    @Override
+    public FileStorage getFsyncingFileStorage() {
+        return fsyncingFileStorage;
+    }
+
+    @Override
+    public void setFsyncingFileStorage(FileStorage fsyncingFileStorage) {
+        this.fsyncingFileStorage = fsyncingFileStorage;
     }
 }

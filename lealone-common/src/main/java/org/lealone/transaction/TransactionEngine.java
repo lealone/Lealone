@@ -47,14 +47,8 @@ public interface TransactionEngine extends PluggableEngine {
 
     void checkpoint();
 
-    default CheckpointService getCheckpointService() {
+    default Runnable getFsyncService() {
         return null;
-    }
-
-    interface CheckpointService extends Runnable {
-        void executeCheckpoint();
-
-        long getLoopInterval();
     }
 
     default boolean containsRepeatableReadTransactions() {
@@ -73,7 +67,7 @@ public interface TransactionEngine extends PluggableEngine {
         return null;
     }
 
-    default void fullGc(int schedulerCount, int schedulerId) {
+    default void fullGc(int schedulerId) {
     }
 
     default void addGcTask(GcTask gcTask) {

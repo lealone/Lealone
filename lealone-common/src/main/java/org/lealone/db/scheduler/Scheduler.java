@@ -15,6 +15,7 @@ import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
+import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
@@ -75,4 +76,13 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     void addPendingTransaction(PendingTransaction pt);
 
     PendingTransaction getPendingTransaction();
+
+    void setFsyncDisabled(boolean fsyncDisabled);
+
+    boolean isFsyncDisabled();
+
+    void setFsyncingFileStorage(FileStorage fsyncingFileStorage);
+
+    FileStorage getFsyncingFileStorage();
+
 }

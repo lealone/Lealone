@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.fs.FileStorage;
 
@@ -312,7 +314,12 @@ public class Chunk {
         writeHeader();
         // chunk body
         fileStorage.writeFully(bodyPos, buffer);
-        fileStorage.sync();
+
+        Scheduler scheduler = SchedulerThread.currentScheduler();
+        if (scheduler != null && scheduler.isFsyncDisabled())
+            scheduler.setFsyncingFileStorage(fileStorage);
+        else
+            fileStorage.sync();
     }
 
     public void updateRemovedPages(HashSet<Long> removedPages) {

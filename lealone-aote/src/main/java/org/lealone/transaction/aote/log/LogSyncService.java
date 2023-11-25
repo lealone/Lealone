@@ -110,7 +110,7 @@ public abstract class LogSyncService extends Thread {
         }
     }
 
-    private void wakeUp() {
+    public void wakeUp() {
         awaiter.wakeUp();
     }
 

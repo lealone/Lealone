@@ -21,7 +21,8 @@ import org.lealone.storage.StorageSetting;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.aote.AOTransactionEngine.CheckpointServiceImpl;
+import org.lealone.transaction.aote.CheckpointService;
+import org.lealone.transaction.aote.CheckpointService.FsyncTask;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
@@ -127,7 +128,11 @@ public class RedoLog {
         currentChunk.ignoreCheckpoint();
     }
 
-    public void setCheckpointService(CheckpointServiceImpl checkpointService) {
+    public void setCheckpointService(CheckpointService checkpointService) {
         currentChunk.setCheckpointService(checkpointService);
+    }
+
+    public void addFsyncTask(FsyncTask task) {
+        currentChunk.addFsyncTask(task);
     }
 }

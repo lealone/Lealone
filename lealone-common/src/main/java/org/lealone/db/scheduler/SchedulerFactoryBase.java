@@ -47,6 +47,16 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     }
 
     @Override
+    public Scheduler getScheduler(int id) {
+        return schedulers[id];
+    }
+
+    @Override
+    public Scheduler[] getSchedulers() {
+        return schedulers;
+    }
+
+    @Override
     public int getSchedulerCount() {
         return schedulers.length;
     }

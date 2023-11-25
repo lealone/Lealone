@@ -71,12 +71,16 @@ public class TestBase extends Assert {
 
         setConsoleLoggerFactory();
 
-        // 不启动mysql-cj-abandoned-connection-cleanup线程
-        System.setProperty(com.mysql.cj.conf.PropertyDefinitions.SYSP_disableAbandonedConnectionCleanup,
-                "true");
+        disableAbandonedConnectionCleanup();
     }
 
     public TestBase() {
+    }
+
+    public static void disableAbandonedConnectionCleanup() {
+        // 不启动mysql-cj-abandoned-connection-cleanup线程
+        System.setProperty(com.mysql.cj.conf.PropertyDefinitions.SYSP_disableAbandonedConnectionCleanup,
+                "true");
     }
 
     // 测试阶段使用ConsoleLogger能加快启动速度

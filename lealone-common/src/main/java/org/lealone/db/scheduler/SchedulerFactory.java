@@ -13,6 +13,10 @@ public interface SchedulerFactory extends Plugin {
 
     Scheduler getScheduler();
 
+    Scheduler getScheduler(int id);
+
+    Scheduler[] getSchedulers();
+
     int getSchedulerCount();
 
     public static SchedulerFactory create(Map<String, String> config) {
