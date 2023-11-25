@@ -69,7 +69,7 @@ public class TestBase extends Assert {
         if (Config.getProperty("default.storage.engine") == null)
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
 
-        setConsoleLoggerFactory();
+        // setConsoleLoggerFactory();
 
         disableAbandonedConnectionCleanup();
     }
@@ -83,7 +83,7 @@ public class TestBase extends Assert {
                 "true");
     }
 
-    // 测试阶段使用ConsoleLogger能加快启动速度
+    // 这个在eclipse的console下输出结果并不快，反而会拖慢启动速度，在cmd窗口下才有效果
     public static void setConsoleLoggerFactory() {
         System.setProperty(LoggerFactory.LOGGER_FACTORY_CLASS_NAME,
                 ConsoleLoggerFactory.class.getName());

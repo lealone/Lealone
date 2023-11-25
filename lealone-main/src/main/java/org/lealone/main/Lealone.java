@@ -205,6 +205,7 @@ public class Lealone {
                 startProtocolServers();
                 latch2.countDown();
             });
+            scheduler.wakeUp(); // 及时唤醒，否则会影响启速度
             latch2.await();
 
             // 等所有的Server启动完成后再启动Scheduler
