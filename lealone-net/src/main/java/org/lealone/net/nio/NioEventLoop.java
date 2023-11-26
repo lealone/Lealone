@@ -517,7 +517,7 @@ class NioEventLoop implements NetEventLoop {
     }
 
     @Override
-    public void closeChannel(SocketChannel channel) {
+    public synchronized void closeChannel(SocketChannel channel) {
         if (channel == null || !channels.containsKey(channel)) {
             return;
         }
@@ -533,8 +533,12 @@ class NioEventLoop implements NetEventLoop {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         try {
+            // 正常关闭SocketChannel，避免让server端捕获到异常关闭信息
+            for (SocketChannel channel : channels.keySet()) {
+                closeChannel(channel);
+            }
             Selector selector = this.selector;
             this.selector = null;
             selector.wakeup();
