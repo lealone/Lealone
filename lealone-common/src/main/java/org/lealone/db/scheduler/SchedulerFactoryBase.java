@@ -10,6 +10,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.Utils;
@@ -22,6 +23,9 @@ import org.lealone.db.async.AsyncTaskHandlerFactory;
 public abstract class SchedulerFactoryBase extends PluginBase implements SchedulerFactory {
 
     protected Scheduler[] schedulers = new Scheduler[0];
+
+    protected final AtomicInteger bindIndex = new AtomicInteger();
+    protected Thread[] bindThreads = new Thread[0];
 
     protected SchedulerFactoryBase(Map<String, String> config, Scheduler[] schedulers) {
         super("SchedulerFactory");
@@ -37,6 +41,7 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         }
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         this.schedulers = schedulers;
+        this.bindThreads = new Thread[schedulers.length];
         if (embedded) // 嵌入式场景自动启动调度器
             start();
     }
@@ -59,6 +64,25 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     @Override
     public int getSchedulerCount() {
         return schedulers.length;
+    }
+
+    @Override
+    public Scheduler bindScheduler(Thread thread) {
+        int index = bindIndex.getAndIncrement();
+        if (index >= schedulers.length) {
+            synchronized (this) {
+                for (int i = 0; i < schedulers.length; i++) {
+                    if (!bindThreads[i].isAlive()) {
+                        bindThreads[i] = thread;
+                        return schedulers[i];
+                    }
+                }
+            }
+            // TODO 需要动态增加新的调度线程
+            throw DbException.getInternalError();
+        }
+        bindThreads[index] = thread;
+        return schedulers[index];
     }
 
     @Override
@@ -91,6 +115,8 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             }
         }
         this.schedulers = new Scheduler[0];
+        this.bindThreads = new Thread[0];
+        bindIndex.set(0);
         super.stop();
     }
 

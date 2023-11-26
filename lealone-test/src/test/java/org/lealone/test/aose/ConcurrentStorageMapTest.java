@@ -10,11 +10,15 @@ import org.lealone.storage.StorageMap;
 
 public class ConcurrentStorageMapTest extends AoseTestBase {
 
-    protected final String mapName = getClass().getSimpleName();
+    private final String mapName = getClass().getSimpleName();
+    private StorageMap<Integer, String> map;
 
     @Test
     public void run() throws Exception {
         storage = openStorage();
+        map = storage.openMap(mapName);
+        map.clear();
+
         Thread t1 = new Thread(() -> {
             testSyncOperations("a");
         });
@@ -31,8 +35,8 @@ public class ConcurrentStorageMapTest extends AoseTestBase {
         StorageMap<Integer, String> map = storage.openMap(mapName);
         map.put(10, v);
         v = map.get(10);
+        System.out.println(v);
         assertTrue("a".equals(v) || "b".equals(v));
         assertTrue(map.containsKey(10));
-        map.clear();
     }
 }

@@ -11,7 +11,6 @@ import java.nio.channels.ServerSocketChannel;
 import org.lealone.common.logging.Logger;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.async.AsyncTaskHandler;
-import org.lealone.db.async.PendingTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
@@ -68,10 +67,6 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     @Override
     void wakeUp();
-
-    void addPendingTaskHandler(PendingTaskHandler hdandler);
-
-    void removePendingTaskHandler(PendingTaskHandler hdandler);
 
     void addPendingTransaction(PendingTransaction pt);
 

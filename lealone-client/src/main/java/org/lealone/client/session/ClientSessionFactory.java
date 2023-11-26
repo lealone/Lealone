@@ -128,8 +128,7 @@ public class ClientSessionFactory implements SessionFactory {
                 int sessionId = tcpConnection.getNextId();
                 ClientSession clientSession = new ClientSession(tcpConnection, ci, server, parent,
                         sessionId);
-                // 在调度线程内部执行都可以用SingleThreadCallback
-                clientSession.setSingleThreadCallback(true);
+                clientSession.setSingleThreadCallback(ci.isSingleThreadCallback());
                 tcpConnection.addSession(sessionId, clientSession);
 
                 SessionInit packet = new SessionInit(ci);
@@ -176,7 +175,6 @@ public class ClientSessionFactory implements SessionFactory {
             ConnectionInfo ci, AsyncCallback<Session> topAc) {
         parent.setSession(clientSession);
         parent.setScheduler(ci.getScheduler());
-        ci.getScheduler().addSession(clientSession, 0);
         topAc.setAsyncResult(parent);
     }
 }

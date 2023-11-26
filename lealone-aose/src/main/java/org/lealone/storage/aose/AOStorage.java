@@ -11,9 +11,6 @@ import java.util.Map;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
-import org.lealone.db.async.AsyncCallback;
-import org.lealone.db.scheduler.Scheduler;
-import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
@@ -71,38 +68,19 @@ public class AOStorage extends StorageBase {
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("BTreeMap")) {
-            BTreeMap<K, V> map = openBTreeMap(name, keyType, valueType, parameters, false);
-            if (SchedulerThread.isScheduler()) {
-                return map;
-            } else {
-                AsyncCallback<StorageMap<K, V>> ac = AsyncCallback.createConcurrentCallback();
-                Scheduler scheduler = getSchedulerFactory().getScheduler();
-                scheduler.handle(() -> {
-                    AOStorageMapProxy<K, V> proxy = new AOStorageMapProxy<>(map, scheduler);
-                    scheduler.addPendingTaskHandler(proxy);
-                    ac.setAsyncResult(proxy);
-                });
-                return ac.get();
-            }
+            return openBTreeMap(name, keyType, valueType, parameters);
         } else {
             throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
         }
     }
 
-    // 只用于测试，返回的BTreeMap只能用单线程访问
     public <K, V> BTreeMap<K, V> openBTreeMap(String name) {
-        return openBTreeMap(name, null, null, null, true);
-    }
-
-    // 只用于测试，返回的BTreeMap只能用单线程访问
-    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
-            StorageDataType valueType, Map<String, String> parameters) {
-        return openBTreeMap(name, keyType, valueType, parameters, true);
+        return openBTreeMap(name, null, null, null);
     }
 
     @SuppressWarnings("unchecked")
-    private <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
-            StorageDataType valueType, Map<String, String> parameters, boolean isSingleThreadAccess) {
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters) {
         StorageMap<?, ?> map = maps.get(name);
         if (map == null) {
             synchronized (this) {
@@ -111,7 +89,7 @@ public class AOStorage extends StorageBase {
                     CaseInsensitiveMap<Object> c = new CaseInsensitiveMap<>(config);
                     if (parameters != null)
                         c.putAll(parameters);
-                    map = new BTreeMap<>(name, keyType, valueType, c, this, isSingleThreadAccess);
+                    map = new BTreeMap<>(name, keyType, valueType, c, this);
                     maps.put(name, map);
                 }
             }

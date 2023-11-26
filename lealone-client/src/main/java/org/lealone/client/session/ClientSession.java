@@ -174,37 +174,29 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public void close() {
-        AsyncCallback<Boolean> ac = AsyncCallback.createConcurrentCallback();
-        submitTask(() -> {
-            if (closed) {
-                ac.setAsyncResult(true);
-                return;
-            }
+        if (closed)
+            return;
+        try {
+            RuntimeException closeError = null;
             try {
-                RuntimeException closeError = null;
-                try {
-                    // 只有当前Session有效时服务器端才持有对应的session
-                    if (isValid()) {
-                        send(new SessionClose());
-                        tcpConnection.removeSession(id);
-                    }
-                } catch (RuntimeException e) {
-                    trace.error(e, "close");
-                    closeError = e;
-                } catch (Exception e) {
-                    trace.error(e, "close");
+                // 只有当前Session有效时服务器端才持有对应的session
+                if (isValid()) {
+                    send(new SessionClose());
+                    tcpConnection.removeSession(id);
                 }
-                closeTraceSystem();
-                if (closeError != null) {
-                    ac.setAsyncResult(closeError);
-                } else {
-                    ac.setAsyncResult(true);
-                }
-            } finally {
-                super.close();
+            } catch (RuntimeException e) {
+                trace.error(e, "close");
+                closeError = e;
+            } catch (Exception e) {
+                trace.error(e, "close");
             }
-        });
-        ac.get();
+            closeTraceSystem();
+            if (closeError != null) {
+                throw DbException.convert(closeError);
+            }
+        } finally {
+            super.close();
+        }
     }
 
     public Trace getTrace() {
@@ -233,20 +225,18 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             int length) {
         try {
             AsyncCallback<Integer> ac = createCallback();
-            submitTask(() -> {
-                this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).onComplete(ar -> {
-                    if (ar.isSucceeded()) {
-                        LobReadAck ack = ar.getResult();
-                        if (ack.buff != null && ack.buff.length > 0) {
-                            System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
-                            ac.setAsyncResult(ack.buff.length);
-                        } else {
-                            ac.setAsyncResult(-1);
-                        }
+            this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    LobReadAck ack = ar.getResult();
+                    if (ack.buff != null && ack.buff.length > 0) {
+                        System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
+                        ac.setAsyncResult(ack.buff.length);
                     } else {
-                        ac.setAsyncResult(ar.getCause());
+                        ac.setAsyncResult(-1);
                     }
-                });
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
             });
             return ac.get();
         } catch (Exception e) {

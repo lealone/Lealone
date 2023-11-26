@@ -16,13 +16,13 @@ import org.lealone.db.DataHandler;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
-import org.lealone.db.async.PendingTaskHandler;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.page.IPage;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 
@@ -32,7 +32,7 @@ import org.lealone.transaction.TransactionListener;
  * @author H2 Group
  * @author zhh
  */
-public interface Session extends Closeable, PendingTaskHandler {
+public interface Session extends Closeable {
 
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
@@ -217,10 +217,6 @@ public interface Session extends Closeable, PendingTaskHandler {
         return false;
     }
 
-    default PageOperationHandler getPageOperationHandler() {
-        return null;
-    }
-
     default boolean isRoot() {
         return true;
     }
@@ -255,5 +251,19 @@ public interface Session extends Closeable, PendingTaskHandler {
     }
 
     default void markDirtyPages() {
+    }
+
+    Scheduler getScheduler();
+
+    void setScheduler(Scheduler scheduler);
+
+    void setYieldableCommand(YieldableCommand yieldableCommand);
+
+    YieldableCommand getYieldableCommand();
+
+    YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener);
+
+    public static interface TimeoutListener {
+        void onTimeout(YieldableCommand c, Throwable e);
     }
 }

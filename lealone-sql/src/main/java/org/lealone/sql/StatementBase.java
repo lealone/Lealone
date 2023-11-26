@@ -20,7 +20,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
-import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
@@ -530,7 +529,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        checkScheduler();
+        // checkScheduler();
         AsyncCallback<Result> ac = session.createCallback();
         YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
@@ -542,12 +541,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         });
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
         session.setYieldableCommand(c);
+        session.getScheduler().wakeUp();
         return ac;
     }
 
     @Override
     public Future<Integer> executeUpdate() {
-        checkScheduler();
+        // checkScheduler();
         AsyncCallback<Integer> ac = session.createCallback();
         YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
@@ -559,14 +559,15 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         });
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
         session.setYieldableCommand(c);
+        session.getScheduler().wakeUp();
         return ac;
     }
 
-    private void checkScheduler() {
-        if (session.getScheduler() == null
-                || SchedulerThread.currentScheduler() != session.getScheduler())
-            throw DbException.getInternalError();
-    }
+    // private void checkScheduler() {
+    // if (session.getScheduler() == null
+    // || SchedulerThread.currentScheduler() != session.getScheduler())
+    // throw DbException.getInternalError();
+    // }
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,

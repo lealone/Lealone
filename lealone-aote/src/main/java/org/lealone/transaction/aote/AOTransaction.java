@@ -16,9 +16,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.PendingTaskHandlerBase;
 import org.lealone.db.scheduler.Scheduler;
-import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
@@ -36,7 +34,7 @@ import org.lealone.transaction.aote.log.RedoLogRecord.LobSave;
 import org.lealone.transaction.aote.log.RedoLogRecord.LocalTransactionRLR;
 import org.lealone.transaction.aote.log.UndoLog;
 
-public class AOTransaction extends PendingTaskHandlerBase implements Transaction {
+public class AOTransaction implements Transaction {
 
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
@@ -167,26 +165,8 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
     }
 
     @Override
-    public <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType,
-            StorageDataType valueType, Storage storage, Map<String, String> parameters) {
-        if (SchedulerThread.isScheduler()) {
-            return openMap0(name, keyType, valueType, storage, parameters);
-        } else {
-            AsyncCallback<AOTransactionMapProxy<K, V>> ac = AsyncCallback.createConcurrentCallback();
-            Scheduler scheduler = storage.getSchedulerFactory().getScheduler();
-            scheduler.handle(() -> {
-                AOTransactionMap<K, V> map = openMap0(name, keyType, valueType, storage, parameters);
-                AOTransactionMapProxy<K, V> proxy = new AOTransactionMapProxy<>(map, scheduler);
-                scheduler.addPendingTaskHandler(AOTransaction.this);
-                AOTransaction.this.setScheduler(scheduler);
-                ac.setAsyncResult(proxy);
-            });
-            return ac.get();
-        }
-    }
-
     @SuppressWarnings("unchecked")
-    public <K, V> AOTransactionMap<K, V> openMap0(String name, StorageDataType keyType,
+    public <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
@@ -437,5 +417,17 @@ public class AOTransaction extends PendingTaskHandlerBase implements Transaction
 
     public <T> AsyncCallback<T> createCallback() {
         return session != null ? session.createCallback() : AsyncCallback.createConcurrentCallback();
+    }
+
+    protected Scheduler scheduler;
+
+    @Override
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
     }
 }

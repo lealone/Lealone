@@ -19,16 +19,12 @@ import org.lealone.db.DataBufferFactory;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.async.PendingTask;
-import org.lealone.db.async.PendingTaskHandler;
-import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
@@ -46,7 +42,6 @@ public abstract class SchedulerBase implements Scheduler {
     protected SchedulerFactory schedulerFactory;
 
     // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
-    protected final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
     protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
     protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
     protected Session currentSession;
@@ -81,7 +76,7 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public long getLoad() {
-        return pendingTaskHandlers.size() + lockedPageOperationTasks.size();
+        return 0;
     }
 
     @Override
@@ -131,12 +126,10 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public void addSession(Session session, int databaseId) {
-        addPendingTaskHandler(session);
     }
 
     @Override
     public void removeSession(Session session) {
-        removePendingTaskHandler(session);
     }
 
     @Override
@@ -244,6 +237,9 @@ public abstract class SchedulerBase implements Scheduler {
     protected void runEventLoop() {
     }
 
+    protected void runPageOperationTasks() {
+    }
+
     protected void runMiscTasks() {
     }
 
@@ -300,6 +296,10 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
+    public void handlePageOperation(PageOperation po) {
+    }
+
+    @Override
     public void addWaitingHandler(PageOperationHandler handler) {
         int id = handler.getHandlerId();
         if (id >= 0) {
@@ -334,96 +334,6 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public boolean isScheduler() {
         return true;
-    }
-
-    protected static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
-        final PageOperation po;
-
-        public LinkablePageOperation(PageOperation po) {
-            this.po = po;
-        }
-    }
-
-    @Override
-    public void handlePageOperation(PageOperation po) {
-        lockedPageOperationTasks.add(new LinkablePageOperation(po));
-    }
-
-    protected void runPageOperationTasks() {
-        if (lockedPageOperationTasks.isEmpty())
-            return;
-        while (lockedPageOperationTasks.getHead() != null) {
-            int size = lockedPageOperationTasks.size();
-            LinkablePageOperation task = lockedPageOperationTasks.getHead();
-            LinkablePageOperation last = null;
-            while (task != null) {
-                Session old = getCurrentSession();
-                setCurrentSession(task.po.getSession());
-                try {
-                    PageOperationResult result = task.po.run(this);
-                    if (result == PageOperationResult.LOCKED) {
-                        last = task;
-                        task = task.next;
-                        continue;
-                    } else if (result == PageOperationResult.RETRY) {
-                        continue;
-                    }
-                    task = task.next;
-                    if (last == null)
-                        lockedPageOperationTasks.setHead(task);
-                    else
-                        last.next = task;
-                } catch (Throwable e) {
-                    getLogger().warn("Failed to run page operation: " + task, e);
-                } finally {
-                    setCurrentSession(old);
-                }
-                lockedPageOperationTasks.decrementSize();
-            }
-            if (lockedPageOperationTasks.getHead() == null)
-                lockedPageOperationTasks.setTail(null);
-            else
-                lockedPageOperationTasks.setTail(last);
-
-            // 全都锁住了，没必要再试了
-            if (size == lockedPageOperationTasks.size())
-                break;
-        }
-    }
-
-    // --------------------- 与 PendingTaskHandler 相关的代码 ---------------------
-
-    protected final LinkableList<PendingTaskHandler> pendingTaskHandlers = new LinkableList<>();
-
-    @Override
-    public void addPendingTaskHandler(PendingTaskHandler handler) {
-        pendingTaskHandlers.add(handler);
-    }
-
-    @Override
-    public void removePendingTaskHandler(PendingTaskHandler handler) {
-        pendingTaskHandlers.remove(handler);
-    }
-
-    protected void runPendingTasks() {
-        if (pendingTaskHandlers.isEmpty())
-            return;
-        PendingTaskHandler handler = pendingTaskHandlers.getHead();
-        while (handler != null) {
-            PendingTask pt = handler.getPendingTask();
-            while (pt != null) {
-                if (!pt.isCompleted()) {
-                    try {
-                        pt.getTask().run();
-                    } catch (Throwable e) {
-                        getLogger().warn("Failed to run pending task: " + pt.getTask(), e);
-                    }
-                    pt.setCompleted(true);
-                }
-                pt = pt.getNext();
-            }
-            handler = handler.getNext();
-        }
     }
 
     // --------------------- 跟 PendingTransaction 相关 ---------------------

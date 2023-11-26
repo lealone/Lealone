@@ -51,7 +51,7 @@ public abstract class NetClientBase implements NetClient {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         AsyncConnection asyncConnection = getConnection(config, inetSocketAddress);
         if (asyncConnection == null) {
-            AsyncCallback<AsyncConnection> ac = AsyncCallback.create(isThreadSafe);
+            AsyncCallback<AsyncConnection> ac = AsyncCallback.create(true);
             createConnectionInternal(config, node, connectionManager, ac, scheduler);
             return ac;
         } else {

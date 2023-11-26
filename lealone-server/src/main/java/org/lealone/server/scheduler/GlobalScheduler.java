@@ -15,6 +15,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.MemoryManager;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
+import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
@@ -25,6 +26,8 @@ import org.lealone.server.AsyncServerManager;
 import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.transaction.TransactionEngine;
 
 public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accepter {
@@ -46,7 +49,7 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
     private YieldableCommand nextBestCommand;
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
-        super(id, "ScheduleService-" + id, schedulerCount, config);
+        super(id, "ScheduleService-" + id, schedulerCount, config, true);
         netEventLoop.setAccepter(this);
     }
 
@@ -57,7 +60,7 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     @Override
     public long getLoad() {
-        return super.getLoad() + sessions.size();
+        return super.getLoad() + sessions.size() + lockedPageOperationTasks.size();
     }
 
     @Override
@@ -70,7 +73,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
             runPageOperationTasks();
             runSessionTasks();
             runPendingTransactions();
-            runPendingTasks();
             executeNextStatement();
             runEventLoop();
         }
@@ -121,7 +123,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     @Override
     public void addSession(Session session, int databaseId) {
-        addPendingTaskHandler(session);
         ServerSession s = (ServerSession) session;
         SessionInfo si = new SessionInfo(this, null, s, -1, -1);
         addSessionInfo(si);
@@ -129,7 +130,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     @Override
     public void removeSession(Session session) {
-        removePendingTaskHandler(session);
         if (sessions.isEmpty())
             return;
         SessionInfo si = sessions.getHead();
@@ -349,6 +349,66 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
             }
         }
         return best;
+    }
+
+    // --------------------- 实现 PageOperationHandler 接口 ---------------------
+
+    protected final LinkableList<LinkablePageOperation> lockedPageOperationTasks = new LinkableList<>();
+
+    protected static class LinkablePageOperation extends LinkableBase<LinkablePageOperation> {
+        final PageOperation po;
+
+        public LinkablePageOperation(PageOperation po) {
+            this.po = po;
+        }
+    }
+
+    @Override
+    public void handlePageOperation(PageOperation po) {
+        lockedPageOperationTasks.add(new LinkablePageOperation(po));
+    }
+
+    @Override
+    protected void runPageOperationTasks() {
+        if (lockedPageOperationTasks.isEmpty())
+            return;
+        while (lockedPageOperationTasks.getHead() != null) {
+            int size = lockedPageOperationTasks.size();
+            LinkablePageOperation task = lockedPageOperationTasks.getHead();
+            LinkablePageOperation last = null;
+            while (task != null) {
+                Session old = getCurrentSession();
+                setCurrentSession(task.po.getSession());
+                try {
+                    PageOperationResult result = task.po.run(this);
+                    if (result == PageOperationResult.LOCKED) {
+                        last = task;
+                        task = task.next;
+                        continue;
+                    } else if (result == PageOperationResult.RETRY) {
+                        continue;
+                    }
+                    task = task.next;
+                    if (last == null)
+                        lockedPageOperationTasks.setHead(task);
+                    else
+                        last.next = task;
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run page operation: " + task, e);
+                } finally {
+                    setCurrentSession(old);
+                }
+                lockedPageOperationTasks.decrementSize();
+            }
+            if (lockedPageOperationTasks.getHead() == null)
+                lockedPageOperationTasks.setTail(null);
+            else
+                lockedPageOperationTasks.setTail(last);
+
+            // 全都锁住了，没必要再试了
+            if (size == lockedPageOperationTasks.size())
+                break;
+        }
     }
 
     // --------------------- 注册 Accepter ---------------------

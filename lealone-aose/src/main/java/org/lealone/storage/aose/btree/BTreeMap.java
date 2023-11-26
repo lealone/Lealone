@@ -15,6 +15,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
@@ -92,15 +93,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // btree的root page引用，最开始是一个leaf page，随时都会指向新的page
     private final RootPageReference rootRef;
-
-    // 只用于测试，如果为true，返回的BTreeMap只能用单线程访问
-    private final boolean isSingleThreadAccess;
+    private final SchedulerFactory schedulerFactory;
 
     public BTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, Object> config, AOStorage aoStorage, boolean isSingleThreadAccess) {
+            Map<String, Object> config, AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
         DataUtils.checkNotNull(config, "config");
-        this.isSingleThreadAccess = isSingleThreadAccess;
+        schedulerFactory = aoStorage.getSchedulerFactory();
         // 只要包含就为true
         readOnly = config.containsKey(DbSetting.READ_ONLY.name());
         inMemory = config.containsKey(StorageSetting.IN_MEMORY.name());
@@ -156,6 +155,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public void setPageStorageMode(PageStorageMode pageStorageMode) {
         this.pageStorageMode = pageStorageMode;
+    }
+
+    public SchedulerFactory getSchedulerFactory() {
+        return schedulerFactory;
     }
 
     @Override
@@ -650,27 +653,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private <R> R runPageOperation(Session session, WriteOperation<?, ?, R> po) {
         PageOperationHandler poHandler;
-        // 启动阶段session不为null，但PageOperationHandler为null
-        if (session != null && session.getPageOperationHandler() != null) {
+        // 启动阶段session不为null，但scheduler为null
+        if (session != null && session.getScheduler() != null) {
             po.setSession(session);
-            poHandler = session.getPageOperationHandler();
+            poHandler = session.getScheduler();
         } else {
-            poHandler = SchedulerThread.currentPageOperationHandler();
-            // 如果当前线程不是PageOperationHandler，需要分配一个PageOperationHandler然后让它去处理。
-            // 把PageOperation提交给PageOperationHandler后，如果当前线程执行的是异步调用那就直接返回，否则需要等待。
-            if (poHandler == null) {
-                poHandler = getStorage().getSchedulerFactory().getScheduler();
-                if (isSingleThreadAccess) { // 只用于测试
-                    po.run(poHandler, false);
-                    return po.getResult();
-                } else {
-                    return handlePageOperation(poHandler, po);
-                }
-            }
+            poHandler = SchedulerThread.currentScheduler(schedulerFactory);
         }
-        // 第一步:
-        // 如果当前线程就是一个PageOperationHandler，可以直接进行写操作
-        // 先快速试3次，如果不成功再转到第二步
+        // 第一步: 先快速试3次，如果不成功再转到第二步
         int maxRetryCount = 3;
         while (true) {
             PageOperationResult result = po.run(poHandler, maxRetryCount == 1);

@@ -143,7 +143,7 @@ public class PageReference {
         if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
-        PageOperationHandler poHandler = SchedulerThread.currentPageOperationHandler();
+        PageOperationHandler poHandler = SchedulerThread.currentScheduler(bs.getSchedulerFactory());
         boolean ok = lockOwner != poHandler && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
         if (ok) {
             if (poHandler != null) {

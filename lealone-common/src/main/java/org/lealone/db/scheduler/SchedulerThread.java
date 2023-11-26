@@ -6,10 +6,11 @@
 package org.lealone.db.scheduler;
 
 import org.lealone.db.session.Session;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.TransactionListener;
 
 public class SchedulerThread extends Thread {
+
+    private final static ThreadLocal<Scheduler> threadLocal = new ThreadLocal<>();
 
     private final Scheduler scheduler;
 
@@ -20,19 +21,6 @@ public class SchedulerThread extends Thread {
 
     public Scheduler getScheduler() {
         return scheduler;
-    }
-
-    public PageOperationHandler getPageOperationHandler() {
-        return scheduler;
-    }
-
-    public static PageOperationHandler currentPageOperationHandler() {
-        Object t = Thread.currentThread();
-        if (t instanceof SchedulerThread) {
-            return ((SchedulerThread) t).getScheduler();
-        } else {
-            return null;
-        }
     }
 
     public static TransactionListener currentTransactionListener() {
@@ -63,12 +51,33 @@ public class SchedulerThread extends Thread {
     }
 
     public static Scheduler currentScheduler() {
-        Object t = Thread.currentThread();
+        Thread t = Thread.currentThread();
         if (t instanceof SchedulerThread) {
             return ((SchedulerThread) t).getScheduler();
         } else {
             return null;
         }
+    }
+
+    public static Scheduler currentScheduler(SchedulerFactory sf) {
+        Thread t = Thread.currentThread();
+        if (t instanceof SchedulerThread) {
+            return ((SchedulerThread) t).getScheduler();
+        } else {
+            Scheduler scheduler = threadLocal.get();
+            if (scheduler == null) {
+                scheduler = sf.bindScheduler(t);
+                threadLocal.set(scheduler);
+            }
+            return scheduler;
+        }
+    }
+
+    public static void bindScheduler(Scheduler scheduler) {
+        if (isScheduler())
+            return;
+        if (threadLocal.get() != scheduler)
+            threadLocal.set(scheduler);
     }
 
     public static boolean isScheduler() {

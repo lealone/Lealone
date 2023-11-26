@@ -22,7 +22,7 @@ import org.lealone.net.NetNode;
 class NioClient extends NetClientBase {
 
     NioClient() {
-        super(true);
+        super(false);
     }
 
     @Override
@@ -45,16 +45,12 @@ class NioClient extends NetClientBase {
 
             channel.register(eventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
-            if (isThreadSafe()) {
-                // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
-                // 否则两次删除SelectionKey会出现java.util.ConcurrentModificationException
-                if (!eventLoop.isInLoop()) {
-                    if (eventLoop.getSelector().selectNow() > 0) {
-                        eventLoop.handleSelectedKeys();
-                    }
+            // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
+            // 否则两次删除SelectionKey会出现java.util.ConcurrentModificationException
+            if (!eventLoop.isInLoop()) {
+                if (eventLoop.getSelector().selectNow() > 0) {
+                    eventLoop.handleSelectedKeys();
                 }
-            } else {
-                eventLoop.wakeup();
             }
         } catch (Exception e) {
             eventLoop.closeChannel(channel);

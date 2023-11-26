@@ -13,7 +13,6 @@ import org.lealone.client.session.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.SysProperties;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.TransferInputStream;
@@ -124,9 +123,7 @@ public abstract class ClientResult implements Result {
         if (resultId > 0) {
             session.checkClosed();
             try {
-                submitTask(() -> {
-                    session.send(new ResultReset(resultId));
-                });
+                session.send(new ResultReset(resultId));
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -164,12 +161,10 @@ public abstract class ClientResult implements Result {
         }
         try {
             if (resultId > 0) {
-                submitTask(() -> {
-                    if (session != null) {
-                        session.send(new ResultClose(resultId));
-                        session = null;
-                    }
-                });
+                if (session != null) {
+                    session.send(new ResultClose(resultId));
+                    session = null;
+                }
             } else {
                 session = null;
             }
@@ -182,16 +177,13 @@ public abstract class ClientResult implements Result {
         // 释放buffer
         in.closeInputStream();
         JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
-        submitTask(() -> {
-            session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize))
-                    .onComplete(ar -> {
-                        if (ar.isSucceeded()) {
-                            in = (TransferInputStream) ar.getResult().in;
-                            ac.setAsyncResult(true);
-                        } else {
-                            ac.setAsyncResult(ar.getCause());
-                        }
-                    });
+        session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).onComplete(ar -> {
+            if (ar.isSucceeded()) {
+                in = (TransferInputStream) ar.getResult().in;
+                ac.setAsyncResult(true);
+            } else {
+                ac.setAsyncResult(ar.getCause());
+            }
         });
         ac.get();
     }
@@ -209,12 +201,10 @@ public abstract class ClientResult implements Result {
         try {
             if (resultId > 0
                     && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
-                submitTask(() -> {
-                    // object is too old - we need to map it to a new id
-                    int newId = session.getNextId();
-                    session.send(new ResultChangeId(resultId, newId)); // 不需要响应
-                    resultId = newId;
-                });
+                // object is too old - we need to map it to a new id
+                int newId = session.getNextId();
+                session.send(new ResultChangeId(resultId, newId)); // 不需要响应
+                resultId = newId;
             }
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -239,9 +229,5 @@ public abstract class ClientResult implements Result {
     @Override
     public boolean needToClose() {
         return true;
-    }
-
-    private void submitTask(AsyncTask task) {
-        session.submitTask(task);
     }
 }

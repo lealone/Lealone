@@ -7,16 +7,20 @@ package org.lealone.db.scheduler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.Awaiter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.async.AsyncTask;
-import org.lealone.db.async.PendingTaskHandler;
+import org.lealone.db.link.LinkableBase;
+import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
+import org.lealone.storage.page.PageOperation;
+import org.lealone.storage.page.PageOperation.PageOperationResult;
 
 public class EmbeddedScheduler extends SchedulerBase {
 
@@ -38,7 +42,7 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     @Override
     public long getLoad() {
-        return super.getLoad() + miscTasks.size();
+        return pageOperationSize.get() + miscTasks.size();
     }
 
     @Override
@@ -58,7 +62,7 @@ public class EmbeddedScheduler extends SchedulerBase {
             runMiscTasks();
             runPageOperationTasks();
             runPendingTransactions();
-            runPendingTasks();
+            // runPendingTasks();
             executeNextStatement();
             doAwait();
         }
@@ -71,6 +75,77 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     private void doAwait() {
         awaiter.doAwait(loopInterval);
+    }
+
+    // --------------------- 实现 PageOperationHandler 接口 ---------------------
+
+    // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
+    // 外部线程和调度线程会并发访问这个队列
+    private final ConcurrentLinkedQueue<PageOperation> pageOperations = new ConcurrentLinkedQueue<>();
+    private final AtomicLong pageOperationSize = new AtomicLong();
+    private PageOperation lockedPageOperation;
+
+    @Override
+    public void handlePageOperation(PageOperation po) {
+        pageOperationSize.incrementAndGet();
+        pageOperations.add(po);
+        wakeUp();
+    }
+
+    @Override
+    protected void runPageOperationTasks() {
+        PageOperation po;
+        // 先执行上一个被锁定的PageOperation，严格保证每个PageOperation的执行顺序
+        if (lockedPageOperation != null) {
+            po = lockedPageOperation;
+            lockedPageOperation = null;
+        } else {
+            po = pageOperations.poll();
+        }
+        while (po != null) {
+            try {
+                PageOperationResult result = po.run(this);
+                if (result == PageOperationResult.LOCKED) {
+                    lockedPageOperation = po;
+                    break;
+                } else if (result == PageOperationResult.RETRY) {
+                    continue;
+                }
+            } catch (Throwable e) {
+                getLogger().warn("Failed to run page operation: " + po, e);
+            }
+            pageOperationSize.decrementAndGet();
+            po = pageOperations.poll();
+        }
+    }
+
+    protected final LinkableList<SessionInfo> sessions = new LinkableList<>();
+
+    protected static class SessionInfo extends LinkableBase<SessionInfo> {
+        final Session session;
+
+        public SessionInfo(Session session) {
+            this.session = session;
+        }
+    }
+
+    @Override
+    public void addSession(Session session, int databaseId) {
+        sessions.add(new SessionInfo(session));
+    }
+
+    @Override
+    public void removeSession(Session session) {
+        if (sessions.isEmpty())
+            return;
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
+            if (si.session == session) {
+                sessions.remove(si);
+                break;
+            }
+            si = si.next;
+        }
     }
 
     // --------------------- 实现 SQLStatementExecutor 接口 ---------------------
@@ -94,7 +169,6 @@ public class EmbeddedScheduler extends SchedulerBase {
             if (c == null) {
                 runPageOperationTasks();
                 runPendingTransactions();
-                runPendingTasks();
                 runMiscTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {
@@ -108,7 +182,6 @@ public class EmbeddedScheduler extends SchedulerBase {
                 if (last == c) {
                     runPageOperationTasks();
                     runPendingTransactions();
-                    runPendingTasks();
                     runMiscTasks();
                 }
                 last = c;
@@ -122,10 +195,9 @@ public class EmbeddedScheduler extends SchedulerBase {
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         // 如果有新的session需要创建，那么先接入新的session
         runMiscTasks();
-        runPendingTasks();
 
         // 至少有两个session才需要yield
-        if (pendingTaskHandlers.size() < 2)
+        if (sessions.size() < 2)
             return false;
 
         // 如果来了更高优化级的命令，那么当前正在执行的语句就让出当前线程，
@@ -141,18 +213,18 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     private YieldableCommand getNextBestCommand(Session currentSession, int priority,
             boolean checkTimeout) {
-        if (pendingTaskHandlers.isEmpty())
+        if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        PendingTaskHandler pi = pendingTaskHandlers.getHead();
-        while (pi != null) {
+        SessionInfo si = sessions.getHead();
+        while (si != null) {
             // 执行yieldIfNeeded时，不需要检查当前session
-            if (currentSession == pi) {
-                pi = pi.getNext();
+            if (currentSession == si) {
+                si = si.getNext();
                 continue;
             }
-            YieldableCommand c = pi.getYieldableCommand(false, null);
-            pi = pi.getNext();
+            YieldableCommand c = si.session.getYieldableCommand(false, null);
+            si = si.getNext();
             if (c == null)
                 continue;
             if (c.getPriority() > priority) {

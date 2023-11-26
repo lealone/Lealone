@@ -40,7 +40,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
 import org.lealone.db.scheduler.Scheduler;
-import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
@@ -1691,22 +1690,13 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 setAsyncResult(ac, t);
             }
         };
-        if (scheduler == null) {
-            Scheduler s = SchedulerThread.currentScheduler();
-            if (s != null) {
-                task.run();
-                // if (SchedulerThread.currentSession() == session)
-                // task.run();
-                // else if (async)
-                // s.submitTask(session, task);
-                // else
-                // task.run();
-            } else {
-                DbException.throwInternalError();
-            }
-        } else {
-            // scheduler.submitTask(session, task);
-            session.submitTask(task);
-        }
+        // if (scheduler == null) {
+        // scheduler = SchedulerThread.currentScheduler();
+        // if (scheduler == null) {
+        // DbException.throwInternalError();
+        // }
+        // }
+        // SchedulerThread.bindScheduler(scheduler);
+        task.run();
     }
 }

@@ -58,6 +58,8 @@ public class AOStorageBuilder extends StorageBuilder {
                         config);
             }
         }
+        if (!sf.isStarted())
+            sf.start();
         return sf;
     }
 }

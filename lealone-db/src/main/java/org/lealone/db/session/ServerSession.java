@@ -41,6 +41,7 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.Lock;
 import org.lealone.db.result.Result;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -61,7 +62,6 @@ import org.lealone.sql.SQLParser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.page.IPage;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionListener;
 
@@ -1590,11 +1590,6 @@ public class ServerSession extends SessionBase {
             getTransactionListener().wakeUpWaitingTransactionListeners();
     }
 
-    @Override
-    public PageOperationHandler getPageOperationHandler() {
-        return getScheduler();
-    }
-
     public void clearQueryCache() {
         if (queryCache != null)
             queryCache.clear();
@@ -1611,8 +1606,15 @@ public class ServerSession extends SessionBase {
 
     @Override
     public <T> AsyncCallback<T> createCallback() {
-        // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
-        return AsyncCallback.createSingleThreadCallback();
+        if (SchedulerThread.isScheduler()) {
+            // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
+            return AsyncCallback.createSingleThreadCallback();
+        } else {
+            if (connectionInfo != null)
+                return AsyncCallback.create(connectionInfo.isSingleThreadCallback());
+            else
+                return AsyncCallback.createConcurrentCallback();
+        }
     }
 
     @Override

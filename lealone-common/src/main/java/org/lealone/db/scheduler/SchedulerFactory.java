@@ -19,6 +19,8 @@ public interface SchedulerFactory extends Plugin {
 
     int getSchedulerCount();
 
+    Scheduler bindScheduler(Thread thread);
+
     public static SchedulerFactory create(Map<String, String> config) {
         return create(config, null);
     }

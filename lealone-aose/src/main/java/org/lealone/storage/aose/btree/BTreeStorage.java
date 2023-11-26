@@ -17,6 +17,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DbSetting;
+import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.btree.chunk.Chunk;
 import org.lealone.storage.aose.btree.chunk.ChunkCompactor;
@@ -145,6 +146,10 @@ public class BTreeStorage {
 
     public ChunkManager getChunkManager() {
         return chunkManager;
+    }
+
+    public SchedulerFactory getSchedulerFactory() {
+        return map.getSchedulerFactory();
     }
 
     // ChunkCompactor在重写chunk中的page时会用到

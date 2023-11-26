@@ -33,7 +33,7 @@ public class ClientScheduler extends NetScheduler {
     public ClientScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "CScheduleService-" + id,
                 MapUtils.getInt(config, ConnectionSetting.NET_CLIENT_COUNT.name(), schedulerCount),
-                config);
+                config, false);
         NetFactory netFactory = NetFactoryManager.getFactory(config);
         netClient = netFactory.createNetClient();
         netEventLoop.setNetClient(netClient);
@@ -66,7 +66,6 @@ public class ClientScheduler extends NetScheduler {
         long lastTime = System.currentTimeMillis();
         while (!stopped) {
             runMiscTasks();
-            runPendingTasks();
             runEventLoop();
 
             long currentTime = System.currentTimeMillis();

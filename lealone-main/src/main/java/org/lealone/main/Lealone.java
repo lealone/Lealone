@@ -168,59 +168,44 @@ public class Lealone {
 
     private void run(boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
-
         try {
-            long t = System.currentTimeMillis();
-
+            // 1. 加载配置
+            long start1 = System.currentTimeMillis();
             loadConfig();
+            long t1 = (System.currentTimeMillis() - start1);
 
-            long t1 = (System.currentTimeMillis() - t);
-            t = System.currentTimeMillis();
-
+            // 2. 初始化
+            long start2 = System.currentTimeMillis();
             SchedulerFactory schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(
                     GlobalScheduler.class.getName(), config.scheduler.parameters);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
-            CountDownLatch latch1 = new CountDownLatch(1);
-            // 在一个调度线程中初始化各类插件和LealoneDatabase，保证对LealoneDatabase做redo时是单线程的
+            beforeInit();
+            init();
+            afterInit(config);
+
             scheduler.handle(() -> {
-                beforeInit();
-                init();
-                afterInit(config);
-                latch1.countDown();
+                // 提前触发对LealoneDatabase的初始化
+                initLealoneDatabase();
+                long t2 = (System.currentTimeMillis() - start2);
+                // 3. 启动ProtocolServer
+                if (!embedded) {
+                    long start3 = System.currentTimeMillis();
+                    startProtocolServers();
+                    long t3 = (System.currentTimeMillis() - start3);
+                    long totalTime = t1 + t2 + t3;
+                    logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)",
+                            totalTime, t1, t2, t3);
+                    logger.info("Exit with Ctrl+C");
+                }
+                // 等所有的Server启动完成后再启动Scheduler
+                // 确保所有的初始PeriodicTask都在单线程中注册
+                schedulerFactory.start();
+                if (latch != null)
+                    latch.countDown();
             });
             scheduler.start();
-            latch1.await();
-
-            long t2 = (System.currentTimeMillis() - t);
-            t = System.currentTimeMillis();
-
-            if (embedded) {
-                return;
-            }
-
-            CountDownLatch latch2 = new CountDownLatch(1);
-            // 在一个调度线程中启动ProtocolServer，保证它们执行数据库各种操作时是单线程的
-            scheduler.handle(() -> {
-                startProtocolServers();
-                latch2.countDown();
-            });
             scheduler.wakeUp(); // 及时唤醒，否则会影响启速度
-            latch2.await();
-
-            // 等所有的Server启动完成后再启动Scheduler
-            // 确保所有的初始PeriodicTask都在main线程中注册
-            schedulerFactory.start();
-
-            long t3 = (System.currentTimeMillis() - t);
-            long totalTime = t1 + t2 + t3;
-            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime,
-                    t1, t2, t3);
-            logger.info("Exit with Ctrl+C");
-
-            if (latch != null)
-                latch.countDown();
-
             // 在主线程中运行，避免出现DestroyJavaVM线程
             Thread.currentThread().setName("FsyncService");
             TransactionEngine.getDefaultTransactionEngine().getFsyncService().run();
@@ -261,8 +246,6 @@ public class Lealone {
     private void init() {
         initBaseDir();
         initPluggableEngines();
-        // 提前触发对LealoneDatabase的初始化
-        initLealoneDatabase();
     }
 
     private void initLealoneDatabase() {

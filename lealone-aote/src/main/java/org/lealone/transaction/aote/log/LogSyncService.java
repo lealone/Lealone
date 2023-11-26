@@ -37,7 +37,7 @@ public abstract class LogSyncService extends Thread {
     private final int redoLogRecordSyncThreshold;
     private final RedoLog redoLog;
 
-    private volatile boolean running = true;
+    private volatile boolean running;
 
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected long syncIntervalMillis;
@@ -76,8 +76,13 @@ public abstract class LogSyncService extends Thread {
         return false;
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     @Override
     public void run() {
+        running = true;
         while (running) {
             long syncStarted = System.currentTimeMillis();
             sync();
