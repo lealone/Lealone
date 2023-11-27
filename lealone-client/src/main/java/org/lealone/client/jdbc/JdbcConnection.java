@@ -205,7 +205,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
-            SQLCommand command = createSQLCommand(tsql, fetchSize, true);
+            SQLCommand command = session.createSQLCommand(tsql, fetchSize, true);
             command.prepare(true).onComplete(ar -> {
                 if (ar.isSucceeded())
                     ac.setAsyncResult(new JdbcPreparedStatement(this, tsql, id, resultSetType,
@@ -887,7 +887,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
-            SQLCommand command = createSQLCommand(tsql, fetchSize, true);
+            SQLCommand command = session.createSQLCommand(tsql, fetchSize, true);
             command.prepare(true).onComplete(ar -> {
                 if (ar.isSucceeded())
                     ac.setAsyncResult(new JdbcCallableStatement(this, tsql, id, resultSetType,
@@ -1058,14 +1058,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     }
 
     // =============================================================
-
-    SQLCommand createSQLCommand(String sql, int fetchSize) {
-        return session.createSQLCommand(sql, fetchSize, false);
-    }
-
-    SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
-        return session.createSQLCommand(sql, fetchSize, prepared);
-    }
 
     private void executeUpdateSync(String sql) throws SQLException {
         createStatement().executeUpdate(sql);

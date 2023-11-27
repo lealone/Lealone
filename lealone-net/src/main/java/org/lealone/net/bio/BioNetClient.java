@@ -23,7 +23,7 @@ import org.lealone.net.TcpClientConnection;
 class BioNetClient extends NetClientBase {
 
     BioNetClient() {
-        super(false);
+        super(true);
     }
 
     @Override

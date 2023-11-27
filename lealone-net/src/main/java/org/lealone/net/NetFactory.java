@@ -16,4 +16,8 @@ public interface NetFactory extends Plugin {
     default NetEventLoop createNetEventLoop(long loopInterval, boolean isThreadSafe) {
         return null;
     }
+
+    default boolean isBio() {
+        return false;
+    }
 }

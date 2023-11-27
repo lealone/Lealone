@@ -5,7 +5,6 @@
  */
 package org.lealone.client.jdbc;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -46,7 +45,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     protected int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
     protected int updateCount;
     private Command executingCommand;
-    private int lastExecutedCommandType; // 支持PostgreSQL协议时需要用到
     private ArrayList<String> batchCommands;
     private boolean escapeProcessing = true;
 
@@ -89,19 +87,12 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         }
         JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
-            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            SQLCommand command = conn.createSQLCommand(tsql, fetchSize);
-            setExecutingStatement(command);
-            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+            SQLCommand command = createSQLCommand(sql, false);
+            command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
                 setExecutingStatement(null);
                 if (ar.isSucceeded()) {
                     Result r = ar.getResult();
-                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id,
-                            closedByResultSet, scrollable, updatable);
+                    JdbcResultSet resultSet = new JdbcResultSet(JdbcStatement.this, r, id);
                     resultSet.setCommand(command); // 关闭结果集时再关闭
                     ac.setAsyncResult(resultSet);
                 } else {
@@ -112,6 +103,27 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             setAsyncResult(ac, t);
         }
         return ac;
+    }
+
+    protected boolean isScrollable() {
+        return resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+    }
+
+    protected boolean isUpdatable() {
+        return resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+    }
+
+    protected boolean isClosedByResultSet() {
+        return closedByResultSet;
+    }
+
+    private SQLCommand createSQLCommand(String sql, boolean prepared) throws SQLException {
+        checkAndClose();
+        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+        SQLCommand command = session.createSQLCommand(sql, fetchSize, prepared);
+        if (!prepared)
+            setExecutingStatement(command);
+        return command;
     }
 
     /**
@@ -134,7 +146,9 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public int executeUpdate(String sql) throws SQLException {
-        debugCodeCall("executeUpdate", sql);
+        if (isDebugEnabled()) {
+            debugCodeCall("executeUpdate", sql);
+        }
         return executeUpdateSync(sql);
     }
 
@@ -202,24 +216,21 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     public Future<Integer> executeUpdateAsync(String sql) {
-        debugCodeCall("executeUpdateAsync", sql);
-        return executeUpdateInternal(true, sql);
+        if (isDebugEnabled()) {
+            debugCodeCall("executeUpdateAsync", sql);
+        }
+        return executeUpdateInternal(sql);
     }
 
     private int executeUpdateSync(String sql) throws SQLException {
-        return executeUpdateInternal(false, sql).get(this);
+        return executeUpdateInternal(sql).get(this);
     }
 
-    private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async, String sql) {
+    private JdbcAsyncCallback<Integer> executeUpdateInternal(String sql) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
-            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            SQLCommand command = conn.createSQLCommand(tsql, fetchSize);
-            setExecutingStatement(command);
+            SQLCommand command = createSQLCommand(sql, false);
             command.executeUpdate().onComplete(ar -> {
-                // 设置完后再调用close，否则有可能当前语句提前关闭了
                 setExecutingStatement(null);
                 command.close();
                 if (ar.isFailed()) {
@@ -341,10 +352,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
-            String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            SQLCommand command = conn.createSQLCommand(tsql, fetchSize, true);
+            SQLCommand command = createSQLCommand(sql, true);
             command.prepare(false).onComplete(ar -> {
                 if (ar.isSucceeded())
                     executeInternal(ac, command, false);
@@ -360,9 +368,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     void executeInternal(JdbcAsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
         setExecutingStatement(command);
         if (command.isQuery()) {
-            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+            command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
                 setExecutingStatement(null);
                 if (ar.isFailed()) {
                     command.close();
@@ -371,8 +377,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 }
                 Result result = ar.getResult();
                 int id = getNextTraceId(TraceObjectType.RESULT_SET);
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable,
-                        updatable);
+                resultSet = new JdbcResultSet(JdbcStatement.this, result, id);
                 resultSet.setCommand(command);
                 // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
                 ac.setAsyncResult(true);
@@ -480,7 +485,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         this.batchCommands = null;
         JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
+            checkAndClose();
             if (batchCommands == null || batchCommands.isEmpty()) {
                 return new int[0];
             }
@@ -576,7 +581,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      * @return the connection
      */
     @Override
-    public Connection getConnection() {
+    public JdbcConnection getConnection() {
         debugCodeCall("getConnection");
         return conn;
     }
@@ -958,8 +963,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     public boolean getMoreResults() throws SQLException {
         try {
             debugCodeCall("getMoreResults");
-            checkClosed();
-            closeOldResultSet();
+            checkAndClose();
             return false;
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -982,8 +986,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             switch (current) {
             case Statement.CLOSE_CURRENT_RESULT:
             case Statement.CLOSE_ALL_RESULTS:
-                checkClosed();
-                closeOldResultSet();
+                checkAndClose();
                 break;
             case Statement.KEEP_CURRENT_RESULT:
                 // nothing to do
@@ -995,6 +998,11 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         } catch (Exception e) {
             throw logAndConvert(e);
         }
+    }
+
+    protected void checkAndClose() throws SQLException {
+        checkClosed();
+        closeOldResultSet();
     }
 
     // =============================================================
@@ -1036,13 +1044,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     protected void setExecutingStatement(Command c) {
         executingCommand = c;
-        if (c != null) {
-            lastExecutedCommandType = c.getType();
-        }
-    }
-
-    public int getLastExecutedCommandType() {
-        return lastExecutedCommandType;
     }
 
     /**

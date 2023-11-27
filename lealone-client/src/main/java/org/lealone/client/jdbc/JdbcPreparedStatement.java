@@ -120,17 +120,14 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         }
         JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
+            checkAndClose();
             setExecutingStatement(command);
-            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+            command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
                 setExecutingStatement(null);
                 if (ar.isSucceeded()) {
                     Result r = ar.getResult();
-                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
-                            closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
+                    JdbcResultSet resultSet = new JdbcResultSet(JdbcPreparedStatement.this, r, id,
+                            cachedColumnLabelMap);
                     // resultSet.setCommand(command); //不能这样做，command是被重用的
                     ac.setAsyncResult(resultSet);
                 } else {
@@ -189,8 +186,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
+            checkAndClose();
             setExecutingStatement(command);
             command.executeUpdate().onComplete(ar -> {
                 setExecutingStatement(null);
@@ -209,8 +205,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private JdbcAsyncCallback<Integer> executeUpdateInternal(Value[] set) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
+            checkAndClose();
             setExecutingStatement(command);
             List<? extends CommandParameter> parameters = command.getParameters();
             for (int j = 0; j < set.length; j++) {
@@ -315,8 +310,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         }
         JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
-            closeOldResultSet();
+            checkAndClose();
             executeInternal(ac, command, true);
         } catch (Throwable t) {
             setAsyncResult(ac, t);
@@ -404,7 +398,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         this.batchParameters = null;
         JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
         try {
-            checkClosed();
+            checkAndClose();
             if (batchParameters == null || batchParameters.isEmpty()) {
                 return new int[0];
             }

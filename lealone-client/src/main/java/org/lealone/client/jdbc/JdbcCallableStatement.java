@@ -72,7 +72,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     @Override
     public int executeUpdate() throws SQLException {
         try {
-            checkClosed();
+            checkAndClose();
             if (command.isQuery()) {
                 super.executeQuery();
                 return 0;

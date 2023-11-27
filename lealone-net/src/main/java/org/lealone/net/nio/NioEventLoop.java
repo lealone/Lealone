@@ -184,16 +184,16 @@ class NioEventLoop implements NetEventLoop {
         Queue<NioBuffer> queue = channels.get(channel);
         if (queue != null) {
             if (!preferBatchWrite) {
-                SelectionKey key = keyFor(channel);
                 // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
-                if (key != null && key.isValid()
-                        && (isThreadSafe || SchedulerThread.currentObject() == owner)
-                        && queue.isEmpty()) {
-                    if (write(key, channel, nioBuffer)) {
-                        if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {
-                            deregisterWrite(key);
+                if ((isThreadSafe || SchedulerThread.currentObject() == owner) && queue.isEmpty()) {
+                    SelectionKey key = keyFor(channel);
+                    if (key != null && key.isValid()) {
+                        if (write(key, channel, nioBuffer)) {
+                            if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {
+                                deregisterWrite(key);
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
             }

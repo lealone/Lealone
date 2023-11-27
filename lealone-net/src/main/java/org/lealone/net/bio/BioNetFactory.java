@@ -28,4 +28,9 @@ public class BioNetFactory extends NetFactoryBase {
     public NetServer createNetServer() {
         throw DbException.getInternalError();
     }
+
+    @Override
+    public boolean isBio() {
+        return true;
+    }
 }
