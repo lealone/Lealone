@@ -18,7 +18,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Plugin;
 import org.lealone.db.PluginBase;
 import org.lealone.db.PluginManager;
-import org.lealone.db.async.AsyncTaskHandlerFactory;
 
 public abstract class SchedulerFactoryBase extends PluginBase implements SchedulerFactory {
 
@@ -39,7 +38,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         for (Scheduler scheduler : schedulers) {
             scheduler.setSchedulerFactory(this);
         }
-        AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         this.schedulers = schedulers;
         this.bindThreads = new Thread[schedulers.length];
         if (embedded) // 嵌入式场景自动启动调度器

@@ -205,7 +205,7 @@ public class Lealone {
                     latch.countDown();
             });
             scheduler.start();
-            scheduler.wakeUp(); // 及时唤醒，否则会影响启速度
+            scheduler.wakeUp(); // 及时唤醒，否则会影响启动速度
             // 在主线程中运行，避免出现DestroyJavaVM线程
             Thread.currentThread().setName("FsyncService");
             TransactionEngine.getDefaultTransactionEngine().getFsyncService().run();
