@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.lealone.client.LealoneClient;
-import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.db.ConnectionInfo;
 
 public class Shell extends LealoneClient {
@@ -29,6 +28,6 @@ public class Shell extends LealoneClient {
         if (ci.isEmbedded()) {
             Lealone.embed();
         }
-        return new JdbcConnection(ci);
+        return getConnectionSync(ci);
     }
 }

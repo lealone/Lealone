@@ -47,13 +47,7 @@ public class JdbcDriver implements java.sql.Driver {
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
         try {
-            if (!acceptsURL(url)) {
-                return null;
-            }
-            if (info == null) {
-                info = new Properties();
-            }
-            return new JdbcConnection(url, info);
+            return getConnection(url, info).get();
         } catch (Exception e) {
             throw DbException.toSQLException(e);
         }
@@ -176,19 +170,30 @@ public class JdbcDriver implements java.sql.Driver {
     }
 
     public static Future<JdbcConnection> getConnection(String url, Properties info) {
+        if (!INSTANCE.acceptsURL(url)) {
+            return Future.succeededFuture(null); // 不抛异常，只是返回null
+        }
         if (info == null) {
             info = new Properties();
         }
-        AsyncCallback<JdbcConnection> ac = AsyncCallback.createConcurrentCallback();
         try {
             ConnectionInfo ci = new ConnectionInfo(url, info);
+            return getConnection(ci);
+        } catch (Throwable t) {
+            return Future.failedFuture(DbException.toSQLException(t));
+        }
+    }
+
+    public static Future<JdbcConnection> getConnection(ConnectionInfo ci) {
+        AsyncCallback<JdbcConnection> ac = AsyncCallback.createConcurrentCallback();
+        try {
             ci.getSessionFactory().createSession(ci).onSuccess(s -> {
                 JdbcConnection conn = new JdbcConnection(s, ci);
                 ac.setAsyncResult(conn);
             }).onFailure(t -> {
                 ac.setAsyncResult(t);
             });
-        } catch (Throwable t) {
+        } catch (Throwable t) { // getSessionFactory也可能抛异常
             ac.setAsyncResult(t);
         }
         return ac;

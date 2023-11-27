@@ -52,6 +52,14 @@ public class LealoneClient {
         return JdbcDriver.getConnection(url, info);
     }
 
+    public static Future<JdbcConnection> getConnection(ConnectionInfo ci) {
+        return JdbcDriver.getConnection(ci);
+    }
+
+    public static JdbcConnection getConnectionSync(ConnectionInfo ci) {
+        return getConnection(ci).get();
+    }
+
     private static final int MAX_ROW_BUFFER = 5000;
     private static final int HISTORY_COUNT = 20;
     // Windows: '\u00b3';
@@ -198,7 +206,7 @@ public class LealoneClient {
 
     protected Connection getConnection() throws SQLException {
         ConnectionInfo ci = getConnectionInfo();
-        return new JdbcConnection(ci);
+        return getConnectionSync(ci);
     }
 
     private void reconnect() throws Exception {

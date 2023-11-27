@@ -79,27 +79,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private int savepointId;
     private String catalog;
 
-    public JdbcConnection(String url, Properties info) throws SQLException {
-        this(new ConnectionInfo(url, info));
-    }
-
-    public JdbcConnection(ConnectionInfo ci) throws SQLException {
-        try {
-            // this will return an client or server session
-            session = ci.getSessionFactory().createSession(ci).get();
-            user = ci.getUserName();
-            url = ci.getURL(); // 不含参数
-            initScheduler(ci);
-            initTrace();
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
     public JdbcConnection(Session session, ConnectionInfo ci) {
         this.session = session;
         user = ci.getUserName();
-        url = ci.getURL();
+        url = ci.getURL(); // 不含参数
         initScheduler(ci);
         initTrace();
     }
