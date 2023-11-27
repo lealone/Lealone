@@ -5,18 +5,16 @@
  */
 package org.lealone.test.misc;
 
-import java.util.concurrent.CountDownLatch;
-
 public class SpscLinkableListTest {
 
     public static void main(String[] args) throws Exception {
-        // for (int i = 0; i < 100; i++)
-        new SpscLinkableListTest().run();
+        for (int i = 0; i < 10000; i++)
+            new SpscLinkableListTest().run();
     }
 
     // LinkableList是一个无锁且不需要CAS的普通链表，满足单生产者单消费者的应用场景
     private final LinkableList<PendingTask> pendingTasks = new LinkableList<>();
-    private final long pendingTaskCount = 100 * 10000; // 待处理任务总数
+    private final long pendingTaskCount = 1000 * 10000; // 待处理任务总数
     private long completedTaskCount; // 已经完成的任务数
 
     private long result; // 存放计算结果
@@ -30,11 +28,11 @@ public class SpscLinkableListTest {
                 submitTask(task);
             }
         });
-
         // 消费者不断从pendingTasks中取出AsyncTask执行
         Thread consumer = new Thread(() -> {
             while (completedTaskCount < pendingTaskCount) {
                 runPendingTasks();
+                Thread.yield(); // 去掉这一行性能会变慢
             }
         });
         long t = System.currentTimeMillis();
@@ -54,24 +52,10 @@ public class SpscLinkableListTest {
     }
 
     private void submitTask(AsyncTask task) {
-        if (pendingTasks.size() > 1000) {
-            CountDownLatch latch = new CountDownLatch(1);
-            task.latch = latch;
-            PendingTask pt = new PendingTask(task);
-            pendingTasks.add(pt);
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if (pendingTasks.size() > 1)
-                removeCompletedTasks();
-        } else {
-            PendingTask pt = new PendingTask(task);
-            pendingTasks.add(pt);
-            if (pendingTasks.size() > 1)
-                removeCompletedTasks();
-        }
+        PendingTask pt = new PendingTask(task);
+        pendingTasks.add(pt);
+        if (pendingTasks.size() > 1)
+            removeCompletedTasks();
     }
 
     private void removeCompletedTasks() {
@@ -98,8 +82,7 @@ public class SpscLinkableListTest {
     }
 
     public class AsyncTask {
-        int value;
-        CountDownLatch latch;
+        final int value;
 
         AsyncTask(int value) {
             this.value = value;
@@ -107,8 +90,6 @@ public class SpscLinkableListTest {
 
         void compute() {
             result += value;
-            if (latch != null)
-                latch.countDown();
         }
     }
 
@@ -171,16 +152,8 @@ public class SpscLinkableListTest {
             this.head = head;
         }
 
-        public E getTail() {
-            return tail;
-        }
-
         public void setTail(E tail) {
             this.tail = tail;
-        }
-
-        public boolean isEmpty() {
-            return head == null;
         }
 
         public int size() {
@@ -198,28 +171,6 @@ public class SpscLinkableListTest {
             } else {
                 tail.setNext(e);
                 tail = e;
-            }
-        }
-
-        public void remove(E e) {
-            size--;
-            if (head == e) { // 删除头
-                head = e.getNext();
-                if (head == null)
-                    tail = null;
-            } else {
-                E n = head;
-                E last = n;
-                while (n != null) {
-                    if (e == n) {
-                        last.setNext(n.getNext());
-                        break;
-                    }
-                    last = n;
-                    n = n.getNext();
-                }
-                if (tail == e) // 删除尾
-                    tail = last;
             }
         }
     }
