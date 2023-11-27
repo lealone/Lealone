@@ -88,7 +88,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                     "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
         }
         JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, async, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -108,7 +108,9 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                     setAsyncResult(ac, ar.getCause());
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -210,7 +212,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async, String sql) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, async, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -226,7 +228,9 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                     ac.setAsyncResult(ar);
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -336,7 +340,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         // }
         JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, false, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             String tsql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -347,7 +351,9 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac.get(this).booleanValue();
     }
 
@@ -473,11 +479,10 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         ArrayList<String> batchCommands = this.batchCommands;
         this.batchCommands = null;
         JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, false, () -> {
+        try {
             checkClosed();
             if (batchCommands == null || batchCommands.isEmpty()) {
-                ac.setAsyncResult(new int[0]);
-                return;
+                return new int[0];
             }
             ConnectionInfo ci = session.getConnectionInfo();
             if (ci != null && ci.isRemote()) {
@@ -525,7 +530,9 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                     });
                 }
             }
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac.get(this);
 
     }

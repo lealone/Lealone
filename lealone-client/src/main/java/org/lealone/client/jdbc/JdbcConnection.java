@@ -37,9 +37,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.Future;
-import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
@@ -68,7 +66,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private final String user;
 
     private Session session;
-    private Scheduler scheduler;
     private JdbcPreparedStatement commit, rollback;
     private JdbcPreparedStatement getReadOnly, getGeneratedKeys;
     private JdbcPreparedStatement setTIL, getTIL; // set/get transaction isolation level
@@ -83,7 +80,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         this.session = session;
         user = ci.getUserName();
         url = ci.getURL(); // 不含参数
-        initScheduler(ci);
         initTrace();
     }
 
@@ -92,14 +88,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         this.session = session;
         this.user = user;
         this.url = url;
-        scheduler = session.getScheduler();
         trace = getTrace(TraceObjectType.CONNECTION);
-    }
-
-    private void initScheduler(ConnectionInfo ci) {
-        scheduler = session.getScheduler();
-        if (scheduler == null)
-            scheduler = ci.getScheduler();
     }
 
     private void initTrace() {
@@ -212,7 +201,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
             int fetchSize) {
         JdbcAsyncCallback<JdbcPreparedStatement> ac = new JdbcAsyncCallback<>();
-        submitTask(ac, async, () -> {
+        try {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
@@ -224,7 +213,9 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -892,7 +883,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
             int fetchSize) {
         JdbcAsyncCallback<JdbcCallableStatement> ac = new JdbcAsyncCallback<>();
-        submitTask(ac, async, () -> {
+        try {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
@@ -904,7 +895,9 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -1663,23 +1656,5 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         } catch (Exception e) {
             throw logAndConvert(e);
         }
-    }
-
-    void submitTask(JdbcAsyncCallback<?> ac, boolean async, JdbcAsyncTask jat) {
-        AsyncTask task = () -> {
-            try {
-                jat.run();
-            } catch (Throwable t) {
-                setAsyncResult(ac, t);
-            }
-        };
-        // if (scheduler == null) {
-        // scheduler = SchedulerThread.currentScheduler();
-        // if (scheduler == null) {
-        // DbException.throwInternalError();
-        // }
-        // }
-        // SchedulerThread.bindScheduler(scheduler);
-        task.run();
     }
 }

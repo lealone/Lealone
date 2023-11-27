@@ -119,7 +119,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     async ? "executeQueryAsync()" : "executeQuery()");
         }
         JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, async, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             setExecutingStatement(command);
@@ -137,7 +137,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     setAsyncResult(ac, ar.getCause());
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -186,7 +188,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, async, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             setExecutingStatement(command);
@@ -198,13 +200,15 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     ac.setAsyncResult(ar);
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(Value[] set) {
         JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, true, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             setExecutingStatement(command);
@@ -222,7 +226,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     ac.setAsyncResult(ar);
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac;
     }
 
@@ -308,11 +314,13 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             debugCodeCall("execute");
         }
         JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, false, () -> {
+        try {
             checkClosed();
             closeOldResultSet();
             executeInternal(ac, command, true);
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac.get(this).booleanValue();
     }
 
@@ -395,11 +403,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         ArrayList<Value[]> batchParameters = this.batchParameters;
         this.batchParameters = null;
         JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, false, () -> {
+        try {
             checkClosed();
             if (batchParameters == null || batchParameters.isEmpty()) {
-                ac.setAsyncResult(new int[0]);
-                return;
+                return new int[0];
             }
             if (command instanceof ClientPreparedSQLCommand) {
                 setExecutingStatement(command);
@@ -446,7 +453,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     });
                 }
             }
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac.get(this);
 
     }
@@ -1320,7 +1329,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public ResultSetMetaData getMetaData() throws SQLException {
         debugCodeCall("getMetaData");
         JdbcAsyncCallback<ResultSetMetaData> ac = new JdbcAsyncCallback<>();
-        conn.submitTask(ac, false, () -> {
+        try {
             checkClosed();
             command.getMetaData().onComplete(ar -> {
                 if (ar.isFailed()) {
@@ -1343,7 +1352,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     setAsyncResult(ac, e);
                 }
             });
-        });
+        } catch (Throwable t) {
+            setAsyncResult(ac, t);
+        }
         return ac.get(this);
     }
 
