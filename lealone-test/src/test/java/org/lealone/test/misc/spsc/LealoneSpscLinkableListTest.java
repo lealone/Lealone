@@ -19,7 +19,7 @@ public class LealoneSpscLinkableListTest extends SpscTestBase {
     public void produce(AsyncTask task) {
         PendingTask pt = new PendingTask(task);
         pendingTasks.add(pt);
-        if (pendingTasks.size() > 1)
+        if (pendingTasks.size() > 30000)
             removeCompletedTasks();
     }
 
@@ -45,7 +45,6 @@ public class LealoneSpscLinkableListTest extends SpscTestBase {
             }
             pt = pt.getNext();
         }
-        Thread.yield(); // 去掉这一行性能会变慢
     }
 
     public class PendingTask {
