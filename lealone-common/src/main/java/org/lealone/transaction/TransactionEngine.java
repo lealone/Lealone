@@ -5,12 +5,13 @@
  */
 package org.lealone.transaction;
 
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.List;
 
 import org.lealone.db.Constants;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.PluginManager;
 import org.lealone.db.RunMode;
+import org.lealone.db.scheduler.Scheduler;
 
 public interface TransactionEngine extends PluggableEngine {
 
@@ -39,11 +40,14 @@ public interface TransactionEngine extends PluggableEngine {
         return beginTransaction(autoCommit, RunMode.CLIENT_SERVER, isolationLevel);
     }
 
-    Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel);
+    default Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel) {
+        return beginTransaction(autoCommit, runMode, isolationLevel, null);
+    }
+
+    Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel,
+            Scheduler scheduler);
 
     boolean supportsMVCC();
-
-    TransactionMap<?, ?> getTransactionMap(String mapName, Transaction transaction);
 
     void checkpoint();
 
@@ -55,15 +59,7 @@ public interface TransactionEngine extends PluggableEngine {
         return false;
     }
 
-    default boolean containsTransaction(Long tid) {
-        return false;
-    }
-
-    default Transaction getTransaction(Long tid) {
-        return null;
-    }
-
-    default ConcurrentSkipListMap<Long, ? extends Transaction> currentTransactions() {
+    default List<? extends Transaction> currentTransactions() {
         return null;
     }
 

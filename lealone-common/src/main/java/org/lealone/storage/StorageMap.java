@@ -5,6 +5,7 @@
  */
 package org.lealone.storage;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.async.AsyncHandler;
@@ -328,5 +329,9 @@ public interface StorageMap<K, V> {
 
     static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
         handler.handle(new AsyncResult<>(result));
+    }
+
+    default ConcurrentHashMap<Object, Object> getOldValueCache() {
+        return null;
     }
 }

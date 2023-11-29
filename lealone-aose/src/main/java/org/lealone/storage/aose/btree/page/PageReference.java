@@ -348,7 +348,7 @@ public class PageReference {
             return false;
         if (te == null)
             return true;
-        for (Transaction t : te.currentTransactions().values()) {
+        for (Transaction t : te.currentTransactions()) {
             Session s = t.getSession();
             if (s != null && s.containsPageReference(this) && s.isForUpdate())
                 return false;
@@ -431,7 +431,7 @@ public class PageReference {
 
     private static void addPageReference(PageReference oldRef, PageReference lRef, PageReference rRef,
             TransactionEngine te) {
-        for (Transaction t : te.currentTransactions().values()) {
+        for (Transaction t : te.currentTransactions()) {
             Session s = t.getSession();
             if (s != null) {
                 s.addPageReference(oldRef, lRef, rRef);

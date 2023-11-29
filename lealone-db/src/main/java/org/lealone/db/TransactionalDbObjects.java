@@ -121,7 +121,7 @@ public class TransactionalDbObjects {
             return;
         }
         long minTid = Long.MAX_VALUE;
-        for (Transaction t : te.currentTransactions().values()) {
+        for (Transaction t : te.currentTransactions()) {
             if (t.isRepeatableRead() && t.getTransactionId() < minTid)
                 minTid = t.getTransactionId();
         }

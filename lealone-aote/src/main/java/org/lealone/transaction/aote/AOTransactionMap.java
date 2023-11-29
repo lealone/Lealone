@@ -75,7 +75,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             return null;
 
         // 如果tv是未提交的，并且就是当前事务，那么这里也会返回未提交的值
-        Object v = tv.getValue(transaction);
+        Object v = tv.getValue(transaction, map);
         if (v != null) {
             // 前面的事务已经提交了，但是因为当前事务隔离级别的原因它看不到
             if (v == TransactionalValue.SIGHTLESS)
@@ -166,7 +166,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public long size() {
         long undoLogSize = 0;
-        for (AOTransaction t : transaction.transactionEngine.currentTransactions().values()) {
+        for (AOTransaction t : transaction.transactionEngine.currentTransactions()) {
             UndoLog ul = t.undoLog;
             if (ul != null)
                 undoLogSize += ul.size();
@@ -355,7 +355,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Session session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
             newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
-            r = transaction.undoLog.add(getName(), key, null, newTV);
+            r = transaction.undoLog.add(map, key, null, newTV);
         } else {
             newTV = new TransactionalValue(value); // 内部没有增加行锁
             r = null;
@@ -372,7 +372,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (old.getValue() == null) {
                         old.setValue(value);
                         if (r != null)
-                            transaction.undoLog.add(getName(), key, old.getOldValue(), old);
+                            transaction.undoLog.add(map, key, old.getOldValue(), old);
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
                         ac.setAsyncResult((Throwable) null);
@@ -419,7 +419,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Object oldValue = tv.getValue();
         tv.setTransaction(transaction); // 二级索引需要设置
         tv.setValue(value);
-        transaction.undoLog.add(getName(), key, oldValue, tv);
+        transaction.undoLog.add(map, key, oldValue, tv);
         return Transaction.OPERATION_COMPLETE;
     }
 
@@ -566,7 +566,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (handler != null) {
             map.append(session, newTV, ar -> {
                 if (isUndoLogEnabled && ar.isSucceeded())
-                    transaction.undoLog.add(getName(), ar.getResult(), null, newTV);
+                    transaction.undoLog.add(map, ar.getResult(), null, newTV);
                 handler.handle(ar);
             });
             return null;
@@ -575,7 +575,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
             if (isUndoLogEnabled)
-                transaction.undoLog.add(getName(), key, null, newTV);
+                transaction.undoLog.add(map, key, null, newTV);
             return key;
         }
     }

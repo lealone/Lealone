@@ -7,6 +7,7 @@ package org.lealone.transaction.aote.log;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.db.DataBufferFactory;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.AOTransactionEngine;
 import org.lealone.transaction.aote.TransactionalValue;
 
@@ -37,8 +38,9 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(String mapName, Object key, Object oldValue, TransactionalValue newTV) {
-        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newTV);
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Object oldValue,
+            TransactionalValue newTV) {
+        UndoLogRecord r = new UndoLogRecord(map, key, oldValue, newTV);
         if (first == null) {
             first = last = r;
         } else {

@@ -10,6 +10,7 @@ import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -26,6 +27,7 @@ import org.lealone.db.scheduler.Scheduler;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.transaction.TransactionEngine.GcTask;
+import org.lealone.transaction.aote.TransactionalValue.OldValue;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
 
@@ -176,11 +178,55 @@ public class CheckpointService implements MemoryManager.MemoryListener {
     }
 
     private void gc() {
-        // 只由master负责事务引擎的垃圾收集问题
-        if (isMasterScheduler())
-            aote.gcTValues();
+        gcTValues();
         executeGcTasks();
         gcMaps();
+    }
+
+    private void gcTValues() {
+        for (StorageMap<?, ?> map : maps.values()) {
+            if (!map.isClosed()) {
+                gcTValues(map.getOldValueCache());
+            }
+        }
+    }
+
+    private void gcTValues(ConcurrentHashMap<Object, Object> tValues) {
+        if (tValues.isEmpty())
+            return;
+        if (!aote.containsRepeatableReadTransactions()) {
+            removeTValues(tValues);
+            return;
+        }
+        long minTid = Long.MAX_VALUE;
+        for (AOTransaction t : aote.currentTransactions()) {
+            if (t.isRepeatableRead() && t.getTransactionId() < minTid)
+                minTid = t.getTransactionId();
+        }
+        if (minTid != Long.MAX_VALUE) {
+            for (Entry<Object, Object> e : tValues.entrySet()) {
+                OldValue oldValue = (OldValue) e.getValue();
+                if (oldValue != null && oldValue.tid < minTid) {
+                    tValues.remove(e.getKey(), oldValue); // 如果不是原来的就不删除
+                    continue;
+                }
+                while (oldValue != null) {
+                    if (oldValue.tid < minTid) {
+                        oldValue.next = null;
+                        break;
+                    }
+                    oldValue = oldValue.next;
+                }
+            }
+        } else {
+            removeTValues(tValues);
+        }
+    }
+
+    private void removeTValues(ConcurrentHashMap<Object, Object> tValues) {
+        for (Entry<Object, Object> e : tValues.entrySet()) {
+            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
+        }
     }
 
     private void executeGcTasks() {
@@ -239,7 +285,7 @@ public class CheckpointService implements MemoryManager.MemoryListener {
 
     // 第1步，先切换redo log chunk文件，但是还没有写入一个checkpoint log
     private void switchRedoLogChunkFile(boolean force) {
-        long logId = aote.logSyncService.nextLogId();
+        long logId = aote.getLogSyncService().nextLogId();
         addPendingCheckpoint(logId, false, force);
     }
 
@@ -297,7 +343,7 @@ public class CheckpointService implements MemoryManager.MemoryListener {
     private void addPendingCheckpoint(long logId, boolean saved, boolean force) {
         PendingCheckpoint pc = RedoLogRecord.createPendingCheckpoint(logId, saved, force);
         pendingCheckpoints.add(pc);
-        aote.logSyncService.asyncWakeUp();
+        aote.getLogSyncService().asyncWakeUp();
     }
 
     private void gcPendingCheckpoints() {
@@ -428,8 +474,8 @@ public class CheckpointService implements MemoryManager.MemoryListener {
                 if (scheduler.getFsyncingFileStorage() != null) {
                     FsyncTask task = new FsyncTask(syncedCount, checkpointTask,
                             scheduler.getFsyncingFileStorage());
-                    aote.logSyncService.getRedoLog().addFsyncTask(task);
-                    aote.logSyncService.wakeUp();
+                    aote.getLogSyncService().getRedoLog().addFsyncTask(task);
+                    aote.getLogSyncService().wakeUp();
                 } else {
                     onSynced(syncedCount, checkpointTask);
                 }
@@ -437,7 +483,7 @@ public class CheckpointService implements MemoryManager.MemoryListener {
             lastSavedAt = now;
         } catch (Throwable t) {
             logger.error("Failed to execute checkpoint", t);
-            aote.logSyncService.getRedoLog().ignoreCheckpoint();
+            aote.getLogSyncService().getRedoLog().ignoreCheckpoint();
         } finally {
             scheduler.setFsyncDisabled(false);
         }

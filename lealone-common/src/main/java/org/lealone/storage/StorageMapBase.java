@@ -5,6 +5,7 @@
  */
 package org.lealone.storage;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
@@ -90,5 +91,12 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
     public long incrementAndGetMaxKey() {
         return maxKey.incrementAndGet();
+    }
+
+    private final ConcurrentHashMap<Object, Object> oldValueCache = new ConcurrentHashMap<>(1);
+
+    @Override
+    public ConcurrentHashMap<Object, Object> getOldValueCache() {
+        return oldValueCache;
     }
 }

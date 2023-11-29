@@ -6,11 +6,13 @@
 package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.ITransactionalValue;
 import org.lealone.transaction.Transaction;
@@ -83,7 +85,7 @@ public class TransactionalValue implements ITransactionalValue {
         return value;
     }
 
-    public Object getValue(AOTransaction transaction) {
+    public Object getValue(AOTransaction transaction, StorageMap<?, ?> map) {
         AOTransaction t = rowLock.getTransaction();
         if (t == transaction)
             return value;
@@ -110,7 +112,8 @@ public class TransactionalValue implements ITransactionalValue {
             if (t != null && t.commitTimestamp > 0 && tid >= t.commitTimestamp) {
                 return value;
             }
-            OldValue oldValue = transaction.transactionEngine.getOldValue(this);
+            ConcurrentHashMap<Object, Object> oldValueCache = map.getOldValueCache();
+            OldValue oldValue = (OldValue) oldValueCache.get(this);
             if (oldValue != null) {
                 if (tid >= oldValue.tid) {
                     if (t != null && rowLock.getOldValue() != null)
@@ -179,18 +182,19 @@ public class TransactionalValue implements ITransactionalValue {
         return rowLock.addWaitingTransaction(key, rowLock.getTransaction(), t.getSession());
     }
 
-    public void commit(boolean isInsert) {
+    public void commit(boolean isInsert, StorageMap<?, ?> map) {
         AOTransaction t = rowLock.getTransaction();
         if (t == null)
             return;
         AOTransactionEngine te = t.transactionEngine;
         if (te.containsRepeatableReadTransactions()) {
+            ConcurrentHashMap<Object, Object> oldValueCache = map.getOldValueCache();
             if (isInsert) {
                 OldValue v = new OldValue(t.commitTimestamp, value);
-                te.addTransactionalValue(this, v);
+                oldValueCache.put(this, v);
             } else {
                 long maxTid = te.getMaxRepeatableReadTransactionId();
-                OldValue old = te.getOldValue(this);
+                OldValue old = (OldValue) oldValueCache.get(this);
                 // 如果现有的版本已经足够给所有的可重复读事务使用了，那就不再加了
                 if (old != null && old.tid > maxTid) {
                     old.useLast = true;
@@ -207,7 +211,7 @@ public class TransactionalValue implements ITransactionalValue {
                 } else {
                     v.next = old;
                 }
-                te.addTransactionalValue(this, v);
+                oldValueCache.put(this, v);
             }
         }
     }

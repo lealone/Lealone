@@ -12,6 +12,7 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
 import org.lealone.storage.StorageBase;
+import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageSetting;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -91,6 +92,8 @@ public class AOStorage extends StorageBase {
                         c.putAll(parameters);
                     map = new BTreeMap<>(name, keyType, valueType, c, this);
                     maps.put(name, map);
+                    for (StorageEventListener listener : listeners.values())
+                        listener.afterStorageMapOpen(map);
                 }
             }
         }

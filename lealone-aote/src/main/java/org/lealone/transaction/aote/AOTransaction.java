@@ -33,6 +33,7 @@ import org.lealone.transaction.aote.log.RedoLogRecord.LazyLocalTransactionRLR;
 import org.lealone.transaction.aote.log.RedoLogRecord.LobSave;
 import org.lealone.transaction.aote.log.RedoLogRecord.LocalTransactionRLR;
 import org.lealone.transaction.aote.log.UndoLog;
+import org.lealone.transaction.aote.tm.TransactionManager;
 
 public class AOTransaction implements Transaction {
 
@@ -52,6 +53,8 @@ public class AOTransaction implements Transaction {
     private Session session;
     private final int isolationLevel;
     private boolean autoCommit;
+
+    private TransactionManager transactionManager;
 
     // 仅用于测试
     private LinkedList<RowLock> locks; // 行锁
@@ -165,7 +168,6 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
@@ -180,11 +182,11 @@ public class AOTransaction implements Transaction {
         if (runMode == RunMode.SHARDING && !parameters.containsKey(StorageSetting.RUN_MODE.name()))
             parameters.put(StorageSetting.RUN_MODE.name(), runMode.name());
 
+        storage.registerEventListener(transactionEngine);
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
             logSyncService.getRedoLog().redo(map);
         }
-        transactionEngine.addStorageMap((StorageMap<Object, TransactionalValue>) map);
         return createTransactionMap(map, parameters);
     }
 
@@ -295,13 +297,13 @@ public class AOTransaction implements Transaction {
     }
 
     protected void commitFinal() {
-        commitFinal(transactionId);
+        commitFinal(transactionId, bitIndex);
     }
 
     // tid在分布式场景下可能是其他事务的tid
-    protected void commitFinal(long tid) {
+    protected void commitFinal(long tid, int bitIndex) {
         // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
-        AOTransaction t = transactionEngine.removeTransaction(tid);
+        AOTransaction t = transactionManager.removeTransaction(tid, bitIndex);
         if (t == null)
             return;
         t.undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
@@ -315,7 +317,7 @@ public class AOTransaction implements Transaction {
         savepoints = null;
         undoLog = null;
         if (remove)
-            transactionEngine.removeTransaction(transactionId);
+            transactionManager.removeTransaction(transactionId, bitIndex);
         unlock();
     }
 
@@ -430,4 +432,19 @@ public class AOTransaction implements Transaction {
     public void setScheduler(Scheduler scheduler) {
         this.scheduler = scheduler;
     }
+
+    public void setTransactionManager(TransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+
+    protected int bitIndex;
+
+    public int getBitIndex() {
+        return bitIndex;
+    }
+
+    public void setBitIndex(int bitIndex) {
+        this.bitIndex = bitIndex;
+    }
+
 }

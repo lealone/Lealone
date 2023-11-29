@@ -11,4 +11,6 @@ public interface StorageEventListener {
 
     // void beforeDrop(Storage storage);
 
+    void afterStorageMapOpen(StorageMap<?, ?> map);
+
 }
