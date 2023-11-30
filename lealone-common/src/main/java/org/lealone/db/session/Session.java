@@ -266,4 +266,6 @@ public interface Session extends Closeable {
     public static interface TimeoutListener {
         void onTimeout(YieldableCommand c, Throwable e);
     }
+
+    void init();
 }

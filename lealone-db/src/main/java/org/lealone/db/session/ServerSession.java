@@ -23,9 +23,11 @@ import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
+import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ManualCloseable;
 import org.lealone.db.Procedure;
@@ -1735,5 +1737,36 @@ public class ServerSession extends SessionBase {
 
     public Result executeQueryLocal(PreparedSQLStatement stmt) {
         return stmt.executeQuery(-1).get();
+    }
+
+    @Override
+    public void init() {
+        ConnectionInfo ci = connectionInfo;
+        if (ci == null)
+            return;
+        String[] keys = ci.getKeys();
+        if (keys.length == 0)
+            return;
+        boolean autoCommit = isAutoCommit();
+        setAutoCommit(false);
+        setAllowLiterals(true);
+        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
+        for (String key : ci.getKeys()) {
+            if (SessionSetting.contains(key) || DbSetting.contains(key)) {
+                try {
+                    String sql = "SET " + getDatabase().quoteIdentifier(key) + " '" + ci.getProperty(key)
+                            + "'";
+                    executeUpdateLocal(sql);
+                } catch (DbException e) {
+                    if (!ignoreUnknownSetting) {
+                        close();
+                        throw e;
+                    }
+                }
+            }
+        }
+        commit();
+        setAutoCommit(autoCommit);
+        setAllowLiterals(false);
     }
 }

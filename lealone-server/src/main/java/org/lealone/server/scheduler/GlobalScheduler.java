@@ -113,10 +113,13 @@ public class GlobalScheduler extends NetScheduler {
 
     private void addSessionInfo(SessionInfo si) {
         sessions.add(si);
+        // 此时可以初始化了
+        si.getSession().init();
     }
 
     private void removeSessionInfo(SessionInfo si) {
-        sessions.remove(si);
+        if (!si.getSession().isClosed())
+            sessions.remove(si);
     }
 
     @Override
@@ -128,7 +131,7 @@ public class GlobalScheduler extends NetScheduler {
 
     @Override
     public void removeSession(Session session) {
-        if (sessions.isEmpty())
+        if (sessions.isEmpty() || session.isClosed())
             return;
         SessionInfo si = sessions.getHead();
         while (si != null) {

@@ -51,8 +51,9 @@ public class LinkableList<E extends Linkable<E>> {
     }
 
     public void remove(E e) {
-        size--;
+        boolean found = false;
         if (head == e) { // 删除头
+            found = true;
             head = e.getNext();
             if (head == null)
                 tail = null;
@@ -61,14 +62,20 @@ public class LinkableList<E extends Linkable<E>> {
             E last = n;
             while (n != null) {
                 if (e == n) {
+                    found = true;
                     last.setNext(n.getNext());
                     break;
                 }
                 last = n;
                 n = n.getNext();
             }
-            if (tail == e) // 删除尾
+            // 删除尾
+            if (tail == e) {
+                found = true;
                 tail = last;
+            }
         }
+        if (found)
+            size--;
     }
 }

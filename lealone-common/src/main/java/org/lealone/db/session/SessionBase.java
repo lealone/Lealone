@@ -237,4 +237,8 @@ public abstract class SessionBase implements Session {
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         return yieldableCommand;
     }
+
+    @Override
+    public void init() {
+    }
 }

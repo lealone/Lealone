@@ -247,4 +247,9 @@ public class DelegatedSession implements Session {
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
         return session.getYieldableCommand(checkTimeout, timeoutListener);
     }
+
+    @Override
+    public void init() {
+        session.init();
+    }
 }

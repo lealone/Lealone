@@ -1037,7 +1037,9 @@ public class Database extends DbObjectBase implements DataHandler {
                 DbException.throwInternalError();
         }
         session.setScheduler(scheduler);
-        scheduler.addSession(session, getId());
+        ConnectionInfo ci = session.getConnectionInfo();
+        if (ci == null || ci.isEmbedded())
+            scheduler.addSession(session, getId());
     }
 
     /**

@@ -7,7 +7,6 @@ package org.lealone.db.session;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Database;
 import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
@@ -68,7 +67,6 @@ public class ServerSessionFactory implements SessionFactory {
         if (session.isInvalid()) { // 无效session，不需要进行后续的操作
             return session;
         }
-        initSession(session, ci);
         return session;
     }
 
@@ -150,32 +148,5 @@ public class ServerSessionFactory implements SessionFactory {
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
         return user;
-    }
-
-    private void initSession(ServerSession session, ConnectionInfo ci) {
-        String[] keys = ci.getKeys();
-        if (keys.length == 0)
-            return;
-        boolean autoCommit = session.isAutoCommit();
-        session.setAutoCommit(false);
-        session.setAllowLiterals(true);
-        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
-        for (String key : ci.getKeys()) {
-            if (SessionSetting.contains(key) || DbSetting.contains(key)) {
-                try {
-                    String sql = "SET " + session.getDatabase().quoteIdentifier(key) + " '"
-                            + ci.getProperty(key) + "'";
-                    session.executeUpdateLocal(sql);
-                } catch (DbException e) {
-                    if (!ignoreUnknownSetting) {
-                        session.close();
-                        throw e;
-                    }
-                }
-            }
-        }
-        session.commit();
-        session.setAutoCommit(autoCommit);
-        session.setAllowLiterals(false);
     }
 }
