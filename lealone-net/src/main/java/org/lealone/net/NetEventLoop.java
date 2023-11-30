@@ -51,8 +51,6 @@ public interface NetEventLoop {
 
     NetClient getNetClient();
 
-    void setAccepter(Accepter accepter);
-
     void handleSelectedKeys();
 
     void closeChannel(SocketChannel channel);
@@ -60,10 +58,6 @@ public interface NetEventLoop {
     void close();
 
     boolean isInLoop();
-
-    interface Accepter {
-        void accept(SelectionKey key);
-    }
 
     boolean isQueueLarge();
 }

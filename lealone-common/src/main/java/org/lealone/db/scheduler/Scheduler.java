@@ -5,6 +5,7 @@
  */
 package org.lealone.db.scheduler;
 
+import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 
@@ -56,6 +57,8 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
     Selector getSelector();
 
     void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
+
+    void accept(SelectionKey key);
 
     void addSessionInitTask(Object task);
 

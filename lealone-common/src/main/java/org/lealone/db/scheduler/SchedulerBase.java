@@ -5,6 +5,7 @@
  */
 package org.lealone.db.scheduler;
 
+import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
@@ -149,6 +150,10 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
+    }
+
+    @Override
+    public void accept(SelectionKey key) {
     }
 
     @Override

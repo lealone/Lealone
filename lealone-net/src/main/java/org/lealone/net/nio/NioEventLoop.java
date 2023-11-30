@@ -60,7 +60,6 @@ class NioEventLoop implements NetEventLoop {
 
     private Selector selector;
     private NetClient netClient;
-    private Accepter accepter;
     private Object owner;
     private Scheduler scheduler;
 
@@ -469,11 +468,6 @@ class NioEventLoop implements NetEventLoop {
         return netClient;
     }
 
-    @Override
-    public void setAccepter(Accepter accepter) {
-        this.accepter = accepter;
-    }
-
     private boolean inLoop;
 
     @Override
@@ -499,7 +493,7 @@ class NioEventLoop implements NetEventLoop {
                         } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                             write(key);
                         } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
-                            accepter.accept(key);
+                            scheduler.accept(key);
                         } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
                             connectionEstablished(key);
                         } else {

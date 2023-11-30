@@ -19,7 +19,6 @@ import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
-import org.lealone.net.NetEventLoop;
 import org.lealone.net.NetScheduler;
 import org.lealone.server.AsyncServer;
 import org.lealone.server.AsyncServerManager;
@@ -30,7 +29,7 @@ import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.transaction.TransactionEngine;
 
-public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accepter {
+public class GlobalScheduler extends NetScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalScheduler.class);
 
@@ -50,7 +49,6 @@ public class GlobalScheduler extends NetScheduler implements NetEventLoop.Accept
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config, true);
-        netEventLoop.setAccepter(this);
     }
 
     @Override
