@@ -17,12 +17,11 @@ import org.lealone.server.ProtocolServer;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
 
-public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, AsyncTaskHandler,
-        TransactionListener, Runnable, PageOperation.ListenerFactory<Object> {
+public interface Scheduler extends SQLStatementExecutor, AsyncTaskHandler, TransactionListener, Runnable,
+        PageOperation.ListenerFactory<Object> {
 
     int getId();
 
@@ -68,9 +67,6 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     void validateSession(boolean isUserAndPasswordCorrect);
 
-    @Override
-    void wakeUp();
-
     void addPendingTransaction(PendingTransaction pt);
 
     PendingTransaction getPendingTransaction();
@@ -83,4 +79,16 @@ public interface Scheduler extends PageOperationHandler, SQLStatementExecutor, A
 
     FileStorage getFsyncingFileStorage();
 
+    void handlePageOperation(PageOperation po);
+
+    void addWaitingScheduler(Scheduler scheduler);
+
+    void wakeUpWaitingSchedulers();
+
+    @Override
+    void wakeUp();
+
+    Session getCurrentSession();
+
+    void setCurrentSession(Session currentSession);
 }

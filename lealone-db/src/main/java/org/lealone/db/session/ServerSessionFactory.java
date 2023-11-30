@@ -15,12 +15,11 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
-import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.scheduler.EmbeddedScheduler;
 import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerLock;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetNode;
-import org.lealone.transaction.TransactionListener;
 
 /**
  * This class is responsible for creating new sessions.
@@ -108,24 +107,18 @@ public class ServerSessionFactory implements SessionFactory {
 
     // 只能有一个线程初始化数据库
     private boolean initDatabase(Database database, ConnectionInfo ci) {
-        ServerSession session = new ServerSession(database, null, 0);
-        TransactionListener tl = SchedulerThread.currentTransactionListener();
-        session.setTransactionListener(tl);
-        DbObjectLock lock = database.tryExclusiveDatabaseLock(session);
-        if (lock != null) {
+        SchedulerLock schedulerLock = database.getSchedulerLock();
+        if (schedulerLock.tryLock(SchedulerThread.currentScheduler())) {
             try {
                 // sharding模式下访问remote page时会用到
                 database.setLastConnectionInfo(ci);
                 database.init();
             } finally {
-                session.commit();
+                schedulerLock.unlock();
             }
             return true;
-        } else {
-            // 仅仅是从事务引擎中删除事务
-            session.getTransaction().rollback();
-            return false;
         }
+        return false;
     }
 
     private User validateUser(Database database, ConnectionInfo ci) {

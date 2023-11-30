@@ -9,6 +9,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.Session;
 
 public interface PageOperation {
@@ -19,11 +20,11 @@ public interface PageOperation {
         LOCKED;
     }
 
-    default PageOperationResult run(PageOperationHandler currentHandler) {
-        return run(currentHandler, true);
+    default PageOperationResult run(Scheduler scheduler) {
+        return run(scheduler, true);
     }
 
-    default PageOperationResult run(PageOperationHandler currentHandler, boolean waitingIfLocked) {
+    default PageOperationResult run(Scheduler scheduler, boolean waitingIfLocked) {
         return PageOperationResult.SUCCEEDED;
     }
 

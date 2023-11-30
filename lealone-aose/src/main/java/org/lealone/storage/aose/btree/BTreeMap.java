@@ -15,6 +15,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DbSetting;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
@@ -40,7 +41,6 @@ import org.lealone.storage.aose.btree.page.PrettyPagePrinter;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngine;
 
@@ -652,18 +652,17 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private <R> R runPageOperation(Session session, WriteOperation<?, ?, R> po) {
-        PageOperationHandler poHandler;
-        // 启动阶段session不为null，但scheduler为null
+        Scheduler scheduler;
         if (session != null && session.getScheduler() != null) {
             po.setSession(session);
-            poHandler = session.getScheduler();
+            scheduler = session.getScheduler();
         } else {
-            poHandler = SchedulerThread.currentScheduler(schedulerFactory);
+            scheduler = SchedulerThread.currentScheduler(schedulerFactory);
         }
         // 第一步: 先快速试3次，如果不成功再转到第二步
         int maxRetryCount = 3;
         while (true) {
-            PageOperationResult result = po.run(poHandler, maxRetryCount == 1);
+            PageOperationResult result = po.run(scheduler, maxRetryCount == 1);
             if (result == PageOperationResult.SUCCEEDED)
                 return po.getResult();
             else if (result == PageOperationResult.LOCKED) {
@@ -677,17 +676,17 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         // 第二步:
         // 其他PageOperationHandler占用了锁时，当前PageOperationHandler把PageOperation放到自己的等待队列。
         // 如果当前线程(也就是PageOperationHandler)执行的是异步调用那就直接返回，否则需要等待。
-        return handlePageOperation(poHandler, po);
+        return handlePageOperation(scheduler, po);
     }
 
-    private <R> R handlePageOperation(PageOperationHandler poHandler, WriteOperation<?, ?, R> po) {
+    private <R> R handlePageOperation(Scheduler scheduler, WriteOperation<?, ?, R> po) {
         if (po.getResultHandler() == null) { // 同步
             PageOperation.Listener<R> listener = getPageOperationListener();
             po.setResultHandler(listener);
-            poHandler.handlePageOperation(po);
+            scheduler.handlePageOperation(po);
             return listener.await();
         } else { // 异步
-            poHandler.handlePageOperation(po);
+            scheduler.handlePageOperation(po);
             return null;
         }
     }

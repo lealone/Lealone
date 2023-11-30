@@ -77,7 +77,7 @@ public class EmbeddedScheduler extends SchedulerBase {
         awaiter.doAwait(loopInterval);
     }
 
-    // --------------------- 实现 PageOperationHandler 接口 ---------------------
+    // --------------------- 实现 PageOperation 相关代码 ---------------------
 
     // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
     // 外部线程和调度线程会并发访问这个队列

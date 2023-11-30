@@ -9,21 +9,19 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerLock;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.storage.aose.btree.BTreeStorage;
 import org.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
 import org.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 
 public class PageReference {
 
-    private static final AtomicReferenceFieldUpdater<PageReference, PageOperationHandler> //
-    lockUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, //
-            PageOperationHandler.class, "lockOwner");
-    private volatile PageOperationHandler lockOwner;
+    private final SchedulerLock schedulerLock = new SchedulerLock();
 
     private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
 
@@ -45,35 +43,16 @@ public class PageReference {
         return parentRef;
     }
 
-    public boolean tryLock(PageOperationHandler newLockOwner, boolean waitingIfLocked) {
-        // 前面的操作被锁住了就算lockOwner相同后续的也不能再继续
-        if (newLockOwner == lockOwner)
-            return false;
-        while (true) {
-            if (lockUpdater.compareAndSet(this, null, newLockOwner))
-                return true;
-            PageOperationHandler owner = lockOwner;
-            if (waitingIfLocked && owner != null) {
-                owner.addWaitingHandler(newLockOwner);
-            }
-            // 解锁了，或者又被其他线程锁住了
-            if (lockOwner == null || (waitingIfLocked && lockOwner != owner))
-                continue;
-            else
-                return false;
-        }
+    public boolean tryLock(Scheduler newLockOwner, boolean waitingIfLocked) {
+        return schedulerLock.tryLock(newLockOwner, waitingIfLocked);
     }
 
     public void unlock() {
-        if (lockOwner != null) {
-            PageOperationHandler owner = lockOwner;
-            lockOwner = null;
-            owner.wakeUpWaitingHandlers();
-        }
+        schedulerLock.unlock();
     }
 
     public boolean isLocked() {
-        return lockOwner != null;
+        return schedulerLock.isLocked();
     }
 
     public boolean isRoot() {
@@ -143,17 +122,16 @@ public class PageReference {
         if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
-        PageOperationHandler poHandler = SchedulerThread.currentScheduler(bs.getSchedulerFactory());
-        boolean ok = lockOwner != poHandler && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
+        Scheduler scheduler = SchedulerThread.currentScheduler(bs.getSchedulerFactory());
+        boolean ok = schedulerLock.getLockOwner() != scheduler && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
         if (ok) {
-            if (poHandler != null) {
-                Session s = poHandler.getCurrentSession();
+            if (scheduler != null) {
+                Session s = scheduler.getCurrentSession();
                 if (s != null) {
                     s.addPageReference(this);
                 } else {
                     if (Page.ASSERT) {
-                        if (poHandler.isScheduler())
-                            DbException.throwInternalError();
+                        DbException.throwInternalError();
                     }
                 }
             }
@@ -394,10 +372,10 @@ public class PageReference {
     }
 
     public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
-            PageReference ref, Page newPage, PageOperationHandler poHandler) {
+            PageReference ref, Page newPage, Scheduler scheduler) {
         PageReference lRef = tmpNodePage.left;
         PageReference rRef = tmpNodePage.right;
-        Session session = poHandler.getCurrentSession();
+        Session session = scheduler.getCurrentSession();
         TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
         while (true) {
             // 先取出旧值再进行addPageReference，否则会有并发问题

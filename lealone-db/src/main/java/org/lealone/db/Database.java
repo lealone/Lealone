@@ -45,6 +45,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.scheduler.Scheduler;
+import org.lealone.db.scheduler.SchedulerLock;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
@@ -135,6 +136,12 @@ public class Database extends DbObjectBase implements DataHandler {
 
     private DbObjectLock tryExclusiveLock(ServerSession session, DbObjectLock lock) {
         return lock.tryExclusiveLock(session) ? lock : null;
+    }
+
+    private final SchedulerLock schedulerLock = new SchedulerLock();
+
+    public SchedulerLock getSchedulerLock() {
+        return schedulerLock;
     }
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());

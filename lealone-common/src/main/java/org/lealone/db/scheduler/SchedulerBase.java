@@ -26,7 +26,6 @@ import org.lealone.server.ProtocolServer;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
-import org.lealone.storage.page.PageOperationHandler;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
 
@@ -42,9 +41,8 @@ public abstract class SchedulerBase implements Scheduler {
     protected SchedulerThread thread;
     protected SchedulerFactory schedulerFactory;
 
-    // --------------------- 以下字段用于实现 PageOperationHandler 接口 ---------------------
-    protected final AtomicReferenceArray<PageOperationHandler> waitingHandlers;
-    protected final AtomicBoolean hasWaitingHandlers = new AtomicBoolean(false);
+    protected final AtomicReferenceArray<Scheduler> waitingSchedulers;
+    protected final AtomicBoolean hasWaitingSchedulers = new AtomicBoolean(false);
     protected Session currentSession;
 
     public SchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
@@ -53,7 +51,7 @@ public abstract class SchedulerBase implements Scheduler {
         // 默认100毫秒
         loopInterval = MapUtils.getLong(config, "scheduler_loop_interval", 100);
 
-        waitingHandlers = new AtomicReferenceArray<>(schedulerCount);
+        waitingSchedulers = new AtomicReferenceArray<>(schedulerCount);
 
         thread = new SchedulerThread(this);
         thread.setName(name);
@@ -231,12 +229,12 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public void addWaitingTransactionListener(TransactionListener listener) {
-        addWaitingHandler((PageOperationHandler) listener);
+        addWaitingScheduler((Scheduler) listener);
     }
 
     @Override
     public void wakeUpWaitingTransactionListeners() {
-        wakeUpWaitingHandlers();
+        wakeUpWaitingSchedulers();
     }
 
     protected void runEventLoop() {
@@ -293,34 +291,29 @@ public abstract class SchedulerBase implements Scheduler {
         };
     }
 
-    // --------------------- 实现 PageOperationHandler 接口 ---------------------
-
-    @Override
-    public int getHandlerId() {
-        return id;
-    }
+    // --------------------- 实现 PageOperation 相关代码 ---------------------
 
     @Override
     public void handlePageOperation(PageOperation po) {
     }
 
     @Override
-    public void addWaitingHandler(PageOperationHandler handler) {
-        int id = handler.getHandlerId();
+    public void addWaitingScheduler(Scheduler scheduler) {
+        int id = scheduler.getId();
         if (id >= 0) {
-            waitingHandlers.set(id, handler);
-            hasWaitingHandlers.set(true);
+            waitingSchedulers.set(id, scheduler);
+            hasWaitingSchedulers.set(true);
         }
     }
 
     @Override
-    public void wakeUpWaitingHandlers() {
-        if (hasWaitingHandlers.compareAndSet(true, false)) {
-            for (int i = 0, length = waitingHandlers.length(); i < length; i++) {
-                PageOperationHandler handler = waitingHandlers.get(i);
-                if (handler != null) {
-                    handler.wakeUp();
-                    waitingHandlers.compareAndSet(i, handler, null);
+    public void wakeUpWaitingSchedulers() {
+        if (hasWaitingSchedulers.compareAndSet(true, false)) {
+            for (int i = 0, length = waitingSchedulers.length(); i < length; i++) {
+                Scheduler scheduler = waitingSchedulers.get(i);
+                if (scheduler != null) {
+                    scheduler.wakeUp();
+                    waitingSchedulers.compareAndSet(i, scheduler, null);
                 }
             }
         }
@@ -334,11 +327,6 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public void setCurrentSession(Session currentSession) {
         this.currentSession = currentSession;
-    }
-
-    @Override
-    public boolean isScheduler() {
-        return true;
     }
 
     // --------------------- 跟 PendingTransaction 相关 ---------------------
