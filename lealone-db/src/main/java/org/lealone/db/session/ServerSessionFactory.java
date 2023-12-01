@@ -1,7 +1,7 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.db.session;
 
@@ -21,23 +21,7 @@ import org.lealone.db.scheduler.SchedulerLock;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.net.NetNode;
 
-/**
- * This class is responsible for creating new sessions.
- * This is a singleton class.
- * 
- * @author H2 Group
- * @author zhh
- */
-public class ServerSessionFactory implements SessionFactory {
-
-    private static final ServerSessionFactory instance = new ServerSessionFactory();
-
-    public static ServerSessionFactory getInstance() {
-        return instance;
-    }
-
-    private ServerSessionFactory() {
-    }
+public class ServerSessionFactory extends SessionFactoryBase {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
@@ -59,17 +43,6 @@ public class ServerSessionFactory implements SessionFactory {
         if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
-        ServerSession session = createServerSession(dbName, ci);
-        if (session == null) {
-            return null;
-        }
-        if (session.isInvalid()) { // 无效session，不需要进行后续的操作
-            return session;
-        }
-        return session;
-    }
-
-    private ServerSession createServerSession(String dbName, ConnectionInfo ci) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         String targetNodes;
         if (ci.isEmbedded()) {
@@ -137,7 +110,6 @@ public class ServerSessionFactory implements SessionFactory {
             }
         }
         if (user == null) {
-            database.removeSession(null);
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
         return user;

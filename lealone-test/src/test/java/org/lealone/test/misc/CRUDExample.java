@@ -18,6 +18,9 @@ public class CRUDExample {
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
         // test.setNetFactoryName(BioNetFactory.NAME);
+        // test.addConnectionParameter(ConnectionSetting.SESSION_FACTORY_NAME,
+        // ClientSessionFactory.class.getSimpleName());
+
         Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }

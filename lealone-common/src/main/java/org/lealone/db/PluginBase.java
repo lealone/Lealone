@@ -15,6 +15,9 @@ public abstract class PluginBase implements Plugin {
     protected Map<String, String> config;
     protected State state = State.NONE;
 
+    public PluginBase() {
+    }
+
     public PluginBase(String name) {
         this.name = name;
     }

@@ -1,27 +1,16 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.db.session;
 
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Plugin;
 import org.lealone.db.async.Future;
 
-/**
- * A class that implements this interface can create new database sessions.
- * 
- * @author H2 Group
- * @author zhh
- */
-public interface SessionFactory {
+public interface SessionFactory extends Plugin {
 
-    /**
-     * Create a new session.
-     *
-     * @param ci the connection parameters
-     * @return the new session
-     */
     default Future<Session> createSession(ConnectionInfo ci) {
         return createSession(ci, true);
     }

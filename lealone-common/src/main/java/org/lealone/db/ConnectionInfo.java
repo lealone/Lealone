@@ -77,6 +77,7 @@ public class ConnectionInfo implements Cloneable {
     private String servers;
 
     private SessionFactory sessionFactory;
+    private String sessionFactoryName;
 
     private Boolean persistent; // 首次调用isPersistent()时才初始化
 
@@ -141,6 +142,8 @@ public class ConnectionInfo implements Cloneable {
                 Constants.DEFAULT_NET_FACTORY_NAME);
         networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT,
                 Constants.DEFAULT_NETWORK_TIMEOUT);
+
+        sessionFactoryName = removeProperty(ConnectionSetting.SESSION_FACTORY_NAME, null);
         initTraceProperty();
         if (isEmbedded()) {
             System.setProperty("lealone.embedded", "true");
@@ -654,19 +657,17 @@ public class ConnectionInfo implements Cloneable {
 
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
-            try {
-                String className;
-                // 要使用反射，避免编译期依赖
-                if (remote) {
-                    className = "org.lealone.client.session.ClientSessionFactory";
-                } else {
-                    className = "org.lealone.db.session.ServerSessionFactory";
-                }
-                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance")
-                        .invoke(null);
-            } catch (Exception e) {
-                throw DbException.convert(e);
+            String sfName;
+            if (sessionFactoryName != null)
+                sfName = sessionFactoryName;
+            else if (remote) {
+                sfName = "ClientSessionFactory";
+            } else {
+                sfName = "ServerSessionFactory";
             }
+            sessionFactory = PluginManager.getPlugin(SessionFactory.class, sfName);
+            if (sessionFactory == null)
+                throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, sfName);
         }
         return sessionFactory;
     }
@@ -718,6 +719,7 @@ public class ConnectionInfo implements Cloneable {
         ci.embedded = embedded;
         ci.servers = newServer;
         ci.sessionFactory = sessionFactory;
+        ci.sessionFactoryName = sessionFactoryName;
         ci.persistent = persistent;
         ci.netFactoryName = netFactoryName;
         ci.networkTimeout = networkTimeout;

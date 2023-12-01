@@ -9,7 +9,6 @@ import org.junit.Test;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.session.ServerSessionFactory;
 
 public class ServerSessionFactoryTest extends DbTestBase {
     @Test
@@ -20,7 +19,7 @@ public class ServerSessionFactoryTest extends DbTestBase {
         ConnectionInfo ci;
         try {
             ci = new ConnectionInfo(getURL("NOT_FOUND"));
-            ServerSessionFactory.getInstance().createSession(ci).get();
+            getServerSessionFactory().createSession(ci).get();
             fail();
         } catch (DbException e) {
             assertEquals(ErrorCode.DATABASE_NOT_FOUND_1, e.getErrorCode());

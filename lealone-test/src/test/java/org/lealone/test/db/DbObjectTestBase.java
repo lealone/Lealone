@@ -19,7 +19,6 @@ import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.ServerSessionFactory;
 import org.lealone.db.table.Table;
 
 public class DbObjectTestBase extends DbTestBase {
@@ -55,7 +54,7 @@ public class DbObjectTestBase extends DbTestBase {
 
     public ServerSession createSession() {
         ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
-        return (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
+        return (ServerSession) getServerSessionFactory().createSession(ci).get();
     }
 
     public int executeUpdate() {

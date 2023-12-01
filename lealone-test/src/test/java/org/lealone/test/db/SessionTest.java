@@ -7,7 +7,6 @@ package org.lealone.test.db;
 
 import org.junit.Test;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.ServerSessionFactory;
 import org.lealone.sql.PreparedSQLStatement;
 
 public class SessionTest extends DbTestBase {
@@ -17,8 +16,7 @@ public class SessionTest extends DbTestBase {
         setEmbedded(true);
 
         String url = getURL();
-        ServerSession session = (ServerSession) ServerSessionFactory.getInstance().createSession(url)
-                .get();
+        ServerSession session = (ServerSession) getServerSessionFactory().createSession(url).get();
 
         String sql = "CREATE TABLE IF NOT EXISTS SessionTest(f1 int, f2 int)";
         int fetchSize = 0;

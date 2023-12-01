@@ -18,7 +18,7 @@ import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.Session;
-import org.lealone.db.session.SessionFactory;
+import org.lealone.db.session.SessionFactoryBase;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetClient;
 import org.lealone.net.NetEventLoop;
@@ -30,16 +30,7 @@ import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
 
-public class ClientSessionFactory implements SessionFactory {
-
-    private static final ClientSessionFactory instance = new ClientSessionFactory();
-
-    public static ClientSessionFactory getInstance() {
-        return instance;
-    }
-
-    private ClientSessionFactory() {
-    }
+public class ClientSessionFactory extends SessionFactoryBase {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {

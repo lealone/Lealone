@@ -1338,15 +1338,9 @@ public class ServerSession extends SessionBase {
         return yieldableCommand == null;
     }
 
-    private TransactionListener transactionListener;
-
     @Override
     public TransactionListener getTransactionListener() {
-        return transactionListener;
-    }
-
-    public void setTransactionListener(TransactionListener transactionListener) {
-        this.transactionListener = transactionListener;
+        return getScheduler();
     }
 
     private void reset(SessionStatus sessionStatus) {

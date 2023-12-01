@@ -38,8 +38,7 @@ class AutoReconnectSession extends DelegatedSession {
     private void reconnect() {
         Session oldSession = this.session;
         this.ci = this.ci.copy(newTargetNodes);
-
-        ClientSessionFactory.getInstance().createSession(ci).onSuccess(s -> {
+        ci.getSessionFactory().createSession(ci).onSuccess(s -> {
             AutoReconnectSession a = (AutoReconnectSession) s;
             session = a.session;
             oldSession.close();
