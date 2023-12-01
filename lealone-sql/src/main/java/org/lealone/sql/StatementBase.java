@@ -68,8 +68,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private boolean canReuse;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
-    private SQLStatementExecutor executor;
-
     /**
      * Create a new object.
      *
@@ -392,8 +390,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
             setProgress();
-            if (yieldEnabled && executor != null)
-                return executor.yieldIfNeeded(this);
+            if (yieldEnabled && session.getScheduler() != null)
+                return session.getScheduler().yieldIfNeeded(this);
         }
         return false;
     }
@@ -404,11 +402,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private void setProgress() {
         session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
                 currentRowNumber, 0);
-    }
-
-    @Override
-    public void setExecutor(SQLStatementExecutor executor) {
-        this.executor = executor;
     }
 
     /**
@@ -515,8 +508,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         while (!yieldable.isStopped()) {
             yieldable.run();
             // 如果在存储引擎层面没有顺利结束，需要执行其他语句
-            if (executor != null && !yieldable.isStopped())
-                executor.executeNextStatement();
+            if (session.getScheduler() != null && !yieldable.isStopped())
+                session.getScheduler().executeNextStatement();
             while (session.getStatus() == SessionStatus.WAITING) {
                 try {
                     Thread.sleep(100);

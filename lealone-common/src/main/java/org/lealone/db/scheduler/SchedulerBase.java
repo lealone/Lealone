@@ -365,7 +365,7 @@ public abstract class SchedulerBase implements Scheduler {
         return pendingTransactions.getHead();
     }
 
-    // --------------------- 实现 SQLStatementExecutor 接口 ---------------------
+    // --------------------- 实现 SQLStatement 相关的代码 ---------------------
 
     @Override
     public void executeNextStatement() {

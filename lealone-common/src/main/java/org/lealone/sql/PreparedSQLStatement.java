@@ -31,8 +31,6 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
     void setObjectId(int objectId);
 
-    void setExecutor(SQLStatementExecutor executor);
-
     boolean canReuse();
 
     void reuse();
@@ -86,8 +84,6 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         Session getSession();
 
         PreparedSQLStatement getStatement();
-
-        void setExecutor(SQLStatementExecutor executor);
 
     }
 

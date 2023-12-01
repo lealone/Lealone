@@ -77,7 +77,6 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
     }
 
     public void submitYieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable) {
-        yieldable.setExecutor(scheduler);
         YieldableCommand yieldableCommand = new YieldableCommand(packetId, yieldable, sessionId);
         session.setYieldableCommand(yieldableCommand);
         // 执行此方法的当前线程就是scheduler，所以不用唤醒scheduler

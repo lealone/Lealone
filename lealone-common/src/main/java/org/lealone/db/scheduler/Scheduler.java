@@ -14,14 +14,14 @@ import org.lealone.db.DataBufferFactory;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.server.ProtocolServer;
-import org.lealone.sql.SQLStatementExecutor;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.transaction.PendingTransaction;
 import org.lealone.transaction.TransactionListener;
 
-public interface Scheduler extends SQLStatementExecutor, AsyncTaskHandler, TransactionListener, Runnable,
-        PageOperation.ListenerFactory<Object> {
+public interface Scheduler
+        extends AsyncTaskHandler, TransactionListener, Runnable, PageOperation.ListenerFactory<Object> {
 
     int getId();
 
@@ -85,10 +85,14 @@ public interface Scheduler extends SQLStatementExecutor, AsyncTaskHandler, Trans
 
     void wakeUpWaitingSchedulers();
 
-    @Override
-    void wakeUp();
-
     Session getCurrentSession();
 
     void setCurrentSession(Session currentSession);
+
+    void executeNextStatement();
+
+    boolean yieldIfNeeded(PreparedSQLStatement current);
+
+    @Override
+    void wakeUp();
 }

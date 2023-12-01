@@ -184,7 +184,6 @@ public class MySQLServerConnection extends AsyncServerConnection {
             logger.debug("prepare statement: " + sql);
         try {
             PreparedSQLStatement stmt = session.prepareStatement(sql, -1);
-            stmt.setExecutor(scheduler);
             if (cache) {
                 int statementId = ++nextStatementId;
                 stmt.setId(statementId);

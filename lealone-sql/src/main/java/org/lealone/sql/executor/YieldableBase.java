@@ -23,7 +23,6 @@ import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
-import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
 
@@ -93,11 +92,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     @Override
     public PreparedSQLStatement getStatement() {
         return statement;
-    }
-
-    @Override
-    public void setExecutor(SQLStatementExecutor executor) {
-        statement.setExecutor(executor);
     }
 
     @Override
