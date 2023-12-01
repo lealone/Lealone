@@ -11,14 +11,12 @@ import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.RunMode;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
@@ -27,7 +25,6 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.transaction.PendingTransaction;
-import org.lealone.transaction.TransactionListener;
 
 public abstract class SchedulerBase implements Scheduler {
 
@@ -170,71 +167,32 @@ public abstract class SchedulerBase implements Scheduler {
     public void validateSession(boolean isUserAndPasswordCorrect) {
     }
 
-    // --------------------- 实现 TransactionListener 接口，用同步方式执行 ---------------------
-
-    protected AtomicInteger syncCounter;
-    protected RuntimeException syncException;
-    protected boolean needWakeUp = true;
+    // --------------------- 实现 SchedulerListener.Factory 接口 ---------------------
 
     @Override
-    public void beforeOperation() {
-        syncException = null;
-        syncCounter = new AtomicInteger(1);
-    }
+    public <R> SchedulerListener<R> createSchedulerListener() {
+        return new SchedulerListener<R>() {
+            @Override
+            public R await() {
+                for (;;) {
+                    if (result != null || exception != null)
+                        break;
+                    runMiscTasks();
+                    runPageOperationTasks();
+                    if (result != null || exception != null)
+                        break;
+                    runEventLoop();
+                }
+                if (exception != null)
+                    throw exception;
+                return result;
+            }
 
-    @Override
-    public void operationUndo() {
-        syncCounter.decrementAndGet();
-        if (needWakeUp)
-            wakeUp();
-    }
-
-    @Override
-    public void operationComplete() {
-        syncCounter.decrementAndGet();
-        if (needWakeUp)
-            wakeUp();
-    }
-
-    @Override
-    public void setException(RuntimeException e) {
-        syncException = e;
-    }
-
-    @Override
-    public RuntimeException getException() {
-        return syncException;
-    }
-
-    @Override
-    public void await() {
-        for (;;) {
-            if (syncCounter.get() < 1)
-                break;
-            runMiscTasks();
-            runPageOperationTasks();
-            if (syncCounter.get() < 1)
-                break;
-            runEventLoop();
-        }
-        needWakeUp = true;
-        if (syncException != null)
-            throw syncException;
-    }
-
-    @Override
-    public void setNeedWakeUp(boolean needWakeUp) {
-        this.needWakeUp = needWakeUp;
-    }
-
-    @Override
-    public void addWaitingTransactionListener(TransactionListener listener) {
-        addWaitingScheduler((Scheduler) listener);
-    }
-
-    @Override
-    public void wakeUpWaitingTransactionListeners() {
-        wakeUpWaitingSchedulers();
+            @Override
+            public void wakeUp() {
+                SchedulerBase.this.wakeUp();
+            }
+        };
     }
 
     protected void runEventLoop() {
@@ -258,37 +216,6 @@ public abstract class SchedulerBase implements Scheduler {
                 task = miscTasks.poll();
             }
         }
-    }
-
-    // --------------------- 实现 PageOperation.ListenerFactory 接口 ---------------------
-
-    @Override
-    public PageOperation.Listener<Object> createListener() {
-        return new PageOperation.Listener<Object>() {
-
-            private Object result;
-
-            @Override
-            public void startListen() {
-                beforeOperation();
-            }
-
-            @Override
-            public void handle(AsyncResult<Object> ar) {
-                if (ar.isSucceeded()) {
-                    result = ar.getResult();
-                } else {
-                    setException(ar.getCause());
-                }
-                operationComplete();
-            }
-
-            @Override
-            public Object await() {
-                SchedulerBase.this.await();
-                return result;
-            }
-        };
     }
 
     // --------------------- 实现 PageOperation 相关代码 ---------------------

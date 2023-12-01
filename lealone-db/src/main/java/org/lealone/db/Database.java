@@ -1666,7 +1666,7 @@ public class Database extends DbObjectBase implements DataHandler {
         if (session == null && waitingSessions != null) {
             for (ServerSession s : waitingSessions) {
                 s.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
-                s.getTransactionListener().wakeUp();
+                s.getScheduler().wakeUp();
             }
             waitingSessions = null;
         }

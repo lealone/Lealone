@@ -43,6 +43,7 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.lock.Lock;
 import org.lealone.db.result.Result;
+import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
@@ -65,7 +66,6 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.storage.lob.LobStorage;
 import org.lealone.storage.page.IPage;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionListener;
 
 /**
  * A session represents an embedded database connection. When using the server
@@ -626,7 +626,7 @@ public class ServerSession extends SessionBase {
         containsDDL = false;
         containsDatabaseStatement = false;
         isForUpdate = false;
-        wakeUpWaitingTransactionListeners();
+        wakeUpWaitingSchedulers();
         transactionStart = 0;
         transaction = null;
     }
@@ -1338,11 +1338,6 @@ public class ServerSession extends SessionBase {
         return yieldableCommand == null;
     }
 
-    @Override
-    public TransactionListener getTransactionListener() {
-        return getScheduler();
-    }
-
     private void reset(SessionStatus sessionStatus) {
         this.sessionStatus = sessionStatus;
         reset();
@@ -1574,15 +1569,15 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public void addWaitingTransactionListener(TransactionListener listener) {
-        if (getTransactionListener() != null)
-            getTransactionListener().addWaitingTransactionListener(listener);
+    public void addWaitingScheduler(Scheduler scheduler) {
+        if (getScheduler() != null)
+            getScheduler().addWaitingScheduler(scheduler);
     }
 
     @Override
-    public void wakeUpWaitingTransactionListeners() {
-        if (getTransactionListener() != null)
-            getTransactionListener().wakeUpWaitingTransactionListeners();
+    public void wakeUpWaitingSchedulers() {
+        if (getScheduler() != null)
+            getScheduler().wakeUpWaitingSchedulers();
     }
 
     public void clearQueryCache() {

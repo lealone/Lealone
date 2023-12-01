@@ -18,10 +18,8 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.transaction.PendingTransaction;
-import org.lealone.transaction.TransactionListener;
 
-public interface Scheduler
-        extends AsyncTaskHandler, TransactionListener, Runnable, PageOperation.ListenerFactory<Object> {
+public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener.Factory {
 
     int getId();
 
@@ -93,6 +91,5 @@ public interface Scheduler
 
     boolean yieldIfNeeded(PreparedSQLStatement current);
 
-    @Override
     void wakeUp();
 }

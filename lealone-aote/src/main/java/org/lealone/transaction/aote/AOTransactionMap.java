@@ -5,15 +5,12 @@
  */
 package org.lealone.transaction.aote;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
+import org.lealone.db.scheduler.SchedulerListener;
 import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
 import org.lealone.storage.Storage;
@@ -23,7 +20,6 @@ import org.lealone.storage.page.IPage;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.TransactionListener;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.TransactionMapCursor;
 import org.lealone.transaction.aote.log.UndoLog;
@@ -433,14 +429,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
-
-        int ret = tv.tryLock(transaction);
-        if (ret == 0) {
-            // 就算调用此方法的过程中解锁了也不能直接调用tryLock重试，需要返回到上层，然后由上层决定如何重试
-            // 因为更新或删除或select for update可能是带有条件的，根据修改后的新记录判断才能决定是否重试
-            addWaitingTransaction(key, tv);
-        }
-        return ret;
+        return tv.tryLock(transaction);
     }
 
     @Override
@@ -480,7 +469,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private V put0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         DataUtils.checkNotNull(value, "value");
-        return setSync(session, key, value, handler);
+        return writeOperation(session, key, value, handler);
     }
 
     @Override
@@ -502,7 +491,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         V v = get(key);
         if (v == null) {
             DataUtils.checkNotNull(value, "value");
-            v = setSync(session, key, value, handler);
+            v = writeOperation(session, key, value, handler);
         }
         return v;
     }
@@ -528,7 +517,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         V old = get(key);
         if (areValuesEqual(old, oldValue)) {
             DataUtils.checkNotNull(newValue, "value");
-            setSync(session, key, newValue, ar -> {
+            writeOperation(session, key, newValue, ar -> {
                 if (ar.isSucceeded())
                     handler.handle(new AsyncResult<>(true));
                 else
@@ -596,66 +585,36 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     private V remove0(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
-        return setSync(session, key, null, handler);
+        return writeOperation(session, key, null, handler);
     }
 
-    private V setSync(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    private V writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         TransactionalValue oldTValue = map.get(key);
         // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
         V retValue = getUnwrapValue(key, oldTValue);
 
         if (handler != null) {
-            // insert
-            if (oldTValue == null) {
-                addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))
-                        .onFailure(t -> handler.handle(new AsyncResult<>(t)));
-            } else {
-                if (tryUpdateOrRemove(key, value, null, oldTValue,
-                        false) == Transaction.OPERATION_COMPLETE)
-                    handler.handle(new AsyncResult<>(retValue));
-                else
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
-                            "Entry is locked");
-            }
+            writeOperation(session, key, value, handler, oldTValue, retValue);
             return retValue;
         } else {
-            CountDownLatch latch = new CountDownLatch(1);
-            AtomicBoolean result = new AtomicBoolean();
-            TransactionListener listener = new TransactionListener() {
-                @Override
-                public void operationUndo() {
-                    result.set(false);
-                    latch.countDown();
-                }
+            SchedulerListener<V> listener = SchedulerListener.createSchedulerListener();
+            writeOperation(session, key, value, listener, oldTValue, retValue);
+            return listener.await();
+        }
+    }
 
-                @Override
-                public void operationComplete() {
-                    result.set(true);
-                    latch.countDown();
-                }
-            };
-
-            // insert
-            if (oldTValue == null) {
-                addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
-                        .onFailure(t -> listener.operationUndo());
-            } else {
-                if (tryUpdateOrRemove(key, value, null, oldTValue,
-                        false) == Transaction.OPERATION_COMPLETE)
-                    listener.operationComplete();
-                else
-                    listener.operationUndo();
-            }
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                DbException.convert(e);
-            }
-            if (result.get()) {
-                return retValue;
-            }
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
-                    "Entry is locked");
+    private void writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler,
+            TransactionalValue oldTValue, V retValue) {
+        // insert
+        if (oldTValue == null) {
+            addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))
+                    .onFailure(t -> handler.handle(new AsyncResult<>(t)));
+        } else {
+            if (tryUpdateOrRemove(key, value, null, oldTValue, false) == Transaction.OPERATION_COMPLETE)
+                handler.handle(new AsyncResult<>(retValue));
+            else
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
+                        "Entry is locked");
         }
     }
 }

@@ -24,7 +24,6 @@ import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.page.IPage;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionListener;
 
 /**
  * A client or server session. A session represents a database connection.
@@ -200,17 +199,13 @@ public interface Session extends Closeable {
         return null;
     }
 
-    default TransactionListener getTransactionListener() {
-        return null;
-    }
-
     default void addLock(Object lock) {
     }
 
-    default void addWaitingTransactionListener(TransactionListener listener) {
+    default void addWaitingScheduler(Scheduler scheduler) {
     }
 
-    default void wakeUpWaitingTransactionListeners() {
+    default void wakeUpWaitingSchedulers() {
     }
 
     default boolean compareAndSet(SessionStatus expect, SessionStatus update) {

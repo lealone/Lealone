@@ -337,7 +337,7 @@ public class AOTransaction implements Transaction {
             session.setLockedBy(SessionStatus.WAITING, this, key);
         }
 
-        this.session.addWaitingTransactionListener(session.getTransactionListener());
+        this.session.addWaitingScheduler(session.getScheduler());
 
         // 如果已经提交了，要恢复到原来的状态，通知重试
         if (isClosed() || isWaiting()) {

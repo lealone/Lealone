@@ -17,6 +17,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
+import org.lealone.db.scheduler.SchedulerListener;
 import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.db.session.Session;
 import org.lealone.storage.CursorParameters;
@@ -39,7 +40,6 @@ import org.lealone.storage.aose.btree.page.PageStorageMode;
 import org.lealone.storage.aose.btree.page.PageUtils;
 import org.lealone.storage.aose.btree.page.PrettyPagePrinter;
 import org.lealone.storage.fs.FilePath;
-import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngine;
@@ -681,7 +681,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private <R> R handlePageOperation(Scheduler scheduler, WriteOperation<?, ?, R> po) {
         if (po.getResultHandler() == null) { // 同步
-            PageOperation.Listener<R> listener = getPageOperationListener();
+            SchedulerListener<R> listener = SchedulerListener.createSchedulerListener();
             po.setResultHandler(listener);
             scheduler.handlePageOperation(po);
             return listener.await();
@@ -689,20 +689,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             scheduler.handlePageOperation(po);
             return null;
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <R> PageOperation.Listener<R> getPageOperationListener() {
-        Object object = SchedulerThread.currentObject();
-        PageOperation.Listener<R> listener;
-        if (object instanceof PageOperation.Listener)
-            listener = (PageOperation.Listener<R>) object;
-        else if (object instanceof PageOperation.ListenerFactory)
-            listener = ((PageOperation.ListenerFactory<R>) object).createListener();
-        else
-            listener = new PageOperation.SyncListener<R>();
-        listener.startListen();
-        return listener;
     }
 
     public InputStream getInputStream(FilePath file) {
