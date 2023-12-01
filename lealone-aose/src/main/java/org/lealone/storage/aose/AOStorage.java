@@ -91,9 +91,10 @@ public class AOStorage extends StorageBase {
                     if (parameters != null)
                         c.putAll(parameters);
                     map = new BTreeMap<>(name, keyType, valueType, c, this);
-                    maps.put(name, map);
                     for (StorageEventListener listener : listeners.values())
                         listener.afterStorageMapOpen(map);
+                    // 执行完afterStorageMapOpen后再put，确保其他线程拿到的是一个就绪后的map
+                    maps.put(name, map);
                 }
             }
         }

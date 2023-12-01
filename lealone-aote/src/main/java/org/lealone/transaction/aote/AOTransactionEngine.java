@@ -120,7 +120,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void afterStorageMapOpen(StorageMap<?, ?> map) {
+        if (!map.isInMemory()) {
+            logSyncService.getRedoLog().redo((StorageMap<Object, Object>) map);
+        }
         Scheduler scheduler = schedulerFactory.getScheduler();
         checkpointServices[scheduler.getId()].addMap(map);
     }

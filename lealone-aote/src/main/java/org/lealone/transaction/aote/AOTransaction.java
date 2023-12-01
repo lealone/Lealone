@@ -184,9 +184,6 @@ public class AOTransaction implements Transaction {
 
         storage.registerEventListener(transactionEngine);
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
-        if (!map.isInMemory()) {
-            logSyncService.getRedoLog().redo(map);
-        }
         return createTransactionMap(map, parameters);
     }
 

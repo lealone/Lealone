@@ -94,17 +94,16 @@ public class RedoLog {
 
     // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
     // 有可能多个线程同时调用redo，所以需要加synchronized
-    @SuppressWarnings("unchecked")
-    public synchronized <K> void redo(StorageMap<K, TransactionalValue> map) {
+    public synchronized void redo(StorageMap<Object, Object> map) {
         List<ByteBuffer> pendingKeyValues = pendingRedoLog.remove(map.getName());
         if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
             // 异步redo，忽略操作结果
-            AsyncHandler<AsyncResult<TransactionalValue>> handler = ar -> {
+            AsyncHandler<AsyncResult<Object>> handler = ar -> {
             };
             for (ByteBuffer kv : pendingKeyValues) {
-                K key = (K) kt.read(kv);
+                Object key = kt.read(kv);
                 if (kv.get() == 0)
                     map.remove(key, handler);
                 else {
