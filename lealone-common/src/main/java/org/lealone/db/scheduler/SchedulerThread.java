@@ -57,6 +57,9 @@ public class SchedulerThread extends Thread {
             Scheduler scheduler = threadLocal.get();
             if (scheduler == null) {
                 scheduler = sf.bindScheduler(t);
+                if (scheduler == null) {
+                    return null;
+                }
                 threadLocal.set(scheduler);
             }
             return scheduler;

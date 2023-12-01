@@ -10,7 +10,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.Utils;
@@ -76,8 +75,8 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
                     }
                 }
             }
-            // TODO 需要动态增加新的调度线程
-            throw DbException.getInternalError();
+            // 如果不返回null的话，可以尝试动态增加新的调度线程的方案
+            return null;
         }
         bindThreads[index] = thread;
         return schedulers[index];
