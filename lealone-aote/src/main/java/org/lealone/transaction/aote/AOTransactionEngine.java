@@ -93,6 +93,9 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public List<AOTransaction> currentTransactions() {
+        // 还没有初始化时直接返回emptyList
+        if (transactionManagers == null)
+            return Collections.emptyList();
         int length = transactionManagers.length;
         int count = 0;
         for (int i = 0; i < length; i++) {
