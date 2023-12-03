@@ -21,31 +21,22 @@ public interface TransactionEngine extends PluggableEngine {
     }
 
     default Transaction beginTransaction() {
-        return beginTransaction(false);
-    }
-
-    default Transaction beginTransaction(boolean autoCommit) {
-        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER);
-    }
-
-    default Transaction beginTransaction(boolean autoCommit, RunMode runMode) {
-        return beginTransaction(autoCommit, runMode, Transaction.IL_READ_COMMITTED);
+        return beginTransaction(RunMode.CLIENT_SERVER);
     }
 
     default Transaction beginTransaction(int isolationLevel) {
-        return beginTransaction(false, isolationLevel);
+        return beginTransaction(RunMode.CLIENT_SERVER, isolationLevel);
     }
 
-    default Transaction beginTransaction(boolean autoCommit, int isolationLevel) {
-        return beginTransaction(autoCommit, RunMode.CLIENT_SERVER, isolationLevel);
+    default Transaction beginTransaction(RunMode runMode) {
+        return beginTransaction(runMode, Transaction.IL_READ_COMMITTED);
     }
 
-    default Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel) {
-        return beginTransaction(autoCommit, runMode, isolationLevel, null);
+    default Transaction beginTransaction(RunMode runMode, int isolationLevel) {
+        return beginTransaction(runMode, isolationLevel, null);
     }
 
-    Transaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel,
-            Scheduler scheduler);
+    Transaction beginTransaction(RunMode runMode, int isolationLevel, Scheduler scheduler);
 
     boolean supportsMVCC();
 

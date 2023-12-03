@@ -59,19 +59,17 @@ public class AOTransaction implements Transaction {
     // 仅用于测试
     private LinkedList<RowLock> locks; // 行锁
 
-    public AOTransaction(AOTransactionEngine engine, long tid, boolean autoCommit, RunMode runMode,
-            int level) {
-        this(engine, tid, autoCommit, runMode, level, null);
+    public AOTransaction(AOTransactionEngine engine, long tid, RunMode runMode, int level) {
+        this(engine, tid, runMode, level, null);
     }
 
-    public AOTransaction(AOTransactionEngine engine, long tid, boolean autoCommit, RunMode runMode,
-            int level, String hostAndPort) {
+    public AOTransaction(AOTransactionEngine engine, long tid, RunMode runMode, int level,
+            String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(hostAndPort, tid);
         isolationLevel = level;
         logSyncService = engine.getLogSyncService();
-        this.autoCommit = autoCommit;
         this.runMode = runMode;
     }
 
@@ -106,6 +104,7 @@ public class AOTransaction implements Transaction {
     @Override
     public void setSession(Session session) {
         this.session = session;
+        autoCommit = session.isAutoCommit();
     }
 
     @Override

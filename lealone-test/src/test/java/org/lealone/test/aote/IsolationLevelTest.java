@@ -50,7 +50,7 @@ public class IsolationLevelTest extends AoteTestBase {
     }
 
     private void test2() {
-        Transaction t1 = te.beginTransaction(false, Transaction.IL_READ_COMMITTED);
+        Transaction t1 = te.beginTransaction(Transaction.IL_READ_COMMITTED);
         TransactionMap<String, String> map1 = t1.openMap(mapName + "_test2", storage);
         map1.clear();
         assertNull(map1.get("1"));
@@ -58,17 +58,17 @@ public class IsolationLevelTest extends AoteTestBase {
         map1.put("3", "c");
         t1.commit();
 
-        Transaction t2 = te.beginTransaction(false, Transaction.IL_REPEATABLE_READ);
+        Transaction t2 = te.beginTransaction(Transaction.IL_REPEATABLE_READ);
         TransactionMap<String, String> map2 = map1.getInstance(t2);
         assertNull(map2.get("1"));
         assertEquals("c", map2.get("3"));
 
-        Transaction t3 = te.beginTransaction(false, Transaction.IL_SERIALIZABLE);
+        Transaction t3 = te.beginTransaction(Transaction.IL_SERIALIZABLE);
         TransactionMap<String, String> map3 = map1.getInstance(t3);
         assertNull(map3.get("1"));
         assertEquals("c", map3.get("3"));
 
-        Transaction t4 = te.beginTransaction(false);
+        Transaction t4 = te.beginTransaction();
         TransactionMap<String, String> map4 = map1.getInstance(t4);
         map4.put("1", "a");
         map4.put("2", "b-new");

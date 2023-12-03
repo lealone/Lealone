@@ -74,7 +74,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         RunMode runMode = table.getRunMode();
-        Transaction t = transactionEngine.beginTransaction(false, runMode);
+        Transaction t = transactionEngine.beginTransaction(runMode);
         dataMap = t.openMap(mapName, keyType, vvType, storage, table.getParameters());
         t.commit(); // 避免产生内部未提交的事务
     }

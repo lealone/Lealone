@@ -1210,7 +1210,7 @@ public class ServerSession extends SessionBase {
             return transaction;
 
         RunMode runMode = getRunMode();
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, runMode,
+        Transaction transaction = database.getTransactionEngine().beginTransaction(runMode,
                 transactionIsolationLevel, getScheduler());
         transaction.setSession(this);
 

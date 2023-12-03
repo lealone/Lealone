@@ -192,14 +192,13 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public AOTransaction beginTransaction(boolean autoCommit, RunMode runMode, int isolationLevel,
-            Scheduler scheduler) {
+    public AOTransaction beginTransaction(RunMode runMode, int isolationLevel, Scheduler scheduler) {
         if (logSyncService == null) {
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
         }
         long tid = nextTransactionId();
-        AOTransaction t = createTransaction(tid, autoCommit, runMode, isolationLevel);
+        AOTransaction t = createTransaction(tid, runMode, isolationLevel);
         if (t.isRepeatableRead())
             rrTransactionCount.incrementAndGet();
 
@@ -232,9 +231,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         return config;
     }
 
-    private AOTransaction createTransaction(long tid, boolean autoCommit, RunMode runMode,
-            int isolationLevel) {
-        return new AOTransaction(this, tid, autoCommit, runMode, isolationLevel);
+    private AOTransaction createTransaction(long tid, RunMode runMode, int isolationLevel) {
+        return new AOTransaction(this, tid, runMode, isolationLevel);
     }
 
     @Override
