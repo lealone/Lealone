@@ -13,7 +13,6 @@ import java.util.Map;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.MemoryManager;
-import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableBase;
 import org.lealone.db.link.LinkableList;
@@ -37,10 +36,6 @@ public class GlobalScheduler extends NetScheduler {
     private final SessionValidator sessionValidator = new SessionValidator();
     private final LinkableList<SessionInitTask> sessionInitTasks = new LinkableList<>();
     private final LinkableList<SessionInfo> sessions = new LinkableList<>();
-
-    // 执行一些周期性任务，数量不多，以读为主，所以用LinkableList
-    // 用LinkableList是安全的，所有的初始PeriodicTask都在main线程中注册，新的PeriodicTask在当前调度线程中注册
-    private final LinkableList<AsyncPeriodicTask> periodicTasks = new LinkableList<>();
 
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
@@ -202,31 +197,6 @@ public class GlobalScheduler extends NetScheduler {
 
     boolean canHandleNextSessionInitTask() {
         return sessionValidator.canHandleNextSessionInitTask();
-    }
-
-    @Override
-    public void addPeriodicTask(AsyncPeriodicTask task) {
-        periodicTasks.add(task);
-    }
-
-    @Override
-    public void removePeriodicTask(AsyncPeriodicTask task) {
-        periodicTasks.remove(task);
-    }
-
-    private void runPeriodicTasks() {
-        if (periodicTasks.isEmpty())
-            return;
-
-        AsyncPeriodicTask task = periodicTasks.getHead();
-        while (task != null) {
-            try {
-                task.run();
-            } catch (Throwable e) {
-                logger.warn("Failed to run periodic task: " + task, e);
-            }
-            task = task.next;
-        }
     }
 
     private void gc() {

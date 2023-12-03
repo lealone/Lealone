@@ -168,6 +168,7 @@ public class EmbeddedScheduler extends SchedulerBase {
                 c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
+                runPeriodicTasks();
                 runPageOperationTasks();
                 runPendingTransactions();
                 runMiscTasks();

@@ -17,6 +17,7 @@ import org.lealone.common.util.MapUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBufferFactory;
 import org.lealone.db.RunMode;
+import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.link.LinkableList;
 import org.lealone.db.session.Session;
@@ -41,6 +42,10 @@ public abstract class SchedulerBase implements Scheduler {
     protected final AtomicReferenceArray<Scheduler> waitingSchedulers;
     protected final AtomicBoolean hasWaitingSchedulers = new AtomicBoolean(false);
     protected Session currentSession;
+
+    // 执行一些周期性任务，数量不多，以读为主，所以用LinkableList
+    // 用LinkableList是安全的，所有的初始PeriodicTask都在main线程中注册，新的PeriodicTask在当前调度线程中注册
+    protected final LinkableList<AsyncPeriodicTask> periodicTasks = new LinkableList<>();
 
     public SchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
         this.id = id;
@@ -301,6 +306,32 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         return false;
+    }
+
+    // --------------------- 实现 AsyncTaskHandler 相关的代码 ---------------------
+    @Override
+    public void addPeriodicTask(AsyncPeriodicTask task) {
+        periodicTasks.add(task);
+    }
+
+    @Override
+    public void removePeriodicTask(AsyncPeriodicTask task) {
+        periodicTasks.remove(task);
+    }
+
+    protected void runPeriodicTasks() {
+        if (periodicTasks.isEmpty())
+            return;
+
+        AsyncPeriodicTask task = periodicTasks.getHead();
+        while (task != null) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                getLogger().warn("Failed to run periodic task: " + task, e);
+            }
+            task = task.next;
+        }
     }
 
     // --------------------- 实现 fsync 相关的代码 ---------------------
