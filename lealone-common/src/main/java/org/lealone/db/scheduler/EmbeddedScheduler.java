@@ -21,6 +21,7 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import org.lealone.storage.page.PageOperation;
 import org.lealone.storage.page.PageOperation.PageOperationResult;
+import org.lealone.transaction.PendingTransaction;
 
 public class EmbeddedScheduler extends SchedulerBase {
 
@@ -75,6 +76,18 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     private void doAwait() {
         awaiter.doAwait(loopInterval);
+    }
+
+    // --------------------- 跟 PendingTransaction 相关 ---------------------
+    // --------------------- 嵌入式场景可能有多个线程在写，所以需要加synchronized ----
+    @Override
+    protected synchronized void runPendingTransactions() {
+        super.runPendingTransactions();
+    }
+
+    @Override
+    public synchronized void addPendingTransaction(PendingTransaction pt) {
+        super.addPendingTransaction(pt);
     }
 
     // --------------------- 实现 PageOperation 相关代码 ---------------------

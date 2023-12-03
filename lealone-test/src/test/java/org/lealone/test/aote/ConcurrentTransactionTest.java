@@ -46,6 +46,8 @@ public class ConcurrentTransactionTest extends AoteTestBase {
         map1.put("2", "b", ar -> {
             System.out.println("old: " + ar.getResult());
         });
-        t.commit();
+        t.asyncCommit(() -> {
+            System.out.println("async committed");
+        });
     }
 }

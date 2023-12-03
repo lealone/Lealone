@@ -38,8 +38,8 @@ class PeriodicLogSyncService extends LogSyncService {
         // 如果在同步周期内，可以提前通知异步提交完成了
         if (!waitForSyncToCatchUp()) {
             t.onSynced(); // 不能直接pt.setSynced(true);
-            asyncWrite(pt);
             pt.setCompleted(true);
+            asyncWrite(pt);
             t.asyncCommitComplete();
         } else {
             asyncWrite(pt);
@@ -52,9 +52,9 @@ class PeriodicLogSyncService extends LogSyncService {
         if (!waitForSyncToCatchUp()) {
             PendingTransaction pt = new PendingTransaction(t, r, logId);
             t.onSynced();
-            asyncWrite(pt);
             pt.setCompleted(true);
             // 同步调用无需t.asyncCommitComplete();
+            asyncWrite(pt);
         } else {
             super.syncWrite(t, r, logId);
         }
