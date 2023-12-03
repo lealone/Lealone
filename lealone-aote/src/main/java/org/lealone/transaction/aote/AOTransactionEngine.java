@@ -21,6 +21,7 @@ import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.scheduler.EmbeddedScheduler;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
+import org.lealone.db.scheduler.SchedulerThread;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
@@ -202,9 +203,18 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         if (t.isRepeatableRead())
             rrTransactionCount.incrementAndGet();
 
+        boolean isSingleThread = true;
+        if (scheduler == null) {
+            // 如果当前线程不是调度线程就给事务绑定一个Scheduler
+            scheduler = SchedulerThread.currentScheduler(schedulerFactory);
+            if (scheduler == null) {
+                scheduler = schedulerFactory.getScheduler();
+                isSingleThread = false;
+            }
+        }
+        t.setScheduler(scheduler);
         TransactionManager tm;
-        if (scheduler != null) {
-            t.setScheduler(scheduler);
+        if (isSingleThread) {
             tm = transactionManagers[scheduler.getId()];
         } else {
             tm = transactionManagers[transactionManagers.length - 1];
