@@ -62,11 +62,11 @@ public class GlobalScheduler extends NetScheduler {
             runRegisterAccepterTasks();
             runSessionInitTasks();
             runMiscTasks();
-
             runPageOperationTasks();
             runSessionTasks();
             runPendingTransactions();
             executeNextStatement();
+            runPeriodicTasks();
             runEventLoop();
         }
         netEventLoop.close();
@@ -235,7 +235,6 @@ public class GlobalScheduler extends NetScheduler {
             if (c == null) {
                 runRegisterAccepterTasks();
                 checkSessionTimeout();
-                runPeriodicTasks();
                 runPageOperationTasks();
                 runSessionTasks();
                 runPendingTransactions();

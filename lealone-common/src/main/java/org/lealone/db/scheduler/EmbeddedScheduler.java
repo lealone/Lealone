@@ -63,8 +63,8 @@ public class EmbeddedScheduler extends SchedulerBase {
             runMiscTasks();
             runPageOperationTasks();
             runPendingTransactions();
-            // runPendingTasks();
             executeNextStatement();
+            runPeriodicTasks();
             doAwait();
         }
     }
@@ -181,7 +181,6 @@ public class EmbeddedScheduler extends SchedulerBase {
                 c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
-                runPeriodicTasks();
                 runPageOperationTasks();
                 runPendingTransactions();
                 runMiscTasks();
