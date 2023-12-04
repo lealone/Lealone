@@ -161,13 +161,13 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType,
+    public <K, V> AOTransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage) {
         return openMap(name, keyType, valueType, storage, null);
     }
 
     @Override
-    public <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType,
+    public <K, V> AOTransactionMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
@@ -442,5 +442,4 @@ public class AOTransaction implements Transaction {
     public void setBitIndex(int bitIndex) {
         this.bitIndex = bitIndex;
     }
-
 }

@@ -123,7 +123,8 @@ public class PageReference {
             return pInfo.getNewRef().getOrReadPage();
         }
         Scheduler scheduler = SchedulerThread.currentScheduler(bs.getSchedulerFactory());
-        boolean ok = schedulerLock.getLockOwner() != scheduler && !inMemory; // 如果当前线程已经加过锁了，可以安全返回page
+        // 如果当前线程已经加过锁了，可以安全返回page
+        boolean ok = schedulerLock.getLockOwner() != scheduler && !inMemory;
         if (ok) {
             if (scheduler != null) {
                 Session s = scheduler.getCurrentSession();
