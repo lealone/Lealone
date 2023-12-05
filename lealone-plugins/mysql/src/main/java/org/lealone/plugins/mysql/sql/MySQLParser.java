@@ -26,6 +26,7 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.ddl.AlterUser;
 import org.lealone.sql.ddl.CreateSchema;
+import org.lealone.sql.ddl.CreateTable;
 import org.lealone.sql.dml.SetDatabase;
 import org.lealone.sql.dml.SetSession;
 import org.lealone.sql.dml.SetStatement;
@@ -38,6 +39,30 @@ public class MySQLParser extends SQLParserBase {
 
     public MySQLParser(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    protected StatementBase parseStatement(char first) {
+        StatementBase s = null;
+        switch (first) {
+        case 'l':
+        case 'L':
+            if (readIf("LOCK")) {
+                read("TABLES");
+                readStringOrIdentifier();
+                readIf("WRITE");
+                s = noOperation();
+            }
+            break;
+        case 'u':
+        case 'U':
+            if (readIf("UNLOCK")) {
+                read("TABLES");
+                s = noOperation();
+            }
+            break;
+        }
+        return s;
     }
 
     private String identifier(String s) {
@@ -739,5 +764,17 @@ public class MySQLParser extends SQLParserBase {
             readIf("RETURN");
             command.setExpression(readExpression());
         }
+    }
+
+    @Override
+    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
+            boolean persistData) {
+        CreateTable command = super.parseCreateTable(temp, globalTemp, persistIndexes, persistData);
+        if (readIf("DEFAULT")) {
+            read("CHARSET");
+            readIf("=");
+            readStringOrIdentifier();
+        }
+        return command;
     }
 }

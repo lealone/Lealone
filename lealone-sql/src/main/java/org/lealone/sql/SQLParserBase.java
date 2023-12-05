@@ -497,7 +497,8 @@ public abstract class SQLParserBase implements SQLParser {
                 s = new NoOperation(session);
                 break;
             default:
-                throw getSyntaxError();
+                s = parseStatement(first);
+                // throw getSyntaxError();
             }
             if (s == null)
                 s = parseStatement(first);
@@ -5912,7 +5913,7 @@ public abstract class SQLParserBase implements SQLParser {
         } while (readIfMore());
     }
 
-    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
+    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
             boolean persistData) {
         boolean ifNotExists = readIfNotExists();
         String tableName = readIdentifierWithSchema();

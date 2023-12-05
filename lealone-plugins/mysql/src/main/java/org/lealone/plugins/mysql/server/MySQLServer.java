@@ -7,10 +7,12 @@ package org.lealone.plugins.mysql.server;
 
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.PluginManager;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.net.WritableChannel;
 import org.lealone.plugins.mysql.sql.expression.function.MySQLFunctionFactory;
 import org.lealone.server.AsyncServer;
+import org.lealone.storage.StorageEngine;
 
 public class MySQLServer extends AsyncServer<MySQLServerConnection> {
 
@@ -26,6 +28,9 @@ public class MySQLServer extends AsyncServer<MySQLServerConnection> {
     @Override
     public synchronized void start() {
         super.start();
+
+        // 识别 "InnoDB"
+        PluginManager.register(StorageEngine.class, StorageEngine.getDefaultStorageEngine(), "InnoDB");
 
         // 创建内置的mysql数据库
         createBuiltInDatabase(DATABASE_NAME);
