@@ -70,14 +70,17 @@ public abstract class BsonCommand extends BsonBase {
         String dbName = doc.getString("$db").getValue();
         if (dbName == null)
             dbName = MongoServer.DATABASE_NAME;
-        Database db = LealoneDatabase.getInstance().findDatabase(dbName);
+        LealoneDatabase ldb = LealoneDatabase.getInstance();
+        Database db = ldb.findDatabase(dbName);
         if (db == null) {
             // 需要同步
             synchronized (LealoneDatabase.class) {
-                db = LealoneDatabase.getInstance().findDatabase(dbName);
+                db = ldb.findDatabase(dbName);
                 if (db == null) {
                     String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
-                    LealoneDatabase.getInstance().getSystemSession().executeUpdateLocal(sql);
+                    try (ServerSession session = ldb.createSession(ldb.getSystemUser())) {
+                        session.executeUpdateLocal(sql);
+                    }
                     db = LealoneDatabase.getInstance().getDatabase(dbName);
                 }
             }
@@ -123,54 +126,58 @@ public abstract class BsonCommand extends BsonBase {
             sql.append(", ");
             sql.append(columnName).append(" ");
             BsonValue v = e.getValue();
-            switch (v.getBsonType()) {
-            case INT32:
-                sql.append("int");
-                break;
-            case INT64:
-                sql.append("long");
-                break;
-            case DOUBLE:
-                sql.append("double");
-                break;
-            case STRING:
-                sql.append("varchar");
-                break;
-            case ARRAY:
-                sql.append("array");
-                break;
-            case BINARY:
-                sql.append("binary");
-                break;
-            case OBJECT_ID:
-                sql.append("binary");
-                break;
-            case BOOLEAN:
-                sql.append("boolean");
-                break;
-            case DATE_TIME:
-                sql.append("datetime");
-                break;
-            case TIMESTAMP:
-                // MongoDB的TIMESTAMP只是一种内部使用的特殊类型并不是直的TIMESTAMP，为了跟DATE_TIME区分，这里直接用time表示
-                sql.append("time");
-                break;
-            case REGULAR_EXPRESSION:
-                sql.append("varchar");
-                break;
-            case DECIMAL128:
-                sql.append("decimal");
-                break;
-            case DOCUMENT:
-                sql.append("map");
-                // createTable(tableName + "_" + columnName, v.asDocument(), session);
-                break;
-            default:
-                sql.append("varchar");
-            }
+            appendColumnType(sql, v);
         }
         sql.append(")");
         session.executeUpdateLocal(sql.toString());
+    }
+
+    public static void appendColumnType(StatementBuilder sql, BsonValue v) {
+        switch (v.getBsonType()) {
+        case INT32:
+            sql.append("int");
+            break;
+        case INT64:
+            sql.append("long");
+            break;
+        case DOUBLE:
+            sql.append("double");
+            break;
+        case STRING:
+            sql.append("varchar");
+            break;
+        case ARRAY:
+            sql.append("array");
+            break;
+        case BINARY:
+            sql.append("binary");
+            break;
+        case OBJECT_ID:
+            sql.append("binary");
+            break;
+        case BOOLEAN:
+            sql.append("boolean");
+            break;
+        case DATE_TIME:
+            sql.append("datetime");
+            break;
+        case TIMESTAMP:
+            // MongoDB的TIMESTAMP只是一种内部使用的特殊类型并不是直的TIMESTAMP，为了跟DATE_TIME区分，这里直接用time表示
+            sql.append("time");
+            break;
+        case REGULAR_EXPRESSION:
+            sql.append("varchar");
+            break;
+        case DECIMAL128:
+            sql.append("decimal");
+            break;
+        case DOCUMENT:
+            sql.append("map");
+            // createTable(tableName + "_" + columnName, v.asDocument(), session);
+            break;
+        default:
+            sql.append("varchar");
+        }
     }
 
     public static ServerSession createSession(Database db) {
@@ -179,7 +186,9 @@ public abstract class BsonCommand extends BsonBase {
     }
 
     public static ServerSession getSession(Database db, MongoServerConnection conn) {
-        return conn.getPooledSession(db);
+        ServerSession s = conn.getPooledSession(db);
+        conn.getScheduler().addSession(s, db.getId());
+        return s;
     }
 
     public static User getUser(Database db) {

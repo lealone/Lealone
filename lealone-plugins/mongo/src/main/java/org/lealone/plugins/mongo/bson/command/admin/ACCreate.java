@@ -25,7 +25,7 @@ public class ACCreate extends AdminCommand {
         BsonString viewOn = doc.getString("viewOn", null);
         if (viewOn == null) {
             try (ServerSession session = getSession(getDatabase(doc), conn)) {
-                String sql = "CREATE TABLE IF NOT EXISTS " + name;
+                String sql = "CREATE TABLE IF NOT EXISTS " + name + " (_id binary primary key)";
                 session.executeUpdateLocal(sql);
             }
         } else {

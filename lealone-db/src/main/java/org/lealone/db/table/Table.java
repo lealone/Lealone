@@ -616,6 +616,17 @@ public abstract class Table extends SchemaObjectBase {
         return column;
     }
 
+    // 不会抛异常
+    public Column findColumn(String columnName) {
+        Column column = columnMap.get(columnName);
+        if (column == null) {
+            if (database.equalsIdentifiers(Column.ROWID, columnName)) {
+                return getRowIdColumn();
+            }
+        }
+        return column;
+    }
+
     /**
      * Does the column with the given name exist?
      *

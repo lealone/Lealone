@@ -1981,7 +1981,7 @@ public class Database extends DbObjectBase implements DataHandler {
         }
     }
 
-    User getSystemUser() {
+    public User getSystemUser() {
         return systemUser;
     }
 

@@ -178,7 +178,7 @@ public abstract class BsonBase {
         // if ("_id".equalsIgnoreCase(columnName)) {
         // return table.getRowIdColumn();
         // }
-        return table.getColumn(columnName.toUpperCase());
+        return table.findColumn(columnName.toUpperCase());
     }
 
     public static ExpressionColumn getExpressionColumn(TableFilter tableFilter, String columnName) {

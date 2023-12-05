@@ -110,7 +110,9 @@ public class MongoServerConnection extends AsyncServerConnection {
     }
 
     public PooledSession getPooledSession(Database db) {
-        return new PooledSession(db, BsonCommand.getUser(db), 0, this);
+        PooledSession s = new PooledSession(db, BsonCommand.getUser(db), 0, this);
+        s.setScheduler(scheduler);
+        return s;
         // LinkedList<PooledSession> pooledSessions = pooledSessionsMap.get(db.getName());
         // PooledSession ps = null;
         // if (pooledSessions == null) {
