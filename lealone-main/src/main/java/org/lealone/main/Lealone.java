@@ -182,11 +182,11 @@ public class Lealone {
 
             beforeInit();
             init();
-            afterInit(config);
 
             scheduler.handle(() -> {
                 // 提前触发对LealoneDatabase的初始化
                 initLealoneDatabase();
+                afterInit(config);
                 long t2 = (System.currentTimeMillis() - start2);
                 // 3. 启动ProtocolServer
                 if (!embedded) {
