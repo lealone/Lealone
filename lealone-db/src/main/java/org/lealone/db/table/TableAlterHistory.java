@@ -43,7 +43,7 @@ public class TableAlterHistory {
                     "select max(version) from INFORMATION_SCHEMA.table_alter_history where id = ?");
             psGetRecords = conn.prepareStatement(
                     "select id, version, alter_type, columns from INFORMATION_SCHEMA.table_alter_history "
-                            + "where id = ? and version between ? and ?");
+                            + "where id = ? and version > ? and version <= ?");
             psAddRecord = conn.prepareStatement(
                     "insert into INFORMATION_SCHEMA.table_alter_history values(?,?,?,?)");
             psDeleteRecords = conn
