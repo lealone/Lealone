@@ -182,13 +182,6 @@ public abstract class BsonCommand extends BsonBase {
 
     public static ServerSession createSession(Database db) {
         return new ServerSession(db, getUser(db), 0);
-        // return db.createSession(getUser(db));
-    }
-
-    public static ServerSession getSession(Database db, MongoServerConnection conn) {
-        ServerSession s = conn.getPooledSession(db);
-        conn.getScheduler().addSession(s, db.getId());
-        return s;
     }
 
     public static User getUser(Database db) {

@@ -15,7 +15,6 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.auth.User;
-import org.lealone.db.session.ServerSession;
 import org.lealone.plugins.mongo.bson.command.BsonCommand;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
@@ -49,12 +48,10 @@ public abstract class UserCommand extends BsonCommand {
         String name = getString(doc, "createUser");
         String pwd = getString(doc, "pwd");
         Database db = getDatabase(doc);
-        try (ServerSession session = getSession(db, conn)) {
-            StatementBuilder sql = new StatementBuilder("CREATE USER IF NOT EXISTS ");
-            sql.append('`').append(name).append('`').append(" PASSWORD '");
-            sql.append(pwd).append("' ADMIN");
-            session.executeUpdateLocal(sql.toString());
-        }
+        StatementBuilder sql = new StatementBuilder("CREATE USER IF NOT EXISTS ");
+        sql.append('`').append(name).append('`').append(" PASSWORD '");
+        sql.append(pwd).append("' ADMIN");
+        conn.executeUpdateLocal(db, sql);
         return newOkBsonDocument();
     }
 
@@ -62,13 +59,11 @@ public abstract class UserCommand extends BsonCommand {
             MongoServerConnection conn, MongoTask task) {
         Database db = getDatabase(doc);
         int n = 0;
-        try (ServerSession session = getSession(db, conn)) {
-            for (User u : db.getAllUsers()) {
-                if (!u.isAdmin()) {
-                    dropUser(session, u.getName());
-                }
-                n++;
+        for (User u : db.getAllUsers()) {
+            if (!u.isAdmin()) {
+                dropUser(conn, db, u.getName());
             }
+            n++;
         }
         return createResponseDocument(n);
     }
@@ -78,12 +73,10 @@ public abstract class UserCommand extends BsonCommand {
         String name = getString(doc, "updateUser");
         String pwd = getString(doc, "pwd");
         Database db = getDatabase(doc);
-        try (ServerSession session = getSession(db, conn)) {
-            StatementBuilder sql = new StatementBuilder("ALTER USER ");
-            sql.append('`').append(name).append('`').append(" SET PASSWORD '");
-            sql.append(pwd).append("'");
-            session.executeUpdateLocal(sql.toString());
-        }
+        StatementBuilder sql = new StatementBuilder("ALTER USER ");
+        sql.append('`').append(name).append('`').append(" SET PASSWORD '");
+        sql.append(pwd).append("'");
+        conn.executeUpdateLocal(db, sql);
         return newOkBsonDocument();
     }
 
@@ -91,16 +84,14 @@ public abstract class UserCommand extends BsonCommand {
             MongoServerConnection conn, MongoTask task) {
         String name = getString(doc, "dropUser");
         Database db = getDatabase(doc);
-        try (ServerSession session = getSession(db, conn)) {
-            dropUser(session, name);
-        }
+        dropUser(conn, db, name);
         return newOkBsonDocument();
     }
 
-    private static void dropUser(ServerSession session, String name) {
+    private static void dropUser(MongoServerConnection conn, Database db, String name) {
         StatementBuilder sql = new StatementBuilder("DROP USER IF EXISTS ");
         sql.append('`').append(name).append('`');
-        session.executeUpdateLocal(sql.toString());
+        conn.executeUpdateLocal(db, sql);
     }
 
     public static BsonDocument usersInfo(ByteBufferBsonInput input, BsonDocument doc,

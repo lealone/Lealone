@@ -12,7 +12,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
@@ -23,25 +22,23 @@ public class ICCreateIndexes extends IndexCommand {
             MongoServerConnection conn, MongoTask task) {
         Table table = findTable(doc, "createIndexes", conn);
         if (table != null) {
-            try (ServerSession session = getSession(table.getDatabase(), conn)) {
-                BsonArray indexes = doc.getArray("indexes");
-                for (int i = 0, size = indexes.size(); i < size; i++) {
-                    BsonDocument index = indexes.get(i).asDocument();
-                    String name = index.getString("name").getValue();
-                    BsonDocument key = index.getDocument("key");
-                    StatementBuilder sql = new StatementBuilder("CREATE INDEX IF NOT EXISTS ");
-                    sql.append('`').append(name).append('`').append(" ON ");
-                    sql.append(table.getSQL()).append('(');
-                    for (Entry<String, BsonValue> e : key.entrySet()) {
-                        sql.appendExceptFirst(", ");
-                        sql.append(e.getKey());
-                        BsonValue v = e.getValue();
-                        if (v.isNumber() && v.asNumber().longValue() < 0)
-                            sql.append(" DESC");
-                    }
-                    sql.append(')');
-                    session.executeUpdateLocal(sql.toString());
+            BsonArray indexes = doc.getArray("indexes");
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                BsonDocument index = indexes.get(i).asDocument();
+                String name = index.getString("name").getValue();
+                BsonDocument key = index.getDocument("key");
+                StatementBuilder sql = new StatementBuilder("CREATE INDEX IF NOT EXISTS ");
+                sql.append('`').append(name).append('`').append(" ON ");
+                sql.append(table.getSQL()).append('(');
+                for (Entry<String, BsonValue> e : key.entrySet()) {
+                    sql.appendExceptFirst(", ");
+                    sql.append(e.getKey());
+                    BsonValue v = e.getValue();
+                    if (v.isNumber() && v.asNumber().longValue() < 0)
+                        sql.append(" DESC");
                 }
+                sql.append(')');
+                conn.executeUpdateLocal(table.getDatabase(), sql);
             }
         }
         return createResponseDocument(0);

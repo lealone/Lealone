@@ -13,7 +13,6 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.session.ServerSession;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
 
@@ -24,10 +23,8 @@ public class ACCreate extends AdminCommand {
         String name = doc.getString("create").getValue();
         BsonString viewOn = doc.getString("viewOn", null);
         if (viewOn == null) {
-            try (ServerSession session = getSession(getDatabase(doc), conn)) {
-                String sql = "CREATE TABLE IF NOT EXISTS " + name + " (_id binary primary key)";
-                session.executeUpdateLocal(sql);
-            }
+            String sql = "CREATE TABLE IF NOT EXISTS " + name + " (_id binary primary key)";
+            conn.executeUpdateLocal(getDatabase(doc), sql);
         } else {
             BsonArray pipeline = doc.getArray("pipeline");
             BsonDocument project = pipeline.get(0).asDocument().getDocument("$project");
@@ -38,9 +35,7 @@ public class ACCreate extends AdminCommand {
                 sql.append(e.getKey());
             }
             sql.append(" FROM ").append(viewOn.getValue());
-            try (ServerSession session = getSession(getDatabase(doc), conn)) {
-                session.executeUpdateLocal(sql.toString());
-            }
+            conn.executeUpdateLocal(getDatabase(doc), sql);
         }
         BsonDocument document = new BsonDocument();
         setOk(document);

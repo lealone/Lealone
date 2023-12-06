@@ -7,7 +7,6 @@ package org.lealone.plugins.mongo.bson.command.admin;
 
 import org.bson.BsonDocument;
 import org.bson.io.ByteBufferBsonInput;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.plugins.mongo.server.MongoServerConnection;
 import org.lealone.plugins.mongo.server.MongoTask;
@@ -18,10 +17,8 @@ public class ACDrop extends AdminCommand {
             MongoServerConnection conn, MongoTask task) {
         Table table = findTable(doc, "drop", conn); // 可能是一个表或视图
         if (table != null && table.getDropSQL() != null) {
-            try (ServerSession session = getSession(table.getDatabase(), conn)) {
-                String sql = table.getDropSQL();
-                session.executeUpdateLocal(sql);
-            }
+            String sql = table.getDropSQL();
+            conn.executeUpdateLocal(table.getDatabase(), sql);
         }
         BsonDocument document = new BsonDocument();
         setOk(document);

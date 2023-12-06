@@ -8,7 +8,6 @@ package org.lealone.plugins.mongo.server;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.UUID;
 
 import org.bson.BsonBinaryReader;
@@ -23,6 +22,7 @@ import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.session.ServerSession;
@@ -49,10 +49,6 @@ public class MongoServerConnection extends AsyncServerConnection {
     private final EncoderContext encoderContext = EncoderContext.builder().build();
 
     private final HashMap<UUID, ServerSession> sessions = new HashMap<>();
-
-    @SuppressWarnings("unused")
-    private final HashMap<String, LinkedList<PooledSession>> pooledSessionsMap = new HashMap<>();
-
     private final HashMap<String, SessionInfo> sessionInfoMap = new HashMap<>();
 
     private final MongoServer server;
@@ -100,37 +96,26 @@ public class MongoServerConnection extends AsyncServerConnection {
 
     public SessionInfo getSessionInfo(BsonDocument doc) {
         Database db = BsonCommand.getDatabase(doc);
+        return getSessionInfo(db);
+    }
+
+    public SessionInfo getSessionInfo(Database db) {
         SessionInfo si = sessionInfoMap.get(db.getName());
         if (si == null) {
-            si = new SessionInfo(scheduler, this, getPooledSession(db), -1, -1);
+            ServerSession session = db.createSession(BsonCommand.getUser(db), scheduler);
+            si = new SessionInfo(scheduler, this, session, -1, -1);
             sessionInfoMap.put(db.getName(), si);
             scheduler.addSessionInfo(si);
         }
         return si;
     }
 
-    public PooledSession getPooledSession(Database db) {
-        PooledSession s = new PooledSession(db, BsonCommand.getUser(db), 0, this);
-        s.setScheduler(scheduler);
-        return s;
-        // LinkedList<PooledSession> pooledSessions = pooledSessionsMap.get(db.getName());
-        // PooledSession ps = null;
-        // if (pooledSessions == null) {
-        // pooledSessions = new LinkedList<>();
-        // pooledSessionsMap.put(db.getName(), pooledSessions);
-        // } else {
-        // ps = pooledSessions.pollFirst();
-        // }
-        // if (ps == null)
-        // ps = new PooledSession(db, BsonCommand.getUser(db), 0, this);
-        // scheduler.setCurrentSession(ps);
-        // return ps;
+    public int executeUpdateLocal(Database db, StatementBuilder sql) {
+        return executeUpdateLocal(db, sql.toString());
     }
 
-    public void addPooledSession(PooledSession ps) {
-        // LinkedList<PooledSession> pooledSessions = pooledSessionsMap.get(ps.getDatabase().getName());
-        // if (pooledSessions != null && pooledSessions.size() < 8)
-        // pooledSessions.add(ps);
+    public int executeUpdateLocal(Database db, String sql) {
+        return getSessionInfo(db).getSession().executeUpdateLocal(sql.toString());
     }
 
     @Override
