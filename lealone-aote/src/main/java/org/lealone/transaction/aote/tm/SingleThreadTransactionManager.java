@@ -15,6 +15,7 @@ public class SingleThreadTransactionManager extends TransactionManager {
 
     private final BitField bf = new BitField(8);
     private AOTransaction[] transactions;
+    private int currentTransactionCount;
 
     public SingleThreadTransactionManager(AOTransactionEngine te) {
         super(te);
@@ -53,5 +54,10 @@ public class SingleThreadTransactionManager extends TransactionManager {
             if (t != null)
                 list.add(t);
         }
+    }
+
+    @Override
+    public int currentTransactionCount() {
+        return currentTransactionCount;
     }
 }

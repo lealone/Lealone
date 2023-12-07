@@ -12,8 +12,7 @@ import org.lealone.transaction.aote.AOTransactionEngine;
 
 public abstract class TransactionManager {
 
-    protected AOTransactionEngine te;
-    protected int currentTransactionCount;
+    protected final AOTransactionEngine te;
 
     public TransactionManager(AOTransactionEngine te) {
         this.te = te;
@@ -30,9 +29,7 @@ public abstract class TransactionManager {
 
     public abstract void currentTransactions(List<AOTransaction> list);
 
-    public int currentTransactionCount() {
-        return currentTransactionCount;
-    }
+    public abstract int currentTransactionCount();
 
     public static TransactionManager create(AOTransactionEngine te, boolean isSingleThread) {
         return isSingleThread ? new SingleThreadTransactionManager(te)
