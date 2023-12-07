@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
-import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.scheduler.EmbeddedScheduler;
 import org.lealone.db.scheduler.Scheduler;
 import org.lealone.db.scheduler.SchedulerFactory;
@@ -264,13 +263,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
         checkpointServices = new CheckpointService[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {
-            checkpointServices[i] = new CheckpointService(this, config, i);
-        }
-        for (int i = 0; i < schedulerCount; i++) {
-            CheckpointService cs = checkpointServices[i];
-            AsyncPeriodicTask task = new AsyncPeriodicTask(1000, cs.getLoopInterval(), () -> cs.run());
-            cs.setAsyncPeriodicTask(task);
-            schedulers[i].addPeriodicTask(task);
+            checkpointServices[i] = new CheckpointService(this, config, schedulers[i]);
         }
         masterCheckpointService = checkpointServices[0];
 

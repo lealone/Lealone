@@ -65,4 +65,8 @@ public class AsyncPeriodicTask extends LinkableBase<AsyncPeriodicTask> implement
     public void setRunnable(Runnable runnable) {
         this.runnable = runnable;
     }
+
+    public void resetLast() {
+        last = 0;
+    }
 }

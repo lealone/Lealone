@@ -31,36 +31,31 @@ import org.lealone.transaction.aote.TransactionalValue.OldValue;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 import org.lealone.transaction.aote.log.RedoLogRecord.PendingCheckpoint;
 
-public class CheckpointService implements MemoryManager.MemoryListener {
+public class CheckpointService implements MemoryManager.MemoryListener, Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckpointService.class);
 
     private final AOTransactionEngine aote;
-
-    private final LinkableList<PendingCheckpoint> pendingCheckpoints = new LinkableList<>();
-
-    // 关闭CheckpointService时等待它结束
-    private CountDownLatch latchOnClose;
-
+    private final Scheduler scheduler;
+    private final AsyncPeriodicTask periodicTask;
     private final long dirtyPageCacheSize;
     private final long checkpointPeriod;
-    private final long loopInterval;
+
+    // 只有redo log sync线程读,checkpoint线程写
+    private final LinkableList<PendingCheckpoint> pendingCheckpoints = new LinkableList<>();
+    // 以下三个字段都是低频场景使用，会有多个线程执行add和remove
+    private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<GcTask> gcTasks = new CopyOnWriteArrayList<>();
+    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     private long lastSavedAt = System.currentTimeMillis();
+    // 关闭CheckpointService时等待它结束
+    private CountDownLatch latchOnClose;
     private volatile boolean isClosed;
 
-    private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
-
-    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
-    private final CopyOnWriteArrayList<GcTask> gcTasks = new CopyOnWriteArrayList<>();
-
-    private final Scheduler scheduler;
-    private AsyncPeriodicTask periodicTask;
-
-    CheckpointService(AOTransactionEngine aoTransactionEngine, Map<String, String> config,
-            int schedulerId) {
-        aote = aoTransactionEngine;
-        scheduler = aote.schedulerFactory.getScheduler(schedulerId);
+    CheckpointService(AOTransactionEngine aote, Map<String, String> config, Scheduler scheduler) {
+        this.aote = aote;
+        this.scheduler = scheduler;
         // 默认32M
         dirtyPageCacheSize = MapUtils.getLongMB(config, "dirty_page_cache_size_in_mb", 32 * 1024 * 1024);
         // 默认1小时
@@ -69,27 +64,22 @@ public class CheckpointService implements MemoryManager.MemoryListener {
         long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval", 3 * 1000);
         if (checkpointPeriod < loopInterval)
             loopInterval = checkpointPeriod;
-        this.loopInterval = loopInterval;
+
+        periodicTask = new AsyncPeriodicTask(loopInterval, loopInterval, this);
+        scheduler.addPeriodicTask(periodicTask);
 
         if (isMasterScheduler())
             MemoryManager.setGlobalMemoryListener(this);
     }
 
-    public long getLoopInterval() {
-        return loopInterval;
+    private boolean isMasterScheduler() {
+        return scheduler.getId() == 0;
     }
 
     @Override
     public void wakeUp() {
+        periodicTask.resetLast(); // 马上执行，不用等到下一个周期
         scheduler.wakeUp();
-    }
-
-    public void setAsyncPeriodicTask(AsyncPeriodicTask task) {
-        this.periodicTask = task;
-    }
-
-    public AsyncPeriodicTask getAsyncPeriodicTask() {
-        return periodicTask;
     }
 
     public void addMap(StorageMap<?, ?> map) {
@@ -143,11 +133,8 @@ public class CheckpointService implements MemoryManager.MemoryListener {
         wakeUp();
     }
 
-    private boolean isMasterScheduler() {
-        return scheduler.getId() == 0;
-    }
-
     // 按周期自动触发
+    @Override
     public void run() {
         if (!isClosed) {
             try {
@@ -162,7 +149,7 @@ public class CheckpointService implements MemoryManager.MemoryListener {
             }
         }
         if (isMasterScheduler()) {
-            // 关闭后确保再执行一次保存点
+            // 关闭后确保再执行一次checkpoint
             if (!pendingCheckpoints.isEmpty()) {
                 gcPendingCheckpoints();
             }
