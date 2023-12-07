@@ -7,7 +7,6 @@ package org.lealone.transaction.aote;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -239,15 +238,12 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         }
         if (isMasterScheduler()) {
             gcPendingCheckpoints();
-            PendingCheckpoint pc = pendingCheckpoints.getHead();
-            if (pc != null && !pc.isSynced()) {
+            if (checkpointTask != null)
                 return; // 前一个检查点第一阶段没有完成就不生成第二个检查点
-            }
             if (!forceCheckpointTasks.isEmpty()) {
-                ArrayList<Runnable> tasks = new ArrayList<>(forceCheckpointTasks);
-                forceCheckpointTasks.removeAll(tasks);
-                for (Runnable task : tasks)
-                    task.run();
+                // 每次只执行一个
+                Runnable task = forceCheckpointTasks.remove(0);
+                task.run();
             } else {
                 executeCheckpoint(false);
             }
@@ -279,12 +275,12 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     // 第2步，logSyncService线程完成redo log chunk文件切换后会得到完成通知，此时由master发起一个checkpoint任务
     private void prepareCheckpointTask(PendingCheckpoint pc) {
         int schedulerCount = aote.schedulerFactory.getSchedulerCount();
-        checkpointTask = new CheckpointTask(pc, scheduler, schedulerCount);
+        checkpointTask = new CheckpointTask(pc, this, schedulerCount);
         for (int i = 0; i < schedulerCount; i++) {
             if (i != scheduler.getId()) {
                 CheckpointService slave = aote.checkpointServices[i];
                 slave.checkpointTask = checkpointTask;
-                slave.scheduler.wakeUp();
+                slave.wakeUp();
             }
         }
     }
@@ -328,6 +324,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     }
 
     private void addPendingCheckpoint(long logId, boolean saved, boolean force) {
+        // logger.info("logId：" + logId + ", saved: " + saved);
         PendingCheckpoint pc = RedoLogRecord.createPendingCheckpoint(logId, saved, force);
         pendingCheckpoints.add(pc);
         aote.getLogSyncService().asyncWakeUp();
@@ -396,13 +393,14 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private static class CheckpointTask {
 
         private final PendingCheckpoint pc;
-        private final Scheduler masterScheduler;
+        private final CheckpointService masterCheckpointService;
         private final AtomicInteger prepared;
         private boolean saved;
 
-        public CheckpointTask(PendingCheckpoint pc, Scheduler masterScheduler, int schedulerCount) {
+        public CheckpointTask(PendingCheckpoint pc, CheckpointService masterCheckpointService,
+                int schedulerCount) {
             this.pc = pc;
-            this.masterScheduler = masterScheduler;
+            this.masterCheckpointService = masterCheckpointService;
             this.prepared = new AtomicInteger(schedulerCount);
         }
 
@@ -479,7 +477,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private static void onSynced(AtomicInteger syncedCount, CheckpointTask checkpointTask) {
         if (syncedCount.decrementAndGet() == 0) {
             checkpointTask.prepared.decrementAndGet();
-            checkpointTask.masterScheduler.wakeUp();
+            checkpointTask.masterCheckpointService.wakeUp();
         }
     }
 }
