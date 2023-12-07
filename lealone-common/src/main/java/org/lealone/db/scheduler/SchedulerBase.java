@@ -126,7 +126,7 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
-    public void addSession(Session session, int databaseId) {
+    public void addSession(Session session) {
     }
 
     @Override

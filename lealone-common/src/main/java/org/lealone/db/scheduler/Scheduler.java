@@ -43,7 +43,7 @@ public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener
 
     boolean isStopped();
 
-    void addSession(Session session, int databaseId);
+    void addSession(Session session);
 
     void removeSession(Session session);
 

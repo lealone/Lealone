@@ -1046,7 +1046,7 @@ public class Database extends DbObjectBase implements DataHandler {
         session.setScheduler(scheduler);
         ConnectionInfo ci = session.getConnectionInfo();
         if (ci == null || ci.isEmbedded())
-            scheduler.addSession(session, getId());
+            scheduler.addSession(session);
     }
 
     /**

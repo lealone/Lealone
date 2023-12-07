@@ -118,7 +118,7 @@ public class GlobalScheduler extends NetScheduler {
     }
 
     @Override
-    public void addSession(Session session, int databaseId) {
+    public void addSession(Session session) {
         ServerSession s = (ServerSession) session;
         SessionInfo si = new SessionInfo(this, null, s, -1, -1);
         addSessionInfo(si);

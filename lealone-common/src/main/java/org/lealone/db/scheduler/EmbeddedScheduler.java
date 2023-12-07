@@ -143,7 +143,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
-    public void addSession(Session session, int databaseId) {
+    public void addSession(Session session) {
         sessions.add(new SessionInfo(session));
         session.init();
     }
