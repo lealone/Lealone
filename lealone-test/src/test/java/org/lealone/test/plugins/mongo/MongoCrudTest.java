@@ -62,11 +62,13 @@ public class MongoCrudTest extends MongoTestBase {
         ArrayList<Document> documents = new ArrayList<>();
         documents.add(createDocument(11, 21));
         documents.add(createDocument(12, 22));
+        // 测试列不匹配的情况
+        documents.add(new Document().append("_id", ++id).append("f1", 111));
         collection.insertMany(documents);
 
         long count = collection.countDocuments();
         System.out.println("total document count: " + count);
-        assertEquals(4, count);
+        assertEquals(5, count);
     }
 
     void delete() {

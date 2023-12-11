@@ -60,6 +60,10 @@ public abstract class MerSert extends ManipulationStatement {
         list.add(expr);
     }
 
+    public void clearRows() {
+        list.clear();
+    }
+
     @Override
     public int getPriority() {
         if (getCurrentRowNumber() > 0)

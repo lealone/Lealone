@@ -14,7 +14,6 @@ import org.bson.BsonValue;
 import org.bson.io.ByteBufferBsonInput;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
@@ -46,9 +45,8 @@ public class BCInsert extends BsonCommand {
         Table table = getTable(topDoc, documents.get(0), "insert", session);
         Insert insert = new Insert(session);
         insert.setTable(table);
-        for (int i = 0; i < size; i++) {
-            ArrayList<Column> columns = Utils.newSmallArrayList();
-            ArrayList<Expression> values = Utils.newSmallArrayList();
+        outer: for (int i = 0; i < size; i++) {
+            Expression values[] = new Expression[table.getColumns().length];
             HashSet<Column> set = new HashSet<>();
             BsonDocument document = documents.get(i);
             for (Entry<String, BsonValue> e : document.entrySet()) {
@@ -57,7 +55,10 @@ public class BCInsert extends BsonCommand {
                 Column column = parseColumn(table, columnName);
                 if (column == null) {
                     // 如果后续写入的字段不存在，动态增加新的
-                    column = addColumn(session, table, columnName, v);
+                    addColumn(session, table, columnName, v);
+                    insert.clearRows();
+                    i = -1;
+                    continue outer;
                 }
                 if (!set.add(column)) {
                     throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, column.getSQL());
@@ -65,35 +66,34 @@ public class BCInsert extends BsonCommand {
                 try {
                     Value columnValuue = toValue(v);
                     columnValuue = column.convert(columnValuue);
-                    values.add(ValueExpression.get(columnValuue));
+                    values[column.getColumnId()] = ValueExpression.get(columnValuue);
                 } catch (Throwable t) {
                     // 如果后续写入的字段值的类型跟字段的类型不匹配，将字段的类型改成通用的varchar类型
-                    column = alterColumnType(session, table, columnName);
-                    values.add(toValueExpression(v));
+                    alterColumnType(session, table, columnName);
+                    insert.clearRows();
+                    i = -1;
+                    continue outer;
                 }
-                columns.add(column);
             }
-            insert.setColumns(columns.toArray(new Column[columns.size()]));
-            insert.addRow(values.toArray(new Expression[values.size()]));
+            insert.addRow(values);
         }
+        insert.setColumns(table.getColumns());
         insert.prepare();
         createAndSubmitYieldableUpdate(task, insert);
     }
 
-    private static Column addColumn(ServerSession session, Table table, String columnName, BsonValue v) {
+    private static void addColumn(ServerSession session, Table table, String columnName, BsonValue v) {
         StatementBuilder sql = new StatementBuilder();
         sql.append("ALTER TABLE ").append(table.getName()).append(" ADD COLUMN ").append(columnName)
                 .append(" ");
         appendColumnType(sql, v);
         session.executeUpdateLocal(sql.toString());
-        return parseColumn(table, columnName);
     }
 
-    private static Column alterColumnType(ServerSession session, Table table, String columnName) {
+    private static void alterColumnType(ServerSession session, Table table, String columnName) {
         StatementBuilder sql = new StatementBuilder();
         sql.append("ALTER TABLE ").append(table.getName()).append(" ALTER COLUMN ").append(columnName)
                 .append(" varchar");
         session.executeUpdateLocal(sql.toString());
-        return parseColumn(table, columnName);
     }
 }
