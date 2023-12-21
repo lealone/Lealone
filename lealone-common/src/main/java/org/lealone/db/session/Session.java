@@ -64,8 +64,6 @@ public interface Session extends Closeable {
      */
     void setAutoCommit(boolean autoCommit);
 
-    void asyncCommitComplete();
-
     /**
      * Cancel the current or next command (called when closing a connection).
      */

@@ -540,7 +540,7 @@ public class ServerSession extends SessionBase {
             if (isAutoCommit() || isCommitCommand) {
                 asyncCommit = true;
                 // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
-                asyncCommit(() -> asyncHandler.handle(asyncResult));
+                asyncCommit(asyncHandler, asyncResult);
             } else {
                 // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
                 asyncHandler.handle(asyncResult);
@@ -576,23 +576,22 @@ public class ServerSession extends SessionBase {
     }
 
     public void asyncCommit() {
-        asyncCommit(null);
+        asyncCommit(null, null);
     }
 
-    public void asyncCommit(Runnable asyncTask) {
+    public <T> void asyncCommit(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
         if (transaction != null) {
             beforeCommit();
-            transaction.asyncCommit(asyncTask);
+            transaction.asyncCommit(() -> {
+                commitFinal();
+                if (asyncHandler != null)
+                    asyncHandler.handle(asyncResult);
+            });
         } else {
             // 包含子查询的场景
-            if (asyncTask != null)
-                asyncTask.run();
+            if (asyncHandler != null)
+                asyncHandler.handle(asyncResult);
         }
-    }
-
-    @Override
-    public void asyncCommitComplete() {
-        commitFinal();
     }
 
     public void commit() {

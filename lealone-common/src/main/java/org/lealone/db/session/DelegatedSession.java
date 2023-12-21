@@ -66,11 +66,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void asyncCommitComplete() {
-        session.asyncCommitComplete();
-    }
-
-    @Override
     public void cancel() {
         session.cancel();
     }

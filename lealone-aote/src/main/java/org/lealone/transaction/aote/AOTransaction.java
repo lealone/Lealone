@@ -270,9 +270,6 @@ public class AOTransaction implements Transaction {
     @Override
     public void asyncCommitComplete() {
         commitFinal();
-        if (session != null) {
-            session.asyncCommitComplete();
-        }
         if (asyncTask != null) {
             try {
                 asyncTask.run();
