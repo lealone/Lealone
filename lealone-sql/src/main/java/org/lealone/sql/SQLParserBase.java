@@ -4803,7 +4803,7 @@ public abstract class SQLParserBase implements SQLParser {
             command.setSource(readString());
         } else {
             read("FOR");
-            command.setJavaClassMethod(readUniqueIdentifier());
+            command.setJavaClassMethod(readStringOrIdentifier());
         }
         return command;
     }

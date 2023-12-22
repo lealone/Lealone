@@ -957,10 +957,12 @@ public class ServerSession extends SessionBase {
 
     public Connection createConnection(String user, String url) {
         try {
+            // 使用新session
+            ServerSession session = database.createSession(getUser(), getScheduler());
             Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
             Connection conn = (Connection) jdbcConnectionClass
                     .getConstructor(Session.class, String.class, String.class)
-                    .newInstance(this, user, url);
+                    .newInstance(session, user, url);
             return conn;
         } catch (Exception e) {
             throw DbException.convert(e);
