@@ -7,6 +7,7 @@ package org.lealone.db.session;
 
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -131,6 +132,8 @@ public class ServerSession extends SessionBase {
     private Transaction transaction;
     private HashSet<IPage> dirtyPages;
     private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
+
+    private ArrayList<Connection> nestedConnections;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -658,6 +661,7 @@ public class ServerSession extends SessionBase {
     }
 
     private void commitFinal() {
+        commitOrRollbackNestedConnections(true);
         if (!containsDDL) {
             // do not clean the temp tables if the last command was a create/drop
             cleanTempTables(false);
@@ -673,12 +677,35 @@ public class ServerSession extends SessionBase {
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
+    private void commitOrRollbackNestedConnections(boolean commit) {
+        if (nestedConnections != null) {
+            for (Connection conn : nestedConnections) {
+                try {
+                    if (!isAutoCommit()) {
+                        if (commit)
+                            conn.commit();
+                        else
+                            conn.rollback();
+                    }
+                } catch (SQLException e) {
+                } finally {
+                    try {
+                        conn.close();
+                    } catch (SQLException e) {
+                    }
+                }
+            }
+            nestedConnections = null;
+        }
+    }
+
     /**
      * Fully roll back the current transaction.
      */
     public void rollback() {
         if (transaction == null)
             return;
+        commitOrRollbackNestedConnections(false);
         checkCommitRollback();
         transaction.rollback();
         clearDirtyPages();
@@ -939,30 +966,33 @@ public class ServerSession extends SessionBase {
     }
 
     /**
-     * Create an internal connection. This connection is used when initializing
+     * Create a nested connection. This connection is used when initializing
      * triggers, and when calling user defined functions.
      *
      * @param columnList if the url should be 'jdbc:lealone:columnlist:connection'
-     * @return the internal connection
+     * @return the nested connection
      */
-    public Connection createConnection(boolean columnList) {
-        String url;
-        if (columnList) {
-            url = Constants.CONN_URL_COLUMNLIST;
-        } else {
-            url = Constants.CONN_URL_INTERNAL;
+    public Connection createNestedConnection(boolean columnList) {
+        String url = columnList ? Constants.CONN_URL_COLUMNLIST : Constants.CONN_URL_INTERNAL;
+        // 使用新session
+        ServerSession session = database.createSession(getUser(), getScheduler());
+        Connection conn = createConnection(session, getUser().getName(), url);
+        if (nestedConnections == null) {
+            nestedConnections = new ArrayList<>();
         }
-        return createConnection(getUser().getName(), url);
+        nestedConnections.add(conn);
+        session.getTransaction().setParentTransaction(getTransaction());
+        return conn;
     }
 
-    public Connection createConnection(String user, String url) {
+    public static Connection createConnection(ServerSession session, String user, String url) {
         try {
-            // 使用新session
-            ServerSession session = database.createSession(getUser(), getScheduler());
             Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
             Connection conn = (Connection) jdbcConnectionClass
                     .getConstructor(Session.class, String.class, String.class)
                     .newInstance(session, user, url);
+            if (!session.isAutoCommit())
+                conn.setAutoCommit(false);
             return conn;
         } catch (Exception e) {
             throw DbException.convert(e);

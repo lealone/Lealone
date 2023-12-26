@@ -299,7 +299,7 @@ public class SystemFunction extends BuiltInFunction {
         }
         case CSVWRITE: {
             session.getUser().checkAdmin();
-            Connection conn = session.createConnection(false);
+            Connection conn = session.createNestedConnection(false);
             Csv csv = new Csv();
             String options = v2 == null ? null : v2.getString();
             String charset = null;

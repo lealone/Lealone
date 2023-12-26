@@ -78,7 +78,7 @@ public class JavaAggregate extends org.lealone.sql.expression.aggregate.Aggregat
 
     @Override
     public Expression optimize(ServerSession session) {
-        userConnection = session.createConnection(false);
+        userConnection = session.createNestedConnection(false);
         int len = args.length;
         argTypes = new int[len];
         for (int i = 0; i < len; i++) {

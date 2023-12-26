@@ -439,4 +439,16 @@ public class AOTransaction implements Transaction {
     public void setBitIndex(int bitIndex) {
         this.bitIndex = bitIndex;
     }
+
+    protected Transaction parentTransaction;
+
+    @Override
+    public Transaction getParentTransaction() {
+        return parentTransaction;
+    }
+
+    @Override
+    public void setParentTransaction(Transaction parentTransaction) {
+        this.parentTransaction = parentTransaction;
+    }
 }

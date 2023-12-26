@@ -1737,7 +1737,8 @@ public class Database extends DbObjectBase implements DataHandler {
     }
 
     private Connection getInternalConnection(ServerSession session) {
-        return session.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
+        return ServerSession.createConnection(session, systemUser.getName(),
+                Constants.CONN_URL_INTERNAL);
     }
 
     public int getDefaultTableType() {

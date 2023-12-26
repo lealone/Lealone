@@ -359,7 +359,7 @@ public class FunctionAlias extends SchemaObjectBase {
             Object[] params = new Object[paramClasses.length];
             int p = 0;
             if (hasConnectionParam && params.length > 0) {
-                params[p++] = session.createConnection(columnList);
+                params[p++] = session.createNestedConnection(columnList);
             }
 
             // allocate array for varArgs parameters
@@ -411,7 +411,7 @@ public class FunctionAlias extends SchemaObjectBase {
                     }
                 } else {
                     if (!paramClass.isAssignableFrom(o.getClass()) && !paramClass.isPrimitive()) {
-                        o = convertTo(session.createConnection(false), v, paramClass);
+                        o = convertTo(session.createNestedConnection(false), v, paramClass);
                     }
                 }
                 if (currentIsVarArg) {

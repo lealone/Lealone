@@ -87,7 +87,7 @@ public class TransactionalValue implements ITransactionalValue {
 
     public Object getValue(AOTransaction transaction, StorageMap<?, ?> map) {
         AOTransaction t = rowLock.getTransaction();
-        if (t == transaction)
+        if (t == transaction || t == transaction.getParentTransaction())
             return value;
         // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
         int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED

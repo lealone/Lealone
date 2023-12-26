@@ -77,7 +77,7 @@ public class TriggerObject extends SchemaObjectBase {
         }
         try {
             ServerSession sysSession = database.getSystemSession();
-            Connection c2 = sysSession.createConnection(false);
+            Connection c2 = sysSession.createNestedConnection(false);
             Object obj;
             if (triggerClassName != null) {
                 obj = Utils.newInstance(triggerClassName);
@@ -162,7 +162,7 @@ public class TriggerObject extends SchemaObjectBase {
             return;
         }
         load();
-        Connection c2 = session.createConnection(false);
+        Connection c2 = session.createNestedConnection(false);
         boolean old = false;
         if (type != Trigger.SELECT) {
             old = session.setCommitOrRollbackDisabled(true);
@@ -246,7 +246,7 @@ public class TriggerObject extends SchemaObjectBase {
         } else {
             newListBackup = null;
         }
-        Connection c2 = session.createConnection(false);
+        Connection c2 = session.createNestedConnection(false);
         boolean old = session.isAutoCommit();
         boolean oldDisabled = session.setCommitOrRollbackDisabled(true);
         Value identity = session.getLastScopeIdentity();

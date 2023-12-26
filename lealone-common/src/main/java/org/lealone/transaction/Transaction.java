@@ -112,4 +112,7 @@ public interface Transaction {
 
     int addWaitingTransaction(Object key, Session session, AsyncHandler<SessionStatus> asyncHandler);
 
+    Transaction getParentTransaction();
+
+    void setParentTransaction(Transaction parentTransaction);
 }
