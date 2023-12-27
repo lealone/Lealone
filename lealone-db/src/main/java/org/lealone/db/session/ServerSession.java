@@ -976,6 +976,7 @@ public class ServerSession extends SessionBase {
         String url = columnList ? Constants.CONN_URL_COLUMNLIST : Constants.CONN_URL_INTERNAL;
         // 使用新session
         ServerSession session = database.createSession(getUser(), getScheduler());
+        session.setAutoCommit(isAutoCommit());
         Connection conn = createConnection(session, getUser().getName(), url);
         if (nestedConnections == null) {
             nestedConnections = new ArrayList<>();

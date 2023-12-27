@@ -52,7 +52,8 @@ public abstract class Lock {
             }
 
             // 避免重复加锁
-            if (ref.get().getTransaction() == t)
+            Transaction old = ref.get().getTransaction();
+            if (old == t || old == t.getParentTransaction())
                 return true;
 
             // 被其他事务占用时需要等待

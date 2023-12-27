@@ -1073,6 +1073,15 @@ public class Database extends DbObjectBase implements DataHandler {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }
+        // systemUser不存在，执行CreateSchema会出错
+        if (user == systemUser) {
+            for (User u : getAllUsers()) {
+                if (u.isAdmin()) {
+                    user = u;
+                    break;
+                }
+            }
+        }
         ServerSession session = new ServerSession(this, user, ++nextSessionId);
         session.setConnectionInfo(ci);
         userSessions.add(session);
