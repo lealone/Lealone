@@ -241,7 +241,8 @@ public class StandardPrimaryIndex extends StandardIndex {
                 ValueLob newLob = getLargeObject(newRow, columnId);
                 // 如果lob字段不需要更新那就什么都不需要做
                 if (oldLob != newLob) {
-                    linkLargeObject(session, newRow, columnId, newLob);
+                    if (newLob != null)
+                        linkLargeObject(session, newRow, columnId, newLob);
                     unlinkLargeObject(session, oldLob);
                 }
             }
