@@ -24,19 +24,27 @@ public class FileStorageInputStream extends InputStream {
     private final boolean alwaysClose;
     private final CompressTool compress;
     private final DataBuffer page;
+    private final boolean raw;
     private int remainingInBuffer;
     private boolean endOfFile;
 
     public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression,
             boolean alwaysClose) {
+        this(fileStorage, handler, compression, alwaysClose, false);
+    }
+
+    public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression,
+            boolean alwaysClose, boolean raw) {
         this.fileStorage = fileStorage;
         this.alwaysClose = alwaysClose;
+        this.raw = raw;
         if (compression) {
             compress = CompressTool.getInstance();
         } else {
             compress = null;
         }
-        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE, false); // 不能用direct byte buffer
+        int capacity = raw ? Constants.IO_BUFFER_SIZE : Constants.FILE_BLOCK_SIZE;
+        page = DataBuffer.create(handler, capacity, false); // 不能用direct byte buffer
         try {
             fillBuffer();
         } catch (IOException e) {
@@ -99,6 +107,16 @@ public class FileStorageInputStream extends InputStream {
             return;
         }
         page.reset();
+        if (raw) {
+            remainingInBuffer = (int) Math.min(fileStorage.length() - fileStorage.getFilePointer(),
+                    Constants.IO_BUFFER_SIZE);
+            if (remainingInBuffer <= 0) {
+                endOfFile = true;
+            } else {
+                fileStorage.readFully(page.getBytes(), 0, remainingInBuffer);
+            }
+            return;
+        }
         fileStorage.openFile();
         if (fileStorage.length() == fileStorage.getFilePointer()) {
             close();
@@ -141,6 +159,8 @@ public class FileStorageInputStream extends InputStream {
 
     @Override
     public void close() {
+        if (raw)
+            return;
         if (fileStorage != null) {
             try {
                 fileStorage.close();

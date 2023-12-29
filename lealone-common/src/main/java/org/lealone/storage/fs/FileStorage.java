@@ -5,7 +5,6 @@
  */
 package org.lealone.storage.fs;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.Reference;
@@ -223,9 +222,9 @@ public class FileStorage {
      * @param len the number of bytes to read
      */
     public void readFully(byte[] b, int off, int len) {
-        if (SysProperties.CHECK && (len < 0 || len % Constants.FILE_BLOCK_SIZE != 0)) {
-            DbException.throwInternalError("unaligned read " + fileName + " len " + len);
-        }
+        // if (SysProperties.CHECK && (len < 0 || len % Constants.FILE_BLOCK_SIZE != 0)) {
+        // DbException.throwInternalError("unaligned read " + fileName + " len " + len);
+        // }
         checkPowerOff();
         try {
             FileUtils.readFully(file, ByteBuffer.wrap(b, off, len));
@@ -592,17 +591,23 @@ public class FileStorage {
         return fileName;
     }
 
+    // 这种方案在可用内存不够时如果文件很大会导致OOM
+    // public InputStream getInputStream() {
+    // checkPowerOff();
+    // int len = (int) fileSize;
+    // byte[] bytes = new byte[len];
+    // try {
+    // file.position(0);
+    // FileUtils.readFully(file, ByteBuffer.wrap(bytes, 0, len));
+    // file.position(filePos);
+    // } catch (IOException e) {
+    // throw DbException.convertIOException(e, fileName);
+    // }
+    // return new ByteArrayInputStream(bytes);
+    // }
+
     public InputStream getInputStream() {
         checkPowerOff();
-        int len = (int) fileSize;
-        byte[] bytes = new byte[len];
-        try {
-            file.position(0);
-            FileUtils.readFully(file, ByteBuffer.wrap(bytes, 0, len));
-            file.position(filePos);
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, fileName);
-        }
-        return new ByteArrayInputStream(bytes);
+        return new FileStorageInputStream(this, handler, false, false, true);
     }
 }
