@@ -53,6 +53,7 @@ public abstract class UserCommand extends BsonCommand {
         sql.append('`').append(name).append('`').append(" PASSWORD '");
         sql.append(pwd).append("' ADMIN");
         conn.executeUpdateLocal(db, sql);
+        grantRolesToUser(input, doc, conn, task, name);
         return newOkBsonDocument();
     }
 
@@ -78,6 +79,7 @@ public abstract class UserCommand extends BsonCommand {
         sql.append('`').append(name).append('`').append(" SET PASSWORD '");
         sql.append(pwd).append("'");
         conn.executeUpdateLocal(db, sql);
+        grantRolesToUser(input, doc, conn, task, name);
         return newOkBsonDocument();
     }
 
@@ -143,11 +145,64 @@ public abstract class UserCommand extends BsonCommand {
 
     public static BsonDocument grantRolesToUser(ByteBufferBsonInput input, BsonDocument doc,
             MongoServerConnection conn, MongoTask task) {
+        String user = getString(doc, "grantRolesToUser");
+        grantRolesToUser(input, doc, conn, task, user);
         return newOkBsonDocument();
+    }
+
+    private static void grantRolesToUser(ByteBufferBsonInput input, BsonDocument doc,
+            MongoServerConnection conn, MongoTask task, String user) {
+        BsonArray roles = doc.getArray("roles", null);
+        Database db = getDatabase(doc);
+        if (roles != null) {
+            for (int i = 0, size = roles.size(); i < size; i++) {
+                String roleName = null;
+                if (roles.get(i).isString()) {
+                    roleName = roles.get(i).asString().getValue();
+                } else {
+                    BsonDocument roleDoc = roles.get(i).asDocument();
+                    String dbName = getStringOrNull(roleDoc, "db");
+                    String roleName2 = getStringOrNull(roleDoc, "role");
+                    if (db.getName().equalsIgnoreCase(dbName) && roleName2 != null
+                            && !roleName2.isEmpty()) {
+                        roleName = roleName2;
+                    }
+                }
+                if (roleName != null) {
+                    StatementBuilder sql = new StatementBuilder("GRANT");
+                    sql.append(roleName).append(" TO ").append(user);
+                    conn.executeUpdateLocal(db, sql);
+                }
+            }
+        }
     }
 
     public static BsonDocument revokeRolesFromUser(ByteBufferBsonInput input, BsonDocument doc,
             MongoServerConnection conn, MongoTask task) {
+        String user = getString(doc, "revokeRolesFromUser");
+        BsonArray roles = doc.getArray("roles", null);
+        Database db = getDatabase(doc);
+        if (roles != null) {
+            for (int i = 0, size = roles.size(); i < size; i++) {
+                String roleName = null;
+                if (roles.get(i).isString()) {
+                    roleName = roles.get(i).asString().getValue();
+                } else {
+                    BsonDocument roleDoc = roles.get(i).asDocument();
+                    String dbName = getStringOrNull(roleDoc, "db");
+                    String roleName2 = getStringOrNull(roleDoc, "role");
+                    if (db.getName().equalsIgnoreCase(dbName) && roleName2 != null
+                            && !roleName2.isEmpty()) {
+                        roleName = roleName2;
+                    }
+                }
+                if (roleName != null) {
+                    StatementBuilder sql = new StatementBuilder("REVOKE");
+                    sql.append(roleName).append(" FROM ").append(user);
+                    conn.executeUpdateLocal(db, sql);
+                }
+            }
+        }
         return newOkBsonDocument();
     }
 }
