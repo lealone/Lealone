@@ -7,7 +7,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.lealone</groupId>
+        <groupId>com.lealone</groupId>
         <artifactId>lealone</artifactId>
         <version>6.0.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -19,7 +19,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.lealone</groupId>
+            <groupId>com.lealone</groupId>
             <artifactId>lealone-net</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -50,7 +50,7 @@
                                 <transformer
                                     implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Main-Class>org.lealone.client.LealoneClient</Main-Class>
+                                        <Main-Class>com.lealone.client.LealoneClient</Main-Class>
                                          <!-- 让log4j2选择合适的jdk，避免启动时出现WARNING: sun.reflect.Reflection.getCallerClass is not supported -->
                                         <Multi-Release>true</Multi-Release>
                                         <Built-By>Lealone Database Group</Built-By>
