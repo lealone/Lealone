@@ -140,7 +140,11 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
     }
 
     void sendError(int packetId, Throwable e) {
-        conn.sendError(session, packetId, e);
+        // 如果session没有对应的connection不需要发送错误信息
+        if (conn != null)
+            conn.sendError(session, packetId, e);
+        else
+            logger.error("", e);
     }
 
     @Override
@@ -150,9 +154,11 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
 
     boolean isMarkClosed() {
         if (session.isMarkClosed()) {
-            conn.closeSession(this);
-            if (conn.getSessionCount() == 0)
-                conn.close();
+            if (conn != null) {
+                conn.closeSession(this);
+                if (conn.getSessionCount() == 0)
+                    conn.close();
+            }
             return true;
         }
         return false;
