@@ -81,4 +81,11 @@ protocol_server_engines:
         allow_others: true,
         ssl: false
     }
+  - name: Cassandra
+    enabled: true
+    parameters: {
+        port: 9610,
+        allow_others: true,
+        ssl: false
+    }
     

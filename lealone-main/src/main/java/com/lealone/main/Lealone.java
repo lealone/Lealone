@@ -29,9 +29,10 @@ import com.lealone.db.SysProperties;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.main.config.Config;
+import com.lealone.main.config.Config.PluggableEngineDef;
 import com.lealone.main.config.ConfigLoader;
 import com.lealone.main.config.YamlConfigLoader;
-import com.lealone.main.config.Config.PluggableEngineDef;
+import com.lealone.plugins.cassandra.server.CassandraServerEngine;
 import com.lealone.plugins.mongo.server.MongoServerEngine;
 import com.lealone.plugins.mysql.server.MySQLServerEngine;
 import com.lealone.plugins.postgresql.server.PgServerEngine;
@@ -92,6 +93,8 @@ public class Lealone {
     private String mysqlPort;
     private String pgHost;
     private String pgPort;
+    private String cassandraHost;
+    private String cassandraPort;
 
     public void start(String[] args) {
         start(args, null);
@@ -125,6 +128,10 @@ public class Lealone {
                 pgHost = args[++i];
             } else if (arg.equals("-pgPort")) {
                 pgPort = args[++i];
+            } else if (arg.equals("-cassandraHost")) {
+                cassandraHost = args[++i];
+            } else if (arg.equals("-cassandraPort")) {
+                cassandraPort = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -150,6 +157,8 @@ public class Lealone {
         println("[-mysqlPort <port>]     MySQL server port");
         println("[-pgHost <host>]        PostgreSQL server host");
         println("[-pgPort <port>]        PostgreSQL server port");
+        println("[-cassandraHost <host>] Cassandra server host");
+        println("[-cassandraPort <port>] Cassandra server port");
         println("[-embed]                Embedded mode");
         println("[-client]               Client mode");
         println();
@@ -233,6 +242,7 @@ public class Lealone {
         config.mergeProtocolServerParameters(MongoServerEngine.NAME, mongoHost, mongoPort);
         config.mergeProtocolServerParameters(MySQLServerEngine.NAME, mysqlHost, mysqlPort);
         config.mergeProtocolServerParameters(PgServerEngine.NAME, pgHost, pgPort);
+        config.mergeProtocolServerParameters(CassandraServerEngine.NAME, cassandraHost, cassandraPort);
         loader.applyConfig(config);
         this.config = config;
     }

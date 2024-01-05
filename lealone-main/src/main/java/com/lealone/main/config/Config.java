@@ -47,11 +47,12 @@ public class Config {
         sql_engines = new ArrayList<>(1);
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(4);
+        protocol_server_engines = new ArrayList<>(5);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
         protocol_server_engines.add(createEngineDef("Mongo", true, false));
         protocol_server_engines.add(createEngineDef("MySQL", true, false));
         protocol_server_engines.add(createEngineDef("PostgreSQL", true, false));
+        protocol_server_engines.add(createEngineDef("Cassandra", true, false));
 
         scheduler = new SchedulerDef();
         // scheduler.name = "ScheduleService";
