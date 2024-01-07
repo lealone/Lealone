@@ -17,8 +17,9 @@ import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.internal.core.metadata.DefaultEndPoint;
 
-// 需要运行cassandra，用 cassandra -f 运行
+// 需要运行cassandra，用 cassandra -f 运行 
 public class CassandraCrudTest extends CassandraTestBase {
 
     public static void main(String[] args) {
@@ -27,12 +28,17 @@ public class CassandraCrudTest extends CassandraTestBase {
 
     private AtomicInteger id = new AtomicInteger();
 
+    @SuppressWarnings("unused")
     private void start() {
         int port = TEST_PORT;
-        // port = CASSANDRA_PORT;
+        port = CASSANDRA_PORT;
+        DefaultEndPoint endPoint = new DefaultEndPoint(new InetSocketAddress("127.0.0.1", port));
         try (CqlSession session = CqlSession.builder()
-                .addContactPoint(new InetSocketAddress("127.0.0.1", port))
-                .withAuthCredentials("cassandra", "cassandra").build()) {
+                // .addContactEndPoint(endPoint)
+                // .addContactPoint(new InetSocketAddress("127.0.0.1", port))
+                // .withLocalDatacenter("local")
+                // .withAuthCredentials("cassandra", "cassandra")//
+                .build()) {
             ResultSet rs = session.execute("select release_version from system.local");
             Row row = rs.one();
             System.out.println(row.getString("release_version"));
@@ -87,11 +93,19 @@ public class CassandraCrudTest extends CassandraTestBase {
         }
 
         PreparedStatement statement = session.prepare("insert into test(f1,f2) values(?,1)");
-        BatchStatement batchStatement = BatchStatement.newInstance(BatchType.UNLOGGED);
+        BoundStatement boundStmt3 = statement.bind(id.incrementAndGet());
+        // boundStmt3.setInt(0, id.incrementAndGet());
+        session.execute(boundStmt3);
+        // statement = session.prepare("insert into test(f1,f2) values(?,1)");
+        BatchStatement batchStatement = BatchStatement.newInstance(BatchType.LOGGED);
         for (int i = 0; i < 10; i++) {
-            BoundStatement boundStmt = statement.bind();
-            boundStmt.setInt(0, id.incrementAndGet());
-            batchStatement.add(boundStmt);
+            // 这种方式不起作用
+            // BoundStatement boundStmt = statement.bind();
+            // dboundStmt.setInt(0, id.incrementAndGet());
+            // batchStatement.add(boundStmt);
+
+            BoundStatement boundStmt = statement.bind(id.incrementAndGet());
+            batchStatement = batchStatement.add(boundStmt);
         }
         session.execute(batchStatement);
     }
