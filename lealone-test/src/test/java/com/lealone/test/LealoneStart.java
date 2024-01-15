@@ -9,11 +9,6 @@ import com.lealone.main.Lealone;
 
 public class LealoneStart {
 
-    static {
-        // 测试代码中有依赖mysql jdbc驱动，禁用掉流氓的abandoned-connection-cleanup线程
-        TestBase.disableAbandonedConnectionCleanup();
-    }
-
     public static void main(String[] args) {
         Lealone.main(args);
     }

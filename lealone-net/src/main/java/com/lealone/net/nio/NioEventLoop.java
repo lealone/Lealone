@@ -37,9 +37,9 @@ import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetClient;
+import com.lealone.net.NetClientBase.ClientAttachment;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.TcpClientConnection;
-import com.lealone.net.NetClientBase.ClientAttachment;
 
 class NioEventLoop implements NetEventLoop {
 

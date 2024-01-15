@@ -1144,7 +1144,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    private boolean readIfExists(boolean ifExists) {
+    protected boolean readIfExists(boolean ifExists) {
         if (readIf("IF")) {
             read("EXISTS");
             ifExists = true;
@@ -1222,7 +1222,7 @@ public abstract class SQLParserBase implements SQLParser {
         return command;
     }
 
-    private StatementBase parseDrop() {
+    protected StatementBase parseDrop() {
         if (readIf("TABLE")) {
             boolean ifExists = readIfExists(false);
             String tableName = readIdentifierWithSchema();
@@ -4901,7 +4901,7 @@ public abstract class SQLParserBase implements SQLParser {
         return new TransactionStatement(session, SQLStatement.CHECKPOINT);
     }
 
-    private StatementBase parseAlter() {
+    protected StatementBase parseAlter() {
         if (readIf("TABLE")) {
             return parseAlterTable();
         } else if (readIf("USER")) {

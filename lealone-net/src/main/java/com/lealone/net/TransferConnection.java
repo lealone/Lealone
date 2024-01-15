@@ -24,7 +24,8 @@ public abstract class TransferConnection extends AsyncConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
 
-    protected final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
+    protected final ByteBuffer packetLengthByteBuffer = ByteBuffer
+            .allocate(getPacketLengthByteBufferCapacity());
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
@@ -32,6 +33,10 @@ public abstract class TransferConnection extends AsyncConnection {
 
     public DataBufferFactory getDataBufferFactory() {
         return DataBufferFactory.getConcurrentFactory();
+    }
+
+    public int getPacketLengthByteBufferCapacity() {
+        return 4;
     }
 
     @Override

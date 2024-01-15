@@ -32,10 +32,6 @@ import com.lealone.main.config.Config;
 import com.lealone.main.config.Config.PluggableEngineDef;
 import com.lealone.main.config.ConfigLoader;
 import com.lealone.main.config.YamlConfigLoader;
-import com.lealone.plugins.cassandra.server.CassandraServerEngine;
-import com.lealone.plugins.mongo.server.MongoServerEngine;
-import com.lealone.plugins.mysql.server.MySQLServerEngine;
-import com.lealone.plugins.postgresql.server.PgServerEngine;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
@@ -87,14 +83,6 @@ public class Lealone {
     private String baseDir;
     private String host;
     private String port;
-    private String mongoHost;
-    private String mongoPort;
-    private String mysqlHost;
-    private String mysqlPort;
-    private String pgHost;
-    private String pgPort;
-    private String cassandraHost;
-    private String cassandraPort;
 
     public void start(String[] args) {
         start(args, null);
@@ -116,22 +104,6 @@ public class Lealone {
                 host = args[++i];
             } else if (arg.equals("-port")) {
                 port = args[++i];
-            } else if (arg.equals("-mongoHost")) {
-                mongoHost = args[++i];
-            } else if (arg.equals("-mongoPort")) {
-                mongoPort = args[++i];
-            } else if (arg.equals("-mysqlHost")) {
-                mysqlHost = args[++i];
-            } else if (arg.equals("-mysqlPort")) {
-                mysqlPort = args[++i];
-            } else if (arg.equals("-pgHost")) {
-                pgHost = args[++i];
-            } else if (arg.equals("-pgPort")) {
-                pgPort = args[++i];
-            } else if (arg.equals("-cassandraHost")) {
-                cassandraHost = args[++i];
-            } else if (arg.equals("-cassandraPort")) {
-                cassandraPort = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -151,14 +123,6 @@ public class Lealone {
         println("[-config <file>]        The config file");
         println("[-host <host>]          Tcp server host");
         println("[-port <port>]          Tcp server port");
-        println("[-mongoHost <host>]     Mongo server host");
-        println("[-mongoPort <port>]     Mongo server port");
-        println("[-mysqlHost <host>]     MySQL server host");
-        println("[-mysqlPort <port>]     MySQL server port");
-        println("[-pgHost <host>]        PostgreSQL server host");
-        println("[-pgPort <port>]        PostgreSQL server port");
-        println("[-cassandraHost <host>] Cassandra server host");
-        println("[-cassandraPort <port>] Cassandra server port");
         println("[-embed]                Embedded mode");
         println("[-client]               Client mode");
         println();
@@ -239,10 +203,6 @@ public class Lealone {
         if (host != null)
             config.listen_address = host;
         config.mergeProtocolServerParameters(TcpServerEngine.NAME, host, port);
-        config.mergeProtocolServerParameters(MongoServerEngine.NAME, mongoHost, mongoPort);
-        config.mergeProtocolServerParameters(MySQLServerEngine.NAME, mysqlHost, mysqlPort);
-        config.mergeProtocolServerParameters(PgServerEngine.NAME, pgHost, pgPort);
-        config.mergeProtocolServerParameters(CassandraServerEngine.NAME, cassandraHost, cassandraPort);
         loader.applyConfig(config);
         this.config = config;
     }

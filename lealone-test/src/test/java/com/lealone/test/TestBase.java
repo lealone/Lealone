@@ -71,17 +71,9 @@ public class TestBase extends Assert {
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
 
         // setConsoleLoggerFactory();
-
-        disableAbandonedConnectionCleanup();
     }
 
     public TestBase() {
-    }
-
-    public static void disableAbandonedConnectionCleanup() {
-        // 不启动mysql-cj-abandoned-connection-cleanup线程
-        System.setProperty(com.mysql.cj.conf.PropertyDefinitions.SYSP_disableAbandonedConnectionCleanup,
-                "true");
     }
 
     // 这个在eclipse的console下输出结果并不快，反而会拖慢启动速度，在cmd窗口下才有效果

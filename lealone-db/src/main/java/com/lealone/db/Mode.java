@@ -46,6 +46,9 @@ public class Mode {
         mode.logIsLogBase10 = true;
         mode.serialColumnIsNotPK = true;
         add(mode);
+
+        mode = new Mode("Cassandra");
+        add(mode);
     }
 
     private static void add(Mode mode) {

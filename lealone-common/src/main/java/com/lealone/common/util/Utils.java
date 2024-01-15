@@ -651,7 +651,18 @@ public class Utils {
         if (!CHECK_DATA_ZIP_FILE) {
             in = Utils.class.getResourceAsStream(name);
             if (in == null) {
-                return null;
+                in = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+                if (in == null) {
+                    if (name.startsWith("/")) {
+                        // URLClassLoader不支持"/"前缀
+                        name = name.substring(1);
+                        in = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+                        if (in == null)
+                            return null;
+                    } else {
+                        return null;
+                    }
+                }
             }
             return IOUtils.readBytesAndClose(in, 0);
         }

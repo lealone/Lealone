@@ -37,18 +37,6 @@ sql_engines:
         # key1: v1,
         # key2: v2,
     }
-  - name: MySQL
-    enabled: true
-    parameters: {
-        # key1: v1,
-        # key2: v2,
-    }
-  - name: PostgreSQL
-    enabled: true
-    parameters: {
-        # key1: v1,
-        # key2: v2,
-    }
 
 protocol_server_engines:
   - name: TCP
@@ -60,32 +48,3 @@ protocol_server_engines:
         ssl: false,
         session_timeout: -1
     }
-  - name: Mongo
-    enabled: true
-    parameters: {
-        port: 9310,
-        allow_others: true,
-        ssl: false
-    }
-  - name: MySQL
-    enabled: true
-    parameters: {
-        port: 9410,
-        allow_others: true,
-        ssl: false
-    }
-  - name: PostgreSQL
-    enabled: true
-    parameters: {
-        port: 9510,
-        allow_others: true,
-        ssl: false
-    }
-  - name: Cassandra
-    enabled: true
-    parameters: {
-        port: 9610,
-        allow_others: true,
-        ssl: false
-    }
-    

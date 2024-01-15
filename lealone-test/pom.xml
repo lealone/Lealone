@@ -29,32 +29,6 @@
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-            <version>4.10.2</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <!-- 5.1.47   6.0.2   8.0.28 --> 
-            <version>8.0.28</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <!-- 9.4.1212   42.3.8 --> 
-            <version>42.3.8</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.datastax.oss</groupId>
-            <artifactId>java-driver-core</artifactId>
-            <version>4.14.1</version>
-            <scope>test</scope>
-        </dependency>
         <!--
         <dependency>
             <groupId>org.openjdk.jol</groupId>

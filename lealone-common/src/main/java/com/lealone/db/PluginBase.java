@@ -97,5 +97,7 @@ public abstract class PluginBase implements Plugin {
         return (Class<Plugin>) getPluginClass();
     }
 
-    public abstract Class<? extends Plugin> getPluginClass();
+    public Class<? extends Plugin> getPluginClass() {
+        return Plugin.class;
+    }
 }
