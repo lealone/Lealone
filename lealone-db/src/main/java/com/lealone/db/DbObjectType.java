@@ -15,7 +15,7 @@ public enum DbObjectType {
     /**
      * The object is a database
      */
-    DATABASE(0, 0, false),
+    DATABASE(0, 1, false),
 
     /**
      * This object is a user.
@@ -96,7 +96,7 @@ public enum DbObjectType {
     /**
      * This object is a plugin.
      */
-    PLUGIN(16, 3, false); // PLUGIN的优先级要高一些
+    PLUGIN(16, 0, false); // create plugin语句的优先级最高，执行create database语句时可能需要依赖插件的名字
 
     private static final int MAX = 17;
 
