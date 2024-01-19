@@ -23,7 +23,6 @@ import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
-import com.lealone.net.NetFactoryManager;
 import com.lealone.net.NetNode;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.server.protocol.AckPacketHandler;
@@ -46,7 +45,7 @@ public class ClientSessionFactory extends SessionFactoryBase {
 
         AsyncCallback<Session> ac;
         NetClient netClient;
-        NetFactory netFactory = NetFactoryManager.getFactory(config);
+        NetFactory netFactory = NetFactory.getFactory(config);
         if (netFactory.isBio()) {
             ac = AsyncCallback.create(true);
             netClient = netFactory.createNetClient();

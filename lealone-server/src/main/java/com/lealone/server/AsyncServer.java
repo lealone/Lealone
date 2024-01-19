@@ -17,7 +17,6 @@ import com.lealone.net.AsyncConnection;
 import com.lealone.net.AsyncConnectionManager;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
-import com.lealone.net.NetFactoryManager;
 import com.lealone.net.NetServer;
 import com.lealone.net.WritableChannel;
 import com.lealone.server.scheduler.GlobalScheduler;
@@ -46,7 +45,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         serverId = AsyncServerManager.allocateServerId();
         AsyncServerManager.addServer(this);
 
-        NetFactory factory = NetFactoryManager.getFactory(config);
+        NetFactory factory = NetFactory.getFactory(config);
         NetServer netServer = factory.createNetServer();
         netServer.setConnectionManager(this);
         setProtocolServer(netServer);

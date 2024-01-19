@@ -19,7 +19,6 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactoryBase;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetFactory;
-import com.lealone.net.NetFactoryManager;
 import com.lealone.net.NetScheduler;
 
 public class ClientScheduler extends NetScheduler {
@@ -34,7 +33,7 @@ public class ClientScheduler extends NetScheduler {
         super(id, "CScheduleService-" + id,
                 MapUtils.getInt(config, ConnectionSetting.NET_CLIENT_COUNT.name(), schedulerCount),
                 config, false);
-        NetFactory netFactory = NetFactoryManager.getFactory(config);
+        NetFactory netFactory = NetFactory.getFactory(config);
         netClient = netFactory.createNetClient();
         netEventLoop.setNetClient(netClient);
         getThread().setDaemon(true);
