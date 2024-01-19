@@ -259,8 +259,8 @@ public class TestBase extends Assert {
             separatorChar = '&';
         }
 
-        url.append(dbName).append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=")
-                .append(netFactoryName);
+        url.append(dbName).append(firstSeparatorChar).append(ConnectionSetting.NET_FACTORY_NAME.name())
+                .append("=").append(netFactoryName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())
             url.append(separatorChar).append(e.getKey()).append('=').append(e.getValue());

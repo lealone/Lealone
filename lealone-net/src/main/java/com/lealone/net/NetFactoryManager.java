@@ -8,6 +8,7 @@ package com.lealone.net;
 import java.util.Map;
 
 import com.lealone.common.util.MapUtils;
+import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
 import com.lealone.db.PluginManager;
 import com.lealone.net.bio.BioNetFactory;
@@ -37,7 +38,7 @@ public class NetFactoryManager extends PluginManager<NetFactory> {
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
-        String netFactoryName = MapUtils.getString(config, Constants.NET_FACTORY_NAME_KEY,
+        String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
                 Constants.DEFAULT_NET_FACTORY_NAME);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {

@@ -48,8 +48,6 @@ public class Constants {
 
     public static final String DEFAULT_NET_FACTORY_NAME = "nio";
 
-    public static final String NET_FACTORY_NAME_KEY = ConnectionSetting.NET_FACTORY_NAME.name();
-
     public static final char NAME_SEPARATOR = '_';
 
     public static final String RESOURCES_DIR = "/com/lealone/common/resources/";
@@ -78,12 +76,6 @@ public class Constants {
      * The current TCP protocol version number.
      */
     public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_6;
-
-    /**
-     * The number of milliseconds after which to check for a deadlock if locking
-     * is not successful.
-     */
-    public static final int DEADLOCK_CHECK = 100;
 
     /**
      * Constant meaning both numbers and text is allowed in SQL statements.
@@ -284,11 +276,6 @@ public class Constants {
     public static final String CONN_URL_INTERNAL = URL_PREFIX + "default:connection";
 
     /**
-     * The file name suffix of a database file.
-     */
-    public static final String SUFFIX_DB_FILE = ".db";
-
-    /**
      * The file name suffix of temporary files.
      */
     public static final String SUFFIX_TEMP_FILE = ".temp.db";
@@ -335,8 +322,6 @@ public class Constants {
      * The maximum number of entries in query statistics.
      */
     public static final int QUERY_STATISTICS_MAX_ENTRIES = 100;
-
-    public static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
     // 为了避免模块之间在编译期存在依赖，有些地方会用到反射，在这里统一定义类名
     public static final String REFLECTION_JDBC_CONNECTION = "com.lealone.client.jdbc.JdbcConnection";
