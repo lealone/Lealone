@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 
 import org.junit.Before;
 
-import com.lealone.db.ConnectionInfo;
 import com.lealone.db.Constants;
 import com.lealone.db.Database;
 import com.lealone.db.LealoneDatabase;
@@ -54,8 +53,7 @@ public class DbObjectTestBase extends DbTestBase {
     }
 
     public ServerSession createSession() {
-        ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
-        return (ServerSession) getServerSessionFactory().createSession(ci).get();
+        return createServerSession(getURL(dbName));
     }
 
     public int executeUpdate() {

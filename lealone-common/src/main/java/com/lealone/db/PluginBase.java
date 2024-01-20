@@ -60,10 +60,7 @@ public abstract class PluginBase implements Plugin {
                 setName(pluginName); // 使用create plugin创建插件对象时用命令指定的名称覆盖默认值
 
             Class<Plugin> pluginClass = getPluginClass0();
-            Plugin p = PluginManager.getPlugin(pluginClass, getName());
-            if (p == null) {
-                PluginManager.register(pluginClass, this);
-            }
+            PluginManager.register(pluginClass, this);
             state = State.INITED;
         }
     }

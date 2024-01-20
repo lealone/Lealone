@@ -23,6 +23,12 @@ import com.lealone.net.NetNode;
 
 public class ServerSessionFactory extends SessionFactoryBase {
 
+    private static final ServerSessionFactory instance = new ServerSessionFactory();
+
+    public static ServerSessionFactory getInstance() {
+        return instance;
+    }
+
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
         if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {

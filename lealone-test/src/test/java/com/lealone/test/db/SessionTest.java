@@ -17,7 +17,7 @@ public class SessionTest extends DbTestBase {
         setEmbedded(true);
 
         String url = getURL();
-        ServerSession session = (ServerSession) getServerSessionFactory().createSession(url).get();
+        ServerSession session = createServerSession(url);
 
         String sql = "CREATE TABLE IF NOT EXISTS SessionTest(f1 int, f2 int)";
         int fetchSize = 0;

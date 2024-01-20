@@ -12,16 +12,14 @@ import java.sql.Statement;
 import org.junit.Assert;
 
 import com.lealone.db.LealoneDatabase;
+import com.lealone.net.bio.BioNetFactory;
 import com.lealone.test.TestBase;
 
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
-        // test.setNetFactoryName(BioNetFactory.NAME);
-        // test.addConnectionParameter(ConnectionSetting.SESSION_FACTORY_NAME,
-        // ClientSessionFactory.class.getSimpleName());
-
+        test.setNetFactoryName(BioNetFactory.NAME);
         Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }

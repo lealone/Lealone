@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.StringTokenizer;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.security.SHA256;
@@ -21,9 +23,6 @@ import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionFactory;
 import com.lealone.db.session.SessionSetting;
 import com.lealone.storage.fs.impl.encrypt.FilePathEncrypt;
-
-import java.util.Properties;
-import java.util.StringTokenizer;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -658,17 +657,25 @@ public class ConnectionInfo implements Cloneable {
 
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
-            String sfName;
-            if (sessionFactoryName != null)
-                sfName = sessionFactoryName;
-            else if (remote) {
-                sfName = "ClientSessionFactory";
+            if (sessionFactoryName != null) {
+                sessionFactory = PluginManager.getPlugin(SessionFactory.class, sessionFactoryName);
+                if (sessionFactory == null)
+                    throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, sessionFactoryName);
             } else {
-                sfName = "ServerSessionFactory";
+                // 要使用反射，避免编译期依赖
+                try {
+                    String className;
+                    if (remote) {
+                        className = "com.lealone.client.session.ClientSessionFactory";
+                    } else {
+                        className = "com.lealone.db.session.ServerSessionFactory";
+                    }
+                    sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance")
+                            .invoke(null);
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
             }
-            sessionFactory = PluginManager.getPlugin(SessionFactory.class, sfName);
-            if (sessionFactory == null)
-                throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, sfName);
         }
         return sessionFactory;
     }

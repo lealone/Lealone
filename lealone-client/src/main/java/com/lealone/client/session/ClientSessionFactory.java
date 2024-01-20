@@ -31,6 +31,12 @@ import com.lealone.server.protocol.session.SessionInitAck;
 
 public class ClientSessionFactory extends SessionFactoryBase {
 
+    private static final ClientSessionFactory instance = new ClientSessionFactory();
+
+    public static ClientSessionFactory getInstance() {
+        return instance;
+    }
+
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
         if (!ci.isRemote()) {
