@@ -17,13 +17,13 @@ import java.util.Map;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.MapUtils;
+import com.lealone.db.ConnectionSetting;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.DataBufferFactory;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetBufferFactory;
 import com.lealone.net.WritableChannel;
-import com.lealone.net.nio.NioBuffer;
-import com.lealone.net.nio.NioBufferFactory;
 
 public class BioWritableChannel implements WritableChannel {
 
@@ -41,8 +41,7 @@ public class BioWritableChannel implements WritableChannel {
             throws IOException {
         host = address.getHostString();
         port = address.getPort();
-        maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
-
+        maxPacketSize = getMaxPacketSize(config);
         this.socket = socket;
         in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
         out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 64 * 1024));
@@ -53,27 +52,24 @@ public class BioWritableChannel implements WritableChannel {
             dataBuffer = DataBuffer.create(null, capacity, false);
         } else if (dataBuffer.capacity() > 8096)
             dataBuffer = DataBuffer.create(null, 8096, false);
-        dataBuffer.reset();
+        dataBuffer.clear();
         return dataBuffer;
     }
 
     @Override
     public void write(NetBuffer data) {
-        if (data instanceof NioBuffer) {
-            NioBuffer nioBuffer = (NioBuffer) data;
-            ByteBuffer bb = nioBuffer.getByteBuffer();
-            try {
-                if (bb.hasArray()) {
-                    out.write(bb.array(), bb.arrayOffset(), bb.limit());
-                } else {
-                    byte[] bytes = new byte[bb.limit()];
-                    bb.get(bytes);
-                    out.write(bytes);
-                }
-                out.flush();
-            } catch (IOException e) {
-                throw DbException.convert(e);
+        ByteBuffer bb = data.getByteBuffer();
+        try {
+            if (bb.hasArray()) {
+                out.write(bb.array(), bb.arrayOffset(), bb.limit());
+            } else {
+                byte[] bytes = new byte[bb.limit()];
+                bb.get(bytes);
+                out.write(bytes);
             }
+            out.flush();
+        } catch (IOException e) {
+            throw DbException.convert(e);
         }
     }
 
@@ -102,7 +98,7 @@ public class BioWritableChannel implements WritableChannel {
 
     @Override
     public NetBufferFactory getBufferFactory() {
-        return NioBufferFactory.getInstance();
+        return NetBufferFactory.getInstance();
     }
 
     @Override
@@ -116,18 +112,31 @@ public class BioWritableChannel implements WritableChannel {
             if (conn.isClosed())
                 return;
             int packetLength = in.readInt();
-            if (packetLength > maxPacketSize)
-                throw new IOException("packet too large, maxPacketSize: " + maxPacketSize + ", receive: "
-                        + packetLength);
+            checkPacketLength(maxPacketSize, packetLength);
             DataBuffer dataBuffer = getDataBuffer(packetLength);
             // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
             dataBuffer.limit(packetLength);
             ByteBuffer buffer = dataBuffer.getBuffer();
             in.read(buffer.array(), buffer.arrayOffset(), packetLength);
-            NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
-            conn.handle(nioBuffer);
+            NetBuffer netBuffer = new NetBuffer(dataBuffer, true);
+            conn.handle(netBuffer);
         } catch (Exception e) {
             conn.handleException(e);
         }
+    }
+
+    @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return new BioDataBufferFactory(this);
+    }
+
+    public static int getMaxPacketSize(Map<String, String> config) {
+        return MapUtils.getInt(config, ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
+    }
+
+    public static void checkPacketLength(int maxPacketSize, int packetLength) throws IOException {
+        if (packetLength > maxPacketSize)
+            throw new IOException(
+                    "Packet too large, maxPacketSize: " + maxPacketSize + ", receive: " + packetLength);
     }
 }

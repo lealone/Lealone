@@ -187,11 +187,13 @@ public class JdbcDriver implements java.sql.Driver {
     public static Future<JdbcConnection> getConnection(ConnectionInfo ci) {
         AsyncCallback<JdbcConnection> ac = AsyncCallback.createConcurrentCallback();
         try {
-            ci.getSessionFactory().createSession(ci).onSuccess(s -> {
-                JdbcConnection conn = new JdbcConnection(s, ci);
-                ac.setAsyncResult(conn);
-            }).onFailure(t -> {
-                ac.setAsyncResult(t);
+            ci.getSessionFactory().createSession(ci).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    JdbcConnection conn = new JdbcConnection(ar.getResult(), ci);
+                    ac.setAsyncResult(conn);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
             });
         } catch (Throwable t) { // getSessionFactory也可能抛异常
             ac.setAsyncResult(t);

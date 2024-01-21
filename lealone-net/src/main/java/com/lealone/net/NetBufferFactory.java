@@ -8,10 +8,19 @@ package com.lealone.net;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
 
-public interface NetBufferFactory {
+public class NetBufferFactory {
 
-    NetBuffer createBuffer(int initialSizeHint, DataBufferFactory dataBufferFactory);
+    private static final NetBufferFactory instance = new NetBufferFactory();
 
-    NetBuffer createBuffer(DataBuffer dataBuffer);
+    public static NetBufferFactory getInstance() {
+        return instance;
+    }
 
+    public NetBuffer createBuffer(int initialSizeHint, DataBufferFactory dataBufferFactory) {
+        return new NetBuffer(dataBufferFactory.create(initialSizeHint));
+    }
+
+    public NetBuffer createBuffer(DataBuffer dataBuffer) {
+        return new NetBuffer(dataBuffer);
+    }
 }

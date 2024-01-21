@@ -40,12 +40,13 @@ import com.lealone.net.NetClient;
 import com.lealone.net.NetClientBase.ClientAttachment;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.TcpClientConnection;
+import com.lealone.net.bio.BioWritableChannel;
 
-class NioEventLoop implements NetEventLoop {
+public class NioEventLoop implements NetEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoop.class);
 
-    private final Map<SocketChannel, Queue<NioBuffer>> channels;
+    private final Map<SocketChannel, Queue<NetBuffer>> channels;
     private final Map<SocketChannel, SelectionKey> keys;
 
     private final AtomicInteger writeQueueSize = new AtomicInteger();
@@ -69,7 +70,7 @@ class NioEventLoop implements NetEventLoop {
     public NioEventLoop(Map<String, String> config, long loopInterval, boolean isThreadSafe) {
         // 设置过大会占用内存，有可能影响GC暂停时间
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 8);
-        maxPacketSize = MapUtils.getInt(config, "max_packet_size", 8 * 1024 * 1024);
+        maxPacketSize = BioWritableChannel.getMaxPacketSize(config);
         // client端不安全，所以不用批量写
         preferBatchWrite = MapUtils.getBoolean(config, "prefer_batch_write", isThreadSafe);
         try {
@@ -179,15 +180,14 @@ class NioEventLoop implements NetEventLoop {
 
     @Override
     public void addNetBuffer(SocketChannel channel, NetBuffer netBuffer) {
-        NioBuffer nioBuffer = (NioBuffer) netBuffer;
-        Queue<NioBuffer> queue = channels.get(channel);
+        Queue<NetBuffer> queue = channels.get(channel);
         if (queue != null) {
             if (!preferBatchWrite) {
-                // 当队列不为空时，队首的NioBuffer可能没写完，此时不能写新的NioBuffer
+                // 当队列不为空时，队首的NetBuffer可能没写完，此时不能写新的NetBuffer
                 if ((isThreadSafe || SchedulerThread.currentObject() == owner) && queue.isEmpty()) {
                     SelectionKey key = keyFor(channel);
                     if (key != null && key.isValid()) {
-                        if (write(key, channel, nioBuffer)) {
+                        if (write(key, channel, netBuffer)) {
                             if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {
                                 deregisterWrite(key);
                             }
@@ -197,7 +197,7 @@ class NioEventLoop implements NetEventLoop {
                 }
             }
             writeQueueSize.incrementAndGet();
-            queue.add(nioBuffer);
+            queue.add(netBuffer);
             if (!isThreadSafe)
                 wakeup();
         }
@@ -256,9 +256,7 @@ class NioEventLoop implements NetEventLoop {
                 }
                 if (attachment.state == 1) {
                     int packetLength = conn.getPacketLength();
-                    if (packetLength > maxPacketSize)
-                        throw new IOException("packet too large, maxPacketSize: " + maxPacketSize
-                                + ", receive: " + packetLength);
+                    BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
                     if (dataBuffer == null) {
                         dataBuffer = dataBufferFactory.create(packetLength);
                         // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
@@ -270,9 +268,9 @@ class NioEventLoop implements NetEventLoop {
                         packetLengthByteBuffer.clear();
                         attachment.state = 0;
                         attachment.dataBuffer = null;
-                        NioBuffer nioBuffer = new NioBuffer(dataBuffer, true); // 支持快速回收
+                        NetBuffer netBuffer = new NetBuffer(dataBuffer, true); // 支持快速回收
                         dataBuffer = null;
-                        conn.handle(nioBuffer);
+                        conn.handle(netBuffer);
                         if (++packetCount > maxPacketCountPerLoop)
                             break;
                     } else {
@@ -324,8 +322,8 @@ class NioEventLoop implements NetEventLoop {
     @Override
     public void write() {
         if (writeQueueSize.get() > 0) {
-            for (Entry<SocketChannel, Queue<NioBuffer>> entry : channels.entrySet()) {
-                Queue<NioBuffer> queue = entry.getValue();
+            for (Entry<SocketChannel, Queue<NetBuffer>> entry : channels.entrySet()) {
+                Queue<NetBuffer> queue = entry.getValue();
                 if (!queue.isEmpty()) {
                     SocketChannel channel = entry.getKey();
                     SelectionKey key = keyFor(channel);
@@ -340,20 +338,20 @@ class NioEventLoop implements NetEventLoop {
     @Override
     public void write(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
-        Queue<NioBuffer> queue = channels.get(channel);
+        Queue<NetBuffer> queue = channels.get(channel);
         if (!queue.isEmpty()) {
             write(key, channel, queue);
         }
     }
 
-    private void write(SelectionKey key, SocketChannel channel, Queue<NioBuffer> queue) {
+    private void write(SelectionKey key, SocketChannel channel, Queue<NetBuffer> queue) {
         if (preferBatchWrite) {
             batchWrite(key, channel, queue);
         } else {
-            Iterator<NioBuffer> iterator = queue.iterator();
+            Iterator<NetBuffer> iterator = queue.iterator();
             while (iterator.hasNext()) {
-                NioBuffer nioBuffer = iterator.next();
-                if (write(key, channel, nioBuffer)) {
+                NetBuffer netBuffer = iterator.next();
+                if (write(key, channel, netBuffer)) {
                     iterator.remove();
                     writeQueueSize.decrementAndGet();
                 } else {
@@ -367,15 +365,15 @@ class NioEventLoop implements NetEventLoop {
         }
     }
 
-    private void batchWrite(SelectionKey key, SocketChannel channel, Queue<NioBuffer> queue) {
+    private void batchWrite(SelectionKey key, SocketChannel channel, Queue<NetBuffer> queue) {
         int index = 0;
         int remaining = 0;
         ByteBuffer[] buffers = new ByteBuffer[queue.size()];
-        Iterator<NioBuffer> iterator = queue.iterator();
+        Iterator<NetBuffer> iterator = queue.iterator();
         while (iterator.hasNext()) {
-            NioBuffer nioBuffer = iterator.next();
-            remaining += nioBuffer.getByteBuffer().remaining();
-            buffers[index++] = nioBuffer.getByteBuffer();
+            NetBuffer netBuffer = iterator.next();
+            remaining += netBuffer.getByteBuffer().remaining();
+            buffers[index++] = netBuffer.getByteBuffer();
         }
         try {
             while (remaining > 0) {
@@ -394,15 +392,15 @@ class NioEventLoop implements NetEventLoop {
 
         iterator = queue.iterator();
         while (iterator.hasNext()) {
-            NioBuffer nioBuffer = iterator.next();
-            nioBuffer.recycle();
+            NetBuffer netBuffer = iterator.next();
+            netBuffer.recycle();
             iterator.remove();
             writeQueueSize.decrementAndGet();
         }
     }
 
-    private boolean write(SelectionKey key, SocketChannel channel, NioBuffer nioBuffer) {
-        ByteBuffer buffer = nioBuffer.getByteBuffer();
+    private boolean write(SelectionKey key, SocketChannel channel, NetBuffer netBuffer) {
+        ByteBuffer buffer = netBuffer.getByteBuffer();
         int remaining = buffer.remaining();
         try {
             // 一定要用while循环来写，否则会丢数据！
@@ -423,7 +421,7 @@ class NioEventLoop implements NetEventLoop {
         } catch (IOException e) {
             handleWriteException(e, key);
         }
-        nioBuffer.recycle();
+        netBuffer.recycle();
         return true;
     }
 

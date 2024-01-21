@@ -42,9 +42,10 @@ public interface DataBufferFactory {
         public DataBuffer create(int capacity, boolean direct) {
             for (int i = 0; i < maxPoolSize; i++) {
                 DataBuffer buffer = queue[i];
-                if (buffer != null && (buffer.getDirect() != direct || buffer.capacity() >= capacity)) {
+                if (buffer != null && (buffer.getDirect() == direct && buffer.capacity() >= capacity)) {
                     queue[i] = null;
                     buffer.clear();
+                    buffer.setFactory(this);
                     return buffer;
                 }
             }
@@ -57,6 +58,7 @@ public interface DataBufferFactory {
 
         @Override
         public void recycle(DataBuffer buffer) {
+            buffer.setFactory(null);
             if (buffer.capacity() <= DataBuffer.MAX_REUSE_CAPACITY) {
                 for (int i = 0; i < maxPoolSize; i++) {
                     if (queue[i] == null) {
@@ -65,7 +67,6 @@ public interface DataBufferFactory {
                     }
                 }
             }
-            buffer.setFactory(null);
         }
     }
 
@@ -85,6 +86,7 @@ public interface DataBufferFactory {
                 buffer.clear();
                 poolSize.decrementAndGet();
             }
+            buffer.setFactory(this);
             return buffer;
         }
 
@@ -101,14 +103,18 @@ public interface DataBufferFactory {
                 } else {
                     buffer.clear();
                     poolSize.decrementAndGet();
+                    buffer.setFactory(this);
                     return buffer;
                 }
             }
-            return DataBuffer.create(null, capacity, direct);
+            buffer = DataBuffer.create(null, capacity, direct);
+            buffer.setFactory(this);
+            return buffer;
         }
 
         @Override
         public void recycle(DataBuffer buffer) {
+            buffer.setFactory(null);
             if (buffer.capacity() <= DataBuffer.MAX_REUSE_CAPACITY) {
                 if (poolSize.incrementAndGet() <= SingleThreadDataBufferFactory.maxPoolSize) {
                     queue.offer(buffer);

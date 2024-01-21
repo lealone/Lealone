@@ -32,7 +32,7 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     public DataBufferFactory getDataBufferFactory() {
-        return DataBufferFactory.getConcurrentFactory();
+        return writableChannel.getDataBufferFactory();
     }
 
     public int getPacketLengthByteBufferCapacity() {

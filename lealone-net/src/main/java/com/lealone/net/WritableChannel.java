@@ -7,6 +7,8 @@ package com.lealone.net;
 
 import java.nio.channels.SocketChannel;
 
+import com.lealone.db.DataBufferFactory;
+
 public interface WritableChannel {
 
     void write(NetBuffer data);
@@ -31,5 +33,9 @@ public interface WritableChannel {
     }
 
     default void read(AsyncConnection conn) {
+    }
+
+    default DataBufferFactory getDataBufferFactory() {
+        return DataBufferFactory.getConcurrentFactory();
     }
 }

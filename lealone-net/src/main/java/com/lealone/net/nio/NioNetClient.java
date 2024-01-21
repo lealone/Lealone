@@ -19,9 +19,9 @@ import com.lealone.net.NetClientBase;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetNode;
 
-class NioClient extends NetClientBase {
+public class NioNetClient extends NetClientBase {
 
-    NioClient() {
+    public NioNetClient() {
         super(false);
     }
 

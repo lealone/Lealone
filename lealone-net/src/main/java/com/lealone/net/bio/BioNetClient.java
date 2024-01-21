@@ -20,9 +20,9 @@ import com.lealone.net.NetClientBase;
 import com.lealone.net.NetNode;
 import com.lealone.net.TcpClientConnection;
 
-class BioNetClient extends NetClientBase {
+public class BioNetClient extends NetClientBase {
 
-    BioNetClient() {
+    public BioNetClient() {
         super(true);
     }
 

@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.ShutdownHookUtils;
+import com.lealone.db.ConnectionSetting;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.scheduler.Scheduler;
@@ -124,8 +125,10 @@ public abstract class NetClientBase implements NetClient {
     }
 
     protected void initSocket(Socket socket, Map<String, String> config) throws SocketException {
-        int socketRecvBuffer = MapUtils.getInt(config, "socket_recv_buffer_size", 16 * 1024);
-        int socketSendBuffer = MapUtils.getInt(config, "socket_send_buffer_size", 8 * 1024);
+        int socketRecvBuffer = MapUtils.getInt(config, ConnectionSetting.SOCKET_RECV_BUFFER_SIZE.name(),
+                16 * 1024);
+        int socketSendBuffer = MapUtils.getInt(config, ConnectionSetting.SOCKET_SEND_BUFFER_SIZE.name(),
+                8 * 1024);
         socket.setReceiveBufferSize(socketRecvBuffer);
         socket.setSendBufferSize(socketSendBuffer);
         socket.setTcpNoDelay(true);

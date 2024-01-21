@@ -11,6 +11,7 @@ import java.sql.Statement;
 
 import org.junit.Assert;
 
+import com.lealone.db.ConnectionSetting;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.net.bio.BioNetFactory;
 import com.lealone.test.TestBase;
@@ -20,6 +21,7 @@ public class CRUDExample {
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(BioNetFactory.NAME);
+        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
         Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }

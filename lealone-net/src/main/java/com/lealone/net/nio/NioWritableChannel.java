@@ -15,7 +15,7 @@ import com.lealone.net.NetBufferFactory;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
 
-class NioWritableChannel implements WritableChannel {
+public class NioWritableChannel implements WritableChannel {
 
     private final SocketChannel channel;
     private final String host;
@@ -38,9 +38,7 @@ class NioWritableChannel implements WritableChannel {
 
     @Override
     public void write(NetBuffer data) {
-        if (data instanceof NioBuffer) {
-            eventLoop.addNetBuffer(channel, data);
-        }
+        eventLoop.addNetBuffer(channel, data);
     }
 
     @Override
@@ -66,7 +64,7 @@ class NioWritableChannel implements WritableChannel {
 
     @Override
     public NetBufferFactory getBufferFactory() {
-        return NioBufferFactory.getInstance();
+        return NetBufferFactory.getInstance();
     }
 
     @Override

@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
@@ -51,8 +52,6 @@ import com.lealone.db.value.ValueTimestamp;
 import com.lealone.db.value.ValueUuid;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.storage.type.StorageDataTypeBase;
-
-import java.util.Set;
 
 /**
  * @author H2 Group
@@ -928,8 +927,6 @@ public class DataBuffer implements AutoCloseable {
     public void close() {
         if (factory != null) {
             factory.recycle(this);
-        } else {
-            DataBufferFactory.getConcurrentFactory().recycle(this);
         }
     }
 

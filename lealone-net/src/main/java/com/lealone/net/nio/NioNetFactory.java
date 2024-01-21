@@ -21,7 +21,7 @@ public class NioNetFactory extends NetFactoryBase {
 
     @Override
     public NetClient createNetClient() {
-        return new NioClient();
+        return new NioNetClient();
     }
 
     @Override

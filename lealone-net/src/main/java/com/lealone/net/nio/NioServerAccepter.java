@@ -17,7 +17,7 @@ import com.lealone.net.NetServerBase;
 
 //负责接收新的ProtocolServer连接，比如TCP、P2P
 //TODO 1.支持SSL 2.支持配置参数
-class NioServerAccepter extends NetServerBase {
+public class NioServerAccepter extends NetServerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(NioServerAccepter.class);
     private ServerSocketChannel serverChannel;
