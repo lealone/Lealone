@@ -73,11 +73,6 @@ public class NioEventLoop implements NetEventLoop {
         maxPacketSize = BioWritableChannel.getMaxPacketSize(config);
         // client端不安全，所以不用批量写
         preferBatchWrite = MapUtils.getBoolean(config, "prefer_batch_write", isThreadSafe);
-        try {
-            selector = Selector.open();
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
 
         this.loopInterval = loopInterval;
         this.isThreadSafe = isThreadSafe;
@@ -127,6 +122,14 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public Selector getSelector() {
+        // Selector.open()很慢，延迟初始化selector可以加快lealone的启动速度
+        if (selector == null) {
+            try {
+                selector = Selector.open();
+            } catch (IOException e) {
+                throw DbException.convert(e);
+            }
+        }
         return selector;
     }
 
@@ -143,7 +146,7 @@ public class NioEventLoop implements NetEventLoop {
             if (haveWork) {
                 haveWork = false;
             } else {
-                selector.select(timeout);
+                getSelector().select(timeout);
             }
             selecting.set(false);
         }
@@ -153,7 +156,9 @@ public class NioEventLoop implements NetEventLoop {
     public void wakeup() {
         haveWork = true;
         if (selecting.compareAndSet(true, false)) {
-            selector.wakeup();
+            Selector selector = this.selector;
+            if (selector != null)
+                selector.wakeup();
         }
     }
 
@@ -513,7 +518,7 @@ public class NioEventLoop implements NetEventLoop {
         if (channel == null || !channels.containsKey(channel)) {
             return;
         }
-        for (SelectionKey key : selector.keys()) {
+        for (SelectionKey key : getSelector().keys()) {
             if (key.channel() == channel && key.isValid()) {
                 key.cancel();
                 break;
