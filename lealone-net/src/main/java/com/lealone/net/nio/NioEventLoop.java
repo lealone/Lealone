@@ -61,7 +61,6 @@ public class NioEventLoop implements NetEventLoop {
 
     private Selector selector;
     private NetClient netClient;
-    private Object owner;
     private Scheduler scheduler;
 
     private final boolean isLoggerEnabled;
@@ -88,16 +87,6 @@ public class NioEventLoop implements NetEventLoop {
 
         isLoggerEnabled = SystemPropertyUtils.getBoolean("client_logger_enabled", true);
         isDebugEnabled = logger.isDebugEnabled() && isLoggerEnabled;
-    }
-
-    @Override
-    public Object getOwner() {
-        return owner;
-    }
-
-    @Override
-    public void setOwner(Object owner) {
-        this.owner = owner;
     }
 
     @Override
@@ -189,7 +178,8 @@ public class NioEventLoop implements NetEventLoop {
         if (queue != null) {
             if (!preferBatchWrite) {
                 // 当队列不为空时，队首的NetBuffer可能没写完，此时不能写新的NetBuffer
-                if ((isThreadSafe || SchedulerThread.currentObject() == owner) && queue.isEmpty()) {
+                if ((isThreadSafe || SchedulerThread.currentScheduler() == scheduler)
+                        && queue.isEmpty()) {
                     SelectionKey key = keyFor(channel);
                     if (key != null && key.isValid()) {
                         if (write(key, channel, netBuffer)) {

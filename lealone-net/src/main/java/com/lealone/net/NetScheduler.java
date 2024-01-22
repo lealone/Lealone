@@ -22,7 +22,6 @@ public abstract class NetScheduler extends SchedulerBase {
             boolean isThreadSafe) {
         super(id, name, schedulerCount, config);
         netEventLoop = NetFactory.getFactory(config).createNetEventLoop(loopInterval, isThreadSafe);
-        netEventLoop.setOwner(this);
         netEventLoop.setScheduler(this);
     }
 

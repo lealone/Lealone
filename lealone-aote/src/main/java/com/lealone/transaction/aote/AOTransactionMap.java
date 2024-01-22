@@ -613,8 +613,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             if (tryUpdateOrRemove(key, value, null, oldTValue, false) == Transaction.OPERATION_COMPLETE)
                 handler.handle(new AsyncResult<>(retValue));
             else
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED,
-                        "Entry is locked");
+                handler.handle(new AsyncResult<>(DataUtils.newIllegalStateException(
+                        DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked")));
         }
     }
 }

@@ -15,10 +15,6 @@ import com.lealone.db.scheduler.Scheduler;
 
 public interface NetEventLoop {
 
-    Object getOwner();
-
-    void setOwner(Object owner);
-
     Scheduler getScheduler();
 
     void setScheduler(Scheduler scheduler);
