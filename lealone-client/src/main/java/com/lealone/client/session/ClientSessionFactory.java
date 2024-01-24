@@ -12,7 +12,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.ConnectionInfo;
-import com.lealone.db.ConnectionSetting;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
@@ -42,15 +41,9 @@ public class ClientSessionFactory extends SessionFactoryBase {
         if (!ci.isRemote()) {
             throw DbException.getInternalError();
         }
-
-        CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
-        if (ci.getNetFactoryName() != null)
-            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), ci.getNetFactoryName());
-        if (ci.getNetworkTimeout() > 0)
-            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(ci.getNetworkTimeout()));
-
         AsyncCallback<Session> ac;
         NetClient netClient;
+        CaseInsensitiveMap<String> config = ci.getConfig();
         NetFactory netFactory = NetFactory.getFactory(config);
         if (netFactory.isBio()) {
             ac = AsyncCallback.create(true);
@@ -58,8 +51,10 @@ public class ClientSessionFactory extends SessionFactoryBase {
             ci.setSingleThreadCallback(true);
             createSession(ci, allowRedirect, ac, config, netClient);
         } else {
-            Scheduler scheduler = ClientScheduler.getScheduler(ci, config);
-            NetEventLoop eventLoop = (NetEventLoop) ci.getScheduler().getNetEventLoop();
+            Scheduler scheduler = ci.getScheduler();
+            if (scheduler == null)
+                scheduler = ClientScheduler.getScheduler(ci, config);
+            NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
             netClient = eventLoop.getNetClient();
             ac = AsyncCallback.create(ci.isSingleThreadCallback());
             scheduler.handle(() -> {

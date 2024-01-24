@@ -14,6 +14,7 @@ import java.util.StringTokenizer;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.security.SHA256;
+import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.SortedProperties;
 import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
@@ -709,6 +710,15 @@ public class ConnectionInfo implements Cloneable {
 
     public Properties getProperties() {
         return prop;
+    }
+
+    public CaseInsensitiveMap<String> getConfig() {
+        CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(getProperties());
+        if (getNetFactoryName() != null)
+            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), getNetFactoryName());
+        if (getNetworkTimeout() > 0)
+            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(getNetworkTimeout()));
+        return config;
     }
 
     public ConnectionInfo copy(String newServer) {

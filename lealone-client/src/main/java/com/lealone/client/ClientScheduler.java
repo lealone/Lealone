@@ -10,12 +10,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.db.scheduler.SchedulerFactoryBase;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetFactory;
@@ -84,7 +84,17 @@ public class ClientScheduler extends NetScheduler {
         }
     }
 
-    public static Scheduler getScheduler(ConnectionInfo ci, CaseInsensitiveMap<String> config) {
-        return SchedulerFactoryBase.getScheduler(ClientScheduler.class.getName(), ci, config);
+    private static volatile SchedulerFactory clientSchedulerFactory;
+
+    public static Scheduler getScheduler(ConnectionInfo ci, Map<String, String> config) {
+        if (clientSchedulerFactory == null) {
+            synchronized (ClientScheduler.class) {
+                if (clientSchedulerFactory == null) {
+                    clientSchedulerFactory = SchedulerFactoryBase
+                            .createSchedulerFactory(ClientScheduler.class.getName(), config);
+                }
+            }
+        }
+        return SchedulerFactoryBase.getScheduler(clientSchedulerFactory, ci);
     }
 }

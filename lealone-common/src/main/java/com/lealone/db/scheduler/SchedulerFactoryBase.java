@@ -6,11 +6,9 @@
 package com.lealone.db.scheduler;
 
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.ConnectionInfo;
@@ -212,19 +210,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     }
 
     public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
-            Properties prop) {
-        if (SchedulerFactoryBase.getDefaultSchedulerFactory() == null) {
-            Map<String, String> config;
-            if (prop != null)
-                config = new CaseInsensitiveMap<>(prop);
-            else
-                config = new CaseInsensitiveMap<>();
-            initDefaultSchedulerFactory(schedulerClassName, config);
-        }
-        return SchedulerFactoryBase.getDefaultSchedulerFactory();
-    }
-
-    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
             Map<String, String> config) {
         if (SchedulerFactoryBase.getDefaultSchedulerFactory() == null)
             initDefaultSchedulerFactory(schedulerClassName, config);
@@ -235,17 +220,24 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             Map<String, String> config) {
         SchedulerFactory schedulerFactory = SchedulerFactoryBase.getDefaultSchedulerFactory();
         if (schedulerFactory == null) {
-            String sf = MapUtils.getString(config, "scheduler_factory", null);
-            if (sf != null) {
-                schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
-            } else {
-                Scheduler[] schedulers = createSchedulers(schedulerClassName, config);
-                schedulerFactory = SchedulerFactory.create(config, schedulers);
-            }
-            if (!schedulerFactory.isInited())
-                schedulerFactory.init(config);
+            schedulerFactory = createSchedulerFactory(schedulerClassName, config);
             SchedulerFactoryBase.setDefaultSchedulerFactory(schedulerFactory);
         }
+        return schedulerFactory;
+    }
+
+    public static SchedulerFactory createSchedulerFactory(String schedulerClassName,
+            Map<String, String> config) {
+        SchedulerFactory schedulerFactory;
+        String sf = MapUtils.getString(config, "scheduler_factory", null);
+        if (sf != null) {
+            schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
+        } else {
+            Scheduler[] schedulers = createSchedulers(schedulerClassName, config);
+            schedulerFactory = SchedulerFactory.create(config, schedulers);
+        }
+        if (!schedulerFactory.isInited())
+            schedulerFactory.init(config);
         return schedulerFactory;
     }
 
@@ -261,23 +253,13 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     public static Scheduler getScheduler(String schedulerClassName, ConnectionInfo ci) {
         Scheduler scheduler = ci.getScheduler();
         if (scheduler == null) {
-            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, ci.getProperties());
+            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, ci.getConfig());
             scheduler = getScheduler(sf, ci);
         }
         return scheduler;
     }
 
-    public static Scheduler getScheduler(String schedulerClassName, ConnectionInfo ci,
-            Map<String, String> config) {
-        Scheduler scheduler = ci.getScheduler();
-        if (scheduler == null) {
-            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, config);
-            scheduler = getScheduler(sf, ci);
-        }
-        return scheduler;
-    }
-
-    private static Scheduler getScheduler(SchedulerFactory sf, ConnectionInfo ci) {
+    public static Scheduler getScheduler(SchedulerFactory sf, ConnectionInfo ci) {
         Scheduler scheduler = sf.getScheduler();
         ci.setScheduler(scheduler);
         if (!sf.isStarted())
