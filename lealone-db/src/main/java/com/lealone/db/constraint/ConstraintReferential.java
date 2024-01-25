@@ -653,7 +653,7 @@ public class ConstraintReferential extends Constraint {
         }
         buff.append(')');
         String sql = buff.toString();
-        Result r = session.prepareStatement(sql).query(1);
+        Result r = session.executeNestedQueryLocal(sql);
         if (r.next()) {
             throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
                     getShortDescription(null, null));

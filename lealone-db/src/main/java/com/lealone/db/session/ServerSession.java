@@ -1760,6 +1760,15 @@ public class ServerSession extends SessionBase {
         return stmt.executeQuery(-1).get();
     }
 
+    public Result executeNestedQueryLocal(String sql) {
+        // 使用新session
+        try (ServerSession session = database.createSession(getUser(), getScheduler())) {
+            session.setAutoCommit(isAutoCommit());
+            session.getTransaction().setParentTransaction(getTransaction());
+            return session.executeQueryLocal(sql);
+        }
+    }
+
     @Override
     public void init() {
         ConnectionInfo ci = connectionInfo;

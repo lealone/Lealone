@@ -24,7 +24,6 @@ import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.table.TableView;
 import com.lealone.sql.SQLStatement;
-import com.lealone.sql.StatementBase;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.visitor.DependenciesVisitor;
 import com.lealone.sql.expression.visitor.ExpressionVisitorFactory;
@@ -259,8 +258,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
     private void checkNoNullValues() {
         String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL()
                 + " IS NULL";
-        StatementBase command = (StatementBase) session.prepareStatement(sql);
-        Result result = command.query(0);
+        Result result = session.executeNestedQueryLocal(sql);
         result.next();
         if (result.currentRow()[0].getInt() > 0) {
             throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, oldColumn.getSQL());
