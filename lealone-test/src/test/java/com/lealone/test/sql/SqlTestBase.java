@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashSet;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +57,7 @@ public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestB
     }
 
     private static boolean tcpServerStarted = false;
-    private static boolean testDatabaseCreated = false;
+    private static final HashSet<String> createdDatabases = new HashSet<>();
 
     @Before
     public void setUpBefore() {
@@ -68,12 +69,12 @@ public class SqlTestBase extends TestBase implements TestBase.SqlExecutor, TestB
                 }
             }
         }
-        if (!testDatabaseCreated && !isEmbedded()) {
+        if (!createdDatabases.contains(dbName) && !isEmbedded()) {
             synchronized (getClass()) {
-                if (!testDatabaseCreated) {
+                if (!createdDatabases.contains(dbName)) {
                     if (!LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
                         createTestDatabase();
-                        testDatabaseCreated = true;
+                        createdDatabases.add(dbName);
                     }
                 }
             }
