@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -161,22 +160,22 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public void close() {
-        CountDownLatch latch = null;
         synchronized (this) {
             if (logSyncService == null)
                 return;
             if (masterCheckpointService.isRunning()) {
-                latch = new CountDownLatch(1);
-                masterCheckpointService.executeCheckpointOnClose(latch);
-            }
-        }
-        if (latch != null) {
-            try {
-                latch.wait();
-            } catch (Exception e) {
+                masterCheckpointService.executeCheckpointOnClose();
             }
         }
         synchronized (this) {
+            try {
+                schedulerFactory.stop();
+            } catch (Exception e) {
+            }
+            try {
+                masterCheckpointService.close();
+            } catch (Exception e) {
+            }
             try {
                 logSyncService.close();
                 logSyncService.join();
@@ -185,6 +184,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             logSyncService = null;
             masterCheckpointService = null;
             checkpointServices = null;
+            schedulerFactory = null;
         }
         super.close();
     }

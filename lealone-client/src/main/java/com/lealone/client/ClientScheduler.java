@@ -73,7 +73,7 @@ public class ClientScheduler extends NetScheduler {
                 checkTimeout(currentTime);
             }
         }
-        netEventLoop.close();
+        onStopped();
     }
 
     private void checkTimeout(long currentTime) {

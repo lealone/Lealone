@@ -69,7 +69,7 @@ public class GlobalScheduler extends NetScheduler {
             runPeriodicTasks();
             runEventLoop();
         }
-        netEventLoop.close();
+        onStopped();
     }
 
     @Override

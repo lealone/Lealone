@@ -62,4 +62,10 @@ public abstract class NetScheduler extends SchedulerBase {
             getLogger().warn("Failed to runEventLoop", t);
         }
     }
+
+    @Override
+    protected void onStopped() {
+        super.onStopped();
+        netEventLoop.close();
+    }
 }

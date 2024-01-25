@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,8 +47,6 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     private long lastSavedAt = System.currentTimeMillis();
-    // 关闭CheckpointService时等待它结束
-    private CountDownLatch latchOnClose;
     private volatile boolean isClosed;
 
     CheckpointService(AOTransactionEngine aote, Map<String, String> config, Scheduler scheduler) {
@@ -101,7 +98,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         return scheduler.isStarted();
     }
 
-    private void close() {
+    public void close() {
         if (!isClosed) {
             isClosed = true;
             int schedulerCount = aote.schedulerFactory.getSchedulerCount();
@@ -122,12 +119,9 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         wakeUp();
     }
 
-    public void executeCheckpointOnClose(CountDownLatch latch) {
-        if (isClosed) {
-            latch.countDown();
+    public void executeCheckpointOnClose() {
+        if (isClosed)
             return;
-        }
-        latchOnClose = latch;
         forceCheckpointTasks.add(() -> executeCheckpoint(true));
         wakeUp();
     }
@@ -312,11 +306,6 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         // 把checkpoint对应的redo log放到最后那个chunk文件
         addPendingCheckpoint(pc.getCheckpointId(), true, pc.isForce());
         checkpointTask = null;
-        // 如果当前的checkpoint任务是关闭系统时发出的，关闭所有检查点服务
-        if (latchOnClose != null) {
-            close();
-            latchOnClose.countDown();
-        }
     }
 
     public PendingCheckpoint getPendingCheckpoint() {

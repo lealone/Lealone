@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.lealone.common.util.MapUtils;
-import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncPeriodicTask;
@@ -99,9 +98,6 @@ public abstract class SchedulerBase implements Scheduler {
     public synchronized void start() {
         if (started)
             return;
-        ShutdownHookUtils.addShutdownHook(getName(), () -> {
-            stop();
-        });
         thread.start();
         started = true;
         stopped = false;
@@ -111,8 +107,11 @@ public abstract class SchedulerBase implements Scheduler {
     public synchronized void stop() {
         started = false;
         stopped = true;
-        thread = null;
         wakeUp();
+    }
+
+    protected void onStopped() {
+        thread = null;
     }
 
     @Override

@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.util.MapUtils;
+import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.Plugin;
@@ -88,6 +89,9 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
+        ShutdownHookUtils.addShutdownHook(getName(), () -> {
+            stop();
+        });
         super.start();
     }
 
@@ -95,24 +99,31 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     public synchronized void stop() {
         if (isStopped())
             return;
-        Scheduler[] schedulers = this.schedulers;
-        for (Scheduler scheduler : schedulers) {
-            scheduler.stop();
-        }
-        for (Scheduler scheduler : schedulers) {
-            Thread thread = scheduler.getThread();
-            if (Thread.currentThread() != thread) {
-                try {
-                    if (thread != null)
-                        thread.join();
-                } catch (InterruptedException e) {
-                }
+        if (schedulers.length > 0) {
+            Scheduler master = schedulers[0];
+            master.stop();
+            joinScheduler(master);
+            for (int i = 1; i < schedulers.length; i++) {
+                schedulers[i].stop();
+            }
+            for (int i = 1; i < schedulers.length; i++) {
+                joinScheduler(schedulers[i]);
             }
         }
-        this.schedulers = new Scheduler[0];
-        this.bindThreads = new Thread[0];
+        schedulers = new Scheduler[0];
+        bindThreads = new Thread[0];
         bindIndex.set(0);
         super.stop();
+    }
+
+    private void joinScheduler(Scheduler scheduler) {
+        Thread thread = scheduler.getThread();
+        if (thread != null && Thread.currentThread() != thread) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+            }
+        }
     }
 
     public static SchedulerFactory create(Map<String, String> config) {

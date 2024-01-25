@@ -67,6 +67,7 @@ public class EmbeddedScheduler extends SchedulerBase {
             runPeriodicTasks();
             doAwait();
         }
+        onStopped();
     }
 
     @Override
