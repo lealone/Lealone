@@ -13,14 +13,13 @@ import org.junit.Test;
 
 import com.lealone.storage.Storage;
 import com.lealone.transaction.Transaction;
-import com.lealone.transaction.TransactionEngine;
 import com.lealone.transaction.TransactionMap;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.log.LogSyncService;
 
 public class TransactionEngineTest extends AoteTestBase {
 
-    private static TransactionEngine te;
+    private static AOTransactionEngine te;
     private static Storage storage;
 
     @BeforeClass
@@ -39,7 +38,7 @@ public class TransactionEngineTest extends AoteTestBase {
 
     @AfterClass
     public static void afterClass() {
-        te.close();
+        te.close(false);
     }
 
     @Test

@@ -124,6 +124,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     @Override
     @SuppressWarnings("unchecked")
     public void afterStorageMapOpen(StorageMap<?, ?> map) {
+        if (logSyncService == null)
+            return;
         if (!map.isInMemory()) {
             logSyncService.getRedoLog().redo((StorageMap<Object, Object>) map);
         }
@@ -160,6 +162,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public void close() {
+        close(true);
+    }
+
+    public void close(boolean stopScheduler) {
         synchronized (this) {
             if (logSyncService == null)
                 return;
@@ -168,9 +174,11 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             }
         }
         synchronized (this) {
-            try {
-                schedulerFactory.stop();
-            } catch (Exception e) {
+            if (stopScheduler) {
+                try {
+                    schedulerFactory.stop();
+                } catch (Exception e) {
+                }
             }
             try {
                 masterCheckpointService.close();

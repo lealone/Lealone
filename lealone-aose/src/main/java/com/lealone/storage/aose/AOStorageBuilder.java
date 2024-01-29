@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.DataUtils;
 import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.storage.StorageBuilder;
@@ -30,6 +31,8 @@ public class AOStorageBuilder extends StorageBuilder {
     @Override
     public AOStorage openStorage() {
         String storagePath = (String) config.get(StorageSetting.STORAGE_PATH.name());
+        if (!config.containsKey(StorageSetting.IN_MEMORY.name()))
+            DataUtils.checkNotNull(storagePath, "storage path");
         AOStorage storage = cache.get(storagePath);
         if (storage == null) {
             synchronized (cache) {
