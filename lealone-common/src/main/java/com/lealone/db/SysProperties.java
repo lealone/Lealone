@@ -309,7 +309,16 @@ public class SysProperties {
      * INTERNAL
      */
     public static String setBaseDir(String baseDir) {
-        return System.setProperty(Constants.PROJECT_NAME_PREFIX + BASE_DIR, baseDir);
+        return setBaseDir(baseDir, false);
+    }
+
+    // 如果base.dir系统属性已经存在，默认情况下不覆盖旧值，除非明确要强制更新它
+    public static String setBaseDir(String baseDir, boolean force) {
+        String key = Constants.PROJECT_NAME_PREFIX + BASE_DIR;
+        String old = System.getProperty(key);
+        if (old == null || old != null && force)
+            System.setProperty(key, baseDir);
+        return old;
     }
 
     private static String getProperty(String key, String defaultValue) {
