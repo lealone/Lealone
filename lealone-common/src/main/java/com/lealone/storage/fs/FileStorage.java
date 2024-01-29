@@ -432,7 +432,9 @@ public class FileStorage {
      */
     public void sync() {
         try {
-            file.force(true);
+            FileChannel file = this.file;
+            if (file != null && file.isOpen())
+                file.force(true);
         } catch (IOException e) {
             closeFileSilently();
             throw newISE(DataUtils.ERROR_WRITING_FAILED, "Could not sync file {0}", fileName, e);

@@ -434,24 +434,29 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         long now = System.currentTimeMillis();
         try {
             AtomicInteger syncedCount = new AtomicInteger(maps.size());
-            for (StorageMap<?, ?> map : maps.values()) {
-                if (map.isClosed()) {
-                    onSynced(syncedCount, checkpointTask);
-                    continue;
-                }
-                scheduler.setFsyncingFileStorage(null);
-                Long dirtyMemory = dirtyMaps.get(map.getName());
-                if (dirtyMemory != null)
-                    map.save(dirtyMemory.longValue());
-                else if (force || map.hasUnsavedChanges())
-                    map.save();
-                if (scheduler.getFsyncingFileStorage() != null) {
-                    FsyncTask task = new FsyncTask(syncedCount, checkpointTask,
-                            scheduler.getFsyncingFileStorage());
-                    aote.getLogSyncService().getRedoLog().addFsyncTask(task);
-                    aote.getLogSyncService().wakeUp();
-                } else {
-                    onSynced(syncedCount, checkpointTask);
+            // 为0时什么都不需要做
+            if (syncedCount.get() == 0) {
+                onSynced(syncedCount, checkpointTask);
+            } else {
+                for (StorageMap<?, ?> map : maps.values()) {
+                    if (map.isClosed()) {
+                        onSynced(syncedCount, checkpointTask);
+                        continue;
+                    }
+                    scheduler.setFsyncingFileStorage(null);
+                    Long dirtyMemory = dirtyMaps.get(map.getName());
+                    if (dirtyMemory != null)
+                        map.save(dirtyMemory.longValue());
+                    else if (force || map.hasUnsavedChanges())
+                        map.save();
+                    if (scheduler.getFsyncingFileStorage() != null) {
+                        FsyncTask task = new FsyncTask(syncedCount, checkpointTask,
+                                scheduler.getFsyncingFileStorage());
+                        aote.getLogSyncService().getRedoLog().addFsyncTask(task);
+                        aote.getLogSyncService().wakeUp();
+                    } else {
+                        onSynced(syncedCount, checkpointTask);
+                    }
                 }
             }
             lastSavedAt = now;
@@ -464,7 +469,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     }
 
     private static void onSynced(AtomicInteger syncedCount, CheckpointTask checkpointTask) {
-        if (syncedCount.decrementAndGet() == 0) {
+        if (syncedCount.decrementAndGet() <= 0) {
             checkpointTask.prepared.decrementAndGet();
             checkpointTask.masterCheckpointService.wakeUp();
         }
