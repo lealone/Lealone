@@ -84,6 +84,12 @@ public class ClientScheduler extends NetScheduler {
         }
     }
 
+    @Override
+    public void executeNextStatement() {
+        // 客户端阻塞在同步方法时运行事件循环执行回调
+        runEventLoop();
+    }
+
     private static volatile SchedulerFactory clientSchedulerFactory;
 
     public static Scheduler getScheduler(ConnectionInfo ci, Map<String, String> config) {

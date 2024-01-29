@@ -150,7 +150,7 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     public AsyncCallback<int[]> executeBatchSQLCommands(List<String> batchCommands) {
-        AsyncCallback<int[]> ac = AsyncCallback.createSingleThreadCallback();
+        AsyncCallback<int[]> ac = session.createCallback();
         commandId = session.getNextId();
         try {
             Future<BatchStatementUpdateAck> f = session

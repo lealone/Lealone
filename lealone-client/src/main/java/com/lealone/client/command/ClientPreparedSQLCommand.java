@@ -53,7 +53,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     @Override
     public Future<Boolean> prepare(boolean readParams) {
-        AsyncCallback<Boolean> ac = AsyncCallback.createSingleThreadCallback();
+        AsyncCallback<Boolean> ac = session.createCallback();
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
@@ -105,7 +105,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             return Future.succeededFuture(null);
         }
         prepareIfRequired();
-        AsyncCallback<Result> ac = AsyncCallback.createSingleThreadCallback();
+        AsyncCallback<Result> ac = session.createCallback();
         try {
             Future<PreparedStatementGetMetaDataAck> f = session
                     .send(new PreparedStatementGetMetaData(commandId));
@@ -202,7 +202,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     public AsyncCallback<int[]> executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
-        AsyncCallback<int[]> ac = AsyncCallback.createSingleThreadCallback();
+        AsyncCallback<int[]> ac = session.createCallback();
         try {
             Future<BatchStatementUpdateAck> f = session.send(new BatchStatementPreparedUpdate(commandId,
                     batchParameters.size(), batchParameters));

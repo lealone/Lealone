@@ -875,7 +875,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private JdbcAsyncCallback<JdbcCallableStatement> prepareCallInternal(boolean async, String sql,
             int id, int resultSetType, int resultSetConcurrency) {
-        return this.prepareCallInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
+        return prepareCallInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
                 SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
     }
 

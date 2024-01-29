@@ -14,6 +14,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -472,34 +473,42 @@ public class NioEventLoop implements NetEventLoop {
     public void handleSelectedKeys() {
         Set<SelectionKey> keys = getSelector().selectedKeys();
         if (!keys.isEmpty()) {
-            if (inLoop)
-                DbException.throwInternalError();
-            try {
-                inLoop = true;
-                Iterator<SelectionKey> iterator = keys.iterator();
-                while (iterator.hasNext()) {
-                    SelectionKey key = iterator.next();
-                    if (key.isValid()) {
-                        int readyOps = key.readyOps();
-                        if ((readyOps & SelectionKey.OP_READ) != 0) {
-                            read(key);
-                        } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                            write(key);
-                        } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
-                            scheduler.accept(key);
-                        } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
-                            connectionEstablished(key);
-                        } else {
-                            key.cancel();
-                        }
-                    } else {
-                        key.cancel();
-                    }
-                    iterator.remove();
+            if (inLoop) {
+                keys = new HashSet<>(keys); // 复制一份，避免并发修改异常
+                handleSelectedKeys(keys);
+                // DbException.throwInternalError();
+            } else {
+                try {
+                    inLoop = true;
+                    handleSelectedKeys(keys);
+                } finally {
+                    inLoop = false;
                 }
-            } finally {
-                inLoop = false;
             }
+        }
+    }
+
+    private void handleSelectedKeys(Set<SelectionKey> keys) {
+        Iterator<SelectionKey> iterator = keys.iterator();
+        while (iterator.hasNext()) {
+            SelectionKey key = iterator.next();
+            if (key.isValid()) {
+                int readyOps = key.readyOps();
+                if ((readyOps & SelectionKey.OP_READ) != 0) {
+                    read(key);
+                } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                    write(key);
+                } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
+                    scheduler.accept(key);
+                } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+                    connectionEstablished(key);
+                } else {
+                    key.cancel();
+                }
+            } else {
+                key.cancel();
+            }
+            iterator.remove();
         }
     }
 

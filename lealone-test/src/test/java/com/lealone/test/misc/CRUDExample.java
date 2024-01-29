@@ -21,10 +21,15 @@ public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
+        test.setEmbedded(true);
+        test.setInMemory(true);
+        Connection conn = test.getConnection(LealoneDatabase.NAME);
+        crud(conn);
+        test = new TestBase();
         test.setNetFactoryName(BioNetFactory.NAME);
         test.setNetFactoryName(NioNetFactory.NAME);
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
-        Connection conn = test.getConnection(LealoneDatabase.NAME);
+        conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }
 
