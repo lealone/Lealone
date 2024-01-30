@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>com.lealone</groupId>
-            <artifactId>lealone-sci</artifactId>
+            <artifactId>lealone-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
