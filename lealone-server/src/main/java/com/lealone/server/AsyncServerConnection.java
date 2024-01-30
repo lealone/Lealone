@@ -11,8 +11,8 @@ import com.lealone.server.scheduler.SessionInfo;
 
 public abstract class AsyncServerConnection extends TransferConnection {
 
-    public AsyncServerConnection(WritableChannel writableChannel, boolean isServer) {
-        super(writableChannel, isServer);
+    public AsyncServerConnection(WritableChannel writableChannel) {
+        super(writableChannel, true);
     }
 
     public abstract void closeSession(SessionInfo si);

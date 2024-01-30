@@ -50,7 +50,7 @@ public class TcpServerConnection extends AsyncServerConnection {
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
             Scheduler scheduler) {
-        super(writableChannel, true);
+        super(writableChannel);
         this.tcpServer = tcpServer;
         this.scheduler = scheduler;
     }
