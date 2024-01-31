@@ -246,14 +246,14 @@ public class Lealone {
     private <PE extends PluggableEngine> void registerAndInitEngines(List<PluggableEngineDef> engines,
             Class<PE> engineClass, String engineType, String defaultEngineKey) {
         long t1 = System.currentTimeMillis();
+        String engineTypeMsg = engineType + " engine";
         if (engines != null) {
-            engineType += " engine";
             for (PluggableEngineDef def : engines) {
                 if (!def.enabled)
                     continue;
                 String name = def.name;
                 if (name == null || (name = name.trim()).isEmpty())
-                    throw new ConfigException(engineType + " name is missing.");
+                    throw new ConfigException(engineTypeMsg + " name is missing.");
 
                 // 允许后续的访问不用区分大小写
                 CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(def.getParameters());
@@ -266,16 +266,7 @@ public class Lealone {
                 }
                 def.setParameters(parameters);
 
-                PE pe;
-                try {
-                    pe = PluginManager.getPlugin(engineClass, name);
-                    if (pe == null) {
-                        pe = Utils.newInstance(name);
-                        PluginManager.register(engineClass, pe);
-                    }
-                } catch (Throwable e) {
-                    throw new ConfigException("Failed to register " + engineType + ": " + name, e);
-                }
+                PE pe = PluggableEngine.getEngine(engineClass, engineType, name);
 
                 if (def.is_default && defaultEngineKey != null
                         && Config.getProperty(defaultEngineKey) == null)
@@ -283,11 +274,11 @@ public class Lealone {
                 try {
                     pe.init(parameters);
                 } catch (Throwable e) {
-                    throw new ConfigException("Failed to init " + engineType + ": " + name, e);
+                    throw new ConfigException("Failed to init " + engineTypeMsg + ": " + name, e);
                 }
             }
         }
-        logger.info("Init " + engineType + "s" + ": " + (System.currentTimeMillis() - t1) + " ms");
+        logger.info("Init " + engineTypeMsg + "s: " + (System.currentTimeMillis() - t1) + " ms");
     }
 
     private void startProtocolServers() {

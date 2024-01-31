@@ -222,9 +222,9 @@ public class Database extends DbObjectBase implements DataHandler {
             mode = Mode.getInstance(dbSettings.mode);
         }
 
-        sqlEngine = getEngine(SQLEngine.class, dbSettings.defaultSQLEngine, "sql");
-        transactionEngine = getEngine(TransactionEngine.class, dbSettings.defaultTransactionEngine,
-                "transaction");
+        sqlEngine = PluggableEngine.getEngine(SQLEngine.class, "sql", dbSettings.defaultSQLEngine);
+        transactionEngine = PluggableEngine.getEngine(TransactionEngine.class, "transaction",
+                dbSettings.defaultTransactionEngine);
 
         for (DbObjectType type : DbObjectType.TYPES) {
             if (!type.isSchemaObject) {
@@ -232,22 +232,6 @@ public class Database extends DbObjectBase implements DataHandler {
             }
         }
         setDatabase(this);
-    }
-
-    private static <E extends PluggableEngine> E getEngine(Class<E> engineClass, String engineName,
-            String engineType) {
-        E engine = PluginManager.getPlugin(engineClass, engineName);
-        if (engine == null) {
-            try {
-                engine = Utils.newInstance(engineName);
-                PluginManager.register(engine);
-            } catch (Exception e) {
-                e = new RuntimeException(
-                        "Fatal error: the " + engineType + " engine '" + engineName + "' not found", e);
-                throw DbException.convert(e);
-            }
-        }
-        return engine;
     }
 
     // ----------- 以下是 DbObjectBase API 实现 -----------
