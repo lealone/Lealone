@@ -14,11 +14,11 @@
     <baseDirectory>/</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>lealone-dist/bin</directory>
+            <directory>lealone-main/dist/bin</directory>
             <outputDirectory>bin</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>lealone-dist/conf</directory>
+            <directory>lealone-main/dist/conf</directory>
             <outputDirectory>conf</outputDirectory>
         </fileSet>
     </fileSets>
