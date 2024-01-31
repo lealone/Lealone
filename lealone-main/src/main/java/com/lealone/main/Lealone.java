@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import com.lealone.common.exceptions.ConfigException;
@@ -79,6 +78,31 @@ public class Lealone {
         }
     }
 
+    private static void println() {
+        System.out.println();
+    }
+
+    private static void println(String s) {
+        System.out.println(s);
+    }
+
+    private static void showUsage() {
+        println();
+        println("Options are case sensitive. Supported options are:");
+        println("-------------------------------------------------");
+        println("[-help] or [-?]         Print the list of options");
+        println("[-baseDir <dir>]        Database base dir");
+        println("[-config <file>]        The config file");
+        println("[-host <host>]          Tcp server host");
+        println("[-port <port>]          Tcp server port");
+        println("[-embed]                Embedded mode");
+        println("[-client]               Client mode");
+        println();
+        println("Client or embedded mode options:");
+        println("-------------------------------------------------");
+        new Shell(null).showClientOrEmbeddedModeOptions();
+    }
+
     private Config config;
     private String baseDir;
     private String host;
@@ -114,61 +138,37 @@ public class Lealone {
         run(false, latch);
     }
 
-    private void showUsage() {
-        println();
-        println("Options are case sensitive. Supported options are:");
-        println("-------------------------------------------------");
-        println("[-help] or [-?]         Print the list of options");
-        println("[-baseDir <dir>]        Database base dir");
-        println("[-config <file>]        The config file");
-        println("[-host <host>]          Tcp server host");
-        println("[-port <port>]          Tcp server port");
-        println("[-embed]                Embedded mode");
-        println("[-client]               Client mode");
-        println();
-        println("Client or embedded mode options:");
-        println("-------------------------------------------------");
-        new Shell(null).showClientOrEmbeddedModeOptions();
-    }
-
-    private void println() {
-        System.out.println();
-    }
-
-    private void println(String s) {
-        System.out.println(s);
-    }
-
     private void run(boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
         try {
             // 1. 加载配置
-            long start1 = System.currentTimeMillis();
+            long t1 = System.currentTimeMillis();
             loadConfig();
-            long t1 = (System.currentTimeMillis() - start1);
+            long loadConfigTime = (System.currentTimeMillis() - t1);
 
             // 2. 初始化
-            long start2 = System.currentTimeMillis();
+            long t2 = System.currentTimeMillis();
             SchedulerFactory schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(
                     GlobalScheduler.class.getName(), config.scheduler.parameters);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
             beforeInit();
-            init();
+            initBaseDir();
+            initPluggableEngines();
 
             scheduler.handle(() -> {
                 // 提前触发对LealoneDatabase的初始化
                 initLealoneDatabase();
                 afterInit(config);
-                long t2 = (System.currentTimeMillis() - start2);
+                long initTime = (System.currentTimeMillis() - t2);
                 // 3. 启动ProtocolServer
                 if (!embedded) {
-                    long start3 = System.currentTimeMillis();
+                    long t3 = System.currentTimeMillis();
                     startProtocolServers();
-                    long t3 = (System.currentTimeMillis() - start3);
-                    long totalTime = t1 + t2 + t3;
+                    long startTime = (System.currentTimeMillis() - t3);
+                    long totalTime = loadConfigTime + initTime + startTime;
                     logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)",
-                            totalTime, t1, t2, t3);
+                            totalTime, loadConfigTime, initTime, startTime);
                     logger.info("Exit with Ctrl+C");
                 }
                 // 等所有的Server启动完成后再启动Scheduler
@@ -213,16 +213,10 @@ public class Lealone {
     protected void afterInit(Config config) {
     }
 
-    private void init() {
-        initBaseDir();
-        initPluggableEngines();
-    }
-
     private void initLealoneDatabase() {
         long t1 = System.currentTimeMillis();
         LealoneDatabase.getInstance();
-        long t2 = System.currentTimeMillis();
-        logger.info("Init lealone database: " + (t2 - t1) + " ms");
+        logger.info("Init lealone database: " + (System.currentTimeMillis() - t1) + " ms");
     }
 
     private void initBaseDir() {
@@ -240,155 +234,79 @@ public class Lealone {
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
     private void initPluggableEngines() {
-        initStorageEngineEngines();
-        initTransactionEngineEngines();
-        initSQLEngines();
-        initProtocolServerEngines();
+        registerAndInitEngines(config.storage_engines, StorageEngine.class, "storage",
+                "default.storage.engine");
+        registerAndInitEngines(config.transaction_engines, TransactionEngine.class, "transaction",
+                "default.transaction.engine");
+        registerAndInitEngines(config.sql_engines, SQLEngine.class, "sql", "default.sql.engine");
+        registerAndInitEngines(config.protocol_server_engines, ProtocolServerEngine.class,
+                "protocol server", null);
     }
 
-    private void initStorageEngineEngines() {
-        registerAndInitEngines(config.storage_engines, "storage", "default.storage.engine", def -> {
-            StorageEngine se = PluginManager.getPlugin(StorageEngine.class, def.name);
-            if (se == null) {
-                se = Utils.newInstance(def.name);
-                PluginManager.register(se);
-            }
-            return se;
-        });
-    }
-
-    private void initTransactionEngineEngines() {
-        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine",
-                def -> {
-                    TransactionEngine te;
-                    try {
-                        te = PluginManager.getPlugin(TransactionEngine.class, def.name);
-                        if (te == null) {
-                            te = Utils.newInstance(def.name);
-                            PluginManager.register(te);
-                        }
-                    } catch (Throwable e) {
-                        te = TransactionEngine.getDefaultTransactionEngine();
-                        if (te == null) {
-                            throw e;
-                        }
-                        logger.warn("Transaction engine " + def.name + " not found, use " + te.getName()
-                                + " instead");
-                    }
-                    return te;
-                });
-    }
-
-    private void initSQLEngines() {
-        registerAndInitEngines(config.sql_engines, "sql", "default.sql.engine", def -> {
-            SQLEngine se = PluginManager.getPlugin(SQLEngine.class, def.name);
-            if (se == null) {
-                se = Utils.newInstance(def.name);
-                PluginManager.register(se);
-            }
-            return se;
-        });
-    }
-
-    private void initProtocolServerEngines() {
-        registerAndInitEngines(config.protocol_server_engines, "protocol server", null, def -> {
-            // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
-            if (!def.getParameters().containsKey("host") && config.listen_address != null)
-                def.getParameters().put("host", config.listen_address);
-            ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
-            if (pse == null) {
-                pse = Utils.newInstance(def.name);
-                PluginManager.register(pse);
-            }
-            return pse;
-        });
-    }
-
-    private static interface CallableTask<V> {
-        V call(PluggableEngineDef def) throws Exception;
-    }
-
-    private <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name,
-            String defaultEngineKey, CallableTask<T> callableTask) {
+    private <PE extends PluggableEngine> void registerAndInitEngines(List<PluggableEngineDef> engines,
+            Class<PE> engineClass, String engineType, String defaultEngineKey) {
         long t1 = System.currentTimeMillis();
         if (engines != null) {
-            name += " engine";
+            engineType += " engine";
             for (PluggableEngineDef def : engines) {
                 if (!def.enabled)
                     continue;
+                String name = def.name;
+                if (name == null || (name = name.trim()).isEmpty())
+                    throw new ConfigException(engineType + " name is missing.");
 
                 // 允许后续的访问不用区分大小写
                 CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(def.getParameters());
+                if (!parameters.containsKey("base_dir"))
+                    parameters.put("base_dir", config.base_dir);
+                if (engineClass == ProtocolServerEngine.class) {
+                    // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
+                    if (!parameters.containsKey("host") && config.listen_address != null)
+                        parameters.put("host", config.listen_address);
+                }
                 def.setParameters(parameters);
 
-                checkName(name, def);
-                T result;
+                PE pe;
                 try {
-                    result = callableTask.call(def);
+                    pe = PluginManager.getPlugin(engineClass, name);
+                    if (pe == null) {
+                        pe = Utils.newInstance(name);
+                        PluginManager.register(engineClass, pe);
+                    }
                 } catch (Throwable e) {
-                    String msg = "Failed to register " + name + ": " + def.name;
-                    checkException(msg, e);
-                    return;
+                    throw new ConfigException("Failed to register " + engineType + ": " + name, e);
                 }
-                PluggableEngine pe = (PluggableEngine) result;
+
                 if (def.is_default && defaultEngineKey != null
                         && Config.getProperty(defaultEngineKey) == null)
-                    Config.setProperty(defaultEngineKey, pe.getName());
+                    Config.setProperty(defaultEngineKey, name);
                 try {
-                    initPluggableEngine(pe, def);
+                    pe.init(parameters);
                 } catch (Throwable e) {
-                    String msg = "Failed to init " + name + ": " + def.name;
-                    checkException(msg, e);
+                    throw new ConfigException("Failed to init " + engineType + ": " + name, e);
                 }
             }
         }
-        long t2 = System.currentTimeMillis();
-        logger.info("Init " + name + "s" + ": " + (t2 - t1) + " ms");
-    }
-
-    private static void checkException(String msg, Throwable e) {
-        if (e instanceof ConfigException)
-            throw (ConfigException) e;
-        else if (e instanceof RuntimeException)
-            throw new ConfigException(msg, e);
-        else
-            logger.warn(msg, e);
-    }
-
-    private static void checkName(String engineName, PluggableEngineDef def) {
-        if (def.name == null || def.name.trim().isEmpty())
-            throw new ConfigException(engineName + " name is missing.");
-    }
-
-    private void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {
-        Map<String, String> parameters = def.getParameters();
-        if (!parameters.containsKey("base_dir"))
-            parameters.put("base_dir", config.base_dir);
-        pe.init(parameters);
+        logger.info("Init " + engineType + "s" + ": " + (System.currentTimeMillis() - t1) + " ms");
     }
 
     private void startProtocolServers() {
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
-                if (def.enabled) {
-                    ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class,
-                            def.name);
-                    ProtocolServer protocolServer = pse.getProtocolServer();
-                    startProtocolServer(protocolServer);
-                }
+                if (!def.enabled)
+                    continue;
+                ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
+                ProtocolServer server = pse.getProtocolServer();
+                server.setServerEncryptionOptions(config.server_encryption_options);
+                server.start();
+                String name = server.getName();
+                ShutdownHookUtils.addShutdownHook(server, () -> {
+                    if (!server.isStopped())
+                        server.stop();
+                    logger.info(name + " stopped");
+                });
+                logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
             }
         }
-    }
-
-    private void startProtocolServer(final ProtocolServer server) {
-        server.setServerEncryptionOptions(config.server_encryption_options);
-        server.start();
-        final String name = server.getName();
-        ShutdownHookUtils.addShutdownHook(server, () -> {
-            if (!server.isStopped())
-                server.stop();
-            logger.info(name + " stopped");
-        });
-        logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
     }
 }
