@@ -234,19 +234,17 @@ public class Lealone {
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
     private void initPluggableEngines() {
-        registerAndInitEngines(config.storage_engines, StorageEngine.class, "storage",
-                "default.storage.engine");
-        registerAndInitEngines(config.transaction_engines, TransactionEngine.class, "transaction",
+        registerAndInitEngines(config.storage_engines, StorageEngine.class, "default.storage.engine");
+        registerAndInitEngines(config.transaction_engines, TransactionEngine.class,
                 "default.transaction.engine");
-        registerAndInitEngines(config.sql_engines, SQLEngine.class, "sql", "default.sql.engine");
-        registerAndInitEngines(config.protocol_server_engines, ProtocolServerEngine.class,
-                "protocol server", null);
+        registerAndInitEngines(config.sql_engines, SQLEngine.class, "default.sql.engine");
+        registerAndInitEngines(config.protocol_server_engines, ProtocolServerEngine.class, null);
     }
 
     private <PE extends PluggableEngine> void registerAndInitEngines(List<PluggableEngineDef> engines,
-            Class<PE> engineClass, String engineType, String defaultEngineKey) {
+            Class<PE> engineClass, String defaultEngineKey) {
         long t1 = System.currentTimeMillis();
-        String engineTypeMsg = engineType + " engine";
+        String engineTypeMsg = PluggableEngine.getEngineType(engineClass) + " engine";
         if (engines != null) {
             for (PluggableEngineDef def : engines) {
                 if (!def.enabled)
@@ -266,7 +264,7 @@ public class Lealone {
                 }
                 def.setParameters(parameters);
 
-                PE pe = PluggableEngine.getEngine(engineClass, engineType, name);
+                PE pe = PluggableEngine.getEngine(engineClass, name);
 
                 if (def.is_default && defaultEngineKey != null
                         && Config.getProperty(defaultEngineKey) == null)

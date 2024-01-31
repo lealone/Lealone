@@ -222,8 +222,8 @@ public class Database extends DbObjectBase implements DataHandler {
             mode = Mode.getInstance(dbSettings.mode);
         }
 
-        sqlEngine = PluggableEngine.getEngine(SQLEngine.class, "sql", dbSettings.defaultSQLEngine);
-        transactionEngine = PluggableEngine.getEngine(TransactionEngine.class, "transaction",
+        sqlEngine = PluggableEngine.getEngine(SQLEngine.class, dbSettings.defaultSQLEngine);
+        transactionEngine = PluggableEngine.getEngine(TransactionEngine.class,
                 dbSettings.defaultTransactionEngine);
 
         for (DbObjectType type : DbObjectType.TYPES) {

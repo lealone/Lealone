@@ -12,12 +12,11 @@ import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StatementBuilder;
-import com.lealone.common.util.Utils;
 import com.lealone.db.Database;
 import com.lealone.db.DbObject;
 import com.lealone.db.DbObjectBase;
 import com.lealone.db.DbObjectType;
-import com.lealone.db.PluginManager;
+import com.lealone.db.PluggableEngine;
 import com.lealone.db.SysProperties;
 import com.lealone.db.TransactionalDbObjects;
 import com.lealone.db.api.ErrorCode;
@@ -734,16 +733,8 @@ public class Schema extends DbObjectBase {
             data.storageEngineName = database.getDefaultStorageEngineName();
         }
         if (data.storageEngineName != null) {
-            StorageEngine engine = PluginManager.getPlugin(StorageEngine.class, data.storageEngineName);
-            if (engine == null) {
-                try {
-                    engine = Utils.newInstance(data.storageEngineName);
-                    PluginManager.register(engine);
-                } catch (Exception e) {
-                    throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, data.storageEngineName);
-                }
-            }
-
+            StorageEngine engine = PluggableEngine.getEngine(StorageEngine.class,
+                    data.storageEngineName);
             if (engine instanceof TableFactory) {
                 return ((TableFactory) engine).createTable(data);
             }
