@@ -31,6 +31,7 @@ import com.lealone.db.ConnectionInfo;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
 import com.lealone.db.async.Future;
+import com.lealone.net.bio.BioNetFactory;
 
 /**
  * Interactive command line tool to access a database using JDBC.
@@ -200,8 +201,13 @@ public class LealoneClient {
         if (password != null && !u.contains("password")) {
             info.put("password", password);
         }
+        // 交互式命令行客户端永不超时
         info.put(ConnectionSetting.NETWORK_TIMEOUT.name(), "-1");
-        return new ConnectionInfo(url, info);
+        ConnectionInfo ci = new ConnectionInfo(url, info);
+        // 交互式命令行客户端用阻塞IO更快
+        if (ci.isRemote())
+            ci.setNetFactoryName(BioNetFactory.NAME);
+        return ci;
     }
 
     protected Connection getConnection() throws SQLException {

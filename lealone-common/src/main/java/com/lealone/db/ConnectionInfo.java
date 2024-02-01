@@ -747,6 +747,10 @@ public class ConnectionInfo implements Cloneable {
         return ci;
     }
 
+    public void setNetFactoryName(String netFactoryName) {
+        this.netFactoryName = netFactoryName;
+    }
+
     public String getNetFactoryName() {
         return netFactoryName;
     }
