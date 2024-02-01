@@ -38,7 +38,7 @@
 * 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
 
 
-##### 企业版
+##### 云服务版
 
 * 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
 
@@ -58,7 +58,7 @@
 
 ### Lealone 插件
 
-* 除了内置的 MongoDB、MySQL、PostgreSQL 插件外还有一大批可用的外部插件
+* 兼容 MongoDB、MySQL、PostgreSQL 的插件
 
 * [插件首页](https://github.com/lealone-plugins)
 
