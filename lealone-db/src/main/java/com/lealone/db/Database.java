@@ -2039,4 +2039,14 @@ public class Database extends DbObjectBase implements DataHandler {
         HashMap<String, PluginObject> map = getDbObjects(DbObjectType.PLUGIN);
         return new ArrayList<>(map.values());
     }
+
+    private long lastGcMetaId;
+
+    public long getLastGcMetaId() {
+        return lastGcMetaId;
+    }
+
+    public void setLastGcMetaId(long lastGcMetaId) {
+        this.lastGcMetaId = lastGcMetaId;
+    }
 }

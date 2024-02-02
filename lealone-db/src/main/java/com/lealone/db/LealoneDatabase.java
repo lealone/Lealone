@@ -178,6 +178,11 @@ public class LealoneDatabase extends Database
     public void gc(TransactionEngine te) {
         // getDatabases()会copy一份，因为closeIfNeeded()可能会关闭数据库，避免ConcurrentModificationException
         for (Database db : getDatabases()) {
+            long metaId = db.getModificationMetaId();
+            if (metaId == db.getLastGcMetaId())
+                continue;
+            db.setLastGcMetaId(metaId);
+
             // 数据库没有进行初始化时不进行GC
             if (!db.isInitialized())
                 continue;
