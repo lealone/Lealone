@@ -716,8 +716,11 @@ public class ConnectionInfo implements Cloneable {
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(getProperties());
         if (getNetFactoryName() != null)
             config.put(ConnectionSetting.NET_FACTORY_NAME.name(), getNetFactoryName());
-        if (getNetworkTimeout() > 0)
-            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(getNetworkTimeout()));
+        int networkTimeout = getNetworkTimeout();
+        if (networkTimeout < 0) // 如果小于0就代表永不超时
+            networkTimeout = Integer.MAX_VALUE;
+        if (networkTimeout != 0)
+            config.put(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(networkTimeout));
         return config;
     }
 
