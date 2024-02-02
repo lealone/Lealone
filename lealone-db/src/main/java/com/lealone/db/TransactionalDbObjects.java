@@ -19,6 +19,7 @@ public class TransactionalDbObjects {
     private HashMap<String, DbObject> dbObjects;
     private TransactionalDbObjects old;
     private long version;
+    private boolean needGc;
 
     public TransactionalDbObjects() {
         this.dbObjects = new CaseInsensitiveMap<>();
@@ -42,10 +43,13 @@ public class TransactionalDbObjects {
                 return dbObjects.get(dbObjectName);
             }
         }
-
         Transaction transaction = session.getTransaction();
         long tid = transaction.getTransactionId();
         if (tid == version) {
+            return dbObjects.get(dbObjectName);
+        }
+        Transaction pt = transaction.getParentTransaction();
+        if (pt != null && pt.getTransactionId() == version) {
             return dbObjects.get(dbObjectName);
         }
         switch (transaction.getIsolationLevel()) {
@@ -103,6 +107,7 @@ public class TransactionalDbObjects {
             old.version = version;
         }
         version = 0;
+        needGc = true;
     }
 
     public void rollback() {
@@ -111,9 +116,12 @@ public class TransactionalDbObjects {
             old = old.old;
         }
         version = 0;
+        needGc = true;
     }
 
     public void gc(TransactionEngine te) {
+        if (!needGc)
+            return;
         if (old == null)
             return;
         if (!te.containsRepeatableReadTransactions()) {
