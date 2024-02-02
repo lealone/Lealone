@@ -232,7 +232,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         }
         if (isMasterScheduler()) {
             gcPendingCheckpoints();
-            if (checkpointTask != null)
+            if (!pendingCheckpoints.isEmpty() || checkpointTask != null)
                 return; // 前一个检查点第一阶段没有完成就不生成第二个检查点
             if (!forceCheckpointTasks.isEmpty()) {
                 // 每次只执行一个
