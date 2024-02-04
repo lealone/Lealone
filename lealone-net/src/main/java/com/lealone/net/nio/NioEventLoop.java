@@ -318,7 +318,10 @@ public class NioEventLoop implements NetEventLoop {
     @Override
     public void write() {
         if (writeQueueSize.get() > 0) {
-            for (Entry<SocketChannel, Queue<NetBuffer>> entry : channels.entrySet()) {
+            int oldSize = isThreadSafe ? channels.size() : 0;
+            Iterator<Entry<SocketChannel, Queue<NetBuffer>>> iterator = channels.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Entry<SocketChannel, Queue<NetBuffer>> entry = iterator.next();
                 Queue<NetBuffer> queue = entry.getValue();
                 if (!queue.isEmpty()) {
                     SocketChannel channel = entry.getKey();
@@ -326,6 +329,13 @@ public class NioEventLoop implements NetEventLoop {
                     if (key != null && key.isValid()) {
                         write(key, channel, queue);
                     }
+                }
+                // 如果SocketChannel关闭了，会在channels中把它删除，
+                // 此时调用iterator.next()会产生ConcurrentModificationException，
+                // 所以在这里需要判断一下，若是发生变动了就创建新的iterator
+                if (isThreadSafe && channels.size() != oldSize) {
+                    oldSize = channels.size();
+                    iterator = channels.entrySet().iterator();
                 }
             }
         }
