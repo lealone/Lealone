@@ -1270,6 +1270,12 @@ public class ServerSession extends SessionBase {
     public SessionStatus getStatus() {
         if (isExclusiveMode())
             return SessionStatus.EXCLUSIVE_MODE;
+        // 如果session的调度器检测到session处于等待状态时要尝试一下主动唤醒，
+        // 否则在新session中加锁有可能导致旧session一直占用锁从而陷入死循环
+        if (sessionStatus == SessionStatus.WAITING) {
+            if (SchedulerThread.currentScheduler() == getScheduler())
+                wakeUpIfNeeded();
+        }
         return sessionStatus;
     }
 
