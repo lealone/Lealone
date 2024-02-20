@@ -331,6 +331,8 @@ public class Column {
         if (sequence != null) {
             if (sequence.isInvalid())
                 sequence = sequence.getNewSequence(session);
+            // 更新sequence前需要加锁，否则sequence的当前值有可能不是递增的
+            sequence.tryLock(session);
             long current = sequence.getCurrentValue(session);
             long inc = sequence.getIncrement();
             long now = value.getLong();
