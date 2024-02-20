@@ -40,6 +40,17 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
         Scheduler scheduler = SchedulerThread.currentScheduler();
         if (scheduler != null) {
             scheduler.executeNextStatement();
+            // 如果被锁住了，需要重试
+            if (asyncResult == null) {
+                while (asyncResult == null) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                    }
+                    scheduler.executeNextStatement();
+                }
+            }
+
             if (asyncResult.isSucceeded())
                 return asyncResult.getResult();
             else
