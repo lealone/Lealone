@@ -82,4 +82,8 @@ public abstract class Lock {
     public void unlock(Session oldSession, Session newSession) {
         ref.set(NULL);
     }
+
+    public LockOwner getLockOwner() {
+        return ref.get();
+    }
 }

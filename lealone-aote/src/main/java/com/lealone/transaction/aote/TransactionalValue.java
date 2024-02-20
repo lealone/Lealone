@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.lock.LockOwner;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.ITransactionalValue;
@@ -86,7 +87,9 @@ public class TransactionalValue implements ITransactionalValue {
     }
 
     public Object getValue(AOTransaction transaction, StorageMap<?, ?> map) {
-        AOTransaction t = rowLock.getTransaction();
+        // 先拿到LockOwner再用它获取信息，否则会产生并发问题
+        LockOwner lockOwner = rowLock.getLockOwner();
+        AOTransaction t = (AOTransaction) lockOwner.getTransaction();
         if (t != null) {
             // 如果拥有锁的事务是当前事务或当前事务的父事务，直接返回当前值
             if (t == transaction || t == transaction.getParentTransaction())
@@ -101,10 +104,10 @@ public class TransactionalValue implements ITransactionalValue {
                 if (t.isCommitted()) {
                     return value;
                 } else {
-                    if (rowLock.getOldValue() == null)
+                    if (lockOwner.getOldValue() == null)
                         return SIGHTLESS; // 刚刚insert但是还没有提交的记录
                     else
-                        return rowLock.getOldValue();
+                        return lockOwner.getOldValue();
                 }
             }
             return value;
@@ -119,8 +122,8 @@ public class TransactionalValue implements ITransactionalValue {
             OldValue oldValue = (OldValue) oldValueCache.get(this);
             if (oldValue != null) {
                 if (tid >= oldValue.tid) {
-                    if (t != null && rowLock.getOldValue() != null)
-                        return rowLock.getOldValue();
+                    if (t != null && lockOwner.getOldValue() != null)
+                        return lockOwner.getOldValue();
                     else
                         return value;
                 }
@@ -132,8 +135,8 @@ public class TransactionalValue implements ITransactionalValue {
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
             if (t != null) {
-                if (rowLock.getOldValue() != null)
-                    return rowLock.getOldValue();
+                if (lockOwner.getOldValue() != null)
+                    return lockOwner.getOldValue();
                 else
                     return SIGHTLESS; // 刚刚insert但是还没有提交的记录
             } else {
