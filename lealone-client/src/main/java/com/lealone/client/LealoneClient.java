@@ -467,6 +467,15 @@ public class LealoneClient {
                 JdbcUtils.closeSilently(rs);
             }
         } catch (Exception e) {
+            // 如果出现网络异常了，重新创建连接再执行一次
+            if (DbException.getRootCause(e) instanceof IOException) {
+                try {
+                    reconnect();
+                    execute(sql);
+                    return;
+                } catch (Throwable t) {
+                }
+            }
             if (listMode) {
                 e.printStackTrace(err);
             } else {
