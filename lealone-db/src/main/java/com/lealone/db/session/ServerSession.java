@@ -810,6 +810,13 @@ public class ServerSession extends SessionBase {
         locks.add(lock2);
     }
 
+    public void unlockLast() {
+        if (!locks.isEmpty()) {
+            Lock lock = locks.remove(locks.size() - 1);
+            lock.unlock(this, true, null);
+        }
+    }
+
     private void unlockAll(boolean succeeded) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
@@ -1616,6 +1623,11 @@ public class ServerSession extends SessionBase {
     public void wakeUpWaitingSchedulers() {
         if (getScheduler() != null)
             getScheduler().wakeUpWaitingSchedulers();
+    }
+
+    public void wakeUpWaitingSchedulers(boolean reset) {
+        if (getScheduler() != null)
+            getScheduler().wakeUpWaitingSchedulers(reset);
     }
 
     public void clearQueryCache() {

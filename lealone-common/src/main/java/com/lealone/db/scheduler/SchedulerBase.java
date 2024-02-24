@@ -251,6 +251,20 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
+    public void wakeUpWaitingSchedulers(boolean reset) {
+        if (reset) {
+            wakeUpWaitingSchedulers();
+        } else if (hasWaitingSchedulers.get()) {
+            for (int i = 0, length = waitingSchedulers.length(); i < length; i++) {
+                Scheduler scheduler = waitingSchedulers.get(i);
+                if (scheduler != null) {
+                    scheduler.wakeUp();
+                }
+            }
+        }
+    }
+
+    @Override
     public Session getCurrentSession() {
         return currentSession;
     }

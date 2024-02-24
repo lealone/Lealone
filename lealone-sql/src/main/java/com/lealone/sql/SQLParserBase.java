@@ -4601,8 +4601,6 @@ public class SQLParserBase implements SQLParser {
                     command.setCycle(false);
                 } else if (readIf("CACHE")) {
                     command.setCacheSize(ValueExpression.get(ValueLong.get(1)));
-                } else {
-                    break;
                 }
             } else if (readIf("CACHE")) {
                 command.setCacheSize(readExpression());
@@ -4610,6 +4608,10 @@ public class SQLParserBase implements SQLParser {
                 command.setCacheSize(ValueExpression.get(ValueLong.get(1)));
             } else if (readIf("BELONGS_TO_TABLE")) {
                 command.setBelongsToTable(true);
+            } else if (readIf("NOT_TRANSACTIONAL")) {
+                command.setTransactional(false);
+            } else if (readIf("TRANSACTIONAL")) {
+                command.setTransactional(true);
             } else {
                 break;
             }
@@ -5016,13 +5018,15 @@ public class SQLParserBase implements SQLParser {
                     command.setCycle(false);
                 } else if (readIf("CACHE")) {
                     command.setCacheSize(ValueExpression.get(ValueLong.get(1)));
-                } else {
-                    break;
                 }
             } else if (readIf("CACHE")) {
                 command.setCacheSize(readExpression());
             } else if (readIf("NOCACHE")) {
                 command.setCacheSize(ValueExpression.get(ValueLong.get(1)));
+            } else if (readIf("NOT_TRANSACTIONAL")) {
+                command.setTransactional(false);
+            } else if (readIf("TRANSACTIONAL")) {
+                command.setTransactional(true);
             } else {
                 break;
             }

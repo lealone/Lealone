@@ -14,6 +14,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.result.Row;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.session.SessionStatus;
 import com.lealone.transaction.Transaction;
 
 /**
@@ -38,6 +39,7 @@ public class Sequence extends SchemaObjectBase {
     private long maxValue;
     private boolean cycle;
     private boolean belongsToTable;
+    private boolean transactional;
 
     /**
      * The last valueWithMargin we flushed. We do a little dance with this to avoid an ABBA deadlock.
@@ -97,8 +99,10 @@ public class Sequence extends SchemaObjectBase {
     }
 
     public Sequence copy() {
-        return new Sequence(schema, id, name, value.get(), increment, cacheSize, minValue, maxValue,
-                cycle, belongsToTable);
+        Sequence sequence = new Sequence(schema, id, name, value.get(), increment, cacheSize, minValue,
+                maxValue, cycle, belongsToTable);
+        sequence.setTransactional(transactional);
+        return sequence;
     }
 
     public long getCurrentValue(ServerSession session) {
@@ -114,6 +118,14 @@ public class Sequence extends SchemaObjectBase {
 
     public void setBelongsToTable(boolean b) {
         this.belongsToTable = b;
+    }
+
+    public boolean isTransactional() {
+        return transactional;
+    }
+
+    public void setTransactional(boolean transactional) {
+        this.transactional = transactional;
     }
 
     public long getCacheSize() {
@@ -157,9 +169,12 @@ public class Sequence extends SchemaObjectBase {
      * @param increment the new increment (<code>null</code> if no change)
      */
     public void modify(ServerSession session, Long startValue, Long minValue, Long maxValue,
-            Long increment, boolean copy) {
-        tryLock(session, copy);
+            Long increment, boolean copy, boolean locked) {
+        if (!locked)
+            tryLock(session, copy);
         modify(startValue, minValue, maxValue, increment);
+        if (!locked)
+            unlockIfNotTransactional(session);
     }
 
     public void modify(Long startValue, Long minValue, Long maxValue, Long increment) {
@@ -248,6 +263,11 @@ public class Sequence extends SchemaObjectBase {
         if (belongsToTable) {
             buff.append(" BELONGS_TO_TABLE");
         }
+        if (transactional) {
+            buff.append(" TRANSACTIONAL");
+        } else {
+            buff.append(" NOT_TRANSACTIONAL"); // 用NOT TRANSACTIONAL无法解析NOT
+        }
         return buff.toString();
     }
 
@@ -266,21 +286,18 @@ public class Sequence extends SchemaObjectBase {
      * @return the next value
      */
     public long getNext(ServerSession session) {
-        if (!belongsToTable)
-            tryLock(session);
+        tryLock(session);
         boolean needsFlush = false;
         long retVal;
         long flushValueWithMargin = -1;
         if ((increment > 0 && value.get() >= valueWithMargin)
                 || (increment < 0 && value.get() <= valueWithMargin)) {
-            tryLock(session);
             valueWithMargin += increment * cacheSize;
             flushValueWithMargin = valueWithMargin;
             needsFlush = true;
         }
         if ((increment > 0 && value.get() > maxValue) || (increment < 0 && value.get() < minValue)) {
             if (cycle) {
-                tryLock(session);
                 value.set(increment > 0 ? minValue : maxValue);
                 valueWithMargin = value.get() + (increment * cacheSize);
                 flushValueWithMargin = valueWithMargin;
@@ -293,6 +310,7 @@ public class Sequence extends SchemaObjectBase {
         if (needsFlush) {
             flushInternal(session, flushValueWithMargin);
         }
+        unlockIfNotTransactional(session);
         return retVal;
     }
 
@@ -309,7 +327,7 @@ public class Sequence extends SchemaObjectBase {
     private void flushWithoutMargin() {
         if (valueWithMargin != value.get()) {
             valueWithMargin = value.get();
-            flush(database.getSystemSession(), valueWithMargin);
+            flush(database.getSystemSession(), valueWithMargin, false);
             database.getSystemSession().commit();
         }
     }
@@ -319,9 +337,13 @@ public class Sequence extends SchemaObjectBase {
      *
      * @param session the session
      */
-    public void flush(ServerSession session, long flushValueWithMargin) {
-        tryLock(session);
+    public void flush(ServerSession session, long flushValueWithMargin, boolean locked) {
+        if (!locked)
+            tryLock(session);
         flushInternal(session, flushValueWithMargin);
+        unlockIfNotTransactional(session);
+        if (!locked)
+            unlockIfNotTransactional(session);
     }
 
     private void flushInternal(ServerSession session, long flushValueWithMargin) {
@@ -364,12 +386,15 @@ public class Sequence extends SchemaObjectBase {
     public void tryLock(ServerSession session, boolean copy) {
         if (transaction == session.getTransaction())
             return;
+        SessionStatus oldStatus = session.getStatus();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
-        if (lock == null)
-            throw DbObjectLock.LOCKED_EXCEPTION;
+        if (lock == null) {
+            onLocked(session, oldStatus);
+        }
         Row oldRow = schema.tryLockSchemaObject(session, this, ErrorCode.SEQUENCE_NOT_FOUND_1);
-        if (oldRow == null)
-            throw DbObjectLock.LOCKED_EXCEPTION;
+        if (oldRow == null) {
+            onLocked(session, oldStatus);
+        }
         this.transaction = session.getTransaction();
         this.lock = lock;
         this.oldRow = oldRow;
@@ -388,6 +413,22 @@ public class Sequence extends SchemaObjectBase {
         });
     }
 
+    public void unlockIfNotTransactional(ServerSession session) {
+        if (!transactional && transaction == session.getTransaction()) {
+            // 释放两个锁
+            session.unlockLast();
+            session.unlockLast();
+            session.wakeUpWaitingSchedulers(false);
+        }
+    }
+
+    private void onLocked(ServerSession session, SessionStatus oldStatus) {
+        // 可以继续重式
+        if (!transactional)
+            session.setStatus(oldStatus);
+        throw DbObjectLock.LOCKED_EXCEPTION;
+    }
+
     private void rollback(Sequence oldSequence) {
         this.increment = oldSequence.increment;
         this.minValue = oldSequence.minValue;
@@ -397,6 +438,7 @@ public class Sequence extends SchemaObjectBase {
         this.cacheSize = oldSequence.cacheSize;
         this.cycle = oldSequence.cycle;
         this.belongsToTable = oldSequence.belongsToTable;
+        this.transactional = oldSequence.transactional;
     }
 
     @Override

@@ -83,6 +83,8 @@ public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener
 
     void wakeUpWaitingSchedulers();
 
+    void wakeUpWaitingSchedulers(boolean reset);
+
     Session getCurrentSession();
 
     void setCurrentSession(Session currentSession);

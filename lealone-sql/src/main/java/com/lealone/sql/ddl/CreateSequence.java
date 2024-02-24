@@ -33,6 +33,7 @@ public class CreateSequence extends SchemaStatement {
     private Expression increment;
     private Expression cacheSize;
     private boolean belongsToTable;
+    private boolean transactional;
 
     public CreateSequence(ServerSession session, Schema schema) {
         super(session, schema);
@@ -79,6 +80,10 @@ public class CreateSequence extends SchemaStatement {
         this.belongsToTable = belongsToTable;
     }
 
+    public void setTransactional(boolean transactional) {
+        this.transactional = transactional;
+    }
+
     @Override
     public int update() {
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
@@ -99,6 +104,7 @@ public class CreateSequence extends SchemaStatement {
         Long max = getLong(maxValue);
         Sequence sequence = new Sequence(schema, id, sequenceName, startValue, inc, cache, min, max,
                 cycle, belongsToTable);
+        sequence.setTransactional(transactional);
         schema.add(session, sequence, lock);
         return 0;
     }

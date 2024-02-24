@@ -343,10 +343,11 @@ public class Column {
                 update = true;
             }
             if (update) {
-                sequence.modify(session, now + inc, null, null, null, true);
+                sequence.modify(session, now + inc, null, null, null, true, true);
                 session.setLastIdentity(ValueLong.get(now));
-                sequence.flush(session, 0);
+                sequence.flush(session, 0, true);
             }
+            sequence.unlockIfNotTransactional(session);
         }
     }
 

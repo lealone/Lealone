@@ -33,6 +33,7 @@ public class AlterSequence extends SchemaStatement {
     private Expression minValue;
     private Expression maxValue;
     private Expression cacheSize;
+    private Boolean transactional;
 
     public AlterSequence(ServerSession session, Schema schema) {
         super(session, schema);
@@ -79,6 +80,10 @@ public class AlterSequence extends SchemaStatement {
         this.cacheSize = cacheSize;
     }
 
+    public void setTransactional(boolean transactional) {
+        this.transactional = transactional;
+    }
+
     @Override
     public int update() {
         if (table != null) {
@@ -93,6 +98,9 @@ public class AlterSequence extends SchemaStatement {
             long size = cacheSize.optimize(session).getValue(session).getLong();
             newSequence.setCacheSize(size);
         }
+        if (transactional != null) {
+            newSequence.setTransactional(transactional.booleanValue());
+        }
         if (start != null || minValue != null || maxValue != null || increment != null) {
             Long startValue = getLong(start);
             Long min = getLong(minValue);
@@ -102,6 +110,7 @@ public class AlterSequence extends SchemaStatement {
         }
         newSequence.setOldSequence(sequence);
         schema.update(session, newSequence, sequence.getOldRow(), sequence.getLock());
+        sequence.unlockIfNotTransactional(session);
         return 0;
     }
 
