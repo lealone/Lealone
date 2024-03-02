@@ -386,14 +386,13 @@ public class Sequence extends SchemaObjectBase {
     public void tryLock(ServerSession session, boolean copy) {
         if (transaction == session.getTransaction())
             return;
-        SessionStatus oldStatus = session.getStatus();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
         if (lock == null) {
-            onLocked(session, oldStatus);
+            onLocked(session);
         }
         Row oldRow = schema.tryLockSchemaObject(session, this, ErrorCode.SEQUENCE_NOT_FOUND_1);
         if (oldRow == null) {
-            onLocked(session, oldStatus);
+            onLocked(session);
         }
         this.transaction = session.getTransaction();
         this.lock = lock;
@@ -422,10 +421,10 @@ public class Sequence extends SchemaObjectBase {
         }
     }
 
-    private void onLocked(ServerSession session, SessionStatus oldStatus) {
-        // 可以继续重式
+    private void onLocked(ServerSession session) {
+        // 让出执行权给其他session，然后会继续重式
         if (!transactional)
-            session.setStatus(oldStatus);
+            session.setStatus(SessionStatus.STATEMENT_YIELDED);
         throw DbObjectLock.LOCKED_EXCEPTION;
     }
 
