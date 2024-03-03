@@ -13,6 +13,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.JdbcUtils;
@@ -36,6 +37,7 @@ import com.lealone.db.value.ValueBoolean;
 import com.lealone.db.value.ValueInt;
 import com.lealone.db.value.ValueList;
 import com.lealone.db.value.ValueLong;
+import com.lealone.db.value.ValueMap;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueResultSet;
 import com.lealone.db.value.ValueString;
@@ -497,6 +499,11 @@ public class SystemFunction extends BuiltInFunction {
                 } else {
                     result = list.get(element - 1);
                 }
+            } else if (v0.getType() == Value.MAP) {
+                Map<Value, Value> map = ((ValueMap) v0).getMap();
+                result = map.get(v1);
+                if (result == null)
+                    result = ValueNull.INSTANCE;
             } else {
                 result = ValueNull.INSTANCE;
             }

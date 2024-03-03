@@ -2826,7 +2826,6 @@ public class SQLParserBase implements SQLParser {
             Function function = Function.getFunction(database, "ARRAY_GET");
             function.setParameter(0, r);
             r = readExpression();
-            r = new Operation(Operation.PLUS, r, ValueExpression.get(ValueInt.get(1)));
             function.setParameter(1, r);
             r = function;
             read("]");
