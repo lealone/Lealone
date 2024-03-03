@@ -12,6 +12,7 @@ import java.io.Reader;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.JdbcUtils;
@@ -33,6 +34,7 @@ import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 import com.lealone.db.value.ValueBoolean;
 import com.lealone.db.value.ValueInt;
+import com.lealone.db.value.ValueList;
 import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueResultSet;
@@ -206,6 +208,9 @@ public class SystemFunction extends BuiltInFunction {
             if (v.getType() == Value.ARRAY) {
                 Value[] list = ((ValueArray) v).getList();
                 result = ValueInt.get(list.length);
+            } else if (v.getType() == Value.LIST) {
+                List<Value> list = ((ValueList) v).getList();
+                result = ValueInt.get(list.size());
             } else {
                 result = ValueNull.INSTANCE;
             }
@@ -484,6 +489,14 @@ public class SystemFunction extends BuiltInFunction {
                 } else {
                     result = list[element - 1];
                 }
+            } else if (v0.getType() == Value.LIST) {
+                int element = v1.getInt(); // 下标从1开始
+                List<Value> list = ((ValueList) v0).getList();
+                if (element < 1 || element > list.size()) {
+                    result = ValueNull.INSTANCE;
+                } else {
+                    result = list.get(element - 1);
+                }
             } else {
                 result = ValueNull.INSTANCE;
             }
@@ -498,6 +511,33 @@ public class SystemFunction extends BuiltInFunction {
                     Value[] list2 = ((ValueArray) v1).getList();
                     for (int i = 0; i < list2.length; i++) {
                         v1 = list2[i];
+                        boolean b = false;
+                        for (Value v : list) {
+                            if (v.equals(v1)) {
+                                b = true;
+                                break;
+                            }
+                        }
+                        if (b == false) {
+                            result = ValueBoolean.get(false);
+                            break;
+                        }
+                    }
+                } else {
+                    for (Value v : list) {
+                        if (v.equals(v1)) {
+                            result = ValueBoolean.get(true);
+                            break;
+                        }
+                    }
+                }
+            } else if (v0.getType() == Value.LIST) {
+                List<Value> list = ((ValueList) v0).getList();
+                if (v1 instanceof ValueList) {
+                    result = ValueBoolean.get(true);
+                    List<Value> list2 = ((ValueList) v1).getList();
+                    for (int i = 0; i < list2.size(); i++) {
+                        v1 = list2.get(i);
                         boolean b = false;
                         for (Value v : list) {
                             if (v.equals(v1)) {
