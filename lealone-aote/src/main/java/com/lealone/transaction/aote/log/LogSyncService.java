@@ -38,6 +38,7 @@ public abstract class LogSyncService extends Thread {
     private final RedoLog redoLog;
 
     private volatile boolean running;
+    private volatile CountDownLatch latchOnClose;
 
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected long syncIntervalMillis;
@@ -105,6 +106,9 @@ public abstract class LogSyncService extends Thread {
         sync();
         // 放在最后，让线程退出后再关闭
         redoLog.close();
+        if (latchOnClose != null) {
+            latchOnClose.countDown();
+        }
     }
 
     private void sync() {
@@ -124,9 +128,15 @@ public abstract class LogSyncService extends Thread {
         wakeUp();
     }
 
+    // 调用join可能没有效果，run方法可能在main线程中运行，所以统一用CountDownLatch
     public void close() {
+        latchOnClose = new CountDownLatch(1);
         running = false;
         wakeUp();
+        try {
+            latchOnClose.await();
+        } catch (InterruptedException e) {
+        }
     }
 
     public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {

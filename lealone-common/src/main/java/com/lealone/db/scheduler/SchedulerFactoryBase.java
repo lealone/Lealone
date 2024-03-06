@@ -10,7 +10,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.util.MapUtils;
-import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.Plugin;
@@ -89,9 +88,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         for (Scheduler scheduler : schedulers) {
             scheduler.start();
         }
-        ShutdownHookUtils.addShutdownHook(getName(), () -> {
-            stop();
-        });
         super.start();
     }
 

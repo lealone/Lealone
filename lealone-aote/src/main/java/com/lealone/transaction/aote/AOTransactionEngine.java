@@ -165,35 +165,27 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         close(true);
     }
 
-    public void close(boolean stopScheduler) {
-        synchronized (this) {
-            if (logSyncService == null)
-                return;
-            if (masterCheckpointService.isRunning()) {
-                masterCheckpointService.executeCheckpointOnClose();
-            }
+    public synchronized void close(boolean stopScheduler) {
+        if (logSyncService == null)
+            return;
+        if (masterCheckpointService.isRunning()) {
+            masterCheckpointService.executeCheckpointOnClose();
         }
-        synchronized (this) {
-            if (stopScheduler) {
-                try {
-                    schedulerFactory.stop();
-                } catch (Exception e) {
-                }
-            }
+        if (stopScheduler) {
             try {
-                masterCheckpointService.close();
+                schedulerFactory.stop();
             } catch (Exception e) {
             }
-            try {
-                logSyncService.close();
-                logSyncService.join();
-            } catch (Exception e) {
-            }
-            logSyncService = null;
-            masterCheckpointService = null;
-            checkpointServices = null;
-            schedulerFactory = null;
         }
+        try {
+            masterCheckpointService.close();
+        } catch (Exception e) {
+        }
+        logSyncService.close();
+        logSyncService = null;
+        masterCheckpointService = null;
+        checkpointServices = null;
+        schedulerFactory = null;
         super.close();
     }
 

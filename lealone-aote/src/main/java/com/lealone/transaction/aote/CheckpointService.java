@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,6 +49,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
 
     private long lastSavedAt = System.currentTimeMillis();
     private volatile boolean isClosed;
+    private volatile CountDownLatch latchOnClose;
 
     CheckpointService(AOTransactionEngine aote, Map<String, String> config, Scheduler scheduler) {
         this.aote = aote;
@@ -122,8 +124,13 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     public void executeCheckpointOnClose() {
         if (isClosed)
             return;
+        latchOnClose = new CountDownLatch(1);
         forceCheckpointTasks.add(() -> executeCheckpoint(true));
         wakeUp();
+        try {
+            latchOnClose.await();
+        } catch (InterruptedException e) {
+        }
     }
 
     // 按周期自动触发
@@ -306,6 +313,9 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         // 把checkpoint对应的redo log放到最后那个chunk文件
         addPendingCheckpoint(pc.getCheckpointId(), true, pc.isForce());
         checkpointTask = null;
+        if (latchOnClose != null) {
+            latchOnClose.countDown();
+        }
     }
 
     public PendingCheckpoint getPendingCheckpoint() {
