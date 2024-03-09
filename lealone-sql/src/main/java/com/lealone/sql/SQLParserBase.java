@@ -569,7 +569,7 @@ public class SQLParserBase implements SQLParser {
     protected StatementBase parseAnalyze() {
         Analyze command = new Analyze(session);
         if (readIf("SAMPLE_SIZE")) {
-            command.setTop(readPositiveInt());
+            command.setSample(readPositiveInt());
         }
         return command;
     }

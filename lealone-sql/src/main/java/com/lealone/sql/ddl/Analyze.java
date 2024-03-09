@@ -19,11 +19,11 @@ public class Analyze extends DefinitionStatement {
     /**
      * The sample size.
      */
-    private int sampleRows;
+    private int sample;
 
     public Analyze(ServerSession session) {
         super(session);
-        sampleRows = session.getDatabase().getSettings().analyzeSample;
+        sample = session.getDatabase().getSettings().analyzeSample;
     }
 
     @Override
@@ -31,8 +31,8 @@ public class Analyze extends DefinitionStatement {
         return SQLStatement.ANALYZE;
     }
 
-    public void setTop(int top) {
-        this.sampleRows = top;
+    public void setSample(int sample) {
+        this.sample = sample;
     }
 
     @Override
@@ -40,7 +40,7 @@ public class Analyze extends DefinitionStatement {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
         for (Table table : db.getAllTablesAndViews(false)) {
-            table.analyze(session, sampleRows);
+            table.analyze(session, sample);
         }
         return 0;
     }
