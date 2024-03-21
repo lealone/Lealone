@@ -200,9 +200,9 @@
                                 </goals>
                             </execution>
                         </executions>
-                    <configuration>
-                        <encoding>UTF-8</encoding>
-                    </configuration>
+                        <configuration>
+                            <encoding>UTF-8</encoding>
+                        </configuration>
                     </plugin>
                     <!-- Javadoc -->
                     <plugin>
@@ -263,14 +263,13 @@
                         <version>2.5.1</version>
                     </plugin>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.7</version>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.4.0</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <publishingServerId>central</publishingServerId>
+                            <tokenAuth>true</tokenAuth>
                         </configuration>
                     </plugin>
                 </plugins>
