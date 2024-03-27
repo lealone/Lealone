@@ -6,9 +6,7 @@
 package com.lealone.client.session;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 
 import com.lealone.client.command.ClientPreparedSQLCommand;
 import com.lealone.client.command.ClientSQLCommand;
@@ -29,6 +27,7 @@ import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.TransferOutputStream;
+import com.lealone.net.WritableChannel;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -262,22 +261,10 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public String getLocalHostAndPort() {
-        try {
-            SocketAddress sa = tcpConnection.getWritableChannel().getSocketChannel().getLocalAddress();
-            String host;
-            int port;
-            if (sa instanceof InetSocketAddress) {
-                InetSocketAddress address = (InetSocketAddress) sa;
-                host = address.getHostString();
-                port = address.getPort();
-            } else {
-                host = InetAddress.getLocalHost().getHostAddress();
-                port = 0;
-            }
-            return host + ":" + port;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        WritableChannel channel = tcpConnection.getWritableChannel();
+        String host = channel.getHost();
+        int port = channel.getPort();
+        return host + ":" + port;
     }
 
     @Override
