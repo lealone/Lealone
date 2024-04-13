@@ -30,6 +30,7 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
         testException();
         testMetaData();
         testFetchSize();
+        testFetchSizeZero();
         testBatch();
         testAsync();
         testAsync2();
@@ -231,6 +232,30 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
         assertEquals(count, rs.getRowCount());
         assertEquals(fetchSize, rs.getCurrentRowCount());
         assertEquals(fetchSize, rs.getFetchSize());
+        rs.close();
+        ps.close();
+    }
+
+    void testFetchSizeZero() throws Exception {
+        createTable();
+        String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
+        JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+        int count = 10;
+        for (int i = 1; i <= count; i++) {
+            ps.setInt(1, i * 10);
+            ps.setLong(2, i * 20);
+            ps.addBatch();
+        }
+        ps.executeBatch();
+        ps.close();
+
+        sql = "SELECT * FROM test";
+        ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+        ps.setFetchSize(0); // 如果是0会自动变成默认值
+        JdbcResultSet rs = (JdbcResultSet) ps.executeQuery();
+        rs.next();
+        assertEquals(count, rs.getRowCount());
+        assertEquals(SysProperties.SERVER_RESULT_SET_FETCH_SIZE, rs.getFetchSize());
         rs.close();
         ps.close();
     }
