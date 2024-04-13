@@ -85,7 +85,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public void setFetchSize(int rows) throws SQLException {
         super.setFetchSize(rows);
-        command.setFetchSize(rows);
+        // 不能直接用rows，如果是0在调用父类的setFetchSize后会自动变成默认值
+        command.setFetchSize(getFetchSize());
     }
 
     /**
