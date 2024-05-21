@@ -53,7 +53,8 @@ public abstract class Lock {
 
             // 避免重复加锁
             Transaction old = ref.get().getTransaction();
-            if (old == t || old == t.getParentTransaction())
+            // 只有old不为null时才需要判断
+            if (old != null && (old == t || old == t.getParentTransaction()))
                 return true;
 
             // 被其他事务占用时需要等待
