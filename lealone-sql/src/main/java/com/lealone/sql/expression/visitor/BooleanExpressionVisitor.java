@@ -42,7 +42,7 @@ public abstract class BooleanExpressionVisitor extends ExpressionVisitorBase<Boo
 
     @Override
     public Boolean visitExpression(Expression e) {
-        return true;
+        return e.accept(this);
     }
 
     @Override
