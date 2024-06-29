@@ -81,6 +81,7 @@ public class LealoneClient {
     private String port = Constants.DEFAULT_TCP_PORT + "";
     private String database = "lealone";
     private boolean embedded;
+    private boolean safeMode;
 
     public static void main(String[] args) {
         LealoneClient client = new LealoneClient(args);
@@ -133,6 +134,8 @@ public class LealoneClient {
                 listMode = true;
             } else if (arg.equals("-embed")) {
                 embedded = true;
+            } else if (arg.equals("-safeMode")) {
+                safeMode = true;
             } else if (arg.equals("-client") || arg.equals("-debug")) {
                 continue;
             } else {
@@ -207,6 +210,7 @@ public class LealoneClient {
         // 交互式命令行客户端用阻塞IO更快
         if (ci.isRemote())
             ci.setNetFactoryName(BioNetFactory.NAME);
+        ci.setSafeMode(safeMode);
         return ci;
     }
 

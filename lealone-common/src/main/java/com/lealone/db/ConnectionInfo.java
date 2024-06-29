@@ -818,4 +818,14 @@ public class ConnectionInfo implements Cloneable {
     public void setScheduler(Scheduler scheduler) {
         this.scheduler = scheduler;
     }
+
+    private boolean safeMode;
+
+    public boolean isSafeMode() {
+        return safeMode;
+    }
+
+    public void setSafeMode(boolean safeMode) {
+        this.safeMode = safeMode;
+    }
 }

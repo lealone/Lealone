@@ -106,12 +106,15 @@ public class ServerSessionFactory extends SessionFactoryBase {
                 ci.getFilePasswordHash())) {
             user = database.findUser(null, ci.getUserName());
             if (user != null) {
-                Mode mode = Mode.getInstance(
-                        ci.getProperty(DbSetting.MODE.name(), Mode.getDefaultMode().getName()));
-                if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt(), mode)) {
-                    user = null;
-                } else {
-                    database.setLastConnectionInfo(ci);
+                // 如果是嵌入模式且是安全模式就不需要验证密码，此时可以重置密码
+                if (!(ci.isEmbedded() && ci.isSafeMode())) {
+                    Mode mode = Mode.getInstance(
+                            ci.getProperty(DbSetting.MODE.name(), Mode.getDefaultMode().getName()));
+                    if (!user.validateUserPasswordHash(ci.getUserPasswordHash(), ci.getSalt(), mode)) {
+                        user = null;
+                    } else {
+                        database.setLastConnectionInfo(ci);
+                    }
                 }
             }
         }
