@@ -179,9 +179,11 @@ public class Lealone {
             });
             scheduler.start();
             scheduler.wakeUp(); // 及时唤醒，否则会影响启动速度
-            // 在主线程中运行，避免出现DestroyJavaVM线程
-            Thread.currentThread().setName("FsyncService");
-            TransactionEngine.getDefaultTransactionEngine().getFsyncService().run();
+            if (!embedded) {
+                // 在主线程中运行，避免出现DestroyJavaVM线程
+                Thread.currentThread().setName("FsyncService");
+                TransactionEngine.getDefaultTransactionEngine().getFsyncService().run();
+            }
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
