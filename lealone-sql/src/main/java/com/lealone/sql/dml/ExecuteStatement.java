@@ -8,6 +8,7 @@ package com.lealone.sql.dml;
 import java.util.ArrayList;
 
 import com.lealone.db.session.ServerSession;
+import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.SQLStatement;
 import com.lealone.sql.expression.Expression;
 
@@ -32,5 +33,14 @@ public abstract class ExecuteStatement extends ManipulationStatement {
      */
     public void setExpression(int index, Expression expr) {
         expressions.add(index, expr);
+    }
+
+    @Override
+    public PreparedSQLStatement prepare() {
+        for (int i = 0, size = expressions.size(); i < size; i++) {
+            Expression e = expressions.get(i).optimize(session);
+            expressions.set(i, e);
+        }
+        return this;
     }
 }

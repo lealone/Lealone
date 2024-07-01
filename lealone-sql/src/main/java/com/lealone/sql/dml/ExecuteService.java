@@ -12,7 +12,6 @@ import com.lealone.db.service.Service;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueString;
-import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.ValueExpression;
 
@@ -49,15 +48,6 @@ public class ExecuteService extends ExecuteStatement {
         LocalResult result = new LocalResult(session, resultExpressions, 1);
         result.done();
         return Future.succeededFuture(result);
-    }
-
-    @Override
-    public PreparedSQLStatement prepare() {
-        for (int i = 0, size = expressions.size(); i < size; i++) {
-            Expression e = expressions.get(i).optimize(session);
-            expressions.set(i, e);
-        }
-        return this;
     }
 
     @Override

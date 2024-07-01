@@ -11,7 +11,7 @@ import com.lealone.test.sql.SqlTestBase;
 
 public class ExecuteProcedureTest extends SqlTestBase {
     @Test
-    public void run() {
+    public void run() throws Exception {
         executeUpdate("drop table IF EXISTS ExecuteProcedureTest");
         executeUpdate(
                 "create table IF NOT EXISTS ExecuteProcedureTest(id int, name varchar(500), b boolean)");
@@ -33,6 +33,12 @@ public class ExecuteProcedureTest extends SqlTestBase {
 
         sql = "select * from ExecuteProcedureTest";
         executeQuery();
+
+        sql = "EXECUTE mytest(2+3, 'b5', true)";
+        executeUpdate(sql);
+        sql = "SELECT id FROM ExecuteProcedureTest WHERE name = 'b5'";
+        executeQuery();
+        assertEquals(5, getIntValue(1, true));
 
         executeUpdate("DEALLOCATE PLAN mytest");
     }
