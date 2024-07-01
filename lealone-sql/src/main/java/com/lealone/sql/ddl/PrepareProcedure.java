@@ -46,7 +46,7 @@ public class PrepareProcedure extends DefinitionStatement {
 
     @Override
     public void checkParameters() {
-        // no not check parameters
+        // do not check parameters
     }
 
     @Override
