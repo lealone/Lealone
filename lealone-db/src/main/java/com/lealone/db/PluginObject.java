@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URLClassLoader;
 
 import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.StatementBuilder;
 
 /**
@@ -90,5 +91,9 @@ public class PluginObject extends DbObjectBase {
 
     public String getState() {
         return state;
+    }
+
+    public boolean isAutoStart() {
+        return MapUtils.getBoolean(parameters, "auto_start", false);
     }
 }

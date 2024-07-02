@@ -24,6 +24,7 @@ import com.lealone.db.Constants;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.PluggableEngine;
 import com.lealone.db.PluginManager;
+import com.lealone.db.PluginObject;
 import com.lealone.db.SysProperties;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
@@ -298,6 +299,15 @@ public class Lealone {
                 });
                 logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
             }
+        }
+        startPlugins();
+    }
+
+    private void startPlugins() {
+        List<PluginObject> pluginObjects = LealoneDatabase.getInstance().getAllPluginObjects();
+        for (PluginObject pluginObject : pluginObjects) {
+            if (pluginObject.isAutoStart())
+                pluginObject.start();
         }
     }
 }

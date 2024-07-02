@@ -103,6 +103,9 @@ public class CreatePlugin extends AdminStatement {
         lealoneDB.addDatabaseObject(session, pluginObject, lock);
         // 将缓存过期掉
         lealoneDB.getNextModificationMetaId();
+
+        if (!lealoneDB.isStarting() && pluginObject.isAutoStart())
+            pluginObject.start();
         return 0;
     }
 }
