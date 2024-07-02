@@ -37,6 +37,9 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
 
     @Override
     protected T await(long timeoutMillis) {
+        // 使用阻塞IO时已经有结果就不需要等了
+        if (asyncResult != null)
+            return getResult0();
         Scheduler scheduler = SchedulerThread.currentScheduler();
         if (scheduler != null) {
             scheduler.executeNextStatement();
@@ -50,14 +53,17 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
                     scheduler.executeNextStatement();
                 }
             }
-
-            if (asyncResult.isSucceeded())
-                return asyncResult.getResult();
-            else
-                throw DbException.convert(asyncResult.getCause());
+            return getResult0();
         } else {
             throw DbException.getInternalError();
         }
+    }
+
+    private T getResult0() {
+        if (asyncResult.isSucceeded())
+            return asyncResult.getResult();
+        else
+            throw DbException.convert(asyncResult.getCause());
     }
 
     @Override
