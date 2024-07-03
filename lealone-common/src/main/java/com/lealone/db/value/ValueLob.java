@@ -354,7 +354,7 @@ public class ValueLob extends Value {
             } else {
                 buff = IOUtils.readBytesAndClose(getInputStream(), len);
             }
-            return StringUtils.convertBytesToHex(buff);
+            return new String(buff, Constants.UTF8);
         } catch (IOException e) {
             throw DbException.convertIOException(e, toString());
         }

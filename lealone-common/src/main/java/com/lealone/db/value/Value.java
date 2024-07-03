@@ -911,7 +911,7 @@ public abstract class Value implements Comparable<Value> {
             case CLOB:
                 return ValueLob.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
             case BLOB:
-                return ValueLob.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
+                return ValueLob.createSmallLob(BLOB, s.getBytes(Constants.UTF8));
             case ARRAY:
                 return ValueArray.get(new Value[] { ValueString.get(s) });
             case RESULT_SET: {
