@@ -9,13 +9,13 @@
     <parent>
         <groupId>com.lealone</groupId>
         <artifactId>lealone</artifactId>
-        <version>6.0.0</version>
+        <version>6.0.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>lealone-test</artifactId>
     <packaging>jar</packaging>
-    <version>6.0.0</version>
+    <version>6.0.1</version>
 
     <dependencies>
         <dependency>
@@ -89,7 +89,7 @@
                 <version>2.9.1</version>
                 <executions>
                     <execution>
-                        <phase>deploy</phase>
+                        <phase>package</phase>
                         <goals>
                             <goal>jar</goal>
                             <goal>test-jar</goal>
