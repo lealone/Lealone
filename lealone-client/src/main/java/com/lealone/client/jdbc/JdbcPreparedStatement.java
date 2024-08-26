@@ -119,7 +119,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             debugCodeAssign(TraceObjectType.RESULT_SET, id,
                     async ? "executeQueryAsync()" : "executeQuery()");
         }
-        JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<ResultSet> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             setExecutingStatement(command);
@@ -185,7 +185,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async) {
-        JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             setExecutingStatement(command);
@@ -204,7 +204,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(Value[] set) {
-        JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             setExecutingStatement(command);
@@ -309,7 +309,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         if (isDebugEnabled()) {
             debugCodeCall("execute");
         }
-        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             executeInternal(ac, command, true);
@@ -397,7 +397,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         debugCodeCall("executeBatch");
         ArrayList<Value[]> batchParameters = this.batchParameters;
         this.batchParameters = null;
-        JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<int[]> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             if (batchParameters == null || batchParameters.isEmpty()) {
@@ -1323,7 +1323,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         debugCodeCall("getMetaData");
-        JdbcAsyncCallback<ResultSetMetaData> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<ResultSetMetaData> ac = createJdbcAsyncCallback();
         try {
             checkClosed();
             command.getMetaData().onComplete(ar -> {

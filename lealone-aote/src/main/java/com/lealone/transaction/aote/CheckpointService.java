@@ -13,6 +13,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -128,7 +129,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         forceCheckpointTasks.add(() -> executeCheckpoint(true));
         wakeUp();
         try {
-            latchOnClose.await();
+            latchOnClose.await(3000L, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
         }
     }

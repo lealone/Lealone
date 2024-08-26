@@ -85,7 +85,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             debugCodeAssign(TraceObjectType.RESULT_SET, id,
                     "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
         }
-        JdbcAsyncCallback<ResultSet> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<ResultSet> ac = createJdbcAsyncCallback();
         try {
             SQLCommand command = createSQLCommand(sql, false);
             command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
@@ -227,7 +227,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private JdbcAsyncCallback<Integer> executeUpdateInternal(String sql) {
-        JdbcAsyncCallback<Integer> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
         try {
             SQLCommand command = createSQLCommand(sql, false);
             command.executeUpdate().onComplete(ar -> {
@@ -243,6 +243,10 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             setAsyncResult(ac, t);
         }
         return ac;
+    }
+
+    protected <T> JdbcAsyncCallback<T> createJdbcAsyncCallback() {
+        return JdbcAsyncCallback.create(session);
     }
 
     /**
@@ -350,7 +354,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         // }
         // }
-        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
         try {
             SQLCommand command = createSQLCommand(sql, true);
             command.prepare(false).onComplete(ar -> {
@@ -483,7 +487,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         debugCodeCall("executeBatch");
         ArrayList<String> batchCommands = this.batchCommands;
         this.batchCommands = null;
-        JdbcAsyncCallback<int[]> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<int[]> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             if (batchCommands == null || batchCommands.isEmpty()) {

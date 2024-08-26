@@ -17,8 +17,8 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
-import com.lealone.sql.SQLCommand;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
+import com.lealone.sql.SQLCommand;
 
 public class DelegatedSession implements Session {
 
@@ -246,5 +246,10 @@ public class DelegatedSession implements Session {
     @Override
     public void init() {
         session.init();
+    }
+
+    @Override
+    public boolean isBio() {
+        return session.isBio();
     }
 }

@@ -20,17 +20,36 @@ import com.lealone.test.TestBase;
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
+        Connection conn = null;
+
+        conn = getBioConnection();
+        crud(conn);
+
+        conn = getNioConnection();
+        crud(conn);
+
+        conn = getEmbeddedConnection();
+        crud(conn);
+    }
+
+    public static Connection getBioConnection() throws Exception {
+        TestBase test = new TestBase();
+        test.setNetFactoryName(BioNetFactory.NAME);
+        return test.getConnection(LealoneDatabase.NAME);
+    }
+
+    public static Connection getNioConnection() throws Exception {
+        TestBase test = new TestBase();
+        test.setNetFactoryName(NioNetFactory.NAME);
+        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
+        return test.getConnection(LealoneDatabase.NAME);
+    }
+
+    public static Connection getEmbeddedConnection() throws Exception {
         TestBase test = new TestBase();
         test.setEmbedded(true);
         test.setInMemory(true);
-        Connection conn = test.getConnection(LealoneDatabase.NAME);
-        crud(conn);
-        test = new TestBase();
-        test.setNetFactoryName(BioNetFactory.NAME);
-        test.setNetFactoryName(NioNetFactory.NAME);
-        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
-        conn = test.getConnection(LealoneDatabase.NAME);
-        crud(conn);
+        return test.getConnection(LealoneDatabase.NAME);
     }
 
     public static void crud(Connection conn) throws Exception {

@@ -176,7 +176,7 @@ public abstract class ClientResult implements Result {
     protected void sendFetch(int fetchSize) throws IOException {
         // 释放buffer
         in.closeInputStream();
-        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Boolean> ac = JdbcAsyncCallback.create(session);
         session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).onComplete(ar -> {
             if (ar.isSucceeded()) {
                 in = (TransferInputStream) ar.getResult().in;

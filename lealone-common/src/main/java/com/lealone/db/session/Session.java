@@ -20,8 +20,8 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
-import com.lealone.sql.SQLCommand;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
+import com.lealone.sql.SQLCommand;
 import com.lealone.storage.page.IPage;
 import com.lealone.transaction.Transaction;
 
@@ -261,4 +261,8 @@ public interface Session extends Closeable {
     }
 
     void init();
+
+    default boolean isBio() {
+        return false;
+    }
 }

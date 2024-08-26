@@ -10,7 +10,6 @@ import java.sql.Wrapper;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.TraceObject;
-import com.lealone.db.async.AsyncCallback;
 
 public class JdbcWrapper extends TraceObject implements Wrapper {
 
@@ -37,7 +36,7 @@ public class JdbcWrapper extends TraceObject implements Wrapper {
         return super.logAndConvert(ex);
     }
 
-    public static void setAsyncResult(AsyncCallback<?> ac, Throwable cause) {
+    public static void setAsyncResult(JdbcAsyncCallback<?> ac, Throwable cause) {
         // 转换成SQLException
         ac.setAsyncResult(DbException.toSQLException(cause));
     }

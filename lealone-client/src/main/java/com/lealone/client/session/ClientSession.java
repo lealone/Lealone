@@ -62,6 +62,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
+    private final boolean isBio;
 
     ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent,
             int id) {
@@ -77,6 +78,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
         initTraceSystem(ci);
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
+        isBio = tcpConnection.getWritableChannel().isBio();
     }
 
     @Override
@@ -308,7 +310,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             out.writeRequestHeader(packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
-            if (ac != null && tcpConnection.getWritableChannel().isBio())
+            if (ac != null && isBio)
                 tcpConnection.getWritableChannel().read(tcpConnection);
         } catch (Throwable e) {
             if (ac != null) {
@@ -354,5 +356,10 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public <T> AsyncCallback<T> createCallback() {
         return AsyncCallback.create(singleThreadCallback);
+    }
+
+    @Override
+    public boolean isBio() {
+        return isBio;
     }
 }

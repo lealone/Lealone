@@ -200,7 +200,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
             int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
             int fetchSize) {
-        JdbcAsyncCallback<JdbcPreparedStatement> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<JdbcPreparedStatement> ac = createJdbcAsyncCallback();
         try {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -217,6 +217,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             setAsyncResult(ac, t);
         }
         return ac;
+    }
+
+    protected <T> JdbcAsyncCallback<T> createJdbcAsyncCallback() {
+        return JdbcAsyncCallback.create(session);
     }
 
     /**
@@ -498,7 +502,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     }
 
     private JdbcAsyncCallback<Boolean> commitInternal() throws SQLException {
-        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
         prepareStatement0("COMMIT", commit).onComplete(ar0 -> {
             checkClosed();
             if (ar0.isFailed()) {
@@ -537,7 +541,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     }
 
     private JdbcAsyncCallback<Boolean> rollbackInternal() throws SQLException {
-        JdbcAsyncCallback<Boolean> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
         prepareStatement0("ROLLBACK", rollback).onComplete(ar0 -> {
             checkClosed();
             if (ar0.isFailed()) {
@@ -882,7 +886,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private JdbcAsyncCallback<JdbcCallableStatement> prepareCallInternal(boolean async, String sql,
             int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
             int fetchSize) {
-        JdbcAsyncCallback<JdbcCallableStatement> ac = new JdbcAsyncCallback<>();
+        JdbcAsyncCallback<JdbcCallableStatement> ac = createJdbcAsyncCallback();
         try {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -1066,7 +1070,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatement0(String sql,
             JdbcPreparedStatement old) {
         if (old != null) {
-            JdbcAsyncCallback<JdbcPreparedStatement> ac = new JdbcAsyncCallback<>();
+            JdbcAsyncCallback<JdbcPreparedStatement> ac = createJdbcAsyncCallback();
             ac.setAsyncResult(old);
             return ac;
         }
