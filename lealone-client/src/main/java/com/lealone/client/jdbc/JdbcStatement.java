@@ -536,7 +536,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                                 ac.setAsyncResult(result);
                             }
                         }
-                    });
+                    }).get(); // 同步执行，否则session中的当前Command可能被覆盖掉
                 }
             }
         } catch (Throwable t) {

@@ -6,6 +6,7 @@
 package com.lealone.test.misc;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
@@ -60,6 +61,7 @@ public class CRUDExample {
         Statement stmt = conn.createStatement();
         crud(stmt, storageEngineName);
         // batchInsert(stmt);
+        // batchPreparedInsert(conn);
         // batchDelete(stmt);
         stmt.close();
         conn.close();
@@ -89,12 +91,27 @@ public class CRUDExample {
     }
 
     public static void batchInsert(Statement stmt) throws Exception {
-        for (int i = 1; i <= 6000; i++)
-            stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
-        stmt.setFetchSize(10);
-        ResultSet rs = stmt.executeQuery("SELECT * FROM test");
-        while (rs.next())
-            rs.getInt(1);
+        for (int i = 1; i <= 60; i++)
+            stmt.addBatch("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
+        stmt.executeBatch();
+
+        // for (int i = 1; i <= 6000; i++)
+        // stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
+        // stmt.setFetchSize(10);
+        // ResultSet rs = stmt.executeQuery("SELECT * FROM test");
+        // while (rs.next())
+        // rs.getInt(1);
+    }
+
+    public static void batchPreparedInsert(Connection conn) throws Exception {
+        PreparedStatement ps = conn.prepareStatement("INSERT INTO test(f1, f2) VALUES(?,?)");
+        for (int i = 1; i <= 60; i++) {
+            ps.setInt(1, i);
+            ps.setLong(2, i * 10);
+            ps.addBatch();
+        }
+        ps.executeBatch();
+        ps.close();
     }
 
     public static void batchDelete(Statement stmt) throws Exception {
