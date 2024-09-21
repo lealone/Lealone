@@ -603,6 +603,7 @@ public class DataType {
         case Value.STRING:
         case Value.STRING_IGNORECASE:
         case Value.STRING_FIXED:
+        case Value.ENUM:
             // "java.lang.String";
             return String.class.getName();
         case Value.BLOB:
