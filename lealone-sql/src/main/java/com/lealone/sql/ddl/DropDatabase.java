@@ -45,7 +45,7 @@ public class DropDatabase extends DatabaseStatement {
         if (lock == null)
             return -1;
 
-        Database db = lealoneDB.getDatabase(dbName);
+        Database db = lealoneDB.findDatabase(dbName);
         if (db == null) {
             if (!ifExists)
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
