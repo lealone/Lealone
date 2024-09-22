@@ -21,14 +21,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLXML;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.client.command.ClientPreparedSQLCommand;
 import com.lealone.common.exceptions.DbException;
@@ -176,45 +172,20 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public int executeUpdate() throws SQLException {
         debugCodeCall("executeUpdate");
-        return executeUpdateInternal(false).get(this);
+        return executeUpdateInternal(null).get(this);
     }
 
     public Future<Integer> executeUpdateAsync() {
         debugCodeCall("executeUpdateAsync");
-        return executeUpdateInternal(true);
+        return executeUpdateInternal(null);
     }
 
-    private JdbcAsyncCallback<Integer> executeUpdateInternal(boolean async) {
+    private JdbcAsyncCallback<Integer> executeUpdateInternal(Value[] parameterValues) {
         JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
             setExecutingStatement(command);
-            command.executeUpdate().onComplete(ar -> {
-                setExecutingStatement(null);
-                if (ar.isFailed()) {
-                    setAsyncResult(ac, ar.getCause());
-                } else {
-                    ac.setAsyncResult(ar);
-                }
-            });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac;
-    }
-
-    private JdbcAsyncCallback<Integer> executeUpdateInternal(Value[] set) {
-        JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
-        try {
-            checkAndClose();
-            setExecutingStatement(command);
-            List<? extends CommandParameter> parameters = command.getParameters();
-            for (int j = 0; j < set.length; j++) {
-                Value value = set[j];
-                CommandParameter param = parameters.get(j);
-                param.setValue(value, false);
-            }
-            command.executeUpdate().onComplete(ar -> {
+            command.executeUpdate(parameterValues).onComplete(ar -> {
                 setExecutingStatement(null);
                 if (ar.isFailed()) {
                     setAsyncResult(ac, ar.getCause());
@@ -395,8 +366,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public int[] executeBatch() throws SQLException {
         debugCodeCall("executeBatch");
-        ArrayList<Value[]> batchParameters = this.batchParameters;
-        this.batchParameters = null;
         JdbcAsyncCallback<int[]> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
@@ -408,51 +377,22 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 ((ClientPreparedSQLCommand) command).executeBatchPreparedSQLCommands(batchParameters)
                         .onComplete(ar -> {
                             setExecutingStatement(null);
-                            if (ar.isSucceeded()) {
-                                ac.setAsyncResult(ar.getResult());
-                            } else {
-                                ac.setAsyncResult(ar.getCause());
-                            }
+                            ac.setAsyncResult(ar);
                         });
             } else {
-                int size = batchParameters.size();
-                int[] result = new int[size];
-                AtomicReference<SQLException> nextRef = new AtomicReference<>();
-                AtomicBoolean error = new AtomicBoolean(false);
-                AtomicInteger counter = new AtomicInteger(size);
-                for (int i = 0; i < size; i++) {
-                    int index = i;
-                    Value[] set = batchParameters.get(i);
-                    executeUpdateInternal(set).onComplete(ar -> {
-                        if (ar.isSucceeded()) {
-                            result[index] = ar.getResult();
-                        } else {
-                            result[index] = Statement.EXECUTE_FAILED;
-                            error.set(true);
-                            SQLException e = logAndConvert(DbException.convert(ar.getCause()));
-                            SQLException next = nextRef.get();
-                            if (next == null) {
-                                nextRef.set(e);
-                            } else {
-                                e.setNextException(next);
-                                nextRef.set(e);
-                            }
-                        }
-                        if (counter.decrementAndGet() == 0) {
-                            if (error.get()) {
-                                ac.setAsyncResult(new JdbcBatchUpdateException(nextRef.get(), result));
-                            } else {
-                                ac.setAsyncResult(result);
-                            }
-                        }
-                    }).get(); // 同步执行，否则session中的当前Command可能被覆盖掉
-                }
+                executeBatch(ac, batchParameters.size());
             }
         } catch (Throwable t) {
             setAsyncResult(ac, t);
         }
+        batchParameters = null;
         return ac.get(this);
+    }
 
+    @Override
+    protected Future<Integer> executeBatchUpdateAsync(int index) {
+        Value[] parameterValues = batchParameters.get(index);
+        return executeUpdateInternal(parameterValues);
     }
 
     /**

@@ -540,6 +540,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Integer> executeUpdate() {
+        return executeUpdate(null);
+    }
+
+    @Override
+    public Future<Integer> executeUpdate(Value[] parameterValues) {
         // checkScheduler();
         AsyncCallback<Integer> ac = session.createCallback();
         YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
@@ -551,6 +556,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             }
         });
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+        if (parameterValues != null)
+            c.setParameterValues(parameterValues);
         session.setYieldableCommand(c);
         session.getScheduler().wakeUp();
         return ac;

@@ -5,11 +5,15 @@
  */
 package com.lealone.sql;
 
+import java.util.List;
+
+import com.lealone.db.CommandParameter;
 import com.lealone.db.ManualCloseable;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.Session;
+import com.lealone.db.value.Value;
 
 public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
@@ -92,6 +96,7 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         private final int packetId;
         private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final int sessionId;
+        private Value[] parameterValues;
 
         public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable,
                 int sessionId) {
@@ -116,7 +121,19 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
             return yieldable.getPriority();
         }
 
+        public void setParameterValues(Value[] parameterValues) {
+            this.parameterValues = parameterValues;
+        }
+
         public void run() {
+            if (parameterValues != null) {
+                List<? extends CommandParameter> parameters = yieldable.getStatement().getParameters();
+                for (int i = 0; i < parameterValues.length; i++) {
+                    Value value = parameterValues[i];
+                    CommandParameter param = parameters.get(i);
+                    param.setValue(value, false);
+                }
+            }
             yieldable.run();
         }
 

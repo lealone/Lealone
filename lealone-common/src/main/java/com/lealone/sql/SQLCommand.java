@@ -11,6 +11,7 @@ import com.lealone.db.Command;
 import com.lealone.db.CommandParameter;
 import com.lealone.db.async.Future;
 import com.lealone.db.result.Result;
+import com.lealone.db.value.Value;
 
 public interface SQLCommand extends Command {
 
@@ -64,6 +65,10 @@ public interface SQLCommand extends Command {
      * @return the update count
      */
     Future<Integer> executeUpdate();
+
+    default Future<Integer> executeUpdate(Value[] parameterValues) {
+        return executeUpdate();
+    }
 
     Future<Boolean> prepare(boolean readParams);
 }

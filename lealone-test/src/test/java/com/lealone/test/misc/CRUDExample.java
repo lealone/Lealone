@@ -9,9 +9,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
 
+import com.lealone.client.jdbc.JdbcStatement;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.net.bio.BioNetFactory;
@@ -42,6 +44,7 @@ public class CRUDExample {
     public static Connection getNioConnection() throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NioNetFactory.NAME);
+        // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, "4096");
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
         return test.getConnection(LealoneDatabase.NAME);
     }
@@ -60,6 +63,7 @@ public class CRUDExample {
     public static void crud(Connection conn, String storageEngineName) throws Exception {
         Statement stmt = conn.createStatement();
         crud(stmt, storageEngineName);
+        // asyncInsert(stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn);
         // batchDelete(stmt);
@@ -74,12 +78,9 @@ public class CRUDExample {
             sql += " ENGINE = " + storageEngineName;
         stmt.executeUpdate(sql);
 
-        stmt.execute("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
-        // ((JdbcStatement) stmt).executeQueryAsync("SELECT2 * FROM test").onComplete(ar -> {
-        // ar.getCause().printStackTrace();
-        // });
         Assert.assertTrue(rs.next());
         System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         Assert.assertFalse(rs.next());
@@ -95,12 +96,8 @@ public class CRUDExample {
             stmt.addBatch("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
         stmt.executeBatch();
 
-        // for (int i = 1; i <= 6000; i++)
+        // for (int i = 1; i <= 60000; i++)
         // stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
-        // stmt.setFetchSize(10);
-        // ResultSet rs = stmt.executeQuery("SELECT * FROM test");
-        // while (rs.next())
-        // rs.getInt(1);
     }
 
     public static void batchPreparedInsert(Connection conn) throws Exception {
@@ -112,6 +109,25 @@ public class CRUDExample {
         }
         ps.executeBatch();
         ps.close();
+    }
+
+    public static void asyncInsert(Statement stmt0) throws Exception {
+        JdbcStatement stmt = (JdbcStatement) stmt0;
+        int size = 60;
+        CountDownLatch latch = new CountDownLatch(size);
+        for (int i = 1; i <= size; i++) {
+            String sql = "INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")";
+            stmt.executeUpdateAsync(sql).onComplete(ar -> {
+                if (ar.isFailed())
+                    ar.getCause().printStackTrace();
+                latch.countDown();
+            });
+        }
+        latch.await();
+        ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test");
+        rs.next();
+        Assert.assertEquals(size, rs.getInt(1));
+        rs.close();
     }
 
     public static void batchDelete(Statement stmt) throws Exception {

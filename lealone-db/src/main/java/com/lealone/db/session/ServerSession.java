@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
@@ -1318,8 +1319,36 @@ public class ServerSession extends SessionBase {
         }
     }
 
+    private LinkedBlockingQueue<YieldableCommand> yieldableCommands;
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        super.setScheduler(scheduler);
+        if (scheduler.isEmbedded())
+            yieldableCommands = new LinkedBlockingQueue<>();
+    }
+
+    @Override
+    public void setYieldableCommand(YieldableCommand yieldableCommand) {
+        if (scheduler.isEmbedded()) {
+            if (yieldableCommand != null)
+                yieldableCommands.add(yieldableCommand);
+        } else {
+            this.yieldableCommand = yieldableCommand;
+        }
+    }
+
     @Override
     public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
+        YieldableCommand yieldableCommand;
+        if (scheduler.isEmbedded()) {
+            if (yieldableCommands.isEmpty())
+                yieldableCommand = null;
+            else
+                yieldableCommand = yieldableCommands.poll();
+        } else {
+            yieldableCommand = this.yieldableCommand;
+        }
         if (yieldableCommand == null)
             return null;
         wakeUpIfNeeded();

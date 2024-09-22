@@ -37,6 +37,11 @@ public class EmbeddedScheduler extends SchedulerBase {
     }
 
     @Override
+    public boolean isEmbedded() {
+        return true;
+    }
+
+    @Override
     public Logger getLogger() {
         return logger;
     }

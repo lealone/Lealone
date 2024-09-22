@@ -485,8 +485,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     @Override
     public int[] executeBatch() throws SQLException {
         debugCodeCall("executeBatch");
-        ArrayList<String> batchCommands = this.batchCommands;
-        this.batchCommands = null;
         JdbcAsyncCallback<int[]> ac = createJdbcAsyncCallback();
         try {
             checkAndClose();
@@ -499,51 +497,54 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 setExecutingStatement(command);
                 command.executeBatchSQLCommands(batchCommands).onComplete(ar -> {
                     setExecutingStatement(null);
-                    if (ar.isSucceeded()) {
-                        ac.setAsyncResult(ar.getResult());
-                    } else {
-                        ac.setAsyncResult(ar.getCause());
-                    }
+                    ac.setAsyncResult(ar);
                 });
             } else {
-                int size = batchCommands.size();
-                int[] result = new int[size];
-                AtomicReference<SQLException> nextRef = new AtomicReference<>();
-                AtomicBoolean error = new AtomicBoolean(false);
-                AtomicInteger counter = new AtomicInteger(size);
-                for (int i = 0; i < size; i++) {
-                    int index = i;
-                    String sql = batchCommands.get(i);
-                    executeUpdateAsync(sql).onComplete(ar -> {
-                        if (ar.isSucceeded()) {
-                            result[index] = ar.getResult();
-                        } else {
-                            result[index] = Statement.EXECUTE_FAILED;
-                            error.set(true);
-                            SQLException e = logAndConvert(DbException.convert(ar.getCause()));
-                            SQLException next = nextRef.get();
-                            if (next == null) {
-                                nextRef.set(e);
-                            } else {
-                                e.setNextException(next);
-                                nextRef.set(e);
-                            }
-                        }
-                        if (counter.decrementAndGet() == 0) {
-                            if (error.get()) {
-                                ac.setAsyncResult(new JdbcBatchUpdateException(nextRef.get(), result));
-                            } else {
-                                ac.setAsyncResult(result);
-                            }
-                        }
-                    }).get(); // 同步执行，否则session中的当前Command可能被覆盖掉
-                }
+                executeBatch(ac, batchCommands.size());
             }
         } catch (Throwable t) {
             setAsyncResult(ac, t);
         }
+        batchCommands = null;
         return ac.get(this);
+    }
 
+    protected Future<Integer> executeBatchUpdateAsync(int index) {
+        String sql = batchCommands.get(index);
+        return executeUpdateAsync(sql);
+    }
+
+    protected void executeBatch(JdbcAsyncCallback<int[]> ac, int size) {
+        int[] result = new int[size];
+        AtomicReference<SQLException> nextRef = new AtomicReference<>();
+        AtomicBoolean error = new AtomicBoolean(false);
+        AtomicInteger counter = new AtomicInteger(size);
+        for (int i = 0; i < size; i++) {
+            final int index = i;
+            executeBatchUpdateAsync(index).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    result[index] = ar.getResult();
+                } else {
+                    result[index] = Statement.EXECUTE_FAILED;
+                    error.set(true);
+                    SQLException e = logAndConvert(DbException.convert(ar.getCause()));
+                    SQLException next = nextRef.get();
+                    if (next == null) {
+                        nextRef.set(e);
+                    } else {
+                        e.setNextException(next);
+                        nextRef.set(e);
+                    }
+                }
+                if (counter.decrementAndGet() == 0) {
+                    if (error.get()) {
+                        ac.setAsyncResult(new JdbcBatchUpdateException(nextRef.get(), result));
+                    } else {
+                        ac.setAsyncResult(result);
+                    }
+                }
+            });
+        }
     }
 
     /**
