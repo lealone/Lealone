@@ -265,4 +265,8 @@ public interface Session extends Closeable {
     default boolean isBio() {
         return false;
     }
+
+    void setSessionInfo(SessionInfo si);
+
+    SessionInfo getSessionInfo();
 }

@@ -94,8 +94,4 @@ public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener
     boolean yieldIfNeeded(PreparedSQLStatement current);
 
     void wakeUp();
-
-    default boolean isEmbedded() {
-        return false;
-    }
 }

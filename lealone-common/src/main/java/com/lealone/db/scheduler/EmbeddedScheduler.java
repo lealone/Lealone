@@ -7,6 +7,7 @@ package com.lealone.db.scheduler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.common.logging.Logger;
@@ -17,6 +18,7 @@ import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.Session;
+import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.storage.page.PageOperation;
@@ -34,11 +36,6 @@ public class EmbeddedScheduler extends SchedulerBase {
 
     public EmbeddedScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "EScheduleService-" + id, schedulerCount, config);
-    }
-
-    @Override
-    public boolean isEmbedded() {
-        return true;
     }
 
     @Override
@@ -66,6 +63,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     public void run() {
         while (!stopped) {
             runMiscTasks();
+            runSessionTasks();
             runPageOperationTasks();
             runPendingTransactions();
             executeNextStatement();
@@ -138,19 +136,78 @@ public class EmbeddedScheduler extends SchedulerBase {
         }
     }
 
-    protected final LinkableList<SessionInfo> sessions = new LinkableList<>();
+    protected final LinkableList<ESessionInfo> sessions = new LinkableList<>();
 
-    protected static class SessionInfo extends LinkableBase<SessionInfo> {
-        final Session session;
+    protected static class ESessionInfo extends LinkableBase<ESessionInfo> implements SessionInfo {
 
-        public SessionInfo(Session session) {
+        private final Session session;
+        private final Scheduler scheduler;
+        private final LinkedBlockingQueue<AsyncTask> tasks = new LinkedBlockingQueue<>();
+
+        public ESessionInfo(Session session, Scheduler scheduler) {
             this.session = session;
+            this.scheduler = scheduler;
+            session.setSessionInfo(this);
+        }
+
+        @Override
+        public Session getSession() {
+            return session;
+        }
+
+        @Override
+        public int getSessionId() {
+            return 0;
+        }
+
+        @Override
+        public void submitTask(AsyncTask task) {
+            tasks.add(task);
+        }
+
+        void runSessionTasks() {
+            if (session.getYieldableCommand() != null) {
+                return;
+            }
+            if (!tasks.isEmpty()) {
+                AsyncTask task = tasks.poll();
+                while (task != null) {
+                    runTask(task);
+                    if (session.getYieldableCommand() != null)
+                        break;
+                    task = tasks.poll();
+                }
+            }
+        }
+
+        private void runTask(AsyncTask task) {
+            Session old = scheduler.getCurrentSession();
+            scheduler.setCurrentSession(session);
+            try {
+                task.run();
+            } catch (Throwable e) {
+                logger.warn(
+                        "Failed to run async session task: " + task + ", session id: " + getSessionId(),
+                        e);
+            } finally {
+                scheduler.setCurrentSession(old);
+            }
+        }
+    }
+
+    private void runSessionTasks() {
+        if (sessions.isEmpty())
+            return;
+        ESessionInfo si = sessions.getHead();
+        while (si != null) {
+            si.runSessionTasks();
+            si = si.next;
         }
     }
 
     @Override
     public void addSession(Session session) {
-        sessions.add(new SessionInfo(session));
+        sessions.add(new ESessionInfo(session, this));
         session.init();
     }
 
@@ -158,7 +215,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     public void removeSession(Session session) {
         if (sessions.isEmpty())
             return;
-        SessionInfo si = sessions.getHead();
+        ESessionInfo si = sessions.getHead();
         while (si != null) {
             if (si.session == session) {
                 sessions.remove(si);
@@ -184,12 +241,14 @@ public class EmbeddedScheduler extends SchedulerBase {
             }
             if (c == null) {
                 runMiscTasks();
+                runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
                 runPageOperationTasks();
                 runPendingTransactions();
                 runMiscTasks();
+                runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {
                     break;
@@ -203,6 +262,7 @@ public class EmbeddedScheduler extends SchedulerBase {
                     runPageOperationTasks();
                     runPendingTransactions();
                     runMiscTasks();
+                    runSessionTasks();
                 }
                 last = c;
             } catch (Throwable e) {
@@ -215,6 +275,7 @@ public class EmbeddedScheduler extends SchedulerBase {
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         // 如果有新的session需要创建，那么先接入新的session
         runMiscTasks();
+        runSessionTasks();
 
         // 至少有两个session才需要yield
         if (sessions.size() < 2)
@@ -236,7 +297,7 @@ public class EmbeddedScheduler extends SchedulerBase {
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        SessionInfo si = sessions.getHead();
+        ESessionInfo si = sessions.getHead();
         while (si != null) {
             // 执行yieldIfNeeded时，不需要检查当前session
             if (currentSession == si) {

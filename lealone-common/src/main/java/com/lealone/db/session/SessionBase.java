@@ -237,4 +237,16 @@ public abstract class SessionBase implements Session {
     @Override
     public void init() {
     }
+
+    protected SessionInfo si;
+
+    @Override
+    public void setSessionInfo(SessionInfo si) {
+        this.si = si;
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return si;
+    }
 }

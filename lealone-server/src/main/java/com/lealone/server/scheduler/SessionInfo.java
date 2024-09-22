@@ -16,7 +16,8 @@ import com.lealone.server.AsyncServerConnection;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
-public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSession.TimeoutListener {
+public class SessionInfo extends LinkableBase<SessionInfo>
+        implements ServerSession.TimeoutListener, com.lealone.db.session.SessionInfo {
 
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
@@ -40,6 +41,7 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         this.sessionId = sessionId;
         this.sessionTimeout = sessionTimeout;
         updateLastActiveTime();
+        session.setSessionInfo(this);
     }
 
     SessionInfo copy(ServerSession session) {
@@ -50,16 +52,30 @@ public class SessionInfo extends LinkableBase<SessionInfo> implements ServerSess
         lastActiveTime = System.currentTimeMillis();
     }
 
+    @Override
     public ServerSession getSession() {
         return session;
     }
 
+    @Override
     public int getSessionId() {
         return sessionId;
     }
 
     private void addTask(LinkableTask task) {
         tasks.add(task);
+    }
+
+    @Override
+    public void submitTask(AsyncTask task) {
+        LinkableTask ltask = new LinkableTask() {
+            @Override
+            public void run() {
+                task.run();
+            }
+        };
+        updateLastActiveTime();
+        addTask(ltask);
     }
 
     public void submitTask(LinkableTask task) {

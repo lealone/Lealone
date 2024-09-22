@@ -252,4 +252,14 @@ public class DelegatedSession implements Session {
     public boolean isBio() {
         return session.isBio();
     }
+
+    @Override
+    public void setSessionInfo(SessionInfo si) {
+        session.setSessionInfo(si);
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return session.getSessionInfo();
+    }
 }

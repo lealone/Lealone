@@ -18,11 +18,13 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
+import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.executor.YieldableLocalUpdate;
 import com.lealone.sql.expression.Expression;
@@ -524,16 +526,19 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
         // checkScheduler();
         AsyncCallback<Result> ac = session.createCallback();
-        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
-            if (ar.isSucceeded()) {
-                Result result = ar.getResult();
-                ac.setAsyncResult(result);
-            } else {
-                ac.setAsyncResult(ar.getCause());
-            }
-        });
-        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-        session.setYieldableCommand(c);
+        AsyncTask task = () -> {
+            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
+                if (ar.isSucceeded()) {
+                    Result result = ar.getResult();
+                    ac.setAsyncResult(result);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            session.setYieldableCommand(c);
+        };
+        session.getSessionInfo().submitTask(task);
         session.getScheduler().wakeUp();
         return ac;
     }
@@ -547,18 +552,21 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public Future<Integer> executeUpdate(Value[] parameterValues) {
         // checkScheduler();
         AsyncCallback<Integer> ac = session.createCallback();
-        YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
-            if (ar.isSucceeded()) {
-                Integer updateCount = ar.getResult();
-                ac.setAsyncResult(updateCount);
-            } else {
-                ac.setAsyncResult(ar.getCause());
-            }
-        });
-        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-        if (parameterValues != null)
-            c.setParameterValues(parameterValues);
-        session.setYieldableCommand(c);
+        AsyncTask task = () -> {
+            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    Integer updateCount = ar.getResult();
+                    ac.setAsyncResult(updateCount);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+            if (parameterValues != null)
+                c.setParameterValues(parameterValues);
+            session.setYieldableCommand(c);
+        };
+        session.getSessionInfo().submitTask(task);
         session.getScheduler().wakeUp();
         return ac;
     }
