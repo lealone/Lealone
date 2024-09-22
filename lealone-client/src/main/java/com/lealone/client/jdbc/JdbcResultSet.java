@@ -3578,27 +3578,33 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     }
 
     /**
-     * [Not supported]
-     *
      * @param columnIndex the column index (1, 2, ...)
      * @param type the class of the returned value
      */
-    // ## Java 1.7 ##
     @Override
-    public <T> T getObject(int columnIndex, Class<T> type) {
-        return null;
+    public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
+        try {
+            debugCodeCall("getObject", columnIndex);
+            Value v = get(columnIndex);
+            return conn.convertToObject(v, type);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
     }
 
     /**
-     * [Not supported]
-     *
      * @param columnName the column name
      * @param type the class of the returned value
      */
-    // ## Java 1.7 ##
     @Override
-    public <T> T getObject(String columnName, Class<T> type) {
-        return null;
+    public <T> T getObject(String columnName, Class<T> type) throws SQLException {
+        try {
+            debugCodeCall("getObject", columnName);
+            Value v = get(columnName);
+            return conn.convertToObject(v, type);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
     }
 
     /**

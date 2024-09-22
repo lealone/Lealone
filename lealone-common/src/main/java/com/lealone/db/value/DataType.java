@@ -17,6 +17,9 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -888,6 +891,14 @@ public class DataType {
             return ValueTimestamp.get((Timestamp) x);
         } else if (x instanceof java.util.Date) {
             return ValueTimestamp.get(new Timestamp(((java.util.Date) x).getTime()));
+        } else if (x instanceof LocalDate) {
+            return ValueDate.fromDateValue(dateValue((LocalDate) x));
+        } else if (x instanceof LocalTime) {
+            return ValueTime.fromNanos(((LocalTime) x).toNanoOfDay());
+        } else if (x instanceof LocalDateTime) {
+            LocalDateTime localDateTime = (LocalDateTime) x;
+            return ValueTimestamp.fromDateValueAndNanos(dateValue(localDateTime.toLocalDate()),
+                    localDateTime.toLocalTime().toNanoOfDay());
         } else if (x instanceof java.io.Reader) {
             Reader r = new BufferedReader((java.io.Reader) x);
             return dataHandler.getLobStorage().createClob(r, -1);
@@ -929,6 +940,10 @@ public class DataType {
         } else {
             return ValueJavaObject.getNoCopy(x, null);
         }
+    }
+
+    public static long dateValue(LocalDate localDate) {
+        return (localDate.getYear() << 9) | (localDate.getMonthValue() << 5) | localDate.getDayOfMonth();
     }
 
     /**

@@ -24,7 +24,6 @@ import com.lealone.db.result.Result;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
-import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.executor.YieldableLocalUpdate;
 import com.lealone.sql.expression.Expression;

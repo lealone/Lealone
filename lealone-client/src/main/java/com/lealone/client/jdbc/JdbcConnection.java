@@ -23,6 +23,9 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -42,8 +45,11 @@ import com.lealone.db.session.Session;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.Value;
+import com.lealone.db.value.ValueDate;
 import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueNull;
+import com.lealone.db.value.ValueTime;
+import com.lealone.db.value.ValueTimestamp;
 import com.lealone.sql.SQLCommand;
 
 /**
@@ -1581,6 +1587,30 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             o = v.getObject();
         }
         return o;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> T convertToObject(Value v, Class<T> type) {
+        if (type == LocalDate.class) {
+            ValueDate date = (ValueDate) v;
+            long dateValue = date.getDateValue();
+            return (T) toLocalDate(dateValue);
+        } else if (type == LocalTime.class) {
+            ValueTime time = (ValueTime) v;
+            return (T) LocalTime.ofNanoOfDay(time.getNanos());
+        } else if (type == LocalDateTime.class) {
+            ValueTimestamp timestamp = (ValueTimestamp) v;
+            long dateValue = timestamp.getDateValue();
+            long timeNanos = timestamp.getNanos();
+            return (T) LocalDateTime.of(toLocalDate(dateValue), LocalTime.ofNanoOfDay(timeNanos));
+        } else {
+            return (T) convertToDefaultObject(v);
+        }
+    }
+
+    private static LocalDate toLocalDate(long dateValue) {
+        return LocalDate.of((int) (dateValue >>> 9), (int) (dateValue >>> 5) & 15,
+                (int) (dateValue & 31));
     }
 
     CompareMode getCompareMode() {
