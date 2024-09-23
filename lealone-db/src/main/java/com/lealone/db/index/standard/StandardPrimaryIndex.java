@@ -203,8 +203,10 @@ public class StandardPrimaryIndex extends StandardIndex {
                 if (ar.isSucceeded()) {
                     row.setKey(ar.getResult().getLong());
                     session.setLastIdentity(ar.getResult());
+                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
                 }
-                ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
             });
         }
         return ac;
