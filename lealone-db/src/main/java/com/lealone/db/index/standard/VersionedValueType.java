@@ -70,11 +70,11 @@ public class VersionedValueType extends ValueDataType {
 
     @Override
     public Object read(ByteBuffer buff) {
-        int vertion = DataUtils.readVarInt(buff);
+        int version = DataUtils.readVarInt(buff);
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         if (enumColumns != null)
             setEnumColumns(a);
-        return new VersionedValue(vertion, a.getList());
+        return new VersionedValue(version, a.getList());
     }
 
     @Override
@@ -92,9 +92,9 @@ public class VersionedValueType extends ValueDataType {
 
     @Override
     public Object readMeta(ByteBuffer buff, int columnCount) {
-        int vertion = DataUtils.readVarInt(buff);
+        int version = DataUtils.readVarInt(buff);
         Value[] columns = new Value[columnCount];
-        return new VersionedValue(vertion, columns);
+        return new VersionedValue(version, columns);
     }
 
     @Override
