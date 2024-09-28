@@ -61,8 +61,11 @@ public class AOStorageBuilder extends StorageBuilder {
                         config);
             }
         }
-        if (!sf.isStarted())
+        // 嵌入模式下打开新的Storage，如果EmbeddedScheduler没启动则自动启动
+        if (!sf.isStarted() && sf.getSchedulerCount() > 0
+                && (sf.getScheduler(0) instanceof EmbeddedScheduler)) {
             sf.start();
+        }
         return sf;
     }
 }
