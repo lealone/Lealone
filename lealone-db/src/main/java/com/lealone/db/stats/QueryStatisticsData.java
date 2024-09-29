@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.lealone.db.stat;
+package com.lealone.db.stats;
 
 import java.util.ArrayList;
 import java.util.Comparator;

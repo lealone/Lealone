@@ -54,7 +54,7 @@ import com.lealone.db.schema.TriggerObject;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionStatus;
-import com.lealone.db.stat.QueryStatisticsData;
+import com.lealone.db.stats.QueryStatisticsData;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.CreateTableData;
 import com.lealone.db.table.InfoMetaTable;
