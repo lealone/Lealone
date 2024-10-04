@@ -5,8 +5,11 @@
  */
 package com.lealone.sql.admin;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.db.LealoneDatabase;
+import com.lealone.db.PluginManager;
+import com.lealone.db.api.ErrorCode;
 import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.sql.SQLStatement;
@@ -36,10 +39,18 @@ public class StartServer extends AdminStatement {
     @Override
     public int update() {
         LealoneDatabase.checkAdminRight(session, "start server");
-        ProtocolServerEngine e = ShutdownServer.getProtocolServerEngine(name);
+        ProtocolServerEngine e = getProtocolServerEngine(name);
         if (!e.isInited())
             e.init(parameters);
         e.start();
         return 0;
+    }
+
+    public static ProtocolServerEngine getProtocolServerEngine(String name) {
+        ProtocolServerEngine e = PluginManager.getPlugin(ProtocolServerEngine.class, name);
+        if (e == null) {
+            throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, name);
+        }
+        return e;
     }
 }
