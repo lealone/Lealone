@@ -13,6 +13,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -542,14 +543,28 @@ public class NioEventLoop implements NetEventLoop {
     public synchronized void close() {
         try {
             // 正常关闭SocketChannel，避免让server端捕获到异常关闭信息
-            for (SocketChannel channel : channels.keySet()) {
+            // copy一份channels.keySet()，避免ConcurrentModificationException
+            for (SocketChannel channel : new ArrayList<>(channels.keySet())) {
                 closeChannel(channel);
             }
-            Selector selector = this.selector;
-            this.selector = null;
-            selector.wakeup();
-            selector.close();
-        } catch (Exception e) {
+        } catch (Throwable t) {
+        }
+        if (this.selector != null) {
+            try {
+                Selector selector = this.selector;
+                this.selector = null;
+                selector.wakeup();
+                selector.close();
+            } catch (Throwable t) {
+            }
+        }
+        if (this.netClient != null) {
+            try {
+                NetClient netClient = this.netClient;
+                this.netClient = null;
+                netClient.close();
+            } catch (Throwable t) {
+            }
         }
     }
 
