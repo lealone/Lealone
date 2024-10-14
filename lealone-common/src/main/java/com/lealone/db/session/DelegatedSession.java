@@ -126,16 +126,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public boolean isRunModeChanged() {
-        return session.isRunModeChanged();
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        session.runModeChanged(newTargetNodes);
-    }
-
-    @Override
     public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
         return session.getTrace(traceModuleType, traceObjectType);
     }

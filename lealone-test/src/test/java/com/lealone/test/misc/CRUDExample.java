@@ -44,8 +44,9 @@ public class CRUDExample {
     public static Connection getNioConnection() throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NioNetFactory.NAME);
-        // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, "4096");
-        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
+        // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
+        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
+        test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
         return test.getConnection(LealoneDatabase.NAME);
     }
 

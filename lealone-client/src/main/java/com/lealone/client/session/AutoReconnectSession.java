@@ -8,48 +8,45 @@ package com.lealone.client.session;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.session.DelegatedSession;
 import com.lealone.db.session.Session;
+import com.lealone.sql.SQLCommand;
 
 class AutoReconnectSession extends DelegatedSession {
 
-    private ConnectionInfo ci;
-    private String newTargetNodes;
+    private final ConnectionInfo ci;
 
-    AutoReconnectSession(ConnectionInfo ci) {
+    AutoReconnectSession(ConnectionInfo ci, Session session) {
         this.ci = ci;
+        this.session = session;
     }
 
     @Override
-    public void setAutoCommit(boolean autoCommit) {
-        super.setAutoCommit(autoCommit);
-
-        if (newTargetNodes != null) {
-            reconnect();
-        }
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        this.newTargetNodes = newTargetNodes;
-        if (session.isAutoCommit()) {
-            reconnect();
-        }
+    public boolean isClosed() {
+        return false; // 因为要自动重连了，所以总是返回false
     }
 
     private void reconnect() {
-        Session oldSession = this.session;
-        this.ci = this.ci.copy(newTargetNodes);
         ci.getSessionFactory().createSession(ci).onSuccess(s -> {
             AutoReconnectSession a = (AutoReconnectSession) s;
             session = a.session;
-            oldSession.close();
-            newTargetNodes = null;
-        });
+        }).get();
     }
 
     @Override
     public void reconnectIfNeeded() {
-        if (newTargetNodes != null) {
+        if (session.isClosed()) {
             reconnect();
         }
+    }
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+        reconnectIfNeeded();
+        session.setAutoCommit(autoCommit);
+    }
+
+    @Override
+    public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
+        reconnectIfNeeded();
+        return session.createSQLCommand(sql, fetchSize, prepared);
     }
 }

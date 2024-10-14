@@ -36,7 +36,6 @@ public interface Session extends Closeable {
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;
-    public static final int STATUS_RUN_MODE_CHANGED = 1003;
 
     int getId();
 
@@ -99,10 +98,6 @@ public interface Session extends Closeable {
     void setRunMode(RunMode runMode);
 
     RunMode getRunMode();
-
-    boolean isRunModeChanged();
-
-    void runModeChanged(String newTargetNodes);
 
     /**
      * Get the trace object

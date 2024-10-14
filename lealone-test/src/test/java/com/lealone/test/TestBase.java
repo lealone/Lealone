@@ -130,6 +130,11 @@ public class TestBase extends Assert {
         return this;
     }
 
+    public synchronized TestBase addConnectionParameter(ConnectionSetting key, Object value) {
+        connectionParameters.put(key.name(), value.toString());
+        return this;
+    }
+
     public TestBase enableTrace() {
         return enableTrace(TraceSystem.INFO);
     }

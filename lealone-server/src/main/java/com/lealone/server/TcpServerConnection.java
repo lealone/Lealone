@@ -224,8 +224,6 @@ public class TcpServerConnection extends AsyncServerConnection {
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
-        } else if (session.isRunModeChanged()) {
-            return Session.STATUS_RUN_MODE_CHANGED;
         } else {
             return Session.STATUS_OK;
         }
@@ -236,9 +234,6 @@ public class TcpServerConnection extends AsyncServerConnection {
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(task.packetId, getStatus(session));
-            if (session.isRunModeChanged()) {
-                out.writeInt(task.sessionId).writeString(session.getNewTargetNodes());
-            }
             packet.encode(out, session.getProtocolVersion());
             out.flush();
         } catch (Exception e) {

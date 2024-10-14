@@ -23,4 +23,5 @@ public enum ConnectionSetting {
     MAX_PACKET_SIZE,
 
     SESSION_FACTORY_NAME,
+    AUTO_RECONNECT,
 }

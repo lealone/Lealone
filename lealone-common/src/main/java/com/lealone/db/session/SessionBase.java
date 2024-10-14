@@ -32,7 +32,6 @@ public abstract class SessionBase implements Session {
     protected boolean invalid;
     protected String targetNodes;
     protected RunMode runMode;
-    protected String newTargetNodes;
     protected int consistencyLevel;
 
     protected TraceSystem traceSystem;
@@ -110,22 +109,6 @@ public abstract class SessionBase implements Session {
     @Override
     public RunMode getRunMode() {
         return runMode;
-    }
-
-    @Override
-    public boolean isRunModeChanged() {
-        return newTargetNodes != null;
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        this.newTargetNodes = newTargetNodes;
-    }
-
-    public String getNewTargetNodes() {
-        String nodes = newTargetNodes;
-        newTargetNodes = null;
-        return nodes;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {

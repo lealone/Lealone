@@ -22,7 +22,6 @@ import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.ConcurrentAsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.async.SingleThreadAsyncCallback;
-import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
@@ -58,18 +57,15 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
     private final String server;
-    private final Session parent;
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
     private final boolean isBio;
 
-    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent,
-            int id) {
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, int id) {
         this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
-        this.parent = parent;
         this.id = id;
 
         String cipher = ci.getProperty(DbSetting.CIPHER.getName());
@@ -102,6 +98,11 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     InetSocketAddress getInetSocketAddress() {
         return tcpConnection.getInetSocketAddress();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed || tcpConnection.isClosed();
     }
 
     @Override
@@ -234,11 +235,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             handleException(e);
         }
         return -1;
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        parent.runModeChanged(newTargetNodes);
     }
 
     @Override
