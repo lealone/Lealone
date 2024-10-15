@@ -125,10 +125,6 @@ public interface Session extends Closeable {
      */
     DataHandler getDataHandler();
 
-    String getLocalHostAndPort();
-
-    String getURL();
-
     void setNetworkTimeout(int milliseconds);
 
     int getNetworkTimeout();
@@ -203,10 +199,6 @@ public interface Session extends Closeable {
 
     default boolean compareAndSet(SessionStatus expect, SessionStatus update) {
         return false;
-    }
-
-    default boolean isRoot() {
-        return true;
     }
 
     default boolean isQueryCommand() {

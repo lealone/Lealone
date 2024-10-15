@@ -53,7 +53,6 @@ import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueString;
-import com.lealone.net.NetNode;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -1258,11 +1257,6 @@ public class ServerSession extends SessionBase {
         return transaction;
     }
 
-    @Override
-    public String getURL() {
-        return connectionInfo == null ? null : connectionInfo.getURL();
-    }
-
     public SQLParser getParser() {
         return createParser();
     }
@@ -1419,11 +1413,6 @@ public class ServerSession extends SessionBase {
     public void cancelStatement(int statementId) {
         if (currentCommand != null && currentCommand.getId() == statementId)
             currentCommand.cancel();
-    }
-
-    @Override
-    public String getLocalHostAndPort() {
-        return NetNode.getLocalTcpHostAndPort();
     }
 
     @Override

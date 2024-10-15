@@ -142,16 +142,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public String getLocalHostAndPort() {
-        return session.getLocalHostAndPort();
-    }
-
-    @Override
-    public String getURL() {
-        return session.getURL();
-    }
-
-    @Override
     public void setNetworkTimeout(int milliseconds) {
         session.setNetworkTimeout(milliseconds);
     }

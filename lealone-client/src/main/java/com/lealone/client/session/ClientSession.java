@@ -26,7 +26,6 @@ import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.TransferOutputStream;
-import com.lealone.net.WritableChannel;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -238,11 +237,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
-    public String getURL() {
-        return ci.getURL();
-    }
-
-    @Override
     public ConnectionInfo getConnectionInfo() {
         return ci;
     }
@@ -255,14 +249,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
-    }
-
-    @Override
-    public String getLocalHostAndPort() {
-        WritableChannel channel = tcpConnection.getWritableChannel();
-        String host = channel.getHost();
-        int port = channel.getPort();
-        return host + ":" + port;
     }
 
     @Override
