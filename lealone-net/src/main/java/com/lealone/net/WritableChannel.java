@@ -32,7 +32,7 @@ public interface WritableChannel {
         return false;
     }
 
-    default void read(AsyncConnection conn) {
+    default void read() {
     }
 
     default DataBufferFactory getDataBufferFactory() {

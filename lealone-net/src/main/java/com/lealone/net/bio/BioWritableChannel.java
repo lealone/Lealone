@@ -15,7 +15,6 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.DataBuffer;
@@ -36,6 +35,7 @@ public class BioWritableChannel implements WritableChannel {
     private DataOutputStream out;
 
     private DataBuffer dataBuffer;
+    private AsyncConnection conn;
 
     public BioWritableChannel(Map<String, String> config, Socket socket, InetSocketAddress address)
             throws IOException {
@@ -45,6 +45,10 @@ public class BioWritableChannel implements WritableChannel {
         this.socket = socket;
         in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
         out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 64 * 1024));
+    }
+
+    public void setAsyncConnection(AsyncConnection conn) {
+        this.conn = conn;
     }
 
     public DataBuffer getDataBuffer(int capacity) {
@@ -69,7 +73,7 @@ public class BioWritableChannel implements WritableChannel {
             }
             out.flush();
         } catch (IOException e) {
-            throw DbException.convert(e);
+            conn.handleException(e);
         }
     }
 
@@ -107,7 +111,7 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void read(AsyncConnection conn) {
+    public void read() {
         try {
             if (conn.isClosed())
                 return;

@@ -293,7 +293,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             packet.encode(out, getProtocolVersion());
             out.flush();
             if (ac != null && isBio)
-                tcpConnection.getWritableChannel().read(tcpConnection);
+                tcpConnection.getWritableChannel().read();
         } catch (Throwable e) {
             if (ac != null) {
                 removeAsyncCallback(packetId);

@@ -48,6 +48,7 @@ public class BioNetClient extends NetClientBase {
             } else {
                 conn = new TcpClientConnection(writableChannel, this, 1);
             }
+            writableChannel.setAsyncConnection(conn);
             conn.setInetSocketAddress(inetSocketAddress);
             addConnection(inetSocketAddress, conn);
             ac.setAsyncResult(conn);
