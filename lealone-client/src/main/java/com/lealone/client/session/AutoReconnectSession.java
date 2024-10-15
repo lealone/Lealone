@@ -6,6 +6,7 @@
 package com.lealone.client.session;
 
 import com.lealone.db.ConnectionInfo;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.DelegatedSession;
 import com.lealone.db.session.Session;
 import com.lealone.sql.SQLCommand;
@@ -25,6 +26,11 @@ public class AutoReconnectSession extends DelegatedSession {
     }
 
     private void reconnect() {
+        // 重连的线程不是Scheduler时重置ConnectionInfo
+        if (SchedulerThread.currentScheduler() == null) {
+            ci.setSingleThreadCallback(false);
+            ci.setScheduler(null);
+        }
         ci.getSessionFactory().createSession(ci).onSuccess(s -> {
             AutoReconnectSession a = (AutoReconnectSession) s;
             session = a.session;
