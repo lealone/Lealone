@@ -828,4 +828,8 @@ public class ConnectionInfo implements Cloneable {
     public void setSafeMode(boolean safeMode) {
         this.safeMode = safeMode;
     }
+
+    public boolean isAutoReconnect() {
+        return getProperty(ConnectionSetting.AUTO_RECONNECT, false);
+    }
 }

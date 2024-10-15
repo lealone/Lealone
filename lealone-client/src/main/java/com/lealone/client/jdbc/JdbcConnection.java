@@ -523,7 +523,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 } else {
                     ac.setAsyncResult(true);
                 }
-                session.reconnectIfNeeded();
             });
         });
         return ac;
@@ -562,7 +561,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 } else {
                     ac.setAsyncResult(true);
                 }
-                session.reconnectIfNeeded();
             });
         });
         return ac;
@@ -1039,8 +1037,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
-        } finally {
-            session.reconnectIfNeeded();
         }
     }
 

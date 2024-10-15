@@ -12,7 +12,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.ConnectionInfo;
-import com.lealone.db.ConnectionSetting;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
@@ -176,7 +175,7 @@ public class ClientSessionFactory extends SessionFactoryBase {
     private static void sessionCreated(ClientSession clientSession, ConnectionInfo ci,
             AsyncCallback<Session> topAc) {
         Session session = clientSession;
-        if (ci.getProperty(ConnectionSetting.AUTO_RECONNECT, false)) {
+        if (ci.isAutoReconnect()) {
             session = new AutoReconnectSession(ci, session);
         }
         topAc.setAsyncResult(session);

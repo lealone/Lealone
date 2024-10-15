@@ -10,7 +10,7 @@ import com.lealone.db.session.DelegatedSession;
 import com.lealone.db.session.Session;
 import com.lealone.sql.SQLCommand;
 
-class AutoReconnectSession extends DelegatedSession {
+public class AutoReconnectSession extends DelegatedSession {
 
     private final ConnectionInfo ci;
 
@@ -31,8 +31,7 @@ class AutoReconnectSession extends DelegatedSession {
         }).get();
     }
 
-    @Override
-    public void reconnectIfNeeded() {
+    private void reconnectIfNeeded() {
         if (session.isClosed()) {
             reconnect();
         }

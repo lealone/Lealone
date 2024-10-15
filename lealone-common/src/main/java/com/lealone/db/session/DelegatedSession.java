@@ -35,6 +35,10 @@ public class DelegatedSession implements Session {
         this.session = session;
     }
 
+    public Session getSession() {
+        return session;
+    }
+
     @Override
     public int getId() {
         return session.getId();
@@ -154,11 +158,6 @@ public class DelegatedSession implements Session {
     @Override
     public ConnectionInfo getConnectionInfo() {
         return session.getConnectionInfo();
-    }
-
-    @Override
-    public void reconnectIfNeeded() {
-        session.reconnectIfNeeded();
     }
 
     @Override
