@@ -6,9 +6,11 @@
 package com.lealone.sql.dml;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StatementBuilder;
+import com.lealone.db.CommandParameter;
 import com.lealone.db.DataHandler;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncHandler;
@@ -35,6 +37,8 @@ public abstract class MerSert extends ManipulationStatement {
     protected Query query;
     protected final ArrayList<Expression[]> list = new ArrayList<>();
 
+    protected List<Value[]> batchParameterValues;
+
     public MerSert(ServerSession session) {
         super(session);
     }
@@ -56,12 +60,27 @@ public abstract class MerSert extends ManipulationStatement {
         this.query = query;
     }
 
+    public Query getQuery() {
+        return query;
+    }
+
     public void addRow(Expression[] expr) {
         list.add(expr);
     }
 
     public void clearRows() {
         list.clear();
+    }
+
+    public void setBatchParameterValues(List<Value[]> batchParameterValues) {
+        this.batchParameterValues = batchParameterValues;
+    }
+
+    @Override
+    public void checkParameters() {
+        if (batchParameterValues == null) {
+            super.checkParameters();
+        }
     }
 
     @Override
@@ -154,7 +173,8 @@ public abstract class MerSert extends ManipulationStatement {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
-            listSize = statement.list.size();
+            listSize = statement.batchParameterValues != null ? statement.batchParameterValues.size()
+                    : statement.list.size();
         }
 
         @Override
@@ -200,7 +220,18 @@ public abstract class MerSert extends ManipulationStatement {
 
         protected Row createNewRow() {
             Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
-            Expression[] expr = statement.list.get(index);
+            Expression[] expr;
+            if (statement.batchParameterValues != null) {
+                expr = statement.list.get(0);
+                Value[] parameters = statement.batchParameterValues.get(index);
+                List<? extends CommandParameter> params = statement.getParameters();
+                for (int i = 0, size = parameters.length; i < size; i++) {
+                    CommandParameter p = params.get(i);
+                    p.setValue(parameters[i]);
+                }
+            } else {
+                expr = statement.list.get(index);
+            }
             int columnLen = statement.columns.length;
             for (int i = 0; i < columnLen; i++) {
                 Column c = statement.columns[i];

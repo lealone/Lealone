@@ -20,12 +20,12 @@ public class BatchStatementPreparedUpdate implements Packet {
 
     public final int commandId;
     public final int size;
-    public final List<Value[]> batchParameters;
+    public final List<Value[]> batchParameterValues;
 
-    public BatchStatementPreparedUpdate(int commandId, int size, List<Value[]> batchParameters) {
+    public BatchStatementPreparedUpdate(int commandId, int size, List<Value[]> batchParameterValues) {
         this.commandId = commandId;
         this.size = size;
-        this.batchParameters = batchParameters;
+        this.batchParameterValues = batchParameterValues;
     }
 
     @Override
@@ -41,10 +41,10 @@ public class BatchStatementPreparedUpdate implements Packet {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeInt(commandId);
-        int size = batchParameters.size();
+        int size = batchParameterValues.size();
         out.writeInt(size);
         for (int i = 0; i < size; i++) {
-            Value[] values = batchParameters.get(i);
+            Value[] values = batchParameterValues.get(i);
             int len = values.length;
             out.writeInt(len);
             for (int j = 0; j < len; j++)
@@ -59,15 +59,15 @@ public class BatchStatementPreparedUpdate implements Packet {
         public BatchStatementPreparedUpdate decode(NetInputStream in, int version) throws IOException {
             int commandId = in.readInt();
             int size = in.readInt();
-            ArrayList<Value[]> batchParameters = new ArrayList<>(size);
+            ArrayList<Value[]> batchParameterValues = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 int len = in.readInt();
                 Value[] values = new Value[len];
                 for (int j = 0; j < len; j++)
                     values[j] = in.readValue();
-                batchParameters.add(values);
+                batchParameterValues.add(values);
             }
-            return new BatchStatementPreparedUpdate(commandId, size, batchParameters);
+            return new BatchStatementPreparedUpdate(commandId, size, batchParameterValues);
         }
     }
 }

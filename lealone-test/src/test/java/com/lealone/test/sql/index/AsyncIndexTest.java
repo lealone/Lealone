@@ -16,10 +16,10 @@ public class AsyncIndexTest extends SqlTestBase {
         stmt.executeUpdate("set MAX_MEMORY_ROWS 60");
 
         stmt.executeUpdate("DROP TABLE IF EXISTS AsyncIndexTest");
-        // stmt.executeUpdate("CREATE local temporary TABLE IF NOT EXISTS AsyncIndexTest (f1 int NOT NULL, f2 int, f3
-        // varchar)");
-        // stmt.executeUpdate("CREATE global temporary TABLE IF NOT EXISTS AsyncIndexTest (f1 int NOT NULL, f2 int, f3
-        // varchar)");
+        // stmt.executeUpdate("CREATE local temporary TABLE IF NOT EXISTS AsyncIndexTest "
+        // + "(f1 int NOT NULL, f2 int, f3 varchar)");
+        // stmt.executeUpdate("CREATE global temporary TABLE IF NOT EXISTS AsyncIndexTest "
+        // + "(f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate(
                 "CREATE TABLE IF NOT EXISTS AsyncIndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
 

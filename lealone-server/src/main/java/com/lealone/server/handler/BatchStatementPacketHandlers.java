@@ -20,6 +20,7 @@ import com.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import com.lealone.server.scheduler.LinkableTask;
 import com.lealone.server.scheduler.PacketHandleTask;
 import com.lealone.sql.PreparedSQLStatement;
+import com.lealone.sql.dml.MerSert;
 
 //先把批量语句转成AsyncTask再按先后顺序一个个处理
 class BatchStatementPacketHandlers extends PacketHandlers {
@@ -33,10 +34,13 @@ class BatchStatementPacketHandlers extends PacketHandlers {
         @Override
         public Packet handle(PacketHandleTask task, BatchStatementUpdate packet) {
             ServerSession session = task.session;
+            boolean autoCommit = session.isAutoCommit();
+            if (autoCommit)
+                session.setAutoCommit(false);
             int size = packet.size;
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            LinkableTask[] subTasks = new LinkableTask[size];
+            task.si.updateLastActiveTime();
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 final String sql = packet.batchStatements.get(i);
@@ -44,13 +48,11 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                     @Override
                     public void run() {
                         PreparedSQLStatement command = session.prepareStatement(sql, -1);
-                        submitYieldableCommand(task, command, results, count, index);
+                        submitYieldableCommand(task, command, results, count, index, autoCommit);
                     }
                 };
-                subTasks[i] = subTask;
+                task.si.submitTask(subTask, false);
             }
-            packet.batchStatements.clear();
-            task.si.submitTasks(subTasks);
             return null;
         }
     }
@@ -58,17 +60,52 @@ class BatchStatementPacketHandlers extends PacketHandlers {
     private static class PreparedUpdate implements PacketHandler<BatchStatementPreparedUpdate> {
         @Override
         public Packet handle(PacketHandleTask task, BatchStatementPreparedUpdate packet) {
+            PreparedSQLStatement command = (PreparedSQLStatement) task.session
+                    .getCache(packet.commandId);
+            if (command instanceof MerSert && ((MerSert) command).getQuery() == null)
+                return handleMerSert(task, packet, (MerSert) command);
+            else
+                return handleOhter(task, packet, command);
+        }
+
+        private Packet handleMerSert(PacketHandleTask task, BatchStatementPreparedUpdate packet,
+                MerSert command) {
+            command.setBatchParameterValues(packet.batchParameterValues);
+            LinkableTask subTask = new LinkableTask() {
+                @Override
+                public void run() {
+                    PreparedSQLStatement.Yieldable<?> yieldable = command.createYieldableUpdate(ar -> {
+                        command.setBatchParameterValues(null);
+                        int size = packet.size;
+                        int result = ar.isSucceeded() ? 1 : Statement.EXECUTE_FAILED;
+                        int[] results = new int[size];
+                        for (int i = 0; i < size; i++) {
+                            results[i] = result;
+                        }
+                        task.conn.sendResponse(task,
+                                new BatchStatementUpdateAck(results.length, results));
+                    });
+                    task.si.submitYieldableCommand(task.packetId, yieldable);
+                }
+            };
+            task.si.submitTask(subTask);
+            return null;
+        }
+
+        private Packet handleOhter(PacketHandleTask task, BatchStatementPreparedUpdate packet,
+                PreparedSQLStatement command) {
             ServerSession session = task.session;
-            int commandId = packet.commandId;
+            boolean autoCommit = session.isAutoCommit();
+            if (autoCommit)
+                session.setAutoCommit(false);
             int size = packet.size;
-            PreparedSQLStatement command = (PreparedSQLStatement) session.getCache(commandId);
             List<? extends CommandParameter> params = command.getParameters();
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            LinkableTask[] subTasks = new LinkableTask[size];
+            task.si.updateLastActiveTime();
             for (int i = 0; i < size; i++) {
                 final int index = i;
-                final Value[] values = packet.batchParameters.get(i);
+                final Value[] values = packet.batchParameterValues.get(i);
                 LinkableTask subTask = new LinkableTask() {
                     @Override
                     public void run() {
@@ -77,19 +114,17 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                             CommandParameter p = params.get(j);
                             p.setValue(values[j]);
                         }
-                        submitYieldableCommand(task, command, results, count, index);
+                        submitYieldableCommand(task, command, results, count, index, autoCommit);
                     }
                 };
-                subTasks[i] = subTask;
+                task.si.submitTask(subTask, false);
             }
-            packet.batchParameters.clear();
-            task.si.submitTasks(subTasks);
             return null;
         }
     }
 
     private static void submitYieldableCommand(PacketHandleTask task, PreparedSQLStatement command,
-            int[] results, AtomicInteger count, int index) {
+            int[] results, AtomicInteger count, int index, boolean autoCommit) {
         PreparedSQLStatement.Yieldable<?> yieldable = command.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
@@ -100,7 +135,15 @@ class BatchStatementPacketHandlers extends PacketHandlers {
             }
             // 收到所有结果后再给客户端返回批量更新结果
             if (count.decrementAndGet() == 0) {
-                task.conn.sendResponse(task, new BatchStatementUpdateAck(results.length, results));
+                if (autoCommit) {
+                    task.session.asyncCommit(ar2 -> {
+                        task.session.setAutoCommit(true);
+                        task.conn.sendResponse(task,
+                                new BatchStatementUpdateAck(results.length, results));
+                    }, null);
+                } else {
+                    task.conn.sendResponse(task, new BatchStatementUpdateAck(results.length, results));
+                }
             }
         });
         task.si.submitYieldableCommand(task.packetId, yieldable);

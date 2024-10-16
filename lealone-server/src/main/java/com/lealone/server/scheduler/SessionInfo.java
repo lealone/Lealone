@@ -48,7 +48,7 @@ public class SessionInfo extends LinkableBase<SessionInfo>
         return new SessionInfo(this.scheduler, this.conn, session, this.sessionId, this.sessionTimeout);
     }
 
-    private void updateLastActiveTime() {
+    public void updateLastActiveTime() {
         lastActiveTime = System.currentTimeMillis();
     }
 
@@ -79,7 +79,12 @@ public class SessionInfo extends LinkableBase<SessionInfo>
     }
 
     public void submitTask(LinkableTask task) {
-        updateLastActiveTime();
+        submitTask(task, true);
+    }
+
+    public void submitTask(LinkableTask task, boolean updateTime) {
+        if (updateTime)
+            updateLastActiveTime();
         if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
             runTask(task);
         else
