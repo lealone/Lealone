@@ -229,6 +229,13 @@ public interface Index extends SchemaObject {
         return null;
     }
 
+    default void setBuilding(boolean building) {
+    }
+
+    default boolean isBuilding() {
+        return false;
+    }
+
     default boolean isClosed() {
         return false;
     }

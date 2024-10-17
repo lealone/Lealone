@@ -56,9 +56,11 @@ import com.lealone.storage.StorageSetting;
  */
 public class StandardTable extends Table {
 
+    // add或remove时会copy一份
+    private ArrayList<Index> indexes = Utils.newSmallArrayList();
+    private ArrayList<Index> indexesExcludeDelegate = Utils.newSmallArrayList();
+
     private final StandardPrimaryIndex primaryIndex;
-    private final ArrayList<Index> indexes = Utils.newSmallArrayList();
-    private final ArrayList<Index> indexesExcludeDelegate = Utils.newSmallArrayList();
     private final StorageEngine storageEngine;
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
@@ -292,7 +294,7 @@ public class StandardTable extends Table {
         }
         // 先加到indexesExcludeDelegate中，新记录可以直接写入，但是不能通过它查询
         if (!(index instanceof StandardDelegateIndex))
-            indexesExcludeDelegate.add(index);
+            indexesExcludeDelegate = copyOnAdd(indexesExcludeDelegate, index);
         index.setTemporary(isTemporary());
         if (index.needRebuild()) {
             new IndexRebuilder(session, this, index).rebuild();
@@ -306,7 +308,8 @@ public class StandardTable extends Table {
                 schema.add(session, index, lock);
             }
         }
-        indexes.add(index); // 索引rebuild完成后再加入indexes，此时可以通过索引查询了
+        // 索引rebuild完成后再加入indexes，此时可以通过索引查询了
+        indexes = copyOnAdd(indexes, index);
         setModified();
         return index;
     }
@@ -386,14 +389,15 @@ public class StandardTable extends Table {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         AsyncCallback<Integer> ac = createAsyncCallbackForAddRow(session, row);
-        int size = indexesExcludeDelegate.size();
+        ArrayList<Index> oldIndexes = indexesExcludeDelegate;
+        int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
 
         if (primaryIndex.containsMainIndexColumn()) {
             // 第一个是PrimaryIndex
             for (int i = 0; i < size && !isFailed.get(); i++) {
-                Index index = indexesExcludeDelegate.get(i);
+                Index index = oldIndexes.get(i);
                 index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
             }
         } else {
@@ -406,13 +410,20 @@ public class StandardTable extends Table {
                         return;
                     }
                     for (int i = 1; i < size && !isFailed.get(); i++) {
-                        Index index = indexesExcludeDelegate.get(i);
+                        Index index = oldIndexes.get(i);
                         index.add(session, row).onComplete(createHandler(session, ac, count, isFailed));
                     }
                 } else {
                     ac.setAsyncResult(ar.getCause());
                 }
             });
+        }
+
+        // 看看有没有刚刚创建的索引，如果有就让它也写入新记录
+        if (oldIndexes != indexesExcludeDelegate) {
+            for (Index index : getNewIndexes(oldIndexes, indexesExcludeDelegate)) {
+                index.add(session, row);
+            }
         }
         return ac;
     }
@@ -423,15 +434,23 @@ public class StandardTable extends Table {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         AsyncCallback<Integer> ac = session.createCallback();
-        int size = indexesExcludeDelegate.size();
+        ArrayList<Index> oldIndexes = indexesExcludeDelegate;
+        int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
 
         // 第一个是PrimaryIndex
         for (int i = 0; i < size && !isFailed.get(); i++) {
-            Index index = indexesExcludeDelegate.get(i);
+            Index index = oldIndexes.get(i);
             index.update(session, oldRow, newRow, updateColumns, isLockedBySelf)
                     .onComplete(createHandler(session, ac, count, isFailed));
+        }
+
+        // 看看有没有刚刚创建的索引，如果有也更新它
+        if (oldIndexes != indexesExcludeDelegate) {
+            for (Index index : getNewIndexes(oldIndexes, indexesExcludeDelegate)) {
+                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf);
+            }
         }
         return ac;
     }
@@ -440,14 +459,22 @@ public class StandardTable extends Table {
     public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
         lastModificationId = database.getNextModificationDataId();
         AsyncCallback<Integer> ac = session.createCallback();
-        int size = indexesExcludeDelegate.size();
+        ArrayList<Index> oldIndexes = indexesExcludeDelegate;
+        int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
 
         for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
-            Index index = indexesExcludeDelegate.get(i);
+            Index index = oldIndexes.get(i);
             index.remove(session, row, isLockedBySelf)
                     .onComplete(createHandler(session, ac, count, isFailed));
+        }
+
+        // 看看有没有刚刚创建的索引，如果有也删除它的记录
+        if (oldIndexes != indexesExcludeDelegate) {
+            for (Index index : getNewIndexes(oldIndexes, indexesExcludeDelegate)) {
+                index.remove(session, row, isLockedBySelf);
+            }
         }
         return ac;
     }
@@ -461,8 +488,9 @@ public class StandardTable extends Table {
     @Override
     public void truncate(ServerSession session) {
         lastModificationId = database.getNextModificationDataId();
-        for (int i = indexes.size() - 1; i >= 0; i--) {
-            Index index = indexes.get(i);
+        ArrayList<Index> oldIndexes = indexes;
+        for (int i = oldIndexes.size() - 1; i >= 0; i--) {
+            Index index = oldIndexes.get(i);
             index.truncate(session);
         }
         if (tableAnalyzer != null)
@@ -561,8 +589,8 @@ public class StandardTable extends Table {
                 schema.remove(session, index, lock);
             }
             // needed for session temporary indexes
-            indexes.remove(index);
-            indexesExcludeDelegate.remove(index);
+            indexes = copyOnRemove(indexes, index);
+            indexesExcludeDelegate = copyOnRemove(indexesExcludeDelegate, index);
         }
         if (SysProperties.CHECK) {
             for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.INDEX)) {
@@ -579,12 +607,13 @@ public class StandardTable extends Table {
     @Override
     public void removeIndex(Index index) {
         super.removeIndex(index);
-        indexesExcludeDelegate.remove(index);
+        indexesExcludeDelegate = copyOnRemove(indexesExcludeDelegate, index);
     }
 
     @Override
     public long getDiskSpaceUsed() {
         long sum = 0;
+        ArrayList<Index> indexes = this.indexes;
         for (Index i : indexes) {
             sum += i.getDiskSpaceUsed();
         }
@@ -683,5 +712,26 @@ public class StandardTable extends Table {
             }
         }
         return enumColumns;
+    }
+
+    private static ArrayList<Index> copyOnAdd(ArrayList<Index> oldIndexes, Index newIndex) {
+        ArrayList<Index> newIndexes = new ArrayList<>(oldIndexes.size() + 1);
+        newIndexes.addAll(oldIndexes);
+        newIndexes.add(newIndex);
+        return newIndexes;
+    }
+
+    private static ArrayList<Index> copyOnRemove(ArrayList<Index> oldIndexes, Index oldIndex) {
+        ArrayList<Index> newIndexes = new ArrayList<>(oldIndexes.size() - 1);
+        newIndexes.addAll(oldIndexes);
+        newIndexes.remove(oldIndex);
+        return newIndexes;
+    }
+
+    private static ArrayList<Index> getNewIndexes(ArrayList<Index> oldIndexes,
+            ArrayList<Index> currentIndexes) {
+        ArrayList<Index> newIndexes = new ArrayList<>(currentIndexes);
+        newIndexes.removeAll(oldIndexes);
+        return newIndexes;
     }
 }

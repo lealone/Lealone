@@ -32,6 +32,7 @@ public class IndexRebuilder implements Runnable {
     }
 
     public void rebuild() {
+        index.setBuilding(true);
         Index scan = table.getScanIndex(session);
         rowCount = MathUtils.convertLongToInt(scan.getRowCount(session));
         cursor = scan.find(session, null, null);
@@ -40,6 +41,7 @@ public class IndexRebuilder implements Runnable {
     }
 
     private void onComplete() {
+        index.setBuilding(false);
         index.setLastIndexedRowKey(null);
         task.cancel();
         session.getScheduler().removePeriodicTask(task);

@@ -44,6 +44,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     private final TransactionMap<IndexKey, Value> dataMap;
 
     private Long lastIndexedRowKey;
+    private boolean building;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexType indexType, IndexColumn[] indexColumns) {
@@ -113,6 +114,16 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
+    public void setBuilding(boolean building) {
+        this.building = building;
+    }
+
+    @Override
+    public boolean isBuilding() {
+        return building;
+    }
+
+    @Override
     public Future<Integer> add(ServerSession session, Row row) {
         final TransactionMap<IndexKey, Value> map = getMap(session);
         final IndexKey key = convertToKey(row);
@@ -163,16 +174,31 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (min != null) {
             min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        Cursor cursor = null;
-        long rowCount = table.getRowCount(session);
-        if (lastIndexedRowKey != null && lastIndexedRowKey.longValue() < rowCount) {
-            Row f = table.getTemplateRow();
-            f.setKey(lastIndexedRowKey.longValue() + 1);
-            Index scan = table.getScanIndex(session);
-            cursor = scan.find(session, f, null);
+        TransactionMap<IndexKey, ?> map = getMap(session);
+        if (isBuilding()) {
+            TransactionMapCursor<IndexKey, ?> tmCursor;
+            Long lastKey = lastIndexedRowKey;
+            // 这个循环确保tmCursor的快照跟lastIndexedRowKey一致，
+            // 也就是tmCursor中的最rowKey就是lastIndexedRowKey
+            while (true) {
+                tmCursor = map.cursor(min);
+                if (lastKey != lastIndexedRowKey) {
+                    lastKey = lastIndexedRowKey;
+                } else {
+                    break;
+                }
+            }
+            if (lastKey != null) {
+                Row f = table.getTemplateRow();
+                f.setKey(lastKey.longValue() + 1);
+                Index scan = table.getScanIndex(session);
+                Cursor cursor = scan.find(session, f, null);
+                return new StandardSecondaryIndexBuildingCursor(session, tmCursor, last, cursor);
+            } else
+                return new StandardSecondaryIndexRegularCursor(session, tmCursor, last);
+        } else {
+            return new StandardSecondaryIndexRegularCursor(session, map.cursor(min), last);
         }
-        return new StandardSecondaryIndexRegularCursor(session, getMap(session).cursor(min), last,
-                cursor);
     }
 
     private IndexKey convertToKey(SearchRow r) {
@@ -371,14 +397,12 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         private final TransactionMapCursor<IndexKey, ?> tmCursor;
         private final SearchRow last;
-        private final Cursor primaryCursor;
 
         public StandardSecondaryIndexRegularCursor(ServerSession session,
-                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last, Cursor primaryCursor) {
+                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last) {
             super(session);
             this.tmCursor = tmCursor;
             this.last = last;
-            this.primaryCursor = primaryCursor;
         }
 
         @Override
@@ -393,12 +417,47 @@ public class StandardSecondaryIndex extends StandardIndex {
             } else {
                 searchRow = null;
             }
-            if (searchRow == null && primaryCursor != null) {
-                if (primaryCursor.next()) {
-                    searchRow = primaryCursor.get();
+            return searchRow;
+        }
+    }
+
+    private class StandardSecondaryIndexBuildingCursor extends StandardSecondaryIndexCursor {
+
+        private TransactionMapCursor<IndexKey, ?> tmCursor;
+        private final SearchRow last;
+        private final Cursor primaryCursor;
+
+        public StandardSecondaryIndexBuildingCursor(ServerSession session,
+                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last, Cursor primaryCursor) {
+            super(session);
+            this.tmCursor = tmCursor;
+            this.last = last;
+            this.primaryCursor = primaryCursor;
+        }
+
+        @Override
+        protected SearchRow nextSearchRow() {
+            SearchRow searchRow;
+            if (tmCursor != null) {
+                if (tmCursor.next()) {
+                    IndexKey current = tmCursor.getKey();
+                    searchRow = createSearchRow(current);
+                    if (searchRow != null && last != null && compareRows(searchRow, last) > 0) {
+                        searchRow = null;
+                    }
                 } else {
                     searchRow = null;
                 }
+                if (searchRow != null) {
+                    return searchRow;
+                } else {
+                    tmCursor = null;
+                }
+            }
+            if (primaryCursor.next()) {
+                searchRow = primaryCursor.get();
+            } else {
+                searchRow = null;
             }
             return searchRow;
         }
