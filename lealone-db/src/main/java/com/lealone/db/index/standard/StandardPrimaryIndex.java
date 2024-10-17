@@ -67,7 +67,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
-        ValueDataType keyType = new ValueDataType(null, null, null);
+        PrimaryKeyType keyType = new PrimaryKeyType();
         VersionedValueType vvType = new VersionedValueType(database, database.getCompareMode(),
                 sortTypes, columns.length, table.getEnumColumns());
 
