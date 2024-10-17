@@ -13,6 +13,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.index.Cursor;
+import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.result.Row;
@@ -41,6 +42,8 @@ public class StandardSecondaryIndex extends StandardIndex {
     private final String mapName;
     private final int keyColumns;
     private final TransactionMap<IndexKey, Value> dataMap;
+
+    private Long lastIndexedRowKey;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexType indexType, IndexColumn[] indexColumns) {
@@ -95,6 +98,21 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
+    public boolean isClosed() {
+        return dataMap.isClosed();
+    }
+
+    @Override
+    public void setLastIndexedRowKey(Long rowKey) {
+        lastIndexedRowKey = rowKey;
+    }
+
+    @Override
+    public Long getLastIndexedRowKey() {
+        return lastIndexedRowKey;
+    }
+
+    @Override
     public Future<Integer> add(ServerSession session, Row row) {
         final TransactionMap<IndexKey, Value> map = getMap(session);
         final IndexKey key = convertToKey(row);
@@ -145,7 +163,16 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (min != null) {
             min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        return new StandardSecondaryIndexRegularCursor(session, getMap(session).cursor(min), last);
+        Cursor cursor = null;
+        long rowCount = table.getRowCount(session);
+        if (lastIndexedRowKey != null && lastIndexedRowKey.longValue() < rowCount) {
+            Row f = table.getTemplateRow();
+            f.setKey(lastIndexedRowKey.longValue() + 1);
+            Index scan = table.getScanIndex(session);
+            cursor = scan.find(session, f, null);
+        }
+        return new StandardSecondaryIndexRegularCursor(session, getMap(session).cursor(min), last,
+                cursor);
     }
 
     private IndexKey convertToKey(SearchRow r) {
@@ -344,12 +371,14 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         private final TransactionMapCursor<IndexKey, ?> tmCursor;
         private final SearchRow last;
+        private final Cursor primaryCursor;
 
         public StandardSecondaryIndexRegularCursor(ServerSession session,
-                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last) {
+                TransactionMapCursor<IndexKey, ?> tmCursor, SearchRow last, Cursor primaryCursor) {
             super(session);
             this.tmCursor = tmCursor;
             this.last = last;
+            this.primaryCursor = primaryCursor;
         }
 
         @Override
@@ -363,6 +392,13 @@ public class StandardSecondaryIndex extends StandardIndex {
                 }
             } else {
                 searchRow = null;
+            }
+            if (searchRow == null && primaryCursor != null) {
+                if (primaryCursor.next()) {
+                    searchRow = primaryCursor.get();
+                } else {
+                    searchRow = null;
+                }
             }
             return searchRow;
         }

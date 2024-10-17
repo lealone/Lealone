@@ -222,6 +222,17 @@ public interface Index extends SchemaObject {
      */
     long getRowCountApproximation();
 
+    default void setLastIndexedRowKey(Long rowKey) {
+    }
+
+    default Long getLastIndexedRowKey() {
+        return null;
+    }
+
+    default boolean isClosed() {
+        return false;
+    }
+
     /**
      * Close this index.
      *

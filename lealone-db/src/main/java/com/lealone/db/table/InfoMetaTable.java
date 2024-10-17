@@ -155,7 +155,8 @@ public class InfoMetaTable extends MetaTable {
                     "INDEX_NAME", "ORDINAL_POSITION SMALLINT", "COLUMN_NAME", "CARDINALITY INT",
                     "PRIMARY_KEY BIT", "INDEX_TYPE_NAME", "IS_GENERATED BIT", "INDEX_TYPE SMALLINT",
                     "ASC_OR_DESC", "PAGES INT", "FILTER_CONDITION", "REMARKS", "SQL", "ID INT",
-                    "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS");
+                    "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS", "TABLE_ROW_COUNT",
+                    "LAST_INDEXED_ROW_KEY");
             indexColumnName = "TABLE_NAME";
             break;
         case TABLE_TYPES:
@@ -504,6 +505,7 @@ public class InfoMetaTable extends MetaTable {
                 }
                 ArrayList<Index> indexes = table.getIndexes();
                 ArrayList<Constraint> constraints = table.getConstraints();
+                String tableRowCount = table.canGetRowCount() ? table.getRowCount(session) + "" : "";
                 for (int j = 0; indexes != null && j < indexes.size(); j++) {
                     Index index = indexes.get(j);
                     if (index.getCreateSQL() == null) {
@@ -524,6 +526,7 @@ public class InfoMetaTable extends MetaTable {
                     }
                     IndexColumn[] cols = index.getIndexColumns();
                     String indexClass = index.getClass().getName();
+                    String lastIndexedRowKey = index.getLastIndexedRowKey() + "";
                     for (int k = 0; k < cols.length; k++) {
                         IndexColumn idxCol = cols[k];
                         Column column = idxCol.column;
@@ -569,7 +572,11 @@ public class InfoMetaTable extends MetaTable {
                                 // CONSTRAINT_NAME
                                 constraintName,
                                 // INDEX_CLASS
-                                indexClass);
+                                indexClass,
+                                // TABLE_ROW_COUNT
+                                tableRowCount,
+                                // LAST_INDEXED_ROW_KEY
+                                lastIndexedRowKey);
                     }
                 }
             }
