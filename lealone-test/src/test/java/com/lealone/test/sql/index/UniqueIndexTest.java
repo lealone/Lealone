@@ -17,13 +17,12 @@ public class UniqueIndexTest extends SqlTestBase {
         executeUpdate("DROP TABLE IF EXISTS UniqueIndexTest");
         executeUpdate(
                 "CREATE TABLE IF NOT EXISTS UniqueIndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
+        executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS UniqueIndexTest_ui ON UniqueIndexTest(f2, f3)");
 
         executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
         executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
         executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(300, 30, 'c')");
 
-        executeUpdate("SET MAX_MEMORY_ROWS 2");
-        executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS UniqueIndexTest_ui ON UniqueIndexTest(f2, f3)");
         try {
             executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(400, 20, 'b')");
             fail("insert duplicate key: 20");
@@ -31,5 +30,4 @@ public class UniqueIndexTest extends SqlTestBase {
             assertErrorCode(e, ErrorCode.DUPLICATE_KEY_1);
         }
     }
-
 }

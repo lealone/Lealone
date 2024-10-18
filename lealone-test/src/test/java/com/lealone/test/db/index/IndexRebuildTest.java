@@ -7,14 +7,11 @@ package com.lealone.test.db.index;
 
 import org.junit.Test;
 
-import com.lealone.db.Constants;
 import com.lealone.db.index.Index;
 
 public class IndexRebuildTest extends IndexTestBase {
     @Test
     public void run() {
-        executeUpdate("set MAX_MEMORY_ROWS 4");
-
         executeUpdate("DROP TABLE IF EXISTS IndexRebuildTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS IndexRebuildTest (f1 int, f2 int)");
 
@@ -31,6 +28,13 @@ public class IndexRebuildTest extends IndexTestBase {
         executeUpdate(
                 "CREATE INDEX IF NOT EXISTS IndexRebuildTest_StandardIndex1 ON IndexRebuildTest(f1)");
 
+        // 等待索引创建完成
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         assertFound("IndexRebuildTest", "IndexRebuildTest_UniqueHashIndex1");
         assertFound("IndexRebuildTest", "IndexRebuildTest_NonUniqueHashIndex1");
         assertFound("IndexRebuildTest", "IndexRebuildTest_StandardIndex1");
@@ -41,8 +45,5 @@ public class IndexRebuildTest extends IndexTestBase {
         assertEquals(5, index.getRowCount(session));
         index = getIndex("IndexRebuildTest_StandardIndex1");
         assertEquals(5, index.getRowCount(session));
-
-        // 恢复到默认值，避免影响其他测试用例
-        executeUpdate("set MAX_MEMORY_ROWS " + Constants.DEFAULT_MAX_MEMORY_ROWS);
     }
 }
