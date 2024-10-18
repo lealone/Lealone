@@ -93,21 +93,26 @@ public class RedoLog {
         }
     }
 
-    // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
-    // 有可能多个线程同时调用redo，所以需要加synchronized
+    // 重新执行一次上次已经成功并且在检查点之后的事务操作
     @SuppressWarnings("unchecked")
-    public synchronized void redo(StorageMap<?, ?> map0, List<StorageMap<?, ?>> indexMaps0) {
-        StorageMap<Object, Object> map = (StorageMap<Object, Object>) map0;
-        List<ByteBuffer> pendingKeyValues = pendingRedoLog.remove(map.getName());
+    public void redo(StorageMap<?, ?> map0, List<StorageMap<?, ?>> indexMaps0) {
+        // java的泛型很烂，这里做一下强制转换，否则后续的代码有编译错误
+        final StorageMap<Object, Object> map = (StorageMap<Object, Object>) map0;
         final List<StorageMap<Object, Object>> indexMaps;
-        if (indexMaps0 != null) {
-            indexMaps = new ArrayList<>(indexMaps0.size());
-            for (StorageMap<?, ?> im : indexMaps0) {
-                pendingRedoLog.remove(im.getName());
-                indexMaps.add((StorageMap<Object, Object>) im);
+        final List<ByteBuffer> pendingKeyValues;
+        // 多个线程打开不同数据库时会同时调用redo，所以需要加synchronized
+        synchronized (pendingRedoLog) {
+            pendingKeyValues = pendingRedoLog.remove(map.getName());
+            if (indexMaps0 != null) {
+                indexMaps = new ArrayList<>(indexMaps0.size());
+                // <=lealone 6.0.1的版本对index修改时也写redo log，现在可以直接忽略了
+                for (StorageMap<?, ?> im : indexMaps0) {
+                    pendingRedoLog.remove(im.getName());
+                    indexMaps.add((StorageMap<Object, Object>) im);
+                }
+            } else {
+                indexMaps = null;
             }
-        } else {
-            indexMaps = null;
         }
         if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
             StorageDataType kt = map.getKeyType();
