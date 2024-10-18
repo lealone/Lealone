@@ -130,7 +130,7 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         AsyncCallback<Integer> ac = session.createCallback();
         map.addIfAbsent(key, ValueNull.INSTANCE).onComplete(ar -> {
-            if (ar.isFailed()) {
+            if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
                 // 因为StandardPrimaryIndex和StandardSecondaryIndex的add是异步并行执行的，

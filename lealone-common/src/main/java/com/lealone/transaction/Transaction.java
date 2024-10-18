@@ -31,6 +31,8 @@ public interface Transaction {
 
     public static final int OPERATION_NEED_WAIT = 3;
 
+    public static final int OPERATION_DATA_DUPLICATE = 4;
+
     String getTransactionName();
 
     boolean isClosed();

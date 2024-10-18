@@ -371,7 +371,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                             transaction.undoLog.add(map, key, old.getOldValue(), old);
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
-                        ac.setAsyncResult((Throwable) null);
+                        ac.setAsyncResult(Transaction.OPERATION_DATA_DUPLICATE);
                     }
                 } else {
                     ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
