@@ -16,15 +16,16 @@ import java.util.Map;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.value.ValueNull;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.fs.FileUtils;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.aote.CheckpointService;
+import com.lealone.transaction.aote.CheckpointService.FsyncTask;
 import com.lealone.transaction.aote.TransactionalValue;
 import com.lealone.transaction.aote.TransactionalValueType;
-import com.lealone.transaction.aote.CheckpointService.FsyncTask;
 
 public class RedoLog {
 
@@ -94,8 +95,20 @@ public class RedoLog {
 
     // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
     // 有可能多个线程同时调用redo，所以需要加synchronized
-    public synchronized void redo(StorageMap<Object, Object> map) {
+    @SuppressWarnings("unchecked")
+    public synchronized void redo(StorageMap<?, ?> map0, List<StorageMap<?, ?>> indexMaps0) {
+        StorageMap<Object, Object> map = (StorageMap<Object, Object>) map0;
         List<ByteBuffer> pendingKeyValues = pendingRedoLog.remove(map.getName());
+        final List<StorageMap<Object, Object>> indexMaps;
+        if (indexMaps0 != null) {
+            indexMaps = new ArrayList<>(indexMaps0.size());
+            for (StorageMap<?, ?> im : indexMaps0) {
+                pendingRedoLog.remove(im.getName());
+                indexMaps.add((StorageMap<Object, Object>) im);
+            }
+        } else {
+            indexMaps = null;
+        }
         if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
@@ -104,12 +117,30 @@ public class RedoLog {
             };
             for (ByteBuffer kv : pendingKeyValues) {
                 Object key = kt.read(kv);
-                if (kv.get() == 0)
-                    map.remove(key, handler);
-                else {
+                if (kv.get() == 0) {
+                    map.remove(key, ar -> {
+                        Object value = ((TransactionalValue) ar.getResult()).getValue();
+                        if (indexMaps != null) {
+                            for (StorageMap<Object, Object> im : indexMaps) {
+                                StorageDataType ikt = im.getKeyType();
+                                Object indexKey = ikt.convertToIndexKey(key, value);
+                                im.remove(indexKey);
+                            }
+                        }
+                    });
+                } else {
                     Object value = vt.read(kv);
                     TransactionalValue tv = TransactionalValue.createCommitted(value);
                     map.put(key, tv, handler);
+                    if (indexMaps != null) {
+                        for (StorageMap<Object, Object> im : indexMaps) {
+                            StorageDataType ikt = im.getKeyType();
+                            Object indexKey = ikt.convertToIndexKey(key, value);
+                            TransactionalValue itv = TransactionalValue
+                                    .createCommitted(ValueNull.INSTANCE);
+                            im.put(indexKey, itv, handler);
+                        }
+                    }
                 }
             }
         }

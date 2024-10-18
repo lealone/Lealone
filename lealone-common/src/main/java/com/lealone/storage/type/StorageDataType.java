@@ -172,6 +172,10 @@ public interface StorageDataType {
         return getMemory(obj);
     }
 
+    default Object convertToIndexKey(Object key, Object value) {
+        return null;
+    }
+
     public static int getTypeId(int tag) {
         int typeId;
         if (tag <= TYPE_SERIALIZED_OBJECT) {

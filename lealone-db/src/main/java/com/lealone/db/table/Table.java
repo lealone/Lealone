@@ -249,6 +249,9 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
+    public void recover() {
+    }
+
     /**
      * Check if this table supports ALTER TABLE.
      *
@@ -558,7 +561,7 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public Row getTemplateRow() {
-        return new Row(new Value[columns.length], Row.MEMORY_CALCULATE);
+        return new Row(new Value[columns.length]);
     }
 
     /**

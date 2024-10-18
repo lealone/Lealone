@@ -122,13 +122,13 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void afterStorageMapOpen(StorageMap<?, ?> map) {
         if (logSyncService == null)
             return;
-        if (!map.isInMemory()) {
-            logSyncService.getRedoLog().redo((StorageMap<Object, Object>) map);
-        }
+        // 在上层统一调用recover方法恢复
+        // if (!map.isInMemory()) {
+        // logSyncService.getRedoLog().redo(map, null);
+        // }
         Scheduler scheduler = schedulerFactory.getScheduler();
         checkpointServices[scheduler.getId()].addMap(map);
     }
@@ -245,6 +245,24 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     @Override
     public void checkpoint() {
         masterCheckpointService.executeCheckpointAsync();
+    }
+
+    @Override
+    public void recover(StorageMap<?, ?> map, List<StorageMap<?, ?>> indexMaps) {
+        if (logSyncService == null)
+            return;
+        if (!map.isInMemory()) {
+            logSyncService.getRedoLog().redo(map, indexMaps);
+        }
+        // 在afterStorageMapOpen方法中已经增加
+        // Scheduler scheduler = schedulerFactory.getScheduler();
+        // checkpointServices[scheduler.getId()].addMap(map);
+        // if (indexMaps != null) {
+        // for (StorageMap<?, ?> im : indexMaps) {
+        // scheduler = schedulerFactory.getScheduler();
+        // checkpointServices[scheduler.getId()].addMap(im);
+        // }
+        // }
     }
 
     @Override

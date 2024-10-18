@@ -48,7 +48,9 @@ import com.lealone.db.table.Column.EnumColumn;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.Value;
 import com.lealone.storage.StorageEngine;
+import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
+import com.lealone.transaction.TransactionEngine;
 
 /**
  * @author H2 Group
@@ -212,7 +214,7 @@ public class StandardTable extends Table {
      * @return the row
      */
     public static Row createRow(Value[] data) {
-        return new Row(data, Row.MEMORY_CALCULATE);
+        return new Row(data);
     }
 
     @Override
@@ -503,6 +505,23 @@ public class StandardTable extends Table {
     public void repair(ServerSession session) {
         lastModificationId = database.getNextModificationDataId();
         primaryIndex.repair(session);
+    }
+
+    @Override
+    public void recover() {
+        ArrayList<StorageMap<?, ?>> indexMaps = null;
+        ArrayList<Index> indexes = indexesExcludeDelegate;
+        int size = indexes.size();
+        if (size > 1) {
+            indexMaps = new ArrayList<>(size - 1);
+            for (Index index : indexes) {
+                if (index instanceof StandardSecondaryIndex) {
+                    indexMaps.add(((StandardSecondaryIndex) index).getDataMap().getRawMap());
+                }
+            }
+        }
+        TransactionEngine transactionEngine = database.getTransactionEngine();
+        transactionEngine.recover(primaryIndex.getDataMap().getRawMap(), indexMaps);
     }
 
     @Override

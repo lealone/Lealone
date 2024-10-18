@@ -19,18 +19,21 @@ public class UndoLogRecord {
     private final Object oldValue;
     private final Object newValue; // 使用LazyRedoLogRecord时需要用它，不能直接使用newTV.getValue()，因为会变动
     private final TransactionalValue newTV;
+    private final boolean writeRedoLog;
     private boolean undone;
 
     UndoLogRecord next;
     UndoLogRecord prev;
 
     @SuppressWarnings("unchecked")
-    public UndoLogRecord(StorageMap<?, ?> map, Object key, Object oldValue, TransactionalValue newTV) {
+    public UndoLogRecord(StorageMap<?, ?> map, Object key, Object oldValue, TransactionalValue newTV,
+            boolean writeRedoLog) {
         this.map = (StorageMap<Object, ?>) map;
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newTV.getValue();
         this.newTV = newTV;
+        this.writeRedoLog = writeRedoLog;
     }
 
     public void setUndone(boolean undone) {
@@ -76,7 +79,7 @@ public class UndoLogRecord {
 
     // 用于redo时，不关心oldValue
     public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine te) {
-        if (ignore())
+        if (!writeRedoLog || ignore())
             return;
 
         // 这一步很重要！！！

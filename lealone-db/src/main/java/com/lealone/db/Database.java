@@ -432,6 +432,7 @@ public class Database extends DbObjectBase implements DataHandler {
 
         initTraceSystem();
         openDatabase();
+        recover();
         addShutdownHook();
 
         // 用户也可以在LealoneDatabase的public模式中建表修改表结构
@@ -468,6 +469,13 @@ public class Database extends DbObjectBase implements DataHandler {
                 // (maybe an application wants to write something into a
                 // database at shutdown time)
             }
+        }
+    }
+
+    private void recover() {
+        for (Table table : getAllTablesAndViews(false)) {
+            if (table != meta)
+                table.recover();
         }
     }
 
@@ -532,6 +540,9 @@ public class Database extends DbObjectBase implements DataHandler {
         data.storageEngineParams.put(StorageSetting.RUN_MODE.name(), RunMode.CLIENT_SERVER.name());
         meta = infoSchema.createTable(data);
         objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
+
+        // 先恢复SYS表，这样才能找到其他普通表
+        meta.recover();
 
         // 创建Delegate索引， 委派给原有的primary index(也就是ScanIndex)
         // Delegate索引不需要生成create语句保存到sys(meta)表的，这里只是把它加到schema和table的相应字段中

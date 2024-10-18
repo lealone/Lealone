@@ -263,7 +263,7 @@ public class ResultTempTable implements ResultExternal {
             }
             values = v2;
         }
-        return new Row(values, Row.MEMORY_CALCULATE);
+        return new Row(values);
     }
 
     private Cursor find(Row row) {

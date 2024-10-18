@@ -38,9 +38,9 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Object oldValue,
-            TransactionalValue newTV) {
-        UndoLogRecord r = new UndoLogRecord(map, key, oldValue, newTV);
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Object oldValue, TransactionalValue newTV,
+            boolean writeRedoLog) {
+        UndoLogRecord r = new UndoLogRecord(map, key, oldValue, newTV, writeRedoLog);
         if (first == null) {
             first = last = r;
         } else {

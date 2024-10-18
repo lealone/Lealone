@@ -70,9 +70,9 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         IndexKeyType keyType;
         if (indexType.isUnique())
-            keyType = new UniqueKeyType(database, database.getCompareMode(), sortTypes);
+            keyType = new UniqueKeyType(database, database.getCompareMode(), sortTypes, this);
         else
-            keyType = new IndexKeyType(database, database.getCompareMode(), sortTypes);
+            keyType = new IndexKeyType(database, database.getCompareMode(), sortTypes, this);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
@@ -96,6 +96,10 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     public String getMapName() {
         return mapName;
+    }
+
+    public TransactionMap<IndexKey, Value> getDataMap() {
+        return dataMap;
     }
 
     @Override
@@ -129,7 +133,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         final IndexKey key = convertToKey(row);
 
         AsyncCallback<Integer> ac = session.createCallback();
-        map.addIfAbsent(key, ValueNull.INSTANCE).onComplete(ar -> {
+        map.addIfAbsent(key, ValueNull.INSTANCE, false).onComplete(ar -> {
             if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
@@ -165,7 +169,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (!isLockedBySelf && map.isLocked(tv, null))
             return Future.succeededFuture(map.addWaitingTransaction(key, tv));
         else
-            return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf));
+            return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf, false));
     }
 
     @Override
@@ -201,7 +205,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         }
     }
 
-    private IndexKey convertToKey(SearchRow r) {
+    public IndexKey convertToKey(SearchRow r) {
         if (r == null) {
             return null;
         }

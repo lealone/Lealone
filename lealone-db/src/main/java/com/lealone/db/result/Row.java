@@ -20,6 +20,10 @@ public class Row extends SimpleRow {
     private ITransactionalValue tv;
     private IPage page;
 
+    public Row(Value[] data) {
+        this(data, MEMORY_CALCULATE);
+    }
+
     public Row(Value[] data, int memory) {
         super(data);
         this.memory = memory;

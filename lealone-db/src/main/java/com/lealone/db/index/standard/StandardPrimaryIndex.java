@@ -185,7 +185,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         VersionedValue value = new VersionedValue(row.getVersion(), row.getValueList());
         if (checkDuplicateKey) {
             Value key = ValueLong.get(row.getKey());
-            map.addIfAbsent(key, value).onComplete(ar -> {
+            map.addIfAbsent(key, value, true).onComplete(ar -> {
                 if (ar.isSucceeded()) {
                     if (ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                         String sql = "PRIMARY KEY ON " + table.getSQL();
@@ -282,7 +282,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         if (row.getPage() != null)
             session.addDirtyPage(row.getPage());
-        return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf));
+        return Future.succeededFuture(map.tryRemove(key, tv, isLockedBySelf, true));
     }
 
     @Override

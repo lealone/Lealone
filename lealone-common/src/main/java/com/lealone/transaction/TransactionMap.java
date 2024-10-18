@@ -48,7 +48,11 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     @Override
     public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
-    public Future<Integer> addIfAbsent(K key, V value);
+    public default Future<Integer> addIfAbsent(K key, V value) {
+        return addIfAbsent(key, value, true);
+    }
+
+    public Future<Integer> addIfAbsent(K key, V value, boolean writeRedoLog);
 
     public default int tryUpdate(K key, V newValue) {
         Object oldTValue = getTransactionalValue(key);
@@ -80,7 +84,11 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
         return tryRemove(key, oldTValue, false);
     }
 
-    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf);
+    public default int tryRemove(K key, Object oldTValue, boolean isLockedBySelf) {
+        return tryRemove(key, oldTValue, isLockedBySelf, true);
+    }
+
+    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf, boolean writeRedoLog);
 
     public default int tryLock(K key, Object oldTValue) {
         return tryLock(key, oldTValue, null);

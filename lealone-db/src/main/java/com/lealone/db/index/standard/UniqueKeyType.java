@@ -14,8 +14,9 @@ import com.lealone.db.value.CompareMode;
  */
 public class UniqueKeyType extends IndexKeyType {
 
-    public UniqueKeyType(DataHandler handler, CompareMode compareMode, int[] sortTypes) {
-        super(handler, compareMode, sortTypes);
+    public UniqueKeyType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
+            StandardSecondaryIndex index) {
+        super(handler, compareMode, sortTypes, index);
     }
 
     @Override

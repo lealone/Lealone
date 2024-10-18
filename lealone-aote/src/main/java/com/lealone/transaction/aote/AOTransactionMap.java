@@ -343,7 +343,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
-    public Future<Integer> addIfAbsent(K key, V value) {
+    public Future<Integer> addIfAbsent(K key, V value, boolean writeRedoLog) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
         TransactionalValue newTV;
@@ -351,7 +351,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Session session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
             newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
-            r = transaction.undoLog.add(map, key, null, newTV);
+            r = transaction.undoLog.add(map, key, null, newTV, writeRedoLog);
         } else {
             newTV = new TransactionalValue(value); // 内部没有增加行锁
             r = null;
@@ -368,7 +368,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (old.getValue() == null) {
                         old.setValue(value);
                         if (r != null)
-                            transaction.undoLog.add(map, key, old.getOldValue(), old);
+                            transaction.undoLog.add(map, key, old.getOldValue(), old, writeRedoLog);
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
                         ac.setAsyncResult(Transaction.OPERATION_DATA_DUPLICATE);
@@ -394,8 +394,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf) {
-        return tryUpdateOrRemove(key, null, null, oldTValue, isLockedBySelf);
+    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf, boolean writeRedoLog) {
+        return tryUpdateOrRemove(key, null, null, oldTValue, isLockedBySelf, writeRedoLog);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
@@ -404,6 +404,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     // 当value为null时代表delete，否则代表update。
     protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue,
             boolean isLockedBySelf) {
+        return tryUpdateOrRemove(key, value, columnIndexes, oldTValue, isLockedBySelf, true);
+    }
+
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue,
+            boolean isLockedBySelf, boolean writeRedoLog) {
         DataUtils.checkNotNull(oldTValue, "oldTValue");
         transaction.checkNotClosed();
         TransactionalValue tv = (TransactionalValue) oldTValue;
@@ -415,7 +420,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Object oldValue = tv.getValue();
         tv.setTransaction(transaction); // 二级索引需要设置
         tv.setValue(value);
-        transaction.undoLog.add(map, key, oldValue, tv);
+        transaction.undoLog.add(map, key, oldValue, tv, writeRedoLog);
         return Transaction.OPERATION_COMPLETE;
     }
 
@@ -555,7 +560,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (handler != null) {
             map.append(session, newTV, ar -> {
                 if (isUndoLogEnabled && ar.isSucceeded())
-                    transaction.undoLog.add(map, ar.getResult(), null, newTV);
+                    transaction.undoLog.add(map, ar.getResult(), null, newTV, true);
                 handler.handle(ar);
             });
             return null;
@@ -564,7 +569,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
             if (isUndoLogEnabled)
-                transaction.undoLog.add(map, key, null, newTV);
+                transaction.undoLog.add(map, key, null, newTV, true);
             return key;
         }
     }

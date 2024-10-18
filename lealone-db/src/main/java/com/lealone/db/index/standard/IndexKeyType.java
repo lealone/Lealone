@@ -9,14 +9,20 @@ import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
+import com.lealone.db.result.Row;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.db.value.ValueLong;
 
 public class IndexKeyType extends ValueDataType {
 
-    public IndexKeyType(DataHandler handler, CompareMode compareMode, int[] sortTypes) {
+    private final StandardSecondaryIndex index;
+
+    public IndexKeyType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
+            StandardSecondaryIndex index) {
         super(handler, compareMode, sortTypes);
+        this.index = index;
     }
 
     @Override
@@ -61,5 +67,12 @@ public class IndexKeyType extends ValueDataType {
     public void write(DataBuffer buff, Object obj) {
         IndexKey k = (IndexKey) obj;
         buff.writeValue(ValueArray.get(k.columns));
+    }
+
+    @Override
+    public Object convertToIndexKey(Object key, Object value) {
+        Row row = new Row(((VersionedValue) value).columns);
+        row.setKey(((ValueLong) key).getLong());
+        return index.convertToKey(row);
     }
 }

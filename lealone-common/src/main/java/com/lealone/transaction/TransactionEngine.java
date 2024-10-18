@@ -12,6 +12,7 @@ import com.lealone.db.PluggableEngine;
 import com.lealone.db.PluginManager;
 import com.lealone.db.RunMode;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.storage.StorageMap;
 
 public interface TransactionEngine extends PluggableEngine {
 
@@ -41,6 +42,9 @@ public interface TransactionEngine extends PluggableEngine {
     boolean supportsMVCC();
 
     void checkpoint();
+
+    default void recover(StorageMap<?, ?> map, List<StorageMap<?, ?>> indexMaps) {
+    }
 
     default Runnable getFsyncService() {
         return null;
