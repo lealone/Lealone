@@ -809,6 +809,11 @@ public class ServerSession extends SessionBase {
         locks.add(lock2);
     }
 
+    @Override
+    public void removeLock(Object lock) {
+        locks.remove(lock);
+    }
+
     public void unlockLast() {
         if (!locks.isEmpty()) {
             Lock lock = locks.remove(locks.size() - 1);

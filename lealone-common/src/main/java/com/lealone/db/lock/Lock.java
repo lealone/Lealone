@@ -84,6 +84,10 @@ public abstract class Lock {
         ref.set(NULL);
     }
 
+    public void unlockFast() {
+        ref.set(NULL);
+    }
+
     public LockOwner getLockOwner() {
         return ref.get();
     }

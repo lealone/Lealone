@@ -29,10 +29,10 @@ import com.lealone.transaction.TransactionMap;
 import com.lealone.transaction.aote.lock.RowLock;
 import com.lealone.transaction.aote.log.LogSyncService;
 import com.lealone.transaction.aote.log.RedoLogRecord;
-import com.lealone.transaction.aote.log.UndoLog;
 import com.lealone.transaction.aote.log.RedoLogRecord.LazyLocalTransactionRLR;
 import com.lealone.transaction.aote.log.RedoLogRecord.LobSave;
 import com.lealone.transaction.aote.log.RedoLogRecord.LocalTransactionRLR;
+import com.lealone.transaction.aote.log.UndoLog;
 import com.lealone.transaction.aote.tm.TransactionManager;
 
 public class AOTransaction implements Transaction {
@@ -85,6 +85,11 @@ public class AOTransaction implements Transaction {
         if (locks == null)
             locks = new LinkedList<>();
         locks.add(lock);
+    }
+
+    public void removeLock(RowLock lock) {
+        if (locks != null)
+            locks.remove(lock);
     }
 
     // 无论是提交还是回滚都需要解锁

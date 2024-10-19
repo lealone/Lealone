@@ -188,6 +188,9 @@ public interface Session extends Closeable {
     default void addLock(Object lock) {
     }
 
+    default void removeLock(Object lock) {
+    }
+
     default void addWaitingScheduler(Scheduler scheduler) {
     }
 

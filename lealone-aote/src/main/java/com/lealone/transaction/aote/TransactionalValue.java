@@ -17,10 +17,9 @@ import com.lealone.storage.StorageMap;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.ITransactionalValue;
 import com.lealone.transaction.Transaction;
-import com.lealone.transaction.aote.lock.InsertRowLock;
 import com.lealone.transaction.aote.lock.RowLock;
 
-//每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段
+//每个表的每一条记录都对应这个类的一个实例，所以不能随意在这个类中加新的字段，否则会占用很多内存
 public class TransactionalValue implements ITransactionalValue {
 
     public static class OldValue {
@@ -41,7 +40,7 @@ public class TransactionalValue implements ITransactionalValue {
     private static final AtomicReferenceFieldUpdater<TransactionalValue, RowLock> rowLockUpdater = //
             AtomicReferenceFieldUpdater.newUpdater(TransactionalValue.class, RowLock.class, "rowLock");
 
-    private static final RowLock NULL = new RowLock();
+    private static final RowLock NULL = new RowLock(null);
 
     private volatile RowLock rowLock = NULL;
     private Object value;
@@ -52,7 +51,7 @@ public class TransactionalValue implements ITransactionalValue {
 
     public TransactionalValue(Object value, AOTransaction t) {
         this.value = value;
-        rowLock = new InsertRowLock(this);
+        rowLock = new RowLock(this);
         rowLock.tryLock(t, this, null); // insert的场景，old value是null
     }
 
@@ -63,7 +62,7 @@ public class TransactionalValue implements ITransactionalValue {
     // 二级索引需要设置
     public void setTransaction(AOTransaction t) {
         if (rowLock == NULL) {
-            rowLockUpdater.compareAndSet(this, NULL, new InsertRowLock(this));
+            rowLockUpdater.compareAndSet(this, NULL, new RowLock(this));
         }
         if (rowLock.getTransaction() == null)
             rowLock.tryLock(t, this, value);
@@ -162,19 +161,30 @@ public class TransactionalValue implements ITransactionalValue {
     // 等于0：加锁失败
     // 大于0：加锁成功
     public int tryLock(AOTransaction t) {
-        // 加一个if判断，避免创建对象
-        if (rowLock == NULL) {
-            rowLockUpdater.compareAndSet(this, NULL, new RowLock());
-        }
-        if (value == null && !isLocked(t)) // 已经删除了
-            return -1;
-        if (rowLock.tryLock(t, this, value))
-            if (value == null) // 已经删除了
+        while (true) {
+            // 加一个if判断，避免创建对象
+            if (this.rowLock == NULL) {
+                rowLockUpdater.compareAndSet(this, NULL, new RowLock(this));
+            }
+            RowLock rowLock = this.rowLock;
+            if (rowLock == NULL) // 上一个事务替换为NULL时重试
+                continue;
+            if (value == null && !isLocked(t)) // 已经删除了
                 return -1;
-            else
-                return 1;
-        else
+            if (rowLock.tryLock(t, this, value)) {
+                // 锁到旧的了，要重试
+                if (rowLock != this.rowLock) {
+                    rowLock.removeLock(t);
+                    rowLock.unlockFast();
+                    continue;
+                }
+                if (value == null) // 已经删除了
+                    return -1;
+                else
+                    return 1;
+            }
             return 0;
+        }
     }
 
     public boolean isLocked(AOTransaction t) {
