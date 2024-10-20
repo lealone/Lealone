@@ -15,6 +15,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.DataBuffer;
@@ -80,10 +81,7 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public void close() {
         if (socket != null) {
-            try {
-                socket.close();
-            } catch (Throwable t) {
-            }
+            IOUtils.closeSilently(in, out, socket);
             socket = null;
             in = null;
             out = null;
@@ -121,7 +119,8 @@ public class BioWritableChannel implements WritableChannel {
             // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
             dataBuffer.limit(packetLength);
             ByteBuffer buffer = dataBuffer.getBuffer();
-            in.read(buffer.array(), buffer.arrayOffset(), packetLength);
+            // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
+            in.readFully(buffer.array(), buffer.arrayOffset(), packetLength);
             NetBuffer netBuffer = new NetBuffer(dataBuffer, true);
             conn.handle(netBuffer);
         } catch (Exception e) {

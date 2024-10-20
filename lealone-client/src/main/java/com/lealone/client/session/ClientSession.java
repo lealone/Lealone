@@ -175,28 +175,28 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public void close() {
-        if (closed)
+        if (isClosed())
             return;
+        super.close();
+        RuntimeException closeError = null;
         try {
-            RuntimeException closeError = null;
-            try {
-                // 只有当前Session有效时服务器端才持有对应的session
-                if (isValid()) {
-                    send(new SessionClose());
-                    tcpConnection.removeSession(id);
-                }
-            } catch (RuntimeException e) {
-                trace.error(e, "close");
-                closeError = e;
-            } catch (Exception e) {
-                trace.error(e, "close");
+            // 只有当前Session有效时服务器端才持有对应的session
+            if (isValid()) {
+                send(new SessionClose());
+                tcpConnection.removeSession(id);
             }
-            closeTraceSystem();
-            if (closeError != null) {
-                throw DbException.convert(closeError);
+            if (isBio()) {
+                tcpConnection.close();
             }
-        } finally {
-            super.close();
+        } catch (RuntimeException e) {
+            trace.error(e, "close");
+            closeError = e;
+        } catch (Exception e) {
+            trace.error(e, "close");
+        }
+        closeTraceSystem();
+        if (closeError != null) {
+            throw DbException.convert(closeError);
         }
     }
 

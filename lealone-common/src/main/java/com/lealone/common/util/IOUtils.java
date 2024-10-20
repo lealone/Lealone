@@ -50,6 +50,18 @@ public class IOUtils {
         }
     }
 
+    public static void closeSilently(AutoCloseable... acArray) {
+        for (AutoCloseable ac : acArray) {
+            if (ac != null) {
+                try {
+                    ac.close();
+                } catch (Throwable t) {
+                    // ignore
+                }
+            }
+        }
+    }
+
     /**
      * Skip a number of bytes in an input stream.
      *
