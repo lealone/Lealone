@@ -177,7 +177,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public void close() {
         if (isClosed())
             return;
-        super.close();
         RuntimeException closeError = null;
         try {
             // 只有当前Session有效时服务器端才持有对应的session
@@ -185,6 +184,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                 send(new SessionClose());
                 tcpConnection.removeSession(id);
             }
+            super.close();
             if (isBio()) {
                 tcpConnection.close();
             }
