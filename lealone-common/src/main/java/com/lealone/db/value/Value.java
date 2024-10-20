@@ -536,8 +536,373 @@ public abstract class Value implements Comparable<Value> {
         throw throwUnsupportedExceptionForType("%");
     }
 
+    private Value toBoolean() {
+        switch (getType()) {
+        case BYTE:
+        case SHORT:
+        case INT:
+        case LONG:
+        case DECIMAL:
+        case DOUBLE:
+        case FLOAT:
+            return ValueBoolean.get(getSignum() != 0);
+        case TIME:
+        case DATE:
+        case TIMESTAMP:
+        case BYTES:
+        case JAVA_OBJECT:
+        case UUID:
+            throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, getString());
+        default:
+            String s = getString();
+            if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes")
+                    || s.equalsIgnoreCase("y")) {
+                return ValueBoolean.get(true);
+            } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f") || s.equalsIgnoreCase("no")
+                    || s.equalsIgnoreCase("n")) {
+                return ValueBoolean.get(false);
+            } else {
+                // convert to a number, and if it is not 0 then it is true
+                return ValueBoolean.get(new BigDecimal(s).signum() != 0);
+            }
+        }
+    }
+
+    private Value toByte() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueByte.get(getBoolean() ? (byte) 1 : (byte) 0);
+        case SHORT:
+            return ValueByte.get(convertToByte(getShort()));
+        case INT:
+            return ValueByte.get(convertToByte(getInt()));
+        case LONG:
+            return ValueByte.get(convertToByte(getLong()));
+        case DECIMAL:
+            return ValueByte.get(convertToByte(convertToLong(getBigDecimal())));
+        case DOUBLE:
+            return ValueByte.get(convertToByte(convertToLong(getDouble())));
+        case FLOAT:
+            return ValueByte.get(convertToByte(convertToLong(getFloat())));
+        case BYTES:
+            return ValueByte.get((byte) Integer.parseInt(getString(), 16));
+        default:
+            return ValueByte.get(Byte.parseByte(getString()));
+        }
+    }
+
+    private String getTrimmedString() {
+        return getString().trim();
+    }
+
+    private Value toShort() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueShort.get(getBoolean() ? (short) 1 : (short) 0);
+        case BYTE:
+            return ValueShort.get(getByte());
+        case INT:
+            return ValueShort.get(convertToShort(getInt()));
+        case LONG:
+            return ValueShort.get(convertToShort(getLong()));
+        case DECIMAL:
+            return ValueShort.get(convertToShort(convertToLong(getBigDecimal())));
+        case DOUBLE:
+            return ValueShort.get(convertToShort(convertToLong(getDouble())));
+        case FLOAT:
+            return ValueShort.get(convertToShort(convertToLong(getFloat())));
+        case BYTES:
+            return ValueShort.get((short) Integer.parseInt(getString(), 16));
+        default:
+            return ValueShort.get(Short.parseShort(getTrimmedString()));
+        }
+    }
+
+    private Value toInt() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueInt.get(getBoolean() ? 1 : 0);
+        case BYTE:
+            return ValueInt.get(getByte());
+        case SHORT:
+            return ValueInt.get(getShort());
+        case LONG:
+            return ValueInt.get(convertToInt(getLong()));
+        case DECIMAL:
+            return ValueInt.get(convertToInt(convertToLong(getBigDecimal())));
+        case DOUBLE:
+            return ValueInt.get(convertToInt(convertToLong(getDouble())));
+        case FLOAT:
+            return ValueInt.get(convertToInt(convertToLong(getFloat())));
+        case BYTES:
+            return ValueInt.get((int) Long.parseLong(getString(), 16));
+        default:
+            return ValueInt.get(Integer.parseInt(getTrimmedString()));
+        }
+    }
+
+    private Value toLong() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueLong.get(getBoolean() ? 1 : 0);
+        case BYTE:
+            return ValueLong.get(getByte());
+        case SHORT:
+            return ValueLong.get(getShort());
+        case INT:
+            return ValueLong.get(getInt());
+        case DECIMAL:
+            return ValueLong.get(convertToLong(getBigDecimal()));
+        case DOUBLE:
+            return ValueLong.get(convertToLong(getDouble()));
+        case FLOAT:
+            return ValueLong.get(convertToLong(getFloat()));
+        case BYTES:
+            // parseLong doesn't work for ffffffffffffffff
+            byte[] d = getBytes();
+            if (d.length == 8) {
+                return ValueLong.get(Utils.readLong(d, 0));
+            }
+            return ValueLong.get(Long.parseLong(getString(), 16));
+        default:
+            return ValueLong.get(Long.parseLong(getTrimmedString()));
+        }
+    }
+
+    private Value toDecimal() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueDecimal.get(BigDecimal.valueOf(getBoolean() ? 1 : 0));
+        case BYTE:
+            return ValueDecimal.get(BigDecimal.valueOf(getByte()));
+        case SHORT:
+            return ValueDecimal.get(BigDecimal.valueOf(getShort()));
+        case INT:
+            return ValueDecimal.get(BigDecimal.valueOf(getInt()));
+        case LONG:
+            return ValueDecimal.get(BigDecimal.valueOf(getLong()));
+        case DOUBLE:
+            double d = getDouble();
+            if (Double.isInfinite(d) || Double.isNaN(d)) {
+                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, "" + d);
+            }
+            return ValueDecimal.get(BigDecimal.valueOf(d));
+        case FLOAT:
+            float f = getFloat();
+            if (Float.isInfinite(f) || Float.isNaN(f)) {
+                throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, "" + f);
+            }
+            // better rounding behavior than BigDecimal.valueOf(f)
+            return ValueDecimal.get(new BigDecimal(Float.toString(f)));
+        default:
+            return ValueDecimal.get(new BigDecimal(getTrimmedString()));
+        }
+    }
+
+    private Value toDouble() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueDouble.get(getBoolean() ? 1 : 0);
+        case BYTE:
+            return ValueDouble.get(getByte());
+        case SHORT:
+            return ValueDouble.get(getShort());
+        case INT:
+            return ValueDouble.get(getInt());
+        case LONG:
+            return ValueDouble.get(getLong());
+        case DECIMAL:
+            return ValueDouble.get(getBigDecimal().doubleValue());
+        case FLOAT:
+            return ValueDouble.get(getFloat());
+        default:
+            return ValueDouble.get(Double.parseDouble(getTrimmedString()));
+        }
+    }
+
+    private Value toFloat() {
+        switch (getType()) {
+        case BOOLEAN:
+            return ValueFloat.get(getBoolean() ? 1 : 0);
+        case BYTE:
+            return ValueFloat.get(getByte());
+        case SHORT:
+            return ValueFloat.get(getShort());
+        case INT:
+            return ValueFloat.get(getInt());
+        case LONG:
+            return ValueFloat.get(getLong());
+        case DECIMAL:
+            return ValueFloat.get(getBigDecimal().floatValue());
+        case DOUBLE:
+            return ValueFloat.get((float) getDouble());
+        default:
+            return ValueFloat.get(Float.parseFloat(getTrimmedString()));
+        }
+    }
+
+    private Value toDate() {
+        switch (getType()) {
+        case TIME:
+            // because the time has set the date to 1970-01-01,
+            // this will be the result
+            return ValueDate.fromDateValue(DateTimeUtils.dateValue(1970, 1, 1));
+        case TIMESTAMP:
+            return ValueDate.fromDateValue(((ValueTimestamp) this).getDateValue());
+        default:
+            return ValueDate.parse(getTrimmedString());
+        }
+    }
+
+    private Value toTime() {
+        switch (getType()) {
+        case DATE:
+            // need to normalize the year, month and day
+            // because a date has the time set to 0, the result will be 0
+            return ValueTime.fromNanos(0);
+        case TIMESTAMP:
+            return ValueTime.fromNanos(((ValueTimestamp) this).getNanos());
+        default:
+            return ValueTime.parse(getTrimmedString());
+        }
+    }
+
+    private Value toTimestamp() {
+        switch (getType()) {
+        case TIME:
+            return DateTimeUtils.normalizeTimestamp(0, ((ValueTime) this).getNanos());
+        case DATE:
+            return ValueTimestamp.fromDateValueAndNanos(((ValueDate) this).getDateValue(), 0);
+        default:
+            return ValueTimestamp.parse(getTrimmedString());
+        }
+    }
+
+    private Value toBytes() {
+        switch (getType()) {
+        case JAVA_OBJECT:
+        case BLOB:
+            return ValueBytes.getNoCopy(getBytesNoCopy());
+        case UUID:
+            return ValueBytes.getNoCopy(getBytes());
+        case BYTE:
+            return ValueBytes.getNoCopy(new byte[] { getByte() });
+        case SHORT: {
+            int x = getShort();
+            return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 8), (byte) x });
+        }
+        case INT: {
+            int x = getInt();
+            return ValueBytes.getNoCopy(
+                    new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
+        }
+        case LONG: {
+            long x = getLong();
+            return ValueBytes.getNoCopy(new byte[] {
+                    (byte) (x >> 56),
+                    (byte) (x >> 48),
+                    (byte) (x >> 40),
+                    (byte) (x >> 32),
+                    (byte) (x >> 24),
+                    (byte) (x >> 16),
+                    (byte) (x >> 8),
+                    (byte) x });
+        }
+        default:
+            return ValueBytes.getNoCopy(StringUtils.convertHexToBytes(getTrimmedString()));
+        }
+    }
+
+    private Value toJavaObject() {
+        switch (getType()) {
+        case BYTES:
+        case BLOB:
+            return ValueJavaObject.getNoCopy(null, getBytesNoCopy());
+        default:
+            return this; // 其他类型直接返回
+        // return ValueJavaObject.getNoCopy(null, StringUtils.convertHexToBytes(getTrimmedString()));
+        }
+    }
+
+    private Value toBlob() {
+        switch (getType()) {
+        case BYTES:
+            return ValueLob.createSmallLob(BLOB, getBytesNoCopy());
+        default:
+            return ValueLob.createSmallLob(BLOB, getString().getBytes(Constants.UTF8));
+        }
+    }
+
+    private Value toClob() {
+        return ValueLob.createSmallLob(CLOB, getString().getBytes(Constants.UTF8));
+    }
+
+    private Value toUuid() {
+        switch (getType()) {
+        case BYTES:
+            return ValueUuid.get(getBytesNoCopy());
+        default:
+            return ValueUuid.get(getString());
+        }
+    }
+
+    private Value toArray() {
+        Value[] values = { this };
+        return ValueArray.get(values);
+    }
+
+    private Value toList() {
+        switch (getType()) {
+        case ARRAY:
+            return ValueList.get(((ValueArray) this).getList());
+        default:
+            Value[] values = { this };
+            return ValueList.get(values);
+        }
+    }
+
+    private Value toSet() {
+        switch (getType()) {
+        case ARRAY:
+            return ValueSet.get(((ValueArray) this).getList());
+        default:
+            Value[] values = { this };
+            return ValueSet.get(values);
+        }
+    }
+
+    private Value toMap() {
+        switch (getType()) {
+        case ARRAY:
+            return ValueMap.get(((ValueArray) this).getList());
+        default:
+            Value[] values = { this };
+            return ValueMap.get(values);
+        }
+    }
+
+    private Value toEnum() {
+        switch (getType()) {
+        case STRING:
+        case STRING_IGNORECASE:
+        case STRING_FIXED:
+            String label = getString();
+            return ValueEnum.get(label, 0);
+        default:
+            return ValueEnum.get(getInt());
+        }
+    }
+
+    private Value toResultSet() {
+        String s = getString();
+        SimpleResultSet rs = new SimpleResultSet();
+        rs.addColumn("X", Types.VARCHAR, s.length(), 0);
+        rs.addRow(s);
+        return ValueResultSet.get(rs);
+    }
+
     /**
-     * Compare a value to the specified type.
+     * Convert a value to the specified type.
      *
      * @param targetType the type of the returned value
      * @return the converted value
@@ -549,379 +914,59 @@ public abstract class Value implements Comparable<Value> {
             return this;
         }
         try {
-            // decimal conversion
             switch (targetType) {
-            case BOOLEAN: {
-                switch (getType()) {
-                case BYTE:
-                case SHORT:
-                case INT:
-                case LONG:
-                case DECIMAL:
-                case DOUBLE:
-                case FLOAT:
-                    return ValueBoolean.get(getSignum() != 0);
-                case TIME:
-                case DATE:
-                case TIMESTAMP:
-                case BYTES:
-                case JAVA_OBJECT:
-                case UUID:
-                    throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, getString());
-                }
-                break;
-            }
-            case BYTE: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueByte.get(getBoolean() ? (byte) 1 : (byte) 0);
-                case SHORT:
-                    return ValueByte.get(convertToByte(getShort()));
-                case INT:
-                    return ValueByte.get(convertToByte(getInt()));
-                case LONG:
-                    return ValueByte.get(convertToByte(getLong()));
-                case DECIMAL:
-                    return ValueByte.get(convertToByte(convertToLong(getBigDecimal())));
-                case DOUBLE:
-                    return ValueByte.get(convertToByte(convertToLong(getDouble())));
-                case FLOAT:
-                    return ValueByte.get(convertToByte(convertToLong(getFloat())));
-                case BYTES:
-                    return ValueByte.get((byte) Integer.parseInt(getString(), 16));
-                }
-                break;
-            }
-            case SHORT: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueShort.get(getBoolean() ? (short) 1 : (short) 0);
-                case BYTE:
-                    return ValueShort.get(getByte());
-                case INT:
-                    return ValueShort.get(convertToShort(getInt()));
-                case LONG:
-                    return ValueShort.get(convertToShort(getLong()));
-                case DECIMAL:
-                    return ValueShort.get(convertToShort(convertToLong(getBigDecimal())));
-                case DOUBLE:
-                    return ValueShort.get(convertToShort(convertToLong(getDouble())));
-                case FLOAT:
-                    return ValueShort.get(convertToShort(convertToLong(getFloat())));
-                case BYTES:
-                    return ValueShort.get((short) Integer.parseInt(getString(), 16));
-                }
-                break;
-            }
-            case INT: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueInt.get(getBoolean() ? 1 : 0);
-                case BYTE:
-                    return ValueInt.get(getByte());
-                case SHORT:
-                    return ValueInt.get(getShort());
-                case LONG:
-                    return ValueInt.get(convertToInt(getLong()));
-                case DECIMAL:
-                    return ValueInt.get(convertToInt(convertToLong(getBigDecimal())));
-                case DOUBLE:
-                    return ValueInt.get(convertToInt(convertToLong(getDouble())));
-                case FLOAT:
-                    return ValueInt.get(convertToInt(convertToLong(getFloat())));
-                case BYTES:
-                    return ValueInt.get((int) Long.parseLong(getString(), 16));
-                }
-                break;
-            }
-            case LONG: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueLong.get(getBoolean() ? 1 : 0);
-                case BYTE:
-                    return ValueLong.get(getByte());
-                case SHORT:
-                    return ValueLong.get(getShort());
-                case INT:
-                    return ValueLong.get(getInt());
-                case DECIMAL:
-                    return ValueLong.get(convertToLong(getBigDecimal()));
-                case DOUBLE:
-                    return ValueLong.get(convertToLong(getDouble()));
-                case FLOAT:
-                    return ValueLong.get(convertToLong(getFloat()));
-                case BYTES: {
-                    // parseLong doesn't work for ffffffffffffffff
-                    byte[] d = getBytes();
-                    if (d.length == 8) {
-                        return ValueLong.get(Utils.readLong(d, 0));
-                    }
-                    return ValueLong.get(Long.parseLong(getString(), 16));
-                }
-                }
-                break;
-            }
-            case DECIMAL: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueDecimal.get(BigDecimal.valueOf(getBoolean() ? 1 : 0));
-                case BYTE:
-                    return ValueDecimal.get(BigDecimal.valueOf(getByte()));
-                case SHORT:
-                    return ValueDecimal.get(BigDecimal.valueOf(getShort()));
-                case INT:
-                    return ValueDecimal.get(BigDecimal.valueOf(getInt()));
-                case LONG:
-                    return ValueDecimal.get(BigDecimal.valueOf(getLong()));
-                case DOUBLE: {
-                    double d = getDouble();
-                    if (Double.isInfinite(d) || Double.isNaN(d)) {
-                        throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, "" + d);
-                    }
-                    return ValueDecimal.get(BigDecimal.valueOf(d));
-                }
-                case FLOAT: {
-                    float f = getFloat();
-                    if (Float.isInfinite(f) || Float.isNaN(f)) {
-                        throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, "" + f);
-                    }
-                    // better rounding behavior than BigDecimal.valueOf(f)
-                    return ValueDecimal.get(new BigDecimal(Float.toString(f)));
-                }
-                }
-                break;
-            }
-            case DOUBLE: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueDouble.get(getBoolean() ? 1 : 0);
-                case BYTE:
-                    return ValueDouble.get(getByte());
-                case SHORT:
-                    return ValueDouble.get(getShort());
-                case INT:
-                    return ValueDouble.get(getInt());
-                case LONG:
-                    return ValueDouble.get(getLong());
-                case DECIMAL:
-                    return ValueDouble.get(getBigDecimal().doubleValue());
-                case FLOAT:
-                    return ValueDouble.get(getFloat());
-                }
-                break;
-            }
-            case FLOAT: {
-                switch (getType()) {
-                case BOOLEAN:
-                    return ValueFloat.get(getBoolean() ? 1 : 0);
-                case BYTE:
-                    return ValueFloat.get(getByte());
-                case SHORT:
-                    return ValueFloat.get(getShort());
-                case INT:
-                    return ValueFloat.get(getInt());
-                case LONG:
-                    return ValueFloat.get(getLong());
-                case DECIMAL:
-                    return ValueFloat.get(getBigDecimal().floatValue());
-                case DOUBLE:
-                    return ValueFloat.get((float) getDouble());
-                }
-                break;
-            }
-            case DATE: {
-                switch (getType()) {
-                case TIME:
-                    // because the time has set the date to 1970-01-01,
-                    // this will be the result
-                    return ValueDate.fromDateValue(DateTimeUtils.dateValue(1970, 1, 1));
-                case TIMESTAMP:
-                    return ValueDate.fromDateValue(((ValueTimestamp) this).getDateValue());
-                }
-                break;
-            }
-            case TIME: {
-                switch (getType()) {
-                case DATE:
-                    // need to normalize the year, month and day
-                    // because a date has the time set to 0, the result will be 0
-                    return ValueTime.fromNanos(0);
-                case TIMESTAMP:
-                    return ValueTime.fromNanos(((ValueTimestamp) this).getNanos());
-                }
-                break;
-            }
-            case TIMESTAMP: {
-                switch (getType()) {
-                case TIME:
-                    return DateTimeUtils.normalizeTimestamp(0, ((ValueTime) this).getNanos());
-                case DATE:
-                    return ValueTimestamp.fromDateValueAndNanos(((ValueDate) this).getDateValue(), 0);
-                }
-                break;
-            }
-            case BYTES: {
-                switch (getType()) {
-                case JAVA_OBJECT:
-                case BLOB:
-                    return ValueBytes.getNoCopy(getBytesNoCopy());
-                case UUID:
-                    return ValueBytes.getNoCopy(getBytes());
-                case BYTE:
-                    return ValueBytes.getNoCopy(new byte[] { getByte() });
-                case SHORT: {
-                    int x = getShort();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 8), (byte) x });
-                }
-                case INT: {
-                    int x = getInt();
-                    return ValueBytes.getNoCopy(new byte[] {
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x });
-                }
-                case LONG: {
-                    long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[] {
-                            (byte) (x >> 56),
-                            (byte) (x >> 48),
-                            (byte) (x >> 40),
-                            (byte) (x >> 32),
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x });
-                }
-                }
-                break;
-            }
-            case JAVA_OBJECT: {
-                switch (getType()) {
-                case BYTES:
-                case BLOB:
-                    return ValueJavaObject.getNoCopy(null, getBytesNoCopy());
-                }
-                return this; // 其他类型直接返回
-            }
-            case BLOB: {
-                switch (getType()) {
-                case BYTES:
-                    return ValueLob.createSmallLob(Value.BLOB, getBytesNoCopy());
-                }
-                break;
-            }
-            case UUID: {
-                switch (getType()) {
-                case BYTES:
-                    return ValueUuid.get(getBytesNoCopy());
-                }
-                break;
-            }
-            case ARRAY: {
-                Value[] values = { this };
-                return ValueArray.get(values);
-            }
-            case LIST: {
-                switch (getType()) {
-                case ARRAY:
-                    return ValueList.get(((ValueArray) this).getList());
-                default:
-                    Value[] values = { this };
-                    return ValueList.get(values);
-                }
-            }
-            case SET: {
-                switch (getType()) {
-                case ARRAY:
-                    return ValueSet.get(((ValueArray) this).getList());
-                default:
-                    Value[] values = { this };
-                    return ValueSet.get(values);
-                }
-            }
-            case MAP: {
-                switch (getType()) {
-                case ARRAY:
-                    return ValueMap.get(((ValueArray) this).getList());
-                default:
-                    Value[] values = { this };
-                    return ValueSet.get(values);
-                }
-            }
-            case ENUM: {
-                switch (getType()) {
-                case STRING:
-                case STRING_IGNORECASE:
-                case STRING_FIXED:
-                    String label = getString();
-                    return ValueEnum.get(label, 0);
-                default:
-                    return ValueEnum.get(getInt());
-                }
-            }
-            }
-            // conversion by parsing the string value
-            String s = getString();
-            switch (targetType) {
+            case BOOLEAN:
+                return toBoolean();
+            case BYTE:
+                return toByte();
+            case SHORT:
+                return toShort();
+            case INT:
+                return toInt();
+            case LONG:
+                return toLong();
+            case DECIMAL:
+                return toDecimal();
+            case DOUBLE:
+                return toDouble();
+            case FLOAT:
+                return toFloat();
+            case DATE:
+                return toDate();
+            case TIME:
+                return toTime();
+            case TIMESTAMP:
+                return toTimestamp();
+            case BYTES:
+                return toBytes();
+            case JAVA_OBJECT:
+                return toJavaObject();
+            case BLOB:
+                return toBlob();
+            case CLOB:
+                return toClob();
+            case UUID:
+                return toUuid();
+            case ARRAY:
+                return toArray();
+            case LIST:
+                return toList();
+            case SET:
+                return toSet();
+            case MAP:
+                return toMap();
+            case ENUM:
+                return toEnum();
+            case RESULT_SET:
+                return toResultSet();
+            case STRING:
+                return ValueString.get(getString());
+            case STRING_IGNORECASE:
+                return ValueStringIgnoreCase.get(getString());
+            case STRING_FIXED:
+                return ValueStringFixed.get(getString());
             case NULL:
                 return ValueNull.INSTANCE;
-            case BOOLEAN: {
-                if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes")
-                        || s.equalsIgnoreCase("y")) {
-                    return ValueBoolean.get(true);
-                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f")
-                        || s.equalsIgnoreCase("no") || s.equalsIgnoreCase("n")) {
-                    return ValueBoolean.get(false);
-                } else {
-                    // convert to a number, and if it is not 0 then it is true
-                    return ValueBoolean.get(new BigDecimal(s).signum() != 0);
-                }
-            }
-            case BYTE:
-                return ValueByte.get(Byte.parseByte(s.trim()));
-            case SHORT:
-                return ValueShort.get(Short.parseShort(s.trim()));
-            case INT:
-                return ValueInt.get(Integer.parseInt(s.trim()));
-            case LONG:
-                return ValueLong.get(Long.parseLong(s.trim()));
-            case DECIMAL:
-                return ValueDecimal.get(new BigDecimal(s.trim()));
-            case TIME:
-                return ValueTime.parse(s.trim());
-            case DATE:
-                return ValueDate.parse(s.trim());
-            case TIMESTAMP:
-                return ValueTimestamp.parse(s.trim());
-            case BYTES:
-                return ValueBytes.getNoCopy(StringUtils.convertHexToBytes(s.trim()));
-            case JAVA_OBJECT:
-                return ValueJavaObject.getNoCopy(null, StringUtils.convertHexToBytes(s.trim()));
-            case STRING:
-                return ValueString.get(s);
-            case STRING_IGNORECASE:
-                return ValueStringIgnoreCase.get(s);
-            case STRING_FIXED:
-                return ValueStringFixed.get(s);
-            case DOUBLE:
-                return ValueDouble.get(Double.parseDouble(s.trim()));
-            case FLOAT:
-                return ValueFloat.get(Float.parseFloat(s.trim()));
-            case CLOB:
-                return ValueLob.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
-            case BLOB:
-                return ValueLob.createSmallLob(BLOB, s.getBytes(Constants.UTF8));
-            case ARRAY:
-                return ValueArray.get(new Value[] { ValueString.get(s) });
-            case RESULT_SET: {
-                SimpleResultSet rs = new SimpleResultSet();
-                rs.addColumn("X", Types.VARCHAR, s.length(), 0);
-                rs.addRow(s);
-                return ValueResultSet.get(rs);
-            }
-            case UUID:
-                return ValueUuid.get(s);
             default:
                 throw DbException.getInternalError("type=" + targetType);
             }
