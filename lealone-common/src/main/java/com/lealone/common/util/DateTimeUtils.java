@@ -97,6 +97,8 @@ public class DateTimeUtils {
     private static Calendar getCalendar() {
         if (cachedCalendar == null) {
             cachedCalendar = Calendar.getInstance();
+            // jdk21默认是2，而jdk17和jdk1.8都是1，统一设为1
+            cachedCalendar.setFirstDayOfWeek(1);
             zoneOffset = cachedCalendar.get(Calendar.ZONE_OFFSET);
         }
         return cachedCalendar;
