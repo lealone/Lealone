@@ -27,18 +27,20 @@ import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.chunk.ChunkManager;
+import com.lealone.storage.aose.btree.page.KeyPage;
 import com.lealone.storage.aose.btree.page.LeafPage;
 import com.lealone.storage.aose.btree.page.Page;
-import com.lealone.storage.aose.btree.page.PageReference;
-import com.lealone.storage.aose.btree.page.PageStorageMode;
-import com.lealone.storage.aose.btree.page.PageUtils;
-import com.lealone.storage.aose.btree.page.PrettyPagePrinter;
 import com.lealone.storage.aose.btree.page.PageOperations.Append;
 import com.lealone.storage.aose.btree.page.PageOperations.Put;
 import com.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import com.lealone.storage.aose.btree.page.PageOperations.Remove;
 import com.lealone.storage.aose.btree.page.PageOperations.Replace;
 import com.lealone.storage.aose.btree.page.PageOperations.WriteOperation;
+import com.lealone.storage.aose.btree.page.PageReference;
+import com.lealone.storage.aose.btree.page.PageStorageMode;
+import com.lealone.storage.aose.btree.page.PageUtils;
+import com.lealone.storage.aose.btree.page.PrettyPagePrinter;
+import com.lealone.storage.aose.btree.page.RowPage;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
 import com.lealone.storage.type.StorageDataType;
@@ -120,9 +122,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             rootRef.replacePage(root);
             setMaxKey(lastKey());
         } else {
-            Page root = LeafPage.createEmpty(this);
+            Page root = createEmptyPage();
             rootRef.replacePage(root);
         }
+    }
+
+    private Page createEmptyPage() {
+        return createEmptyPage(true);
+    }
+
+    public Page createEmptyPage(boolean addToUsedMemory) {
+        if (getKeyType().isKeyOnly())
+            return KeyPage.createEmpty(this);
+        else if (getKeyType().isRowOnly())
+            return RowPage.createEmpty(this);
+        else
+            return LeafPage.createEmpty(this);
     }
 
     public Page getRootPage() {
@@ -341,7 +356,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             btreeStorage.clear();
             size.set(0);
             maxKey.set(0);
-            newRoot(LeafPage.createEmpty(this));
+            newRoot(createEmptyPage());
         } finally {
             lock.unlock();
         }

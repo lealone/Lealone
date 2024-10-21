@@ -34,6 +34,7 @@ public class IndexType {
     public static IndexType createDelegate() {
         IndexType type = new IndexType();
         type.primaryKey = true;
+        type.unique = true;
         type.delegate = true;
         return type;
     }
@@ -121,6 +122,10 @@ public class IndexType {
 
     public boolean isDelegate() {
         return delegate;
+    }
+
+    public void setDelegate(boolean delegate) {
+        this.delegate = delegate;
     }
 
     /**

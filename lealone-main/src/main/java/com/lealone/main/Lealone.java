@@ -7,6 +7,7 @@ package com.lealone.main;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -170,7 +171,11 @@ public class Lealone {
                     long totalTime = loadConfigTime + initTime + startTime;
                     logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)",
                             totalTime, loadConfigTime, initTime, startTime);
-                    logger.info("Exit with Ctrl+C");
+                    logger.info(
+                            "Lealone started, jvm pid: {}, "
+                                    + "exit with ctrl+c or execute sql command: stop server",
+                            ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+
                 }
                 // 等所有的Server启动完成后再启动Scheduler
                 // 确保所有的初始PeriodicTask都在单线程中注册
@@ -290,14 +295,14 @@ public class Lealone {
                 ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, def.name);
                 ProtocolServer server = pse.getProtocolServer();
                 server.setServerEncryptionOptions(config.server_encryption_options);
-                server.start();
                 String name = server.getName();
+                logger.info("Start {}, host: {}, port: {}", name, server.getHost(), server.getPort());
+                server.start();
                 ShutdownHookUtils.addShutdownHook(server, () -> {
                     if (!server.isStopped())
                         server.stop();
                     logger.info(name + " stopped");
                 });
-                logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
             }
         }
         startPlugins();

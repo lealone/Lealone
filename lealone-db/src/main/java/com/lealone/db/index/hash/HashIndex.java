@@ -5,11 +5,15 @@
  */
 package com.lealone.db.index.hash;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.lealone.common.exceptions.DbException;
+import com.lealone.db.index.Cursor;
 import com.lealone.db.index.IndexBase;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexConditionType;
 import com.lealone.db.index.IndexType;
+import com.lealone.db.result.Row;
 import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
 import com.lealone.db.session.ServerSession;
@@ -17,23 +21,23 @@ import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 
-public abstract class HashIndex extends IndexBase {
+public abstract class HashIndex<T> extends IndexBase {
 
-    /**
-     * The index of the indexed column.
-     */
-    protected final int indexColumn;
+    protected final ConcurrentHashMap<Value, T> rows = new ConcurrentHashMap<>();
+    protected final int indexColumnId;
 
     protected HashIndex(Table table, int id, String indexName, IndexType indexType,
             IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
-        this.indexColumn = columns[0].column.getColumnId();
+        this.indexColumnId = columns[0].column.getColumnId();
     }
 
-    protected abstract void reset();
+    protected Value getIndexKey(SearchRow row) {
+        return row.getValue(indexColumnId);
+    }
 
-    protected Value getKey(SearchRow row) {
-        return row.getValue(indexColumn);
+    protected Value getIndexKey(Value[] columns) {
+        return columns[indexColumnId];
     }
 
     protected void checkSearchKey(SearchRow first, SearchRow last) {
@@ -41,7 +45,7 @@ public abstract class HashIndex extends IndexBase {
             throw DbException.getInternalError();
         }
         if (first != last) {
-            if (!getKey(first).equals(getKey(last))) {
+            if (!getIndexKey(first).equals(getIndexKey(last))) {
                 throw DbException.getInternalError();
             }
         }
@@ -49,12 +53,7 @@ public abstract class HashIndex extends IndexBase {
 
     @Override
     public void truncate(ServerSession session) {
-        reset();
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
+        rows.clear();
     }
 
     @Override
@@ -83,11 +82,6 @@ public abstract class HashIndex extends IndexBase {
     }
 
     @Override
-    public void checkRename() {
-        // ok
-    }
-
-    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
@@ -107,8 +101,13 @@ public abstract class HashIndex extends IndexBase {
         return true;
     }
 
-    @Override
-    public boolean isInMemory() {
-        return true;
+    protected static abstract class HashCursor implements Cursor {
+
+        protected Row row;
+
+        @Override
+        public Row get() {
+            return row;
+        }
     }
 }

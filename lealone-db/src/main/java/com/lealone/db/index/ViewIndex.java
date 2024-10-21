@@ -346,16 +346,6 @@ public class ViewIndex extends IndexBase {
         return q;
     }
 
-    @Override
-    public long getRowCount(ServerSession session) {
-        return 0;
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return 0;
-    }
-
     /**
      * The cursor implementation of a view index.
      */

@@ -6,6 +6,8 @@
 package com.lealone.sql.optimizer;
 
 import com.lealone.db.index.Cursor;
+import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.result.Row;
 import com.lealone.db.result.SearchRow;
 import com.lealone.db.session.ServerSession;
@@ -62,19 +64,29 @@ public class TableIterator {
         }
     }
 
-    public int tryLockRow(int[] lockColumns) {
+    public int tryLockRow() {
         Row oldRow = getRow();
         if (oldRow == null) { // 已经删除了
             return -1;
         }
-        int ret = table.tryLockRow(session, oldRow, lockColumns);
+        // 总是使用最原始的那个row对象锁，
+        // 因为在遍历的时候如果其他事务未提交会为当前事务创建一个新的row对象，不能在新的row对象上加锁
+        Lock lock = oldRow.getLock();
+        if (lock != null) {
+            Lockable lockable = lock.getLockable();
+            if (lockable != null && lockable != oldRow) {
+                oldRow = (Row) lock.getLockable();
+            }
+        }
+        Object oldValue = oldRow.getLockedValue();
+        int ret = table.tryLockRow(session, oldRow);
         if (ret < 0) { // 已经删除了
             return -1;
         } else if (ret == 0) { // 被其他事务锁住了
             this.oldRow = oldRow;
             return 0;
         }
-        if (table.isRowChanged(oldRow)) {
+        if (oldValue != oldRow.getLockedValue()) { // isRowChanged
             this.oldRow = oldRow;
             return -1;
         }

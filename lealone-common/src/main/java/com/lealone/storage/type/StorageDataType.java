@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 
@@ -105,6 +106,10 @@ public interface StorageDataType {
      */
     void write(DataBuffer buff, Object obj);
 
+    default void write(DataBuffer buff, Object obj, Lockable lockable) {
+        write(buff, obj);
+    }
+
     /**
      * Write a list of objects.
      *
@@ -176,6 +181,31 @@ public interface StorageDataType {
         return null;
     }
 
+    // 是否只存放key，比如索引不需要value
+    default boolean isKeyOnly() {
+        return false;
+    }
+
+    default boolean isRowOnly() {
+        return false;
+    }
+
+    default StorageDataType getRawType() {
+        return this;
+    }
+
+    default Object merge(Object fromObj, Object toObj) {
+        return toObj;
+    }
+
+    default Object getSplitKey(Object keyObj) {
+        return keyObj;
+    }
+
+    default Object getAppendKey(long key, Object valueObj) {
+        return Long.valueOf(key);
+    }
+
     public static int getTypeId(int tag) {
         int typeId;
         if (tag <= TYPE_SERIALIZED_OBJECT) {
@@ -230,5 +260,11 @@ public interface StorageDataType {
             }
         }
         return typeId;
+    }
+
+    public static interface PrimaryKey {
+        long getKey();
+
+        void setKey(long key);
     }
 }

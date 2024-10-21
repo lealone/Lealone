@@ -16,7 +16,7 @@ import java.util.Map;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
-import com.lealone.db.value.ValueNull;
+import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.fs.FilePath;
@@ -25,7 +25,6 @@ import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.aote.CheckpointService;
 import com.lealone.transaction.aote.CheckpointService.FsyncTask;
 import com.lealone.transaction.aote.TransactionalValue;
-import com.lealone.transaction.aote.TransactionalValueType;
 
 public class RedoLog {
 
@@ -116,7 +115,7 @@ public class RedoLog {
         }
         if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
             StorageDataType kt = map.getKeyType();
-            StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
+            StorageDataType vt = map.getValueType().getRawType();
             // 异步redo，忽略操作结果
             AsyncHandler<AsyncResult<Object>> handler = ar -> {
             };
@@ -124,7 +123,7 @@ public class RedoLog {
                 Object key = kt.read(kv);
                 if (kv.get() == 0) {
                     map.remove(key, ar -> {
-                        Object value = ((TransactionalValue) ar.getResult()).getValue();
+                        Object value = ((Lockable) ar.getResult()).getValue();
                         if (indexMaps != null) {
                             for (StorageMap<Object, Object> im : indexMaps) {
                                 StorageDataType ikt = im.getKeyType();
@@ -135,15 +134,19 @@ public class RedoLog {
                     });
                 } else {
                     Object value = vt.read(kv);
-                    TransactionalValue tv = TransactionalValue.createCommitted(value);
-                    map.put(key, tv, handler);
+                    Lockable lockable;
+                    if (value instanceof Lockable) {
+                        lockable = (Lockable) value;
+                        lockable.setKey(key);
+                    } else {
+                        lockable = TransactionalValue.createCommitted(value);
+                    }
+                    map.put(key, lockable, handler);
                     if (indexMaps != null) {
                         for (StorageMap<Object, Object> im : indexMaps) {
                             StorageDataType ikt = im.getKeyType();
                             Object indexKey = ikt.convertToIndexKey(key, value);
-                            TransactionalValue itv = TransactionalValue
-                                    .createCommitted(ValueNull.INSTANCE);
-                            im.put(indexKey, itv, handler);
+                            im.put(indexKey, indexKey, handler);
                         }
                     }
                 }

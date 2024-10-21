@@ -5,61 +5,125 @@
  */
 package com.lealone.db.result;
 
+import com.lealone.common.util.StatementBuilder;
+import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.LockableBase;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLong;
-import com.lealone.storage.page.IPage;
-import com.lealone.transaction.ITransactionalValue;
+import com.lealone.storage.type.StorageDataType.PrimaryKey;
 
 /**
  * Represents a row in a table.
  */
-public class Row extends SimpleRow {
+public class Row extends LockableBase implements SearchRow, PrimaryKey {
 
-    public static final int MEMORY_CALCULATE = -1;
+    private long key;
+    private Value[] columns;
+    private int version; // 表的元数据版本号
 
-    private ITransactionalValue tv;
-    private IPage page;
-
-    public Row(Value[] data) {
-        this(data, MEMORY_CALCULATE);
+    public Row(Value[] columns) {
+        this.columns = columns;
     }
 
-    public Row(Value[] data, int memory) {
-        super(data);
-        this.memory = memory;
+    public Row(long key, Value[] columns) {
+        this(columns);
+        this.key = key;
     }
 
-    public Value[] getValueList() {
-        return data;
+    public Row(int version, Value[] columns) {
+        this(columns);
+        this.version = version;
     }
 
-    public ITransactionalValue getTValue() {
-        return tv;
+    @Override
+    public ValueLong getPrimaryKey() {
+        return ValueLong.get(key);
     }
 
-    public void setTValue(ITransactionalValue tv) {
-        this.tv = tv;
+    @Override
+    public Value[] getColumns() {
+        return columns;
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columns.length;
+    }
+
+    @Override
+    public long getKey() {
+        return key;
+    }
+
+    @Override
+    public void setKey(long key) {
+        this.key = key;
+    }
+
+    @Override
+    public int getVersion() {
+        return version;
+    }
+
+    @Override
+    public void setVersion(int version) {
+        this.version = version;
     }
 
     @Override
     public Value getValue(int i) {
-        return i == -1 ? ValueLong.get(key) : data[i];
+        return columns[i];
     }
 
     @Override
     public void setValue(int i, Value v) {
-        if (i == -1) {
-            key = v.getLong();
-        } else {
-            data[i] = v;
+        columns[i] = v;
+    }
+
+    ////////////// 以下是Lockable接口的实现 //////////////
+
+    @Override
+    public void setKey(Object key) {
+        if (key instanceof ValueLong) {
+            setKey(((ValueLong) key).getLong());
         }
     }
 
-    public IPage getPage() {
-        return page;
+    @Override
+    public void setLockedValue(Object value) {
+        if (value instanceof Row)
+            columns = ((Row) value).columns;
+        else
+            columns = (Value[]) value;
     }
 
-    public void setPage(IPage page) {
-        this.page = page;
+    @Override
+    public Object getLockedValue() {
+        return columns;
+    }
+
+    @Override
+    public Object copy(Object oldLockedValue, Lock lock) {
+        Row row = new Row(getVersion(), (Value[]) oldLockedValue);
+        row.setKey(getKey());
+        row.setLock(lock);
+        return row;
+    }
+
+    @Override
+    public String toString() {
+        StatementBuilder buff = new StatementBuilder("( /* key:");
+        buff.append(getKey());
+        if (version != 0) {
+            buff.append(" v:" + version);
+        }
+        buff.append(" */ ");
+        if (columns != null) {
+            for (Value v : columns) {
+                buff.appendExceptFirst(", ");
+                buff.append(v == null ? "null" : v.getTraceSQL());
+            }
+        }
+        return buff.append(')').toString();
     }
 }

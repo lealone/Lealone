@@ -6,11 +6,16 @@
 package com.lealone.db.result;
 
 import com.lealone.db.value.Value;
+import com.lealone.db.value.ValueLong;
 
 /**
  * The interface for rows stored in a table, and for partial rows stored in the index.
  */
 public interface SearchRow {
+
+    ValueLong getPrimaryKey();
+
+    Value[] getColumns();
 
     /**
      * Get the column count.
@@ -57,12 +62,5 @@ public interface SearchRow {
      * @param v the new value
      */
     void setValue(int index, Value v);
-
-    /**
-     * Get the estimated memory used for this row, in bytes.
-     *
-     * @return the memory
-     */
-    int getMemory();
 
 }

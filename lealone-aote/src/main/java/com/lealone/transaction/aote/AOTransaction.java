@@ -16,6 +16,7 @@ import com.lealone.db.RunMode;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncHandler;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionStatus;
@@ -187,11 +188,11 @@ public class AOTransaction implements Transaction {
             parameters.put(StorageSetting.RUN_MODE.name(), runMode.name());
 
         storage.registerEventListener(transactionEngine);
-        StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
+        StorageMap<K, Lockable> map = storage.openMap(name, keyType, valueType, parameters);
         return createTransactionMap(map, parameters);
     }
 
-    protected <K, V> AOTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
+    protected <K, V> AOTransactionMap<K, V> createTransactionMap(StorageMap<K, Lockable> map,
             Map<String, String> parameters) {
         return new AOTransactionMap<>(this, map);
     }
@@ -320,7 +321,7 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public int addWaitingTransaction(Object key, Session session,
+    public int addWaitingTransaction(Object lockedObject, Session session,
             AsyncHandler<SessionStatus> asyncHandler) {
         // 如果已经提交了，通知重试
         if (isClosed() || isWaiting())
@@ -332,7 +333,7 @@ public class AOTransaction implements Transaction {
         if (asyncHandler != null) {
             asyncHandler.handle(SessionStatus.WAITING);
         } else {
-            session.setLockedBy(SessionStatus.WAITING, this, key);
+            session.setLockedBy(SessionStatus.WAITING, this, lockedObject);
         }
 
         this.session.addWaitingScheduler(session.getScheduler());

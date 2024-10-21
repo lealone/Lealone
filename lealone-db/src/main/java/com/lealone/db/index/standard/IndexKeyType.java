@@ -9,11 +9,11 @@ import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
+import com.lealone.db.lock.Lock;
 import com.lealone.db.result.Row;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
-import com.lealone.db.value.ValueLong;
 
 public class IndexKeyType extends ValueDataType {
 
@@ -35,8 +35,8 @@ public class IndexKeyType extends ValueDataType {
         } else if (b == null) {
             return 1;
         }
-        Value[] ax = ((IndexKey) a).columns;
-        Value[] bx = ((IndexKey) b).columns;
+        Value[] ax = Lock.getLockedValue((IndexKey) a);
+        Value[] bx = Lock.getLockedValue((IndexKey) b);
         return compareValues(ax, bx);
     }
 
@@ -46,7 +46,7 @@ public class IndexKeyType extends ValueDataType {
         int memory = 4;
         if (k == null)
             return memory;
-        Value[] columns = k.columns;
+        Value[] columns = Lock.getLockedValue(k);
         for (int i = 0, len = columns.length; i < len; i++) {
             Value c = columns[i];
             if (c == null)
@@ -71,8 +71,11 @@ public class IndexKeyType extends ValueDataType {
 
     @Override
     public Object convertToIndexKey(Object key, Object value) {
-        Row row = new Row(((VersionedValue) value).columns);
-        row.setKey(((ValueLong) key).getLong());
-        return index.convertToKey(row);
+        return index.convertToKey((Row) value);
+    }
+
+    @Override
+    public boolean isKeyOnly() {
+        return true;
     }
 }

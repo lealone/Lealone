@@ -25,7 +25,6 @@ import com.lealone.db.session.Session;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
-import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.sql.IExpression;
 import com.lealone.sql.expression.Expression;
@@ -859,7 +858,7 @@ public class TableFilter extends ColumnResolverBase {
         }
 
         if (columnId == -1) {
-            return ValueLong.get(currentSearchRow.getKey());
+            return currentSearchRow.getPrimaryKey();
         }
         if (current == null) {
             Value v = currentSearchRow.getValue(columnId);

@@ -9,7 +9,6 @@ import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.Session;
-import com.lealone.db.value.ValueLong;
 import com.lealone.storage.aose.btree.BTreeGC;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.page.PageOperation;
@@ -89,7 +88,14 @@ public abstract class PageOperations {
                     pRef.unlock();
                     return PageOperationResult.RETRY;
                 }
-                writeLocal(scheduler);
+                try {
+                    writeLocal(scheduler);
+                } catch (Throwable t) {
+                    pRef.unlock();
+                    if (resultHandler != null) {
+                        resultHandler.handle(new AsyncResult<>(t));
+                    }
+                }
                 return PageOperationResult.SUCCEEDED;
             } else {
                 return PageOperationResult.LOCKED;
@@ -208,10 +214,7 @@ public abstract class PageOperations {
         @SuppressWarnings("unchecked")
         protected Object writeLocal(int index, Scheduler scheduler) {
             long k = map.incrementAndGetMaxKey();
-            if (map.getKeyType() == ValueLong.type)
-                key = (K) Long.valueOf(k);
-            else
-                key = (K) ValueLong.get(k);
+            key = (K) map.getKeyType().getAppendKey(k, value);
             insertLeaf(index, value); // 执行insertLeaf的过程中已经把当前页标记为脏页了
             return key;
         }
@@ -339,7 +342,7 @@ public abstract class PageOperations {
             // 如果是root node page，那么直接替换
             if (pRef.isRoot()) {
                 // 新的空页面占用的内存大小不必再计入，原页面已经算在内了
-                p.map.newRoot(LeafPage.createEmpty(p.map, false));
+                p.map.newRoot(p.map.createEmptyPage(false));
             } else {
                 if (!tryLockParentRef(pRef, scheduler, waitingIfLocked))
                     return PageOperationResult.LOCKED;
@@ -416,7 +419,7 @@ public abstract class PageOperations {
             PageInfo pInfoOld = p.getRef().getPageInfo();
             // 注意: 在这里被切割的页面可能是node page或leaf page
             int at = p.getKeyCount() / 2;
-            Object k = p.getKey(at);
+            Object k = p.getSplitKey(at);
             // 切割前必须copy当前被切割的页面，否则其他读线程可能读到切割过程中不一致的数据
             p = p.copy();
             // 对页面进行切割后，会返回右边的新页面，而copy后的当前被切割页面变成左边的新页面

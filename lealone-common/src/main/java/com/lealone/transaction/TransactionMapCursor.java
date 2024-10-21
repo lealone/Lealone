@@ -8,7 +8,4 @@ package com.lealone.transaction;
 import com.lealone.storage.StorageMapCursor;
 
 public interface TransactionMapCursor<K, V> extends StorageMapCursor<K, V> {
-
-    ITransactionalValue getTValue();
-
 }

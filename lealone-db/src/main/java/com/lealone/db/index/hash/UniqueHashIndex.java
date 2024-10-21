@@ -1,11 +1,9 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package com.lealone.db.index.hash;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.db.async.Future;
 import com.lealone.db.index.Cursor;
@@ -18,30 +16,17 @@ import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 import com.lealone.transaction.Transaction;
 
-/**
- * An unique index based on an in-memory hash map.
- * 
- * @author H2 Group
- * @author zhh
- */
-public class UniqueHashIndex extends HashIndex {
-
-    private ConcurrentHashMap<Value, Long> rows;
+//会有多个线程并发读写
+public class UniqueHashIndex extends HashIndex<Long> {
 
     public UniqueHashIndex(Table table, int id, String indexName, IndexType indexType,
             IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
-        reset();
-    }
-
-    @Override
-    protected void reset() {
-        rows = new ConcurrentHashMap<>();
     }
 
     @Override
     public Future<Integer> add(ServerSession session, Row row) {
-        Object old = rows.putIfAbsent(getKey(row), row.getKey());
+        Object old = rows.putIfAbsent(getIndexKey(row), row.getKey());
         if (old != null) {
             throw getDuplicateKeyException();
         }
@@ -49,54 +34,31 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
-        rows.remove(getKey(row));
+    public Future<Integer> remove(ServerSession session, Row row, Value[] oldColumns,
+            boolean isLockedBySelf) {
+        rows.remove(getIndexKey(oldColumns));
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         checkSearchKey(first, last);
-        Row result;
-        Long pos = rows.get(getKey(first));
-        if (pos == null) {
-            result = null;
+        Row row;
+        Long rowKey = rows.get(getIndexKey(first));
+        if (rowKey == null) {
+            row = null;
         } else {
-            result = table.getRow(session, pos.intValue());
+            row = table.getRow(session, rowKey.longValue());
         }
-        return new SingleRowCursor(result);
+        return new UniqueHashCursor(row);
     }
 
-    @Override
-    public long getRowCount(ServerSession session) {
-        return getRowCountApproximation();
-    }
+    private static class UniqueHashCursor extends HashCursor {
 
-    @Override
-    public long getRowCountApproximation() {
-        return rows.size();
-    }
-
-    /**
-     * A cursor with at most one row.
-     */
-    private static class SingleRowCursor implements Cursor {
-
-        private Row row;
         private boolean end;
 
-        /**
-         * Create a new cursor.
-         *
-         * @param row - the single row (if null then cursor is empty)
-         */
-        public SingleRowCursor(Row row) {
-            this.row = row;
-        }
-
-        @Override
-        public Row get() {
-            return row;
+        public UniqueHashCursor(Row row) {
+            this.row = row; // 可能为null
         }
 
         @Override
@@ -104,9 +66,10 @@ public class UniqueHashIndex extends HashIndex {
             if (row == null || end) {
                 row = null;
                 return false;
+            } else {
+                end = true;
+                return true;
             }
-            end = true;
-            return true;
         }
     }
 }

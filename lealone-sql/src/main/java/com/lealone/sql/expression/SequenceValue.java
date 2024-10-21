@@ -32,7 +32,7 @@ public class SequenceValue extends Expression {
         if (sequence.isInvalid())
             sequence = sequence.getNewSequence(session);
         long value = sequence.getNext(session);
-        session.setLastIdentity(ValueLong.get(value));
+        session.setLastIdentity(value);
         return ValueLong.get(value);
     }
 

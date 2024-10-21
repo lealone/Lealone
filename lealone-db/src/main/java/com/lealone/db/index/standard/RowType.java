@@ -10,23 +10,26 @@ import java.nio.ByteBuffer;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
+import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
+import com.lealone.db.result.Row;
 import com.lealone.db.table.Column.EnumColumn;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.db.value.ValueLong;
 
-public class VersionedValueType extends ValueDataType {
+public class RowType extends ValueDataType {
 
     final int columnCount;
     final EnumColumn[] enumColumns;
 
-    public VersionedValueType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
-            int columnCount) {
-        this(handler, compareMode, sortTypes, columnCount, null);
+    public RowType(int[] sortTypes, int columnCount) {
+        this(null, null, sortTypes, columnCount, null);
     }
 
-    public VersionedValueType(DataHandler handler, CompareMode compareMode, int[] sortTypes,
-            int columnCount, EnumColumn[] enumColumns) {
+    public RowType(DataHandler handler, CompareMode compareMode, int[] sortTypes, int columnCount,
+            EnumColumn[] enumColumns) {
         super(handler, compareMode, sortTypes);
         this.columnCount = columnCount;
         this.enumColumns = enumColumns;
@@ -42,22 +45,22 @@ public class VersionedValueType extends ValueDataType {
         } else if (bObj == null) {
             return 1;
         }
-        VersionedValue a = (VersionedValue) aObj;
-        VersionedValue b = (VersionedValue) bObj;
-        long comp = a.version - b.version;
+        Row a = (Row) aObj;
+        Row b = (Row) bObj;
+        long comp = a.getVersion() - b.getVersion();
         if (comp == 0) {
-            return compareValues(a.columns, b.columns);
+            return compareValues(a.getColumns(), b.getColumns());
         }
         return Long.signum(comp);
     }
 
     @Override
     public int getMemory(Object obj) {
-        VersionedValue v = (VersionedValue) obj;
-        int memory = 4 + 4;
-        if (v == null)
+        Row r = (Row) obj;
+        int memory = 24;
+        if (r == null)
             return memory;
-        Value[] columns = v.columns;
+        Value[] columns = Lock.getLockedValue(r);
         for (int i = 0, len = columns.length; i < len; i++) {
             Value c = columns[i];
             if (c == null)
@@ -69,46 +72,60 @@ public class VersionedValueType extends ValueDataType {
     }
 
     @Override
+    public void read(ByteBuffer buff, Object[] obj, int len) {
+        for (int i = 0; i < len; i++) {
+            obj[i] = merge(obj[i], read(buff));
+        }
+    }
+
+    @Override
     public Object read(ByteBuffer buff) {
         int version = DataUtils.readVarInt(buff);
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         if (enumColumns != null)
             setEnumColumns(a);
-        return new VersionedValue(version, a.getList());
+        return new Row(version, a.getList());
     }
 
     @Override
     public void write(DataBuffer buff, Object obj) {
-        VersionedValue v = (VersionedValue) obj;
-        buff.putVarInt(v.version);
-        buff.writeValue(ValueArray.get(v.columns));
+        Row r = (Row) obj;
+        buff.putVarInt(r.getVersion());
+        buff.writeValue(ValueArray.get(r.getColumns()));
+    }
+
+    @Override
+    public void write(DataBuffer buff, Object obj, Lockable lockable) {
+        Row r = (Row) lockable;
+        buff.putVarInt(r.getVersion());
+        buff.writeValue(ValueArray.get((Value[]) obj));
     }
 
     @Override
     public void writeMeta(DataBuffer buff, Object obj) {
-        VersionedValue v = (VersionedValue) obj;
-        buff.putVarInt(v.version);
+        Row r = (Row) obj;
+        buff.putVarInt(r.getVersion());
     }
 
     @Override
     public Object readMeta(ByteBuffer buff, int columnCount) {
         int version = DataUtils.readVarInt(buff);
         Value[] columns = new Value[columnCount];
-        return new VersionedValue(version, columns);
+        return new Row(version, columns);
     }
 
     @Override
     public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
-        VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.columns;
+        Row r = (Row) obj;
+        Value[] columns = r.getColumns();
         if (columnIndex >= 0 && columnIndex < columns.length)
             buff.writeValue(columns[columnIndex]);
     }
 
     @Override
     public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
-        VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.columns;
+        Row r = (Row) obj;
+        Value[] columns = r.getColumns();
         if (columnIndex >= 0 && columnIndex < columns.length) {
             Value value = DataBuffer.readValue(buff);
             columns[columnIndex] = value;
@@ -120,10 +137,10 @@ public class VersionedValueType extends ValueDataType {
     @Override
     public void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
         if (columnIndexes != null) {
-            VersionedValue oldValue = (VersionedValue) oldObj;
-            VersionedValue newValue = (VersionedValue) newObj;
-            Value[] oldColumns = oldValue.columns;
-            Value[] newColumns = newValue.columns;
+            Row oldRow = (Row) oldObj;
+            Row newRow = (Row) newObj;
+            Value[] oldColumns = oldRow.getColumns();
+            Value[] newColumns = newRow.getColumns();
             for (int i : columnIndexes) {
                 oldColumns[i] = newColumns[i];
             }
@@ -132,7 +149,7 @@ public class VersionedValueType extends ValueDataType {
 
     @Override
     public ValueArray getColumns(Object obj) {
-        return ValueArray.get(((VersionedValue) obj).columns);
+        return ValueArray.get(((Row) obj).getColumns());
     }
 
     @Override
@@ -142,8 +159,8 @@ public class VersionedValueType extends ValueDataType {
 
     @Override
     public int getMemory(Object obj, int columnIndex) {
-        VersionedValue v = (VersionedValue) obj;
-        Value[] columns = v.columns;
+        Row r = (Row) obj;
+        Value[] columns = r.getColumns();
         if (columnIndex >= 0 && columnIndex < columns.length) {
             return columns[columnIndex].getMemory();
         } else {
@@ -160,5 +177,12 @@ public class VersionedValueType extends ValueDataType {
         for (int i = 0, len = a.getList().length; i < len; i++) {
             setEnumColumn(a.getValue(i), i);
         }
+    }
+
+    @Override
+    public Object merge(Object fromObj, Object toObj) {
+        Row row = (Row) toObj;
+        row.setKey(((ValueLong) fromObj).getLong());
+        return row;
     }
 }

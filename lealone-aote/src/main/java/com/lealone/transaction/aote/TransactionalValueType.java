@@ -8,6 +8,8 @@ package com.lealone.transaction.aote;
 import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
+import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueArray;
 import com.lealone.storage.type.StorageDataType;
 
@@ -28,11 +30,13 @@ public class TransactionalValueType implements StorageDataType {
 
     @Override
     public int getMemory(Object obj) {
-        TransactionalValue tv = (TransactionalValue) obj;
-        Object v = tv.getValue();
-        if (v == null) // 如果记录已经删除，看看RowLock中是否还有
-            v = tv.getOldValue();
-        return 8 + valueType.getMemory(v);
+        Lockable lockable = (Lockable) obj;
+        if (lockable instanceof TransactionalValue) {
+            obj = Lock.getLockedValue(lockable);
+            return 8 + valueType.getMemory(obj);
+        } else {
+            return valueType.getMemory(lockable);
+        }
     }
 
     @Override
@@ -40,9 +44,9 @@ public class TransactionalValueType implements StorageDataType {
         if (aObj == bObj) {
             return 0;
         }
-        TransactionalValue a = (TransactionalValue) aObj;
-        TransactionalValue b = (TransactionalValue) bObj;
-        long comp = a.getTid() - b.getTid();
+        Lockable a = (Lockable) aObj;
+        Lockable b = (Lockable) bObj;
+        long comp = TransactionalValue.getTid(a) - TransactionalValue.getTid(b);
         if (comp == 0) {
             return valueType.compare(a.getValue(), b.getValue());
         }
@@ -52,7 +56,7 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public void read(ByteBuffer buff, Object[] obj, int len) {
         for (int i = 0; i < len; i++) {
-            obj[i] = read(buff);
+            obj[i] = valueType.merge(obj[i], read(buff));
         }
     }
 
@@ -70,15 +74,15 @@ public class TransactionalValueType implements StorageDataType {
 
     @Override
     public void write(DataBuffer buff, Object obj) {
-        TransactionalValue v = (TransactionalValue) obj;
-        v.write(buff, valueType, isByteStorage);
+        Lockable lockable = (Lockable) obj;
+        TransactionalValue.write(lockable, buff, valueType, isByteStorage);
     }
 
     @Override
     public void writeMeta(DataBuffer buff, Object obj) {
-        TransactionalValue v = (TransactionalValue) obj;
-        v.writeMeta(buff);
-        valueType.writeMeta(buff, v.getValue());
+        Lockable lockable = (Lockable) obj;
+        TransactionalValue.writeMeta(lockable, buff);
+        valueType.writeMeta(buff, lockable.getValue());
     }
 
     @Override
@@ -88,13 +92,13 @@ public class TransactionalValueType implements StorageDataType {
 
     @Override
     public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
-        TransactionalValue v = (TransactionalValue) obj;
+        Lockable v = (Lockable) obj;
         valueType.writeColumn(buff, v.getValue(), columnIndex);
     }
 
     @Override
     public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
-        TransactionalValue v = (TransactionalValue) obj;
+        Lockable v = (Lockable) obj;
         valueType.readColumn(buff, v.getValue(), columnIndex);
     }
 
@@ -115,7 +119,22 @@ public class TransactionalValueType implements StorageDataType {
 
     @Override
     public int getMemory(Object obj, int columnIndex) {
-        TransactionalValue v = (TransactionalValue) obj;
+        Lockable v = (Lockable) obj;
         return valueType.getMemory(v.getValue(), columnIndex);
+    }
+
+    @Override
+    public Object convertToIndexKey(Object key, Object value) {
+        return valueType.convertToIndexKey(key, value);
+    }
+
+    @Override
+    public boolean isKeyOnly() {
+        return valueType.isKeyOnly();
+    }
+
+    @Override
+    public StorageDataType getRawType() {
+        return valueType;
     }
 }

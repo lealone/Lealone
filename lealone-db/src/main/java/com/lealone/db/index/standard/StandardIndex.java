@@ -5,6 +5,7 @@
  */
 package com.lealone.db.index.standard;
 
+import com.lealone.db.index.Cursor;
 import com.lealone.db.index.IndexBase;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
@@ -26,5 +27,9 @@ public abstract class StandardIndex extends IndexBase {
     @Override
     public void close(ServerSession session) {
         // nothing to do
+    }
+
+    // 标记类
+    protected static abstract class StandardIndexCursor implements Cursor {
     }
 }

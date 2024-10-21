@@ -27,7 +27,8 @@ public class Page implements IPage {
     public static Page create(BTreeMap<?, ?> map, int type) {
         switch (type) {
         case PageUtils.PAGE_TYPE_LEAF:
-            return new LeafPage(map);
+            return map.getKeyType().isKeyOnly() ? new KeyPage(map)
+                    : (map.getKeyType().isRowOnly() ? new RowPage(map) : new LeafPage(map));
         case PageUtils.PAGE_TYPE_NODE:
             return new NodePage(map);
         case PageUtils.PAGE_TYPE_COLUMN:
@@ -58,6 +59,10 @@ public class Page implements IPage {
 
     private static RuntimeException ie() {
         return DbException.throwInternalError();
+    }
+
+    public Object getSplitKey(int index) {
+        return getKey(index);
     }
 
     /**

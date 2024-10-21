@@ -5,12 +5,29 @@
  */
 package com.lealone.transaction;
 
+import com.lealone.db.async.AsyncHandler;
+import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.Future;
+import com.lealone.db.lock.Lockable;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.StorageMap;
-import com.lealone.storage.type.StorageDataType;
 
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
+
+    // 以下三个api只是改变返回类型
+
+    @Override
+    public default TransactionMapCursor<K, V> cursor(K from) {
+        return cursor(CursorParameters.create(from));
+    }
+
+    @Override
+    public default TransactionMapCursor<K, V> cursor() {
+        return cursor(CursorParameters.create(null));
+    }
+
+    @Override
+    public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters);
 
     /**
      * Get the raw map.
@@ -35,72 +52,33 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
-    @Override
-    public default TransactionMapCursor<K, V> cursor(K from) {
-        return cursor(CursorParameters.create(from));
-    }
+    public Future<Integer> addIfAbsent(K key, V value);
 
-    @Override
-    public default TransactionMapCursor<K, V> cursor() {
-        return cursor(CursorParameters.create(null));
-    }
+    // 如果也命名为addIfAbsent，调用addIfAbsent(key,lockable)时java的泛型会识别为addIfAbsent(K key, V value)
+    public Future<Integer> addIfAbsentNoCast(K key, Lockable lockable);
 
-    @Override
-    public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters);
-
-    public default Future<Integer> addIfAbsent(K key, V value) {
-        return addIfAbsent(key, value, true);
-    }
-
-    public Future<Integer> addIfAbsent(K key, V value, boolean writeRedoLog);
+    public void appendNoCast(Lockable lockable, AsyncHandler<AsyncResult<K>> handler);
 
     public default int tryUpdate(K key, V newValue) {
-        Object oldTValue = getTransactionalValue(key);
-        return tryUpdate(key, newValue, null, oldTValue);
+        Lockable lockable = getLockableValue(key);
+        return tryUpdate(key, newValue, lockable, false);
     }
 
-    public default int tryUpdate(K key, V newValue, Object oldTValue) {
-        return tryUpdate(key, newValue, null, oldTValue);
-    }
-
-    public default int tryUpdate(K key, V newValue, int[] columnIndexes) {
-        Object oldTValue = getTransactionalValue(key);
-        return tryUpdate(key, newValue, columnIndexes, oldTValue);
-    }
-
-    public default int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue) {
-        return tryUpdate(key, newValue, columnIndexes, oldTValue, false);
-    }
-
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
-            boolean isLockedBySelf);
+    public int tryUpdate(K key, V newValue, Lockable lockable, boolean isLockedBySelf);
 
     public default int tryRemove(K key) {
-        Object oldTValue = getTransactionalValue(key);
-        return tryRemove(key, oldTValue);
+        Lockable lockable = getLockableValue(key);
+        return tryRemove(key, lockable, false);
     }
 
-    public default int tryRemove(K key, Object oldTValue) {
-        return tryRemove(key, oldTValue, false);
-    }
+    public int tryRemove(K key, Lockable lockable, boolean isLockedBySelf);
 
-    public default int tryRemove(K key, Object oldTValue, boolean isLockedBySelf) {
-        return tryRemove(key, oldTValue, isLockedBySelf, true);
-    }
+    public int tryLock(Lockable lockable);
 
-    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf, boolean writeRedoLog);
+    public boolean isLocked(Lockable lockable);
 
-    public default int tryLock(K key, Object oldTValue) {
-        return tryLock(key, oldTValue, null);
-    }
+    public int addWaitingTransaction(Lockable lockable);
 
-    public int tryLock(K key, Object oldTValue, int[] columnIndexes);
+    public Lockable getLockableValue(K key);
 
-    public boolean isLocked(Object oldTValue, int[] columnIndexes);
-
-    public Object getTransactionalValue(K key);
-
-    public StorageDataType getTransactionalValueType();
-
-    public int addWaitingTransaction(Object key, Object oldTValue);
 }

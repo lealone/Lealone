@@ -736,7 +736,7 @@ public class Database extends DbObjectBase implements DataHandler {
         Row row = findMeta(session, id);
         if (row == null)
             throw DbException.get(errorCode, obj.getName());
-        if (meta.tryLockRow(session, row, null) > 0)
+        if (meta.tryLockRow(session, row) > 0)
             return row;
         else
             return null;

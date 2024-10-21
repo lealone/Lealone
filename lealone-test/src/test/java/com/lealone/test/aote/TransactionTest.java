@@ -42,16 +42,16 @@ public class TransactionTest extends AoteTestBase {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        TransactionalValue tv = (TransactionalValue) map1.getTransactionalValue("1");
+        TransactionalValue tv = (TransactionalValue) map1.getLockableValue("1");
         assertTrue(tv.isCommitted());
-        tv = (TransactionalValue) map2.getTransactionalValue("1");
+        tv = (TransactionalValue) map2.getLockableValue("1");
         assertTrue(tv.isCommitted());
 
         t = te.beginTransaction();
         map1 = t.openMap(mapName + "1", storage);
         map1.put("3", "c");
         t.commit();
-        tv = (TransactionalValue) map1.getTransactionalValue("3");
+        tv = (TransactionalValue) map1.getLockableValue("3");
         assertTrue(tv.isCommitted());
     }
 }

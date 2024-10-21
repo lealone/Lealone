@@ -51,7 +51,10 @@ public class IndexColumn {
 
     @Override
     public String toString() {
-        return "IndexColumn [" + columnName + "]";
+        String n = columnName;
+        if (n == null && column != null)
+            n = column.getName();
+        return "IndexColumn [" + n + "]";
     }
 
     /**

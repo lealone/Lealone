@@ -235,7 +235,7 @@ public class ResultTempTable implements ResultExternal {
             }
             // sometimes the transaction is already committed,
             // in which case we can't use the session
-            if (idx.getRowCount(session) == 0 && rowCount > 0) {
+            if (table.getRowCount(session) == 0 && rowCount > 0) {
                 // this means querying is not transactional
                 resultCursor = idx.find((ServerSession) null, null, null);
             } else {
@@ -247,7 +247,7 @@ public class ResultTempTable implements ResultExternal {
             return null;
         }
         Row row = resultCursor.get();
-        return row.getValueList();
+        return row.getColumns();
     }
 
     @Override

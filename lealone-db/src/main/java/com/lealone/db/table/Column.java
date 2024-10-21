@@ -30,7 +30,6 @@ import com.lealone.db.value.ValueDate;
 import com.lealone.db.value.ValueEnum;
 import com.lealone.db.value.ValueInt;
 import com.lealone.db.value.ValueList;
-import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueMap;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueSet;
@@ -273,7 +272,7 @@ public class Column {
                 // 但是defaultExpression要么是sequence要么是没有字段构成的表达式，所以执行getValue不用同步
                 value = localDefaultExpression.getValue(session).convertTo(type);
                 if (primaryKey) {
-                    session.setLastIdentity(value);
+                    session.setLastIdentity(value.getLong());
                 }
             }
         }
@@ -344,7 +343,7 @@ public class Column {
             }
             if (update) {
                 sequence.modify(session, now + inc, null, null, null, true, true);
-                session.setLastIdentity(ValueLong.get(now));
+                session.setLastIdentity(now);
                 sequence.flush(session, 0, true);
             }
             sequence.unlockIfNotTransactional(session);

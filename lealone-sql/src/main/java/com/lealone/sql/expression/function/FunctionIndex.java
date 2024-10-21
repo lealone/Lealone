@@ -40,10 +40,10 @@ public class FunctionIndex extends IndexBase {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        if (functionTable.isBufferResultSetToLocalTemp()) {
-            return new FunctionCursor(functionTable.getResult(session));
-        }
-        return new FunctionCursorResultSet(session, functionTable.getResultSet(session));
+        if (functionTable.isBufferResultSetToLocalTemp())
+            return new FunctionResultCursor(functionTable.getResult(session));
+        else
+            return new FunctionResultSetCursor(session, functionTable.getResultSet(session));
     }
 
     @Override
@@ -61,16 +61,6 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(ServerSession session) {
-        return functionTable.getRowCount(session);
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return functionTable.getRowCountApproximation();
-    }
-
-    @Override
     public String getPlanSQL() {
         return "function";
     }
@@ -80,54 +70,48 @@ public class FunctionIndex extends IndexBase {
         return false;
     }
 
+    private static abstract class FunctionCursor implements Cursor {
+
+        protected Row row;
+
+        @Override
+        public Row get() {
+            return row;
+        }
+    }
+
     /**
      * A cursor for a function that returns a result.
      */
-    private static class FunctionCursor implements Cursor {
+    private static class FunctionResultCursor extends FunctionCursor {
 
         private final Result result;
-        private Value[] values;
-        private Row row;
 
-        FunctionCursor(Result result) {
+        FunctionResultCursor(Result result) {
             this.result = result;
         }
 
         @Override
-        public Row get() {
-            if (values == null) {
-                return null;
-            }
-            if (row == null) {
-                row = new Row(values, 1);
-            }
-            return row;
-        }
-
-        @Override
         public boolean next() {
-            row = null;
             if (result != null && result.next()) {
-                values = result.currentRow();
+                row = new Row(result.currentRow());
             } else {
-                values = null;
+                row = null;
             }
-            return values != null;
+            return row != null;
         }
     }
 
     /**
      * A cursor for a function that returns a JDBC result set.
      */
-    private static class FunctionCursorResultSet implements Cursor {
+    private static class FunctionResultSetCursor extends FunctionCursor {
 
         private final ServerSession session;
         private final ResultSet result;
         private final ResultSetMetaData meta;
-        private Value[] values;
-        private Row row;
 
-        FunctionCursorResultSet(ServerSession session, ResultSet result) {
+        FunctionResultSetCursor(ServerSession session, ResultSet result) {
             this.session = session;
             this.result = result;
             try {
@@ -138,34 +122,23 @@ public class FunctionIndex extends IndexBase {
         }
 
         @Override
-        public Row get() {
-            if (values == null) {
-                return null;
-            }
-            if (row == null) {
-                row = new Row(values, 1);
-            }
-            return row;
-        }
-
-        @Override
         public boolean next() {
-            row = null;
             try {
                 if (result != null && result.next()) {
                     int columnCount = meta.getColumnCount();
-                    values = new Value[columnCount];
+                    Value[] values = new Value[columnCount];
                     for (int i = 0; i < columnCount; i++) {
                         int type = DataType.getValueTypeFromResultSet(meta, i + 1);
                         values[i] = DataType.readValue(session, result, i + 1, type);
                     }
+                    row = new Row(values);
                 } else {
-                    values = null;
+                    row = null;
                 }
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
-            return values != null;
+            return row != null;
         }
     }
 }

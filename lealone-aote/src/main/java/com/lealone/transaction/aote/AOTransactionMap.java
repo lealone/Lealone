@@ -10,6 +10,7 @@ import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.Future;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.SchedulerListener;
 import com.lealone.db.session.Session;
 import com.lealone.storage.CursorParameters;
@@ -28,11 +29,13 @@ import com.lealone.transaction.aote.log.UndoLogRecord;
 public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private final AOTransaction transaction;
-    private final StorageMap<K, TransactionalValue> map;
+    private final StorageMap<K, Lockable> map;
+    private final boolean isKeyOnly;
 
-    public AOTransactionMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
+    public AOTransactionMap(AOTransaction transaction, StorageMap<K, Lockable> map) {
         this.transaction = transaction;
         this.map = map;
+        isKeyOnly = map.getKeyType().isKeyOnly();
     }
 
     public AOTransaction getTransaction() {
@@ -43,35 +46,30 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public StorageDataType getValueType() {
-        return getTransactionalValueType().valueType;
-    }
-
-    @Override
-    public TransactionalValueType getTransactionalValueType() {
-        return (TransactionalValueType) map.getValueType();
+        return map.getValueType().getRawType();
     }
 
     @Override
     public V get(K key) {
-        TransactionalValue tv = map.get(key);
+        Lockable tv = map.get(key);
         return getUnwrapValue(key, tv);
     }
 
     // 外部传进来的值被包装成TransactionalValue了，所以需要拆出来
     @SuppressWarnings("unchecked")
-    private V getUnwrapValue(K key, TransactionalValue tv) {
+    private V getUnwrapValue(K key, Lockable tv) {
         Object v = getValue(key, tv);
         return (V) v;
     }
 
     // 获得当前事务能看到的值，依据不同的隔离级别看到的值是不一样的
-    protected Object getValue(K key, TransactionalValue tv) {
-        // tv为null说明记录不存在
-        if (tv == null)
+    protected Object getValue(K key, Lockable lockable) {
+        // 为null说明记录不存在
+        if (lockable == null)
             return null;
 
-        // 如果tv是未提交的，并且就是当前事务，那么这里也会返回未提交的值
-        Object v = tv.getValue(transaction, map);
+        // 如果lockable是未提交的，并且就是当前事务，那么这里也会返回未提交的值
+        Object v = TransactionalValue.getValue(lockable, transaction, map);
         if (v != null) {
             // 前面的事务已经提交了，但是因为当前事务隔离级别的原因它看不到
             if (v == TransactionalValue.SIGHTLESS)
@@ -79,12 +77,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             else
                 return v;
         }
-
-        // 已经删除
-        if (tv.isCommitted() && tv.getValue() == null)
-            return null;
-
-        // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了
+        // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了或者已经删除
         return null;
     }
 
@@ -196,7 +189,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public TransactionMapCursor<K, V> cursor(CursorParameters<K> parameters) {
         return new TransactionMapCursor<K, V>() {
-            final StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
+            final StorageMapCursor<K, Lockable> cursor = map.cursor(parameters);
             V value;
 
             @Override
@@ -207,11 +200,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             @Override
             public V getValue() {
                 return value;
-            }
-
-            @Override
-            public TransactionalValue getTValue() {
-                return cursor.getValue();
             }
 
             @Override
@@ -325,6 +313,12 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return map.hasUnsavedChanges();
     }
 
+    @Override
+    public Object[] getObjects(K key, int[] columnIndexes) {
+        Object[] objects = map.getObjects(key, columnIndexes);
+        return new Object[] { objects[0], getValue(key, (Lockable) objects[1]) };
+    }
+
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
 
     @Override
@@ -343,32 +337,42 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
-    public Future<Integer> addIfAbsent(K key, V value, boolean writeRedoLog) {
+    public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
+        Lockable lockable;
+        if (value instanceof Lockable)
+            lockable = (Lockable) value;
+        else
+            lockable = new TransactionalValue(value); // 内部没有增加行锁
+        return addIfAbsentNoCast(key, lockable);
+    }
+
+    @Override
+    public Future<Integer> addIfAbsentNoCast(K key, Lockable lockable) {
+        DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
-        TransactionalValue newTV;
         UndoLogRecord r;
         Session session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
-            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
-            r = transaction.undoLog.add(map, key, null, newTV, writeRedoLog);
+            r = addUndoLog(key, lockable, true, null);
+            TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
         } else {
-            newTV = new TransactionalValue(value); // 内部没有增加行锁
             r = null;
         }
         AsyncCallback<Integer> ac = transaction.createCallback();
-        AsyncHandler<AsyncResult<TransactionalValue>> handler = ar -> {
+        AsyncHandler<AsyncResult<Lockable>> handler = ar -> {
             if (ar.isSucceeded()) {
-                TransactionalValue old = ar.getResult();
+                Lockable old = ar.getResult();
                 if (old != null) {
                     // 在提交或回滚时直接忽略即可
                     if (r != null)
                         r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                    if (old.getValue() == null) {
-                        old.setValue(value);
-                        if (r != null)
-                            transaction.undoLog.add(map, key, old.getOldValue(), old, writeRedoLog);
+                    if (old.getLockedValue() == null) {
+                        old.setLockedValue(lockable.getLockedValue());
+                        if (r != null) {
+                            addUndoLog(key, old, true, lockable.getLockedValue());
+                        }
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
                         ac.setAsyncResult(Transaction.OPERATION_DATA_DUPLICATE);
@@ -382,76 +386,59 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                 ac.setAsyncResult(ar.getCause());
             }
         };
-        map.putIfAbsent(transaction.getSession(), key, newTV, handler);
+        map.putIfAbsent(session, key, lockable, handler);
         return ac;
     }
 
     @Override
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTValue,
-            boolean isLockedBySelf) {
+    public int tryUpdate(K key, V newValue, Lockable lockable, boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
-        return tryUpdateOrRemove(key, newValue, columnIndexes, oldTValue, isLockedBySelf);
+        return tryUpdateOrRemove(key, newValue, lockable, isLockedBySelf);
     }
 
     @Override
-    public int tryRemove(K key, Object oldTValue, boolean isLockedBySelf, boolean writeRedoLog) {
-        return tryUpdateOrRemove(key, null, null, oldTValue, isLockedBySelf, writeRedoLog);
+    public int tryRemove(K key, Lockable lockable, boolean isLockedBySelf) {
+        return tryUpdateOrRemove(key, null, lockable, isLockedBySelf);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue,
-            boolean isLockedBySelf) {
-        return tryUpdateOrRemove(key, value, columnIndexes, oldTValue, isLockedBySelf, true);
-    }
-
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, Object oldTValue,
-            boolean isLockedBySelf, boolean writeRedoLog) {
-        DataUtils.checkNotNull(oldTValue, "oldTValue");
+    protected int tryUpdateOrRemove(K key, V value, Lockable lockable, boolean isLockedBySelf) {
         transaction.checkNotClosed();
-        TransactionalValue tv = (TransactionalValue) oldTValue;
+        DataUtils.checkNotNull(lockable, "lockable");
         // 提前调用tryLock的场景直接跳过
-        if (!isLockedBySelf && tv.tryLock(transaction) != 1) {
+        if (!isLockedBySelf && TransactionalValue.tryLock(lockable, transaction) != 1) {
             // 当前行已经被其他事务锁住了
             return Transaction.OPERATION_NEED_WAIT;
         }
-        Object oldValue = tv.getValue();
-        tv.setTransaction(transaction); // 二级索引需要设置
-        tv.setValue(value);
-        transaction.undoLog.add(map, key, oldValue, tv, writeRedoLog);
+        Object oldValue = lockable.getLockedValue();
+        TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
+        lockable.setLockedValue(value);
+        addUndoLog(key, lockable, false, oldValue);
         return Transaction.OPERATION_COMPLETE;
     }
 
     @Override
-    public int addWaitingTransaction(Object key, Object oldTValue) {
-        return ((TransactionalValue) oldTValue).addWaitingTransaction(key, transaction);
-    }
-
-    @Override
-    public int tryLock(K key, Object oldTValue, int[] columnIndexes) {
-        DataUtils.checkNotNull(oldTValue, "oldTValue");
+    public int tryLock(Lockable lockable) {
+        DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
-        TransactionalValue tv = (TransactionalValue) oldTValue;
-        return tv.tryLock(transaction);
+        return TransactionalValue.tryLock(lockable, transaction);
     }
 
     @Override
-    public boolean isLocked(Object oldTValue, int[] columnIndexes) {
-        TransactionalValue tv = (TransactionalValue) oldTValue;
-        return tv.isLocked(transaction);
+    public boolean isLocked(Lockable lockable) {
+        return TransactionalValue.isLocked(transaction, lockable.getLock());
     }
 
     @Override
-    public Object[] getObjects(K key, int[] columnIndexes) {
-        Object[] objects = map.getObjects(key, columnIndexes);
-        TransactionalValue tv = (TransactionalValue) objects[1];
-        return new Object[] { objects[0], tv, getUnwrapValue(key, tv) };
+    public int addWaitingTransaction(Lockable lockable) {
+        return TransactionalValue.addWaitingTransaction(lockable, transaction);
     }
 
     @Override
-    public Object getTransactionalValue(K key) {
+    public Lockable getLockableValue(K key) {
         return map.get(key);
     }
 
@@ -548,29 +535,50 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         append0(session, value, handler);
     }
 
-    // 追加新记录时不会产生事务冲突
+    @Override
+    public void appendNoCast(Lockable lockable, AsyncHandler<AsyncResult<K>> handler) {
+        append0(transaction.getSession(), lockable, handler);
+    }
+
     private K append0(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
         DataUtils.checkNotNull(value, "value");
-        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
-        TransactionalValue newTV;
-        if (isUndoLogEnabled)
-            newTV = new TransactionalValue(value, transaction); // 内部有增加行锁
+        Lockable lockable;
+        if (value instanceof Lockable)
+            lockable = (Lockable) value;
         else
-            newTV = new TransactionalValue(value); // 内部没有增加行锁
+            lockable = new TransactionalValue(value); // 内部没有增加行锁
+        return append0(session, lockable, handler);
+    }
+
+    // 追加新记录时不会产生事务冲突
+    private K append0(Session session, Lockable lockable, AsyncHandler<AsyncResult<K>> handler) {
+        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
+        if (isUndoLogEnabled)
+            TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
         if (handler != null) {
-            map.append(session, newTV, ar -> {
-                if (isUndoLogEnabled && ar.isSucceeded())
-                    transaction.undoLog.add(map, ar.getResult(), null, newTV, true);
+            map.append(session, lockable, ar -> {
+                if (isUndoLogEnabled && ar.isSucceeded()) {
+                    addUndoLog(ar.getResult(), lockable, true, null);
+                }
                 handler.handle(ar);
             });
             return null;
         } else {
-            K key = map.append(newTV);
+            K key = map.append(lockable);
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-            if (isUndoLogEnabled)
-                transaction.undoLog.add(map, key, null, newTV, true);
+            if (isUndoLogEnabled) {
+                addUndoLog(key, lockable, true, null);
+            }
             return key;
+        }
+    }
+
+    private UndoLogRecord addUndoLog(Object key, Lockable lockable, boolean isInsert, Object oldValue) {
+        if (isKeyOnly) {
+            return transaction.undoLog.add(map, key, lockable, isInsert);
+        } else {
+            return transaction.undoLog.add(map, key, lockable, oldValue);
         }
     }
 
@@ -594,28 +602,28 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     private V writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        TransactionalValue oldTValue = map.get(key);
+        Lockable oldLockable = map.get(key);
         // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
-        V retValue = getUnwrapValue(key, oldTValue);
+        V retValue = getUnwrapValue(key, oldLockable);
 
         if (handler != null) {
-            writeOperation(session, key, value, handler, oldTValue, retValue);
+            writeOperation(session, key, value, handler, oldLockable, retValue);
             return retValue;
         } else {
             SchedulerListener<V> listener = SchedulerListener.createSchedulerListener();
-            writeOperation(session, key, value, listener, oldTValue, retValue);
+            writeOperation(session, key, value, listener, oldLockable, retValue);
             return listener.await();
         }
     }
 
     private void writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler,
-            TransactionalValue oldTValue, V retValue) {
+            Lockable oldLockable, V retValue) {
         // insert
-        if (oldTValue == null) {
+        if (oldLockable == null) {
             addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))
                     .onFailure(t -> handler.handle(new AsyncResult<>(t)));
         } else {
-            if (tryUpdateOrRemove(key, value, null, oldTValue, false) == Transaction.OPERATION_COMPLETE)
+            if (tryUpdateOrRemove(key, value, oldLockable, false) == Transaction.OPERATION_COMPLETE)
                 handler.handle(new AsyncResult<>(retValue));
             else
                 handler.handle(new AsyncResult<>(DataUtils.newIllegalStateException(

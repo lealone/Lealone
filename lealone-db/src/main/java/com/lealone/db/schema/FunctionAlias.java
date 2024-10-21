@@ -421,7 +421,7 @@ public class FunctionAlias extends SchemaObjectBase {
                 }
             }
             boolean old = session.isAutoCommit();
-            Value identity = session.getLastScopeIdentity();
+            long identity = session.getLastScopeIdentity();
             // boolean defaultConnection = session.getDatabase().getSettings().defaultConnection;
             try {
                 session.setAutoCommit(false);

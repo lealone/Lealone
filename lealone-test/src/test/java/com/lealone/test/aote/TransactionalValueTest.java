@@ -9,8 +9,8 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
-import com.lealone.db.index.standard.VersionedValue;
-import com.lealone.db.index.standard.VersionedValueType;
+import com.lealone.db.index.standard.RowType;
+import com.lealone.db.result.Row;
 import com.lealone.db.result.SortOrder;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
@@ -43,7 +43,7 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put("2", "b4");
         map.put("2", "b5");
         t.commit();
-        TransactionalValue tv = (TransactionalValue) map.getTransactionalValue("2");
+        TransactionalValue tv = (TransactionalValue) map.getLockableValue("2");
         assertEquals("b5", tv.getValue());
     }
 
@@ -55,7 +55,7 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put("2", "b2");
         map.put("2", "b3");
         t.rollback();
-        TransactionalValue tv = (TransactionalValue) map.getTransactionalValue("2");
+        TransactionalValue tv = (TransactionalValue) map.getLockableValue("2");
         assertNull(tv);
 
         t = te.beginTransaction();
@@ -67,7 +67,7 @@ public class TransactionalValueTest extends AoteTestBase {
         map.put("2", "b3");
         t.rollbackToSavepoint("sp1");
         t.commit();
-        tv = (TransactionalValue) map.getTransactionalValue("2");
+        tv = (TransactionalValue) map.getLockableValue("2");
         assertEquals("b2", tv.getValue());
     }
 
@@ -78,45 +78,45 @@ public class TransactionalValueTest extends AoteTestBase {
         for (int i = 0; i < columns; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
-        VersionedValueType vvType = new VersionedValueType(null, null, sortTypes, columns);
+        RowType type = new RowType(sortTypes, columns);
 
         Transaction t = te.beginTransaction();
-        TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
+        TransactionMap<String, Row> map = t.openMap(mapName, null, type, storage);
         map.clear();
 
         String key = "1";
 
         ValueArray valueArray = createValueArray(0, 0, 0, 0);
-        VersionedValue vv = new VersionedValue(1, valueArray.getList());
-        map.put(key, vv);
+        Row r = new Row(1, valueArray.getList());
+        map.put(key, r);
         t.commit();
 
         Transaction t1 = te.beginTransaction();
-        TransactionMap<String, VersionedValue> map1 = t1.openMap(mapName, storage);
+        TransactionMap<String, Row> map1 = t1.openMap(mapName, storage);
 
         Transaction t2 = te.beginTransaction();
-        TransactionMap<String, VersionedValue> map2 = t2.openMap(mapName, storage);
+        TransactionMap<String, Row> map2 = t2.openMap(mapName, storage);
 
         Transaction t3 = te.beginTransaction();
-        TransactionMap<String, VersionedValue> map3 = t3.openMap(mapName, storage);
+        TransactionMap<String, Row> map3 = t3.openMap(mapName, storage);
 
-        vv = createVersionedValue(map1, key, 0, 10);
-        map1.tryUpdate(key, vv, new int[] { 0 });
-        vv = createVersionedValue(map1, key, 0, 11);
-        map1.tryUpdate(key, vv, new int[] { 0 });
+        r = createRow(map1, key, 0, 10);
+        map1.tryUpdate(key, r);
+        r = createRow(map1, key, 0, 11);
+        map1.tryUpdate(key, r);
 
-        vv = createVersionedValue(map2, key, 1, 20);
-        map2.tryUpdate(key, vv, new int[] { 1 });
-        vv = createVersionedValue(map2, key, 1, 21);
-        map2.tryUpdate(key, vv, new int[] { 1 });
+        r = createRow(map2, key, 1, 20);
+        map2.tryUpdate(key, r);
+        r = createRow(map2, key, 1, 21);
+        map2.tryUpdate(key, r);
 
-        vv = createVersionedValue(map3, key, 2, 30);
-        map3.tryUpdate(key, vv, new int[] { 2 });
-        vv = createVersionedValue(map3, key, 2, 31);
-        map3.tryUpdate(key, vv, new int[] { 2 });
+        r = createRow(map3, key, 2, 30);
+        map3.tryUpdate(key, r);
+        r = createRow(map3, key, 2, 31);
+        map3.tryUpdate(key, r);
 
-        TransactionalValue tv = (TransactionalValue) map3.getTransactionalValue(key);
-        System.out.println(tv);
+        r = (Row) map3.getLockableValue(key);
+        System.out.println(r);
         System.out.println("========");
 
         // t2.commit();
@@ -143,8 +143,8 @@ public class TransactionalValueTest extends AoteTestBase {
             e.printStackTrace();
         }
         System.out.println("========");
-        tv = (TransactionalValue) map3.getTransactionalValue(key);
-        System.out.println(tv);
+        r = (Row) map3.getLockableValue(key);
+        System.out.println(r);
     }
 
     private ValueArray createValueArray(int... values) {
@@ -154,12 +154,11 @@ public class TransactionalValueTest extends AoteTestBase {
         return ValueArray.get(a);
     }
 
-    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key,
-            int columnIndex, int value) {
-        VersionedValue vv = map.get(key);
-        Value[] values = vv.columns.clone();
+    private Row createRow(TransactionMap<String, Row> map, String key, int columnIndex, int value) {
+        Row vv = map.get(key);
+        Value[] values = vv.getColumns().clone();
         values[columnIndex] = ValueInt.get(value);
-        vv = new VersionedValue(1, values);
+        vv = new Row(1, values);
         return vv;
     }
 

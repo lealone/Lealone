@@ -77,7 +77,7 @@ public abstract class QOperator implements Operator {
     }
 
     protected boolean tryLockRow() {
-        return tableIterator.tryLockRow(null) > 0;
+        return tableIterator.tryLockRow() > 0;
     }
 
     @Override

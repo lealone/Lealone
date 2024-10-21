@@ -167,7 +167,7 @@ public class TriggerObject extends SchemaObjectBase {
         if (type != Trigger.SELECT) {
             old = session.setCommitOrRollbackDisabled(true);
         }
-        Value identity = session.getLastScopeIdentity();
+        long identity = session.getLastScopeIdentity();
         try {
             triggerCallback.fire(c2, null, null);
         } catch (Throwable e) {
@@ -249,7 +249,7 @@ public class TriggerObject extends SchemaObjectBase {
         Connection c2 = session.createNestedConnection(false);
         boolean old = session.isAutoCommit();
         boolean oldDisabled = session.setCommitOrRollbackDisabled(true);
-        Value identity = session.getLastScopeIdentity();
+        long identity = session.getLastScopeIdentity();
         try {
             session.setAutoCommit(false);
             triggerCallback.fire(c2, oldList, newList);

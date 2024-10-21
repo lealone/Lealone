@@ -7,9 +7,11 @@ package com.lealone.transaction.aote.log;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
+import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
 import com.lealone.transaction.aote.AOTransactionEngine;
-import com.lealone.transaction.aote.TransactionalValue;
+import com.lealone.transaction.aote.log.UndoLogRecord.KeyOnlyULR;
+import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
 
 // 只有一个线程访问
 public class UndoLog {
@@ -38,9 +40,15 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Object oldValue, TransactionalValue newTV,
-            boolean writeRedoLog) {
-        UndoLogRecord r = new UndoLogRecord(map, key, oldValue, newTV, writeRedoLog);
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
+        return add(new KeyValueULR(map, key, lockable, oldValue));
+    }
+
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, boolean isInsert) {
+        return add(new KeyOnlyULR(map, key, lockable, isInsert));
+    }
+
+    private UndoLogRecord add(UndoLogRecord r) {
         if (first == null) {
             first = last = r;
         } else {

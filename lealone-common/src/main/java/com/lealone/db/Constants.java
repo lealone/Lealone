@@ -200,11 +200,6 @@ public class Constants {
     public static final int MEMORY_POINTER = 8;
 
     /**
-     * The memory needed by a Row.
-     */
-    public static final int MEMORY_ROW = 40;
-
-    /**
      * The name prefix used for indexes that are not explicitly named.
      */
     public static final String PREFIX_INDEX = "INDEX_";

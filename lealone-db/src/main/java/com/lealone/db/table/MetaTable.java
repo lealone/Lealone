@@ -173,7 +173,7 @@ public abstract class MetaTable extends Table {
             v = col.convert(v);
             values[i] = v;
         }
-        Row row = new Row(values, 1);
+        Row row = new Row(values);
         row.setKey(rows.size());
         rows.add(row);
     }

@@ -57,21 +57,6 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(ServerSession session) {
-        return MetaTable.ROW_COUNT_APPROXIMATION;
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return MetaTable.ROW_COUNT_APPROXIMATION;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return meta.getDiskSpaceUsed();
-    }
-
-    @Override
     public String getPlanSQL() {
         return "meta";
     }

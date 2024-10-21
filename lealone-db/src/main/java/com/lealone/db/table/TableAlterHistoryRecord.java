@@ -49,7 +49,7 @@ public class TableAlterHistoryRecord {
             System.arraycopy(values, 0, newValues, 0, position);
             System.arraycopy(values, position, newValues, position + a.length - 1,
                     values.length - position);
-            Row row = new Row(newValues, 0);
+            Row row = new Row(newValues);
             for (int i = 1; i < a.length; i++) {
                 Column column = (Column) session.getParser().parseColumnForTable(a[i]);
                 Value value = null;

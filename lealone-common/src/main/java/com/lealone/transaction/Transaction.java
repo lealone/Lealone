@@ -112,7 +112,8 @@ public interface Transaction {
 
     void rollbackToSavepoint(int savepointId);
 
-    int addWaitingTransaction(Object key, Session session, AsyncHandler<SessionStatus> asyncHandler);
+    int addWaitingTransaction(Object lockedObject, Session session,
+            AsyncHandler<SessionStatus> asyncHandler);
 
     Transaction getParentTransaction();
 

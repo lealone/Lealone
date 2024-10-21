@@ -71,7 +71,7 @@ public class RangeIndex extends IndexBase {
     @Override
     public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         long pos = first ? rangeTable.getMin(session) : rangeTable.getMax(session);
-        return new Row(new Value[] { ValueLong.get(pos) }, 1);
+        return new Row(new Value[] { ValueLong.get(pos) });
     }
 
     @Override
@@ -82,16 +82,6 @@ public class RangeIndex extends IndexBase {
     @Override
     public String getCreateSQL() {
         return null;
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        return rangeTable.getRowCountApproximation();
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return rangeTable.getRowCountApproximation();
     }
 
     /**
@@ -124,7 +114,7 @@ public class RangeIndex extends IndexBase {
             } else {
                 current += step;
             }
-            currentRow = new Row(new Value[] { ValueLong.get(current) }, 1);
+            currentRow = new Row(new Value[] { ValueLong.get(current) });
             return step > 0 ? current <= end : current >= end;
         }
     }

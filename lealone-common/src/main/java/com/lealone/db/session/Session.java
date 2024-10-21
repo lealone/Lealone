@@ -178,7 +178,7 @@ public interface Session extends Closeable {
 
     <T> AsyncCallback<T> createCallback();
 
-    default void setLockedBy(SessionStatus sessionStatus, Transaction lockedBy, Object lockedKey) {
+    default void setLockedBy(SessionStatus sessionStatus, Transaction lockedBy, Object lockedObject) {
     }
 
     default Transaction getTransaction() {

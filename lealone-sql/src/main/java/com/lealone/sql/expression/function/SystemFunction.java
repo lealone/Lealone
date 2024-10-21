@@ -141,10 +141,10 @@ public class SystemFunction extends BuiltInFunction {
             result = ValueString.get(session.getUser().getName());
             break;
         case IDENTITY:
-            result = session.getLastIdentity();
+            result = ValueLong.get(session.getLastIdentity());
             break;
         case SCOPE_IDENTITY:
-            result = session.getLastScopeIdentity();
+            result = ValueLong.get(session.getLastScopeIdentity());
             break;
         case AUTOCOMMIT:
             result = ValueBoolean.get(session.isAutoCommit());

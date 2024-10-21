@@ -28,9 +28,6 @@ import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
-import com.lealone.db.result.SimpleRow;
-import com.lealone.db.result.SimpleRowValue;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.schema.SchemaObjectBase;
 import com.lealone.db.schema.Sequence;
@@ -232,7 +229,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public int tryLockRow(ServerSession session, Row row, int[] lockColumns) {
+    public int tryLockRow(ServerSession session, Row row) {
         throw newUnsupportedException();
     }
 
@@ -564,22 +561,9 @@ public abstract class Table extends SchemaObjectBase {
         return new Row(new Value[columns.length]);
     }
 
-    /**
-     * Get a new simple row object.
-     *
-     * @param singleColumn if only one value need to be stored
-     * @return the simple row object
-     */
-    public SearchRow getTemplateSimpleRow(boolean singleColumn) {
-        if (singleColumn) {
-            return new SimpleRowValue(columns.length);
-        }
-        return new SimpleRow(new Value[columns.length]);
-    }
-
     public synchronized Row getNullRow() {
         if (nullRow == null) {
-            nullRow = new Row(new Value[columns.length], 1);
+            nullRow = new Row(new Value[columns.length]);
             for (int i = 0; i < columns.length; i++) {
                 nullRow.setValue(i, ValueNull.INSTANCE);
             }
@@ -1109,10 +1093,6 @@ public abstract class Table extends SchemaObjectBase {
 
     public Row getRow(Row oldRow) {
         return oldRow;
-    }
-
-    public boolean isRowChanged(Row row) {
-        return false;
     }
 
     public Map<String, String> getParameters() {

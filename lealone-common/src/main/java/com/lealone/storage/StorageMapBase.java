@@ -12,6 +12,7 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.value.ValueLong;
 import com.lealone.storage.type.ObjectDataType;
 import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataType.PrimaryKey;
 
 public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
@@ -61,7 +62,9 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     // 允许多线程并发更新
     @Override
     public void setMaxKey(K key) {
-        if (key instanceof ValueLong) {
+        if (key instanceof PrimaryKey) {
+            setMaxKey(((PrimaryKey) key).getKey());
+        } else if (key instanceof ValueLong) {
             setMaxKey(((ValueLong) key).getLong());
         } else if (key instanceof Number) {
             setMaxKey(((Number) key).longValue());

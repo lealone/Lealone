@@ -67,12 +67,11 @@ public abstract class Lock {
         }
     }
 
-    public int addWaitingTransaction(Object key, Transaction lockedByTransaction, Session session) {
+    public int addWaitingTransaction(Object lockedObject, Transaction lockedByTransaction,
+            Session session) {
         if (lockedByTransaction == null)
             return Transaction.OPERATION_NEED_RETRY;
-
-        return lockedByTransaction.addWaitingTransaction(key, session, null);
-
+        return lockedByTransaction.addWaitingTransaction(lockedObject, session, null);
     }
 
     // 允许子类可以覆盖此方法
@@ -90,5 +89,20 @@ public abstract class Lock {
 
     public LockOwner getLockOwner() {
         return ref.get();
+    }
+
+    public Lockable getLockable() {
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <V> V getLockedValue(Lockable lockable) {
+        Object v = lockable.getLockedValue();
+        if (v == null) {
+            Lock lock = lockable.getLock();
+            if (lock != null && lock.getOldValue() != null)
+                v = lock.getOldValue();
+        }
+        return (V) v;
     }
 }

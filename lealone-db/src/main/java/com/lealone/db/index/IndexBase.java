@@ -267,13 +267,16 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                 }
                 totalSelectivity = 100
                         - ((100 - totalSelectivity) * (100 - column.getSelectivity()) / 100);
-                long distinctRows = rowCount * totalSelectivity / 100; // totalSelectivity变大时distinctRows变大
+                // totalSelectivity变大时distinctRows变大
+                long distinctRows = rowCount * totalSelectivity / 100;
                 if (distinctRows <= 0) {
                     distinctRows = 1;
                 }
-                rows = Math.max(rowCount / distinctRows, 1); // distinctRows变大，则rowCount / distinctRows变小，rows也变小
+                // distinctRows变大，则rowCount / distinctRows变小，rows也变小
+                rows = Math.max(rowCount / distinctRows, 1);
                 cost = 2 + rows; // rows也变小，所以cost也变小
-            } else if ((mask & IndexConditionType.RANGE) == IndexConditionType.RANGE) { // 见TableFilter.getBestPlanItem中的注释
+            } else if ((mask & IndexConditionType.RANGE) == IndexConditionType.RANGE) {
+                // 见TableFilter.getBestPlanItem中的注释
                 cost = 2 + rows / 4; // rows开始时加了1000，所以rows / 4总是大于1的
                 break;
             } else if ((mask & IndexConditionType.START) == IndexConditionType.START) {
@@ -375,11 +378,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         return false;
     }
 
-    @Override
-    public boolean isInMemory() {
-        return false;
-    }
-
     // 以下是DbObject和SchemaObject接口的api实现
 
     @Override
@@ -421,7 +419,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
 
     @Override
     public void checkRename() {
-        // throw DbException.getUnsupportedException("checkRename");
+        // 默认是支持 ALTER INDEX RENAME 的
     }
 
     @Override

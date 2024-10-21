@@ -50,7 +50,6 @@ import com.lealone.db.schema.Schema;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLob;
-import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueString;
 import com.lealone.server.protocol.AckPacket;
@@ -89,8 +88,8 @@ public class ServerSession extends SessionBase {
     private final ArrayList<Lock> locks = new ArrayList<>();
     private Random random;
     private int lockTimeout;
-    private Value lastIdentity = ValueLong.get(0);
-    private Value lastScopeIdentity = ValueLong.get(0);
+    private long lastIdentity;
+    private long lastScopeIdentity;
     private HashMap<String, Table> localTempTables;
     private HashMap<String, Index> localTempTableIndexes;
     private HashMap<String, Constraint> localTempTableConstraints;
@@ -130,6 +129,7 @@ public class ServerSession extends SessionBase {
 
     private Transaction transaction;
     private HashSet<IPage> dirtyPages;
+    private IPage currentPage;
     private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
 
     private ArrayList<Connection> nestedConnections;
@@ -876,20 +876,20 @@ public class ServerSession extends SessionBase {
         return trace;
     }
 
-    public void setLastIdentity(Value last) {
+    public void setLastIdentity(long last) {
         this.lastIdentity = last;
         this.lastScopeIdentity = last;
     }
 
-    public Value getLastIdentity() {
+    public long getLastIdentity() {
         return lastIdentity;
     }
 
-    public void setLastScopeIdentity(Value last) {
+    public void setLastScopeIdentity(long last) {
         this.lastScopeIdentity = last;
     }
 
-    public Value getLastScopeIdentity() {
+    public long getLastScopeIdentity() {
         return lastScopeIdentity;
     }
 
@@ -1299,15 +1299,15 @@ public class ServerSession extends SessionBase {
 
     // 被哪个事务锁住记录了
     private volatile Transaction lockedByTransaction;
-    private Object lockedKey;
+    private Object lockedObject;
     private long lockStartTime;
 
     @Override
     public void setLockedBy(SessionStatus sessionStatus, Transaction lockedByTransaction,
-            Object lockedKey) {
+            Object lockedObject) {
         this.sessionStatus = sessionStatus;
         this.lockedByTransaction = lockedByTransaction;
-        this.lockedKey = lockedKey;
+        this.lockedObject = lockedObject;
         if (lockedByTransaction != null) {
             lockStartTime = System.currentTimeMillis();
             lockedBy = (ServerSession) lockedByTransaction.getSession();
@@ -1354,17 +1354,17 @@ public class ServerSession extends SessionBase {
         if (lockedByTransaction != null
                 && System.currentTimeMillis() - lockStartTime > getLockTimeout()) {
             DbException e = null;
-            String keyStr = lockedKey.toString();
+            String lockedObjectStr = lockedObject.toString();
             // 发生死锁了
             if (lockedBy.lockedByTransaction == transaction) {
                 String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
                 msg += "\r\n" + getMsg(lockedByTransaction.getTransactionId(),
                         lockedByTransaction.getSession(), transaction);
-                msg += ", the locked object: " + keyStr;
+                msg += ", the locked object: " + lockedObjectStr;
                 e = DbException.get(ErrorCode.DEADLOCK_1, msg);
             } else {
                 String msg = getMsg(transaction.getTransactionId(), this, lockedByTransaction);
-                e = DbException.get(ErrorCode.LOCK_TIMEOUT_1, keyStr, msg);
+                e = DbException.get(ErrorCode.LOCK_TIMEOUT_1, lockedObjectStr, msg);
             }
             if (e != null) {
                 if (timeoutListener != null)
@@ -1395,7 +1395,7 @@ public class ServerSession extends SessionBase {
     private void reset() {
         lockedBy = null;
         lockedByTransaction = null;
-        lockedKey = null;
+        lockedObject = null;
         lockStartTime = 0;
     }
 
@@ -1722,6 +1722,15 @@ public class ServerSession extends SessionBase {
     private void clearDirtyPages() {
         dirtyPages = null;
         pageRefs = new ConcurrentHashMap<>();
+        currentPage = null;
+    }
+
+    public IPage getCurrentPage() {
+        return currentPage;
+    }
+
+    public void setCurrentPage(IPage currentPage) {
+        this.currentPage = currentPage;
     }
 
     private boolean markClosed;
