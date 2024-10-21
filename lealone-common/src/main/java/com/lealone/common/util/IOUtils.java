@@ -325,8 +325,12 @@ public class IOUtils {
      * @return the number of bytes read, 0 meaning EOF
      */
     public static int readFully(InputStream in, byte[] buffer) throws IOException {
+        return readFully(in, buffer, buffer.length);
+    }
+
+    public static int readFully(InputStream in, byte[] buffer, int max) throws IOException {
         try {
-            int result = 0, len = buffer.length;
+            int result = 0, len = Math.min(max, buffer.length);
             while (len > 0) {
                 int l = in.read(buffer, result, len);
                 if (l < 0) {
@@ -349,8 +353,12 @@ public class IOUtils {
      * @return the number of characters read
      */
     public static int readFully(Reader in, char[] buffer) throws IOException {
+        return readFully(in, buffer, buffer.length);
+    }
+
+    public static int readFully(Reader in, char[] buffer, int max) throws IOException {
         try {
-            int off = 0, len = buffer.length;
+            int off = 0, len = Math.min(max, buffer.length);
             if (len == 0) {
                 return 0;
             }

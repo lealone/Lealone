@@ -99,7 +99,7 @@ public class ValueLob extends Value {
             char[] buff = new char[Constants.IO_BUFFER_SIZE];
             while (true) {
                 int len = getBufferSize(handler, false, remaining);
-                len = IOUtils.readFully(in, buff);
+                len = IOUtils.readFully(in, buff, len);
                 if (len <= 0) {
                     break;
                 }
@@ -138,7 +138,7 @@ public class ValueLob extends Value {
                     break;
                 }
                 len = getBufferSize(handler, compress, remaining);
-                len = IOUtils.readFully(in, buff);
+                len = IOUtils.readFully(in, buff, len);
                 if (len <= 0) {
                     break;
                 }
