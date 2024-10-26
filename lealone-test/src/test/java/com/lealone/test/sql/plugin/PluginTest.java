@@ -10,8 +10,8 @@ import java.util.Map;
 import org.junit.Test;
 
 import com.lealone.db.LealoneDatabase;
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginBase;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginBase;
 import com.lealone.test.sql.SqlTestBase;
 
 public class PluginTest extends SqlTestBase {

@@ -5,10 +5,10 @@
  */
 package com.lealone.sql.query;
 
-import com.lealone.db.PluginManager;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.lock.DbObjectLock;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.result.ResultTarget;

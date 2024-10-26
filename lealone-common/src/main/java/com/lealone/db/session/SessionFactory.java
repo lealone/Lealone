@@ -6,8 +6,8 @@
 package com.lealone.db.session;
 
 import com.lealone.db.ConnectionInfo;
-import com.lealone.db.Plugin;
 import com.lealone.db.async.Future;
+import com.lealone.db.plugin.Plugin;
 
 public interface SessionFactory extends Plugin {
 

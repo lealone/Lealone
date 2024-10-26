@@ -5,8 +5,8 @@
  */
 package com.lealone.db.service;
 
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginBase;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginBase;
 
 public abstract class ServiceExecutorFactoryBase extends PluginBase implements ServiceExecutorFactory {
 

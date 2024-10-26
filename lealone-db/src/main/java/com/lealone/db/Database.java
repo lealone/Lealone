@@ -43,6 +43,8 @@ import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.lock.DbObjectLock;
+import com.lealone.db.plugin.PluggableEngine;
+import com.lealone.db.plugin.PluginObject;
 import com.lealone.db.row.Row;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;

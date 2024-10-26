@@ -5,8 +5,8 @@
  */
 package com.lealone.net;
 
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginBase;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginBase;
 
 public abstract class NetFactoryBase extends PluginBase implements NetFactory {
 

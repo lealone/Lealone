@@ -19,6 +19,7 @@ import com.lealone.common.util.SortedProperties;
 import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionFactory;

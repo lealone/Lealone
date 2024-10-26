@@ -5,7 +5,7 @@
  */
 package com.lealone.sql.operator;
 
-import com.lealone.db.Plugin;
+import com.lealone.db.plugin.Plugin;
 import com.lealone.db.result.LocalResult;
 import com.lealone.sql.query.Select;
 

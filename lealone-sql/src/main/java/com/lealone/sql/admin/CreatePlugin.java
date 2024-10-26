@@ -12,10 +12,10 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.Utils;
 import com.lealone.db.LealoneDatabase;
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginObject;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.lock.DbObjectLock;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginObject;
 import com.lealone.db.session.ServerSession;
 import com.lealone.sql.SQLStatement;
 

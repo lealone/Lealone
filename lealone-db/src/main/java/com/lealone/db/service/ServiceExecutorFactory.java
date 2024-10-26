@@ -5,7 +5,7 @@
  */
 package com.lealone.db.service;
 
-import com.lealone.db.Plugin;
+import com.lealone.db.plugin.Plugin;
 
 public interface ServiceExecutorFactory extends Plugin {
 

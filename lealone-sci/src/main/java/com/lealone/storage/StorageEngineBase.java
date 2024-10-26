@@ -7,8 +7,8 @@ package com.lealone.storage;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.DataHandler;
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginBase;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginBase;
 import com.lealone.storage.lob.LobStorage;
 
 public abstract class StorageEngineBase extends PluginBase implements StorageEngine {

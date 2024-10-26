@@ -7,7 +7,7 @@ package com.lealone.test.aose;
 
 import org.junit.Test;
 
-import com.lealone.db.PluginManager;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageBuilder;
 import com.lealone.storage.StorageEngine;

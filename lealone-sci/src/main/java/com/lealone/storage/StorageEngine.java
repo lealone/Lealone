@@ -7,8 +7,8 @@ package com.lealone.storage;
 
 import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
-import com.lealone.db.PluggableEngine;
-import com.lealone.db.PluginManager;
+import com.lealone.db.plugin.PluggableEngine;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.storage.lob.LobStorage;
 

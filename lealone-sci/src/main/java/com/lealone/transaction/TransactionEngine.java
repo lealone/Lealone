@@ -8,9 +8,9 @@ package com.lealone.transaction;
 import java.util.List;
 
 import com.lealone.db.Constants;
-import com.lealone.db.PluggableEngine;
-import com.lealone.db.PluginManager;
 import com.lealone.db.RunMode;
+import com.lealone.db.plugin.PluggableEngine;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.storage.StorageMap;
 

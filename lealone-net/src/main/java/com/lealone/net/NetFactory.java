@@ -10,8 +10,8 @@ import java.util.Map;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginManager;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.net.bio.BioNetFactory;
 import com.lealone.net.nio.NioNetFactory;
 

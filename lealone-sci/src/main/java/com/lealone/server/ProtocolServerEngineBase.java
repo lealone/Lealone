@@ -7,8 +7,8 @@ package com.lealone.server;
 
 import java.util.Map;
 
-import com.lealone.db.Plugin;
-import com.lealone.db.PluginBase;
+import com.lealone.db.plugin.Plugin;
+import com.lealone.db.plugin.PluginBase;
 
 public abstract class ProtocolServerEngineBase extends PluginBase implements ProtocolServerEngine {
 

@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.db;
+package com.lealone.db.plugin;
 
 import java.io.IOException;
 import java.net.URLClassLoader;
@@ -11,6 +11,9 @@ import java.net.URLClassLoader;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.StatementBuilder;
+import com.lealone.db.Database;
+import com.lealone.db.DbObjectBase;
+import com.lealone.db.DbObjectType;
 
 /**
  * Represents a database plugin object.

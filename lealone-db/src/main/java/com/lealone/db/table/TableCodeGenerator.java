@@ -5,7 +5,7 @@
  */
 package com.lealone.db.table;
 
-import com.lealone.db.Plugin;
+import com.lealone.db.plugin.Plugin;
 import com.lealone.db.session.ServerSession;
 
 public interface TableCodeGenerator extends Plugin {

@@ -7,7 +7,7 @@ package com.lealone.db.scheduler;
 
 import java.util.Map;
 
-import com.lealone.db.Plugin;
+import com.lealone.db.plugin.Plugin;
 
 public interface SchedulerFactory extends Plugin {
 

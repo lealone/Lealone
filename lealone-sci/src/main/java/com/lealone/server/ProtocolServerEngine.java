@@ -8,7 +8,7 @@ package com.lealone.server;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.lealone.db.PluggableEngine;
+import com.lealone.db.plugin.PluggableEngine;
 
 public interface ProtocolServerEngine extends PluggableEngine {
 

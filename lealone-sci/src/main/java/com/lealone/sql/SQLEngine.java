@@ -6,9 +6,9 @@
 package com.lealone.sql;
 
 import com.lealone.db.Constants;
-import com.lealone.db.PluggableEngine;
-import com.lealone.db.PluginManager;
 import com.lealone.db.command.CommandParameter;
+import com.lealone.db.plugin.PluggableEngine;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.session.Session;
 import com.lealone.db.value.Value;
 
