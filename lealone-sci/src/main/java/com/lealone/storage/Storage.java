@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.zip.ZipOutputStream;
 
 import com.lealone.db.scheduler.SchedulerFactory;
-import com.lealone.storage.type.ObjectDataType;
 import com.lealone.storage.type.StorageDataType;
 
 public interface Storage {
@@ -20,7 +19,7 @@ public interface Storage {
     }
 
     default <K, V> StorageMap<K, V> openMap(String name, Map<String, String> parameters) {
-        return openMap(name, new ObjectDataType(), new ObjectDataType(), parameters);
+        return openMap(name, null, null, parameters);
     }
 
     <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,

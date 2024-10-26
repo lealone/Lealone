@@ -12,7 +12,9 @@ import com.lealone.db.DataBuffer;
 
 public abstract class ValueDataTypeBase implements ValueDataType {
 
-    public abstract int getType();
+    public int getType() {
+        throw newInternalError();
+    }
 
     public void writeValue(DataBuffer buff, Value v) {
         throw newInternalError();

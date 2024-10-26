@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.value.ValueDataType.PrimaryKey;
 import com.lealone.db.value.ValueLong;
-import com.lealone.storage.type.ObjectDataType;
 import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataTypeFactory;
 
 public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
@@ -27,10 +27,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
             Storage storage) {
         DataUtils.checkNotNull(name, "name");
         if (keyType == null) {
-            keyType = new ObjectDataType();
+            keyType = StorageDataTypeFactory.getObjectType();
         }
         if (valueType == null) {
-            valueType = new ObjectDataType();
+            valueType = StorageDataTypeFactory.getObjectType();
         }
         this.name = name;
         this.keyType = keyType;

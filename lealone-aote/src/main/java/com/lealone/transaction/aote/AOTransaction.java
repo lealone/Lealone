@@ -23,8 +23,8 @@ import com.lealone.db.session.SessionStatus;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
-import com.lealone.storage.type.ObjectDataType;
 import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataTypeFactory;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionMap;
 import com.lealone.transaction.aote.lock.RowLock;
@@ -177,9 +177,9 @@ public class AOTransaction implements Transaction {
             StorageDataType valueType, Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
-            keyType = new ObjectDataType();
+            keyType = StorageDataTypeFactory.getObjectType();
         if (valueType == null)
-            valueType = new ObjectDataType();
+            valueType = StorageDataTypeFactory.getObjectType();
         valueType = new TransactionalValueType(valueType, storage.isByteStorage());
 
         if (parameters == null)

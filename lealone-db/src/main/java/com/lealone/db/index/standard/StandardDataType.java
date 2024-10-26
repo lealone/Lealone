@@ -15,9 +15,9 @@ import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 import com.lealone.db.value.ValueNull;
-import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataTypeBase;
 
-public class StandardDataType implements StorageDataType {
+public class StandardDataType extends StorageDataTypeBase {
 
     final DataHandler handler;
     final CompareMode compareMode;

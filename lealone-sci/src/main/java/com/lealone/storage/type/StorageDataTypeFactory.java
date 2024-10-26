@@ -16,13 +16,39 @@ public class StorageDataTypeFactory {
     private StorageDataTypeFactory() {
     }
 
+    public static StorageDataType getIntType() {
+        return getType(Value.INT);
+    }
+
     public static StorageDataType getLongType() {
         return getType(Value.LONG);
     }
 
+    public static StorageDataType getFloatType() {
+        return getType(Value.FLOAT);
+    }
+
+    public static StorageDataType getDoubleType() {
+        return getType(Value.DOUBLE);
+    }
+
+    public static StorageDataType getStringType() {
+        return getType(Value.STRING);
+    }
+
+    public static StorageDataType getObjectType() {
+        return getStorageDataType(new ObjectDataType());
+    }
+
     public static StorageDataType getType(int typeId) {
-        final ValueDataTypeBase type = ObjectDataType.newType(typeId);
+        ValueDataTypeBase type = ObjectDataType.newType(typeId);
+        return getStorageDataType(type);
+    }
+
+    private static StorageDataType getStorageDataType(final ValueDataTypeBase type) {
+
         return new StorageDataTypeBase() {
+
             @Override
             public int getType() {
                 return type.getType();

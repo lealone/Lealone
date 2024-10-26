@@ -18,8 +18,8 @@ import com.lealone.db.value.ValueDataTypeBase;
 
 public class SerializedObjectType extends ValueDataTypeBase {
 
-    private int averageSize = 10000;
     private final ObjectDataType base = new ObjectDataType();
+    private int averageSize = 10000;
 
     @Override
     public int getType() {
