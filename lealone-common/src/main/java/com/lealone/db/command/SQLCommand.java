@@ -3,12 +3,10 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.sql;
+package com.lealone.db.command;
 
 import java.util.List;
 
-import com.lealone.db.Command;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.async.Future;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;

@@ -22,6 +22,7 @@ import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.ConcurrentAsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.async.SingleThreadAsyncCallback;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
@@ -37,7 +38,6 @@ import com.lealone.server.protocol.lob.LobReadAck;
 import com.lealone.server.protocol.session.SessionCancelStatement;
 import com.lealone.server.protocol.session.SessionClose;
 import com.lealone.server.protocol.session.SessionSetAutoCommit;
-import com.lealone.sql.SQLCommand;
 import com.lealone.storage.lob.LobLocalStorage;
 
 /**

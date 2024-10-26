@@ -6,10 +6,10 @@
 package com.lealone.client.session;
 
 import com.lealone.db.ConnectionInfo;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.DelegatedSession;
 import com.lealone.db.session.Session;
-import com.lealone.sql.SQLCommand;
 
 public class AutoReconnectSession extends DelegatedSession {
 

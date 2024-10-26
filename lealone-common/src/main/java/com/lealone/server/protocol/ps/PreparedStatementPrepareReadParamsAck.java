@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.value.Value;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.NetOutputStream;

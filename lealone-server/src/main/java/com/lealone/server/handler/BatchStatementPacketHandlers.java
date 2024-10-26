@@ -9,7 +9,7 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.lealone.db.CommandParameter;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;
 import com.lealone.server.protocol.Packet;

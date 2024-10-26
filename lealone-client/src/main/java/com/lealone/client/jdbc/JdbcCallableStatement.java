@@ -29,10 +29,10 @@ import java.util.Map;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.BitField;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.command.CommandParameter;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.value.ValueNull;
-import com.lealone.sql.SQLCommand;
 
 /**
  * Represents a callable statement.

@@ -8,7 +8,7 @@ package com.lealone.sql;
 import java.util.List;
 import java.util.Set;
 
-import com.lealone.db.CommandParameter;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 
 public interface IQuery {

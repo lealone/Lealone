@@ -5,9 +5,9 @@
  */
 package com.lealone.sql;
 
-import com.lealone.db.CommandParameter;
 import com.lealone.db.Plugin;
 import com.lealone.db.PluginBase;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.schema.Sequence;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;

@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.StatementBuilder;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.Database;
 import com.lealone.db.auth.Right;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;

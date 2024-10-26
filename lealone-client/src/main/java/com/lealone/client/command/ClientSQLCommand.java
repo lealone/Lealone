@@ -14,9 +14,10 @@ import com.lealone.client.result.RowCountDeterminedClientResult;
 import com.lealone.client.result.RowCountUndeterminedClientResult;
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
+import com.lealone.db.command.CommandParameter;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.result.Result;
 import com.lealone.net.TransferInputStream;
 import com.lealone.server.protocol.Packet;
@@ -26,7 +27,6 @@ import com.lealone.server.protocol.statement.StatementQuery;
 import com.lealone.server.protocol.statement.StatementQueryAck;
 import com.lealone.server.protocol.statement.StatementUpdate;
 import com.lealone.server.protocol.statement.StatementUpdateAck;
-import com.lealone.sql.SQLCommand;
 
 public class ClientSQLCommand implements SQLCommand {
 

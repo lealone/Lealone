@@ -8,7 +8,7 @@ package com.lealone.common.trace;
 import java.util.ArrayList;
 
 import com.lealone.common.util.StatementBuilder;
-import com.lealone.db.CommandParameter;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.value.Value;
 
 /**

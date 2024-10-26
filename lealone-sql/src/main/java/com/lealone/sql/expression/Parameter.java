@@ -6,8 +6,8 @@
 package com.lealone.sql.expression;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.value.Value;

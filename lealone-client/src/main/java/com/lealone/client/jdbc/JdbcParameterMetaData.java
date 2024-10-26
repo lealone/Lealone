@@ -12,10 +12,10 @@ import java.util.List;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.MathUtils;
-import com.lealone.db.CommandParameter;
+import com.lealone.db.command.CommandParameter;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.Value;
-import com.lealone.sql.SQLCommand;
 
 /**
  * Information about the parameters of a prepared statement.

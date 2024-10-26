@@ -18,14 +18,14 @@ import com.lealone.client.command.ClientSQLCommand;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.Utils;
-import com.lealone.db.Command;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.Future;
+import com.lealone.db.command.Command;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.Session;
-import com.lealone.sql.SQLCommand;
 
 /**
  * Represents a statement.

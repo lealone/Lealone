@@ -5,6 +5,8 @@
  */
 package com.lealone.sql;
 
+import com.lealone.db.command.SQLCommand;
+
 /**
  * Represents a SQL statement.
  * 

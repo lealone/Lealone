@@ -7,7 +7,7 @@ package com.lealone.server.handler;
 
 import java.util.List;
 
-import com.lealone.db.CommandParameter;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
 import com.lealone.server.protocol.Packet;

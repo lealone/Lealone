@@ -41,6 +41,7 @@ import com.lealone.db.Constants;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.Future;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.session.Session;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.DataType;
@@ -50,7 +51,6 @@ import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
-import com.lealone.sql.SQLCommand;
 
 /**
  * <p>

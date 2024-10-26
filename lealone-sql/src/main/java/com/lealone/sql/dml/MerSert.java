@@ -10,11 +10,11 @@ import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StatementBuilder;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.DataHandler;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.result.ResultTarget;
 import com.lealone.db.row.Row;

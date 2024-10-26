@@ -32,9 +32,10 @@ import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.DateTimeUtils;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.Utils;
-import com.lealone.db.CommandParameter;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.Future;
+import com.lealone.db.command.CommandParameter;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.BlobBase;
 import com.lealone.db.value.ClobBase;
@@ -54,7 +55,6 @@ import com.lealone.db.value.ValueShort;
 import com.lealone.db.value.ValueString;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
-import com.lealone.sql.SQLCommand;
 
 /**
  * Represents a prepared statement.

@@ -13,10 +13,10 @@ import com.lealone.db.DataHandler;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
+import com.lealone.db.command.SQLCommand;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
-import com.lealone.sql.SQLCommand;
 
 public class DelegatedSession implements Session {
 
