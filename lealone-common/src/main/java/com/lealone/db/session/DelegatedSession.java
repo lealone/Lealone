@@ -149,16 +149,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setLobMacSalt(byte[] lobMacSalt) {
-        session.setLobMacSalt(lobMacSalt);
-    }
-
-    @Override
-    public byte[] getLobMacSalt() {
-        return session.getLobMacSalt();
-    }
-
-    @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet,
             AckPacketHandler<R, P> ackPacketHandler) {
         return session.send(packet, ackPacketHandler);
@@ -185,4 +175,8 @@ public class DelegatedSession implements Session {
         return session.createCallback();
     }
 
+    @Override
+    public boolean isBio() {
+        return session.isBio();
+    }
 }

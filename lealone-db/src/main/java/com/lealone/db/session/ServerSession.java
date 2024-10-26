@@ -44,6 +44,7 @@ import com.lealone.db.constraint.Constraint;
 import com.lealone.db.index.Index;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.result.Result;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.schema.Schema;
@@ -74,7 +75,7 @@ import com.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public class ServerSession extends InternalSessionBase {
+public class ServerSession extends SessionBase implements InternalSession {
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -392,7 +393,6 @@ public class ServerSession extends InternalSessionBase {
         return user;
     }
 
-    @Override
     public int getLockTimeout() {
         return lockTimeout;
     }
@@ -1317,9 +1317,40 @@ public class ServerSession extends InternalSessionBase {
         }
     }
 
+    private InternalScheduler scheduler;
+
+    @Override
+    public InternalScheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(InternalScheduler scheduler) {
+        this.scheduler = scheduler;
+    }
+
+    private SessionInfo si;
+
+    @Override
+    public void setSessionInfo(SessionInfo si) {
+        this.si = si;
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return si;
+    }
+
+    private YieldableCommand yieldableCommand;
+
     @Override
     public void setYieldableCommand(YieldableCommand yieldableCommand) {
         this.yieldableCommand = yieldableCommand;
+    }
+
+    @Override
+    public YieldableCommand getYieldableCommand() {
+        return yieldableCommand;
     }
 
     @Override

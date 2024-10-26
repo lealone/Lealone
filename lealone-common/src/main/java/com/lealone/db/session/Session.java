@@ -123,23 +123,12 @@ public interface Session extends Closeable {
 
     ConnectionInfo getConnectionInfo();
 
-    default void setLobMacSalt(byte[] lobMacSalt) {
-    }
-
-    default byte[] getLobMacSalt() {
-        return null;
-    }
-
     // 以后协议修改了再使用版本号区分
     default void setProtocolVersion(int version) {
     }
 
     default int getProtocolVersion() {
         return Constants.TCP_PROTOCOL_VERSION_CURRENT;
-    }
-
-    default int getLockTimeout() {
-        return Integer.MAX_VALUE;
     }
 
     @SuppressWarnings("unchecked")
