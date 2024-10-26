@@ -10,15 +10,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.db.Database;
 import com.lealone.db.async.AsyncPeriodicTask;
-import com.lealone.db.result.Row;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.row.Row;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.StandardTable;
 import com.lealone.db.value.Value;
 
 public class IndexOperator implements Runnable {
 
-    private final Scheduler scheduler;
+    private final InternalScheduler scheduler;
     private final StandardTable table;
     private final ServerSession session;
     private final AsyncPeriodicTask task;
@@ -26,7 +26,7 @@ public class IndexOperator implements Runnable {
     private final LinkedTransferQueue<IndexOperation> indexOperations = new LinkedTransferQueue<>();
     private final AtomicLong indexOperationSize = new AtomicLong(0);
 
-    public IndexOperator(Scheduler scheduler, StandardTable table) {
+    public IndexOperator(InternalScheduler scheduler, StandardTable table) {
         this.scheduler = scheduler;
         this.table = table;
         Database db = table.getDatabase();

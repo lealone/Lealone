@@ -7,18 +7,24 @@ package com.lealone.server.scheduler;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
+import com.lealone.db.DataBufferFactory;
 import com.lealone.db.MemoryManager;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
+import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.db.scheduler.InternalSchedulerBase;
+import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
-import com.lealone.net.NetScheduler;
+import com.lealone.net.NetEventLoop;
+import com.lealone.net.NetFactory;
 import com.lealone.server.AsyncServer;
 import com.lealone.server.AsyncServerManager;
 import com.lealone.server.ProtocolServer;
@@ -28,7 +34,7 @@ import com.lealone.storage.page.PageOperation;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
 import com.lealone.transaction.TransactionEngine;
 
-public class GlobalScheduler extends NetScheduler {
+public class GlobalScheduler extends InternalSchedulerBase implements InternalScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalScheduler.class);
 
@@ -40,10 +46,15 @@ public class GlobalScheduler extends NetScheduler {
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
 
+    private final NetEventLoop netEventLoop;
+
     private YieldableCommand nextBestCommand;
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
-        super(id, "ScheduleService-" + id, schedulerCount, config, true);
+        super(id, "ScheduleService-" + id, schedulerCount, config);
+
+        netEventLoop = NetFactory.getFactory(config).createNetEventLoop(loopInterval, true);
+        netEventLoop.setScheduler(this);
     }
 
     @Override
@@ -118,14 +129,14 @@ public class GlobalScheduler extends NetScheduler {
     }
 
     @Override
-    public void addSession(Session session) {
+    public void addSession(InternalSession session) {
         ServerSession s = (ServerSession) session;
         SessionInfo si = new SessionInfo(this, null, s, -1, -1);
         addSessionInfo(si);
     }
 
     @Override
-    public void removeSession(Session session) {
+    public void removeSession(InternalSession session) {
         if (sessions.isEmpty() || session.isClosed())
             return;
         SessionInfo si = sessions.getHead();
@@ -245,7 +256,7 @@ public class GlobalScheduler extends NetScheduler {
                 }
             }
             try {
-                currentSession = c.getSession();
+                currentSession = (InternalSession) c.getSession();
                 c.run();
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {
@@ -388,6 +399,23 @@ public class GlobalScheduler extends NetScheduler {
         }
     }
 
+    // --------------------- 实现 Scheduler 接口 ---------------------
+
+    @Override
+    public void addSessionInitTask(Object task) {
+        addSessionInitTask((SessionInitTask) task);
+    }
+
+    @Override
+    public void addSessionInfo(Object si) {
+        addSessionInfo((SessionInfo) si);
+    }
+
+    @Override
+    public void removeSessionInfo(Object si) {
+        removeSessionInfo((SessionInfo) si);
+    }
+
     // --------------------- 注册 Accepter ---------------------
 
     @Override
@@ -405,20 +433,42 @@ public class GlobalScheduler extends NetScheduler {
         AsyncServerManager.accept(key, this);
     }
 
-    // --------------------- 实现 Scheduler 接口 ---------------------
+    // --------------------- 网络事件循环相关 ---------------------
 
     @Override
-    public void addSessionInitTask(Object task) {
-        addSessionInitTask((SessionInitTask) task);
+    public DataBufferFactory getDataBufferFactory() {
+        return netEventLoop.getDataBufferFactory();
     }
 
     @Override
-    public void addSessionInfo(Object si) {
-        addSessionInfo((SessionInfo) si);
+    public NetEventLoop getNetEventLoop() {
+        return netEventLoop;
     }
 
     @Override
-    public void removeSessionInfo(Object si) {
-        removeSessionInfo((SessionInfo) si);
+    public Selector getSelector() {
+        return netEventLoop.getSelector();
+    }
+
+    @Override
+    public void wakeUp() {
+        netEventLoop.wakeup();
+    }
+
+    @Override
+    protected void runEventLoop() {
+        try {
+            netEventLoop.write();
+            netEventLoop.select();
+            netEventLoop.handleSelectedKeys();
+        } catch (Throwable t) {
+            getLogger().warn("Failed to runEventLoop", t);
+        }
+    }
+
+    @Override
+    protected void onStopped() {
+        super.onStopped();
+        netEventLoop.close();
     }
 }

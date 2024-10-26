@@ -17,9 +17,9 @@ import com.lealone.common.util.Utils;
 import com.lealone.db.SysProperties;
 import com.lealone.db.auth.Right;
 import com.lealone.db.index.Index;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.table.Column;
@@ -979,7 +979,7 @@ public class TableFilter extends ColumnResolverBase {
     @Override
     public Value getExpressionValue(Session session, IExpression e, Object data) {
         setSession((ServerSession) session);
-        set((com.lealone.db.result.Row) data);
+        set((com.lealone.db.row.Row) data);
         return e.getValue(session);
     }
 

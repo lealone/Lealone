@@ -17,7 +17,6 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the DECIMAL data type.
@@ -278,7 +277,7 @@ public class ValueDecimal extends Value {
         return bd.setScale(scale, RoundingMode.HALF_UP);
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

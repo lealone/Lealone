@@ -17,9 +17,9 @@ import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.lock.Lockable;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.StandardTable;
@@ -411,8 +411,8 @@ public class StandardSecondaryIndex extends StandardIndex {
         private final TransactionMapCursor<IndexKey, IndexKey> tmCursor;
         private final SearchRow last;
 
-        public SsiRegularCursor(ServerSession session,
-                TransactionMapCursor<IndexKey, IndexKey> tmCursor, SearchRow last) {
+        public SsiRegularCursor(ServerSession session, TransactionMapCursor<IndexKey, IndexKey> tmCursor,
+                SearchRow last) {
             super(session);
             this.tmCursor = tmCursor;
             this.last = last;

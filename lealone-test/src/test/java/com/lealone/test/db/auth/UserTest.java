@@ -9,7 +9,7 @@ import org.junit.Test;
 
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.auth.User;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.SearchRow;
 import com.lealone.test.db.DbObjectTestBase;
 
 public class UserTest extends DbObjectTestBase {

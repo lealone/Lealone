@@ -17,7 +17,7 @@ import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.result.ResultTarget;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;

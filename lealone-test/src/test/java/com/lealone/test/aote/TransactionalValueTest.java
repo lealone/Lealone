@@ -9,9 +9,9 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
-import com.lealone.db.index.standard.RowType;
-import com.lealone.db.result.Row;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.RowType;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 import com.lealone.db.value.ValueInt;

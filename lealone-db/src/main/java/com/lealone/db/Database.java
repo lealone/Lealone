@@ -43,8 +43,8 @@ import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.lock.DbObjectLock;
-import com.lealone.db.result.Row;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.row.Row;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.schema.Schema;
@@ -77,6 +77,7 @@ import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.fs.FileUtils;
 import com.lealone.storage.lob.LobStorage;
 import com.lealone.transaction.TransactionEngine;
+import com.lealone.transaction.TransactionEngine.GcTask;
 
 /**
  * There is one database object per open database.
@@ -1032,9 +1033,9 @@ public class Database extends DbObjectBase implements DataHandler {
         return role;
     }
 
-    private void setSessionScheduler(ServerSession session, Scheduler scheduler) {
+    private void setSessionScheduler(ServerSession session, InternalScheduler scheduler) {
         if (scheduler == null) {
-            scheduler = SchedulerThread.currentScheduler();
+            scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
             if (scheduler == null)
                 DbException.throwInternalError();
         }
@@ -1059,12 +1060,13 @@ public class Database extends DbObjectBase implements DataHandler {
         return createSession(user, ci, null);
     }
 
-    public ServerSession createSession(User user, Scheduler scheduler) {
+    public ServerSession createSession(User user, InternalScheduler scheduler) {
         return createSession(user, null, scheduler);
     }
 
     // 创建session是低频且不耗时的操作，所以直接用synchronized即可，不必搞成异步增加复杂性
-    public synchronized ServerSession createSession(User user, ConnectionInfo ci, Scheduler scheduler) {
+    public synchronized ServerSession createSession(User user, ConnectionInfo ci,
+            InternalScheduler scheduler) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }
@@ -1735,7 +1737,7 @@ public class Database extends DbObjectBase implements DataHandler {
         return getInternalConnection(systemSession);
     }
 
-    public Connection getInternalConnection(Scheduler scheduler) {
+    public Connection getInternalConnection(InternalScheduler scheduler) {
         ServerSession session = createSession(getSystemUser(), scheduler);
         return getInternalConnection(session);
     }
@@ -1817,7 +1819,7 @@ public class Database extends DbObjectBase implements DataHandler {
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null) {
             setLobStorage(storageEngine.getLobStorage(this, storage));
-            transactionEngine.addGcTask(lobStorage);
+            transactionEngine.addGcTask((GcTask) lobStorage);
         }
         return storage;
     }
@@ -1994,7 +1996,7 @@ public class Database extends DbObjectBase implements DataHandler {
         state = State.CLOSED;
         LealoneDatabase.getInstance().dropDatabase(getName());
         if (lobStorage != null) {
-            getTransactionEngine().removeGcTask(lobStorage);
+            getTransactionEngine().removeGcTask((GcTask) lobStorage);
         }
         for (Storage storage : getStorages()) {
             storage.drop();

@@ -9,10 +9,10 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.db.scheduler.SchedulerThread;
-import com.lealone.db.session.Session;
+import com.lealone.db.session.InternalSession;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
 import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
@@ -43,7 +43,7 @@ public class PageReference {
         return parentRef;
     }
 
-    public boolean tryLock(Scheduler newLockOwner, boolean waitingIfLocked) {
+    public boolean tryLock(InternalScheduler newLockOwner, boolean waitingIfLocked) {
         return schedulerLock.tryLock(newLockOwner, waitingIfLocked);
     }
 
@@ -122,12 +122,13 @@ public class PageReference {
         if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
-        Scheduler scheduler = SchedulerThread.currentScheduler(bs.getSchedulerFactory());
+        InternalScheduler scheduler = (InternalScheduler) SchedulerThread
+                .currentScheduler(bs.getSchedulerFactory());
         // 如果当前线程已经加过锁了，可以安全返回page
         boolean ok = schedulerLock.getLockOwner() != scheduler && !inMemory;
         if (ok) {
             if (scheduler != null) {
-                Session s = scheduler.getCurrentSession();
+                InternalSession s = scheduler.getCurrentSession();
                 if (s != null) {
                     s.addPageReference(this);
                 } else {
@@ -328,7 +329,7 @@ public class PageReference {
         if (te == null)
             return true;
         for (Transaction t : te.currentTransactions()) {
-            Session s = t.getSession();
+            InternalSession s = t.getSession();
             if (s != null && s.containsPageReference(this) && s.isForUpdate())
                 return false;
         }
@@ -373,10 +374,10 @@ public class PageReference {
     }
 
     public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
-            PageReference ref, Page newPage, Scheduler scheduler) {
+            PageReference ref, Page newPage, InternalScheduler scheduler) {
         PageReference lRef = tmpNodePage.left;
         PageReference rRef = tmpNodePage.right;
-        Session session = scheduler.getCurrentSession();
+        InternalSession session = scheduler.getCurrentSession();
         TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
         while (true) {
             // 先取出旧值再进行addPageReference，否则会有并发问题
@@ -411,7 +412,7 @@ public class PageReference {
     private static void addPageReference(PageReference oldRef, PageReference lRef, PageReference rRef,
             TransactionEngine te) {
         for (Transaction t : te.currentTransactions()) {
-            Session s = t.getSession();
+            InternalSession s = t.getSession();
             if (s != null) {
                 s.addPageReference(oldRef, lRef, rRef);
             }

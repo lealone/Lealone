@@ -9,8 +9,8 @@ import java.util.ArrayList;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.Utils;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.stats.QueryStatisticsData;

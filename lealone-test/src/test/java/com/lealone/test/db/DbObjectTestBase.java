@@ -16,7 +16,7 @@ import com.lealone.db.LealoneDatabase;
 import com.lealone.db.auth.Role;
 import com.lealone.db.auth.User;
 import com.lealone.db.result.Result;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;

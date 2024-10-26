@@ -5,8 +5,8 @@
  */
 package com.lealone.db.index;
 
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 
 /**
  * A cursor is a helper object to iterate through an index.

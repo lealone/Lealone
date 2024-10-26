@@ -11,7 +11,7 @@ import com.lealone.common.util.MathUtils;
 import com.lealone.db.Database;
 import com.lealone.db.api.DatabaseEventListener;
 import com.lealone.db.async.AsyncPeriodicTask;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;
 

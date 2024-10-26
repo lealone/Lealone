@@ -24,12 +24,13 @@ import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLob;
-import com.lealone.db.value.ValueLong;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageMapCursor;
 import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.lob.LobStorage;
+import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataTypeFactory;
 import com.lealone.transaction.TransactionEngine;
 
 /**
@@ -40,7 +41,7 @@ import com.lealone.transaction.TransactionEngine;
  * @author zhh
  */
 // 把所有的大对象(BLOB/CLOB)变成流，然后通过2个BTreeMap配合完成对大对象的存储
-public class LobStreamStorage implements LobStorage {
+public class LobStreamStorage implements LobStorage, com.lealone.transaction.TransactionEngine.GcTask {
 
     private static final boolean TRACE = false;
 
@@ -110,8 +111,9 @@ public class LobStreamStorage implements LobStorage {
     private synchronized void lazyInit() {
         if (lobMap != null)
             return;
-        BTreeMap<Long, Object[]> lobMap = storage.openBTreeMap("lobMap", ValueLong.type, null, null);
-        lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData", ValueLong.type, null, null));
+        StorageDataType longType = StorageDataTypeFactory.getLongType();
+        BTreeMap<Long, Object[]> lobMap = storage.openBTreeMap("lobMap", longType, null, null);
+        lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData", longType, null, null));
         if (!lobStreamMap.isEmpty()) {
             // search the last referenced block
             // (a lob may not have any referenced blocks if data is kept inline, so we need to loop)

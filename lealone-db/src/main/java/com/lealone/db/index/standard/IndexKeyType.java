@@ -10,12 +10,12 @@ import java.nio.ByteBuffer;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
 import com.lealone.db.lock.Lock;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 
-public class IndexKeyType extends ValueDataType {
+public class IndexKeyType extends StandardDataType {
 
     private final StandardSecondaryIndex index;
 

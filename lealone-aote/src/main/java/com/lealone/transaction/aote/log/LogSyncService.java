@@ -12,10 +12,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.common.util.Awaiter;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.RunMode;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.db.util.Awaiter;
 import com.lealone.transaction.PendingTransaction;
 import com.lealone.transaction.aote.AOTransaction;
 
@@ -31,7 +31,7 @@ public abstract class LogSyncService extends Thread {
     private final AtomicLong asyncLogQueueSize = new AtomicLong();
     private final AtomicLong lastLogId = new AtomicLong();
 
-    private final Scheduler[] waitingSchedulers;
+    private final InternalScheduler[] waitingSchedulers;
 
     // 只要达到一定的阈值就可以立即同步了
     private final int redoLogRecordSyncThreshold;
@@ -48,7 +48,7 @@ public abstract class LogSyncService extends Thread {
         setDaemon(RunMode.isEmbedded(config));
         // 多加一个，给其他类型的调度器使用，比如集群环境下checkpoint服务线程也是个调度器
         int schedulerCount = MapUtils.getSchedulerCount(config) + 1;
-        waitingSchedulers = new Scheduler[schedulerCount];
+        waitingSchedulers = new InternalScheduler[schedulerCount];
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config, this);
     }
@@ -65,7 +65,7 @@ public abstract class LogSyncService extends Thread {
         return asyncLogQueueSize;
     }
 
-    public Scheduler[] getWaitingSchedulers() {
+    public InternalScheduler[] getWaitingSchedulers() {
         return waitingSchedulers;
     }
 
@@ -144,7 +144,7 @@ public abstract class LogSyncService extends Thread {
     }
 
     protected void asyncWrite(PendingTransaction pt) {
-        Scheduler scheduler = pt.getScheduler();
+        InternalScheduler scheduler = pt.getScheduler();
         scheduler.addPendingTransaction(pt);
         waitingSchedulers[scheduler.getId()] = scheduler;
         asyncLogQueueSize.getAndIncrement();

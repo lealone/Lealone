@@ -14,7 +14,6 @@ import com.lealone.common.util.MathUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.SysProperties;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the VARCHAR data type.
@@ -179,7 +178,7 @@ public class ValueString extends Value {
 
     public static final StringDataType type = new StringDataType();
 
-    public static final class StringDataType extends StorageDataTypeBase {
+    public static final class StringDataType extends ValueDataTypeBase {
 
         private StringDataType() {
         }

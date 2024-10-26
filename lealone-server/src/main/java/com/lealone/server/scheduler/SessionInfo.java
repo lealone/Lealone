@@ -10,7 +10,7 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.server.AsyncServerConnection;
 import com.lealone.sql.PreparedSQLStatement;
@@ -21,7 +21,7 @@ public class SessionInfo extends LinkableBase<SessionInfo>
 
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
-    private final Scheduler scheduler;
+    private final InternalScheduler scheduler;
     private final AsyncServerConnection conn;
 
     private final ServerSession session;
@@ -33,7 +33,7 @@ public class SessionInfo extends LinkableBase<SessionInfo>
     // task统一由scheduler调度执行
     private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
-    public SessionInfo(Scheduler scheduler, AsyncServerConnection conn, ServerSession session,
+    public SessionInfo(InternalScheduler scheduler, AsyncServerConnection conn, ServerSession session,
             int sessionId, int sessionTimeout) {
         this.scheduler = scheduler;
         this.conn = conn;

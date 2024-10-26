@@ -16,7 +16,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.index.Index;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.result.Result;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;

@@ -14,12 +14,8 @@ import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncTaskHandler;
 import com.lealone.db.session.Session;
 import com.lealone.server.ProtocolServer;
-import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.storage.fs.FileStorage;
-import com.lealone.storage.page.PageOperation;
-import com.lealone.transaction.PendingTransaction;
 
-public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener.Factory {
+public interface Scheduler extends AsyncTaskHandler, Runnable {
 
     int getId();
 
@@ -43,9 +39,13 @@ public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener
 
     boolean isStopped();
 
-    void addSession(Session session);
+    void wakeUp();
 
-    void removeSession(Session session);
+    Session getCurrentSession();
+
+    void setCurrentSession(Session currentSession);
+
+    void executeNextStatement();
 
     DataBufferFactory getDataBufferFactory();
 
@@ -56,42 +56,4 @@ public interface Scheduler extends AsyncTaskHandler, Runnable, SchedulerListener
     void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
 
     void accept(SelectionKey key);
-
-    void addSessionInitTask(Object task);
-
-    void addSessionInfo(Object si);
-
-    void removeSessionInfo(Object si);
-
-    void validateSession(boolean isUserAndPasswordCorrect);
-
-    void addPendingTransaction(PendingTransaction pt);
-
-    PendingTransaction getPendingTransaction();
-
-    void setFsyncDisabled(boolean fsyncDisabled);
-
-    boolean isFsyncDisabled();
-
-    void setFsyncingFileStorage(FileStorage fsyncingFileStorage);
-
-    FileStorage getFsyncingFileStorage();
-
-    void handlePageOperation(PageOperation po);
-
-    void addWaitingScheduler(Scheduler scheduler);
-
-    void wakeUpWaitingSchedulers();
-
-    void wakeUpWaitingSchedulers(boolean reset);
-
-    Session getCurrentSession();
-
-    void setCurrentSession(Session currentSession);
-
-    void executeNextStatement();
-
-    boolean yieldIfNeeded(PreparedSQLStatement current);
-
-    void wakeUp();
 }

@@ -16,7 +16,6 @@ import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the UUID data type.
@@ -224,7 +223,7 @@ public class ValueUuid extends Value {
         return DISPLAY_SIZE;
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

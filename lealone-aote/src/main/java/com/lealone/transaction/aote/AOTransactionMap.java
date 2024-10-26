@@ -12,7 +12,7 @@ import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.Future;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.SchedulerListener;
-import com.lealone.db.session.Session;
+import com.lealone.db.session.InternalSession;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageMap;
@@ -352,7 +352,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
         UndoLogRecord r;
-        Session session = transaction.getSession();
+        InternalSession session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
             r = addUndoLog(key, lockable, true, null);
             TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
@@ -455,11 +455,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void put(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    public void put(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         put0(session, key, value, handler);
     }
 
-    private V put0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    private V put0(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         DataUtils.checkNotNull(value, "value");
         return writeOperation(session, key, value, handler);
     }
@@ -475,11 +475,13 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void putIfAbsent(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    public void putIfAbsent(InternalSession session, K key, V value,
+            AsyncHandler<AsyncResult<V>> handler) {
         putIfAbsent0(session, key, value, handler);
     }
 
-    private V putIfAbsent0(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    private V putIfAbsent0(InternalSession session, K key, V value,
+            AsyncHandler<AsyncResult<V>> handler) {
         V v = get(key);
         if (v == null) {
             DataUtils.checkNotNull(value, "value");
@@ -499,12 +501,12 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void replace(Session session, K key, V oldValue, V newValue,
+    public void replace(InternalSession session, K key, V oldValue, V newValue,
             AsyncHandler<AsyncResult<Boolean>> handler) {
         replace0(session, key, oldValue, newValue, handler);
     }
 
-    private boolean replace0(Session session, K key, V oldValue, V newValue,
+    private boolean replace0(InternalSession session, K key, V oldValue, V newValue,
             AsyncHandler<AsyncResult<Boolean>> handler) {
         V old = get(key);
         if (areValuesEqual(old, oldValue)) {
@@ -531,7 +533,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void append(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+    public void append(InternalSession session, V value, AsyncHandler<AsyncResult<K>> handler) {
         append0(session, value, handler);
     }
 
@@ -540,7 +542,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         append0(transaction.getSession(), lockable, handler);
     }
 
-    private K append0(Session session, V value, AsyncHandler<AsyncResult<K>> handler) {
+    private K append0(InternalSession session, V value, AsyncHandler<AsyncResult<K>> handler) {
         DataUtils.checkNotNull(value, "value");
         Lockable lockable;
         if (value instanceof Lockable)
@@ -551,7 +553,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     // 追加新记录时不会产生事务冲突
-    private K append0(Session session, Lockable lockable, AsyncHandler<AsyncResult<K>> handler) {
+    private K append0(InternalSession session, Lockable lockable, AsyncHandler<AsyncResult<K>> handler) {
         boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
         if (isUndoLogEnabled)
             TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
@@ -593,15 +595,16 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void remove(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+    public void remove(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
         remove0(session, key, handler);
     }
 
-    private V remove0(Session session, K key, AsyncHandler<AsyncResult<V>> handler) {
+    private V remove0(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
         return writeOperation(session, key, null, handler);
     }
 
-    private V writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    private V writeOperation(InternalSession session, K key, V value,
+            AsyncHandler<AsyncResult<V>> handler) {
         Lockable oldLockable = map.get(key);
         // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
         V retValue = getUnwrapValue(key, oldLockable);
@@ -616,8 +619,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    private void writeOperation(Session session, K key, V value, AsyncHandler<AsyncResult<V>> handler,
-            Lockable oldLockable, V retValue) {
+    private void writeOperation(InternalSession session, K key, V value,
+            AsyncHandler<AsyncResult<V>> handler, Lockable oldLockable, V retValue) {
         // insert
         if (oldLockable == null) {
             addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))

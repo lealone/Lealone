@@ -20,7 +20,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
 import com.lealone.common.trace.TraceSystem;
-import com.lealone.common.util.ExpiringMap;
 import com.lealone.common.util.SmallLRUCache;
 import com.lealone.db.Command;
 import com.lealone.db.ConnectionInfo;
@@ -48,6 +47,7 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.table.Table;
+import com.lealone.db.util.ExpiringMap;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueNull;
@@ -69,12 +69,12 @@ import com.lealone.transaction.Transaction;
 /**
  * A session represents an embedded database connection. When using the server
  * mode, this object resides on the server side and communicates with a
- * Session object on the client side.
+ * InternalSession object on the client side.
  *
  * @author H2 Group
  * @author zhh
  */
-public class ServerSession extends SessionBase {
+public class ServerSession extends InternalSessionBase {
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -563,7 +563,7 @@ public class ServerSession extends SessionBase {
         rollbackCurrentCommand(null);
     }
 
-    private void rollbackCurrentCommand(Session newSession) {
+    private void rollbackCurrentCommand(InternalSession newSession) {
         rollbackTo(currentCommandSavepointId);
         int size = locks.size();
         if (currentCommandLockIndex < size) {
@@ -1374,7 +1374,7 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private static String getMsg(long tid, Session session, Transaction transaction) {
+    private static String getMsg(long tid, InternalSession session, Transaction transaction) {
         return "transaction #" + tid + " in session " + session + " wait for transaction #"
                 + transaction.getTransactionId() + " in session " + transaction.getSession();
     }

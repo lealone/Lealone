@@ -11,7 +11,6 @@ import java.io.Reader;
 import java.util.zip.ZipOutputStream;
 
 import com.lealone.db.value.ValueLob;
-import com.lealone.transaction.TransactionEngine;
 
 /**
  * A mechanism to store and retrieve lob data.
@@ -19,7 +18,7 @@ import com.lealone.transaction.TransactionEngine;
  * @author H2 Group
  * @author zhh
  */
-public interface LobStorage extends com.lealone.transaction.TransactionEngine.GcTask {
+public interface LobStorage {
 
     /**
      * The table id for session variables (LOBs not assigned to a table).
@@ -32,10 +31,6 @@ public interface LobStorage extends com.lealone.transaction.TransactionEngine.Gc
     int TABLE_TEMP = -2;
 
     default void save() {
-    }
-
-    @Override
-    default void gc(TransactionEngine te) {
     }
 
     default void close() {

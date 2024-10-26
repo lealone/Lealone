@@ -16,6 +16,7 @@ import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.auth.User;
 import com.lealone.db.scheduler.EmbeddedScheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.db.scheduler.SchedulerThread;
@@ -87,7 +88,7 @@ public class ServerSessionFactory extends SessionFactoryBase {
     // 只能有一个线程初始化数据库
     private boolean initDatabase(Database database, ConnectionInfo ci) {
         SchedulerLock schedulerLock = database.getSchedulerLock();
-        if (schedulerLock.tryLock(SchedulerThread.currentScheduler())) {
+        if (schedulerLock.tryLock((InternalScheduler) SchedulerThread.currentScheduler())) {
             try {
                 // sharding模式下访问remote page时会用到
                 database.setLastConnectionInfo(ci);

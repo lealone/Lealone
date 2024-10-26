@@ -7,7 +7,7 @@ package com.lealone.sql.query;
 
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.Index;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.value.Value;
 
 // 单字段/多字段distinct

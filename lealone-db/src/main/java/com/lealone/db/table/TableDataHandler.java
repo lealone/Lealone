@@ -16,6 +16,7 @@ import com.lealone.storage.StorageBuilder;
 import com.lealone.storage.StorageEngine;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.lob.LobStorage;
+import com.lealone.transaction.TransactionEngine.GcTask;
 
 public class TableDataHandler implements DataHandler {
 
@@ -29,7 +30,7 @@ public class TableDataHandler implements DataHandler {
         StorageBuilder storageBuilder = db.getStorageBuilder(storageEngine, storagePath);
         Storage storage = storageBuilder.openStorage();
         lobStorage = storageEngine.getLobStorage(this, storage);
-        db.getTransactionEngine().addGcTask(lobStorage);
+        db.getTransactionEngine().addGcTask((GcTask) lobStorage);
     }
 
     @Override

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.net.AsyncConnection;
@@ -133,7 +134,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public void registerAccepter(ServerSocketChannel serverChannel) {
-        Scheduler scheduler = schedulerFactory.getScheduler();
+        InternalScheduler scheduler = (InternalScheduler) schedulerFactory.getScheduler();
         scheduler.registerAccepter(this, serverChannel);
     }
 

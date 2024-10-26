@@ -13,11 +13,9 @@ import com.lealone.db.DataHandler;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
-import com.lealone.db.scheduler.Scheduler;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
-import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.sql.SQLCommand;
 
 public class DelegatedSession implements Session {
@@ -47,16 +45,6 @@ public class DelegatedSession implements Session {
     @Override
     public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
         return session.createSQLCommand(sql, fetchSize, prepared);
-    }
-
-    @Override
-    public SessionStatus getStatus() {
-        return session.getStatus();
-    }
-
-    @Override
-    public void setStatus(SessionStatus sessionStatus) {
-        session.setStatus(sessionStatus);
     }
 
     @Override
@@ -197,48 +185,4 @@ public class DelegatedSession implements Session {
         return session.createCallback();
     }
 
-    @Override
-    public Scheduler getScheduler() {
-        return session.getScheduler();
-    }
-
-    @Override
-    public void setScheduler(Scheduler scheduler) {
-        session.setScheduler(scheduler);
-    }
-
-    @Override
-    public void setYieldableCommand(YieldableCommand yieldableCommand) {
-        session.setYieldableCommand(yieldableCommand);
-    }
-
-    @Override
-    public YieldableCommand getYieldableCommand() {
-        return session.getYieldableCommand();
-    }
-
-    @Override
-    public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
-        return session.getYieldableCommand(checkTimeout, timeoutListener);
-    }
-
-    @Override
-    public void init() {
-        session.init();
-    }
-
-    @Override
-    public boolean isBio() {
-        return session.isBio();
-    }
-
-    @Override
-    public void setSessionInfo(SessionInfo si) {
-        session.setSessionInfo(si);
-    }
-
-    @Override
-    public SessionInfo getSessionInfo() {
-        return session.getSessionInfo();
-    }
 }

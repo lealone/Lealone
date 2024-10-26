@@ -28,7 +28,7 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         boolean embedded = false;
         if (schedulers == null) {
             // 如果未指定调度器，那么使用嵌入式调度器
-            schedulers = createSchedulers(EmbeddedScheduler.class.getName(), config);
+            schedulers = createSchedulers("com.lealone.db.scheduler.EmbeddedScheduler", config);
             embedded = true;
         }
         init(config);

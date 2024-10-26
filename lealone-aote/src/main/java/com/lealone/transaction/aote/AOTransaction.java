@@ -17,8 +17,8 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.lock.Lockable;
-import com.lealone.db.scheduler.Scheduler;
-import com.lealone.db.session.Session;
+import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageMap;
@@ -51,7 +51,7 @@ public class AOTransaction implements Transaction {
     protected Runnable asyncTask;
 
     private HashMap<String, Integer> savepoints;
-    private Session session;
+    private InternalSession session;
     private final int isolationLevel;
     private boolean autoCommit;
 
@@ -108,13 +108,13 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public void setSession(Session session) {
+    public void setSession(InternalSession session) {
         this.session = session;
         autoCommit = session.isAutoCommit();
     }
 
     @Override
-    public Session getSession() {
+    public InternalSession getSession() {
         return session;
     }
 
@@ -321,7 +321,7 @@ public class AOTransaction implements Transaction {
     }
 
     @Override
-    public int addWaitingTransaction(Object lockedObject, Session session,
+    public int addWaitingTransaction(Object lockedObject, InternalSession session,
             AsyncHandler<SessionStatus> asyncHandler) {
         // 如果已经提交了，通知重试
         if (isClosed() || isWaiting())
@@ -420,15 +420,15 @@ public class AOTransaction implements Transaction {
         return session != null ? session.createCallback() : AsyncCallback.createConcurrentCallback();
     }
 
-    protected Scheduler scheduler;
+    protected InternalScheduler scheduler;
 
     @Override
-    public Scheduler getScheduler() {
+    public InternalScheduler getScheduler() {
         return scheduler;
     }
 
     @Override
-    public void setScheduler(Scheduler scheduler) {
+    public void setScheduler(InternalScheduler scheduler) {
         this.scheduler = scheduler;
     }
 

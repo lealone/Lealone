@@ -23,7 +23,7 @@ import com.lealone.common.util.MapUtils;
 import com.lealone.db.MemoryManager;
 import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.link.LinkableList;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.transaction.TransactionEngine.GcTask;
@@ -36,7 +36,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private static final Logger logger = LoggerFactory.getLogger(CheckpointService.class);
 
     private final AOTransactionEngine aote;
-    private final Scheduler scheduler;
+    private final InternalScheduler scheduler;
     private final AsyncPeriodicTask periodicTask;
     private final long dirtyPageCacheSize;
     private final long checkpointPeriod;
@@ -52,7 +52,8 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private volatile boolean isClosed;
     private volatile CountDownLatch latchOnClose;
 
-    CheckpointService(AOTransactionEngine aote, Map<String, String> config, Scheduler scheduler) {
+    CheckpointService(AOTransactionEngine aote, Map<String, String> config,
+            InternalScheduler scheduler) {
         this.aote = aote;
         this.scheduler = scheduler;
         // 默认32M

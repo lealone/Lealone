@@ -43,7 +43,7 @@ import com.lealone.db.index.Cursor;
 import com.lealone.db.index.Index;
 import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.schema.Constant;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.schema.SchemaObject;

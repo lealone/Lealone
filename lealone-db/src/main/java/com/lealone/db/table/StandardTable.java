@@ -41,9 +41,9 @@ import com.lealone.db.index.standard.StandardDelegateIndex;
 import com.lealone.db.index.standard.StandardPrimaryIndex;
 import com.lealone.db.index.standard.StandardSecondaryIndex;
 import com.lealone.db.lock.DbObjectLock;
-import com.lealone.db.result.Row;
 import com.lealone.db.result.SortOrder;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.row.Row;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.schema.SchemaObject;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column.EnumColumn;
@@ -53,6 +53,7 @@ import com.lealone.storage.StorageEngine;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
 import com.lealone.transaction.TransactionEngine;
+import com.lealone.transaction.TransactionEngine.GcTask;
 
 /**
  * @author H2 Group
@@ -108,7 +109,7 @@ public class StandardTable extends Table {
         indexes.add(primaryIndex);
         indexesSync.add(primaryIndex);
 
-        Scheduler scheduler = data.session.getScheduler();
+        InternalScheduler scheduler = data.session.getScheduler();
         indexOperator = new IndexOperator(scheduler, this);
     }
 
@@ -660,7 +661,7 @@ public class StandardTable extends Table {
     public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         if (containsLargeObject()) {
             if (dataHandler.isTableLobStorage()) {
-                getDatabase().getTransactionEngine().removeGcTask(dataHandler.getLobStorage());
+                getDatabase().getTransactionEngine().removeGcTask((GcTask) dataHandler.getLobStorage());
                 dataHandler.getLobStorage().close();
             } else {
                 dataHandler.getLobStorage().removeAllForTable(getId());

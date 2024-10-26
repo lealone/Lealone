@@ -16,8 +16,7 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.storage.type.StorageDataType.PrimaryKey;
-import com.lealone.storage.type.StorageDataTypeBase;
+import com.lealone.db.value.ValueDataType.PrimaryKey;
 
 /**
  * Implementation of the BIGINT data type.
@@ -226,7 +225,7 @@ public class ValueLong extends Value implements PrimaryKey {
         return other instanceof ValueLong && value == ((ValueLong) other).value;
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

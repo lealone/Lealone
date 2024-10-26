@@ -29,6 +29,8 @@ import com.lealone.db.value.ValueArray;
 import com.lealone.db.value.ValueBoolean;
 import com.lealone.db.value.ValueByte;
 import com.lealone.db.value.ValueBytes;
+import com.lealone.db.value.ValueDataType;
+import com.lealone.db.value.ValueDataTypeBase;
 import com.lealone.db.value.ValueDate;
 import com.lealone.db.value.ValueDecimal;
 import com.lealone.db.value.ValueDouble;
@@ -50,8 +52,6 @@ import com.lealone.db.value.ValueStringIgnoreCase;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
 import com.lealone.db.value.ValueUuid;
-import com.lealone.storage.type.StorageDataType;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * @author H2 Group
@@ -59,7 +59,7 @@ import com.lealone.storage.type.StorageDataTypeBase;
  */
 public class DataBuffer implements AutoCloseable {
 
-    private static final StorageDataTypeBase[] TYPES = new StorageDataTypeBase[Value.TYPE_COUNT];
+    private static final ValueDataTypeBase[] TYPES = new ValueDataTypeBase[Value.TYPE_COUNT];
     static {
         TYPES[Value.NULL] = ValueNull.type;
         TYPES[Value.BOOLEAN] = ValueBoolean.type;
@@ -508,7 +508,7 @@ public class DataBuffer implements AutoCloseable {
         return value;
     }
 
-    public ByteBuffer write(StorageDataType type, Object obj) {
+    public ByteBuffer write(ValueDataType type, Object obj) {
         type.write(this, obj);
         ByteBuffer buff = getAndFlipBuffer();
 
@@ -859,7 +859,7 @@ public class DataBuffer implements AutoCloseable {
             return ValueEnum.get(ordinal);
         }
         default:
-            int type2 = StorageDataType.getTypeId(type);
+            int type2 = ValueDataType.getTypeId(type);
             if (type2 >= TYPES.length)
                 throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "type: " + type);
             return TYPES[type2].readValue(buff, type);

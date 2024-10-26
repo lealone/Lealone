@@ -13,7 +13,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the DOUBLE data type.
@@ -189,7 +188,7 @@ public class ValueDouble extends Value {
         return compareSecure((ValueDouble) other, null) == 0;
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

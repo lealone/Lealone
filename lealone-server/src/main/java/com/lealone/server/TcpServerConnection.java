@@ -11,12 +11,13 @@ import java.util.HashMap;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.common.util.ExpiringMap;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
+import com.lealone.db.util.ExpiringMap;
 import com.lealone.net.TransferInputStream;
 import com.lealone.net.TransferOutputStream;
 import com.lealone.net.WritableChannel;
@@ -46,13 +47,13 @@ public class TcpServerConnection extends AsyncServerConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final HashMap<Integer, SessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
-    private final Scheduler scheduler;
+    private final InternalScheduler scheduler;
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
             Scheduler scheduler) {
         super(writableChannel);
         this.tcpServer = tcpServer;
-        this.scheduler = scheduler;
+        this.scheduler = (InternalScheduler) scheduler;
     }
 
     @Override

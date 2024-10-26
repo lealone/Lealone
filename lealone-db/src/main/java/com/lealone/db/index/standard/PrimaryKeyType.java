@@ -9,12 +9,12 @@ import java.nio.ByteBuffer;
 
 import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLong;
 
 //专门用于StandardPrimaryIndex，它的key是ValueLong且不为null
-public class PrimaryKeyType extends ValueDataType {
+public class PrimaryKeyType extends StandardDataType {
 
     public PrimaryKeyType() {
         super(null, null, null);

@@ -8,8 +8,8 @@ package com.lealone.sql.optimizer;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;
 

@@ -17,7 +17,6 @@ import java.sql.Timestamp;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.DataBuffer;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of NULL. NULL is not a regular data type.
@@ -174,7 +173,7 @@ public class ValueNull extends Value {
         return other == this;
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

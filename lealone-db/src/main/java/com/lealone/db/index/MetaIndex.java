@@ -7,9 +7,9 @@ package com.lealone.db.index;
 
 import java.util.ArrayList;
 
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.MetaTable;

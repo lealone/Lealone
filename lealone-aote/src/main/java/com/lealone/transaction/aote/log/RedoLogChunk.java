@@ -18,7 +18,7 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.fs.FileUtils;
@@ -120,7 +120,7 @@ class RedoLogChunk {
             ft.onSynced();
             ft = fsyncTasks.poll();
         }
-        Scheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
+        InternalScheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
         int waitingQueueSize = waitingSchedulers.length;
         AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
         long chunkLength = 0;
@@ -129,7 +129,7 @@ class RedoLogChunk {
             PendingTransaction[] pts = new PendingTransaction[waitingQueueSize];
             for (int i = 0; i < waitingQueueSize; i++) {
                 lastPts[i] = null;
-                Scheduler scheduler = waitingSchedulers[i];
+                InternalScheduler scheduler = waitingSchedulers[i];
                 if (scheduler == null) {
                     continue;
                 }
@@ -180,7 +180,7 @@ class RedoLogChunk {
                 fileStorage.sync();
             }
             for (int i = 0; i < waitingQueueSize; i++) {
-                Scheduler scheduler = waitingSchedulers[i];
+                InternalScheduler scheduler = waitingSchedulers[i];
                 if (scheduler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
                     continue;
                 }

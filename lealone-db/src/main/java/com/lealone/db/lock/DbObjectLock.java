@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
-import com.lealone.db.session.Session;
 
 //数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
 public class DbObjectLock extends Lock {
@@ -46,7 +46,7 @@ public class DbObjectLock extends Lock {
     }
 
     @Override
-    public void unlock(Session oldSession, boolean succeeded, Session newSession) {
+    public void unlock(InternalSession oldSession, boolean succeeded, InternalSession newSession) {
         if (handlers != null) {
             handlers.forEach(h -> {
                 h.handle(new AsyncResult<>(succeeded));

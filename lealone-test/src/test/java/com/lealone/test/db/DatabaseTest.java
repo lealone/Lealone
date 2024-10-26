@@ -11,7 +11,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.db.Database;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.result.SearchRow;
+import com.lealone.db.row.SearchRow;
 
 public class DatabaseTest extends DbObjectTestBase {
 

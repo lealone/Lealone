@@ -5,9 +5,9 @@
  */
 package com.lealone.sql.admin;
 
-import com.lealone.common.util.ThreadUtils;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.util.ThreadUtils;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.sql.SQLStatement;

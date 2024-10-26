@@ -5,7 +5,7 @@
  */
 package com.lealone.db.table;
 
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;
 import com.lealone.sql.SQLStatement;

@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.fs.FileStorage;
@@ -315,7 +315,7 @@ public class Chunk {
         // chunk body
         fileStorage.writeFully(bodyPos, buffer);
 
-        Scheduler scheduler = SchedulerThread.currentScheduler();
+        InternalScheduler scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
         if (scheduler != null && scheduler.isFsyncDisabled())
             scheduler.setFsyncingFileStorage(fileStorage);
         else

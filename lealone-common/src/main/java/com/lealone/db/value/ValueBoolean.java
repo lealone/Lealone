@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import com.lealone.db.DataBuffer;
-import com.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the BOOLEAN data type.
@@ -113,7 +112,7 @@ public class ValueBoolean extends Value {
         return this == other;
     }
 
-    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+    public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
         public int getType() {

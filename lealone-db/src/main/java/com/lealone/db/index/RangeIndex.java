@@ -6,9 +6,9 @@
 package com.lealone.db.index;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.RangeTable;
 import com.lealone.db.value.Value;

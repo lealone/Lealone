@@ -8,8 +8,8 @@ package com.lealone.test.aose;
 import org.junit.Test;
 
 import com.lealone.db.index.standard.PrimaryKeyType;
-import com.lealone.db.index.standard.RowType;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.RowType;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueString;

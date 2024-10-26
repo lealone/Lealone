@@ -24,7 +24,7 @@ import com.lealone.db.auth.User;
 import com.lealone.db.constraint.Constraint;
 import com.lealone.db.index.Index;
 import com.lealone.db.lock.DbObjectLock;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.service.Service;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.CreateTableData;

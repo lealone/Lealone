@@ -12,7 +12,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.lock.DbObjectLock;
-import com.lealone.db.result.Row;
+import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.transaction.Transaction;

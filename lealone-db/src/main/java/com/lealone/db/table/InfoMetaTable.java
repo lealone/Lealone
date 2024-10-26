@@ -44,9 +44,9 @@ import com.lealone.db.index.Cursor;
 import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.lock.Lock;
-import com.lealone.db.result.Row;
-import com.lealone.db.result.SearchRow;
 import com.lealone.db.result.SortOrder;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.schema.Constant;
 import com.lealone.db.schema.FunctionAlias;
 import com.lealone.db.schema.Schema;
@@ -314,8 +314,12 @@ public class InfoMetaTable extends MetaTable {
     }
 
     private String identifier(String s) {
-        if (database.getMode().lowerCaseIdentifiers) {
-            s = s == null ? null : StringUtils.toLowerEnglish(s);
+        if (s != null) {
+            if (database.getMode().lowerCaseIdentifiers) {
+                s = StringUtils.toLowerEnglish(s);
+            } else if (database.getSettings().databaseToUpper) {
+                s = StringUtils.toUpperEnglish(s);
+            }
         }
         return s;
     }
