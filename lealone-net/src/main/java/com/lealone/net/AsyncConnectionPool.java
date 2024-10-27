@@ -21,6 +21,15 @@ public class AsyncConnectionPool {
         list = isThreadSafe ? new ArrayList<>() : new CopyOnWriteArrayList<>();
     }
 
+    // 直接取第一条
+    public AsyncConnection getConnection() {
+        if (list == null || list.isEmpty()) {
+            return null;
+        } else {
+            return list.get(0);
+        }
+    }
+
     public AsyncConnection getConnection(Map<String, String> config) {
         if (!isShared(config)) {
             // 专用连接如果空闲了也可以直接复用

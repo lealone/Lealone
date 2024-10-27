@@ -49,8 +49,16 @@ public abstract class TransferConnection extends AsyncConnection {
         return packetLengthByteBuffer.getInt();
     }
 
-    public TransferOutputStream createTransferOutputStream(Session session) {
-        return new TransferOutputStream(session, writableChannel, getDataBufferFactory());
+    public TransferOutputStream createTransferOutputStream() {
+        return createTransferOutputStream(false);
+    }
+
+    public TransferOutputStream getErrorTransferOutputStream() {
+        return createTransferOutputStream();
+    }
+
+    public TransferOutputStream createTransferOutputStream(boolean isGlobalBuffer) {
+        return new TransferOutputStream(writableChannel, getDataBufferFactory(), isGlobalBuffer);
     }
 
     protected void handleRequest(TransferInputStream in, int packetId, int packetType)
@@ -104,8 +112,8 @@ public abstract class TransferConnection extends AsyncConnection {
                 message = e.getMessage();
                 sql = null;
             }
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_ERROR);
+            TransferOutputStream out = getErrorTransferOutputStream();
+            out.writeResponseHeader(session, packetId, Session.STATUS_ERROR);
             out.writeString(e.getSQLState()).writeString(message).writeString(sql)
                     .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {

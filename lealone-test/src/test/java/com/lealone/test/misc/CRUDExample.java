@@ -16,6 +16,7 @@ import org.junit.Assert;
 import com.lealone.client.jdbc.JdbcStatement;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.LealoneDatabase;
+import com.lealone.db.util.ThreadUtils;
 import com.lealone.net.bio.BioNetFactory;
 import com.lealone.net.nio.NioNetFactory;
 import com.lealone.test.TestBase;
@@ -23,16 +24,42 @@ import com.lealone.test.TestBase;
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
+
+        ThreadUtils.start("CRUDExample1", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        ThreadUtils.start("CRUDExample2", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        ThreadUtils.start("CRUDExample3", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
         Connection conn = null;
 
-        conn = getBioConnection();
-        crud(conn);
-
+        // conn = getBioConnection();
+        // crud(conn);
+        //
         conn = getNioConnection();
         crud(conn);
 
-        conn = getEmbeddedConnection();
-        crud(conn);
+        //
+        // conn = getEmbeddedConnection();
+        // crud(conn);
     }
 
     public static Connection getBioConnection() throws Exception {
@@ -47,6 +74,8 @@ public class CRUDExample {
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
+
+        test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
         return test.getConnection(LealoneDatabase.NAME);
     }
 
@@ -73,6 +102,19 @@ public class CRUDExample {
     }
 
     public static void crud(Statement stmt, String storageEngineName) throws Exception {
+        // stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        String sql = "CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)";
+        if (storageEngineName != null)
+            sql += " ENGINE = " + storageEngineName;
+        System.out.println(Thread.currentThread() + "ddd");
+        stmt.executeUpdate(sql);
+
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+    }
+
+    public static void crud2(Statement stmt, String storageEngineName) throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         String sql = "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)";
         if (storageEngineName != null)

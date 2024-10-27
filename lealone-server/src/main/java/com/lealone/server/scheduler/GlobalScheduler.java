@@ -23,6 +23,7 @@ import com.lealone.db.scheduler.InternalSchedulerBase;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
+import com.lealone.db.session.SessionInfo;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
 import com.lealone.server.AsyncServer;
@@ -41,7 +42,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     // 预防客户端不断创建新连接试探用户名和密码，试错多次后降低接入新连接的速度
     private final SessionValidator sessionValidator = new SessionValidator();
     private final LinkableList<SessionInitTask> sessionInitTasks = new LinkableList<>();
-    private final LinkableList<SessionInfo> sessions = new LinkableList<>();
+    private final LinkableList<ServerSessionInfo> sessions = new LinkableList<>();
 
     // 杂七杂八的任务，数量不多，执行完就删除
     private final LinkableList<LinkableTask> miscTasks = new LinkableList<>();
@@ -117,13 +118,13 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
         }
     }
 
-    private void addSessionInfo(SessionInfo si) {
+    private void addSessionInfo(ServerSessionInfo si) {
         sessions.add(si);
         // 此时可以初始化了
         si.getSession().init();
     }
 
-    private void removeSessionInfo(SessionInfo si) {
+    private void removeSessionInfo(ServerSessionInfo si) {
         if (!si.getSession().isClosed())
             sessions.remove(si);
     }
@@ -131,7 +132,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     @Override
     public void addSession(InternalSession session) {
         ServerSession s = (ServerSession) session;
-        SessionInfo si = new SessionInfo(this, null, s, -1, -1);
+        ServerSessionInfo si = new ServerSessionInfo(this, null, s, -1, -1);
         addSessionInfo(si);
     }
 
@@ -139,7 +140,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     public void removeSession(InternalSession session) {
         if (sessions.isEmpty() || session.isClosed())
             return;
-        SessionInfo si = sessions.getHead();
+        ServerSessionInfo si = sessions.getHead();
         while (si != null) {
             if (si.getSession() == session) {
                 sessions.remove(si);
@@ -152,7 +153,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     private void runSessionTasks() {
         if (sessions.isEmpty())
             return;
-        SessionInfo si = sessions.getHead();
+        ServerSessionInfo si = sessions.getHead();
         while (si != null) {
             if (!si.isMarkClosed())
                 si.runSessionTasks();
@@ -164,7 +165,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
         if (sessions.isEmpty())
             return;
         long currentTime = System.currentTimeMillis();
-        SessionInfo si = sessions.getHead();
+        ServerSessionInfo si = sessions.getHead();
         while (si != null) {
             si.checkSessionTimeout(currentTime);
             si = si.next;
@@ -212,7 +213,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
 
     private void gc() {
         if (MemoryManager.needFullGc()) {
-            SessionInfo si = sessions.getHead();
+            ServerSessionInfo si = sessions.getHead();
             while (si != null) {
                 si.getSession().clearQueryCache();
                 si = si.next;
@@ -266,7 +267,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
                 }
                 last = c;
             } catch (Throwable e) {
-                SessionInfo si = sessions.getHead();
+                ServerSessionInfo si = sessions.getHead();
                 while (si != null) {
                     if (si.getSessionId() == c.getSessionId()) {
                         si.sendError(c.getPacketId(), e);
@@ -320,7 +321,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        SessionInfo si = sessions.getHead();
+        ServerSessionInfo si = sessions.getHead();
         while (si != null) {
             // 执行yieldIfNeeded时，不需要检查当前session
             if (currentSession == si.getSession() || si.isMarkClosed()) {
@@ -407,13 +408,13 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     }
 
     @Override
-    public void addSessionInfo(Object si) {
-        addSessionInfo((SessionInfo) si);
+    public void addSessionInfo(SessionInfo si) {
+        addSessionInfo((ServerSessionInfo) si);
     }
 
     @Override
-    public void removeSessionInfo(Object si) {
-        removeSessionInfo((SessionInfo) si);
+    public void removeSessionInfo(SessionInfo si) {
+        removeSessionInfo((ServerSessionInfo) si);
     }
 
     // --------------------- 注册 Accepter ---------------------

@@ -47,6 +47,7 @@ import com.lealone.db.value.ValueStringIgnoreCase;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
 import com.lealone.db.value.ValueUuid;
+import com.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to receive Value objects.
@@ -64,16 +65,12 @@ public class TransferInputStream implements NetInputStream {
         in = new DataInputStream(new NetBufferInputStream(inBuffer));
     }
 
-    public Session getSession() {
-        return session;
+    public DataInputStream getDataInputStream() {
+        return in;
     }
 
     public void setSession(Session session) {
         this.session = session;
-    }
-
-    public DataInputStream getDataInputStream() {
-        return in;
     }
 
     public void closeInputStream() {
@@ -207,6 +204,13 @@ public class TransferInputStream implements NetInputStream {
         in.readFully(buff, off, len);
     }
 
+    @Override
+    public PageKey readPageKey() throws IOException {
+        Object value = readValue();
+        boolean first = readBoolean();
+        return new PageKey(value, first);
+    }
+
     /**
     * Read a value.
     *
@@ -274,9 +278,7 @@ public class TransferInputStream implements NetInputStream {
                 small = new String(buff).getBytes("UTF-8");
             }
             int magic = readInt();
-            if (magic != TransferOutputStream.LOB_MAGIC) {
-                throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
-            }
+            TransferOutputStream.verifyLobMagic(magic);
             return ValueLob.createSmallLob(type, small, length);
         }
         case Value.ARRAY: {
@@ -428,6 +430,35 @@ public class TransferInputStream implements NetInputStream {
         @Override
         public synchronized Throwable fillInStackTrace() {
             return null;
+        }
+    }
+
+    private static class NetBufferInputStream extends InputStream {
+
+        private final NetBuffer buffer;
+        private final int size;
+        private int pos;
+
+        public NetBufferInputStream(NetBuffer buffer) {
+            this.buffer = buffer;
+            size = buffer.length();
+        }
+
+        @Override
+        public int available() throws IOException {
+            return size - pos;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return buffer.getUnsignedByte(pos++);
+        }
+
+        @Override
+        public void close() throws IOException {
+            // buffer中只有一个包时回收才安全
+            if (buffer.isOnlyOnePacket())
+                buffer.recycle();
         }
     }
 }

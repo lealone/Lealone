@@ -26,10 +26,10 @@ public class PacketHandleTask extends LinkableTask {
     public final int packetType;
     public final ServerSession session;
     public final int sessionId;
-    public final SessionInfo si;
+    public final ServerSessionInfo si;
 
     public PacketHandleTask(TcpServerConnection conn, TransferInputStream in, int packetId,
-            int packetType, SessionInfo si) {
+            int packetType, ServerSessionInfo si) {
         this.conn = conn;
         this.in = in;
         this.packetId = packetId;

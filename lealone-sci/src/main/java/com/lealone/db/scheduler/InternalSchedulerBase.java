@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
+import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.page.PageOperation;
@@ -51,11 +52,11 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     }
 
     @Override
-    public void addSessionInfo(Object si) {
+    public void addSessionInfo(SessionInfo si) {
     }
 
     @Override
-    public void removeSessionInfo(Object si) {
+    public void removeSessionInfo(SessionInfo si) {
     }
 
     @Override

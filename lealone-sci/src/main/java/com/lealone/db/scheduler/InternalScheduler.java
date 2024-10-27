@@ -7,6 +7,7 @@ package com.lealone.db.scheduler;
 
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
+import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.page.PageOperation;
@@ -26,9 +27,9 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
 
     void addSessionInitTask(Object task);
 
-    void addSessionInfo(Object si);
+    void addSessionInfo(SessionInfo si);
 
-    void removeSessionInfo(Object si);
+    void removeSessionInfo(SessionInfo si);
 
     void validateSession(boolean isUserAndPasswordCorrect);
 

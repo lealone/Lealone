@@ -288,8 +288,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         }
         try {
             checkClosed();
-            TransferOutputStream out = tcpConnection.createTransferOutputStream(this);
-            out.writeRequestHeader(packetId, packet.getType());
+            TransferOutputStream out = tcpConnection.createTransferOutputStream();
+            out.writeRequestHeader(this, packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
             if (ac != null && isBio)

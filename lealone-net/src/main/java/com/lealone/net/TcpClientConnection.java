@@ -92,6 +92,10 @@ public class TcpClientConnection extends TransferConnection {
         sessions.clear();
     }
 
+    private Session getSession(int sessionId) {
+        return sessions.get(sessionId);
+    }
+
     public void addSession(int sessionId, Session session) {
         sessions.put(sessionId, session);
     }
@@ -115,11 +119,21 @@ public class TcpClientConnection extends TransferConnection {
             e = parseError(in);
         } else if (status == Session.STATUS_CLOSED) {
             in = null;
+        } else if (status == Session.STATUS_RUN_MODE_CHANGED) {
+            onRunModeChanged(in);
+            return;
+        } else if (status == Session.STATUS_REPLICATING) {
+            // ok
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac = callbackMap.remove(packetId);
+        AsyncCallback<?> ac;
+        if (status == Session.STATUS_REPLICATING) {
+            ac = callbackMap.get(packetId);
+        } else {
+            ac = callbackMap.remove(packetId);
+        }
         if (ac == null) {
             String msg = "Async callback is null, may be a bug! packetId = " + packetId;
             if (e != null) {
@@ -133,6 +147,19 @@ public class TcpClientConnection extends TransferConnection {
             ac.setAsyncResult(e);
         else
             ac.run(in);
+    }
+
+    private void onRunModeChanged(TransferInputStream in) throws IOException {
+        int sessionId = in.readInt();
+        Session session = getSession(sessionId);
+        if (session == null) {
+            logger.warn("RunModeChanged, but client session not found, sessionId: {}", sessionId);
+            return;
+        }
+        String newTargetNodes = in.readString();
+        String deadNodes = in.readString();
+        String writableNodes = in.readString();
+        session.runModeChanged(newTargetNodes, deadNodes, writableNodes);
     }
 
     @Override

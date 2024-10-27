@@ -18,4 +18,8 @@ public interface AsyncConnectionManager {
 
     default void registerAccepter(ServerSocketChannel serverChannel) {
     }
+
+    default boolean addConnectionLazy() {
+        return false;
+    }
 }

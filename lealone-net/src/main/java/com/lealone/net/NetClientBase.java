@@ -60,6 +60,12 @@ public abstract class NetClientBase implements NetClient {
         }
     }
 
+    @Override
+    public AsyncConnection getConnection(InetSocketAddress inetSocketAddress) {
+        AsyncConnectionPool pool = asyncConnections.get(inetSocketAddress);
+        return pool == null ? null : pool.getConnection();
+    }
+
     private AsyncConnection getConnection(Map<String, String> config,
             InetSocketAddress inetSocketAddress) {
         AsyncConnectionPool pool = asyncConnections.get(inetSocketAddress);
@@ -79,6 +85,14 @@ public abstract class NetClientBase implements NetClient {
         }
         if (!conn.isClosed())
             conn.close();
+    }
+
+    @Override
+    public void removeConnection(InetSocketAddress inetSocketAddress) {
+        AsyncConnectionPool pool = asyncConnections.remove(inetSocketAddress);
+        if (pool != null) {
+            pool.close();
+        }
     }
 
     @Override

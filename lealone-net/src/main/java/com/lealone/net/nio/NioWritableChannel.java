@@ -20,6 +20,8 @@ public class NioWritableChannel implements WritableChannel {
     private final SocketChannel channel;
     private final String host;
     private final int port;
+    private final String localHost;
+    private final int localPort;
     private NetEventLoop eventLoop;
 
     public NioWritableChannel(SocketChannel channel, NetEventLoop eventLoop) throws IOException {
@@ -32,6 +34,15 @@ public class NioWritableChannel implements WritableChannel {
         } else {
             host = "";
             port = -1;
+        }
+        sa = channel.getLocalAddress();
+        if (sa instanceof InetSocketAddress) {
+            InetSocketAddress address = (InetSocketAddress) sa;
+            localHost = address.getHostString();
+            localPort = address.getPort();
+        } else {
+            localHost = "";
+            localPort = -1;
         }
         this.eventLoop = eventLoop;
     }
@@ -55,6 +66,16 @@ public class NioWritableChannel implements WritableChannel {
     @Override
     public int getPort() {
         return port;
+    }
+
+    @Override
+    public String getLocalHost() {
+        return localHost;
+    }
+
+    @Override
+    public int getLocalPort() {
+        return localPort;
     }
 
     @Override

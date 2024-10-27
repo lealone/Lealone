@@ -7,6 +7,7 @@ package com.lealone.net;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
@@ -37,6 +38,7 @@ import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
 import com.lealone.db.value.ValueUuid;
 import com.lealone.server.protocol.PacketType;
+import com.lealone.storage.page.PageKey;
 
 /**
  * The transfer class is used to send Value objects.
@@ -45,72 +47,59 @@ import com.lealone.server.protocol.PacketType;
  * @author H2 Group
  * @author zhh
  */
+// 这个类的所有操作要在单个线程中进行
 public class TransferOutputStream implements NetOutputStream {
-
-    private static final int BUFFER_SIZE = 4 * 1024;
-    static final int LOB_MAGIC = 0x1234;
 
     public static final byte REQUEST = 1;
     public static final byte RESPONSE = 2;
 
-    private final Session session;
     private final DataOutputStream out;
-    private final ResettableBufferOutputStream resettableOutputStream;
+    private final NetBufferOutputStream outBuffer;
+    private Session session; // 每次写新的包时可以指定新的session
 
-    public TransferOutputStream(Session session, WritableChannel writableChannel,
-            DataBufferFactory dataBufferFactory) {
-        this.session = session;
-        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE,
-                dataBufferFactory);
-        out = new DataOutputStream(resettableOutputStream);
-    }
-
-    public int getDataOutputStreamSize() {
-        return out.size();
-    }
-
-    public void setPayloadSize(int payloadStartPos, int size) {
-        resettableOutputStream.setPayloadSize(payloadStartPos, size);
-    }
-
-    public TransferOutputStream writeRequestHeader(int packetId, int packetType) throws IOException {
-        writeByte(REQUEST).writeInt(packetId).writeInt(packetType).writeInt(session.getId());
-        return this;
-    }
-
-    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType)
-            throws IOException {
-        writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
-        return this;
-    }
-
-    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType)
-            throws IOException {
-        writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
-        return this;
-    }
-
-    public TransferOutputStream writeResponseHeader(int packetId, int status) throws IOException {
-        writeByte(RESPONSE).writeInt(packetId).writeInt(status);
-        return this;
+    public TransferOutputStream(WritableChannel writableChannel, DataBufferFactory dataBufferFactory,
+            boolean isGlobalBuffer) {
+        if (isGlobalBuffer)
+            outBuffer = new GlobalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
+                    dataBufferFactory);
+        else
+            outBuffer = new NetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
+                    dataBufferFactory);
+        out = new DataOutputStream(outBuffer);
     }
 
     public DataOutputStream getDataOutputStream() {
         return out;
     }
 
-    /**
-     * 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
-     * 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
-     * 这会导致客户端无法正常解析数据，所以这里允许在生成错误协议包之前清除之前的内容，
-     * 如果之前的协议包不完整，但是已经发出去一半了，这里的方案也无能为力。 
-     */
-    public void reset() throws IOException {
-        resettableOutputStream.reset();
+    public TransferOutputStream writeRequestHeader(Session session, int packetId, PacketType packetType)
+            throws IOException {
+        this.session = session;
+        createBufferIfNeed(Session.STATUS_OK);
+        writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
+        return this;
     }
 
-    public Session getSession() {
-        return session;
+    public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType)
+            throws IOException {
+        createBufferIfNeed(Session.STATUS_OK);
+        writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
+        return this;
+    }
+
+    public TransferOutputStream writeResponseHeader(Session session, int packetId, int status)
+            throws IOException {
+        this.session = session;
+        createBufferIfNeed(status);
+        writeByte(RESPONSE).writeInt(packetId).writeInt(status);
+        return this;
+    }
+
+    // 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
+    // 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
+    // 因为只有一个线程写Buffer，写完了一个包才发送，所以如果中间错误了创建新的Buffer即可。
+    private void createBufferIfNeed(int status) {
+        outBuffer.createBufferIfNeed(status);
     }
 
     @Override
@@ -124,7 +113,7 @@ public class TransferOutputStream implements NetOutputStream {
     public void flush() throws IOException {
         if (session != null) // 一些场景允许为null
             session.checkClosed();
-        resettableOutputStream.flush();
+        outBuffer.flush();
     }
 
     /**
@@ -269,6 +258,13 @@ public class TransferOutputStream implements NetOutputStream {
         return this;
     }
 
+    @Override
+    public TransferOutputStream writePageKey(PageKey pk) throws IOException {
+        writeValue((Value) pk.key);
+        writeBoolean(pk.first);
+        return this;
+    }
+
     /**
      * Write a value.
      *
@@ -339,7 +335,7 @@ public class TransferOutputStream implements NetOutputStream {
                 writeLong(-1);
                 writeInt(lob.getTableId());
                 writeLong(lob.getLobId());
-                writeBytes(calculateLobMac(session, lob));
+                writeBytes(calculateLobMac(lob));
                 writeLong(lob.getPrecision());
                 break;
             }
@@ -466,6 +462,14 @@ public class TransferOutputStream implements NetOutputStream {
         }
     }
 
+    private static final int LOB_MAGIC = 0x1234;
+
+    public static void verifyLobMagic(int magic) {
+        if (magic != TransferOutputStream.LOB_MAGIC) {
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
+        }
+    }
+
     /**
      * Verify the HMAC.
      *
@@ -473,7 +477,7 @@ public class TransferOutputStream implements NetOutputStream {
      * @param lobId the lobId
      * @throws DbException if the HMAC does not match
      */
-    public static int verifyLobMac(Session session, byte[] hmacData, long lobId) {
+    public static int verifyLobMac(byte[] hmacData, long lobId) {
         long hmac = Utils.readLong(hmacData, 0);
         if ((lobId >> 32) != ((int) hmac)) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
@@ -482,7 +486,7 @@ public class TransferOutputStream implements NetOutputStream {
         return (int) (hmac >> 32);
     }
 
-    private static byte[] calculateLobMac(Session session, ValueLob lob) {
+    private static byte[] calculateLobMac(ValueLob lob) {
         int tableId = lob.getTableId();
         long lobId = lob.getLobId();
         if (lob.isUseTableLobStorage())
@@ -493,43 +497,92 @@ public class TransferOutputStream implements NetOutputStream {
         return hmacData;
     }
 
-    private static class ResettableBufferOutputStream extends NetBufferOutputStream {
+    private static class NetBufferOutputStream extends OutputStream {
 
-        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
+        protected final WritableChannel writableChannel;
+        protected final int initialSizeHint;
+        protected final DataBufferFactory dataBufferFactory;
+        protected NetBuffer buffer;
+
+        NetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
                 DataBufferFactory dataBufferFactory) {
-            super(writableChannel, initialSizeHint, dataBufferFactory);
+            this.writableChannel = writableChannel;
+            this.initialSizeHint = initialSizeHint;
+            this.dataBufferFactory = dataBufferFactory;
+        }
+
+        @Override
+        public void write(int b) {
+            buffer.appendByte((byte) b);
+        }
+
+        @Override
+        public void write(byte b[], int off, int len) {
+            buffer.appendBytes(b, off, len);
         }
 
         @Override
         public void flush() throws IOException {
-            writePacketLength();
+            int length = buffer.length() - 4;
+            writePacketLength(0, length);
             buffer.flip();
             writableChannel.write(buffer);
         }
 
-        @Override
-        protected void reset() {
-            super.reset();
+        protected void createBufferIfNeed(int status) {
+            createBuffer();
             // 协议包头占4个字节，最后flush时再回填
             buffer.appendInt(0);
         }
 
-        // 按java.io.DataInputStream.readInt()的格式写
-        private void writePacketLength() {
-            int v = buffer.length() - 4;
-            buffer.setByte(0, (byte) ((v >>> 24) & 0xFF));
-            buffer.setByte(1, (byte) ((v >>> 16) & 0xFF));
-            buffer.setByte(2, (byte) ((v >>> 8) & 0xFF));
-            buffer.setByte(3, (byte) (v & 0xFF));
+        protected void createBuffer() {
+            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
         }
 
-        public void setPayloadSize(int payloadStartPos, int size) {
-            payloadStartPos += 4;
-            int v = size;
-            buffer.setByte(payloadStartPos, (byte) ((v >>> 24) & 0xFF));
-            buffer.setByte(payloadStartPos + 1, (byte) ((v >>> 16) & 0xFF));
-            buffer.setByte(payloadStartPos + 2, (byte) ((v >>> 8) & 0xFF));
-            buffer.setByte(payloadStartPos + 3, (byte) (v & 0xFF));
+        // 按java.io.DataInputStream.readInt()的格式写
+        protected void writePacketLength(int pos, int v) {
+            buffer.setByte(pos, (byte) ((v >>> 24) & 0xFF));
+            buffer.setByte(pos + 1, (byte) ((v >>> 16) & 0xFF));
+            buffer.setByte(pos + 2, (byte) ((v >>> 8) & 0xFF));
+            buffer.setByte(pos + 3, (byte) (v & 0xFF));
+        }
+    }
+
+    private static class GlobalNetBufferOutputStream extends NetBufferOutputStream {
+
+        private int startPos;
+        private boolean written;
+
+        GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
+                DataBufferFactory dataBufferFactory) {
+            super(writableChannel, initialSizeHint, dataBufferFactory);
+            createBuffer(); // 全局buffer需要提前创建
+            buffer.setGlobal(true);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            int length = buffer.position() - startPos - 4;
+            writePacketLength(startPos, length);
+            writableChannel.write(buffer);
+            written = true;
+        }
+
+        @Override
+        protected void createBufferIfNeed(int status) {
+            if (status == Session.STATUS_ERROR) {
+                // 如果某个包写到一半出错了又写一个错误包，那需要把前面的覆盖掉
+                if (!written && startPos != buffer.position()) {
+                    buffer.position(startPos);
+                    buffer.decrementPacketCount();
+                }
+            }
+            written = false;
+            // 全局buffer只需要记住下一个包的开始位置即可，会一直往后追加
+            startPos = buffer.position();
+            buffer.incrementPacketCount();
+            // 协议包头占4个字节，最后flush时再回填
+            buffer.appendInt(0);
         }
     }
 }

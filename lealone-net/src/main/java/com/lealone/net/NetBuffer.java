@@ -11,7 +11,9 @@ import com.lealone.db.DataBuffer;
 
 public class NetBuffer {
 
-    private final DataBuffer dataBuffer;
+    public static final int BUFFER_SIZE = 4 * 1024;
+
+    private DataBuffer dataBuffer;
     private boolean onlyOnePacket;
     private boolean forWrite;
 
@@ -85,5 +87,72 @@ public class NetBuffer {
     public NetBuffer flip() {
         dataBuffer.getAndFlipBuffer();
         return this;
+    }
+
+    public int position() {
+        return dataBuffer.position();
+    }
+
+    public NetBuffer position(int newPosition) {
+        dataBuffer.position(newPosition);
+        return this;
+    }
+
+    public NetBuffer limit(int newLimit) {
+        dataBuffer.limit(newLimit);
+        return this;
+    }
+
+    private boolean global;
+
+    public boolean isGlobal() {
+        return global;
+    }
+
+    public void setGlobal(boolean global) {
+        this.global = global;
+    }
+
+    private int readIndex;
+
+    public int getReadIndex() {
+        return readIndex;
+    }
+
+    public void setReadIndex(int readIndex) {
+        this.readIndex = readIndex;
+    }
+
+    private int packetCount;
+
+    public int getPacketCount() {
+        return packetCount;
+    }
+
+    public void incrementPacketCount() {
+        packetCount++;
+    }
+
+    public void decrementPacketCount() {
+        packetCount--;
+    }
+
+    public int remaining() {
+        if (global)
+            return dataBuffer.position() - readIndex;
+        else
+            return dataBuffer.getBuffer().remaining();
+    }
+
+    public void reset() {
+        if (dataBuffer.capacity() > BUFFER_SIZE) {
+            DataBuffer newBuffer = DataBuffer.create(dataBuffer.getHandler(), BUFFER_SIZE,
+                    dataBuffer.getDirect());
+            dataBuffer.close();
+            dataBuffer = newBuffer;
+        }
+        readIndex = 0;
+        packetCount = 0;
+        position(0);
     }
 }

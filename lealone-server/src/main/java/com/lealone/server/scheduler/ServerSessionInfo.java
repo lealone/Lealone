@@ -12,14 +12,15 @@ import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.session.SessionInfo;
 import com.lealone.server.AsyncServerConnection;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
-public class SessionInfo extends LinkableBase<SessionInfo>
-        implements ServerSession.TimeoutListener, com.lealone.db.session.SessionInfo {
+public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
+        implements ServerSession.TimeoutListener, SessionInfo {
 
-    private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
+    private static final Logger logger = LoggerFactory.getLogger(ServerSessionInfo.class);
 
     private final InternalScheduler scheduler;
     private final AsyncServerConnection conn;
@@ -33,8 +34,8 @@ public class SessionInfo extends LinkableBase<SessionInfo>
     // task统一由scheduler调度执行
     private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
-    public SessionInfo(InternalScheduler scheduler, AsyncServerConnection conn, ServerSession session,
-            int sessionId, int sessionTimeout) {
+    public ServerSessionInfo(InternalScheduler scheduler, AsyncServerConnection conn,
+            ServerSession session, int sessionId, int sessionTimeout) {
         this.scheduler = scheduler;
         this.conn = conn;
         this.session = session;
@@ -44,8 +45,9 @@ public class SessionInfo extends LinkableBase<SessionInfo>
         session.setSessionInfo(this);
     }
 
-    SessionInfo copy(ServerSession session) {
-        return new SessionInfo(this.scheduler, this.conn, session, this.sessionId, this.sessionTimeout);
+    ServerSessionInfo copy(ServerSession session) {
+        return new ServerSessionInfo(this.scheduler, this.conn, session, this.sessionId,
+                this.sessionTimeout);
     }
 
     public void updateLastActiveTime() {

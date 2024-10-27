@@ -29,6 +29,8 @@ public class BioWritableChannel implements WritableChannel {
 
     private final String host;
     private final int port;
+    private final String localHost;
+    private final int localPort;
     private final int maxPacketSize;
 
     private Socket socket;
@@ -42,6 +44,8 @@ public class BioWritableChannel implements WritableChannel {
             throws IOException {
         host = address.getHostString();
         port = address.getPort();
+        localHost = socket.getLocalAddress().getHostAddress();
+        localPort = socket.getLocalPort();
         maxPacketSize = getMaxPacketSize(config);
         this.socket = socket;
         in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
@@ -96,6 +100,16 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public int getPort() {
         return port;
+    }
+
+    @Override
+    public String getLocalHost() {
+        return localHost;
+    }
+
+    @Override
+    public int getLocalPort() {
+        return localPort;
     }
 
     @Override

@@ -19,6 +19,10 @@ public interface WritableChannel {
 
     int getPort();
 
+    String getLocalHost();
+
+    int getLocalPort();
+
     default SocketChannel getSocketChannel() {
         throw new UnsupportedOperationException("getSocketChannel");
     }

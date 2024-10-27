@@ -40,7 +40,7 @@ public class LobPacketHandlers extends PacketHandlers {
             SmallLRUCache<String, InputStream> lobs = session.getLobCache();
             try {
                 boolean useTableLobStorage = false;
-                int tableId = TransferOutputStream.verifyLobMac(session, hmac, lobId);
+                int tableId = TransferOutputStream.verifyLobMac(hmac, lobId);
                 if (tableId < 0) {
                     tableId = -tableId;
                     useTableLobStorage = true;
