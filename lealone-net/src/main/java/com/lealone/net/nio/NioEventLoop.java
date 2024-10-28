@@ -262,6 +262,12 @@ public class NioEventLoop implements NetEventLoop {
                 if (attachment.state == 1) {
                     int packetLength = conn.getPacketLength();
                     BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
+
+                    NetBuffer connNetBuffer = conn.getNetBuffer();
+                    if (connNetBuffer != null) {
+                        dataBuffer = connNetBuffer.getDataBuffer();
+                        dataBuffer.checkCapacity(packetLength);
+                    }
                     if (dataBuffer == null) {
                         dataBuffer = dataBufferFactory.create(packetLength);
                         // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
@@ -273,7 +279,8 @@ public class NioEventLoop implements NetEventLoop {
                         packetLengthByteBuffer.clear();
                         attachment.state = 0;
                         attachment.dataBuffer = null;
-                        NetBuffer netBuffer = new NetBuffer(dataBuffer, true); // 支持快速回收
+                        NetBuffer netBuffer = connNetBuffer != null ? connNetBuffer
+                                : new NetBuffer(dataBuffer, true); // 支持快速回收
                         dataBuffer = null;
                         conn.handle(netBuffer);
                         if (++packetCount > maxPacketCountPerLoop)

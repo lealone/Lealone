@@ -60,9 +60,13 @@ public class TransferInputStream implements NetInputStream {
 
     private DataInputStream in;
     private Session session;
+    private boolean isGlobalBuffer;
+    private NetBufferInputStream netBufferInputStream;
 
-    public TransferInputStream(NetBuffer inBuffer) {
-        in = new DataInputStream(new NetBufferInputStream(inBuffer));
+    public TransferInputStream(NetBuffer inBuffer, boolean isGlobalBuffer) {
+        netBufferInputStream = new NetBufferInputStream(inBuffer);
+        in = new DataInputStream(netBufferInputStream);
+        this.isGlobalBuffer = isGlobalBuffer;
     }
 
     public DataInputStream getDataInputStream() {
@@ -73,15 +77,19 @@ public class TransferInputStream implements NetInputStream {
         this.session = session;
     }
 
-    public void closeInputStream() {
-        if (in != null) {
-            try {
-                in.close();
-            } catch (IOException e) {
-                // 最终只是回收NetBuffer，不应该发生异常
-                throw DbException.getInternalError();
+    public void close() {
+        if (isGlobalBuffer) {
+            netBufferInputStream.reset();
+        } else {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    // 最终只是回收NetBuffer，不应该发生异常
+                    throw DbException.getInternalError();
+                }
+                in = null;
             }
-            in = null;
         }
     }
 
@@ -436,17 +444,15 @@ public class TransferInputStream implements NetInputStream {
     private static class NetBufferInputStream extends InputStream {
 
         private final NetBuffer buffer;
-        private final int size;
         private int pos;
 
         public NetBufferInputStream(NetBuffer buffer) {
             this.buffer = buffer;
-            size = buffer.length();
         }
 
         @Override
         public int available() throws IOException {
-            return size - pos;
+            return buffer.getByteBuffer().limit() - pos;
         }
 
         @Override
@@ -459,6 +465,12 @@ public class TransferInputStream implements NetInputStream {
             // buffer中只有一个包时回收才安全
             if (buffer.isOnlyOnePacket())
                 buffer.recycle();
+        }
+
+        @Override
+        public void reset() {
+            pos = 0;
+            buffer.reset();
         }
     }
 }

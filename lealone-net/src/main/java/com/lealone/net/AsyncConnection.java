@@ -32,6 +32,10 @@ public abstract class AsyncConnection {
 
     public abstract int getPacketLength();
 
+    public NetBuffer getNetBuffer() {
+        return null;
+    }
+
     public WritableChannel getWritableChannel() {
         return writableChannel;
     }

@@ -25,6 +25,22 @@ public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
 
+        // startMultiThreads();
+
+        Connection conn = null;
+
+        conn = getBioConnection();
+        crud(conn);
+        //
+        // conn = getNioConnection();
+        // crud(conn);
+        //
+        //
+        // conn = getEmbeddedConnection();
+        // crud(conn);
+    }
+
+    public static void startMultiThreads() throws Exception {
         ThreadUtils.start("CRUDExample1", () -> {
             try {
                 Connection conn = getNioConnection();
@@ -49,17 +65,6 @@ public class CRUDExample {
                 e.printStackTrace();
             }
         });
-        Connection conn = null;
-
-        // conn = getBioConnection();
-        // crud(conn);
-        //
-        conn = getNioConnection();
-        crud(conn);
-
-        //
-        // conn = getEmbeddedConnection();
-        // crud(conn);
     }
 
     public static Connection getBioConnection() throws Exception {
@@ -102,19 +107,6 @@ public class CRUDExample {
     }
 
     public static void crud(Statement stmt, String storageEngineName) throws Exception {
-        // stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        String sql = "CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)";
-        if (storageEngineName != null)
-            sql += " ENGINE = " + storageEngineName;
-        System.out.println(Thread.currentThread() + "ddd");
-        stmt.executeUpdate(sql);
-
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
-    }
-
-    public static void crud2(Statement stmt, String storageEngineName) throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         String sql = "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)";
         if (storageEngineName != null)

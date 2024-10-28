@@ -11,6 +11,7 @@ import java.util.HashMap;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
+import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.scheduler.InternalScheduler;
@@ -18,10 +19,15 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.util.ExpiringMap;
+import com.lealone.net.NetBuffer;
 import com.lealone.net.TransferInputStream;
 import com.lealone.net.TransferOutputStream;
 import com.lealone.net.WritableChannel;
+import com.lealone.server.handler.PacketHandler;
+import com.lealone.server.handler.PacketHandlers;
 import com.lealone.server.protocol.Packet;
+import com.lealone.server.protocol.PacketDecoder;
+import com.lealone.server.protocol.PacketDecoders;
 import com.lealone.server.protocol.PacketType;
 import com.lealone.server.protocol.session.SessionInit;
 import com.lealone.server.protocol.session.SessionInitAck;
@@ -48,6 +54,8 @@ public class TcpServerConnection extends AsyncServerConnection {
     private final HashMap<Integer, ServerSessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
     private final InternalScheduler scheduler;
+    private final NetBuffer inNetBuffer;
+    private final TransferInputStream in;
     private final TransferOutputStream out;
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
@@ -55,7 +63,12 @@ public class TcpServerConnection extends AsyncServerConnection {
         super(writableChannel);
         this.tcpServer = tcpServer;
         this.scheduler = (InternalScheduler) scheduler;
-        this.out = createTransferOutputStream(true);
+
+        DataBuffer dataBuffer = scheduler.getDataBufferFactory().create(NetBuffer.BUFFER_SIZE);
+        inNetBuffer = new NetBuffer(dataBuffer, false);
+        inNetBuffer.setGlobal(true);
+        in = new TransferInputStream(inNetBuffer, true);
+        out = createTransferOutputStream(true);
     }
 
     @Override
@@ -66,6 +79,16 @@ public class TcpServerConnection extends AsyncServerConnection {
     @Override
     public DataBufferFactory getDataBufferFactory() {
         return scheduler.getDataBufferFactory();
+    }
+
+    @Override
+    public NetBuffer getNetBuffer() {
+        return inNetBuffer;
+    }
+
+    @Override
+    public TransferInputStream getTransferInputStream(NetBuffer buffer) {
+        return in;
     }
 
     @Override
@@ -91,10 +114,21 @@ public class TcpServerConnection extends AsyncServerConnection {
                 sessionNotFound(packetId, sessionId);
             }
         } else {
-            in.setSession(si.getSession());
-            PacketHandleTask task = new PacketHandleTask(this, in, packetId, packetType, si);
-            si.submitTask(task);
+            ServerSession session = si.getSession();
+            in.setSession(session);
+            PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
+            if (decoder != null) {
+                Packet packet = decoder.decode(in, session.getProtocolVersion());
+                @SuppressWarnings("unchecked")
+                PacketHandler<Packet> handler = PacketHandlers.getHandler(packetType);
+                PacketHandleTask task = new PacketHandleTask(this, packetId, si, packet, handler);
+                si.submitTask(task);
+            } else {
+                logger.warn("Unknow packet type: {}", packetType);
+            }
         }
+        // 在父类中已经确保调用TransferInputStream.close
+        // 所以在这里不用做任何处理
     }
 
     private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
@@ -102,12 +136,10 @@ public class TcpServerConnection extends AsyncServerConnection {
         try {
             packet = SessionInit.decoder.decode(in, 0);
         } catch (Throwable e) {
-            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId,
+            logger.error("Failed to readInitPacket, packetId: {}, sessionId: {}", packetId, sessionId,
                     e);
             sendError(null, packetId, e);
             return;
-        } finally {
-            in.closeInputStream();
         }
 
         SessionInitTask task = new SessionInitTask(this, packet, packetId, sessionId);

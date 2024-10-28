@@ -49,6 +49,10 @@ public abstract class TransferConnection extends AsyncConnection {
         return packetLengthByteBuffer.getInt();
     }
 
+    public TransferInputStream getTransferInputStream(NetBuffer buffer) {
+        return new TransferInputStream(buffer, false);
+    }
+
     public TransferOutputStream createTransferOutputStream() {
         return createTransferOutputStream(false);
     }
@@ -128,11 +132,12 @@ public abstract class TransferConnection extends AsyncConnection {
 
     @Override
     public void handle(NetBuffer buffer) {
-        if (!buffer.isOnlyOnePacket()) {
+        if (!buffer.isGlobal() && !buffer.isOnlyOnePacket()) {
             DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
         }
+        TransferInputStream in = null;
         try {
-            TransferInputStream in = new TransferInputStream(buffer);
+            in = getTransferInputStream(buffer);
             boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
             int packetId = in.readInt();
             if (isRequest) {
@@ -147,6 +152,10 @@ public abstract class TransferConnection extends AsyncConnection {
                 logger.error("Failed to handle packet", e);
             else
                 throw DbException.convert(e);
+        } finally {
+            if (in != null) {
+                in.close();
+            }
         }
     }
 }

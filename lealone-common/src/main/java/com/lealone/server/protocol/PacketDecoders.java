@@ -44,11 +44,14 @@ public class PacketDecoders {
     }
 
     public static PacketDecoder<? extends Packet> getDecoder(PacketType type) {
-        return decoders[type.value];
+        return getDecoder(type.value);
     }
 
     public static PacketDecoder<? extends Packet> getDecoder(int type) {
-        return decoders[type];
+        if (type < 0 || type >= decoders.length)
+            return null;
+        else
+            return decoders[type];
     }
 
     static {

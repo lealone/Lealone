@@ -35,6 +35,10 @@ public class NetBuffer {
         return dataBuffer.getBuffer();
     }
 
+    public DataBuffer getDataBuffer() {
+        return dataBuffer;
+    }
+
     public int length() {
         if (forWrite)
             return dataBuffer.position();
@@ -153,6 +157,6 @@ public class NetBuffer {
         }
         readIndex = 0;
         packetCount = 0;
-        position(0);
+        dataBuffer.getBuffer().clear();
     }
 }
