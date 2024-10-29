@@ -266,13 +266,12 @@ public class NioEventLoop implements NetEventLoop {
                     NetBuffer connNetBuffer = conn.getNetBuffer();
                     if (connNetBuffer != null) {
                         dataBuffer = connNetBuffer.getDataBuffer();
-                        dataBuffer.checkCapacity(packetLength);
                     }
                     if (dataBuffer == null) {
                         dataBuffer = dataBufferFactory.create(packetLength);
-                        // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
-                        dataBuffer.limit(packetLength);
                     }
+                    // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
+                    dataBuffer.limit(packetLength);
                     ByteBuffer buffer = dataBuffer.getBuffer();
                     boolean ok = read(attachment, channel, buffer, packetLength);
                     if (ok) {

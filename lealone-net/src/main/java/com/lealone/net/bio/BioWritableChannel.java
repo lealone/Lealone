@@ -5,11 +5,10 @@
  */
 package com.lealone.net.bio;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -32,8 +31,8 @@ public class BioWritableChannel implements WritableChannel {
     private final int maxPacketSize;
 
     private Socket socket;
-    private DataInputStream in;
-    private DataOutputStream out;
+    private InputStream in;
+    private OutputStream out;
 
     private AsyncConnection conn;
 
@@ -44,9 +43,12 @@ public class BioWritableChannel implements WritableChannel {
         localHost = socket.getLocalAddress().getHostAddress();
         localPort = socket.getLocalPort();
         maxPacketSize = getMaxPacketSize(config);
+        // 不需要套DataInputStream/BufferedInputStream和DataOutputStream/BufferedOutputStream
+        // 上层已经有buffer了，直接用buffer读写原始的socket输入输出流即可
+        in = socket.getInputStream();
+        out = socket.getOutputStream();
         this.socket = socket;
-        in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 64 * 1024));
-        out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), 64 * 1024));
+
     }
 
     public void setAsyncConnection(AsyncConnection conn) {
@@ -98,17 +100,35 @@ public class BioWritableChannel implements WritableChannel {
         try {
             if (conn.isClosed())
                 return;
-            int packetLength = in.readInt();
-            checkPacketLength(maxPacketSize, packetLength);
             NetBuffer netBuffer = conn.getNetBuffer();
+            ByteBuffer bb = netBuffer.getByteBuffer();
+            byte[] b = bb.array();
+            int packetLength = readRacketLength(b);
+            checkPacketLength(maxPacketSize, packetLength);
             // 如果返回的netBuffer的capacity小于packetLength会自动扩容，并且限制limit不会多读
             netBuffer.limit(packetLength);
-            ByteBuffer buffer = netBuffer.getByteBuffer();
+            b = bb.array(); // 重新获取一次，扩容时会变
             // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
-            in.readFully(buffer.array(), buffer.arrayOffset(), packetLength);
+            readFully(b, 0, packetLength);
             conn.handle(netBuffer);
         } catch (Exception e) {
             conn.handleException(e);
+        }
+    }
+
+    private int readRacketLength(byte[] b) throws IOException {
+        readFully(b, 0, 4);
+        return (((b[0] & 0xFF) << 24) + ((b[1] & 0xFF) << 16) + ((b[2] & 0xFF) << 8)
+                + ((b[3] & 0xFF) << 0));
+    }
+
+    private final void readFully(byte[] b, int off, int len) throws IOException {
+        int n = 0;
+        while (n < len) {
+            int count = in.read(b, off + n, len - n);
+            if (count < 0)
+                throw new EOFException();
+            n += count;
         }
     }
 
