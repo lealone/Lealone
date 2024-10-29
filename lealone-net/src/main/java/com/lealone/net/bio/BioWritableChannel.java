@@ -18,11 +18,9 @@ import java.util.Map;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
-import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
-import com.lealone.net.NetBufferFactory;
 import com.lealone.net.WritableChannel;
 
 public class BioWritableChannel implements WritableChannel {
@@ -37,7 +35,6 @@ public class BioWritableChannel implements WritableChannel {
     private DataInputStream in;
     private DataOutputStream out;
 
-    private DataBuffer dataBuffer;
     private AsyncConnection conn;
 
     public BioWritableChannel(Map<String, String> config, Socket socket, InetSocketAddress address)
@@ -54,42 +51,6 @@ public class BioWritableChannel implements WritableChannel {
 
     public void setAsyncConnection(AsyncConnection conn) {
         this.conn = conn;
-    }
-
-    public DataBuffer getDataBuffer(int capacity) {
-        if (dataBuffer == null) {
-            dataBuffer = DataBuffer.create(null, capacity, false);
-        } else if (dataBuffer.capacity() > 8096)
-            dataBuffer = DataBuffer.create(null, 8096, false);
-        dataBuffer.clear();
-        return dataBuffer;
-    }
-
-    @Override
-    public void write(NetBuffer data) {
-        ByteBuffer bb = data.getByteBuffer();
-        try {
-            if (bb.hasArray()) {
-                out.write(bb.array(), bb.arrayOffset(), bb.limit());
-            } else {
-                byte[] bytes = new byte[bb.limit()];
-                bb.get(bytes);
-                out.write(bytes);
-            }
-            out.flush();
-        } catch (IOException e) {
-            conn.handleException(e);
-        }
-    }
-
-    @Override
-    public void close() {
-        if (socket != null) {
-            IOUtils.closeSilently(in, out, socket);
-            socket = null;
-            in = null;
-            out = null;
-        }
     }
 
     @Override
@@ -113,13 +74,23 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public NetBufferFactory getBufferFactory() {
-        return NetBufferFactory.getInstance();
+    public boolean isBio() {
+        return true;
     }
 
     @Override
-    public boolean isBio() {
-        return true;
+    public DataBufferFactory getDataBufferFactory() {
+        return BioDataBufferFactory.INSTANCE;
+    }
+
+    @Override
+    public void close() {
+        if (socket != null) {
+            IOUtils.closeSilently(in, out, socket);
+            socket = null;
+            in = null;
+            out = null;
+        }
     }
 
     @Override
@@ -129,13 +100,12 @@ public class BioWritableChannel implements WritableChannel {
                 return;
             int packetLength = in.readInt();
             checkPacketLength(maxPacketSize, packetLength);
-            DataBuffer dataBuffer = getDataBuffer(packetLength);
-            // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
-            dataBuffer.limit(packetLength);
-            ByteBuffer buffer = dataBuffer.getBuffer();
+            NetBuffer netBuffer = conn.getNetBuffer();
+            // 如果返回的netBuffer的capacity小于packetLength会自动扩容，并且限制limit不会多读
+            netBuffer.limit(packetLength);
+            ByteBuffer buffer = netBuffer.getByteBuffer();
             // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
             in.readFully(buffer.array(), buffer.arrayOffset(), packetLength);
-            NetBuffer netBuffer = new NetBuffer(dataBuffer, true);
             conn.handle(netBuffer);
         } catch (Exception e) {
             conn.handleException(e);
@@ -143,8 +113,23 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return new BioDataBufferFactory(this);
+    public void write(NetBuffer data) {
+        ByteBuffer bb = data.getByteBuffer();
+        bb.flip();
+        try {
+            if (bb.hasArray()) {
+                out.write(bb.array(), bb.arrayOffset(), bb.limit());
+            } else {
+                byte[] bytes = new byte[bb.limit()];
+                bb.get(bytes);
+                out.write(bytes);
+            }
+            out.flush();
+        } catch (IOException e) {
+            conn.handleException(e);
+        } finally {
+            data.reset();
+        }
     }
 
     public static int getMaxPacketSize(Map<String, String> config) {

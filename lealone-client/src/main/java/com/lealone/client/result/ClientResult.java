@@ -173,19 +173,20 @@ public abstract class ClientResult implements Result {
         }
     }
 
-    protected void sendFetch(int fetchSize) throws IOException {
+    protected TransferInputStream sendFetch(int fetchSize) throws IOException {
         // 释放buffer
-        in.close();
-        JdbcAsyncCallback<Boolean> ac = JdbcAsyncCallback.create(session);
+        if (in.isLazyRead())
+            in.closeForce();
+        JdbcAsyncCallback<TransferInputStream> ac = JdbcAsyncCallback.create(session);
         session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).onComplete(ar -> {
             if (ar.isSucceeded()) {
-                in = (TransferInputStream) ar.getResult().in;
-                ac.setAsyncResult(true);
+                TransferInputStream in = (TransferInputStream) ar.getResult().in;
+                ac.setAsyncResult(in);
             } else {
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        ac.get();
+        return ac.get();
     }
 
     @Override

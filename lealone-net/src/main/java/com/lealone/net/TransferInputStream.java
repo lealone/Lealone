@@ -61,6 +61,7 @@ public class TransferInputStream implements NetInputStream {
     private DataInputStream in;
     private Session session;
     private boolean isGlobalBuffer;
+    private boolean lazyRead;
     private NetBufferInputStream netBufferInputStream;
 
     public TransferInputStream(NetBuffer inBuffer, boolean isGlobalBuffer) {
@@ -77,19 +78,38 @@ public class TransferInputStream implements NetInputStream {
         this.session = session;
     }
 
+    public boolean isReadFully() {
+        return netBufferInputStream.pos >= netBufferInputStream.buffer.getByteBuffer().limit();
+    }
+
+    public boolean isLazyRead() {
+        return lazyRead;
+    }
+
+    public void setLazyRead(boolean lazyRead) {
+        this.lazyRead = lazyRead;
+    }
+
     public void close() {
+        if (lazyRead)
+            return;
         if (isGlobalBuffer) {
             netBufferInputStream.reset();
         } else {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                    // 最终只是回收NetBuffer，不应该发生异常
-                    throw DbException.getInternalError();
-                }
-                in = null;
+            closeForce();
+        }
+    }
+
+    public void closeForce() {
+        if (in != null) {
+            try {
+                netBufferInputStream.buffer.getDataBuffer().close();
+                in.close();
+            } catch (IOException e) {
+                // 最终只是回收NetBuffer，不应该发生异常
+                throw DbException.getInternalError();
             }
+            in = null;
         }
     }
 

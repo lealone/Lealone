@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
+import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.session.Session;
@@ -32,6 +33,8 @@ public class TcpClientConnection extends TransferConnection {
     private final NetClient netClient;
 
     private Throwable pendingException;
+    private NetBuffer inNetBuffer;
+    private TransferInputStream in;
 
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize) {
         super(writableChannel, false);
@@ -43,6 +46,23 @@ public class TcpClientConnection extends TransferConnection {
         } else {
             sessions = new ConcurrentHashMap<>();
             callbackMap = new ConcurrentHashMap<>();
+        }
+        createTransferInputStream();
+    }
+
+    private void createTransferInputStream() {
+        DataBuffer dataBuffer = writableChannel.getDataBufferFactory().create();
+        inNetBuffer = new NetBuffer(dataBuffer, false);
+        inNetBuffer.setGlobal(true);
+        in = new TransferInputStream(inNetBuffer, true);
+    }
+
+    public void recreateTransferInputStreamIfNeed() {
+        // 应用设置fetchSize，当查询语句返回的结果集太大时会延迟读，
+        // 所以重建新的输入流，让应用线程使用旧的输入流，jdbc 客户端调度线程使用新的输入流
+        if (!in.isReadFully()) {
+            in.setLazyRead(true);
+            createTransferInputStream();
         }
     }
 
@@ -64,9 +84,20 @@ public class TcpClientConnection extends TransferConnection {
     }
 
     @Override
+    public NetBuffer getNetBuffer() {
+        return inNetBuffer;
+    }
+
+    @Override
+    public TransferInputStream getTransferInputStream(NetBuffer buffer) {
+        return in;
+    }
+
+    @Override
     public void close() {
         if (isClosed())
             return;
+        in.closeForce();
         // 如果还有回调未处理需要设置异常，避免等待回调结果的线程一直死等
         if (!callbackMap.isEmpty()) {
             DbException e;

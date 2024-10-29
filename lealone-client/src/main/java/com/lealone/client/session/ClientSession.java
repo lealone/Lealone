@@ -59,7 +59,9 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
+
     private final boolean isBio;
+    private final TransferOutputStream out; // 如果是阻塞io，输出流的buffer可以复用
 
     ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, int id) {
         this.tcpConnection = tcpConnection;
@@ -73,7 +75,13 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
         initTraceSystem(ci);
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
+
         isBio = tcpConnection.getWritableChannel().isBio();
+        out = isBio ? tcpConnection.createTransferOutputStream(true) : null;
+    }
+
+    private TransferOutputStream getTransferOutputStream() {
+        return isBio ? out : tcpConnection.createTransferOutputStream();
     }
 
     @Override
@@ -110,7 +118,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             String msg = tcpConnection.getWritableChannel().getHost() + " tcp connection closed";
             throw getConnectionBrokenException(msg);
         }
-        if (isClosed()) {
+        if (closed) {
             throw getConnectionBrokenException("session closed");
         }
     }
@@ -186,6 +194,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             }
             super.close();
             if (isBio()) {
+                if (out != null)
+                    out.close();
                 tcpConnection.close();
             }
         } catch (RuntimeException e) {
@@ -288,13 +298,15 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         }
         try {
             checkClosed();
-            TransferOutputStream out = tcpConnection.createTransferOutputStream();
+            TransferOutputStream out = getTransferOutputStream();
             out.writeRequestHeader(this, packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
             if (ac != null && isBio)
                 tcpConnection.getWritableChannel().read();
         } catch (Throwable e) {
+            if (isBio)
+                out.reset();
             if (ac != null) {
                 removeAsyncCallback(packetId);
                 ac.setAsyncResult(e);
@@ -312,13 +324,18 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         Packet packet = decoder.decode(in, getProtocolVersion());
         if (ackPacketHandler != null) {
             try {
-                ac.setAsyncResult(ackPacketHandler.handle((P) packet));
+                R r = ackPacketHandler.handle((P) packet);
+                // 在通知应用线程处理前，如果输入流没有读完需要创建新的输入流，把旧的留给应用线程
+                // 不能先通知再判断输入流有没有读完，这样会导致调度线程和应用线程同时访问输入流，会有并发问题
+                tcpConnection.recreateTransferInputStreamIfNeed();
+                ac.setAsyncResult(r);
             } catch (Throwable e) {
                 ac.setAsyncResult(e);
             }
         }
     }
 
+    // 外部插件会用到，所以独立出一个public方法
     public void removeAsyncCallback(int packetId) {
         tcpConnection.removeAsyncCallback(packetId);
     }

@@ -11,7 +11,6 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
 import com.lealone.net.NetBuffer;
-import com.lealone.net.NetBufferFactory;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
 
@@ -48,17 +47,6 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void write(NetBuffer data) {
-        eventLoop.addNetBuffer(channel, data);
-    }
-
-    @Override
-    public void close() {
-        if (eventLoop != null)
-            eventLoop.closeChannel(channel);
-    }
-
-    @Override
     public String getHost() {
         return host;
     }
@@ -84,12 +72,23 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public NetBufferFactory getBufferFactory() {
-        return NetBufferFactory.getInstance();
+    public void setEventLoop(NetEventLoop eventLoop) {
+        this.eventLoop = eventLoop;
     }
 
     @Override
-    public void setEventLoop(NetEventLoop eventLoop) {
-        this.eventLoop = eventLoop;
+    public void close() {
+        if (eventLoop != null)
+            eventLoop.closeChannel(channel);
+    }
+
+    @Override
+    public void read() {
+        throw new UnsupportedOperationException("read");
+    }
+
+    @Override
+    public void write(NetBuffer data) {
+        eventLoop.addNetBuffer(channel, data);
     }
 }

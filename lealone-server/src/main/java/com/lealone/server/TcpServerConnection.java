@@ -11,10 +11,8 @@ import java.util.HashMap;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
@@ -53,20 +51,13 @@ public class TcpServerConnection extends AsyncServerConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final HashMap<Integer, ServerSessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
-    private final InternalScheduler scheduler;
-    private final NetBuffer inNetBuffer;
     private final TransferInputStream in;
     private final TransferOutputStream out;
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
             Scheduler scheduler) {
-        super(writableChannel);
+        super(writableChannel, scheduler);
         this.tcpServer = tcpServer;
-        this.scheduler = (InternalScheduler) scheduler;
-
-        DataBuffer dataBuffer = scheduler.getDataBufferFactory().create(NetBuffer.BUFFER_SIZE);
-        inNetBuffer = new NetBuffer(dataBuffer, false);
-        inNetBuffer.setGlobal(true);
         in = new TransferInputStream(inNetBuffer, true);
         out = createTransferOutputStream(true);
     }
@@ -79,11 +70,6 @@ public class TcpServerConnection extends AsyncServerConnection {
     @Override
     public DataBufferFactory getDataBufferFactory() {
         return scheduler.getDataBufferFactory();
-    }
-
-    @Override
-    public NetBuffer getNetBuffer() {
-        return inNetBuffer;
     }
 
     @Override
@@ -253,6 +239,10 @@ public class TcpServerConnection extends AsyncServerConnection {
 
     @Override
     public void close() {
+        if (isClosed())
+            return;
+        in.closeForce();
+        out.close();
         super.close();
         for (ServerSessionInfo si : sessions.values()) {
             closeSession(si, true);

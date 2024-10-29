@@ -11,10 +11,6 @@ import com.lealone.db.DataBufferFactory;
 
 public interface WritableChannel {
 
-    void write(NetBuffer data);
-
-    void close();
-
     String getHost();
 
     int getPort();
@@ -23,23 +19,28 @@ public interface WritableChannel {
 
     int getLocalPort();
 
-    default SocketChannel getSocketChannel() {
-        throw new UnsupportedOperationException("getSocketChannel");
-    }
-
-    NetBufferFactory getBufferFactory();
-
-    default void setEventLoop(NetEventLoop eventLoop) {
-    }
-
     default boolean isBio() {
         return false;
     }
 
-    default void read() {
+    default SocketChannel getSocketChannel() {
+        throw new UnsupportedOperationException("getSocketChannel");
+    }
+
+    default void setEventLoop(NetEventLoop eventLoop) {
+    }
+
+    default NetBufferFactory getBufferFactory() {
+        return NetBufferFactory.INSTANCE;
     }
 
     default DataBufferFactory getDataBufferFactory() {
         return DataBufferFactory.getConcurrentFactory();
     }
+
+    void close();
+
+    void read();
+
+    void write(NetBuffer data);
 }

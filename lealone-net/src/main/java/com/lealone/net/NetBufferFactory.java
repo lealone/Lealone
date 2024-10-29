@@ -10,16 +10,13 @@ import com.lealone.db.DataBufferFactory;
 
 public class NetBufferFactory {
 
-    private static final NetBufferFactory instance = new NetBufferFactory();
-
-    public static NetBufferFactory getInstance() {
-        return instance;
-    }
+    public static final NetBufferFactory INSTANCE = new NetBufferFactory();
 
     public NetBuffer createBuffer(int initialSizeHint, DataBufferFactory dataBufferFactory) {
         return new NetBuffer(dataBufferFactory.create(initialSizeHint));
     }
 
+    // 外部插件会用到
     public NetBuffer createBuffer(DataBuffer dataBuffer) {
         return new NetBuffer(dataBuffer);
     }

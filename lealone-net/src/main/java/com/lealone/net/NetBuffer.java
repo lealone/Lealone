@@ -8,6 +8,7 @@ package com.lealone.net;
 import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
+import com.lealone.db.DataBufferFactory;
 
 public class NetBuffer {
 
@@ -150,13 +151,20 @@ public class NetBuffer {
 
     public void reset() {
         if (dataBuffer.capacity() > BUFFER_SIZE) {
-            DataBuffer newBuffer = DataBuffer.create(dataBuffer.getHandler(), BUFFER_SIZE,
-                    dataBuffer.getDirect());
+            DataBufferFactory factory = dataBuffer.getFactory();
+            if (factory == null)
+                factory = DataBufferFactory.getConcurrentFactory();
+            DataBuffer newBuffer = factory.create(BUFFER_SIZE, dataBuffer.getDirect());
             dataBuffer.close();
             dataBuffer = newBuffer;
         }
         readIndex = 0;
         packetCount = 0;
         dataBuffer.getBuffer().clear();
+    }
+
+    @Override
+    public String toString() {
+        return dataBuffer.getBuffer().toString();
     }
 }

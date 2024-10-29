@@ -116,6 +116,15 @@ public class TransferOutputStream implements NetOutputStream {
         outBuffer.flush();
     }
 
+    public void close() {
+        outBuffer.buffer.getDataBuffer().close();
+    }
+
+    // 出错时可以重置
+    public void reset() {
+        outBuffer.buffer.reset();
+    }
+
     /**
      * Write a boolean.
      *
@@ -550,26 +559,71 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static class GlobalNetBufferOutputStream extends NetBufferOutputStream {
 
-        private int startPos;
-        private boolean written;
+        private final GlobalWritableChannel channel;
 
         GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
                 DataBufferFactory dataBufferFactory) {
             super(writableChannel, initialSizeHint, dataBufferFactory);
             createBuffer(); // 全局buffer需要提前创建
             buffer.setGlobal(true);
+            channel = new GlobalWritableChannel(writableChannel, buffer);
         }
 
         @Override
         public void flush() throws IOException {
-            int length = buffer.position() - startPos - 4;
-            writePacketLength(startPos, length);
-            writableChannel.write(buffer);
-            written = true;
+            int length = buffer.position() - channel.startPos - 4;
+            writePacketLength(channel.startPos, length);
+            channel.flush();
         }
 
         @Override
         protected void createBufferIfNeed(int status) {
+            channel.createBufferIfNeed(status);
+            // 协议包头占4个字节，最后flush时再回填
+            buffer.appendInt(0);
+        }
+    }
+
+    // 外部插件也在使用这个类
+    public static class GlobalWritableChannel {
+
+        private final WritableChannel writableChannel;
+        private final NetBuffer buffer;
+
+        private int startPos;
+        private boolean written;
+
+        public GlobalWritableChannel(WritableChannel writableChannel,
+                DataBufferFactory dataBufferFactory) {
+            this.writableChannel = writableChannel;
+            buffer = writableChannel.getBufferFactory().createBuffer(NetBuffer.BUFFER_SIZE,
+                    dataBufferFactory);
+            buffer.setGlobal(true);
+        }
+
+        public GlobalWritableChannel(WritableChannel writableChannel, NetBuffer buffer) {
+            this.writableChannel = writableChannel;
+            this.buffer = buffer;
+        }
+
+        public NetBuffer getGlobalBuffer() {
+            return buffer;
+        }
+
+        public ByteBuffer getByteBuffer() {
+            return buffer.getByteBuffer();
+        }
+
+        public void allocate(int capacity) {
+            buffer.getDataBuffer().checkCapacity(capacity);
+        }
+
+        public void flush() {
+            writableChannel.write(buffer);
+            written = true;
+        }
+
+        public void createBufferIfNeed(int status) {
             if (status == Session.STATUS_ERROR) {
                 // 如果某个包写到一半出错了又写一个错误包，那需要把前面的覆盖掉
                 if (!written && startPos != buffer.position()) {
@@ -581,8 +635,6 @@ public class TransferOutputStream implements NetOutputStream {
             // 全局buffer只需要记住下一个包的开始位置即可，会一直往后追加
             startPos = buffer.position();
             buffer.incrementPacketCount();
-            // 协议包头占4个字节，最后flush时再回填
-            buffer.appendInt(0);
         }
     }
 }

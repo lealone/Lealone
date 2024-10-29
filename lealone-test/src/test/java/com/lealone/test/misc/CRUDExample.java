@@ -24,47 +24,18 @@ import com.lealone.test.TestBase;
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
-
         // startMultiThreads();
 
         Connection conn = null;
 
         conn = getBioConnection();
         crud(conn);
-        //
+
         // conn = getNioConnection();
         // crud(conn);
         //
-        //
         // conn = getEmbeddedConnection();
         // crud(conn);
-    }
-
-    public static void startMultiThreads() throws Exception {
-        ThreadUtils.start("CRUDExample1", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        ThreadUtils.start("CRUDExample2", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        ThreadUtils.start("CRUDExample3", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
     }
 
     public static Connection getBioConnection() throws Exception {
@@ -79,7 +50,6 @@ public class CRUDExample {
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
-
         test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
         return test.getConnection(LealoneDatabase.NAME);
     }
@@ -92,27 +62,25 @@ public class CRUDExample {
     }
 
     public static void crud(Connection conn) throws Exception {
-        crud(conn, null);
-    }
-
-    public static void crud(Connection conn, String storageEngineName) throws Exception {
         Statement stmt = conn.createStatement();
-        crud(stmt, storageEngineName);
+        // crud(stmt);
         // asyncInsert(stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn);
         // batchDelete(stmt);
+        testFetchSize(stmt);
         stmt.close();
         conn.close();
     }
 
-    public static void crud(Statement stmt, String storageEngineName) throws Exception {
+    public static void createTable(Statement stmt) throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         String sql = "CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)";
-        if (storageEngineName != null)
-            sql += " ENGINE = " + storageEngineName;
         stmt.executeUpdate(sql);
+    }
 
+    public static void crud(Statement stmt) throws Exception {
+        createTable(stmt);
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
@@ -126,13 +94,21 @@ public class CRUDExample {
         rs.close();
     }
 
+    public static void testFetchSize(Statement stmt) throws Exception {
+        createTable(stmt);
+        batchInsert(stmt);
+        stmt.setFetchSize(10);
+        ResultSet rs = stmt.executeQuery("SELECT * FROM test");
+        while (rs.next()) {
+            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        }
+        rs.close();
+    }
+
     public static void batchInsert(Statement stmt) throws Exception {
         for (int i = 1; i <= 60; i++)
             stmt.addBatch("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
         stmt.executeBatch();
-
-        // for (int i = 1; i <= 60000; i++)
-        // stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + ", " + i * 10 + ")");
     }
 
     public static void batchPreparedInsert(Connection conn) throws Exception {
@@ -166,7 +142,34 @@ public class CRUDExample {
     }
 
     public static void batchDelete(Statement stmt) throws Exception {
-        for (int i = 1; i <= 60000; i++)
+        for (int i = 1; i <= 60; i++)
             stmt.executeUpdate("DELETE FROM test WHERE f1 =" + i);
+    }
+
+    public static void startMultiThreads() throws Exception {
+        ThreadUtils.start("CRUDExample1", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        ThreadUtils.start("CRUDExample2", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        ThreadUtils.start("CRUDExample3", () -> {
+            try {
+                Connection conn = getNioConnection();
+                crud(conn);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 }

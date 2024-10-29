@@ -932,6 +932,10 @@ public class DataBuffer implements AutoCloseable {
 
     private DataBufferFactory factory;
 
+    public DataBufferFactory getFactory() {
+        return factory;
+    }
+
     public void setFactory(DataBufferFactory factory) {
         this.factory = factory;
     }

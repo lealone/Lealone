@@ -451,7 +451,8 @@ public class NioEventLoop implements NetEventLoop {
         } catch (IOException e) {
             handleWriteException(e, key);
         }
-        writeQueueSize.decrementAndGet();
+        if (fromQueue)
+            writeQueueSize.decrementAndGet();
         netBuffer.recycle();
         return true;
     }

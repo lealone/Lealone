@@ -44,7 +44,7 @@ public class RowCountDeterminedClientResult extends ClientResult {
             result.clear();
             int fetch = Math.min(fetchSize, rowCount - rowOffset);
             if (sendFetch) {
-                sendFetch(fetch);
+                in = sendFetch(fetch);
             }
             for (int r = 0; r < fetch; r++) {
                 boolean row = in.readBoolean();
