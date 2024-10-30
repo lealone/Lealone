@@ -505,12 +505,7 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static abstract class NetBufferOutputStream extends OutputStream {
 
-        protected final WritableChannel writableChannel;
         protected NetBuffer buffer;
-
-        NetBufferOutputStream(WritableChannel writableChannel) {
-            this.writableChannel = writableChannel;
-        }
 
         @Override
         public void write(int b) {
@@ -541,12 +536,13 @@ public class TransferOutputStream implements NetOutputStream {
 
     private static class LocalNetBufferOutputStream extends NetBufferOutputStream {
 
-        private final DataBufferFactory dataBufferFactory;
+        private final WritableChannel writableChannel;
         private final int initialSizeHint;
+        private final DataBufferFactory dataBufferFactory;
 
         LocalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
                 DataBufferFactory dataBufferFactory) {
-            super(writableChannel);
+            this.writableChannel = writableChannel;
             this.initialSizeHint = initialSizeHint;
             this.dataBufferFactory = dataBufferFactory;
         }
@@ -575,7 +571,6 @@ public class TransferOutputStream implements NetOutputStream {
 
         GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
                 DataBufferFactory dataBufferFactory) {
-            super(writableChannel);
             channel = new GlobalWritableChannel(writableChannel, initialSizeHint, dataBufferFactory);
             buffer = channel.getGlobalBuffer();
         }
