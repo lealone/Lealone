@@ -131,8 +131,8 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void write(NetBuffer data) {
-        ByteBuffer bb = data.getByteBuffer();
+    public void write(NetBuffer buffer) {
+        ByteBuffer bb = buffer.getByteBuffer();
         bb.flip(); // 上层没有进行过flip
         try {
             out.write(bb.array(), bb.arrayOffset(), bb.limit());
@@ -140,7 +140,7 @@ public class BioWritableChannel implements WritableChannel {
         } catch (Exception e) {
             conn.handleException(e);
         } finally {
-            data.reset();
+            buffer.reset();
         }
     }
 

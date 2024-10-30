@@ -53,18 +53,18 @@ public class NioServerAccepter extends NetServerBase {
 
     @Override
     public void accept(Scheduler scheduler) {
-        SocketChannel channel = null;
         AsyncConnection conn = null;
+        NioWritableChannel writableChannel = null;
         try {
-            channel = serverChannel.accept();
+            SocketChannel channel = serverChannel.accept();
             channel.configureBlocking(false);
-            NioWritableChannel writableChannel = new NioWritableChannel(channel, null);
+            writableChannel = new NioWritableChannel(channel, null);
             conn = createConnection(writableChannel, scheduler);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);
             }
-            NioEventLoop.closeChannelSilently(channel);
+            NioEventLoop.closeChannelSilently(writableChannel);
             // 按Ctrl+C退出时accept可能抛出异常，此时就不需要记录日志了
             if (!isStopped()) {
                 logger.warn(getName() + " failed to accept connection", e);

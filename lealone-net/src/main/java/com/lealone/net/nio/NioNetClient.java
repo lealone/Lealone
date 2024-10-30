@@ -57,7 +57,6 @@ public class NioNetClient extends NetClientBase {
                 }
             }
         } catch (Exception e) {
-            eventLoop.closeChannel(channel);
             ac.setAsyncResult(e);
         }
     }

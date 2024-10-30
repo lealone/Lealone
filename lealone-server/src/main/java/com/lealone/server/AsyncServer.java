@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.net.AsyncConnection;
@@ -108,9 +107,10 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
     protected void register(T conn, Scheduler scheduler, WritableChannel writableChannel) {
         beforeRegister(conn, scheduler);
         NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
-        writableChannel.setEventLoop(eventLoop); // 替换掉原来的
         eventLoop.register(conn);
         afterRegister(conn, scheduler);
+        // 执行完register再调用，这样可以获取到SelectionKey
+        writableChannel.setEventLoop(eventLoop); // 替换掉原来的
     }
 
     @Override
@@ -134,7 +134,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public void registerAccepter(ServerSocketChannel serverChannel) {
-        InternalScheduler scheduler = (InternalScheduler) schedulerFactory.getScheduler();
+        Scheduler scheduler = schedulerFactory.getScheduler();
         scheduler.registerAccepter(this, serverChannel);
     }
 

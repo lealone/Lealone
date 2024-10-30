@@ -8,7 +8,6 @@ package com.lealone.net;
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.scheduler.Scheduler;
@@ -33,11 +32,11 @@ public interface NetEventLoop {
 
     void wakeup();
 
-    void addSocketChannel(SocketChannel channel);
-
-    void addNetBuffer(SocketChannel channel, NetBuffer netBuffer);
+    void addSocketChannel(WritableChannel channel);
 
     void read(SelectionKey key);
+
+    void write(WritableChannel channel, NetBuffer buffer);
 
     void write();
 
@@ -49,11 +48,13 @@ public interface NetEventLoop {
 
     void handleSelectedKeys();
 
-    void closeChannel(SocketChannel channel);
+    void closeChannel(WritableChannel channel);
 
     void close();
 
     boolean isInLoop();
 
     boolean isQueueLarge();
+
+    boolean isThreadSafe();
 }

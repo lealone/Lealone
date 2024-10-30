@@ -28,11 +28,11 @@ public class CRUDExample {
 
         Connection conn = null;
 
-        conn = getBioConnection();
-        crud(conn);
-
-        // conn = getNioConnection();
+        // conn = getBioConnection();
         // crud(conn);
+
+        conn = getNioConnection();
+        crud(conn);
 
         // conn = getEmbeddedConnection();
         // crud(conn);
