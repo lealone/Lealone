@@ -141,7 +141,7 @@ public class ValueEnum extends Value {
 
     @Override
     public Object getObject() {
-        return value;
+        return label;
     }
 
     @Override
