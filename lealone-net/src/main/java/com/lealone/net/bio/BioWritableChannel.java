@@ -98,9 +98,7 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public void read() {
         try {
-            if (conn.isClosed())
-                return;
-            NetBuffer netBuffer = conn.getNetBuffer();
+            NetBuffer netBuffer = conn.getNetBuffer(); // 可能会变，所以每次都获取
             ByteBuffer bb = netBuffer.getByteBuffer();
             byte[] b = bb.array();
             int packetLength = readRacketLength(b);
@@ -118,11 +116,11 @@ public class BioWritableChannel implements WritableChannel {
 
     private int readRacketLength(byte[] b) throws IOException {
         readFully(b, 0, 4);
-        return (((b[0] & 0xFF) << 24) + ((b[1] & 0xFF) << 16) + ((b[2] & 0xFF) << 8)
-                + ((b[3] & 0xFF) << 0));
+        return ((b[0] & 0xFF) << 24) + ((b[1] & 0xFF) << 16) + ((b[2] & 0xFF) << 8)
+                + ((b[3] & 0xFF) << 0);
     }
 
-    private final void readFully(byte[] b, int off, int len) throws IOException {
+    private void readFully(byte[] b, int off, int len) throws IOException {
         int n = 0;
         while (n < len) {
             int count = in.read(b, off + n, len - n);
@@ -135,17 +133,11 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public void write(NetBuffer data) {
         ByteBuffer bb = data.getByteBuffer();
-        bb.flip();
+        bb.flip(); // 上层没有进行过flip
         try {
-            if (bb.hasArray()) {
-                out.write(bb.array(), bb.arrayOffset(), bb.limit());
-            } else {
-                byte[] bytes = new byte[bb.limit()];
-                bb.get(bytes);
-                out.write(bytes);
-            }
+            out.write(bb.array(), bb.arrayOffset(), bb.limit());
             out.flush();
-        } catch (IOException e) {
+        } catch (Exception e) {
             conn.handleException(e);
         } finally {
             data.reset();

@@ -33,7 +33,7 @@ public class CRUDExample {
 
         // conn = getNioConnection();
         // crud(conn);
-        //
+
         // conn = getEmbeddedConnection();
         // crud(conn);
     }
@@ -50,7 +50,7 @@ public class CRUDExample {
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
-        test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
+        // test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
         return test.getConnection(LealoneDatabase.NAME);
     }
 
@@ -63,12 +63,12 @@ public class CRUDExample {
 
     public static void crud(Connection conn) throws Exception {
         Statement stmt = conn.createStatement();
-        // crud(stmt);
+        crud(stmt);
         // asyncInsert(stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn);
         // batchDelete(stmt);
-        testFetchSize(stmt);
+        // testFetchSize(stmt);
         stmt.close();
         conn.close();
     }
@@ -124,6 +124,7 @@ public class CRUDExample {
 
     public static void asyncInsert(Statement stmt0) throws Exception {
         JdbcStatement stmt = (JdbcStatement) stmt0;
+        createTable(stmt);
         int size = 60;
         CountDownLatch latch = new CountDownLatch(size);
         for (int i = 1; i <= size; i++) {
@@ -137,6 +138,7 @@ public class CRUDExample {
         latch.await();
         ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test");
         rs.next();
+        System.out.println("count=" + rs.getInt(1));
         Assert.assertEquals(size, rs.getInt(1));
         rs.close();
     }

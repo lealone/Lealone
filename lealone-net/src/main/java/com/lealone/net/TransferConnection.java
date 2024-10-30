@@ -132,9 +132,6 @@ public abstract class TransferConnection extends AsyncConnection {
 
     @Override
     public void handle(NetBuffer buffer) {
-        if (!buffer.isGlobal() && !buffer.isOnlyOnePacket()) {
-            DbException.throwInternalError("NetBuffer must be OnlyOnePacket");
-        }
         TransferInputStream in = null;
         try {
             in = getTransferInputStream(buffer);

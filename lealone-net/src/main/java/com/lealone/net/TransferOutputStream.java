@@ -63,7 +63,7 @@ public class TransferOutputStream implements NetOutputStream {
             outBuffer = new GlobalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
                     dataBufferFactory);
         else
-            outBuffer = new NetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
+            outBuffer = new LocalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
                     dataBufferFactory);
         out = new DataOutputStream(outBuffer);
     }
@@ -75,14 +75,14 @@ public class TransferOutputStream implements NetOutputStream {
     public TransferOutputStream writeRequestHeader(Session session, int packetId, PacketType packetType)
             throws IOException {
         this.session = session;
-        createBufferIfNeed(Session.STATUS_OK);
+        startWrite(Session.STATUS_OK);
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
         return this;
     }
 
     public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType)
             throws IOException {
-        createBufferIfNeed(Session.STATUS_OK);
+        startWrite(Session.STATUS_OK);
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
         return this;
     }
@@ -90,16 +90,13 @@ public class TransferOutputStream implements NetOutputStream {
     public TransferOutputStream writeResponseHeader(Session session, int packetId, int status)
             throws IOException {
         this.session = session;
-        createBufferIfNeed(status);
+        startWrite(status);
         writeByte(RESPONSE).writeInt(packetId).writeInt(status);
         return this;
     }
 
-    // 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
-    // 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
-    // 因为只有一个线程写Buffer，写完了一个包才发送，所以如果中间错误了创建新的Buffer即可。
-    private void createBufferIfNeed(int status) {
-        outBuffer.createBufferIfNeed(status);
+    private void startWrite(int status) {
+        outBuffer.startWrite(status);
     }
 
     @Override
@@ -506,18 +503,13 @@ public class TransferOutputStream implements NetOutputStream {
         return hmacData;
     }
 
-    private static class NetBufferOutputStream extends OutputStream {
+    private static abstract class NetBufferOutputStream extends OutputStream {
 
         protected final WritableChannel writableChannel;
-        protected final int initialSizeHint;
-        protected final DataBufferFactory dataBufferFactory;
         protected NetBuffer buffer;
 
-        NetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
-                DataBufferFactory dataBufferFactory) {
+        NetBufferOutputStream(WritableChannel writableChannel) {
             this.writableChannel = writableChannel;
-            this.initialSizeHint = initialSizeHint;
-            this.dataBufferFactory = dataBufferFactory;
         }
 
         @Override
@@ -531,21 +523,11 @@ public class TransferOutputStream implements NetOutputStream {
         }
 
         @Override
-        public void flush() throws IOException {
-            int length = buffer.length() - 4;
-            writePacketLength(0, length);
-            buffer.flip();
-            writableChannel.write(buffer);
-        }
+        public abstract void flush() throws IOException;
 
-        protected void createBufferIfNeed(int status) {
-            createBuffer();
+        protected void startWrite(int status) {
             // 协议包头占4个字节，最后flush时再回填
             buffer.appendInt(0);
-        }
-
-        protected void createBuffer() {
-            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
         }
 
         // 按java.io.DataInputStream.readInt()的格式写
@@ -557,16 +539,45 @@ public class TransferOutputStream implements NetOutputStream {
         }
     }
 
+    private static class LocalNetBufferOutputStream extends NetBufferOutputStream {
+
+        private final DataBufferFactory dataBufferFactory;
+        private final int initialSizeHint;
+
+        LocalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
+                DataBufferFactory dataBufferFactory) {
+            super(writableChannel);
+            this.initialSizeHint = initialSizeHint;
+            this.dataBufferFactory = dataBufferFactory;
+        }
+
+        @Override
+        public void flush() throws IOException {
+            int length = buffer.length() - 4;
+            writePacketLength(0, length);
+            buffer.flip();
+            writableChannel.write(buffer);
+        }
+
+        @Override
+        protected void startWrite(int status) {
+            // 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
+            // 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
+            // 因为只有一个线程写Buffer，写完了一个包才发送，所以如果中间错误了创建新的Buffer即可。
+            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
+            super.startWrite(status);
+        }
+    }
+
     private static class GlobalNetBufferOutputStream extends NetBufferOutputStream {
 
         private final GlobalWritableChannel channel;
 
         GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
                 DataBufferFactory dataBufferFactory) {
-            super(writableChannel, initialSizeHint, dataBufferFactory);
-            createBuffer(); // 全局buffer需要提前创建
-            buffer.setGlobal(true);
-            channel = new GlobalWritableChannel(writableChannel, buffer);
+            super(writableChannel);
+            channel = new GlobalWritableChannel(writableChannel, initialSizeHint, dataBufferFactory);
+            buffer = channel.getGlobalBuffer();
         }
 
         @Override
@@ -577,10 +588,9 @@ public class TransferOutputStream implements NetOutputStream {
         }
 
         @Override
-        protected void createBufferIfNeed(int status) {
-            channel.createBufferIfNeed(status);
-            // 协议包头占4个字节，最后flush时再回填
-            buffer.appendInt(0);
+        protected void startWrite(int status) {
+            channel.startWrite(status);
+            super.startWrite(status);
         }
     }
 
@@ -595,15 +605,14 @@ public class TransferOutputStream implements NetOutputStream {
 
         public GlobalWritableChannel(WritableChannel writableChannel,
                 DataBufferFactory dataBufferFactory) {
-            this.writableChannel = writableChannel;
-            buffer = writableChannel.getBufferFactory().createBuffer(NetBuffer.BUFFER_SIZE,
-                    dataBufferFactory);
-            buffer.setGlobal(true);
+            this(writableChannel, NetBuffer.BUFFER_SIZE, dataBufferFactory);
         }
 
-        public GlobalWritableChannel(WritableChannel writableChannel, NetBuffer buffer) {
+        public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint,
+                DataBufferFactory dataBufferFactory) {
             this.writableChannel = writableChannel;
-            this.buffer = buffer;
+            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
+            buffer.setGlobal(true);
         }
 
         public NetBuffer getGlobalBuffer() {
@@ -619,11 +628,12 @@ public class TransferOutputStream implements NetOutputStream {
         }
 
         public void flush() {
+            // 不能立刻flip，因为全局buffer有可能后续的包会继续写入
             writableChannel.write(buffer);
             written = true;
         }
 
-        public void createBufferIfNeed(int status) {
+        public void startWrite(int status) {
             if (status == Session.STATUS_ERROR) {
                 // 如果某个包写到一半出错了又写一个错误包，那需要把前面的覆盖掉
                 if (!written && startPos != buffer.position()) {
