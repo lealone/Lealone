@@ -8,7 +8,6 @@ package com.lealone.client.result;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.lealone.client.jdbc.JdbcAsyncCallback;
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.Utils;
@@ -173,20 +172,19 @@ public abstract class ClientResult implements Result {
         }
     }
 
-    protected TransferInputStream sendFetch(int fetchSize) throws IOException {
+    protected abstract void readRows(TransferInputStream in, int fetchSize) throws IOException;
+
+    protected Void fetchAndReadRows(int fetchSize) {
         // 释放buffer
-        if (in.isLazyRead())
-            in.closeForce();
-        JdbcAsyncCallback<TransferInputStream> ac = JdbcAsyncCallback.create(session);
-        session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).onComplete(ar -> {
-            if (ar.isSucceeded()) {
-                TransferInputStream in = (TransferInputStream) ar.getResult().in;
-                ac.setAsyncResult(in);
-            } else {
-                ac.setAsyncResult(ar.getCause());
-            }
-        });
-        return ac.get();
+        // if (in.isLazyRead())
+        // in.closeForce();
+
+        // 让客户端的调度线程负责从输入流中读取结果集
+        return session.<Void, ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize), ack -> {
+            TransferInputStream in = (TransferInputStream) ack.in;
+            readRows(in, fetchSize);
+            return null;
+        }).get();
     }
 
     @Override

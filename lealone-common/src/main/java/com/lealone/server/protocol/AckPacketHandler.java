@@ -6,5 +6,5 @@
 package com.lealone.server.protocol;
 
 public interface AckPacketHandler<R, P extends AckPacket> {
-    R handle(P ack);
+    R handle(P ack) throws Exception;
 }

@@ -63,6 +63,8 @@ public class TcpClientConnection extends TransferConnection {
         if (!in.isReadFully()) {
             in.setLazyRead(true);
             createTransferInputStream();
+        } else {
+            in.close();
         }
     }
 

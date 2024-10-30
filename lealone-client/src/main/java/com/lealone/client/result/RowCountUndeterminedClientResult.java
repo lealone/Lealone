@@ -58,27 +58,31 @@ public class RowCountUndeterminedClientResult extends ClientResult {
             rowOffset += result.size();
             result.clear();
             if (sendFetch) {
-                sendFetch(fetchSize);
+                fetchAndReadRows(fetchSize);
+            } else {
+                readRows(in, fetchSize);
             }
-            for (int r = 0; r < fetchSize; r++) {
-                boolean row = in.readBoolean();
-                if (!row) {
-                    isEnd = true;
-                    break;
-                }
-                int len = columns.length;
-                Value[] values = new Value[len];
-                for (int i = 0; i < len; i++) {
-                    Value v = in.readValue();
-                    values[i] = v;
-                }
-                result.add(values);
-            }
-
-            if (isEnd)
-                sendClose();
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
+    }
+
+    @Override
+    protected void readRows(TransferInputStream in, int fetchSize) throws IOException {
+        for (int r = 0; r < fetchSize; r++) {
+            if (!in.readBoolean()) {
+                isEnd = true;
+                break;
+            }
+            int len = columns.length;
+            Value[] values = new Value[len];
+            for (int i = 0; i < len; i++) {
+                Value v = in.readValue();
+                values[i] = v;
+            }
+            result.add(values);
+        }
+        if (isEnd)
+            sendClose();
     }
 }

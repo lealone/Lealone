@@ -8,7 +8,6 @@ package com.lealone.client.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.lealone.client.result.ClientResult;
 import com.lealone.client.result.RowCountDeterminedClientResult;
 import com.lealone.client.session.AutoReconnectSession;
 import com.lealone.client.session.ClientSession;
@@ -125,28 +124,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             return Future.succeededFuture(null);
         }
         prepareIfRequired();
-        AsyncCallback<Result> ac = session.createCallback();
-        try {
-            Future<PreparedStatementGetMetaDataAck> f = session
-                    .send(new PreparedStatementGetMetaData(commandId));
-            f.onComplete(ar -> {
-                if (ar.isSucceeded()) {
-                    try {
-                        PreparedStatementGetMetaDataAck ack = ar.getResult();
-                        ClientResult result = new RowCountDeterminedClientResult(session,
-                                (TransferInputStream) ack.in, -1, ack.columnCount, 0, 0);
-                        ac.setAsyncResult(result);
-                    } catch (Throwable t) {
-                        ac.setAsyncResult(t);
-                    }
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-        } catch (Throwable t) {
-            ac.setAsyncResult(t);
-        }
-        return ac;
+        return session.<Result, PreparedStatementGetMetaDataAck> send(
+                new PreparedStatementGetMetaData(commandId), ack -> {
+                    return new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
+                            ack.columnCount, 0, 0);
+                });
     }
 
     @Override

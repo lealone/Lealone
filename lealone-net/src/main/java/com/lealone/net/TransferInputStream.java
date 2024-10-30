@@ -94,7 +94,8 @@ public class TransferInputStream implements NetInputStream {
         if (lazyRead)
             return;
         if (isGlobalBuffer) {
-            netBufferInputStream.reset();
+            if (netBufferInputStream.pos != 0)
+                netBufferInputStream.reset();
         } else {
             closeForce();
         }

@@ -8,6 +8,7 @@ package com.lealone.test.misc;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 
@@ -63,12 +64,13 @@ public class CRUDExample {
 
     public static void crud(Connection conn) throws Exception {
         Statement stmt = conn.createStatement();
-        crud(stmt);
+        // crud(stmt);
         // asyncInsert(stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn);
         // batchDelete(stmt);
-        // testFetchSize(stmt);
+        testFetchSize(stmt);
+        // getMetaData(conn, stmt);
         stmt.close();
         conn.close();
     }
@@ -146,6 +148,15 @@ public class CRUDExample {
     public static void batchDelete(Statement stmt) throws Exception {
         for (int i = 1; i <= 60; i++)
             stmt.executeUpdate("DELETE FROM test WHERE f1 =" + i);
+    }
+
+    public static void getMetaData(Connection conn, Statement stmt) throws Exception {
+        createTable(stmt);
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM test");
+        ResultSetMetaData md = ps.getMetaData();
+        System.out.println("column count=" + md.getColumnCount());
+        Assert.assertEquals(2, md.getColumnCount());
+        ps.close();
     }
 
     public static void startMultiThreads() throws Exception {
