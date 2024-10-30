@@ -3553,8 +3553,10 @@ public class SQLParserBase implements SQLParser {
                 startLoop = i;
                 while (command[++i] != '`') {
                     checkRunOver(i, len, startLoop);
-                    c = command[i];
-                    command[i] = Character.toUpperCase(c);
+                    if (identifiersToUpper) {
+                        c = command[i];
+                        command[i] = Character.toUpperCase(c);
+                    }
                 }
                 command[i] = '"';
                 break;
