@@ -10,10 +10,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.lealone.db.DataBufferFactory;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
@@ -25,12 +23,15 @@ public class NioWritableChannel implements WritableChannel {
     private final String localHost;
     private final int localPort;
 
+    private DataBufferFactory dataBufferFactory;
     private final SocketChannel channel;
     private NetEventLoop eventLoop;
     private SelectionKey selectionKey;
-    private Queue<NetBuffer> bufferQueue;
+    private NetBuffer buffer;
 
-    public NioWritableChannel(SocketChannel channel, NetEventLoop eventLoop) throws IOException {
+    public NioWritableChannel(DataBufferFactory dataBufferFactory, SocketChannel channel,
+            NetEventLoop eventLoop) throws IOException {
+        this.dataBufferFactory = dataBufferFactory;
         this.channel = channel;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
@@ -74,6 +75,21 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return dataBufferFactory;
+    }
+
+    @Override
+    public NetBuffer getBuffer() {
+        return buffer;
+    }
+
+    @Override
+    public void setBuffer(NetBuffer buffer) {
+        this.buffer = buffer;
+    }
+
+    @Override
     public SocketChannel getSocketChannel() {
         return channel;
     }
@@ -82,17 +98,8 @@ public class NioWritableChannel implements WritableChannel {
     public void setEventLoop(NetEventLoop eventLoop) {
         if (eventLoop != null) {
             selectionKey = channel.keyFor(eventLoop.getSelector());
-            if (eventLoop.isThreadSafe())
-                bufferQueue = new LinkedList<>();
-            else
-                bufferQueue = new ConcurrentLinkedQueue<>();
             this.eventLoop = eventLoop;
         }
-    }
-
-    @Override
-    public Queue<NetBuffer> getBufferQueue() {
-        return bufferQueue;
     }
 
     @Override
@@ -101,10 +108,16 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public boolean isClosed() {
+        return eventLoop == null;
+    }
+
+    @Override
     public void close() {
-        bufferQueue = null;
+        buffer = null;
         if (eventLoop != null)
             eventLoop.closeChannel(this);
+        eventLoop = null;
     }
 
     @Override

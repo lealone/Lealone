@@ -55,6 +55,4 @@ public interface NetEventLoop {
     boolean isInLoop();
 
     boolean isQueueLarge();
-
-    boolean isThreadSafe();
 }

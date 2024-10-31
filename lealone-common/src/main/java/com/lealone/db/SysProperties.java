@@ -68,6 +68,8 @@ public class SysProperties {
      */
     public static final boolean CHECK2 = getProperty("check2", false);
 
+    public static final boolean ASSERT = getProperty("assert", true);
+
     /**
      * System property <code>client.trace.directory</code> (default: trace.db/).<br />
      * Directory where the trace files of the JDBC client are stored (only for client / server).

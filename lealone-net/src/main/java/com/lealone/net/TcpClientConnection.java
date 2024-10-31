@@ -8,7 +8,6 @@ package com.lealone.net;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.exceptions.DbException;
@@ -26,8 +25,8 @@ public class TcpClientConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpClientConnection.class);
 
-    private final Map<Integer, Session> sessions;
-    private final Map<Integer, AsyncCallback<?>> callbackMap;
+    private final Map<Integer, Session> sessions = new HashMap<>();
+    private final Map<Integer, AsyncCallback<?>> callbackMap = new HashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final int maxSharedSize;
     private final NetClient netClient;
@@ -40,13 +39,6 @@ public class TcpClientConnection extends TransferConnection {
         super(writableChannel, false);
         this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
-        if (netClient.isThreadSafe()) {
-            sessions = new HashMap<>();
-            callbackMap = new HashMap<>();
-        } else {
-            sessions = new ConcurrentHashMap<>();
-            callbackMap = new ConcurrentHashMap<>();
-        }
         createTransferInputStream();
     }
 

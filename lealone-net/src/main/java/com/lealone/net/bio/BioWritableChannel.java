@@ -76,13 +76,18 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public DataBufferFactory getDataBufferFactory() {
+        return BioDataBufferFactory.INSTANCE;
+    }
+
+    @Override
     public boolean isBio() {
         return true;
     }
 
     @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return BioDataBufferFactory.INSTANCE;
+    public boolean isClosed() {
+        return socket == null;
     }
 
     @Override

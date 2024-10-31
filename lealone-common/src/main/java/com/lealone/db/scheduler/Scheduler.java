@@ -56,4 +56,8 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
     void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
 
     void accept(SelectionKey key);
+
+    void addSession(Session session);
+
+    void removeSession(Session session);
 }

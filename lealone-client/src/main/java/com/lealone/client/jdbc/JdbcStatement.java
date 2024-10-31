@@ -21,6 +21,7 @@ import com.lealone.common.util.Utils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.Command;
 import com.lealone.db.command.SQLCommand;
@@ -72,21 +73,20 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        return executeQueryInternal(sql, false).get(this);
+        return executeQueryInternal(sql, false).get();
     }
 
     public Future<ResultSet> executeQueryAsync(String sql) {
         return executeQueryInternal(sql, true);
     }
 
-    private JdbcAsyncCallback<ResultSet> executeQueryInternal(String sql, boolean async) {
-        int id = getNextTraceId(TraceObjectType.RESULT_SET);
-        if (isDebugEnabled()) {
-            debugCodeAssign(TraceObjectType.RESULT_SET, id,
-                    "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
-        }
-        JdbcAsyncCallback<ResultSet> ac = createJdbcAsyncCallback();
-        try {
+    private Future<ResultSet> executeQueryInternal(String sql, boolean async) {
+        return conn.executeAsyncTask(ac -> {
+            int id = getNextTraceId(TraceObjectType.RESULT_SET);
+            if (isDebugEnabled()) {
+                debugCodeAssign(TraceObjectType.RESULT_SET, id,
+                        "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
+            }
             SQLCommand command = createSQLCommand(sql, false);
             command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
                 setExecutingStatement(null);
@@ -99,10 +99,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                     setAsyncResult(ac, ar.getCause());
                 }
             });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac;
+        });
     }
 
     protected boolean isScrollable() {
@@ -223,30 +220,22 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private int executeUpdateSync(String sql) throws SQLException {
-        return executeUpdateInternal(sql).get(this);
+        return executeUpdateInternal(sql).get();
     }
 
-    private JdbcAsyncCallback<Integer> executeUpdateInternal(String sql) {
-        JdbcAsyncCallback<Integer> ac = createJdbcAsyncCallback();
-        try {
+    private Future<Integer> executeUpdateInternal(String sql) {
+        return conn.executeAsyncTask(ac -> {
             SQLCommand command = createSQLCommand(sql, false);
             command.executeUpdate().onComplete(ar -> {
                 setExecutingStatement(null);
                 command.close();
-                if (ar.isFailed()) {
-                    setAsyncResult(ac, ar.getCause());
-                } else {
+                if (ar.isSucceeded()) {
                     ac.setAsyncResult(ar);
+                } else {
+                    setAsyncResult(ac, ar.getCause());
                 }
             });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac;
-    }
-
-    protected <T> JdbcAsyncCallback<T> createJdbcAsyncCallback() {
-        return JdbcAsyncCallback.create(session);
+        });
     }
 
     /**
@@ -354,8 +343,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         // }
         // }
-        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
-        try {
+        return conn.<Boolean> executeAsyncTask(ac -> {
             SQLCommand command = createSQLCommand(sql, true);
             command.prepare(false).onComplete(ar -> {
                 if (ar.isSucceeded())
@@ -363,13 +351,10 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac.get(this).booleanValue();
+        }).get().booleanValue();
     }
 
-    void executeInternal(JdbcAsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
+    void executeInternal(AsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
         setExecutingStatement(command);
         if (command.isQuery()) {
             command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
@@ -484,12 +469,12 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public int[] executeBatch() throws SQLException {
-        debugCodeCall("executeBatch");
-        JdbcAsyncCallback<int[]> ac = createJdbcAsyncCallback();
-        try {
+        return conn.<int[]> executeAsyncTask(ac -> {
+            debugCodeCall("executeBatch");
             checkAndClose();
             if (batchCommands == null || batchCommands.isEmpty()) {
-                return new int[0];
+                ac.setAsyncResult(new int[0]);
+                return;
             }
             ConnectionInfo ci = session.getConnectionInfo();
             if (ci != null && ci.isRemote()) {
@@ -502,11 +487,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             } else {
                 executeBatch(ac, batchCommands.size());
             }
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        batchCommands = null;
-        return ac.get(this);
+            batchCommands = null;
+        }).get();
     }
 
     protected Future<Integer> executeBatchUpdateAsync(int index) {
@@ -514,7 +496,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         return executeUpdateAsync(sql);
     }
 
-    protected void executeBatch(JdbcAsyncCallback<int[]> ac, int size) {
+    protected void executeBatch(AsyncCallback<int[]> ac, int size) {
         int[] result = new int[size];
         AtomicReference<SQLException> nextRef = new AtomicReference<>();
         AtomicBoolean error = new AtomicBoolean(false);

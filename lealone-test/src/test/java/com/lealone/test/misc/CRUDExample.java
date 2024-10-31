@@ -25,18 +25,37 @@ import com.lealone.test.TestBase;
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
-        // startMultiThreads();
+        crud();
+        // perf();
+    }
 
+    public static void crud() throws Exception {
         Connection conn = null;
 
-        // conn = getBioConnection();
-        // crud(conn);
+        conn = getBioConnection();
+        crud(conn);
 
         conn = getNioConnection();
         crud(conn);
 
-        // conn = getEmbeddedConnection();
-        // crud(conn);
+        conn = getEmbeddedConnection();
+        crud(conn);
+    }
+
+    public static void perf() throws Exception {
+        // startMultiThreads();
+        Connection conn = null;
+        int count = 100;
+        for (int i = 0; i < count; i++) {
+            // conn = getNioConnection();
+            conn = getBioConnection();
+            // conn = getEmbeddedConnection();
+
+            long t1 = System.currentTimeMillis();
+            crud(conn, false);
+            long t2 = System.currentTimeMillis();
+            System.out.println("crud time: " + (t2 - t1) + " ms");
+        }
     }
 
     public static Connection getBioConnection() throws Exception {
@@ -63,13 +82,17 @@ public class CRUDExample {
     }
 
     public static void crud(Connection conn) throws Exception {
+        crud(conn, true);
+    }
+
+    public static void crud(Connection conn, boolean print) throws Exception {
         Statement stmt = conn.createStatement();
-        // crud(stmt);
+        crud(stmt, print);
         // asyncInsert(stmt);
         // batchInsert(stmt);
-        // batchPreparedInsert(conn);
+        // batchPreparedInsert(conn, stmt);
         // batchDelete(stmt);
-        testFetchSize(stmt);
+        // testFetchSize(stmt);
         // getMetaData(conn, stmt);
         stmt.close();
         conn.close();
@@ -81,13 +104,14 @@ public class CRUDExample {
         stmt.executeUpdate(sql);
     }
 
-    public static void crud(Statement stmt) throws Exception {
+    public static void crud(Statement stmt, boolean print) throws Exception {
         createTable(stmt);
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
         ResultSet rs = stmt.executeQuery("SELECT * FROM test");
         Assert.assertTrue(rs.next());
-        System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        if (print)
+            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         Assert.assertFalse(rs.next());
         rs.close();
         stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
@@ -113,7 +137,8 @@ public class CRUDExample {
         stmt.executeBatch();
     }
 
-    public static void batchPreparedInsert(Connection conn) throws Exception {
+    public static void batchPreparedInsert(Connection conn, Statement stmt) throws Exception {
+        createTable(stmt);
         PreparedStatement ps = conn.prepareStatement("INSERT INTO test(f1, f2) VALUES(?,?)");
         for (int i = 1; i <= 60; i++) {
             ps.setInt(1, i);
@@ -121,7 +146,7 @@ public class CRUDExample {
             ps.addBatch();
         }
         ps.executeBatch();
-        ps.close();
+        // ps.close();
     }
 
     public static void asyncInsert(Statement stmt0) throws Exception {

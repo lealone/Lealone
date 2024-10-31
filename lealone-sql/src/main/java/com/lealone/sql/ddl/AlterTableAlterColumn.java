@@ -293,8 +293,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
-            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
-                    Integer.toString(position));
+            db.getTableAlterHistory().addRecord(session, table.getId(), table.incrementAndGetVersion(),
+                    type, Integer.toString(position));
         } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
             if (addBefore != null) {
@@ -310,14 +310,14 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
-            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
-                    buff.toString());
+            db.getTableAlterHistory().addRecord(session, table.getId(), table.incrementAndGetVersion(),
+                    type, buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
-            db.getTableAlterHistory().addRecord(table.getId(), table.incrementAndGetVersion(), type,
-                    position + "," + newColumn.getCreateSQL());
+            db.getTableAlterHistory().addRecord(session, table.getId(), table.incrementAndGetVersion(),
+                    type, position + "," + newColumn.getCreateSQL());
         }
 
         table.setNewColumns(newColumns.toArray(new Column[0]));

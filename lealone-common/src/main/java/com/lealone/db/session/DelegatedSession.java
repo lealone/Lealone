@@ -12,8 +12,10 @@ import com.lealone.db.ConnectionInfo;
 import com.lealone.db.DataHandler;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -178,5 +180,30 @@ public class DelegatedSession implements Session {
     @Override
     public boolean isBio() {
         return session.isBio();
+    }
+
+    @Override
+    public <T> void execute(AsyncCallback<T> ac, AsyncTask task) {
+        session.execute(ac, task);
+    }
+
+    @Override
+    public Scheduler getScheduler() {
+        return session.getScheduler();
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        session.setScheduler(scheduler);
+    }
+
+    @Override
+    public void setSessionInfo(SessionInfo si) {
+        session.setSessionInfo(si);
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return session.getSessionInfo();
     }
 }

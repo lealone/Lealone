@@ -75,6 +75,9 @@ public interface InternalSession extends Session {
     default void markDirtyPages() {
     }
 
+    void init();
+
+    @Override
     InternalScheduler getScheduler();
 
     void setScheduler(InternalScheduler scheduler);
@@ -89,9 +92,9 @@ public interface InternalSession extends Session {
         void onTimeout(YieldableCommand c, Throwable e);
     }
 
-    void init();
-
+    @Override
     void setSessionInfo(SessionInfo si);
 
+    @Override
     SessionInfo getSessionInfo();
 }

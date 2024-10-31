@@ -137,9 +137,9 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         }
     }
 
-    protected final LinkableList<ESessionInfo> sessions = new LinkableList<>();
+    private final LinkableList<ESessionInfo> sessions = new LinkableList<>();
 
-    protected static class ESessionInfo extends LinkableBase<ESessionInfo> implements SessionInfo {
+    private static class ESessionInfo extends LinkableBase<ESessionInfo> implements SessionInfo {
 
         private final InternalSession session;
         private final Scheduler scheduler;

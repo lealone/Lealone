@@ -207,4 +207,14 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     public void setFsyncingFileStorage(FileStorage fsyncingFileStorage) {
         this.fsyncingFileStorage = fsyncingFileStorage;
     }
+
+    @Override
+    public void addSession(Session session) {
+        addSession((InternalSession) session);
+    }
+
+    @Override
+    public void removeSession(Session session) {
+        removeSession((InternalSession) session);
+    }
 }

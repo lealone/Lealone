@@ -15,8 +15,10 @@ import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -164,4 +166,25 @@ public interface Session extends Closeable {
     default boolean isBio() {
         return false;
     }
+
+    default <T> void execute(AsyncCallback<T> ac, AsyncTask task) {
+        if (getScheduler() != null) {
+            getSessionInfo().submitTask(task);
+            getScheduler().wakeUp();
+        } else {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                ac.setAsyncResult(t);
+            }
+        }
+    }
+
+    Scheduler getScheduler();
+
+    void setScheduler(Scheduler scheduler);
+
+    void setSessionInfo(SessionInfo si);
+
+    SessionInfo getSessionInfo();
 }

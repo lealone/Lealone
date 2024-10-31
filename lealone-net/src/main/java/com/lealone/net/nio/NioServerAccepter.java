@@ -58,7 +58,7 @@ public class NioServerAccepter extends NetServerBase {
         try {
             SocketChannel channel = serverChannel.accept();
             channel.configureBlocking(false);
-            writableChannel = new NioWritableChannel(channel, null);
+            writableChannel = new NioWritableChannel(scheduler.getDataBufferFactory(), channel, null);
             conn = createConnection(writableChannel, scheduler);
         } catch (Throwable e) {
             if (conn != null) {

@@ -6,32 +6,25 @@
 package com.lealone.db.table;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
 import com.lealone.common.exceptions.DbException;
+import com.lealone.db.Database;
 import com.lealone.db.RunMode;
+import com.lealone.db.index.Cursor;
+import com.lealone.db.row.Row;
+import com.lealone.db.session.ServerSession;
+import com.lealone.db.value.ValueInt;
+import com.lealone.db.value.ValueString;
 import com.lealone.storage.StorageSetting;
 
 public class TableAlterHistory {
 
-    private PreparedStatement psGetVersion;
-    private PreparedStatement psGetRecords;
-    private PreparedStatement psAddRecord;
-    private PreparedStatement psDeleteRecords;
+    private Table table;
 
-    // 执行DROP DATABASE时调用这个方法，避免在删掉table_alter_history后还读它
-    public void cleanPreparedStatements() {
-        psGetVersion = null;
-        psGetRecords = null;
-        psAddRecord = null;
-        psDeleteRecords = null;
-    }
-
-    public void init(Connection conn) {
+    public void init(Connection conn, Database db) {
         try {
             Statement stmt = conn.createStatement();
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS INFORMATION_SCHEMA.table_alter_history"
@@ -39,84 +32,63 @@ public class TableAlterHistory {
                     + " PARAMETERS(" + StorageSetting.RUN_MODE.name() + "='"
                     + RunMode.CLIENT_SERVER.name() + "')");
             stmt.close();
-            psGetVersion = conn.prepareStatement(
-                    "select max(version) from INFORMATION_SCHEMA.table_alter_history where id = ?");
-            psGetRecords = conn.prepareStatement(
-                    "select id, version, alter_type, columns from INFORMATION_SCHEMA.table_alter_history "
-                            + "where id = ? and version > ? and version <= ?");
-            psAddRecord = conn.prepareStatement(
-                    "insert into INFORMATION_SCHEMA.table_alter_history values(?,?,?,?)");
-            psDeleteRecords = conn
-                    .prepareStatement("delete from INFORMATION_SCHEMA.table_alter_history where id = ?");
-            // 嵌入式执行prepareStatement会产生新的事务，所以这里需要提交一下
             conn.commit();
+            conn.close();
+            table = db.findSchema(null, "INFORMATION_SCHEMA").findTableOrView(null,
+                    "table_alter_history");
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
     }
 
-    public synchronized int getVersion(int id) {
-        if (psGetVersion == null)
-            DbException.throwInternalError();
-        int version;
-        try {
-            psGetVersion.setInt(1, id);
-            ResultSet rs = psGetVersion.executeQuery();
-            if (rs.next()) {
-                version = rs.getInt(1);
-            } else {
-                version = 0;
-            }
-            rs.close();
-        } catch (SQLException e) {
-            throw DbException.convert(e);
+    public int getVersion(ServerSession session, int id) {
+        Row row = table.getTemplateRow();
+        row.setValue(0, ValueInt.get(id));
+        Cursor cursor = table.getIndexes().get(1).find(session, row, row);
+        int version = 0;
+        while (cursor.next()) {
+            row = cursor.get();
+            int v = row.getValue(1).getInt();
+            if (v > version)
+                version = v;
         }
         return version;
     }
 
-    public synchronized ArrayList<TableAlterHistoryRecord> getRecords(int id, int versionMin,
+    public ArrayList<TableAlterHistoryRecord> getRecords(ServerSession session, int id, int versionMin,
             int versionMax) {
+        Row min = table.getTemplateRow();
+        min.setValue(0, ValueInt.get(id));
+        min.setValue(1, ValueInt.get(versionMin));
+        Row max = table.getTemplateRow();
+        max.setValue(0, ValueInt.get(id));
+        max.setValue(1, ValueInt.get(versionMax));
+        Cursor cursor = table.getIndexes().get(1).find(session, min, max);
         ArrayList<TableAlterHistoryRecord> records = new ArrayList<>();
-        if (psGetRecords == null)
-            return records;
-        try {
-            psGetRecords.setInt(1, id);
-            psGetRecords.setInt(2, versionMin);
-            psGetRecords.setInt(3, versionMax);
-            ResultSet rs = psGetRecords.executeQuery();
-            while (rs.next()) {
-                records.add(new TableAlterHistoryRecord(rs.getInt(1), rs.getInt(2), rs.getInt(3),
-                        rs.getString(4)));
-            }
-            rs.close();
-            return records;
-        } catch (SQLException e) {
-            throw DbException.convert(e);
+        while (cursor.next()) {
+            Row row = cursor.get();
+            records.add(new TableAlterHistoryRecord(row.getValue(0).getInt(), row.getValue(1).getInt(),
+                    row.getValue(2).getInt(), row.getValue(3).getString()));
         }
+        return records;
     }
 
-    public synchronized void addRecord(int id, int version, int alterType, String columns) {
-        if (psAddRecord == null)
-            return;
-        try {
-            psAddRecord.setInt(1, id);
-            psAddRecord.setInt(2, version);
-            psAddRecord.setInt(3, alterType);
-            psAddRecord.setString(4, columns);
-            psAddRecord.executeUpdate();
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        }
+    public void addRecord(ServerSession session, int id, int version, int alterType, String columns) {
+        Row row = table.getTemplateRow();
+        row.setValue(0, ValueInt.get(id));
+        row.setValue(1, ValueInt.get(version));
+        row.setValue(2, ValueInt.get(alterType));
+        row.setValue(3, ValueString.get(columns));
+        table.addRow(null, row);
     }
 
-    public synchronized void deleteRecords(int id) {
-        if (psDeleteRecords == null)
-            return;
-        try {
-            psDeleteRecords.setInt(1, id);
-            psDeleteRecords.executeUpdate();
-        } catch (SQLException e) {
-            throw DbException.convert(e);
+    public void deleteRecords(ServerSession session, int id) {
+        Row row = table.getTemplateRow();
+        row.setValue(0, ValueInt.get(id));
+        Cursor cursor = table.getIndexes().get(1).find(session, row, row);
+        if (cursor.next()) {
+            row = cursor.get();
+            table.removeRow(session, row);
         }
     }
 

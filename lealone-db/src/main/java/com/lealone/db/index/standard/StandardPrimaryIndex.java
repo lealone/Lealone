@@ -462,7 +462,7 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         private void alterRow(int version) {
             ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
-                    .getRecords(table.getId(), version, table.getVersion());
+                    .getRecords(session, table.getId(), version, table.getVersion());
             Value[] oldValues = row.getColumns();
             Value[] newValues = row.getColumns();
             for (TableAlterHistoryRecord record : records) {

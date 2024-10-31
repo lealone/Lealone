@@ -1329,16 +1329,9 @@ public class ServerSession extends SessionBase implements InternalSession {
         this.scheduler = scheduler;
     }
 
-    private SessionInfo si;
-
     @Override
-    public void setSessionInfo(SessionInfo si) {
-        this.si = si;
-    }
-
-    @Override
-    public SessionInfo getSessionInfo() {
-        return si;
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = (InternalScheduler) scheduler;
     }
 
     private YieldableCommand yieldableCommand;

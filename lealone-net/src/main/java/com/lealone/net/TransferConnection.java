@@ -15,7 +15,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.exceptions.JdbcSQLException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.session.Session;
@@ -29,10 +28,6 @@ public abstract class TransferConnection extends AsyncConnection {
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-    }
-
-    public DataBufferFactory getDataBufferFactory() {
-        return writableChannel.getDataBufferFactory();
     }
 
     public int getPacketLengthByteBufferCapacity() {
@@ -53,16 +48,12 @@ public abstract class TransferConnection extends AsyncConnection {
         return new TransferInputStream(buffer, false);
     }
 
-    public TransferOutputStream createTransferOutputStream() {
-        return createTransferOutputStream(false);
-    }
-
     public TransferOutputStream getErrorTransferOutputStream() {
         return createTransferOutputStream();
     }
 
-    public TransferOutputStream createTransferOutputStream(boolean isGlobalBuffer) {
-        return new TransferOutputStream(writableChannel, getDataBufferFactory(), isGlobalBuffer);
+    public TransferOutputStream createTransferOutputStream() {
+        return new TransferOutputStream(writableChannel);
     }
 
     protected void handleRequest(TransferInputStream in, int packetId, int packetType)

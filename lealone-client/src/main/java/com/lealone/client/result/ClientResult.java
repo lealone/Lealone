@@ -12,6 +12,7 @@ import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.Utils;
 import com.lealone.db.SysProperties;
+import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
 import com.lealone.net.TransferInputStream;
@@ -174,17 +175,26 @@ public abstract class ClientResult implements Result {
 
     protected abstract void readRows(TransferInputStream in, int fetchSize) throws IOException;
 
-    protected Void fetchAndReadRows(int fetchSize) {
+    protected void fetchAndReadRows(int fetchSize) {
         // 释放buffer
         // if (in.isLazyRead())
         // in.closeForce();
-
-        // 让客户端的调度线程负责从输入流中读取结果集
-        return session.<Void, ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize), ack -> {
-            TransferInputStream in = (TransferInputStream) ack.in;
-            readRows(in, fetchSize);
-            return null;
-        }).get();
+        AsyncCallback<Void> ac = session.createCallback();
+        session.execute(ac, () -> {
+            // 在调度线程中运行，总是线程安全的
+            // 让客户端的调度线程负责从输入流中读取结果集
+            session.<Void, ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize), ack -> {
+                TransferInputStream in = (TransferInputStream) ack.in;
+                try {
+                    readRows(in, fetchSize);
+                    ac.setAsyncResult((Void) null);
+                } catch (Throwable t) {
+                    ac.setAsyncResult(t);
+                }
+                return null;
+            });
+        });
+        ac.get();
     }
 
     @Override

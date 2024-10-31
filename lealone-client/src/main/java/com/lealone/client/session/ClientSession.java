@@ -17,12 +17,14 @@ import com.lealone.db.ConnectionInfo;
 import com.lealone.db.DataHandler;
 import com.lealone.db.DbSetting;
 import com.lealone.db.LocalDataHandler;
+import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.ConcurrentAsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.async.SingleThreadAsyncCallback;
 import com.lealone.db.command.SQLCommand;
+import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
@@ -77,11 +79,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
 
         isBio = tcpConnection.getWritableChannel().isBio();
-        out = isBio ? tcpConnection.createTransferOutputStream(true) : null;
-    }
-
-    private TransferOutputStream getTransferOutputStream() {
-        return isBio ? out : tcpConnection.createTransferOutputStream();
+        out = tcpConnection.createTransferOutputStream();
     }
 
     @Override
@@ -185,29 +183,39 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public void close() {
         if (isClosed())
             return;
-        RuntimeException closeError = null;
-        try {
-            // 只有当前Session有效时服务器端才持有对应的session
-            if (isValid()) {
-                send(new SessionClose());
-                tcpConnection.removeSession(id);
+        AsyncCallback<Void> ac = createCallback();
+        execute(ac, () -> {
+            Throwable closeError = null;
+            try {
+                // 只有当前Session有效时服务器端才持有对应的session
+                if (isValid()) {
+                    send(new SessionClose());
+                    tcpConnection.removeSession(id);
+                }
+                super.close();
+                if (isBio()) {
+                    if (out != null)
+                        out.close();
+                    tcpConnection.close();
+                }
+            } catch (RuntimeException e) {
+                trace.error(e, "close");
+                closeError = e;
+            } catch (Exception e) {
+                trace.error(e, "close");
             }
-            super.close();
-            if (isBio()) {
-                if (out != null)
-                    out.close();
-                tcpConnection.close();
+            try {
+                closeTraceSystem();
+            } catch (Exception e) {
+                closeError = e;
             }
-        } catch (RuntimeException e) {
-            trace.error(e, "close");
-            closeError = e;
-        } catch (Exception e) {
-            trace.error(e, "close");
-        }
-        closeTraceSystem();
-        if (closeError != null) {
-            throw DbException.convert(closeError);
-        }
+            if (closeError != null) {
+                ac.setAsyncResult(closeError);
+            } else {
+                ac.setAsyncResult((Void) null);
+            }
+        });
+        ac.get();
     }
 
     public Trace getTrace() {
@@ -271,24 +279,19 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
+        if (SysProperties.ASSERT && getScheduler() != null
+                && getScheduler() != SchedulerThread.currentScheduler())
+            DbException.throwInternalError("send");
+
         traceOperation(packet.getType().name(), packetId);
         AsyncCallback<R> ac;
         if (packet.getAckType() != PacketType.VOID) {
-            if (isSingleThreadCallback()) {
-                ac = new SingleThreadAsyncCallback<R>() {
-                    @Override
-                    public void runInternal(NetInputStream in) throws Exception {
-                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
-                    }
-                };
-            } else {
-                ac = new ConcurrentAsyncCallback<R>() {
-                    @Override
-                    public void runInternal(NetInputStream in) throws Exception {
-                        handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
-                    }
-                };
-            }
+            ac = new SingleThreadAsyncCallback<R>() {
+                @Override
+                public void runInternal(NetInputStream in) throws Exception {
+                    handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
+                }
+            };
             ac.setPacket(packet);
             ac.setStartTime(System.currentTimeMillis());
             ac.setNetworkTimeout(getNetworkTimeout());
@@ -298,7 +301,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         }
         try {
             checkClosed();
-            TransferOutputStream out = getTransferOutputStream();
             out.writeRequestHeader(this, packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
@@ -320,18 +322,21 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @SuppressWarnings("unchecked")
     private <R, P extends AckPacket> void handleAsyncCallback(NetInputStream in, PacketType packetType,
             AckPacketHandler<R, P> ackPacketHandler, AsyncCallback<R> ac) throws IOException {
-        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
-        Packet packet = decoder.decode(in, getProtocolVersion());
-        if (ackPacketHandler != null) {
-            try {
+        try {
+            PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
+            Packet packet = decoder.decode(in, getProtocolVersion());
+            if (ackPacketHandler != null) {
                 R r = ackPacketHandler.handle((P) packet);
                 // 在通知应用线程处理前，如果输入流没有读完需要创建新的输入流，把旧的留给应用线程
                 // 不能先通知再判断输入流有没有读完，这样会导致调度线程和应用线程同时访问输入流，会有并发问题
                 tcpConnection.recreateTransferInputStreamIfNeed();
                 ac.setAsyncResult(r);
-            } catch (Throwable e) {
-                ac.setAsyncResult(e);
+            } else {
+                tcpConnection.recreateTransferInputStreamIfNeed();
             }
+        } catch (Throwable e) {
+            tcpConnection.recreateTransferInputStreamIfNeed();
+            ac.setAsyncResult(e);
         }
     }
 
@@ -361,4 +366,17 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public boolean isBio() {
         return isBio;
     }
+
+    private Scheduler scheduler;
+
+    @Override
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
+    }
+
 }

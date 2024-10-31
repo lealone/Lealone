@@ -30,7 +30,7 @@ public class NioNetFactory extends NetFactoryBase {
     }
 
     @Override
-    public NioEventLoop createNetEventLoop(long loopInterval, boolean isThreadSafe) {
-        return new NioEventLoop(config, loopInterval, isThreadSafe);
+    public NioEventLoop createNetEventLoop(long loopInterval) {
+        return new NioEventLoop(config, loopInterval);
     }
 }

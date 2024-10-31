@@ -167,4 +167,12 @@ public class NetBuffer {
     public String toString() {
         return dataBuffer.getBuffer().toString();
     }
+
+    public boolean isEmpty() {
+        return remaining() == 0;
+    }
+
+    public boolean isNotEmpty() {
+        return remaining() > 0;
+    }
 }

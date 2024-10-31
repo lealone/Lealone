@@ -7,7 +7,6 @@ package com.lealone.net;
 
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.Queue;
 
 import com.lealone.db.DataBufferFactory;
 
@@ -21,6 +20,19 @@ public interface WritableChannel {
 
     int getLocalPort();
 
+    DataBufferFactory getDataBufferFactory();
+
+    default NetBufferFactory getBufferFactory() {
+        return NetBufferFactory.INSTANCE;
+    }
+
+    default NetBuffer getBuffer() {
+        return null;
+    }
+
+    default void setBuffer(NetBuffer buffer) {
+    }
+
     default boolean isBio() {
         return false;
     }
@@ -32,21 +44,11 @@ public interface WritableChannel {
     default void setEventLoop(NetEventLoop eventLoop) {
     }
 
-    default NetBufferFactory getBufferFactory() {
-        return NetBufferFactory.INSTANCE;
-    }
-
-    default DataBufferFactory getDataBufferFactory() {
-        return DataBufferFactory.getConcurrentFactory();
-    }
-
-    default Queue<NetBuffer> getBufferQueue() {
-        return null;
-    }
-
     default SelectionKey getSelectionKey() {
         return null;
     }
+
+    boolean isClosed();
 
     void close();
 

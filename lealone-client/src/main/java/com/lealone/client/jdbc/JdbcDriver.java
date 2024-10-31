@@ -27,9 +27,7 @@ import com.lealone.db.async.Future;
  */
 public class JdbcDriver implements java.sql.Driver {
 
-    private static final JdbcDriver INSTANCE = new JdbcDriver();
-
-    private static volatile boolean registered;
+    private static JdbcDriver INSTANCE;
 
     static {
         load();
@@ -127,9 +125,8 @@ public class JdbcDriver implements java.sql.Driver {
      * INTERNAL
      */
     public static synchronized JdbcDriver load() {
-        if (!registered) {
-            registered = true;
-
+        if (INSTANCE == null) {
+            INSTANCE = new JdbcDriver();
             try {
                 DriverManager.registerDriver(INSTANCE);
             } catch (SQLException e) {
@@ -143,11 +140,10 @@ public class JdbcDriver implements java.sql.Driver {
      * INTERNAL
      */
     public static synchronized void unload() {
-        if (registered) {
-            registered = false;
-
+        if (INSTANCE != null) {
             try {
                 DriverManager.deregisterDriver(INSTANCE);
+                INSTANCE = null;
             } catch (SQLException e) {
                 DbException.traceThrowable(e);
             }
@@ -170,9 +166,7 @@ public class JdbcDriver implements java.sql.Driver {
     }
 
     public static Future<JdbcConnection> getConnection(String url, Properties info) {
-        if (!INSTANCE.acceptsURL(url)) {
-            return Future.succeededFuture(null); // 不抛异常，只是返回null
-        }
+        // 不需要调用acceptsURL检查url，构建ConnectionInfo对象时会检查
         if (info == null) {
             info = new Properties();
         }

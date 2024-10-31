@@ -22,7 +22,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.session.Session;
 import com.lealone.db.value.DataType;
@@ -54,17 +53,11 @@ public class TransferOutputStream implements NetOutputStream {
     public static final byte RESPONSE = 2;
 
     private final DataOutputStream out;
-    private final NetBufferOutputStream outBuffer;
+    private final GlobalNetBufferOutputStream outBuffer;
     private Session session; // 每次写新的包时可以指定新的session
 
-    public TransferOutputStream(WritableChannel writableChannel, DataBufferFactory dataBufferFactory,
-            boolean isGlobalBuffer) {
-        if (isGlobalBuffer)
-            outBuffer = new GlobalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
-                    dataBufferFactory);
-        else
-            outBuffer = new LocalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE,
-                    dataBufferFactory);
+    public TransferOutputStream(WritableChannel writableChannel) {
+        outBuffer = new GlobalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE);
         out = new DataOutputStream(outBuffer);
     }
 
@@ -503,9 +496,15 @@ public class TransferOutputStream implements NetOutputStream {
         return hmacData;
     }
 
-    private static abstract class NetBufferOutputStream extends OutputStream {
+    private static class GlobalNetBufferOutputStream extends OutputStream {
 
-        protected NetBuffer buffer;
+        private final GlobalWritableChannel channel;
+        private final NetBuffer buffer;
+
+        GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
+            channel = new GlobalWritableChannel(writableChannel, initialSizeHint);
+            buffer = channel.getGlobalBuffer();
+        }
 
         @Override
         public void write(int b) {
@@ -518,74 +517,24 @@ public class TransferOutputStream implements NetOutputStream {
         }
 
         @Override
-        public abstract void flush() throws IOException;
-
-        protected void startWrite(int status) {
-            // 协议包头占4个字节，最后flush时再回填
-            buffer.appendInt(0);
-        }
-
-        // 按java.io.DataInputStream.readInt()的格式写
-        protected void writePacketLength(int pos, int v) {
-            buffer.setByte(pos, (byte) ((v >>> 24) & 0xFF));
-            buffer.setByte(pos + 1, (byte) ((v >>> 16) & 0xFF));
-            buffer.setByte(pos + 2, (byte) ((v >>> 8) & 0xFF));
-            buffer.setByte(pos + 3, (byte) (v & 0xFF));
-        }
-    }
-
-    private static class LocalNetBufferOutputStream extends NetBufferOutputStream {
-
-        private final WritableChannel writableChannel;
-        private final int initialSizeHint;
-        private final DataBufferFactory dataBufferFactory;
-
-        LocalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
-                DataBufferFactory dataBufferFactory) {
-            this.writableChannel = writableChannel;
-            this.initialSizeHint = initialSizeHint;
-            this.dataBufferFactory = dataBufferFactory;
-        }
-
-        @Override
-        public void flush() throws IOException {
-            int length = buffer.length() - 4;
-            writePacketLength(0, length);
-            buffer.flip();
-            writableChannel.write(buffer);
-        }
-
-        @Override
-        protected void startWrite(int status) {
-            // 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
-            // 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
-            // 因为只有一个线程写Buffer，写完了一个包才发送，所以如果中间错误了创建新的Buffer即可。
-            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
-            super.startWrite(status);
-        }
-    }
-
-    private static class GlobalNetBufferOutputStream extends NetBufferOutputStream {
-
-        private final GlobalWritableChannel channel;
-
-        GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint,
-                DataBufferFactory dataBufferFactory) {
-            channel = new GlobalWritableChannel(writableChannel, initialSizeHint, dataBufferFactory);
-            buffer = channel.getGlobalBuffer();
-        }
-
-        @Override
         public void flush() throws IOException {
             int length = buffer.position() - channel.startPos - 4;
             writePacketLength(channel.startPos, length);
             channel.flush();
         }
 
-        @Override
+        // 按java.io.DataInputStream.readInt()的格式写
+        private void writePacketLength(int pos, int v) {
+            buffer.setByte(pos, (byte) ((v >>> 24) & 0xFF));
+            buffer.setByte(pos + 1, (byte) ((v >>> 16) & 0xFF));
+            buffer.setByte(pos + 2, (byte) ((v >>> 8) & 0xFF));
+            buffer.setByte(pos + 3, (byte) (v & 0xFF));
+        }
+
         protected void startWrite(int status) {
             channel.startWrite(status);
-            super.startWrite(status);
+            // 协议包头占4个字节，最后flush时再回填
+            buffer.appendInt(0);
         }
     }
 
@@ -598,15 +547,14 @@ public class TransferOutputStream implements NetOutputStream {
         private int startPos;
         private boolean written;
 
-        public GlobalWritableChannel(WritableChannel writableChannel,
-                DataBufferFactory dataBufferFactory) {
-            this(writableChannel, NetBuffer.BUFFER_SIZE, dataBufferFactory);
+        public GlobalWritableChannel(WritableChannel writableChannel) {
+            this(writableChannel, NetBuffer.BUFFER_SIZE);
         }
 
-        public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint,
-                DataBufferFactory dataBufferFactory) {
+        public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint) {
             this.writableChannel = writableChannel;
-            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint, dataBufferFactory);
+            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint,
+                    writableChannel.getDataBufferFactory());
             buffer.setGlobal(true);
         }
 

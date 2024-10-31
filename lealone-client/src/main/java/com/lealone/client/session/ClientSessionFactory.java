@@ -57,6 +57,7 @@ public class ClientSessionFactory extends SessionFactoryBase {
             NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
             netClient = eventLoop.getNetClient();
             ac = AsyncCallback.create(ci.isSingleThreadCallback());
+            // 让调度线程负责创建session
             scheduler.handle(() -> {
                 createSession(ci, allowRedirect, ac, config, netClient);
             });
@@ -131,7 +132,10 @@ public class ClientSessionFactory extends SessionFactoryBase {
                 ClientSession clientSession = new ClientSession(tcpConnection, ci, server, sessionId);
                 clientSession.setSingleThreadCallback(ci.isSingleThreadCallback());
                 tcpConnection.addSession(sessionId, clientSession);
-
+                if (ci.getScheduler() != null) {
+                    clientSession.setScheduler(ci.getScheduler());
+                    ci.getScheduler().addSession(clientSession);
+                }
                 SessionInit packet = new SessionInit(ci);
                 AckPacketHandler<ClientSession, SessionInitAck> ackPacketHandler = ack -> {
                     clientSession.setProtocolVersion(ack.clientVersion);

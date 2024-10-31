@@ -185,4 +185,16 @@ public abstract class SessionBase implements Session {
         }
         return buff.toString();
     }
+
+    private SessionInfo si;
+
+    @Override
+    public void setSessionInfo(SessionInfo si) {
+        this.si = si;
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return si;
+    }
 }

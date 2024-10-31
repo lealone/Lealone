@@ -11,7 +11,6 @@ import java.util.HashMap;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
@@ -59,17 +58,12 @@ public class TcpServerConnection extends AsyncServerConnection {
         super(writableChannel, scheduler);
         this.tcpServer = tcpServer;
         in = new TransferInputStream(inNetBuffer, true);
-        out = createTransferOutputStream(true);
+        out = createTransferOutputStream();
     }
 
     @Override
     public int getSessionCount() {
         return sessions.size();
-    }
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return scheduler.getDataBufferFactory();
     }
 
     @Override

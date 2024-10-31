@@ -54,7 +54,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config);
 
-        netEventLoop = NetFactory.getFactory(config).createNetEventLoop(loopInterval, true);
+        netEventLoop = NetFactory.getFactory(config).createNetEventLoop(loopInterval);
         netEventLoop.setScheduler(this);
     }
 

@@ -40,6 +40,7 @@ import com.lealone.db.ConnectionInfo;
 import com.lealone.db.Constants;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.session.Session;
@@ -113,6 +114,27 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         return session.getTrace(TraceModuleType.JDBC, traceObjectType, traceObjectId);
     }
 
+    static interface JdbcAsyncTask<T> {
+        void run(AsyncCallback<T> ac) throws Exception;
+    }
+
+    <T> Future<T> executeAsyncTask(JdbcAsyncTask<T> task) {
+        AsyncCallback<T> ac = session.createCallback();
+        session.execute(ac, () -> {
+            // 在调度线程中运行，总是线程安全的
+            boolean old = session.isSingleThreadCallback();
+            session.setSingleThreadCallback(true);
+            try {
+                task.run(ac);
+            } catch (Throwable t) {
+                setAsyncResult(ac, t);
+            } finally {
+                session.setSingleThreadCallback(old);
+            }
+        });
+        return ac;
+    }
+
     /**
      * Creates a new statement.
      *
@@ -162,8 +184,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     }
 
     /**
-     * Creates a statement with the specified result set type, concurrency, and
-     * holdability.
+     * Creates a statement with the specified result set type, concurrency, and holdability.
      *
      * @param resultSetType the result set type (ResultSet.TYPE_*)
      * @param resultSetConcurrency the concurrency (ResultSet.CONCUR_*)
@@ -190,24 +211,22 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
     }
 
-    private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
+    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
             int fetchSize) {
         int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
         return prepareStatementInternal(async, sql, id, ResultSet.TYPE_FORWARD_ONLY,
                 Constants.DEFAULT_RESULT_SET_CONCURRENCY, false, fetchSize);
     }
 
-    private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
-            int id, int resultSetType, int resultSetConcurrency) {
+    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
+            int resultSetType, int resultSetConcurrency) {
         return prepareStatementInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
                 SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
     }
 
-    private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
-            int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
-            int fetchSize) {
-        JdbcAsyncCallback<JdbcPreparedStatement> ac = createJdbcAsyncCallback();
-        try {
+    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
+            int resultSetType, int resultSetConcurrency, boolean closedByResultSet, int fetchSize) {
+        return executeAsyncTask(ac -> {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
@@ -219,14 +238,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac;
-    }
-
-    protected <T> JdbcAsyncCallback<T> createJdbcAsyncCallback() {
-        return JdbcAsyncCallback.create(session);
+        });
     }
 
     /**
@@ -244,7 +256,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                     "prepareStatement(" + quote(sql) + ")");
         }
         return prepareStatementInternal(false, sql, id, ResultSet.TYPE_FORWARD_ONLY,
-                Constants.DEFAULT_RESULT_SET_CONCURRENCY).get(this);
+                Constants.DEFAULT_RESULT_SET_CONCURRENCY).get();
     }
 
     /**
@@ -266,7 +278,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             debugCodeAssign(TraceObjectType.PREPARED_STATEMENT, id, "prepareStatement(" + quote(sql)
                     + ", " + resultSetType + ", " + resultSetConcurrency + ")");
         }
-        return prepareStatementInternal(false, sql, id, resultSetType, resultSetConcurrency).get(this);
+        return prepareStatementInternal(false, sql, id, resultSetType, resultSetConcurrency).get();
     }
 
     /**
@@ -294,7 +306,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                     "prepareStatement(" + quote(sql) + ", " + resultSetType + ", " + resultSetConcurrency
                             + ", " + resultSetHoldability + ")");
         }
-        return prepareStatementInternal(false, sql, id, resultSetType, resultSetConcurrency).get(this);
+        return prepareStatementInternal(false, sql, id, resultSetType, resultSetConcurrency).get();
     }
 
     /**
@@ -369,7 +381,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
         return prepareStatementInternal(false, sql, id, ResultSet.TYPE_FORWARD_ONLY,
                 Constants.DEFAULT_RESULT_SET_CONCURRENCY, true,
-                SysProperties.SERVER_RESULT_SET_FETCH_SIZE).get(this);
+                SysProperties.SERVER_RESULT_SET_FETCH_SIZE).get();
     }
 
     /**
@@ -499,7 +511,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     @Override
     public void commit() throws SQLException {
         debugCodeCall("commit");
-        commitInternal().get(this);
+        commitInternal().get();
     }
 
     public Future<Boolean> commitAsync() throws SQLException {
@@ -507,25 +519,25 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         return commitInternal();
     }
 
-    private JdbcAsyncCallback<Boolean> commitInternal() throws SQLException {
-        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
-        prepareStatement0("COMMIT", commit).onComplete(ar0 -> {
-            checkClosed();
-            if (ar0.isFailed()) {
-                setAsyncResult(ac, ar0.getCause());
-                return;
-            } else {
-                commit = ar0.getResult();
-            }
-            commit.executeUpdateAsync().onComplete(ar -> {
-                if (ar.isFailed()) {
-                    setAsyncResult(ac, ar.getCause());
+    private Future<Boolean> commitInternal() throws SQLException {
+        return executeAsyncTask(ac -> {
+            prepareStatement0("COMMIT", commit).onComplete(ar0 -> {
+                checkClosed();
+                if (ar0.isFailed()) {
+                    setAsyncResult(ac, ar0.getCause());
+                    return;
                 } else {
-                    ac.setAsyncResult(true);
+                    commit = ar0.getResult();
                 }
+                commit.executeUpdateAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        setAsyncResult(ac, ar.getCause());
+                    } else {
+                        ac.setAsyncResult(true);
+                    }
+                });
             });
         });
-        return ac;
     }
 
     /**
@@ -537,7 +549,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     @Override
     public void rollback() throws SQLException {
         debugCodeCall("rollback");
-        rollbackInternal().get(this);
+        rollbackInternal().get();
     }
 
     public Future<Boolean> rollbackAsync() throws SQLException {
@@ -545,25 +557,25 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         return rollbackInternal();
     }
 
-    private JdbcAsyncCallback<Boolean> rollbackInternal() throws SQLException {
-        JdbcAsyncCallback<Boolean> ac = createJdbcAsyncCallback();
-        prepareStatement0("ROLLBACK", rollback).onComplete(ar0 -> {
-            checkClosed();
-            if (ar0.isFailed()) {
-                setAsyncResult(ac, ar0.getCause());
-                return;
-            } else {
-                rollback = ar0.getResult();
-            }
-            rollback.executeUpdateAsync().onComplete(ar -> {
-                if (ar.isFailed()) {
-                    setAsyncResult(ac, ar.getCause());
+    private Future<Boolean> rollbackInternal() throws SQLException {
+        return executeAsyncTask(ac -> {
+            prepareStatement0("ROLLBACK", rollback).onComplete(ar0 -> {
+                checkClosed();
+                if (ar0.isFailed()) {
+                    setAsyncResult(ac, ar0.getCause());
+                    return;
                 } else {
-                    ac.setAsyncResult(true);
+                    rollback = ar0.getResult();
                 }
+                rollback.executeUpdateAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        setAsyncResult(ac, ar.getCause());
+                    } else {
+                        ac.setAsyncResult(true);
+                    }
+                });
             });
         });
-        return ac;
     }
 
     /**
@@ -881,17 +893,15 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
     }
 
-    private JdbcAsyncCallback<JdbcCallableStatement> prepareCallInternal(boolean async, String sql,
-            int id, int resultSetType, int resultSetConcurrency) {
+    private Future<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
+            int resultSetType, int resultSetConcurrency) {
         return prepareCallInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
                 SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
     }
 
-    private JdbcAsyncCallback<JdbcCallableStatement> prepareCallInternal(boolean async, String sql,
-            int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet,
-            int fetchSize) {
-        JdbcAsyncCallback<JdbcCallableStatement> ac = createJdbcAsyncCallback();
-        try {
+    private Future<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
+            int resultSetType, int resultSetConcurrency, boolean closedByResultSet, int fetchSize) {
+        return executeAsyncTask(ac -> {
             checkClosed();
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             String tsql = translateSQL(sql);
@@ -903,10 +913,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        } catch (Throwable t) {
-            setAsyncResult(ac, t);
-        }
-        return ac;
+        });
     }
 
     /**
@@ -924,7 +931,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql) + ")");
         }
         return prepareCallInternal(false, sql, id, ResultSet.TYPE_FORWARD_ONLY,
-                Constants.DEFAULT_RESULT_SET_CONCURRENCY).get(this);
+                Constants.DEFAULT_RESULT_SET_CONCURRENCY).get();
     }
 
     /**
@@ -947,7 +954,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql) + ", "
                     + resultSetType + ", " + resultSetConcurrency + ")");
         }
-        return prepareCallInternal(false, sql, id, resultSetType, resultSetConcurrency).get(this);
+        return prepareCallInternal(false, sql, id, resultSetType, resultSetConcurrency).get();
     }
 
     /**
@@ -976,7 +983,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql) + ", "
                     + resultSetType + ", " + resultSetConcurrency + ", " + resultSetHoldability + ")");
         }
-        return prepareCallInternal(false, sql, id, resultSetType, resultSetConcurrency).get(this);
+        return prepareCallInternal(false, sql, id, resultSetType, resultSetConcurrency).get();
     }
 
     /**
@@ -1069,12 +1076,9 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         createStatement().executeUpdate(sql);
     }
 
-    private JdbcAsyncCallback<JdbcPreparedStatement> prepareStatement0(String sql,
-            JdbcPreparedStatement old) {
+    private Future<JdbcPreparedStatement> prepareStatement0(String sql, JdbcPreparedStatement old) {
         if (old != null) {
-            JdbcAsyncCallback<JdbcPreparedStatement> ac = createJdbcAsyncCallback();
-            ac.setAsyncResult(old);
-            return ac;
+            return Future.succeededFuture(old);
         }
         return prepareStatementInternal(true, sql, Integer.MAX_VALUE);
     }
