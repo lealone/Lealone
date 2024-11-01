@@ -7,7 +7,6 @@ package com.lealone.client;
 
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -17,9 +16,7 @@ import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionInfo;
-import com.lealone.db.ConnectionSetting;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
@@ -46,16 +43,12 @@ public class ClientScheduler extends SchedulerBase {
     private final AtomicLong load = new AtomicLong(0);
 
     public ClientScheduler(int id, int schedulerCount, Map<String, String> config) {
-        super(id, "CScheduleService-" + id,
-                MapUtils.getInt(config, ConnectionSetting.NET_CLIENT_COUNT.name(), schedulerCount),
-                config);
-        if (config == null)
-            config = new HashMap<>();
-        config.put("prefer_batch_write", "false"); // client端不用批量写
+        super(id, "CScheduleService-" + id, schedulerCount, config);
         NetFactory netFactory = NetFactory.getFactory(config);
         netClient = netFactory.createNetClient();
         netEventLoop = netFactory.createNetEventLoop(this, loopInterval);
         netEventLoop.setNetClient(netClient);
+        netEventLoop.setPreferBatchWrite(false);
         getThread().setDaemon(true);
     }
 

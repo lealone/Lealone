@@ -443,7 +443,6 @@ public class ConnectionInfo implements Cloneable {
             // 这些参数不需要传给server
             prop.remove(ConnectionSetting.IS_SHARED.name());
             prop.remove(ConnectionSetting.MAX_SHARED_SIZE.name());
-            prop.remove(ConnectionSetting.NET_CLIENT_COUNT.name());
         }
         String[] keys = new String[prop.size()];
         prop.keySet().toArray(keys);
