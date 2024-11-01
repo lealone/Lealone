@@ -28,7 +28,6 @@ import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.SystemPropertyUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataBufferFactory;
-import com.lealone.db.SysProperties;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.AsyncConnection;
@@ -296,9 +295,9 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public void write(WritableChannel channel, NetBuffer buffer) {
-        if (SysProperties.ASSERT && SchedulerThread.currentScheduler() != scheduler)
-            DbException.throwInternalError("write");
-
+        if (DbException.ASSERT) {
+            DbException.assertTrue(scheduler == SchedulerThread.currentScheduler());
+        }
         if (channel.isClosed()) {
             // 通道关闭了，reset后就返回
             resetBuffer(buffer);

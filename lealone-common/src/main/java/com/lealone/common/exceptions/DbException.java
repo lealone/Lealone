@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import com.lealone.common.util.SortedProperties;
 import com.lealone.common.util.StringUtils;
@@ -21,8 +22,6 @@ import com.lealone.common.util.Utils;
 import com.lealone.db.Constants;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
-
-import java.util.Properties;
 
 /**
  * This exception wraps a checked exception.
@@ -388,5 +387,14 @@ public class DbException extends RuntimeException {
             return ((DbException) t).getSQLException();
         else
             return t;
+    }
+
+    // 构建时可以手工改成false,这样就不会编译
+    public static final boolean ASSERT = Utils.getProperty(Constants.PROJECT_NAME_PREFIX + "assert",
+            true);
+
+    public static void assertTrue(boolean test) {
+        if (!test)
+            throwInternalError();
     }
 }

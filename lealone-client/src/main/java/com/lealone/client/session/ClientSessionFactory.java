@@ -38,8 +38,8 @@ public class ClientSessionFactory extends SessionFactoryBase {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
-        if (!ci.isRemote()) {
-            throw DbException.getInternalError();
+        if (DbException.ASSERT) {
+            DbException.assertTrue(ci.isRemote());
         }
         AsyncCallback<Session> ac;
         NetClient netClient;

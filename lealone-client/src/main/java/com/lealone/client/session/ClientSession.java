@@ -17,7 +17,6 @@ import com.lealone.db.ConnectionInfo;
 import com.lealone.db.DataHandler;
 import com.lealone.db.DbSetting;
 import com.lealone.db.LocalDataHandler;
-import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
@@ -282,10 +281,10 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
-        if (SysProperties.ASSERT && getScheduler() != null
-                && getScheduler() != SchedulerThread.currentScheduler())
-            DbException.throwInternalError("send");
-
+        if (DbException.ASSERT) {
+            DbException.assertTrue(
+                    getScheduler() == null || getScheduler() == SchedulerThread.currentScheduler());
+        }
         traceOperation(packet.getType().name(), packetId);
         AsyncCallback<R> ac;
         if (packet.getAckType() != PacketType.VOID) {
