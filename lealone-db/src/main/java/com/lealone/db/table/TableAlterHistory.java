@@ -15,6 +15,7 @@ import com.lealone.db.Database;
 import com.lealone.db.RunMode;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.row.Row;
+import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.ValueInt;
 import com.lealone.db.value.ValueString;
@@ -22,10 +23,21 @@ import com.lealone.storage.StorageSetting;
 
 public class TableAlterHistory {
 
+    public static String getName() {
+        return "table_alter_history";
+    }
+
+    private static Table findTable(Database db) {
+        return db.findSchema(null, "INFORMATION_SCHEMA").findTableOrView(null, getName());
+    }
+
     private Table table;
 
     public void init(Connection conn, Database db) {
         try {
+            table = findTable(db);
+            if (table != null)
+                return;
             Statement stmt = conn.createStatement();
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS INFORMATION_SCHEMA.table_alter_history"
                     + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))"
@@ -34,20 +46,19 @@ public class TableAlterHistory {
             stmt.close();
             conn.commit();
             conn.close();
-            table = db.findSchema(null, "INFORMATION_SCHEMA").findTableOrView(null,
-                    "table_alter_history");
+            table = findTable(db);
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
     }
 
     public int getVersion(ServerSession session, int id) {
-        Row row = table.getTemplateRow();
+        SearchRow row = table.getTemplateRow();
         row.setValue(0, ValueInt.get(id));
         Cursor cursor = table.getIndexes().get(1).find(session, row, row);
         int version = 0;
         while (cursor.next()) {
-            row = cursor.get();
+            row = cursor.getSearchRow(); // 只用索引字段就能找到version字段了
             int v = row.getValue(1).getInt();
             if (v > version)
                 version = v;
@@ -67,8 +78,9 @@ public class TableAlterHistory {
         ArrayList<TableAlterHistoryRecord> records = new ArrayList<>();
         while (cursor.next()) {
             Row row = cursor.get();
-            records.add(new TableAlterHistoryRecord(row.getValue(0).getInt(), row.getValue(1).getInt(),
-                    row.getValue(2).getInt(), row.getValue(3).getString()));
+            int alterType = row.getValue(2).getInt();
+            String columns = row.getValue(3).getString();
+            records.add(new TableAlterHistoryRecord(alterType, columns));
         }
         return records;
     }
@@ -79,20 +91,16 @@ public class TableAlterHistory {
         row.setValue(1, ValueInt.get(version));
         row.setValue(2, ValueInt.get(alterType));
         row.setValue(3, ValueString.get(columns));
-        table.addRow(null, row);
+        table.addRow(session, row);
     }
 
     public void deleteRecords(ServerSession session, int id) {
         Row row = table.getTemplateRow();
         row.setValue(0, ValueInt.get(id));
         Cursor cursor = table.getIndexes().get(1).find(session, row, row);
-        if (cursor.next()) {
+        while (cursor.next()) {
             row = cursor.get();
             table.removeRow(session, row);
         }
-    }
-
-    public static String getName() {
-        return "table_alter_history";
     }
 }

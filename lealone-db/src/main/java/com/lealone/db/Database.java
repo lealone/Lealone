@@ -436,13 +436,8 @@ public class Database extends DbObjectBase implements DataHandler {
         initTraceSystem();
         openDatabase();
         recover();
+        initTableAlterHistory();
         addShutdownHook();
-
-        // 用户也可以在LealoneDatabase的public模式中建表修改表结构
-        tableAlterHistory.init(getInternalConnection(), this);
-        // 提前初始化表的版本号，避免在执行insert/update时用同步的方式加载
-        for (Table t : mainSchema.getAllTablesAndViews())
-            t.initVersion();
 
         if (eventListener != null) {
             eventListener.opened();
@@ -461,6 +456,22 @@ public class Database extends DbObjectBase implements DataHandler {
         traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
         trace = traceSystem.getTrace(TraceModuleType.DATABASE);
         trace.info("opening {0} (build {1}) (persistent: {2})", name, Constants.BUILD_ID, persistent);
+    }
+
+    private void initTableAlterHistory() {
+        // 用户也可以在LealoneDatabase的public模式中建表修改表结构
+        tableAlterHistory.init(getInternalConnection(), this);
+        // 提前初始化表的版本号，避免在执行insert/update时用同步的方式加载
+        for (Schema s : getAllSchemas(false)) {
+            if (s != infoSchema && s != perfSchema) {
+                for (Table t : s.getAllTablesAndViews()) {
+                    if (t.isPersistIndexes()) {
+                        int v = tableAlterHistory.getVersion(systemSession, t.getId());
+                        t.setVersion(v);
+                    }
+                }
+            }
+        }
     }
 
     private void addShutdownHook() {

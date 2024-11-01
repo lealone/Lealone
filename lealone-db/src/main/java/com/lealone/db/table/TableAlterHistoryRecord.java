@@ -12,14 +12,10 @@ import com.lealone.sql.SQLStatement;
 
 public class TableAlterHistoryRecord {
 
-    // private final int id;
-    // private final int version;
     private final int alterType;
     private final String columns;
 
-    public TableAlterHistoryRecord(int id, int version, int alterType, String columns) {
-        // this.id = id;
-        // this.version = version;
+    public TableAlterHistoryRecord(int alterType, String columns) {
         this.alterType = alterType;
         this.columns = columns;
     }
@@ -67,7 +63,6 @@ public class TableAlterHistoryRecord {
             }
             return newValues;
         }
-
         return values;
     }
 }

@@ -283,8 +283,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         ValueLong from = getPK(parameters.from);
         ValueLong to = getPK(parameters.to);
         CursorParameters<Value> newParameters = parameters.copy(from, to);
-        return new StandardPrimaryIndexCursor(session, table, this,
-                getMap(session).cursor(newParameters), to);
+        return new StandardPrimaryIndexCursor(session, table, getMap(session).cursor(newParameters), to);
     }
 
     @Override
@@ -419,16 +418,14 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         private final ServerSession session;
         private final StandardTable table;
-        private final StandardPrimaryIndex index;
         private final TransactionMapCursor<Value, Row> cursor;
         private final ValueLong last;
         private Row row;
 
         public StandardPrimaryIndexCursor(ServerSession session, StandardTable table,
-                StandardPrimaryIndex index, TransactionMapCursor<Value, Row> cursor, ValueLong last) {
+                TransactionMapCursor<Value, Row> cursor, ValueLong last) {
             this.session = session;
             this.table = table;
-            this.index = index;
             this.cursor = cursor;
             this.last = last;
         }
@@ -455,25 +452,27 @@ public class StandardPrimaryIndex extends StandardIndex {
             row = cursor.getValue();
             session.setCurrentPage(cursor.getPage());
             int version = row.getVersion();
-            if (table.getVersion() != version) {
-                alterRow(version);
+            if (table.getVersion() > version) {
+                alterRow(version + 1, table.getVersion());
             }
         }
 
-        private void alterRow(int version) {
+        private void alterRow(int versionMin, int versionMax) {
             ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
-                    .getRecords(session, table.getId(), version, table.getVersion());
+                    .getRecords(session, table.getId(), versionMin, versionMax);
             Value[] oldValues = row.getColumns();
-            Value[] newValues = row.getColumns();
+            Value[] newValues = new Value[oldValues.length];
+            System.arraycopy(oldValues, 0, newValues, 0, oldValues.length);
             for (TableAlterHistoryRecord record : records) {
                 newValues = record.redo(session, newValues);
             }
-            if (newValues != oldValues) {
-                index.remove(session, row, oldValues, false);
-                row = new Row(table.getVersion(), newValues);
-                row.setKey(cursor.getKey().getLong());
-                index.add(session, row);
-            }
+
+            Row newRow = new Row(table.getVersion(), newValues);
+            newRow.setKey(row.getKey());
+            table.removeRow(session, row);
+            table.addRow(session, newRow);
+            // 先remove后add，只是替换新值，存储层并没有替换成newRow，更新一下新的版本即可
+            row.setVersion(table.getVersion());
         }
     }
 }

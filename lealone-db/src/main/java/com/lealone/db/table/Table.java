@@ -108,8 +108,8 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     // 只在打开数据库的时候调用，也就是只有一个线程调用
-    public void initVersion() {
-        version = getDatabase().getTableAlterHistory().getVersion(null, getId());
+    public void setVersion(int v) {
+        version = v;
     }
 
     public int getVersion() {
