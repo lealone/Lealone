@@ -21,11 +21,6 @@ import com.lealone.net.NetNode;
 import com.lealone.net.TcpClientConnection;
 
 public class BioNetClient extends NetClientBase {
-
-    public BioNetClient() {
-        super(true);
-    }
-
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
@@ -42,6 +43,7 @@ public class ClientScheduler extends SchedulerBase {
     private final ConcurrentLinkedQueue<AsyncTask> miscTasks = new ConcurrentLinkedQueue<>();
     private final NetClient netClient;
     private final NetEventLoop netEventLoop;
+    private final AtomicLong load = new AtomicLong(0);
 
     public ClientScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "CScheduleService-" + id,
@@ -52,8 +54,7 @@ public class ClientScheduler extends SchedulerBase {
         config.put("prefer_batch_write", "false"); // client端不用批量写
         NetFactory netFactory = NetFactory.getFactory(config);
         netClient = netFactory.createNetClient();
-        netEventLoop = netFactory.createNetEventLoop(loopInterval);
-        netEventLoop.setScheduler(this);
+        netEventLoop = netFactory.createNetEventLoop(this, loopInterval);
         netEventLoop.setNetClient(netClient);
         getThread().setDaemon(true);
     }
@@ -65,7 +66,12 @@ public class ClientScheduler extends SchedulerBase {
 
     @Override
     public long getLoad() {
-        return super.getLoad() + miscTasks.size();
+        return super.getLoad() + miscTasks.size() + load.get();
+    }
+
+    @Override
+    public boolean isBusy() {
+        return load.get() > 1;
     }
 
     @Override
@@ -83,6 +89,9 @@ public class ClientScheduler extends SchedulerBase {
     public void run() {
         long lastTime = System.currentTimeMillis();
         while (!stopped) {
+            if (netEventLoop.needWriteImmediately())
+                netEventLoop.write();
+
             runMiscTasks();
             runSessionTasks();
             runEventLoop();
@@ -149,12 +158,14 @@ public class ClientScheduler extends SchedulerBase {
         @Override
         public void submitTask(AsyncTask task) {
             tasks.add(task);
+            scheduler.load.incrementAndGet();
         }
 
         void runSessionTasks() {
             if (!tasks.isEmpty()) {
                 AsyncTask task = tasks.poll();
                 while (task != null) {
+                    scheduler.load.decrementAndGet();
                     runTask(task);
                     task = tasks.poll();
                 }
@@ -200,7 +211,7 @@ public class ClientScheduler extends SchedulerBase {
 
     @Override
     public void wakeUp() {
-        netEventLoop.wakeup();
+        netEventLoop.wakeUp();
     }
 
     @Override

@@ -79,7 +79,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
 
         isBio = tcpConnection.getWritableChannel().isBio();
-        out = tcpConnection.createTransferOutputStream();
+        out = tcpConnection.getTransferOutputStream();
     }
 
     @Override
@@ -191,6 +191,9 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                 if (isValid()) {
                     send(new SessionClose());
                     tcpConnection.removeSession(id);
+                }
+                if (getScheduler() != null) {
+                    getScheduler().removeSession(this);
                 }
                 super.close();
                 if (isBio()) {
@@ -378,5 +381,4 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public void setScheduler(Scheduler scheduler) {
         this.scheduler = scheduler;
     }
-
 }

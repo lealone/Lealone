@@ -33,8 +33,6 @@ public interface NetClient {
 
     boolean isClosed();
 
-    boolean isThreadSafe();
-
     void checkTimeout(long currentTime);
 
 }

@@ -6,6 +6,7 @@
 package com.lealone.net.nio;
 
 import com.lealone.db.Constants;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetFactoryBase;
 import com.lealone.net.NetServer;
@@ -30,7 +31,7 @@ public class NioNetFactory extends NetFactoryBase {
     }
 
     @Override
-    public NioEventLoop createNetEventLoop(long loopInterval) {
-        return new NioEventLoop(config, loopInterval);
+    public NioEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval) {
+        return new NioEventLoop(scheduler, loopInterval, config);
     }
 }

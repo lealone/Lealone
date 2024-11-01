@@ -34,12 +34,14 @@ public class TcpClientConnection extends TransferConnection {
     private Throwable pendingException;
     private NetBuffer inNetBuffer;
     private TransferInputStream in;
+    private final TransferOutputStream out;
 
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize) {
         super(writableChannel, false);
         this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
         createTransferInputStream();
+        out = createTransferOutputStream();
     }
 
     private void createTransferInputStream() {
@@ -85,6 +87,15 @@ public class TcpClientConnection extends TransferConnection {
     @Override
     public TransferInputStream getTransferInputStream(NetBuffer buffer) {
         return in;
+    }
+
+    public TransferOutputStream getTransferOutputStream() {
+        return out;
+    }
+
+    @Override
+    public TransferOutputStream getErrorTransferOutputStream() {
+        return out;
     }
 
     @Override

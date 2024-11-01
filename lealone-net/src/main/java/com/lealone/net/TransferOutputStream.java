@@ -543,6 +543,7 @@ public class TransferOutputStream implements NetOutputStream {
 
         private final WritableChannel writableChannel;
         private final NetBuffer buffer;
+        private final NetEventLoop eventLoop;
 
         private int startPos;
         private boolean written;
@@ -553,6 +554,7 @@ public class TransferOutputStream implements NetOutputStream {
 
         public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint) {
             this.writableChannel = writableChannel;
+            eventLoop = writableChannel.getEventLoop();
             buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint,
                     writableChannel.getDataBufferFactory());
             buffer.setGlobal(true);
@@ -582,12 +584,16 @@ public class TransferOutputStream implements NetOutputStream {
                 if (!written && startPos != buffer.position()) {
                     buffer.position(startPos);
                     buffer.decrementPacketCount();
+                    if (eventLoop != null)
+                        eventLoop.decrementPacketCount();
                 }
             }
             written = false;
             // 全局buffer只需要记住下一个包的开始位置即可，会一直往后追加
             startPos = buffer.position();
             buffer.incrementPacketCount();
+            if (eventLoop != null)
+                eventLoop.incrementPacketCount();
         }
     }
 }

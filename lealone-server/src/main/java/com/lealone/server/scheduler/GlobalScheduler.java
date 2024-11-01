@@ -53,9 +53,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config);
-
-        netEventLoop = NetFactory.getFactory(config).createNetEventLoop(loopInterval);
-        netEventLoop.setScheduler(this);
+        netEventLoop = NetFactory.getFactory(config).createNetEventLoop(this, loopInterval);
     }
 
     @Override
@@ -230,7 +228,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;
         while (true) {
-            if (netEventLoop.isQueueLarge())
+            if (netEventLoop.needWriteImmediately())
                 netEventLoop.write();
             gc();
             YieldableCommand c;
@@ -453,7 +451,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
 
     @Override
     public void wakeUp() {
-        netEventLoop.wakeup();
+        netEventLoop.wakeUp();
     }
 
     @Override

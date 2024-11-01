@@ -44,6 +44,10 @@ public interface WritableChannel {
     default void setEventLoop(NetEventLoop eventLoop) {
     }
 
+    default NetEventLoop getEventLoop() {
+        return null;
+    }
+
     default SelectionKey getSelectionKey() {
         return null;
     }

@@ -12,6 +12,7 @@ import java.util.Map;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.DataBufferFactory;
 import com.lealone.db.RunMode;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
@@ -222,7 +223,8 @@ public class AOTransaction implements Transaction {
     }
 
     protected DataBuffer toRedoLogRecordBuffer() {
-        return undoLog.toRedoLogRecordBuffer(transactionEngine, getScheduler().getDataBufferFactory());
+        return undoLog.toRedoLogRecordBuffer(transactionEngine,
+                DataBufferFactory.getConcurrentFactory()); // 用ConcurrentFactory才是安全的
     }
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {

@@ -25,6 +25,10 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
 
     long getLoad();
 
+    default boolean isBusy() {
+        return false;
+    }
+
     SchedulerThread getThread();
 
     SchedulerFactory getSchedulerFactory();
@@ -60,4 +64,5 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
     void addSession(Session session);
 
     void removeSession(Session session);
+
 }

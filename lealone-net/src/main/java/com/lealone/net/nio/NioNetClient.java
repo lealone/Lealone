@@ -20,15 +20,6 @@ import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetNode;
 
 public class NioNetClient extends NetClientBase {
-
-    public NioNetClient() {
-        super(false);
-    }
-
-    public NioNetClient(boolean isThreadSafe) {
-        super(isThreadSafe);
-    }
-
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node, //
             AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,

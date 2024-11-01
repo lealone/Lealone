@@ -27,6 +27,7 @@ public class CRUDExample {
     public static void main(String[] args) throws Exception {
         crud();
         // perf();
+        // startMultiThreads();
     }
 
     public static void crud() throws Exception {
@@ -43,7 +44,6 @@ public class CRUDExample {
     }
 
     public static void perf() throws Exception {
-        // startMultiThreads();
         Connection conn = null;
         int count = 100;
         for (int i = 0; i < count; i++) {
@@ -70,7 +70,7 @@ public class CRUDExample {
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
-        // test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
+        test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
         return test.getConnection(LealoneDatabase.NAME);
     }
 
@@ -185,29 +185,32 @@ public class CRUDExample {
     }
 
     public static void startMultiThreads() throws Exception {
-        ThreadUtils.start("CRUDExample1", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        ThreadUtils.start("CRUDExample2", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        ThreadUtils.start("CRUDExample3", () -> {
-            try {
-                Connection conn = getNioConnection();
-                crud(conn);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+        Connection conn = getNioConnection();
+        Statement stmt = conn.createStatement();
+        createTable(stmt);
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.close();
+        conn.close();
+
+        int count = 5;
+        CountDownLatch latch = new CountDownLatch(count);
+        for (int i = 1; i <= count; i++) {
+            ThreadUtils.start("CRUDExample-" + i, () -> {
+                try {
+                    Connection c = getNioConnection();
+                    Statement s = c.createStatement();
+                    for (int j = 1; j <= count; j++) {
+                        s.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
+                    }
+                    s.close();
+                    c.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
     }
 }

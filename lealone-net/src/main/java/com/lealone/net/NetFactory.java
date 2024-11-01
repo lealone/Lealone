@@ -12,6 +12,7 @@ import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
 import com.lealone.db.plugin.Plugin;
 import com.lealone.db.plugin.PluginManager;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.bio.BioNetFactory;
 import com.lealone.net.nio.NioNetFactory;
 
@@ -21,7 +22,7 @@ public interface NetFactory extends Plugin {
 
     NetClient createNetClient();
 
-    default NetEventLoop createNetEventLoop(long loopInterval) {
+    default NetEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval) {
         return null;
     }
 

@@ -103,6 +103,11 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public NetEventLoop getEventLoop() {
+        return eventLoop;
+    }
+
+    @Override
     public SelectionKey getSelectionKey() {
         return selectionKey;
     }
@@ -114,10 +119,10 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public void close() {
-        buffer = null;
         if (eventLoop != null)
             eventLoop.closeChannel(this);
         eventLoop = null;
+        buffer = null;
     }
 
     @Override

@@ -10,13 +10,12 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 
 import com.lealone.db.DataBufferFactory;
-import com.lealone.db.scheduler.Scheduler;
 
 public interface NetEventLoop {
 
-    Scheduler getScheduler();
+    void setNetClient(NetClient netClient);
 
-    void setScheduler(Scheduler scheduler);
+    NetClient getNetClient();
 
     void setPreferBatchWrite(boolean preferBatchWrite);
 
@@ -30,21 +29,17 @@ public interface NetEventLoop {
 
     void register(AsyncConnection conn);
 
-    void wakeup();
+    void wakeUp();
 
-    void addSocketChannel(WritableChannel channel);
+    void addChannel(WritableChannel channel);
 
     void read(SelectionKey key);
-
-    void write(WritableChannel channel, NetBuffer buffer);
 
     void write();
 
     void write(SelectionKey key);
 
-    void setNetClient(NetClient netClient);
-
-    NetClient getNetClient();
+    void write(WritableChannel channel, NetBuffer buffer);
 
     void handleSelectedKeys();
 
@@ -54,5 +49,10 @@ public interface NetEventLoop {
 
     boolean isInLoop();
 
-    boolean isQueueLarge();
+    boolean needWriteImmediately();
+
+    void incrementPacketCount();
+
+    void decrementPacketCount();
+
 }
