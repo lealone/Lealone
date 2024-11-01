@@ -104,13 +104,12 @@ public class BioWritableChannel implements WritableChannel {
     public void read() {
         try {
             NetBuffer netBuffer = conn.getNetBuffer(); // 可能会变，所以每次都获取
-            ByteBuffer bb = netBuffer.getByteBuffer();
-            byte[] b = bb.array();
+            byte[] b = netBuffer.getByteBuffer().array();
             int packetLength = readRacketLength(b);
             checkPacketLength(maxPacketSize, packetLength);
             // 如果返回的netBuffer的capacity小于packetLength会自动扩容，并且限制limit不会多读
             netBuffer.limit(packetLength);
-            b = bb.array(); // 重新获取一次，扩容时会变
+            b = netBuffer.getByteBuffer().array(); // 重新获取一次，扩容时会改变内部的ByteBuffer
             // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
             readFully(b, 0, packetLength);
             conn.handle(netBuffer);
