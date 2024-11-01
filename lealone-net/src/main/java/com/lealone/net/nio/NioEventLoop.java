@@ -38,6 +38,7 @@ import com.lealone.net.NetEventLoop;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.WritableChannel;
 import com.lealone.net.bio.BioWritableChannel;
+import com.lealone.server.ProtocolServer;
 
 public class NioEventLoop implements NetEventLoop {
 
@@ -438,7 +439,9 @@ public class NioEventLoop implements NetEventLoop {
                 } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                     write(key);
                 } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
-                    scheduler.accept(key);
+                    ProtocolServer server = (ProtocolServer) key.attachment();
+                    if (server != null)
+                        server.accept(scheduler);
                 } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
                     connectionEstablished(key);
                 } else {

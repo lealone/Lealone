@@ -5,15 +5,12 @@
  */
 package com.lealone.db.scheduler;
 
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 
 import com.lealone.common.logging.Logger;
 import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncTaskHandler;
 import com.lealone.db.session.Session;
-import com.lealone.server.ProtocolServer;
 
 public interface Scheduler extends AsyncTaskHandler, Runnable {
 
@@ -56,10 +53,6 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
     Object getNetEventLoop();
 
     Selector getSelector();
-
-    void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel);
-
-    void accept(SelectionKey key);
 
     void addSession(Session session);
 

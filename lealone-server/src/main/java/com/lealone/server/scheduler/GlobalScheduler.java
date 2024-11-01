@@ -6,9 +6,7 @@
 package com.lealone.server.scheduler;
 
 import java.io.IOException;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 
 import com.lealone.common.logging.Logger;
@@ -26,9 +24,7 @@ import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
-import com.lealone.server.AsyncServer;
 import com.lealone.server.AsyncServerManager;
-import com.lealone.server.ProtocolServer;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.storage.page.PageOperation;
@@ -417,19 +413,8 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
 
     // --------------------- 注册 Accepter ---------------------
 
-    @Override
-    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        AsyncServerManager.registerAccepter((AsyncServer<?>) server, serverChannel, this);
-        wakeUp();
-    }
-
     private void runRegisterAccepterTasks() {
         AsyncServerManager.runRegisterAccepterTasks(this);
-    }
-
-    @Override
-    public void accept(SelectionKey key) {
-        AsyncServerManager.accept(key, this);
     }
 
     // --------------------- 网络事件循环相关 ---------------------

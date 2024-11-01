@@ -5,9 +5,7 @@
  */
 package com.lealone.db.scheduler;
 
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -18,7 +16,6 @@ import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.Session;
-import com.lealone.server.ProtocolServer;
 
 public abstract class SchedulerBase implements Scheduler {
 
@@ -145,14 +142,6 @@ public abstract class SchedulerBase implements Scheduler {
     @Override
     public Selector getSelector() {
         return null;
-    }
-
-    @Override
-    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-    }
-
-    @Override
-    public void accept(SelectionKey key) {
     }
 
     protected void runEventLoop() {

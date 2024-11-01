@@ -6,14 +6,12 @@
 package com.lealone.client;
 
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.client.session.ClientSession;
-import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.ConnectionInfo;
@@ -30,7 +28,6 @@ import com.lealone.db.session.SessionInfo;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
-import com.lealone.server.ProtocolServer;
 
 public class ClientScheduler extends SchedulerBase {
 
@@ -195,11 +192,6 @@ public class ClientScheduler extends SchedulerBase {
     @Override
     public Selector getSelector() {
         return netEventLoop.getSelector();
-    }
-
-    @Override
-    public void registerAccepter(ProtocolServer server, ServerSocketChannel serverChannel) {
-        DbException.throwInternalError();
     }
 
     @Override

@@ -5,6 +5,7 @@
  */
 package com.lealone.server;
 
+import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -119,6 +120,8 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
             T conn = createConnection(writableChannel, scheduler);
             connectionSize.incrementAndGet();
             register(conn, scheduler, writableChannel);
+            // 当前调度器接入一条新连接后可以选择是否让其他调度器负责监听Accept事件
+            AsyncServerManager.registerAccepterIfNeed(this, scheduler);
             return conn;
         } else {
             writableChannel.close();
@@ -134,11 +137,30 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public void registerAccepter(ServerSocketChannel serverChannel) {
+        this.serverChannel = serverChannel;
+        // 挑选出第一个负责监听Accept事件的调度器
         Scheduler scheduler = schedulerFactory.getScheduler();
-        scheduler.registerAccepter(this, serverChannel);
+        AsyncServerManager.registerAccepter(this, scheduler);
+        scheduler.wakeUp();
     }
 
     public boolean isRoundRobinAcceptEnabled() {
         return true;
+    }
+
+    private ServerSocketChannel serverChannel;
+
+    public ServerSocketChannel getServerChannel() {
+        return serverChannel;
+    }
+
+    private SelectionKey selectionKey;
+
+    public SelectionKey getSelectionKey() {
+        return selectionKey;
+    }
+
+    public void setSelectionKey(SelectionKey selectionKey) {
+        this.selectionKey = selectionKey;
     }
 }

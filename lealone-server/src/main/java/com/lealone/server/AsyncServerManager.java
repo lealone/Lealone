@@ -7,7 +7,6 @@ package com.lealone.server;
 
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.ServerSocketChannel;
 import java.util.ArrayList;
 
 import com.lealone.common.util.BitField;
@@ -75,22 +74,45 @@ public class AsyncServerManager {
     private static class RegisterAccepterTask {
 
         private AsyncServer<?> asyncServer;
-        private ServerSocketChannel serverChannel;
-        private Scheduler currentScheduler;
-        private boolean needRegisterAccepter; // 避免重复注册ACCEPT事件
+        private Scheduler nextScheduler; // 下一个负责监听Accept事件的调度器
+        private boolean needRegisterAccepter; // 避免重复注册Accept事件
 
         private void run(Scheduler currentScheduler) {
             try {
-                serverChannel.register(currentScheduler.getSelector(), SelectionKey.OP_ACCEPT, this);
+                SelectionKey key = asyncServer.getServerChannel().register(
+                        currentScheduler.getSelector(), SelectionKey.OP_ACCEPT,
+                        asyncServer.getProtocolServer());
+                asyncServer.setSelectionKey(key);
                 needRegisterAccepter = false;
             } catch (ClosedChannelException e) {
-                currentScheduler.getLogger().warn("Failed to register server channel: " + serverChannel);
+                currentScheduler.getLogger()
+                        .warn("Failed to register server channel: " + asyncServer.getServerChannel());
             }
         }
     }
 
-    public static void registerAccepter(AsyncServer<?> asyncServer, ServerSocketChannel serverChannel,
-            Scheduler currentScheduler) {
+    public static void runRegisterAccepterTasks(Scheduler currentScheduler) {
+        RegisterAccepterTask[] tasks = registerAccepterTasks;
+        for (int i = 0; i < tasks.length; i++) {
+            RegisterAccepterTask task = tasks[i];
+            if (task != null && task.needRegisterAccepter && task.nextScheduler == currentScheduler)
+                task.run(currentScheduler);
+        }
+    }
+
+    public static void registerAccepterIfNeed(AsyncServer<?> asyncServer, Scheduler currentScheduler) {
+        if (asyncServer.isRoundRobinAcceptEnabled()) {
+            Scheduler nextScheduler = currentScheduler.getSchedulerFactory().getScheduler();
+            // 如果下一个负责处理网络accept事件的调度器又是当前调度器，那么不需要做什么
+            if (nextScheduler != currentScheduler) {
+                SelectionKey key = asyncServer.getSelectionKey();
+                key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
+                registerAccepter(asyncServer, nextScheduler);
+            }
+        }
+    }
+
+    public static void registerAccepter(AsyncServer<?> asyncServer, Scheduler nextScheduler) {
         int serverId = asyncServer.getServerId();
         // Server重新启动后对应的元素可能已经删除，需要重新加入
         if (serverId >= registerAccepterTasks.length) {
@@ -103,30 +125,7 @@ public class AsyncServerManager {
             registerAccepterTasks[serverId] = task;
         }
         task.asyncServer = asyncServer;
-        task.serverChannel = serverChannel;
-        task.currentScheduler = currentScheduler;
+        task.nextScheduler = nextScheduler;
         task.needRegisterAccepter = true;
-    }
-
-    public static void runRegisterAccepterTasks(Scheduler currentScheduler) {
-        RegisterAccepterTask[] tasks = registerAccepterTasks;
-        for (int i = 0; i < tasks.length; i++) {
-            RegisterAccepterTask task = tasks[i];
-            if (task != null && task.needRegisterAccepter && task.currentScheduler == currentScheduler)
-                task.run(currentScheduler);
-        }
-    }
-
-    public static void accept(SelectionKey key, Scheduler currentScheduler) {
-        RegisterAccepterTask task = (RegisterAccepterTask) key.attachment();
-        task.asyncServer.getProtocolServer().accept(currentScheduler);
-        if (task.asyncServer.isRoundRobinAcceptEnabled()) {
-            Scheduler scheduler = currentScheduler.getSchedulerFactory().getScheduler();
-            // 如果下一个负责处理网络accept事件的调度器又是当前调度器，那么不需要做什么
-            if (scheduler != currentScheduler) {
-                key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
-                scheduler.registerAccepter(task.asyncServer, task.serverChannel);
-            }
-        }
     }
 }
