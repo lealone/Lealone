@@ -15,6 +15,7 @@ import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.StandardTable;
 import com.lealone.db.value.Value;
+import com.lealone.transaction.Transaction;
 
 public class IndexOperator implements Runnable {
 
@@ -70,12 +71,20 @@ public class IndexOperator implements Runnable {
         if (indexOperationSize.get() <= 0)
             return;
         try {
-            session.getTransaction();
             int i = 0;
             while (true) {
-                IndexOperation io = indexOperations.poll();
+                IndexOperation io = indexOperations.peek();
                 if (io == null)
                     return;
+                int status = io.getStatus();
+                if (status == 0)
+                    return; // 未提交，直接返回
+
+                indexOperations.poll();
+                if (status < 0) // 已经回滚，直接废弃
+                    continue;
+
+                session.getTransaction();
                 indexOperationSize.decrementAndGet();
                 try {
                     io.run(table, session);
@@ -100,9 +109,29 @@ public class IndexOperator implements Runnable {
         long rowKey; // addRow的场景需要回填
         final Value[] columns;
 
+        Transaction transaction;
+        int savepointId;
+
         public IndexOperation(long rowKey, Value[] columns) {
             this.rowKey = rowKey;
             this.columns = columns;
+        }
+
+        public int getSavepointId() {
+            return savepointId;
+        }
+
+        public Transaction getTransaction() {
+            return transaction;
+        }
+
+        public void setTransaction(Transaction transaction) {
+            this.transaction = transaction;
+            this.savepointId = transaction.getSavepointId();
+        }
+
+        public int getStatus() {
+            return transaction.getStatus(savepointId);
         }
 
         public abstract void run(StandardTable table, ServerSession session);

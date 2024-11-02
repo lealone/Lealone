@@ -424,6 +424,7 @@ public class StandardTable extends Table {
         final IndexOperation io;
         if (isSync && !indexesAsync.isEmpty()) {
             io = indexOperator.addRowLazy(row.getKey(), row.getColumns());
+            io.setTransaction(session.getTransaction());
         } else {
             io = null;
         }
@@ -489,9 +490,11 @@ public class StandardTable extends Table {
         Value[] oldColumns = oldRow.getColumns(); // 会改变，所以提前保留旧的
 
         IndexOperation io = null;
-        if (isSync && !indexesAsync.isEmpty())
+        if (isSync && !indexesAsync.isEmpty()) {
             io = indexOperator.updateRowLazy(oldRow.getKey(), newRow.getKey(), oldColumns,
                     newRow.getColumns(), updateColumns);
+            io.setTransaction(session.getTransaction());
+        }
 
         // 第一个是PrimaryIndex
         for (int i = 0; i < size && !isFailed.get(); i++) {
@@ -530,8 +533,10 @@ public class StandardTable extends Table {
         Value[] oldColumns = row.getColumns(); // 会改变，所以提前保留旧的
 
         IndexOperation io = null;
-        if (isSync && !indexesAsync.isEmpty())
+        if (isSync && !indexesAsync.isEmpty()) {
             io = indexOperator.removeRowLazy(row.getKey(), row.getColumns());
+            io.setTransaction(session.getTransaction());
+        }
 
         for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
             Index index = oldIndexes.get(i);

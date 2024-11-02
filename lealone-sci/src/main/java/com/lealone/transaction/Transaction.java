@@ -118,4 +118,7 @@ public interface Transaction {
     Transaction getParentTransaction();
 
     void setParentTransaction(Transaction parentTransaction);
+
+    // 0：未提交，1：已提交，-1: 已回滚
+    int getStatus(int savepointId);
 }

@@ -60,6 +60,7 @@ public class AOTransaction implements Transaction {
 
     // 仅用于测试
     private LinkedList<RowLock> locks; // 行锁
+    private int maxCommittedLogId = -1;
 
     public AOTransaction(AOTransactionEngine engine, long tid, RunMode runMode, int level) {
         this(engine, tid, runMode, level, null);
@@ -307,7 +308,8 @@ public class AOTransaction implements Transaction {
         AOTransaction t = transactionManager.removeTransaction(tid, bitIndex);
         if (t == null)
             return;
-        t.undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
+
+        maxCommittedLogId = t.undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
         // 在删除事务前标记脏页，这样GC线程看到事务没结束就不会对脏页进行GC
         if (t.session != null)
             t.session.markDirtyPages();
@@ -358,6 +360,7 @@ public class AOTransaction implements Transaction {
             checkNotClosed();
             rollbackTo(0);
         } finally {
+            maxCommittedLogId = -2;
             endTransaction(true);
             // 在session级唤醒等待的事务
         }
@@ -458,5 +461,15 @@ public class AOTransaction implements Transaction {
     @Override
     public void setParentTransaction(Transaction parentTransaction) {
         this.parentTransaction = parentTransaction;
+    }
+
+    @Override
+    public int getStatus(int savepointId) { // 0：未提交，1：已提交，-1: 已回滚
+        if (maxCommittedLogId > savepointId)
+            return 1;
+        else if (maxCommittedLogId == -1)
+            return 0;
+        else
+            return -1;
     }
 }

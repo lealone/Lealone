@@ -354,7 +354,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         UndoLogRecord r;
         InternalSession session = transaction.getSession();
         if (session == null || session.isUndoLogEnabled()) {
-            r = addUndoLog(key, lockable, true, null);
+            r = addUndoLog(key, lockable, null);
             TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
         } else {
             r = null;
@@ -371,7 +371,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (old.getLockedValue() == null) {
                         old.setLockedValue(lockable.getLockedValue());
                         if (r != null) {
-                            addUndoLog(key, old, true, lockable.getLockedValue());
+                            addUndoLog(key, old, lockable.getLockedValue());
                         }
                         ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     } else {
@@ -416,7 +416,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Object oldValue = lockable.getLockedValue();
         TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
         lockable.setLockedValue(value);
-        addUndoLog(key, lockable, false, oldValue);
+        addUndoLog(key, lockable, oldValue);
         return Transaction.OPERATION_COMPLETE;
     }
 
@@ -560,7 +560,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         if (handler != null) {
             map.append(session, lockable, ar -> {
                 if (isUndoLogEnabled && ar.isSucceeded()) {
-                    addUndoLog(ar.getResult(), lockable, true, null);
+                    addUndoLog(ar.getResult(), lockable, null);
                 }
                 handler.handle(ar);
             });
@@ -570,18 +570,14 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
             if (isUndoLogEnabled) {
-                addUndoLog(key, lockable, true, null);
+                addUndoLog(key, lockable, null);
             }
             return key;
         }
     }
 
-    private UndoLogRecord addUndoLog(Object key, Lockable lockable, boolean isInsert, Object oldValue) {
-        if (isKeyOnly) {
-            return transaction.undoLog.add(map, key, lockable, isInsert);
-        } else {
-            return transaction.undoLog.add(map, key, lockable, oldValue);
-        }
+    private UndoLogRecord addUndoLog(Object key, Lockable lockable, Object oldValue) {
+        return transaction.undoLog.add(map, key, lockable, oldValue, isKeyOnly);
     }
 
     @Override

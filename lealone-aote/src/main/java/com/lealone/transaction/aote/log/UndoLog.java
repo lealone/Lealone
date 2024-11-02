@@ -40,12 +40,12 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
-        return add(new KeyValueULR(map, key, lockable, oldValue));
-    }
-
-    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, boolean isInsert) {
-        return add(new KeyOnlyULR(map, key, lockable, isInsert));
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue,
+            boolean isKeyOnly) {
+        if (isKeyOnly)
+            return add(new KeyOnlyULR(map, key, lockable, oldValue));
+        else
+            return add(new KeyValueULR(map, key, lockable, oldValue));
     }
 
     private UndoLogRecord add(UndoLogRecord r) {
@@ -74,12 +74,13 @@ public class UndoLog {
         return r;
     }
 
-    public void commit(AOTransactionEngine te) {
+    public int commit(AOTransactionEngine te) {
         UndoLogRecord r = first;
         while (r != null) {
             r.commit(te);
             r = r.next;
         }
+        return logId;
     }
 
     public void rollbackTo(AOTransactionEngine te, int toLogId) {
