@@ -71,6 +71,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private final CompareMode compareMode = CompareMode.getInstance(null, 0, false);
     private final String url;
     private final String user;
+    private String catalog;
 
     private Session session;
     private JdbcPreparedStatement commit, rollback;
@@ -81,20 +82,21 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private int holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
     private int queryTimeoutCache = -1;
     private int savepointId;
-    private String catalog;
 
     public JdbcConnection(Session session, ConnectionInfo ci) {
         this.session = session;
         user = ci.getUserName();
         url = ci.getURL(); // 不含参数
+        catalog = ci.getDatabaseName();
         initTrace();
     }
 
     // 内部会通过反射用到
-    public JdbcConnection(Session session, String user, String url) {
+    public JdbcConnection(Session session, String user, String url, String catalog) {
         this.session = session;
         this.user = user;
         this.url = url;
+        this.catalog = catalog;
         trace = getTrace(TraceObjectType.CONNECTION);
     }
 
@@ -678,14 +680,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             debugCodeCall("getCatalog");
             checkClosed();
-            if (catalog == null) {
-                JdbcStatement stmt = createStatement();
-                ResultSet result = stmt.executeQuery("CALL DATABASE()");
-                result.next();
-                catalog = result.getString(1);
-                result.close();
-                stmt.close();
-            }
             return catalog;
         } catch (Exception e) {
             throw logAndConvert(e);

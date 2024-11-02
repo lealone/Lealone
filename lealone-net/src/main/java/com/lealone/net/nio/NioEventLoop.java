@@ -253,6 +253,7 @@ public class NioEventLoop implements NetEventLoop {
                     endExceptionMsg = "socket channel closed: " + channel.getRemoteAddress();
                     throw endException;
                 }
+                return false;
             }
         }
         if (length == buffer.position()) {

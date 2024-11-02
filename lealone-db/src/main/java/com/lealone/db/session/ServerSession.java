@@ -1001,8 +1001,8 @@ public class ServerSession extends SessionBase implements InternalSession {
         try {
             Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
             Connection conn = (Connection) jdbcConnectionClass
-                    .getConstructor(Session.class, String.class, String.class)
-                    .newInstance(session, user, url);
+                    .getConstructor(Session.class, String.class, String.class, String.class)
+                    .newInstance(session, user, url, session.getDatabase().getName());
             if (!session.isAutoCommit())
                 conn.setAutoCommit(false);
             return conn;
