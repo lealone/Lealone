@@ -161,6 +161,20 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     public void setQueryCacheSize(int queryCacheSize) {
         this.queryCacheSize = queryCacheSize;
+        if (queryCacheSize <= 0) {
+            clearQueryCache();
+        }
+    }
+
+    public void clearQueryCache() {
+        if (queryCache != null) {
+            queryCache.clear();
+            queryCache = null;
+        }
+    }
+
+    public boolean isQueryCacheEnabled() {
+        return queryCacheSize > 0;
     }
 
     public boolean setCommitOrRollbackDisabled(boolean x) {
@@ -1651,11 +1665,6 @@ public class ServerSession extends SessionBase implements InternalSession {
     public void wakeUpWaitingSchedulers(boolean reset) {
         if (getScheduler() != null)
             getScheduler().wakeUpWaitingSchedulers(reset);
-    }
-
-    public void clearQueryCache() {
-        if (queryCache != null)
-            queryCache.clear();
     }
 
     @Override

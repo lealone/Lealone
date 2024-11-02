@@ -36,7 +36,8 @@ class QueryResultCache {
     }
 
     boolean isNotCachable() {
-        return noCache || !session.getDatabase().getOptimizeReuseResults();
+        return noCache || !session.isQueryCacheEnabled()
+                || !session.getDatabase().getOptimizeReuseResults();
     }
 
     void setResult(LocalResult r) {
