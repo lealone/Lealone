@@ -1585,15 +1585,17 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     @SuppressWarnings("unchecked")
     <T> T convertToObject(Value v, Class<T> type) {
+        if (v.getType() == Value.NULL)
+            return null;
         if (type == LocalDate.class) {
-            ValueDate date = (ValueDate) v;
+            ValueDate date = (ValueDate) v.convertTo(Value.DATE);
             long dateValue = date.getDateValue();
             return (T) toLocalDate(dateValue);
         } else if (type == LocalTime.class) {
-            ValueTime time = (ValueTime) v;
+            ValueTime time = (ValueTime) v.convertTo(Value.TIME);
             return (T) LocalTime.ofNanoOfDay(time.getNanos());
         } else if (type == LocalDateTime.class) {
-            ValueTimestamp timestamp = (ValueTimestamp) v;
+            ValueTimestamp timestamp = (ValueTimestamp) v.convertTo(Value.TIMESTAMP);
             long dateValue = timestamp.getDateValue();
             long timeNanos = timestamp.getNanos();
             return (T) LocalDateTime.of(toLocalDate(dateValue), LocalTime.ofNanoOfDay(timeNanos));
