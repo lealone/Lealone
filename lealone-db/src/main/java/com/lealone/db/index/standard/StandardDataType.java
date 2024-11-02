@@ -14,6 +14,7 @@ import com.lealone.db.result.SortOrder;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.storage.type.StorageDataTypeBase;
 
@@ -150,5 +151,21 @@ public class StandardDataType extends StorageDataTypeBase {
             return false;
         }
         return Arrays.equals(sortTypes, v.sortTypes);
+    }
+
+    private boolean keyOnly;
+
+    @Override
+    public boolean isKeyOnly() {
+        return keyOnly;
+    }
+
+    public void setKeyOnly(boolean keyOnly) {
+        this.keyOnly = keyOnly;
+    }
+
+    @Override
+    public Object getAppendKey(long key, Object valueObj) {
+        return ValueLong.get(key);
     }
 }

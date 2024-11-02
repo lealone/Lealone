@@ -58,7 +58,7 @@ public interface ResultExternal {
      * @param values the row
      * @return the new row count
      */
-    int removeRow(Value[] values);
+    int removeDistinct(Value[] values);
 
     /**
      * Check if the given row exists in this object.
@@ -66,7 +66,7 @@ public interface ResultExternal {
      * @param values the row
      * @return true if it exists
      */
-    boolean contains(Value[] values);
+    boolean containsDistinct(Value[] values);
 
     /**
      * Create a shallow copy of this object if possible.

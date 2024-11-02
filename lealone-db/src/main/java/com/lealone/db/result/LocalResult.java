@@ -146,7 +146,7 @@ public class LocalResult implements Result, ResultTarget {
             distinctRows.remove(array);
             rowCount = distinctRows.size();
         } else {
-            rowCount = external.removeRow(values);
+            rowCount = external.removeDistinct(values);
         }
     }
 
@@ -158,7 +158,7 @@ public class LocalResult implements Result, ResultTarget {
      */
     public boolean containsDistinct(Value[] values) {
         if (external != null) {
-            return external.contains(values);
+            return external.containsDistinct(values);
         }
         if (distinctRows == null) {
             distinctRows = ValueHashMap.newInstance();
@@ -201,6 +201,7 @@ public class LocalResult implements Result, ResultTarget {
             if (rowId < rowCount) {
                 if (external != null) {
                     currentRow = external.next();
+                    return currentRow != null;
                 } else {
                     currentRow = rows.get(rowId);
                 }
@@ -229,7 +230,7 @@ public class LocalResult implements Result, ResultTarget {
                 distinctRows.put(array, values); // 会触发ValueArray的hashCode方法
                 rowCount = distinctRows.size();
                 if (rowCount > maxMemoryRows) {
-                    external = new ResultTempTable(session, expressions, true, sort);
+                    external = new ResultTempMap(session, expressions, true, sort);
                     rowCount = external.addRows(distinctRows.values());
                     distinctRows = null;
                 }
@@ -242,7 +243,7 @@ public class LocalResult implements Result, ResultTarget {
         rowCount++;
         if (rows.size() > maxMemoryRows) {
             if (external == null) {
-                external = new ResultTempTable(session, expressions, false, sort);
+                external = new ResultTempMap(session, expressions, false, sort);
             }
             addRowsToDisk();
         }
@@ -267,30 +268,27 @@ public class LocalResult implements Result, ResultTarget {
             if (distinctRows != null) {
                 rows = distinctRows.values();
             } else {
+                // 已经做完了distinct，接着做排序
                 if (external != null && sort != null) {
-                    // external sort
                     ResultExternal temp = external;
-                    external = null;
+                    // 只做排序了，所以传false
+                    external = new ResultTempMap(session, expressions, false, sort);
                     temp.reset();
                     rows = new ArrayList<>();
-                    // TODO use offset directly if possible
+                    // offset和limit只作用于最终结果
                     while (true) {
                         Value[] list = temp.next();
                         if (list == null) {
                             break;
                         }
-                        if (external == null) {
-                            external = new ResultTempTable(session, expressions, true, sort);
-                        }
                         rows.add(list);
                         if (rows.size() > maxMemoryRows) {
                             rowCount = external.addRows(rows);
-                            rows.clear();
+                            rows = new ArrayList<>();
                         }
                     }
                     temp.close();
-                    // the remaining data in rows is written in the following
-                    // lines
+                    // the remaining data in rows is written in the following lines
                 }
             }
         }
