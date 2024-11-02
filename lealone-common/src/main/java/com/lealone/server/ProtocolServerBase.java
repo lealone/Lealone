@@ -25,7 +25,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
 
     protected boolean ssl;
     protected boolean allowOthers;
-    protected boolean daemon;
     protected boolean stopped;
     protected boolean started;
 
@@ -33,9 +32,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     protected HashSet<String> whiteList;
     protected ServerEncryptionOptions serverEncryptionOptions;
     protected int sessionTimeout = 15 * 60 * 1000; // 如果session在15分钟内不活跃就会超时
-
-    protected ProtocolServerBase() {
-    }
 
     @Override
     public void init(Map<String, String> config) {
@@ -50,7 +46,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
 
         ssl = MapUtils.getBoolean(config, "ssl", false);
         allowOthers = MapUtils.getBoolean(config, "allow_others", true);
-        daemon = MapUtils.getBoolean(config, "daemon", false);
 
         if (config.containsKey("white_list")) {
             String[] hosts = config.get("white_list").split(",");
@@ -86,18 +81,13 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     }
 
     @Override
-    public String getURL() {
-        return (ssl ? "ssl" : getType()) + "://" + getHost() + ":" + port;
+    public String getHost() {
+        return host;
     }
 
     @Override
     public int getPort() {
         return port;
-    }
-
-    @Override
-    public String getHost() {
-        return host;
     }
 
     @Override
@@ -113,36 +103,6 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     @Override
     public boolean getAllowOthers() {
         return allowOthers;
-    }
-
-    @Override
-    public boolean isDaemon() {
-        return daemon;
-    }
-
-    @Override
-    public String getBaseDir() {
-        return baseDir;
-    }
-
-    @Override
-    public void setServerEncryptionOptions(ServerEncryptionOptions options) {
-        this.serverEncryptionOptions = options;
-    }
-
-    @Override
-    public ServerEncryptionOptions getServerEncryptionOptions() {
-        return serverEncryptionOptions;
-    }
-
-    @Override
-    public boolean isSSL() {
-        return ssl;
-    }
-
-    @Override
-    public Map<String, String> getConfig() {
-        return config;
     }
 
     @Override
@@ -170,6 +130,31 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         } catch (UnknownHostException e) {
             return false;
         }
+    }
+
+    @Override
+    public String getBaseDir() {
+        return baseDir;
+    }
+
+    @Override
+    public Map<String, String> getConfig() {
+        return config;
+    }
+
+    @Override
+    public boolean isSSL() {
+        return ssl;
+    }
+
+    @Override
+    public void setServerEncryptionOptions(ServerEncryptionOptions options) {
+        this.serverEncryptionOptions = options;
+    }
+
+    @Override
+    public ServerEncryptionOptions getServerEncryptionOptions() {
+        return serverEncryptionOptions;
     }
 
     @Override

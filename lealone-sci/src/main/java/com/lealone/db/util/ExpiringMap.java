@@ -52,32 +52,32 @@ public class ExpiringMap<K, V> {
      */
     public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration, boolean isThreadSafe,
             final Function<ExpiringMap.CacheableObject<V>, ?> postExpireHook) {
-        // if (defaultExpiration <= 0) {
-        // throw new IllegalArgumentException("Argument specified must be a positive number");
-        // }
         if (isThreadSafe)
             cache = new HashMap<>();
         else
             cache = new ConcurrentHashMap<>();
         this.defaultExpiration = defaultExpiration;
         this.asyncTaskHandler = asyncTaskHandler;
-        task = new AsyncPeriodicTask(1000, () -> {
-            long start = System.nanoTime();
-            int n = 0;
-            for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
-                if (entry.getValue().isReadyToDieAt(start)) {
-                    if (cache.remove(entry.getKey()) != null) {
-                        n++;
-                        if (postExpireHook != null)
-                            postExpireHook.apply(entry.getValue());
+        if (defaultExpiration > 0) {
+            task = new AsyncPeriodicTask(1000, () -> {
+                long start = System.nanoTime();
+                int n = 0;
+                for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
+                    if (entry.getValue().isReadyToDieAt(start)) {
+                        if (cache.remove(entry.getKey()) != null) {
+                            n++;
+                            if (postExpireHook != null)
+                                postExpireHook.apply(entry.getValue());
+                        }
                     }
                 }
-            }
-            if (logger.isTraceEnabled())
-                logger.trace("Expired {} entries", n);
-        });
-        if (defaultExpiration > 0)
+                if (logger.isTraceEnabled())
+                    logger.trace("Expired {} entries", n);
+            });
             asyncTaskHandler.addPeriodicTask(task);
+        } else {
+            task = null;
+        }
     }
 
     public AsyncPeriodicTask getAsyncPeriodicTask() {
@@ -99,7 +99,8 @@ public class ExpiringMap<K, V> {
             }
         }
         cache.clear();
-        asyncTaskHandler.removePeriodicTask(task);
+        if (task != null)
+            asyncTaskHandler.removePeriodicTask(task);
     }
 
     public V put(K key, V value) {

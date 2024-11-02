@@ -12,6 +12,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.lealone.db.DataBufferFactory;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
@@ -23,15 +24,15 @@ public class NioWritableChannel implements WritableChannel {
     private final String localHost;
     private final int localPort;
 
-    private DataBufferFactory dataBufferFactory;
+    private final DataBufferFactory dataBufferFactory;
+    private final NetEventLoop eventLoop;
     private final SocketChannel channel;
-    private NetEventLoop eventLoop;
-    private SelectionKey selectionKey;
+    private SelectionKey selectionKey; // 注册成功了才设置
     private NetBuffer buffer;
 
-    public NioWritableChannel(DataBufferFactory dataBufferFactory, SocketChannel channel,
-            NetEventLoop eventLoop) throws IOException {
-        this.dataBufferFactory = dataBufferFactory;
+    public NioWritableChannel(Scheduler scheduler, SocketChannel channel) throws IOException {
+        this.dataBufferFactory = scheduler.getDataBufferFactory();
+        this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         this.channel = channel;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
@@ -51,7 +52,6 @@ public class NioWritableChannel implements WritableChannel {
             localHost = "";
             localPort = -1;
         }
-        setEventLoop(eventLoop);
     }
 
     @Override
@@ -95,16 +95,13 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void setEventLoop(NetEventLoop eventLoop) {
-        if (eventLoop != null) {
-            selectionKey = channel.keyFor(eventLoop.getSelector());
-            this.eventLoop = eventLoop;
-        }
+    public NetEventLoop getEventLoop() {
+        return eventLoop;
     }
 
     @Override
-    public NetEventLoop getEventLoop() {
-        return eventLoop;
+    public void setSelectionKey(SelectionKey selectionKey) {
+        this.selectionKey = selectionKey;
     }
 
     @Override
@@ -114,15 +111,14 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public boolean isClosed() {
-        return eventLoop == null;
+        return selectionKey == null;
     }
 
     @Override
     public void close() {
-        if (eventLoop != null)
-            eventLoop.closeChannel(this);
-        eventLoop = null;
+        eventLoop.closeChannel(this);
         buffer = null;
+        selectionKey = null;
     }
 
     @Override

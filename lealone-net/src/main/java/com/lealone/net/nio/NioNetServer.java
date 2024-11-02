@@ -17,24 +17,24 @@ import com.lealone.net.NetServerBase;
 
 //负责接收新的ProtocolServer连接，比如TCP、P2P
 //TODO 1.支持SSL 2.支持配置参数
-public class NioServerAccepter extends NetServerBase {
+public class NioNetServer extends NetServerBase {
 
-    private static final Logger logger = LoggerFactory.getLogger(NioServerAccepter.class);
+    private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
     private ServerSocketChannel serverChannel;
 
     @Override
     public synchronized void start() {
         if (isStarted())
             return;
-        super.start();
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
             serverChannel.configureBlocking(false);
             connectionManager.registerAccepter(serverChannel);
         } catch (Exception e) {
-            checkBindException(e, "Failed to start protocol server accepter");
+            checkBindException(e, "Failed to start nio net server");
         }
+        super.start();
     }
 
     @Override
@@ -58,13 +58,15 @@ public class NioServerAccepter extends NetServerBase {
         try {
             SocketChannel channel = serverChannel.accept();
             channel.configureBlocking(false);
-            writableChannel = new NioWritableChannel(scheduler.getDataBufferFactory(), channel, null);
+            writableChannel = new NioWritableChannel(scheduler, channel);
             conn = createConnection(writableChannel, scheduler);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);
             }
-            NioEventLoop.closeChannelSilently(writableChannel);
+            if (writableChannel != null) {
+                NioEventLoop.closeChannelSilently(writableChannel);
+            }
             // 按Ctrl+C退出时accept可能抛出异常，此时就不需要记录日志了
             if (!isStopped()) {
                 logger.warn(getName() + " failed to accept connection", e);

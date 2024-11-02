@@ -105,13 +105,11 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         // do nothing
     }
 
-    protected void register(T conn, Scheduler scheduler, WritableChannel writableChannel) {
+    protected void register(T conn, Scheduler scheduler) {
         beforeRegister(conn, scheduler);
         NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         eventLoop.register(conn);
         afterRegister(conn, scheduler);
-        // 执行完register再调用，这样可以获取到SelectionKey
-        writableChannel.setEventLoop(eventLoop); // 替换掉原来的
     }
 
     @Override
@@ -119,7 +117,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         if (getAllowOthers() || allow(writableChannel.getHost())) {
             T conn = createConnection(writableChannel, scheduler);
             connectionSize.incrementAndGet();
-            register(conn, scheduler, writableChannel);
+            register(conn, scheduler);
             // 当前调度器接入一条新连接后可以选择是否让其他调度器负责监听Accept事件
             AsyncServerManager.registerAccepterIfNeed(this, scheduler);
             return conn;
@@ -137,9 +135,13 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
 
     @Override
     public void registerAccepter(ServerSocketChannel serverChannel) {
-        this.serverChannel = serverChannel;
         // 挑选出第一个负责监听Accept事件的调度器
         Scheduler scheduler = schedulerFactory.getScheduler();
+        registerAccepter(serverChannel, scheduler);
+    }
+
+    protected void registerAccepter(ServerSocketChannel serverChannel, Scheduler scheduler) {
+        this.serverChannel = serverChannel;
         AsyncServerManager.registerAccepter(this, scheduler);
         scheduler.wakeUp();
     }

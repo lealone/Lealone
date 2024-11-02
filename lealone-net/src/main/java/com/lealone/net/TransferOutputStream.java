@@ -555,6 +555,9 @@ public class TransferOutputStream implements NetOutputStream {
         public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint) {
             this.writableChannel = writableChannel;
             eventLoop = writableChannel.getEventLoop();
+            if (DbException.ASSERT) {
+                DbException.assertTrue(!writableChannel.isBio() && eventLoop != null);
+            }
             buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint,
                     writableChannel.getDataBufferFactory());
             buffer.setGlobal(true);

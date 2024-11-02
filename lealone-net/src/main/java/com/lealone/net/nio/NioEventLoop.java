@@ -144,7 +144,9 @@ public class NioEventLoop implements NetEventLoop {
         WritableChannel channel = conn.getWritableChannel();
         addChannel(channel);
         try {
-            channel.getSocketChannel().register(getSelector(), SelectionKey.OP_READ, attachment);
+            SelectionKey key = channel.getSocketChannel().register(getSelector(), SelectionKey.OP_READ,
+                    attachment);
+            channel.setSelectionKey(key);
         } catch (ClosedChannelException e) {
             throw DbException.convert(e);
         }
@@ -379,8 +381,8 @@ public class NioEventLoop implements NetEventLoop {
         ClientAttachment attachment = (ClientAttachment) key.attachment();
         try {
             channel.finishConnect();
-            NioWritableChannel writableChannel = new NioWritableChannel(dataBufferFactory, channel,
-                    this);
+            NioWritableChannel writableChannel = new NioWritableChannel(scheduler, channel);
+            writableChannel.setSelectionKey(key);
             AsyncConnection conn;
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);

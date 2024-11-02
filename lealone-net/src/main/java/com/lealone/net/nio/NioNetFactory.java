@@ -27,7 +27,7 @@ public class NioNetFactory extends NetFactoryBase {
 
     @Override
     public NetServer createNetServer() {
-        return new NioServerAccepter();
+        return new NioNetServer();
     }
 
     @Override

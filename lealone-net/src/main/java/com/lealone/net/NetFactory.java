@@ -7,6 +7,7 @@ package com.lealone.net;
 
 import java.util.Map;
 
+import com.lealone.common.exceptions.ConfigException;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
@@ -46,7 +47,7 @@ public interface NetFactory extends Plugin {
                 Constants.DEFAULT_NET_FACTORY_NAME);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {
-            throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");
+            throw new ConfigException("NetFactory '" + netFactoryName + "' can not found");
         }
         factory.init(config);
         return factory;

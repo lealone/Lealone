@@ -8,6 +8,7 @@ package com.lealone.server;
 import java.util.Map;
 
 import com.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import com.lealone.db.scheduler.Scheduler;
 
 public class DelegatedProtocolServer implements ProtocolServer {
 
@@ -49,18 +50,13 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public String getURL() {
-        return protocolServer.getURL();
+    public String getHost() {
+        return protocolServer.getHost();
     }
 
     @Override
     public int getPort() {
         return protocolServer.getPort();
-    }
-
-    @Override
-    public String getHost() {
-        return protocolServer.getHost();
     }
 
     @Override
@@ -79,8 +75,23 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean isDaemon() {
-        return protocolServer.isDaemon();
+    public boolean allow(String testHost) {
+        return protocolServer.allow(testHost);
+    }
+
+    @Override
+    public String getBaseDir() {
+        return protocolServer.getBaseDir();
+    }
+
+    @Override
+    public Map<String, String> getConfig() {
+        return protocolServer.getConfig();
+    }
+
+    @Override
+    public boolean isSSL() {
+        return protocolServer.isSSL();
     }
 
     @Override
@@ -94,27 +105,12 @@ public class DelegatedProtocolServer implements ProtocolServer {
     }
 
     @Override
-    public boolean isSSL() {
-        return protocolServer.isSSL();
-    }
-
-    @Override
-    public Map<String, String> getConfig() {
-        return protocolServer.getConfig();
-    }
-
-    @Override
-    public String getBaseDir() {
-        return protocolServer.getBaseDir();
-    }
-
-    @Override
-    public boolean allow(String testHost) {
-        return protocolServer.allow(testHost);
-    }
-
-    @Override
     public int getSessionTimeout() {
         return protocolServer.getSessionTimeout();
+    }
+
+    @Override
+    public void accept(Scheduler scheduler) {
+        protocolServer.accept(scheduler);
     }
 }

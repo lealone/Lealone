@@ -41,15 +41,15 @@ public interface WritableChannel {
         throw new UnsupportedOperationException("getSocketChannel");
     }
 
-    default void setEventLoop(NetEventLoop eventLoop) {
-    }
-
     default NetEventLoop getEventLoop() {
         return null;
     }
 
     default SelectionKey getSelectionKey() {
         return null;
+    }
+
+    default void setSelectionKey(SelectionKey selectionKey) {
     }
 
     boolean isClosed();

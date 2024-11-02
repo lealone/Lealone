@@ -41,11 +41,11 @@ public interface ProtocolServer {
     boolean isStopped();
 
     /**
-     * Get the URL of this server in a human readable form
+     * Gets the address this server is listening on.
      *
-     * @return the url
+     * @return the address
      */
-    String getURL();
+    String getHost();
 
     /**
      * Gets the port this server is listening on.
@@ -53,13 +53,6 @@ public interface ProtocolServer {
      * @return the port
      */
     int getPort();
-
-    /**
-     * Gets the address this server is listening on.
-     *
-     * @return the address
-     */
-    String getHost();
 
     /**
      * Get the human readable name of the server.
@@ -83,19 +76,13 @@ public interface ProtocolServer {
     boolean getAllowOthers();
 
     /**
-     * Check if a daemon thread should be used.
+     * Check if this socket may connect to this server.
+     * Remote connections are allowed if the flag allowOthers is set.
      *
-     * @return true if a daemon thread should be used
+     * @param socket the socket
+     * @return true if this client may connect
      */
-    boolean isDaemon();
-
-    void setServerEncryptionOptions(ServerEncryptionOptions options);
-
-    ServerEncryptionOptions getServerEncryptionOptions();
-
-    boolean isSSL();
-
-    Map<String, String> getConfig();
+    boolean allow(String testHost);
 
     /**
      * Get the configured base directory.
@@ -104,14 +91,13 @@ public interface ProtocolServer {
      */
     String getBaseDir();
 
-    /**
-     * Check if this socket may connect to this server.
-     * Remote connections are allowed if the flag allowOthers is set.
-     *
-     * @param socket the socket
-     * @return true if this client may connect
-     */
-    boolean allow(String testHost);
+    Map<String, String> getConfig();
+
+    boolean isSSL();
+
+    void setServerEncryptionOptions(ServerEncryptionOptions options);
+
+    ServerEncryptionOptions getServerEncryptionOptions();
 
     default int getSessionTimeout() {
         return -1;
