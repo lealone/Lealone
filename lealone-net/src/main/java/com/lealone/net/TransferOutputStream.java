@@ -556,7 +556,7 @@ public class TransferOutputStream implements NetOutputStream {
             this.writableChannel = writableChannel;
             eventLoop = writableChannel.getEventLoop();
             if (DbException.ASSERT) {
-                DbException.assertTrue(!writableChannel.isBio() && eventLoop != null);
+                DbException.assertTrue(writableChannel.isBio() || eventLoop != null);
             }
             buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint,
                     writableChannel.getDataBufferFactory());

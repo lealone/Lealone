@@ -332,6 +332,9 @@ public class NioEventLoop implements NetEventLoop {
         if (buffer != null) {
             pendingPacketCount -= buffer.getPacketCount();
             buffer.reset();
+            if (DbException.ASSERT) {
+                DbException.assertTrue(pendingPacketCount >= 0);
+            }
         }
     }
 

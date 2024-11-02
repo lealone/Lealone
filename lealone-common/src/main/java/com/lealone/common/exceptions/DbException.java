@@ -390,8 +390,7 @@ public class DbException extends RuntimeException {
     }
 
     // 构建时可以手工改成false,这样就不会编译
-    public static final boolean ASSERT = Utils.getProperty(Constants.PROJECT_NAME_PREFIX + "assert",
-            true);
+    public static final boolean ASSERT = Utils.getProperty("lealone.assert", true);
 
     public static void assertTrue(boolean test) {
         if (!test)
