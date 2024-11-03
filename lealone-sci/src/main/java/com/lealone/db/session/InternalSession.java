@@ -5,6 +5,7 @@
  */
 package com.lealone.db.session;
 
+import com.lealone.db.lock.Lock;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
@@ -27,10 +28,10 @@ public interface InternalSession extends Session {
         return null;
     }
 
-    default void addLock(Object lock) {
+    default void addLock(Lock lock) {
     }
 
-    default void removeLock(Object lock) {
+    default void removeLock(Lock lock) {
     }
 
     default void addWaitingScheduler(Scheduler scheduler) {

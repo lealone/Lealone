@@ -813,18 +813,15 @@ public class ServerSession extends SessionBase implements InternalSession {
      * @param lock the lock that is locked
      */
     @Override
-    public void addLock(Object lock) {
-        Lock lock2 = (Lock) lock;
-        if (SysProperties.CHECK) {
-            if (locks.indexOf(lock2) >= 0) {
-                DbException.throwInternalError();
-            }
+    public void addLock(Lock lock) {
+        if (DbException.ASSERT) {
+            DbException.assertTrue(locks.indexOf(lock) < 0);
         }
-        locks.add(lock2);
+        locks.add(lock);
     }
 
     @Override
-    public void removeLock(Object lock) {
+    public void removeLock(Lock lock) {
         locks.remove(lock);
     }
 
@@ -1042,8 +1039,8 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     public void unlinkAtCommit(ValueLob v) {
-        if (SysProperties.CHECK && !v.isLinked()) {
-            DbException.throwInternalError();
+        if (DbException.ASSERT) {
+            DbException.assertTrue(v.isLinked());
         }
         if (unlinkLobMapAtCommit == null) {
             unlinkLobMapAtCommit = new HashMap<>();
@@ -1053,8 +1050,8 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     public void unlinkAtRollback(ValueLob v) {
-        if (SysProperties.CHECK && !v.isLinked()) {
-            DbException.throwInternalError();
+        if (DbException.ASSERT) {
+            DbException.assertTrue(v.isLinked());
         }
         if (unlinkLobMapAtRollback == null) {
             unlinkLobMapAtRollback = new HashMap<>();
