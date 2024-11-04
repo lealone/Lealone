@@ -182,7 +182,8 @@ public class RowType extends StandardDataType {
     @Override
     public Object merge(Object fromObj, Object toObj) {
         Row row = (Row) toObj;
-        row.setKey(((ValueLong) fromObj).getLong());
+        if (fromObj != null)
+            row.setKey(((ValueLong) fromObj).getLong());
         return row;
     }
 }

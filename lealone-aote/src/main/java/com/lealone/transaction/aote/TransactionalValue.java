@@ -275,7 +275,7 @@ public class TransactionalValue extends LockableBase {
     public static boolean isCommitted(Lockable lockable) {
         Lock lock = lockable.getLock();
         if (lock == null)
-            return false;
+            return true;
         AOTransaction t = (AOTransaction) lock.getTransaction();
         return t == null || t.isCommitted();
     }

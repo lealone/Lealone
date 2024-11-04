@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueBoolean;
 import com.lealone.db.value.ValueByte;
 import com.lealone.db.value.ValueDataType;
@@ -72,6 +73,12 @@ public class ObjectDataType extends ValueDataTypeBase {
         int tag = buff.get();
         int typeId = ValueDataType.getTypeId(tag);
         return switchType(typeId).read(buff, tag);
+    }
+
+    @Override
+    public Value readValue(ByteBuffer buff, int tag) {
+        int typeId = ValueDataType.getTypeId(tag);
+        return switchType(typeId).readValue(buff, tag);
     }
 
     private ValueDataTypeBase switchType(int typeId) {

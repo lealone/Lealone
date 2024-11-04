@@ -7,7 +7,8 @@ package com.lealone.test.aote;
 
 import org.junit.Test;
 
-import com.lealone.storage.type.ObjectDataType;
+import com.lealone.storage.type.StorageDataType;
+import com.lealone.storage.type.StorageDataTypeFactory;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionMap;
 
@@ -23,10 +24,13 @@ public class TransactionMapTest extends AoteTestBase {
     }
 
     void testSyncOperations() {
+        StorageDataType keyType = StorageDataTypeFactory.getStringType();
+        StorageDataType valueType = StorageDataTypeFactory.getStringType();
         Transaction t = te.beginTransaction();
-        TransactionMap<String, String> map = t.openMap(createMapName("testSyncOperations"), storage);
+        TransactionMap<String, String> map = t.openMap(createMapName("testSyncOperations"), keyType,
+                valueType, storage);
         map.clear();
-        assertTrue(map.getValueType() instanceof ObjectDataType);
+        assertTrue(map.getValueType() == valueType);
 
         map.put("1", "a");
         map.put("2", "b");

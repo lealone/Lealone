@@ -33,7 +33,10 @@ public class TransactionalValueType implements StorageDataType {
         Lockable lockable = (Lockable) obj;
         if (lockable instanceof TransactionalValue) {
             obj = Lock.getLockedValue(lockable);
-            return 8 + valueType.getMemory(obj);
+            if (obj == null)
+                return 16;
+            else
+                return 16 + valueType.getMemory(obj);
         } else {
             return valueType.getMemory(lockable);
         }
