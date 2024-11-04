@@ -35,7 +35,7 @@ public interface DataBufferFactory {
 
         @Override
         public DataBuffer create() {
-            return create(0, true);
+            return create(DataBuffer.MIN_GROW, true);
         }
 
         @Override

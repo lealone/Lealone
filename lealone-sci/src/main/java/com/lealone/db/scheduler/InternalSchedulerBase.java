@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.lealone.db.DataBuffer;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
@@ -158,8 +159,11 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
             pendingTransactions.decrementSize();
             pendingTransactions.setHead(pt);
         }
-        if (pendingTransactions.getHead() == null)
+        if (pendingTransactions.getHead() == null) {
             pendingTransactions.setTail(null);
+            if (globalBuufer != null && globalBuufer.position() > 0)
+                globalBuufer.clear();
+        }
     }
 
     @Override
@@ -216,5 +220,14 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     @Override
     public void removeSession(Session session) {
         removeSession((InternalSession) session);
+    }
+
+    protected DataBuffer globalBuufer;
+
+    @Override
+    public DataBuffer getGlobalBuufer() {
+        if (globalBuufer == null)
+            globalBuufer = getDataBufferFactory().create();
+        return globalBuufer;
     }
 }

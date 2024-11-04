@@ -15,7 +15,6 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.value.ValueString;
-import com.lealone.transaction.aote.AOTransactionEngine;
 
 public abstract class RedoLogRecord {
 
@@ -247,23 +246,21 @@ public abstract class RedoLogRecord {
     public static class LazyLocalTransactionRLR extends LocalTransactionRLR {
 
         private final UndoLog undoLog;
-        private final AOTransactionEngine te;
 
-        public LazyLocalTransactionRLR(UndoLog undoLog, AOTransactionEngine te) {
+        public LazyLocalTransactionRLR(UndoLog undoLog) {
             super((ByteBuffer) null);
             this.undoLog = undoLog;
-            this.te = te;
         }
 
         @Override
         public void writeOperations(DataBuffer buff) {
-            writeOperations(buff, undoLog, te);
+            writeOperations(buff, undoLog);
         }
 
-        static void writeOperations(DataBuffer buff, UndoLog undoLog, AOTransactionEngine te) {
+        static void writeOperations(DataBuffer buff, UndoLog undoLog) {
             int pos = buff.position();
             buff.putInt(0);
-            undoLog.toRedoLogRecordBuffer(te, buff);
+            undoLog.toRedoLogRecordBuffer(buff);
             buff.putInt(pos, buff.position() - pos - 4);
         }
     }

@@ -74,16 +74,16 @@ public abstract class UndoLogRecord {
         }
     }
 
-    protected abstract void writeForRedo0(DataBuffer writeBuffer, AOTransactionEngine te);
+    protected abstract void writeForRedo0(DataBuffer writeBuffer);
 
-    public void writeForRedo(DataBuffer writeBuffer, AOTransactionEngine te) {
+    public void writeForRedo(DataBuffer writeBuffer) {
         if (ignore())
             return;
 
         if (oldValue != null) {
             map.markDirty(key);
         }
-        writeForRedo0(writeBuffer, te);
+        writeForRedo0(writeBuffer);
     }
 
     public static class KeyOnlyULR extends UndoLogRecord {
@@ -98,7 +98,7 @@ public abstract class UndoLogRecord {
         }
 
         @Override
-        protected void writeForRedo0(DataBuffer writeBuffer, AOTransactionEngine te) {
+        protected void writeForRedo0(DataBuffer writeBuffer) {
             // 直接结束了
             // 比如索引不用写redo log
         }
@@ -121,7 +121,7 @@ public abstract class UndoLogRecord {
 
         // 用于redo时，不关心oldValue
         @Override
-        protected void writeForRedo0(DataBuffer writeBuffer, AOTransactionEngine te) {
+        protected void writeForRedo0(DataBuffer writeBuffer) {
             ValueString.type.write(writeBuffer, map.getName());
             int keyValueLengthStartPos = writeBuffer.position();
             writeBuffer.putInt(0);

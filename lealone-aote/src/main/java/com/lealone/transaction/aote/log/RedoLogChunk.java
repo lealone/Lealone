@@ -121,14 +121,14 @@ class RedoLogChunk {
             ft = fsyncTasks.poll();
         }
         InternalScheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
-        int waitingQueueSize = waitingSchedulers.length;
+        int waitingSchedulerCount = waitingSchedulers.length;
         AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
         long chunkLength = 0;
         while (logQueueSize.get() > 0) {
-            PendingTransaction[] lastPts = new PendingTransaction[waitingQueueSize];
-            PendingTransaction[] pts = new PendingTransaction[waitingQueueSize];
-            for (int i = 0; i < waitingQueueSize; i++) {
-                lastPts[i] = null;
+            PendingTransaction[] lastPts = new PendingTransaction[waitingSchedulerCount];
+            PendingTransaction[] pts = new PendingTransaction[waitingSchedulerCount];
+            // 先找到每个调度器还没有同步的PendingTransaction
+            for (int i = 0; i < waitingSchedulerCount; i++) {
                 InternalScheduler scheduler = waitingSchedulers[i];
                 if (scheduler == null) {
                     continue;
@@ -143,11 +143,14 @@ class RedoLogChunk {
                     break;
                 }
             }
+            // 再看看有没有检查点需要处理
             PendingCheckpoint pendingCheckpoint = nextPendingCheckpoint(
                     checkpointService.getPendingCheckpoint());
+            // 找出提交时间戳最小的PendingTransaction
             PendingTransaction pt = nextPendingTransaction(pts);
             while (pt != null || pendingCheckpoint != null) {
                 if (pt != null) {
+                    // 如果没有检查点，或者还有提交时间戳比检查点早的PendingTransaction，需要先同步完这些PendingTransaction
                     if (pendingCheckpoint == null
                             || pt.getLogId() < pendingCheckpoint.getCheckpointId()) {
                         RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
@@ -164,7 +167,6 @@ class RedoLogChunk {
                         pt = nextPendingTransaction(pts);
                         continue;
                     }
-
                 }
                 if (pendingCheckpoint != null) {
                     if (!checkpoint(pendingCheckpoint))
@@ -179,7 +181,7 @@ class RedoLogChunk {
                 chunkLength = 0;
                 fileStorage.sync();
             }
-            for (int i = 0; i < waitingQueueSize; i++) {
+            for (int i = 0; i < waitingSchedulerCount; i++) {
                 InternalScheduler scheduler = waitingSchedulers[i];
                 if (scheduler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
                     continue;
