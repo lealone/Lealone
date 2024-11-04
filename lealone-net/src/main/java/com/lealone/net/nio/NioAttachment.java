@@ -5,12 +5,12 @@
  */
 package com.lealone.net.nio;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.net.AsyncConnection;
+import com.lealone.net.NetBuffer;
 
 public class NioAttachment {
     public AsyncConnection conn;
-    DataBuffer dataBuffer;
+    NetBuffer netBuffer;
     int endOfStreamCount;
     int state = 0;
 }

@@ -161,6 +161,11 @@ public class NetBuffer {
         readIndex = 0;
         packetCount = 0;
         dataBuffer.getBuffer().clear();
+
+        if (parent != null) {
+            if (--parent.refCount == 0)
+                parent.reset();
+        }
     }
 
     @Override
@@ -174,5 +179,23 @@ public class NetBuffer {
 
     public boolean isNotEmpty() {
         return remaining() > 0;
+    }
+
+    private NetBuffer parent;
+    private int refCount;
+
+    public NetBuffer slice(int start, int packetLength) {
+        if (parent != null) // 当前是子buffer了不需要再slice
+            return this;
+        int pos = dataBuffer.position();
+        int end = start + packetLength;
+        DataBuffer slice = dataBuffer.slice(start, end);
+        slice.position(pos - start);
+        dataBuffer.clear();
+        dataBuffer.position(end);
+        NetBuffer buffer = new NetBuffer(slice, true);
+        buffer.parent = this;
+        refCount++;
+        return buffer;
     }
 }

@@ -167,7 +167,7 @@ public class NioEventLoop implements NetEventLoop {
         SocketChannel channel = (SocketChannel) key.channel();
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
-        DataBuffer dataBuffer = attachment.dataBuffer;
+        NetBuffer netBuffer = attachment.netBuffer;
         int packetCount = 1;
         try {
             while (true) {
@@ -195,30 +195,30 @@ public class NioEventLoop implements NetEventLoop {
                     int packetLength = conn.getPacketLength();
                     BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
 
-                    NetBuffer connNetBuffer = conn.getNetBuffer();
-                    if (connNetBuffer != null) {
-                        dataBuffer = connNetBuffer.getDataBuffer();
+                    if (netBuffer == null) {
+                        netBuffer = conn.getNetBuffer();
+                        if (netBuffer == null) {
+                            DataBuffer dataBuffer = dataBufferFactory.create(packetLength);
+                            netBuffer = new NetBuffer(dataBuffer, true); // 支持快速回收
+                        }
+                        // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
+                        netBuffer.limit(packetLength);
                     }
-                    if (dataBuffer == null) {
-                        dataBuffer = dataBufferFactory.create(packetLength);
-                    }
-                    // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
-                    dataBuffer.limit(packetLength);
-                    ByteBuffer buffer = dataBuffer.getBuffer();
+                    ByteBuffer buffer = netBuffer.getByteBuffer();
+                    int start = netBuffer.position();
                     boolean ok = read(attachment, channel, buffer, packetLength);
                     if (ok) {
                         packetLengthByteBuffer.clear();
                         attachment.state = 0;
-                        attachment.dataBuffer = null;
-                        NetBuffer netBuffer = connNetBuffer != null ? connNetBuffer
-                                : new NetBuffer(dataBuffer, true); // 支持快速回收
-                        dataBuffer = null;
-                        conn.handle(netBuffer);
+                        attachment.netBuffer = null;
+                        NetBuffer tmp = netBuffer;
+                        netBuffer = null;
+                        conn.handle(tmp);
                         if (++packetCount > maxPacketCountPerLoop)
                             break;
                     } else {
                         packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
-                        attachment.dataBuffer = dataBuffer;
+                        attachment.netBuffer = netBuffer.slice(start, packetLength);
                         break;
                     }
                 }

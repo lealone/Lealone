@@ -68,6 +68,9 @@ public class TcpServerConnection extends AsyncServerConnection {
 
     @Override
     public TransferInputStream getTransferInputStream(NetBuffer buffer) {
+        // 没有读完一个包时会对全局buffer调用一次slice，此时生成一个新的buffer
+        if (buffer != in.getBuffer())
+            in.setBuffer(buffer);
         return in;
     }
 

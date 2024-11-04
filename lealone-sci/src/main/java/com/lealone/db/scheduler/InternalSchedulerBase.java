@@ -161,8 +161,8 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
         }
         if (pendingTransactions.getHead() == null) {
             pendingTransactions.setTail(null);
-            if (globalBuufer != null && globalBuufer.position() > 0)
-                globalBuufer.clear();
+            if (logBuffer != null && logBuffer.position() > 0)
+                logBuffer.clear();
         }
     }
 
@@ -222,12 +222,30 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
         removeSession((InternalSession) session);
     }
 
-    protected DataBuffer globalBuufer;
+    protected DataBuffer logBuffer;
 
     @Override
-    public DataBuffer getGlobalBuufer() {
-        if (globalBuufer == null)
-            globalBuufer = getDataBufferFactory().create();
-        return globalBuufer;
+    public DataBuffer getLogBuffer() {
+        if (logBuffer == null)
+            logBuffer = getDataBufferFactory().create();
+        return logBuffer;
+    }
+
+    protected DataBuffer inputBuffer;
+
+    @Override
+    public DataBuffer getInputBuffer() {
+        if (inputBuffer == null)
+            inputBuffer = getDataBufferFactory().create();
+        return inputBuffer;
+    }
+
+    protected DataBuffer outputBuffer;
+
+    @Override
+    public DataBuffer getOutputBuffer() {
+        if (outputBuffer == null)
+            outputBuffer = getDataBufferFactory().create();
+        return outputBuffer;
     }
 }

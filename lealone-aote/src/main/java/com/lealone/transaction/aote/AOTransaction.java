@@ -228,7 +228,7 @@ public class AOTransaction implements Transaction {
             // 用ConcurrentFactory才是安全的
             return undoLog.toRedoLogRecordBuffer(DataBufferFactory.getConcurrentFactory());
         } else {
-            DataBuffer buffer = session.getScheduler().getGlobalBuufer();
+            DataBuffer buffer = session.getScheduler().getLogBuffer();
             int startPos = buffer.position();
             undoLog.toRedoLogRecordBuffer(buffer);
             int length = buffer.position() - startPos;

@@ -56,5 +56,9 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
 
     boolean yieldIfNeeded(PreparedSQLStatement current);
 
-    DataBuffer getGlobalBuufer();
+    DataBuffer getLogBuffer();
+
+    DataBuffer getInputBuffer();
+
+    DataBuffer getOutputBuffer();
 }

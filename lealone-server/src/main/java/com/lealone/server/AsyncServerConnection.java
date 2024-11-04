@@ -5,7 +5,6 @@
  */
 package com.lealone.server;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.NetBuffer;
@@ -21,8 +20,7 @@ public abstract class AsyncServerConnection extends TransferConnection {
     public AsyncServerConnection(WritableChannel writableChannel, Scheduler scheduler) {
         super(writableChannel, true);
         this.scheduler = (InternalScheduler) scheduler;
-        DataBuffer dataBuffer = scheduler.getDataBufferFactory().create(NetBuffer.BUFFER_SIZE);
-        inNetBuffer = new NetBuffer(dataBuffer, false);
+        inNetBuffer = new NetBuffer(this.scheduler.getInputBuffer(), false);
         inNetBuffer.setGlobal(true);
     }
 

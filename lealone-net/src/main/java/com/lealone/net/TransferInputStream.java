@@ -74,6 +74,14 @@ public class TransferInputStream implements NetInputStream {
         return in;
     }
 
+    public NetBuffer getBuffer() {
+        return netBufferInputStream.buffer;
+    }
+
+    public void setBuffer(NetBuffer buffer) {
+        this.netBufferInputStream.buffer = buffer;
+    }
+
     public void setSession(Session session) {
         this.session = session;
     }
@@ -464,7 +472,7 @@ public class TransferInputStream implements NetInputStream {
 
     private static class NetBufferInputStream extends InputStream {
 
-        private final NetBuffer buffer;
+        private NetBuffer buffer;
         private int pos;
 
         public NetBufferInputStream(NetBuffer buffer) {
