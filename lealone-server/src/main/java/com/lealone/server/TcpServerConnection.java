@@ -16,9 +16,7 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.util.ExpiringMap;
-import com.lealone.net.NetBuffer;
 import com.lealone.net.TransferInputStream;
-import com.lealone.net.TransferOutputStream;
 import com.lealone.net.WritableChannel;
 import com.lealone.server.handler.PacketHandler;
 import com.lealone.server.handler.PacketHandlers;
@@ -50,33 +48,16 @@ public class TcpServerConnection extends AsyncServerConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final HashMap<Integer, ServerSessionInfo> sessions = new HashMap<>();
     private final TcpServer tcpServer;
-    private final TransferInputStream in;
-    private final TransferOutputStream out;
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel,
             Scheduler scheduler) {
         super(writableChannel, scheduler);
         this.tcpServer = tcpServer;
-        in = new TransferInputStream(inNetBuffer, true);
-        out = createTransferOutputStream();
     }
 
     @Override
     public int getSessionCount() {
         return sessions.size();
-    }
-
-    @Override
-    public TransferInputStream getTransferInputStream(NetBuffer buffer) {
-        // 没有读完一个包时会对全局buffer调用一次slice，此时生成一个新的buffer
-        if (buffer != in.getBuffer())
-            in.setBuffer(buffer);
-        return in;
-    }
-
-    @Override
-    public TransferOutputStream getErrorTransferOutputStream() {
-        return out; // 发送错误也用全局的输出流
     }
 
     @Override

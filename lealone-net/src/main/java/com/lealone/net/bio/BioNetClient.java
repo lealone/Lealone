@@ -12,15 +12,26 @@ import java.util.Map;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
+import com.lealone.db.DataBuffer;
+import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.AsyncConnectionManager;
+import com.lealone.net.NetBuffer;
 import com.lealone.net.NetClientBase;
 import com.lealone.net.NetNode;
 import com.lealone.net.TcpClientConnection;
 
 public class BioNetClient extends NetClientBase {
+
+    public static NetBuffer createBuffer() {
+        // Socket的输入输出流只接受字节数组，而direct buffer是没有字节数组的，所以不能创建direct buffer
+        // 见BioWritableChannel中的read和write方法的实现
+        return new NetBuffer(
+                DataBufferFactory.getConcurrentFactory().create(DataBuffer.MIN_GROW, false));
+    }
+
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,
@@ -41,7 +52,9 @@ public class BioNetClient extends NetClientBase {
             if (connectionManager != null) {
                 conn = connectionManager.createConnection(writableChannel, false, null);
             } else {
-                conn = new TcpClientConnection(writableChannel, this, 1);
+                NetBuffer inBuffer = createBuffer();
+                NetBuffer outBuffer = createBuffer();
+                conn = new TcpClientConnection(writableChannel, this, 1, inBuffer, outBuffer);
             }
             writableChannel.setAsyncConnection(conn);
             conn.setInetSocketAddress(inetSocketAddress);

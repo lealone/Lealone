@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.DataBuffer;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.session.Session;
@@ -28,38 +27,16 @@ public class TcpClientConnection extends TransferConnection {
     private final Map<Integer, Session> sessions = new HashMap<>();
     private final Map<Integer, AsyncCallback<?>> callbackMap = new HashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
-    private final int maxSharedSize;
     private final NetClient netClient;
+    private final int maxSharedSize;
 
     private Throwable pendingException;
-    private NetBuffer inNetBuffer;
-    private TransferInputStream in;
-    private final TransferOutputStream out;
 
-    public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize) {
-        super(writableChannel, false);
+    public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize,
+            NetBuffer inBuffer, NetBuffer outBuffer) {
+        super(writableChannel, false, inBuffer, outBuffer);
         this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
-        createTransferInputStream();
-        out = createTransferOutputStream();
-    }
-
-    private void createTransferInputStream() {
-        DataBuffer dataBuffer = writableChannel.getDataBufferFactory().create();
-        inNetBuffer = new NetBuffer(dataBuffer, false);
-        inNetBuffer.setGlobal(true);
-        in = new TransferInputStream(inNetBuffer, true);
-    }
-
-    public void recreateTransferInputStreamIfNeed() {
-        // 应用设置fetchSize，当查询语句返回的结果集太大时会延迟读，
-        // 所以重建新的输入流，让应用线程使用旧的输入流，jdbc 客户端调度线程使用新的输入流
-        if (!in.isReadFully()) {
-            in.setLazyRead(true);
-            createTransferInputStream();
-        } else {
-            in.close();
-        }
     }
 
     public int getNextId() {
@@ -77,25 +54,6 @@ public class TcpClientConnection extends TransferConnection {
 
     public void removeAsyncCallback(int packetId) {
         callbackMap.remove(packetId);
-    }
-
-    @Override
-    public NetBuffer getNetBuffer() {
-        return inNetBuffer;
-    }
-
-    @Override
-    public TransferInputStream getTransferInputStream(NetBuffer buffer) {
-        return in;
-    }
-
-    public TransferOutputStream getTransferOutputStream() {
-        return out;
-    }
-
-    @Override
-    public TransferOutputStream getErrorTransferOutputStream() {
-        return out;
     }
 
     @Override

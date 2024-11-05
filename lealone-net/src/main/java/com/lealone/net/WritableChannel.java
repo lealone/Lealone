@@ -7,8 +7,9 @@ package com.lealone.net;
 
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 
-import com.lealone.db.DataBufferFactory;
+import com.lealone.net.NetBuffer.WritableBuffer;
 
 public interface WritableChannel {
 
@@ -20,17 +21,11 @@ public interface WritableChannel {
 
     int getLocalPort();
 
-    DataBufferFactory getDataBufferFactory();
-
-    default NetBufferFactory getBufferFactory() {
-        return NetBufferFactory.INSTANCE;
-    }
-
-    default NetBuffer getBuffer() {
+    default List<WritableBuffer> getBuffers() {
         return null;
     }
 
-    default void setBuffer(NetBuffer buffer) {
+    default void addBuffer(WritableBuffer buffer) {
     }
 
     default boolean isBio() {
@@ -58,5 +53,5 @@ public interface WritableChannel {
 
     void read();
 
-    void write(NetBuffer buffer);
+    void write(WritableBuffer buffer);
 }

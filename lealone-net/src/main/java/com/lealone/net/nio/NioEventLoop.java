@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,6 +33,7 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
+import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetClientBase.ClientAttachment;
 import com.lealone.net.NetEventLoop;
@@ -50,12 +52,12 @@ public class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
 
     private final Scheduler scheduler;
+    private final NetBuffer globalBuffer;
     private final long loopInterval;
     private final int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
     private final int maxPacketSize;
 
     private boolean preferBatchWrite;
-    private int pendingPacketCount;
 
     private Selector selector;
     private NetClient netClient; // 在客户端的场景才有
@@ -65,6 +67,7 @@ public class NioEventLoop implements NetEventLoop {
 
     public NioEventLoop(Scheduler scheduler, long loopInterval, Map<String, String> config) {
         this.scheduler = scheduler;
+        this.globalBuffer = scheduler.getOutputBuffer();
         this.loopInterval = loopInterval;
         // 设置过大会占用内存，有可能影响GC暂停时间
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 8);
@@ -167,7 +170,7 @@ public class NioEventLoop implements NetEventLoop {
         SocketChannel channel = (SocketChannel) key.channel();
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
-        NetBuffer netBuffer = attachment.netBuffer;
+        NetBuffer inBuffer = attachment.inBuffer;
         int packetCount = 1;
         try {
             while (true) {
@@ -194,31 +197,30 @@ public class NioEventLoop implements NetEventLoop {
                 if (attachment.state == 1) {
                     int packetLength = conn.getPacketLength();
                     BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
-
-                    if (netBuffer == null) {
-                        netBuffer = conn.getNetBuffer();
-                        if (netBuffer == null) {
+                    if (inBuffer == null) {
+                        inBuffer = conn.getInputBuffer();
+                        if (inBuffer == null) {
                             DataBuffer dataBuffer = dataBufferFactory.create(packetLength);
-                            netBuffer = new NetBuffer(dataBuffer, true); // 支持快速回收
+                            inBuffer = new NetBuffer(dataBuffer);
                         }
                         // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
-                        netBuffer.limit(packetLength);
+                        inBuffer.limit(packetLength);
                     }
-                    ByteBuffer buffer = netBuffer.getByteBuffer();
-                    int start = netBuffer.position();
+                    ByteBuffer buffer = inBuffer.getByteBuffer();
+                    int start = inBuffer.position();
                     boolean ok = read(attachment, channel, buffer, packetLength);
                     if (ok) {
                         packetLengthByteBuffer.clear();
                         attachment.state = 0;
-                        attachment.netBuffer = null;
-                        NetBuffer tmp = netBuffer;
-                        netBuffer = null;
+                        attachment.inBuffer = null;
+                        NetBuffer tmp = inBuffer;
+                        inBuffer = null;
                         conn.handle(tmp);
                         if (++packetCount > maxPacketCountPerLoop)
                             break;
                     } else {
                         packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
-                        attachment.netBuffer = netBuffer.slice(start, packetLength);
+                        attachment.inBuffer = inBuffer.createReadableBuffer(start, packetLength);
                         break;
                     }
                 }
@@ -265,16 +267,16 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public void write() {
-        if (pendingPacketCount > 0) {
+        if (globalBuffer.getPacketCount() > 0) {
             int oldSize = channels.size();
             Iterator<WritableChannel> iterator = channels.keySet().iterator();
             while (iterator.hasNext()) {
                 WritableChannel channel = iterator.next();
-                NetBuffer buffer = channel.getBuffer();
-                if (buffer != null && buffer.isNotEmpty()) {
+                List<WritableBuffer> buffers = channel.getBuffers();
+                if (buffers != null && !buffers.isEmpty()) {
                     SelectionKey key = channel.getSelectionKey();
                     if (key != null && key.isValid()) {
-                        write(key, channel.getSocketChannel(), buffer);
+                        batchWrite(key, channel.getSocketChannel(), buffers);
                     }
                 }
                 // 如果SocketChannel关闭了，会在channels中把它删除，
@@ -291,14 +293,14 @@ public class NioEventLoop implements NetEventLoop {
     @Override
     public void write(SelectionKey key) {
         WritableChannel channel = ((NioAttachment) key.attachment()).conn.getWritableChannel();
-        NetBuffer buffer = channel.getBuffer();
-        if (buffer != null && buffer.isNotEmpty()) {
-            write(key, channel.getSocketChannel(), buffer);
+        List<WritableBuffer> buffers = channel.getBuffers();
+        if (buffers != null && !buffers.isEmpty()) {
+            batchWrite(key, channel.getSocketChannel(), buffers);
         }
     }
 
     @Override
-    public void write(WritableChannel channel, NetBuffer buffer) {
+    public void write(WritableChannel channel, WritableBuffer buffer) {
         if (DbException.ASSERT) {
             DbException.assertTrue(scheduler == SchedulerThread.currentScheduler());
         }
@@ -308,7 +310,7 @@ public class NioEventLoop implements NetEventLoop {
             return;
         }
         boolean writeImmediately;
-        if (buffer.getPacketCount() > 2 || needWriteImmediately()) {
+        if (channel.getBuffers().size() > 2 || needWriteImmediately()) {
             writeImmediately = true;
         } else if (scheduler.isBusy()) {
             writeImmediately = false;
@@ -326,26 +328,58 @@ public class NioEventLoop implements NetEventLoop {
             }
         }
         // 如果没有写完也增加计数，留到后面再写
-        channel.setBuffer(buffer);
+        channel.addBuffer(buffer);
     }
 
-    private void resetBuffer(NetBuffer buffer) {
+    private void resetBuffer(WritableBuffer buffer) {
         if (buffer != null) {
-            pendingPacketCount -= buffer.getPacketCount();
             buffer.reset();
-            if (DbException.ASSERT) {
-                DbException.assertTrue(pendingPacketCount >= 0);
-            }
         }
     }
 
-    private boolean write(SelectionKey key, SocketChannel channel, NetBuffer buffer) {
-        int readIndex = buffer.getReadIndex();
-        int remaining = buffer.remaining();
-        int oldPos = buffer.position();
-        buffer.position(readIndex);
-        buffer.limit(oldPos - readIndex);
+    private void resetBuffer(List<WritableBuffer> buffers) {
+        if (buffers != null) {
+            for (WritableBuffer buffer : buffers)
+                buffer.reset();
+        }
+    }
+
+    private void batchWrite(SelectionKey key, SocketChannel channel, List<WritableBuffer> list) {
+        int index = 0;
+        int remaining = 0;
+        ByteBuffer[] buffers = new ByteBuffer[list.size()];
+        Iterator<WritableBuffer> iterator = list.iterator();
+        while (iterator.hasNext()) {
+            WritableBuffer netBuffer = iterator.next();
+            remaining += netBuffer.getByteBuffer().remaining();
+            buffers[index++] = netBuffer.getByteBuffer();
+        }
+        try {
+            while (remaining > 0) {
+                long written = channel.write(buffers);
+                remaining -= written;
+                if (written <= 0) {
+                    if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) == 0) {
+                        key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+                    }
+                    return; // 还没有写完
+                }
+            }
+        } catch (IOException e) {
+            handleWriteException(e, key);
+        }
+
+        iterator = list.iterator();
+        while (iterator.hasNext()) {
+            WritableBuffer netBuffer = iterator.next();
+            netBuffer.reset();
+            iterator.remove();
+        }
+    }
+
+    private boolean write(SelectionKey key, SocketChannel channel, WritableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
+        int remaining = bb.remaining();
         try {
             // 一定要用while循环来写，否则会丢数据！
             while (remaining > 0) {
@@ -355,11 +389,8 @@ public class NioEventLoop implements NetEventLoop {
                     if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) == 0) {
                         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
                     }
-                    buffer.position(oldPos);
-                    buffer.setReadIndex(readIndex);
                     return false; // 还没有写完
                 }
-                readIndex += written;
                 if (isDebugEnabled) {
                     totalWrittenBytes += written;
                     logger.debug(("total written bytes: " + totalWrittenBytes));
@@ -391,7 +422,10 @@ public class NioEventLoop implements NetEventLoop {
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);
             } else {
-                conn = new TcpClientConnection(writableChannel, netClient, attachment.maxSharedSize);
+                NetBuffer inBuffer = scheduler.getInputBuffer();
+                NetBuffer outBuffer = scheduler.getOutputBuffer();
+                conn = new TcpClientConnection(writableChannel, netClient, attachment.maxSharedSize,
+                        inBuffer, outBuffer);
             }
             addChannel(writableChannel);
             conn.setInetSocketAddress(attachment.inetSocketAddress);
@@ -465,7 +499,7 @@ public class NioEventLoop implements NetEventLoop {
         if (channel == null || !channels.containsKey(channel)) {
             return;
         }
-        resetBuffer(channel.getBuffer());
+        resetBuffer(channel.getBuffers());
         SelectionKey key = channel.getSelectionKey();
         if (key != null && key.isValid())
             key.cancel();
@@ -538,16 +572,6 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public boolean needWriteImmediately() {
-        return pendingPacketCount > maxPacketCountPerLoop;
-    }
-
-    @Override
-    public void incrementPacketCount() {
-        pendingPacketCount++;
-    }
-
-    @Override
-    public void decrementPacketCount() {
-        pendingPacketCount--;
+        return globalBuffer.getPacketCount() > maxPacketCountPerLoop;
     }
 }

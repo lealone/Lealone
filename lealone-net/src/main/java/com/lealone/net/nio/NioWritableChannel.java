@@ -10,10 +10,11 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.LinkedList;
+import java.util.List;
 
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.scheduler.Scheduler;
-import com.lealone.net.NetBuffer;
+import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
 
@@ -24,14 +25,12 @@ public class NioWritableChannel implements WritableChannel {
     private final String localHost;
     private final int localPort;
 
-    private final DataBufferFactory dataBufferFactory;
+    private final LinkedList<WritableBuffer> buffers = new LinkedList<>();
     private final NetEventLoop eventLoop;
     private final SocketChannel channel;
     private SelectionKey selectionKey; // 注册成功了才设置
-    private NetBuffer buffer;
 
     public NioWritableChannel(Scheduler scheduler, SocketChannel channel) throws IOException {
-        this.dataBufferFactory = scheduler.getDataBufferFactory();
         this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         this.channel = channel;
         SocketAddress sa = channel.getRemoteAddress();
@@ -75,18 +74,13 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return dataBufferFactory;
+    public List<WritableBuffer> getBuffers() {
+        return buffers;
     }
 
     @Override
-    public NetBuffer getBuffer() {
-        return buffer;
-    }
-
-    @Override
-    public void setBuffer(NetBuffer buffer) {
-        this.buffer = buffer;
+    public void addBuffer(WritableBuffer buffer) {
+        buffers.add(buffer);
     }
 
     @Override
@@ -117,8 +111,10 @@ public class NioWritableChannel implements WritableChannel {
     @Override
     public void close() {
         eventLoop.closeChannel(this);
-        buffer = null;
         selectionKey = null;
+        for (WritableBuffer buffer : buffers)
+            buffer.reset();
+        buffers.clear();
     }
 
     @Override
@@ -127,7 +123,7 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void write(NetBuffer buffer) {
+    public void write(WritableBuffer buffer) {
         eventLoop.write(this, buffer);
     }
 }

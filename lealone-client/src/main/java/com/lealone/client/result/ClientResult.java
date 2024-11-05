@@ -176,9 +176,6 @@ public abstract class ClientResult implements Result {
     protected abstract void readRows(TransferInputStream in, int fetchSize) throws IOException;
 
     protected void fetchAndReadRows(int fetchSize) {
-        // 释放buffer
-        // if (in.isLazyRead())
-        // in.closeForce();
         AsyncCallback<Void> ac = session.createCallback();
         session.execute(ac, () -> {
             // 在调度线程中运行，总是线程安全的

@@ -56,8 +56,8 @@ public class TransferOutputStream implements NetOutputStream {
     private final GlobalNetBufferOutputStream outBuffer;
     private Session session; // 每次写新的包时可以指定新的session
 
-    public TransferOutputStream(WritableChannel writableChannel) {
-        outBuffer = new GlobalNetBufferOutputStream(writableChannel, NetBuffer.BUFFER_SIZE);
+    public TransferOutputStream(WritableChannel writableChannel, NetBuffer buffer) {
+        outBuffer = new GlobalNetBufferOutputStream(writableChannel, buffer);
         out = new DataOutputStream(outBuffer);
     }
 
@@ -501,9 +501,9 @@ public class TransferOutputStream implements NetOutputStream {
         private final GlobalWritableChannel channel;
         private final NetBuffer buffer;
 
-        GlobalNetBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
-            channel = new GlobalWritableChannel(writableChannel, initialSizeHint);
-            buffer = channel.getGlobalBuffer();
+        GlobalNetBufferOutputStream(WritableChannel writableChannel, NetBuffer buffer) {
+            channel = new GlobalWritableChannel(writableChannel, buffer);
+            this.buffer = channel.getGlobalBuffer();
         }
 
         @Override
@@ -518,9 +518,10 @@ public class TransferOutputStream implements NetOutputStream {
 
         @Override
         public void flush() throws IOException {
+            int pos = buffer.position();
             int length = buffer.position() - channel.startPos - 4;
             writePacketLength(channel.startPos, length);
-            channel.flush();
+            channel.flush(channel.startPos, pos);
         }
 
         // 按java.io.DataInputStream.readInt()的格式写
@@ -543,24 +544,13 @@ public class TransferOutputStream implements NetOutputStream {
 
         private final WritableChannel writableChannel;
         private final NetBuffer buffer;
-        private final NetEventLoop eventLoop;
 
         private int startPos;
         private boolean written;
 
-        public GlobalWritableChannel(WritableChannel writableChannel) {
-            this(writableChannel, NetBuffer.BUFFER_SIZE);
-        }
-
-        public GlobalWritableChannel(WritableChannel writableChannel, int initialSizeHint) {
+        public GlobalWritableChannel(WritableChannel writableChannel, NetBuffer buffer) {
             this.writableChannel = writableChannel;
-            eventLoop = writableChannel.getEventLoop();
-            if (DbException.ASSERT) {
-                DbException.assertTrue(writableChannel.isBio() || eventLoop != null);
-            }
-            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint,
-                    writableChannel.getDataBufferFactory());
-            buffer.setGlobal(true);
+            this.buffer = buffer;
         }
 
         public NetBuffer getGlobalBuffer() {
@@ -576,8 +566,11 @@ public class TransferOutputStream implements NetOutputStream {
         }
 
         public void flush() {
-            // 不能立刻flip，因为全局buffer有可能后续的包会继续写入
-            writableChannel.write(buffer);
+            flush(0, buffer.position());
+        }
+
+        public void flush(int start, int end) {
+            writableChannel.write(buffer.createWritableBuffer(start, end));
             written = true;
         }
 
@@ -586,17 +579,11 @@ public class TransferOutputStream implements NetOutputStream {
                 // 如果某个包写到一半出错了又写一个错误包，那需要把前面的覆盖掉
                 if (!written && startPos != buffer.position()) {
                     buffer.position(startPos);
-                    buffer.decrementPacketCount();
-                    if (eventLoop != null)
-                        eventLoop.decrementPacketCount();
                 }
             }
             written = false;
             // 全局buffer只需要记住下一个包的开始位置即可，会一直往后追加
             startPos = buffer.position();
-            buffer.incrementPacketCount();
-            if (eventLoop != null)
-                eventLoop.incrementPacketCount();
         }
     }
 }

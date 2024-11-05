@@ -17,9 +17,9 @@ import java.util.Map;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
+import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.WritableChannel;
 
 public class BioWritableChannel implements WritableChannel {
@@ -76,11 +76,6 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return BioDataBufferFactory.INSTANCE;
-    }
-
-    @Override
     public boolean isBio() {
         return true;
     }
@@ -103,16 +98,16 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public void read() {
         try {
-            NetBuffer netBuffer = conn.getNetBuffer(); // 可能会变，所以每次都获取
-            byte[] b = netBuffer.getByteBuffer().array();
+            NetBuffer buffer = conn.getInputBuffer(); // 可能会变，所以每次都获取
+            byte[] b = buffer.getByteBuffer().array();
             int packetLength = readRacketLength(b);
             checkPacketLength(maxPacketSize, packetLength);
             // 如果返回的netBuffer的capacity小于packetLength会自动扩容，并且限制limit不会多读
-            netBuffer.limit(packetLength);
-            b = netBuffer.getByteBuffer().array(); // 重新获取一次，扩容时会改变内部的ByteBuffer
+            buffer.limit(packetLength);
+            b = buffer.getByteBuffer().array(); // 重新获取一次，扩容时会改变内部的ByteBuffer
             // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
             readFully(b, 0, packetLength);
-            conn.handle(netBuffer);
+            conn.handle(buffer);
         } catch (Exception e) {
             conn.handleException(e);
         }
@@ -135,10 +130,9 @@ public class BioWritableChannel implements WritableChannel {
     }
 
     @Override
-    public void write(NetBuffer buffer) {
-        ByteBuffer bb = buffer.getByteBuffer();
-        bb.flip(); // 上层没有进行过flip
+    public void write(WritableBuffer buffer) {
         try {
+            ByteBuffer bb = buffer.getByteBuffer();
             out.write(bb.array(), bb.arrayOffset(), bb.limit());
             out.flush();
         } catch (Exception e) {

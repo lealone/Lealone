@@ -112,7 +112,7 @@ public class TransferInputStream implements NetInputStream {
     public void closeForce() {
         if (in != null) {
             try {
-                netBufferInputStream.buffer.getDataBuffer().close();
+                netBufferInputStream.buffer.recycle();
                 in.close();
             } catch (IOException e) {
                 // 最终只是回收NetBuffer，不应该发生异常
@@ -491,9 +491,7 @@ public class TransferInputStream implements NetInputStream {
 
         @Override
         public void close() throws IOException {
-            // buffer中只有一个包时回收才安全
-            if (buffer.isOnlyOnePacket())
-                buffer.recycle();
+            buffer.recycle();
         }
 
         @Override

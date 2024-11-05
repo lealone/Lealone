@@ -32,7 +32,7 @@ public abstract class AsyncConnection {
 
     public abstract int getPacketLength();
 
-    public NetBuffer getNetBuffer() {
+    public NetBuffer getInputBuffer() {
         return null;
     }
 

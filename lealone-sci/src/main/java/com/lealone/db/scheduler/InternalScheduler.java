@@ -5,7 +5,6 @@
  */
 package com.lealone.db.scheduler;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
@@ -55,10 +54,4 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
     void wakeUpWaitingSchedulers(boolean reset);
 
     boolean yieldIfNeeded(PreparedSQLStatement current);
-
-    DataBuffer getLogBuffer();
-
-    DataBuffer getInputBuffer();
-
-    DataBuffer getOutputBuffer();
 }

@@ -10,7 +10,7 @@ import com.lealone.net.NetBuffer;
 
 public class NioAttachment {
     public AsyncConnection conn;
-    NetBuffer netBuffer;
+    NetBuffer inBuffer;
     int endOfStreamCount;
     int state = 0;
 }

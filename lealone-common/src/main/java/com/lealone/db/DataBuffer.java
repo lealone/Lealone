@@ -120,6 +120,10 @@ public class DataBuffer implements AutoCloseable {
         return new DataBuffer(null, capacity);
     }
 
+    public static DataBuffer createDirect() {
+        return new DataBuffer(null, MIN_GROW, true);
+    }
+
     protected DataBuffer() {
         this(null, MIN_GROW);
     }
@@ -256,6 +260,10 @@ public class DataBuffer implements AutoCloseable {
     }
 
     public DataBuffer slice(int start, int end) {
+        return new DataBuffer(sliceByteBuffer(start, end));
+    }
+
+    public ByteBuffer sliceByteBuffer(int start, int end) {
         int pos = buff.position();
         int limit = buff.limit();
         buff.position(start);
@@ -263,7 +271,7 @@ public class DataBuffer implements AutoCloseable {
         ByteBuffer newBuffer = buff.slice();
         buff.position(pos);
         buff.limit(limit);
-        return new DataBuffer(newBuffer);
+        return newBuffer;
     }
 
     public DataBuffer getBuffer(int start, int end) {

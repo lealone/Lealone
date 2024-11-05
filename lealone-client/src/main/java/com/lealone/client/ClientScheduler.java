@@ -15,7 +15,6 @@ import com.lealone.client.session.ClientSession;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.ConnectionInfo;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
@@ -178,11 +177,6 @@ public class ClientScheduler extends SchedulerBase {
     }
 
     // --------------------- 网络事件循环 ---------------------
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return netEventLoop.getDataBufferFactory();
-    }
 
     @Override
     public NetEventLoop getNetEventLoop() {

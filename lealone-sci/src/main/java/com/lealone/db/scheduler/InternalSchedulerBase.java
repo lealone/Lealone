@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
@@ -220,32 +219,5 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     @Override
     public void removeSession(Session session) {
         removeSession((InternalSession) session);
-    }
-
-    protected DataBuffer logBuffer;
-
-    @Override
-    public DataBuffer getLogBuffer() {
-        if (logBuffer == null)
-            logBuffer = getDataBufferFactory().create();
-        return logBuffer;
-    }
-
-    protected DataBuffer inputBuffer;
-
-    @Override
-    public DataBuffer getInputBuffer() {
-        if (inputBuffer == null)
-            inputBuffer = getDataBufferFactory().create();
-        return inputBuffer;
-    }
-
-    protected DataBuffer outputBuffer;
-
-    @Override
-    public DataBuffer getOutputBuffer() {
-        if (outputBuffer == null)
-            outputBuffer = getDataBufferFactory().create();
-        return outputBuffer;
     }
 }

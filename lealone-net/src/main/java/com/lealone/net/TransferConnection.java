@@ -26,8 +26,26 @@ public abstract class TransferConnection extends AsyncConnection {
     protected final ByteBuffer packetLengthByteBuffer = ByteBuffer
             .allocate(getPacketLengthByteBufferCapacity());
 
+    protected final NetBuffer inBuffer;
+    protected final TransferInputStream in;
+    protected final TransferOutputStream out;
+
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
+        this(writableChannel, isServer, null, null);
+    }
+
+    public TransferConnection(WritableChannel writableChannel, boolean isServer, NetBuffer inBuffer,
+            NetBuffer outBuffer) {
         super(writableChannel, isServer);
+        if (inBuffer != null) {
+            this.inBuffer = inBuffer;
+            in = new TransferInputStream(inBuffer, true);
+            out = createTransferOutputStream(outBuffer);
+        } else {
+            this.inBuffer = null;
+            in = null;
+            out = null;
+        }
     }
 
     public int getPacketLengthByteBufferCapacity() {
@@ -44,16 +62,28 @@ public abstract class TransferConnection extends AsyncConnection {
         return packetLengthByteBuffer.getInt();
     }
 
+    @Override
+    public NetBuffer getInputBuffer() {
+        return inBuffer;
+    }
+
     public TransferInputStream getTransferInputStream(NetBuffer buffer) {
-        return new TransferInputStream(buffer, false);
+        // 没有读完一个包时会对全局buffer调用一次slice，此时生成一个新的buffer
+        if (buffer != in.getBuffer())
+            in.setBuffer(buffer);
+        return in;
+    }
+
+    public TransferOutputStream getTransferOutputStream() {
+        return out;
     }
 
     public TransferOutputStream getErrorTransferOutputStream() {
-        return createTransferOutputStream();
+        return out;
     }
 
-    public TransferOutputStream createTransferOutputStream() {
-        return new TransferOutputStream(writableChannel);
+    public TransferOutputStream createTransferOutputStream(NetBuffer buffer) {
+        return new TransferOutputStream(writableChannel, buffer);
     }
 
     protected void handleRequest(TransferInputStream in, int packetId, int packetType)

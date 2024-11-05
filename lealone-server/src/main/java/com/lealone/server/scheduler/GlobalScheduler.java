@@ -11,7 +11,6 @@ import java.util.Map;
 
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.MemoryManager;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
@@ -418,11 +417,6 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
     }
 
     // --------------------- 网络事件循环相关 ---------------------
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return netEventLoop.getDataBufferFactory();
-    }
 
     @Override
     public NetEventLoop getNetEventLoop() {

@@ -329,15 +329,9 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             Packet packet = decoder.decode(in, getProtocolVersion());
             if (ackPacketHandler != null) {
                 R r = ackPacketHandler.handle((P) packet);
-                // 在通知应用线程处理前，如果输入流没有读完需要创建新的输入流，把旧的留给应用线程
-                // 不能先通知再判断输入流有没有读完，这样会导致调度线程和应用线程同时访问输入流，会有并发问题
-                tcpConnection.recreateTransferInputStreamIfNeed();
                 ac.setAsyncResult(r);
-            } else {
-                tcpConnection.recreateTransferInputStreamIfNeed();
             }
         } catch (Throwable e) {
-            tcpConnection.recreateTransferInputStreamIfNeed();
             ac.setAsyncResult(e);
         }
     }

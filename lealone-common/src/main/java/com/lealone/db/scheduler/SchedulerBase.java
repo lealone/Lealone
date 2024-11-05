@@ -10,12 +10,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.lealone.common.util.MapUtils;
-import com.lealone.db.DataBufferFactory;
+import com.lealone.db.DataBuffer;
 import com.lealone.db.RunMode;
 import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.Session;
+import com.lealone.net.NetBuffer;
 
 public abstract class SchedulerBase implements Scheduler {
 
@@ -130,11 +131,6 @@ public abstract class SchedulerBase implements Scheduler {
     }
 
     @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return DataBufferFactory.getConcurrentFactory();
-    }
-
-    @Override
     public Object getNetEventLoop() {
         return null;
     }
@@ -188,5 +184,33 @@ public abstract class SchedulerBase implements Scheduler {
             }
             task = task.next;
         }
+    }
+
+    protected DataBuffer logBuffer;
+
+    @Override
+    public DataBuffer getLogBuffer() {
+        if (logBuffer == null)
+            logBuffer = DataBuffer.createDirect();
+        return logBuffer;
+    }
+
+    protected NetBuffer inputBuffer;
+
+    @Override
+    public NetBuffer getInputBuffer() {
+        if (inputBuffer == null) {
+            inputBuffer = new NetBuffer(DataBuffer.createDirect());
+        }
+        return inputBuffer;
+    }
+
+    protected NetBuffer outputBuffer;
+
+    @Override
+    public NetBuffer getOutputBuffer() {
+        if (outputBuffer == null)
+            outputBuffer = new NetBuffer(DataBuffer.createDirect());
+        return outputBuffer;
     }
 }
