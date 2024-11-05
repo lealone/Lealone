@@ -327,7 +327,7 @@ public class Chunk {
         removedPageCount = removedPages.size();
         writeHeader();
         if (removedPageCount > 0) {
-            DataBuffer buff = DataBuffer.create();
+            DataBuffer buff = DataBuffer.createDirect();
             try {
                 for (long pos : removedPages) {
                     buff.putLong(pos);

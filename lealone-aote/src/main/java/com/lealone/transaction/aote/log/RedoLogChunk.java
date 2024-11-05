@@ -53,9 +53,9 @@ class RedoLogChunk {
     }
 
     private static final int BUFF_SIZE = 16 * 1024;
-    private DataBuffer buff = DataBuffer.create(BUFF_SIZE);
+    private DataBuffer buff = DataBuffer.createDirect(BUFF_SIZE);
 
-    private DataBuffer checkpointBuff = DataBuffer.create(11); // 1+10,可变long最多需要10个字节
+    private DataBuffer checkpointBuff = DataBuffer.createDirect(11); // 1+10,可变long最多需要10个字节
     private FileStorage checkpointChunk;
     private int checkpointChunkId;
 
@@ -199,7 +199,7 @@ class RedoLogChunk {
             }
             // 避免占用太多内存
             if (buff.capacity() > BUFF_SIZE * 3)
-                buff = DataBuffer.create(BUFF_SIZE);
+                buff = DataBuffer.createDirect(BUFF_SIZE);
 
             if (pos > logChunkSize)
                 nextChunk(true);

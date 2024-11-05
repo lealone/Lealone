@@ -116,8 +116,16 @@ public class DataBuffer implements AutoCloseable {
         return new DataBuffer(handler, capacity, direct);
     }
 
-    public static DataBuffer create(int capacity) {
-        return new DataBuffer(null, capacity);
+    public static DataBuffer create() {
+        return createDirect();
+    }
+
+    public static DataBuffer createHeap() {
+        return new DataBuffer(null, MIN_GROW, false);
+    }
+
+    public static DataBuffer createDirect(int capacity) {
+        return new DataBuffer(null, capacity, true);
     }
 
     public static DataBuffer createDirect() {
@@ -933,30 +941,7 @@ public class DataBuffer implements AutoCloseable {
 
     @Override
     public void close() {
-        if (factory != null) {
-            factory.recycle(this);
-        }
-    }
-
-    private DataBufferFactory factory;
-
-    public DataBufferFactory getFactory() {
-        return factory;
-    }
-
-    public void setFactory(DataBufferFactory factory) {
-        this.factory = factory;
-    }
-
-    public static DataBuffer create() {
-        return DataBufferFactory.getConcurrentFactory().create();
-    }
-
-    public static DataBuffer getOrCreate(int capacity) {
-        return getOrCreate(capacity, true);
-    }
-
-    public static DataBuffer getOrCreate(int capacity, boolean direct) {
-        return DataBufferFactory.getConcurrentFactory().create(capacity, direct);
+        reuse = null;
+        buff = null;
     }
 }

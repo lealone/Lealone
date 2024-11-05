@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 
-import com.lealone.db.DataBufferFactory;
 import com.lealone.net.NetBuffer.WritableBuffer;
 
 public interface NetEventLoop {
@@ -19,8 +18,6 @@ public interface NetEventLoop {
     NetClient getNetClient();
 
     void setPreferBatchWrite(boolean preferBatchWrite);
-
-    DataBufferFactory getDataBufferFactory();
 
     Selector getSelector();
 

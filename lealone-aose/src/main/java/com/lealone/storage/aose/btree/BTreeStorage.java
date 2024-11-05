@@ -346,7 +346,7 @@ public class BTreeStorage {
     }
 
     private synchronized void executeSave(boolean appendModeEnabled, int dirtyMemory) {
-        DataBuffer chunkBody = DataBuffer.getOrCreate(dirtyMemory);
+        DataBuffer chunkBody = DataBuffer.createDirect(dirtyMemory);
         boolean appendMode = false;
         try {
             Chunk c;

@@ -27,8 +27,6 @@ import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.SystemPropertyUtils;
-import com.lealone.db.DataBuffer;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.AsyncConnection;
@@ -46,8 +44,6 @@ public class NioEventLoop implements NetEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioEventLoop.class);
 
-    // NioEventLoop、Scheduler和DataBufferFactory都是一对一的关系，所以用SingleThreadFactory是安全的
-    private final DataBufferFactory dataBufferFactory = DataBufferFactory.getSingleThreadFactory();
     private final Map<WritableChannel, WritableChannel> channels = new HashMap<>();
     private final AtomicBoolean selecting = new AtomicBoolean(false);
 
@@ -91,11 +87,6 @@ public class NioEventLoop implements NetEventLoop {
     @Override
     public void setPreferBatchWrite(boolean preferBatchWrite) {
         this.preferBatchWrite = preferBatchWrite;
-    }
-
-    @Override
-    public DataBufferFactory getDataBufferFactory() {
-        return dataBufferFactory;
     }
 
     @Override
@@ -199,10 +190,6 @@ public class NioEventLoop implements NetEventLoop {
                     BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
                     if (inBuffer == null) {
                         inBuffer = conn.getInputBuffer();
-                        if (inBuffer == null) {
-                            DataBuffer dataBuffer = dataBufferFactory.create(packetLength);
-                            inBuffer = new NetBuffer(dataBuffer);
-                        }
                         // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
                         inBuffer.limit(packetLength);
                     }

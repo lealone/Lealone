@@ -6,7 +6,6 @@
 package com.lealone.transaction.aote.log;
 
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
 import com.lealone.transaction.aote.AOTransactionEngine;
@@ -88,14 +87,6 @@ public class UndoLog {
             UndoLogRecord r = removeLast();
             r.rollback(te);
         }
-    }
-
-    // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    public DataBuffer toRedoLogRecordBuffer(DataBufferFactory factory) {
-        DataBuffer buffer = factory.create();
-        toRedoLogRecordBuffer(buffer);
-        buffer.getAndFlipBuffer();
-        return buffer;
     }
 
     public void toRedoLogRecordBuffer(DataBuffer buffer) {

@@ -12,7 +12,6 @@ import java.util.Map;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.RunMode;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
@@ -224,17 +223,12 @@ public class AOTransaction implements Transaction {
     }
 
     protected DataBuffer toRedoLogRecordBuffer() {
-        if (session == null) {
-            // 用ConcurrentFactory才是安全的
-            return undoLog.toRedoLogRecordBuffer(DataBufferFactory.getConcurrentFactory());
-        } else {
-            DataBuffer buffer = session.getScheduler().getLogBuffer();
-            int startPos = buffer.position();
-            undoLog.toRedoLogRecordBuffer(buffer);
-            int length = buffer.position() - startPos;
-            buffer.slice(startPos, startPos + length);
-            return buffer;
-        }
+        DataBuffer buffer = getScheduler().getLogBuffer();
+        int startPos = buffer.position();
+        undoLog.toRedoLogRecordBuffer(buffer);
+        int length = buffer.position() - startPos;
+        buffer.slice(startPos, startPos + length);
+        return buffer;
     }
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {
@@ -243,12 +237,8 @@ public class AOTransaction implements Transaction {
             return new LazyLocalTransactionRLR(undoLog);
         } else {
             DataBuffer redoLog = toRedoLogRecordBuffer();
-            if (session == null) {
-                return new LocalTransactionRLR(redoLog);
-            } else {
-                // 用的是全局DataBuffer，直接写ByteBuffer的快照就行，不必须让redo log sync线程释放
-                return new LocalTransactionRLR(redoLog.getBuffer());
-            }
+            // 用的是全局DataBuffer，直接写ByteBuffer的快照就行，不必须让redo log sync线程释放
+            return new LocalTransactionRLR(redoLog.getBuffer());
         }
     }
 

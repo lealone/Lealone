@@ -13,7 +13,6 @@ import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataBufferFactory;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.AsyncConnection;
@@ -28,8 +27,7 @@ public class BioNetClient extends NetClientBase {
     public static NetBuffer createBuffer() {
         // Socket的输入输出流只接受字节数组，而direct buffer是没有字节数组的，所以不能创建direct buffer
         // 见BioWritableChannel中的read和write方法的实现
-        return new NetBuffer(
-                DataBufferFactory.getConcurrentFactory().create(DataBuffer.MIN_GROW, false));
+        return new NetBuffer(DataBuffer.createHeap());
     }
 
     @Override

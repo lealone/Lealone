@@ -165,22 +165,9 @@ public abstract class RedoLogRecord {
     static class TransactionRLR extends RedoLogRecord {
 
         protected ByteBuffer operations;
-        protected DataBuffer rlrDataBuffer;
 
         public TransactionRLR(ByteBuffer operations) {
             this.operations = operations;
-        }
-
-        public TransactionRLR(DataBuffer rlrDataBuffer) {
-            this.operations = rlrDataBuffer.getBuffer();
-            this.rlrDataBuffer = rlrDataBuffer;
-        }
-
-        protected void release() {
-            if (rlrDataBuffer != null) {
-                rlrDataBuffer.close();
-                rlrDataBuffer = null;
-            }
         }
 
         @Override
@@ -211,7 +198,6 @@ public abstract class RedoLogRecord {
             buff.put(type);
             buff.putVarLong(0); // transactionId兼容老版本
             writeOperations(buff);
-            release();
         }
 
         public void writeOperations(DataBuffer buff) {
@@ -230,10 +216,6 @@ public abstract class RedoLogRecord {
 
         public LocalTransactionRLR(ByteBuffer operations) {
             super(operations);
-        }
-
-        public LocalTransactionRLR(DataBuffer rlrDataBuffer) {
-            super(rlrDataBuffer);
         }
 
         public static LocalTransactionRLR read(ByteBuffer buff) {
