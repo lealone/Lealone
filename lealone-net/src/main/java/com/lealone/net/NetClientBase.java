@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.MapUtils;
+import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
@@ -20,6 +21,12 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.nio.NioAttachment;
 
 public abstract class NetClientBase implements NetClient {
+
+    public NetClientBase() {
+        ShutdownHookUtils.addShutdownHook(this, () -> {
+            close();
+        });
+    }
 
     // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
     // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。

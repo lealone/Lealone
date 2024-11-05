@@ -57,7 +57,7 @@ import com.lealone.db.value.ValueUuid;
  * @author H2 Group
  * @author zhh
  */
-public class DataBuffer implements AutoCloseable {
+public class DataBuffer {
 
     private static final ValueDataTypeBase[] TYPES = new ValueDataTypeBase[Value.TYPE_COUNT];
     static {
@@ -937,11 +937,5 @@ public class DataBuffer implements AutoCloseable {
 
     private ByteBuffer allocate(int capacity) {
         return direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
-    }
-
-    @Override
-    public void close() {
-        reuse = null;
-        buff = null;
     }
 }

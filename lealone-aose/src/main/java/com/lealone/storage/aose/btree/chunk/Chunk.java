@@ -328,14 +328,10 @@ public class Chunk {
         writeHeader();
         if (removedPageCount > 0) {
             DataBuffer buff = DataBuffer.createDirect();
-            try {
-                for (long pos : removedPages) {
-                    buff.putLong(pos);
-                }
-                fileStorage.writeFully(getFilePos(removedPageOffset), buff.getAndFlipBuffer());
-            } finally {
-                buff.close();
+            for (long pos : removedPages) {
+                buff.putLong(pos);
             }
+            fileStorage.writeFully(getFilePos(removedPageOffset), buff.getAndFlipBuffer());
         }
         fileStorage.sync();
     }

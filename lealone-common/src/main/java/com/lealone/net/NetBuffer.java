@@ -79,7 +79,6 @@ public class NetBuffer {
 
     public void recycle() {
         reset();
-        dataBuffer.close();
     }
 
     public void reset() {

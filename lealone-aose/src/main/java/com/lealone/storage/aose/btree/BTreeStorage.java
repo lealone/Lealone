@@ -371,8 +371,6 @@ public class BTreeStorage {
             }
         } catch (IllegalStateException e) {
             throw panic(e);
-        } finally {
-            chunkBody.close();
         }
     }
 

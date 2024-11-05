@@ -107,7 +107,7 @@ public class TransferOutputStream implements NetOutputStream {
     }
 
     public void close() {
-        outBuffer.buffer.getDataBuffer().close();
+        reset();
     }
 
     // 出错时可以重置
