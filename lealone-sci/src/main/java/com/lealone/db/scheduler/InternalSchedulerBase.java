@@ -22,7 +22,6 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
 
     protected final AtomicReferenceArray<Scheduler> waitingSchedulers;
     protected final AtomicBoolean hasWaitingSchedulers = new AtomicBoolean(false);
-    protected InternalSession currentSession;
 
     public InternalSchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
         super(id, name, schedulerCount, config);
@@ -31,12 +30,7 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
 
     @Override
     public InternalSession getCurrentSession() {
-        return currentSession;
-    }
-
-    @Override
-    public void setCurrentSession(Session currentSession) {
-        this.currentSession = (InternalSession) currentSession;
+        return (InternalSession) currentSession;
     }
 
     @Override

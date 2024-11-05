@@ -6,7 +6,6 @@
 package com.lealone.db.scheduler;
 
 import com.lealone.db.session.InternalSession;
-import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.storage.fs.FileStorage;
@@ -17,9 +16,6 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
 
     @Override
     InternalSession getCurrentSession();
-
-    @Override
-    void setCurrentSession(Session currentSession);
 
     void addSession(InternalSession session);
 
