@@ -113,7 +113,7 @@ public class NioWritableChannel implements WritableChannel {
         eventLoop.closeChannel(this);
         selectionKey = null;
         for (WritableBuffer buffer : buffers)
-            buffer.reset();
+            buffer.recycle();
         buffers.clear();
     }
 

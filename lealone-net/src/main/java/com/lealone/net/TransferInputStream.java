@@ -58,15 +58,13 @@ import com.lealone.storage.page.PageKey;
  */
 public class TransferInputStream implements NetInputStream {
 
-    private DataInputStream in;
+    private final DataInputStream in;
+    private final NetBufferInputStream bufferInputStream;
     private Session session;
-    private boolean isGlobalBuffer;
-    private NetBufferInputStream netBufferInputStream;
 
-    public TransferInputStream(NetBuffer inBuffer, boolean isGlobalBuffer) {
-        netBufferInputStream = new NetBufferInputStream(inBuffer);
-        in = new DataInputStream(netBufferInputStream);
-        this.isGlobalBuffer = isGlobalBuffer;
+    public TransferInputStream(NetBuffer inBuffer) {
+        bufferInputStream = new NetBufferInputStream(inBuffer);
+        in = new DataInputStream(bufferInputStream);
     }
 
     public DataInputStream getDataInputStream() {
@@ -74,36 +72,21 @@ public class TransferInputStream implements NetInputStream {
     }
 
     public NetBuffer getBuffer() {
-        return netBufferInputStream.buffer;
+        return bufferInputStream.getBuffer();
     }
 
     public void setBuffer(NetBuffer buffer) {
-        this.netBufferInputStream.buffer = buffer;
+        this.bufferInputStream.setBuffer(buffer);
     }
 
     public void setSession(Session session) {
         this.session = session;
     }
 
+    // 如果当前用的是全局输入buffer仅仅是复位，
+    // 如果用的是全局输入buffer的slice，就是把全局输入buffer的packetCount减一
     public void close() {
-        if (isGlobalBuffer) {
-            if (netBufferInputStream.pos != 0)
-                netBufferInputStream.reset();
-        } else {
-            closeForce();
-        }
-    }
-
-    public void closeForce() {
-        if (in != null) {
-            try {
-                in.close();
-            } catch (IOException e) {
-                // 最终只是回收NetBuffer，不应该发生异常
-                throw DbException.getInternalError();
-            }
-            in = null;
-        }
+        bufferInputStream.recycle();
     }
 
     /**
@@ -475,13 +458,26 @@ public class TransferInputStream implements NetInputStream {
 
         @Override
         public void close() throws IOException {
-            reset();
+            recycle();
         }
 
         @Override
         public void reset() {
+            recycle();
+        }
+
+        public NetBuffer getBuffer() {
+            return buffer;
+        }
+
+        public void setBuffer(NetBuffer buffer) {
             pos = 0;
-            buffer.reset();
+            this.buffer = buffer;
+        }
+
+        public void recycle() {
+            pos = 0;
+            buffer.recycle();
         }
     }
 }

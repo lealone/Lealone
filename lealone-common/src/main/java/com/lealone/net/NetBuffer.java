@@ -78,12 +78,11 @@ public class NetBuffer {
     }
 
     public void recycle() {
-        reset();
-    }
-
-    public void reset() {
-        packetCount = 0;
-        dataBuffer.clear();
+        // 还有包要处理不能回收
+        if (packetCount <= 0) {
+            packetCount = 0;
+            dataBuffer.clear();
+        }
     }
 
     @Override
@@ -112,8 +111,8 @@ public class NetBuffer {
 
     public static class WritableBuffer {
 
-        private final NetBuffer parent;
-        private final ByteBuffer buffer;
+        private NetBuffer parent;
+        private ByteBuffer buffer;
 
         public WritableBuffer(NetBuffer parent, ByteBuffer buffer) {
             this.parent = parent;
@@ -124,15 +123,19 @@ public class NetBuffer {
             return buffer;
         }
 
-        public void reset() {
-            if (--parent.packetCount == 0)
-                parent.reset();
+        public void recycle() {
+            if (parent != null) {
+                if (--parent.packetCount == 0)
+                    parent.recycle();
+                parent = null;
+                buffer = null;
+            }
         }
     }
 
     private static class ReadableBuffer extends NetBuffer {
 
-        private final NetBuffer parent;
+        private NetBuffer parent;
 
         public ReadableBuffer(NetBuffer parent, DataBuffer dataBuffer) {
             super(dataBuffer);
@@ -141,13 +144,11 @@ public class NetBuffer {
 
         @Override
         public void recycle() {
-            reset();
-        }
-
-        @Override
-        public void reset() {
-            if (--parent.packetCount == 0)
-                parent.reset();
+            if (parent != null) {
+                if (--parent.packetCount == 0)
+                    parent.recycle();
+                parent = null;
+            }
         }
     }
 }

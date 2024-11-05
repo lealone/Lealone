@@ -26,7 +26,6 @@ public abstract class TransferConnection extends AsyncConnection {
     protected final ByteBuffer packetLengthByteBuffer = ByteBuffer
             .allocate(getPacketLengthByteBufferCapacity());
 
-    protected final NetBuffer inBuffer;
     protected final TransferInputStream in;
     protected final TransferOutputStream out;
 
@@ -38,11 +37,9 @@ public abstract class TransferConnection extends AsyncConnection {
             NetBuffer outBuffer) {
         super(writableChannel, isServer);
         if (inBuffer != null) {
-            this.inBuffer = inBuffer;
-            in = new TransferInputStream(inBuffer, true);
+            in = new TransferInputStream(inBuffer);
             out = createTransferOutputStream(outBuffer);
         } else {
-            this.inBuffer = null;
             in = null;
             out = null;
         }
@@ -64,7 +61,7 @@ public abstract class TransferConnection extends AsyncConnection {
 
     @Override
     public NetBuffer getInputBuffer() {
-        return inBuffer;
+        return in.getBuffer();
     }
 
     public TransferInputStream getTransferInputStream(NetBuffer buffer) {

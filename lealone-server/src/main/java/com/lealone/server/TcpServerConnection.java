@@ -219,8 +219,8 @@ public class TcpServerConnection extends AsyncServerConnection {
     public void close() {
         if (isClosed())
             return;
-        in.closeForce();
-        out.close();
+        in.close();
+        // out不需要关闭
         super.close();
         for (ServerSessionInfo si : sessions.values()) {
             closeSession(si, true);

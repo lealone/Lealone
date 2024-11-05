@@ -320,14 +320,14 @@ public class NioEventLoop implements NetEventLoop {
 
     private void resetBuffer(WritableBuffer buffer) {
         if (buffer != null) {
-            buffer.reset();
+            buffer.recycle();
         }
     }
 
     private void resetBuffer(List<WritableBuffer> buffers) {
         if (buffers != null) {
             for (WritableBuffer buffer : buffers)
-                buffer.reset();
+                buffer.recycle();
         }
     }
 
@@ -359,7 +359,7 @@ public class NioEventLoop implements NetEventLoop {
         iterator = list.iterator();
         while (iterator.hasNext()) {
             WritableBuffer netBuffer = iterator.next();
-            netBuffer.reset();
+            netBuffer.recycle();
             iterator.remove();
         }
     }

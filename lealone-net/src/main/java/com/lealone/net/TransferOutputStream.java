@@ -106,15 +106,6 @@ public class TransferOutputStream implements NetOutputStream {
         outBuffer.flush();
     }
 
-    public void close() {
-        reset();
-    }
-
-    // 出错时可以重置
-    public void reset() {
-        outBuffer.buffer.reset();
-    }
-
     /**
      * Write a boolean.
      *

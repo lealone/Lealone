@@ -60,7 +60,7 @@ public class TcpClientConnection extends TransferConnection {
     public void close() {
         if (isClosed())
             return;
-        in.closeForce();
+        in.close();
         // 如果还有回调未处理需要设置异常，避免等待回调结果的线程一直死等
         if (!callbackMap.isEmpty()) {
             DbException e;

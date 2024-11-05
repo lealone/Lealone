@@ -138,7 +138,7 @@ public class BioWritableChannel implements WritableChannel {
         } catch (Exception e) {
             conn.handleException(e);
         } finally {
-            buffer.reset();
+            buffer.recycle();
         }
     }
 

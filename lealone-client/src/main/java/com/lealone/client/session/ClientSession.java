@@ -196,8 +196,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                 }
                 super.close();
                 if (isBio()) {
-                    if (out != null)
-                        out.close();
                     tcpConnection.close();
                 }
             } catch (RuntimeException e) {
@@ -309,8 +307,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             if (ac != null && isBio)
                 tcpConnection.getWritableChannel().read();
         } catch (Throwable e) {
-            if (isBio)
-                out.reset();
             if (ac != null) {
                 removeAsyncCallback(packetId);
                 ac.setAsyncResult(e);
