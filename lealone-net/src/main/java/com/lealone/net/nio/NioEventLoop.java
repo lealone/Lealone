@@ -200,6 +200,8 @@ public class NioEventLoop implements NetEventLoop {
                         packetLengthByteBuffer.clear();
                         attachment.state = 0;
                         attachment.inBuffer = null;
+                        if (start != 0)
+                            inBuffer.position(start); // 从上一个包的后续位置开始读
                         NetBuffer tmp = inBuffer;
                         inBuffer = null;
                         conn.handle(tmp);
