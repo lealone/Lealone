@@ -8,7 +8,6 @@ package com.lealone.net;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
 
 import com.lealone.common.exceptions.DbException;
@@ -22,9 +21,6 @@ import com.lealone.db.session.Session;
 public abstract class TransferConnection extends AsyncConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
-
-    protected final ByteBuffer packetLengthByteBuffer = ByteBuffer
-            .allocate(getPacketLengthByteBufferCapacity());
 
     protected final TransferInputStream in;
     protected final TransferOutputStream out;
@@ -43,20 +39,6 @@ public abstract class TransferConnection extends AsyncConnection {
             in = null;
             out = null;
         }
-    }
-
-    public int getPacketLengthByteBufferCapacity() {
-        return 4;
-    }
-
-    @Override
-    public ByteBuffer getPacketLengthByteBuffer() {
-        return packetLengthByteBuffer;
-    }
-
-    @Override
-    public int getPacketLength() {
-        return packetLengthByteBuffer.getInt();
     }
 
     @Override
@@ -149,7 +131,7 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     @Override
-    public void handle(NetBuffer buffer) {
+    public void handle(NetBuffer buffer, boolean autoRecycle) {
         TransferInputStream in = null;
         try {
             in = getTransferInputStream(buffer);
@@ -168,7 +150,7 @@ public abstract class TransferConnection extends AsyncConnection {
             else
                 throw DbException.convert(e);
         } finally {
-            if (in != null) {
+            if (autoRecycle && in != null) {
                 in.close();
             }
         }

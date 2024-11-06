@@ -5,7 +5,6 @@
  */
 package com.lealone.net.nio;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -153,105 +152,113 @@ public class NioEventLoop implements NetEventLoop {
 
     private long totalReadBytes;
     private long totalWrittenBytes;
-    private final EOFException endException = new EOFException();
-    private String endExceptionMsg;
 
     @Override
     public void read(SelectionKey key) {
-        SocketChannel channel = (SocketChannel) key.channel();
         NioAttachment attachment = (NioAttachment) key.attachment();
         AsyncConnection conn = attachment.conn;
+        // 如果客户端关闭连接，服务器再次循环读数据检测到连接已经关闭就不再读取数据，避免抛出异常
+        if (conn.isClosed())
+            return;
+        SocketChannel channel = (SocketChannel) key.channel();
         NetBuffer inBuffer = attachment.inBuffer;
-        int packetCount = 1;
         try {
-            while (true) {
-                // 如果客户端关闭连接，服务器再次循环读数据检测到连接已经关闭就不再读取数据，避免抛出异常
-                if (conn.isClosed())
+            // 每次循环重新取一次，一些实现会返回不同的limit
+            int packetLengthByteCount = conn.getPacketLengthByteCount();
+            if (packetLengthByteCount <= 0) { // http server自己读取数据
+                conn.handle(null, false);
+                return;
+            }
+            int packetLength = attachment.state; // 看看是不是上一次记下的packetLength
+            if (attachment.state == -1) {
+                ByteBuffer buffer = inBuffer.getByteBuffer();
+                if (!read(conn, channel, buffer)) {
                     return;
-                // 每次循环重新取一次，一些实现会返回不同的Buffer
-                ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
-                if (packetLengthByteBuffer == null) { // http server自己读取数据
-                    conn.handle(null);
+                } else {
+                    buffer.flip();
+                    if (buffer.remaining() < packetLengthByteCount)
+                        return;
+                    packetLength = conn.getPacketLength(buffer);
+                    attachment.inBuffer = null;
+                    attachment.state = 0;
+                    inBuffer.recycle();
+                    inBuffer = null;
+                }
+            }
+            if (attachment.state >= 0) {
+                if (inBuffer == null) {
+                    inBuffer = conn.getInputBuffer();
+                }
+                ByteBuffer buffer = inBuffer.getByteBuffer();
+                int start = buffer.position();
+                if (!read(conn, channel, buffer)) {
+                    if (packetLength != 0)
+                        attachment.state = packetLength; // 记下packetLength
                     return;
                 }
-                int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
-
-                if (attachment.state == 0) {
-                    boolean ok = read(attachment, channel, packetLengthByteBuffer,
-                            packetLengthByteBufferCapacity);
-                    if (ok) {
-                        attachment.state = 1;
+                buffer.flip();
+                if (start != 0 && inBuffer.isGlobal())
+                    buffer.position(start); // 从上一个包的后续位置开始读
+                while (true) {
+                    int remaining = buffer.remaining();
+                    if (remaining >= packetLengthByteCount) {
+                        if (packetLength == 0) {
+                            packetLength = conn.getPacketLength(buffer);
+                            remaining = buffer.remaining();
+                        }
+                        BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
+                        if (remaining >= packetLength) {
+                            attachment.state = 0;
+                            attachment.inBuffer = null;
+                            packetLength = 0;
+                            conn.handle(inBuffer, false);
+                        } else {
+                            start = buffer.position();
+                            attachment.state = packetLength;
+                            attachment.inBuffer = inBuffer.createReadableBuffer(start, packetLength);
+                            attachment.inBuffer.position(remaining);
+                            return;
+                        }
                     } else {
-                        break;
-                    }
-                }
-                if (attachment.state == 1) {
-                    int packetLength = conn.getPacketLength();
-                    BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
-                    if (inBuffer == null) {
-                        inBuffer = conn.getInputBuffer();
-                        // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
-                        inBuffer.limit(packetLength);
-                    }
-                    ByteBuffer buffer = inBuffer.getByteBuffer();
-                    int start = inBuffer.position();
-                    boolean ok = read(attachment, channel, buffer, packetLength);
-                    if (ok) {
-                        packetLengthByteBuffer.clear();
-                        attachment.state = 0;
-                        attachment.inBuffer = null;
-                        if (start != 0)
-                            inBuffer.position(start); // 从上一个包的后续位置开始读
-                        NetBuffer tmp = inBuffer;
-                        inBuffer = null;
-                        conn.handle(tmp);
-                        if (++packetCount > maxPacketCountPerLoop)
-                            break;
-                    } else {
-                        packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
-                        attachment.inBuffer = inBuffer.createReadableBuffer(start, packetLength);
-                        break;
+                        if (remaining == 0) {
+                            inBuffer.recycle();
+                        } else {
+                            start = buffer.position();
+                            attachment.state = -1;
+                            attachment.inBuffer = inBuffer.createReadableBuffer(start,
+                                    packetLengthByteCount);
+                            attachment.inBuffer.position(remaining);
+                        }
+                        return;
                     }
                 }
             }
         } catch (Exception e) {
-            if (endException == e) {
-                if (logger.isDebugEnabled())
-                    logger.debug((conn.isServer() ? "Client " : "\r\nServer ") + endExceptionMsg);
-                handleException(null, e, key); // 不输出错误
-            } else {
-                handleReadException(e, key);
-            }
+            handleReadException(e, key);
         }
     }
 
-    private boolean read(NioAttachment attachment, SocketChannel channel, ByteBuffer buffer, int length)
+    private boolean read(AsyncConnection conn, SocketChannel channel, ByteBuffer buffer)
             throws IOException {
         int readBytes = channel.read(buffer);
         if (readBytes > 0) {
             if (isDebugEnabled) {
                 totalReadBytes += readBytes;
-                logger.debug(("total read bytes: " + totalReadBytes));
+                logger.debug("total read bytes: " + totalReadBytes);
             }
-            attachment.endOfStreamCount = 0;
+            return true;
         } else {
             // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
             // netty框架在下面这个方法的代码中有自己的不同解决方案
             // io.netty.channel.nio.NioEventLoop.processSelectedKey
             if (readBytes < 0) {
-                attachment.endOfStreamCount++;
-                if (attachment.endOfStreamCount > 3) {
-                    endExceptionMsg = "socket channel closed: " + channel.getRemoteAddress();
-                    throw endException;
+                if (isDebugEnabled) {
+                    logger.debug("socket channel closed: " + channel.getRemoteAddress());
                 }
-                return false;
+                conn.close();
             }
+            return false;
         }
-        if (length == buffer.position()) {
-            buffer.flip();
-            return true;
-        }
-        return false;
     }
 
     @Override

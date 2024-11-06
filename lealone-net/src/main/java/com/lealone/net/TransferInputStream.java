@@ -440,7 +440,6 @@ public class TransferInputStream implements NetInputStream {
     private static class NetBufferInputStream extends InputStream {
 
         private NetBuffer buffer;
-        private int pos;
 
         public NetBufferInputStream(NetBuffer buffer) {
             this.buffer = buffer;
@@ -448,12 +447,12 @@ public class TransferInputStream implements NetInputStream {
 
         @Override
         public int available() throws IOException {
-            return buffer.getByteBuffer().limit() - pos;
+            return buffer.getByteBuffer().remaining();
         }
 
         @Override
         public int read() throws IOException {
-            return buffer.getUnsignedByte(pos++);
+            return buffer.getUnsignedByte();
         }
 
         @Override
@@ -471,12 +470,10 @@ public class TransferInputStream implements NetInputStream {
         }
 
         public void setBuffer(NetBuffer buffer) {
-            pos = 0;
             this.buffer = buffer;
         }
 
         public void recycle() {
-            pos = 0;
             buffer.recycle();
         }
     }

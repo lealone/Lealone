@@ -107,7 +107,7 @@ public class BioWritableChannel implements WritableChannel {
             b = buffer.getByteBuffer().array(); // 重新获取一次，扩容时会改变内部的ByteBuffer
             // 要用readFully不能用read，因为read方法可能没有读够packetLength个字节，会导致后续解析失败
             readFully(b, 0, packetLength);
-            conn.handle(buffer);
+            conn.handle(buffer, true);
         } catch (Exception e) {
             conn.handleException(e);
         }

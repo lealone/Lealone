@@ -263,8 +263,8 @@ public class DataBuffer {
         return buff.getInt();
     }
 
-    public short getUnsignedByte(int pos) {
-        return (short) (buff.get(pos) & 0xff);
+    public int getUnsignedByte() {
+        return buff.get() & 0xff;
     }
 
     public DataBuffer slice(int start, int end) {

@@ -73,8 +73,8 @@ public class NetBuffer {
         return dataBuffer.position();
     }
 
-    public short getUnsignedByte(int pos) {
-        return dataBuffer.getUnsignedByte(pos);
+    public int getUnsignedByte() {
+        return dataBuffer.getUnsignedByte();
     }
 
     public void recycle() {
@@ -91,6 +91,7 @@ public class NetBuffer {
     }
 
     public WritableBuffer createWritableBuffer(int start, int end) {
+        dataBuffer.checkCapacity(end - start);
         ByteBuffer bb = dataBuffer.sliceByteBuffer(start, end);
         WritableBuffer buffer = new WritableBuffer(this, bb);
         packetCount++;
@@ -98,6 +99,7 @@ public class NetBuffer {
     }
 
     public ReadableBuffer createReadableBuffer(int start, int packetLength) {
+        dataBuffer.checkCapacity(packetLength);
         int pos = dataBuffer.position();
         int end = start + packetLength;
         DataBuffer slice = dataBuffer.slice(start, end);
@@ -107,6 +109,10 @@ public class NetBuffer {
         ReadableBuffer buffer = new ReadableBuffer(this, slice);
         packetCount++;
         return buffer;
+    }
+
+    public boolean isGlobal() {
+        return true;
     }
 
     public static class WritableBuffer {
@@ -140,6 +146,11 @@ public class NetBuffer {
         public ReadableBuffer(NetBuffer parent, DataBuffer dataBuffer) {
             super(dataBuffer);
             this.parent = parent;
+        }
+
+        @Override
+        public boolean isGlobal() {
+            return false;
         }
 
         @Override
