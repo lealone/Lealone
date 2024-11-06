@@ -6,6 +6,7 @@
 package com.lealone.net;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
 import java.util.Map;
 
 import com.lealone.db.async.Future;
@@ -35,4 +36,6 @@ public interface NetClient {
 
     void checkTimeout(long currentTime);
 
+    default void connectionEstablished(Scheduler scheduler, NetEventLoop eventLoop, SelectionKey key) {
+    }
 }

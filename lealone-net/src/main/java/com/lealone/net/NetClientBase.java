@@ -18,7 +18,6 @@ import com.lealone.db.ConnectionSetting;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.scheduler.Scheduler;
-import com.lealone.net.nio.NioAttachment;
 
 public abstract class NetClientBase implements NetClient {
 
@@ -139,12 +138,5 @@ public abstract class NetClientBase implements NetClient {
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
         socket.setReuseAddress(true);
-    }
-
-    public static class ClientAttachment extends NioAttachment {
-        public AsyncConnectionManager connectionManager;
-        public InetSocketAddress inetSocketAddress;
-        public AsyncCallback<AsyncConnection> ac;
-        public int maxSharedSize;
     }
 }

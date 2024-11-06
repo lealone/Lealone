@@ -199,9 +199,8 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public NetBuffer getInputBuffer() {
-        if (inputBuffer == null) {
+        if (inputBuffer == null)
             inputBuffer = new NetBuffer(DataBuffer.createDirect());
-        }
         return inputBuffer;
     }
 

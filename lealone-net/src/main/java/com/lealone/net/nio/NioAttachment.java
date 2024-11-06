@@ -9,7 +9,12 @@ import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
 
 public class NioAttachment {
-    public AsyncConnection conn;
+
+    public final AsyncConnection conn;
     NetBuffer inBuffer;
     int state = 0;
+
+    public NioAttachment(AsyncConnection conn) {
+        this.conn = conn;
+    }
 }

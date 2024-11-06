@@ -32,9 +32,7 @@ import com.lealone.net.AsyncConnection;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.NetClient;
-import com.lealone.net.NetClientBase.ClientAttachment;
 import com.lealone.net.NetEventLoop;
-import com.lealone.net.TcpClientConnection;
 import com.lealone.net.WritableChannel;
 import com.lealone.net.bio.BioWritableChannel;
 import com.lealone.server.ProtocolServer;
@@ -134,13 +132,11 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public void register(AsyncConnection conn) {
-        NioAttachment attachment = new NioAttachment();
-        attachment.conn = conn;
         WritableChannel channel = conn.getWritableChannel();
         addChannel(channel);
         try {
             SelectionKey key = channel.getSocketChannel().register(getSelector(), SelectionKey.OP_READ,
-                    attachment);
+                    new NioAttachment(conn));
             channel.setSelectionKey(key);
         } catch (ClosedChannelException e) {
             throw DbException.convert(e);
@@ -404,41 +400,6 @@ public class NioEventLoop implements NetEventLoop {
         return true;
     }
 
-    private void connectionEstablished(SelectionKey key) {
-        SocketChannel channel = (SocketChannel) key.channel();
-        if (!channel.isConnectionPending())
-            return;
-
-        ClientAttachment attachment = (ClientAttachment) key.attachment();
-        try {
-            channel.finishConnect();
-            NioWritableChannel writableChannel = new NioWritableChannel(scheduler, channel);
-            writableChannel.setSelectionKey(key);
-            AsyncConnection conn;
-            if (attachment.connectionManager != null) {
-                conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);
-            } else {
-                NetBuffer inBuffer = scheduler.getInputBuffer();
-                NetBuffer outBuffer = scheduler.getOutputBuffer();
-                conn = new TcpClientConnection(writableChannel, netClient, attachment.maxSharedSize,
-                        inBuffer, outBuffer);
-            }
-            addChannel(writableChannel);
-            conn.setInetSocketAddress(attachment.inetSocketAddress);
-            netClient.addConnection(attachment.inetSocketAddress, conn);
-            attachment.conn = conn;
-            if (attachment.ac != null) {
-                attachment.ac.setAsyncResult(conn);
-            }
-            key.interestOps(key.interestOps() & ~SelectionKey.OP_CONNECT);
-            channel.register(getSelector(), SelectionKey.OP_READ, attachment);
-        } catch (Exception e) {
-            if (attachment.ac != null) {
-                attachment.ac.setAsyncResult(e);
-            }
-        }
-    }
-
     private boolean inLoop;
 
     @Override
@@ -479,7 +440,7 @@ public class NioEventLoop implements NetEventLoop {
                     if (server != null)
                         server.accept(scheduler);
                 } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
-                    connectionEstablished(key);
+                    netClient.connectionEstablished(scheduler, this, key);
                 } else {
                     key.cancel();
                 }
@@ -541,8 +502,7 @@ public class NioEventLoop implements NetEventLoop {
     }
 
     private void handleException(String operation, Exception e, SelectionKey key) {
-        NioAttachment attachment = (NioAttachment) key.attachment();
-        AsyncConnection conn = attachment.conn;
+        AsyncConnection conn = ((NioAttachment) key.attachment()).conn;
         if (operation != null && isLoggerEnabled)
             logger.warn("Failed to " + operation + " remote address[" + conn.getHostAndPort() + "]: "
                     + e.getMessage());
