@@ -71,10 +71,6 @@ public class TransferInputStream implements NetInputStream {
         return in;
     }
 
-    public NetBuffer getBuffer() {
-        return bufferInputStream.getBuffer();
-    }
-
     public void setBuffer(NetBuffer buffer) {
         this.bufferInputStream.setBuffer(buffer);
     }
@@ -463,10 +459,6 @@ public class TransferInputStream implements NetInputStream {
         @Override
         public void reset() {
             recycle();
-        }
-
-        public NetBuffer getBuffer() {
-            return buffer;
         }
 
         public void setBuffer(NetBuffer buffer) {

@@ -53,6 +53,7 @@ public class BioNetClient extends NetClientBase {
                 NetBuffer inBuffer = createBuffer();
                 NetBuffer outBuffer = createBuffer();
                 conn = new TcpClientConnection(writableChannel, this, 1, inBuffer, outBuffer);
+                writableChannel.setInputBuffer(inBuffer);
             }
             writableChannel.setAsyncConnection(conn);
             conn.setInetSocketAddress(inetSocketAddress);

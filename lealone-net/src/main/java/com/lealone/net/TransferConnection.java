@@ -41,15 +41,9 @@ public abstract class TransferConnection extends AsyncConnection {
         }
     }
 
-    @Override
-    public NetBuffer getInputBuffer() {
-        return in.getBuffer();
-    }
-
     public TransferInputStream getTransferInputStream(NetBuffer buffer) {
         // 没有读完一个包时会对全局buffer调用一次slice，此时生成一个新的buffer
-        if (buffer != in.getBuffer())
-            in.setBuffer(buffer);
+        in.setBuffer(buffer);
         return in;
     }
 

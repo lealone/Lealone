@@ -47,7 +47,8 @@ public class NioEventLoop implements NetEventLoop {
     private final AtomicBoolean selecting = new AtomicBoolean(false);
 
     private final Scheduler scheduler;
-    private final NetBuffer globalBuffer;
+    private final NetBuffer inputBuffer;
+    private final NetBuffer outputBuffer;
     private final long loopInterval;
     private final int maxPacketCountPerLoop; // 每次循环最多读取多少个数据包
     private final int maxPacketSize;
@@ -62,7 +63,8 @@ public class NioEventLoop implements NetEventLoop {
 
     public NioEventLoop(Scheduler scheduler, long loopInterval, Map<String, String> config) {
         this.scheduler = scheduler;
-        this.globalBuffer = scheduler.getOutputBuffer();
+        this.inputBuffer = scheduler.getInputBuffer();
+        this.outputBuffer = scheduler.getOutputBuffer();
         this.loopInterval = loopInterval;
         // 设置过大会占用内存，有可能影响GC暂停时间
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 8);
@@ -172,12 +174,10 @@ public class NioEventLoop implements NetEventLoop {
             int packetLength = attachment.state; // 看看是不是上一次记下的packetLength
             if (attachment.state == -1) {
                 ByteBuffer buffer = inBuffer.getByteBuffer();
-                if (!read(conn, channel, buffer)) {
+                if (!read(conn, channel, buffer) || buffer.position() < packetLengthByteCount) {
                     return;
                 } else {
                     buffer.flip();
-                    if (buffer.remaining() < packetLengthByteCount)
-                        return;
                     packetLength = conn.getPacketLength(buffer);
                     attachment.inBuffer = null;
                     attachment.state = 0;
@@ -187,7 +187,7 @@ public class NioEventLoop implements NetEventLoop {
             }
             if (attachment.state >= 0) {
                 if (inBuffer == null) {
-                    inBuffer = conn.getInputBuffer();
+                    inBuffer = inputBuffer;
                 }
                 ByteBuffer buffer = inBuffer.getByteBuffer();
                 int start = buffer.position();
@@ -263,7 +263,7 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public void write() {
-        if (globalBuffer.getPacketCount() > 0) {
+        if (outputBuffer.getPacketCount() > 0) {
             int oldSize = channels.size();
             Iterator<WritableChannel> iterator = channels.keySet().iterator();
             while (iterator.hasNext()) {
@@ -568,6 +568,6 @@ public class NioEventLoop implements NetEventLoop {
 
     @Override
     public boolean needWriteImmediately() {
-        return globalBuffer.getPacketCount() > maxPacketCountPerLoop;
+        return outputBuffer.getPacketCount() > maxPacketCountPerLoop;
     }
 }

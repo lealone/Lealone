@@ -35,6 +35,7 @@ public class BioWritableChannel implements WritableChannel {
     private OutputStream out;
 
     private AsyncConnection conn;
+    private NetBuffer inputBuffer;
 
     public BioWritableChannel(Map<String, String> config, Socket socket, InetSocketAddress address)
             throws IOException {
@@ -53,6 +54,10 @@ public class BioWritableChannel implements WritableChannel {
 
     public void setAsyncConnection(AsyncConnection conn) {
         this.conn = conn;
+    }
+
+    public void setInputBuffer(NetBuffer inputBuffer) {
+        this.inputBuffer = inputBuffer;
     }
 
     @Override
@@ -98,7 +103,7 @@ public class BioWritableChannel implements WritableChannel {
     @Override
     public void read() {
         try {
-            NetBuffer buffer = conn.getInputBuffer(); // 可能会变，所以每次都获取
+            NetBuffer buffer = inputBuffer;
             byte[] b = buffer.getByteBuffer().array();
             int packetLength = readRacketLength(b);
             checkPacketLength(maxPacketSize, packetLength);

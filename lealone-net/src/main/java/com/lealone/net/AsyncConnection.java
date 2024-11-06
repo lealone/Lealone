@@ -37,10 +37,6 @@ public abstract class AsyncConnection {
         return buffer.getInt();
     }
 
-    public NetBuffer getInputBuffer() {
-        return null;
-    }
-
     public WritableChannel getWritableChannel() {
         return writableChannel;
     }
