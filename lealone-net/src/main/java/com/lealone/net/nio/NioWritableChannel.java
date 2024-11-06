@@ -112,9 +112,7 @@ public class NioWritableChannel implements WritableChannel {
     public void close() {
         eventLoop.closeChannel(this);
         selectionKey = null;
-        for (WritableBuffer buffer : buffers)
-            buffer.recycle();
-        buffers.clear();
+        recycleBuffers(buffers);
     }
 
     @Override
@@ -125,5 +123,13 @@ public class NioWritableChannel implements WritableChannel {
     @Override
     public void write(WritableBuffer buffer) {
         eventLoop.write(this, buffer);
+    }
+
+    public static void recycleBuffers(List<WritableBuffer> buffers) {
+        if (buffers != null) {
+            for (WritableBuffer buffer : buffers)
+                buffer.recycle();
+            buffers.clear();
+        }
     }
 }

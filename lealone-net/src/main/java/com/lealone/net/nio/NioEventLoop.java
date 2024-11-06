@@ -297,8 +297,8 @@ public class NioEventLoop implements NetEventLoop {
             DbException.assertTrue(scheduler == SchedulerThread.currentScheduler());
         }
         if (channel.isClosed()) {
-            // 通道关闭了，reset后就返回
-            resetBuffer(buffer);
+            // 通道关闭了，recycle后就返回
+            recycleBuffer(buffer);
             return;
         }
         boolean writeImmediately;
@@ -315,24 +315,17 @@ public class NioEventLoop implements NetEventLoop {
                 if (write(key, channel.getSocketChannel(), buffer))
                     return;
             } else {
-                resetBuffer(buffer);
+                recycleBuffer(buffer);
                 return;
             }
         }
-        // 如果没有写完也增加计数，留到后面再写
+        // 如果没有写完留到后面再写
         channel.addBuffer(buffer);
     }
 
-    private void resetBuffer(WritableBuffer buffer) {
+    private void recycleBuffer(WritableBuffer buffer) {
         if (buffer != null) {
             buffer.recycle();
-        }
-    }
-
-    private void resetBuffer(List<WritableBuffer> buffers) {
-        if (buffers != null) {
-            for (WritableBuffer buffer : buffers)
-                buffer.recycle();
         }
     }
 
@@ -342,9 +335,9 @@ public class NioEventLoop implements NetEventLoop {
         ByteBuffer[] buffers = new ByteBuffer[list.size()];
         Iterator<WritableBuffer> iterator = list.iterator();
         while (iterator.hasNext()) {
-            WritableBuffer netBuffer = iterator.next();
-            remaining += netBuffer.getByteBuffer().remaining();
-            buffers[index++] = netBuffer.getByteBuffer();
+            WritableBuffer buffer = iterator.next();
+            remaining += buffer.getByteBuffer().remaining();
+            buffers[index++] = buffer.getByteBuffer();
         }
         try {
             while (remaining > 0) {
@@ -360,13 +353,7 @@ public class NioEventLoop implements NetEventLoop {
         } catch (IOException e) {
             handleWriteException(e, key);
         }
-
-        iterator = list.iterator();
-        while (iterator.hasNext()) {
-            WritableBuffer netBuffer = iterator.next();
-            netBuffer.recycle();
-            iterator.remove();
-        }
+        NioWritableChannel.recycleBuffers(list);
     }
 
     private boolean write(SelectionKey key, SocketChannel channel, WritableBuffer buffer) {
@@ -388,13 +375,13 @@ public class NioEventLoop implements NetEventLoop {
                     logger.debug(("total written bytes: " + totalWrittenBytes));
                 }
             }
-            resetBuffer(buffer);
+            recycleBuffer(buffer);
             // 还是要检测key是否是有效的，否则会抛CancelledKeyException
             if (key.isValid() && (key.interestOps() & SelectionKey.OP_WRITE) != 0) {
                 key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
             }
         } catch (IOException e) {
-            resetBuffer(buffer);
+            recycleBuffer(buffer);
             handleWriteException(e, key);
         }
         return true;
@@ -456,7 +443,7 @@ public class NioEventLoop implements NetEventLoop {
         if (channel == null || !channels.containsKey(channel)) {
             return;
         }
-        resetBuffer(channel.getBuffers());
+        NioWritableChannel.recycleBuffers(channel.getBuffers());
         SelectionKey key = channel.getSelectionKey();
         if (key != null && key.isValid())
             key.cancel();
