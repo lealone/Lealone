@@ -250,7 +250,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
                 }
             }
             try {
-                currentSession = (InternalSession) c.getSession();
+                currentSession = c.getSession();
                 c.run();
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {

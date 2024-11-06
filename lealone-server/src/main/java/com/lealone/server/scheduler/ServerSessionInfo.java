@@ -12,6 +12,7 @@ import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.server.AsyncServerConnection;
 import com.lealone.sql.PreparedSQLStatement;
@@ -121,7 +122,7 @@ public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
     }
 
     private void runTask(AsyncTask task) {
-        ServerSession old = (ServerSession) scheduler.getCurrentSession();
+        Session old = scheduler.getCurrentSession();
         scheduler.setCurrentSession(session);
         try {
             task.run();

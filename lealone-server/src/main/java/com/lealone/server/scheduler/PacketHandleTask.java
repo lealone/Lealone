@@ -5,6 +5,8 @@
  */
 package com.lealone.server.scheduler;
 
+import java.sql.SQLException;
+
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.session.ServerSession;
@@ -44,7 +46,12 @@ public class PacketHandleTask extends LinkableTask {
             }
         } catch (Throwable e) {
             String message = "Failed to handle packet, packetId: {}, packetType: {}, sessionId: {}";
-            logger.error(message, e, packetId, packet.getType(), sessionId);
+            if (e.getCause() instanceof SQLException) {
+                if (logger.isDebugEnabled())
+                    logger.debug(message, e, packetId, packet.getType(), sessionId);
+            } else {
+                logger.error(message, e, packetId, packet.getType(), sessionId);
+            }
             conn.sendError(session, packetId, e);
         }
     }
