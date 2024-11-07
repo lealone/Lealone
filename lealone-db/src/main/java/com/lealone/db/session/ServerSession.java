@@ -7,7 +7,6 @@ package com.lealone.db.session;
 
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -134,6 +133,7 @@ public class ServerSession extends SessionBase implements InternalSession {
     private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
 
     private ArrayList<Connection> nestedConnections;
+    private ArrayList<ServerSession> nestedSessions;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -700,15 +700,34 @@ public class ServerSession extends SessionBase implements InternalSession {
                         else
                             conn.rollback();
                     }
-                } catch (SQLException e) {
+                } catch (Exception e) {
                 } finally {
                     try {
                         conn.close();
-                    } catch (SQLException e) {
+                    } catch (Exception e) {
                     }
                 }
             }
             nestedConnections = null;
+        }
+        if (nestedSessions != null) {
+            for (ServerSession s : nestedSessions) {
+                try {
+                    if (!isAutoCommit()) {
+                        if (commit)
+                            s.commit();
+                        else
+                            s.rollback();
+                    }
+                } catch (Exception e) {
+                } finally {
+                    try {
+                        s.close();
+                    } catch (Exception e) {
+                    }
+                }
+            }
+            nestedSessions = null;
         }
     }
 
@@ -997,15 +1016,30 @@ public class ServerSession extends SessionBase implements InternalSession {
     public Connection createNestedConnection(boolean columnList) {
         String url = columnList ? Constants.CONN_URL_COLUMNLIST : Constants.CONN_URL_INTERNAL;
         // 使用新session
-        ServerSession session = database.createSession(getUser(), getScheduler());
-        session.setAutoCommit(isAutoCommit());
+        ServerSession session = createNestedSession(false);
         Connection conn = createConnection(session, getUser().getName(), url);
         if (nestedConnections == null) {
             nestedConnections = new ArrayList<>();
         }
         nestedConnections.add(conn);
-        session.getTransaction().setParentTransaction(getTransaction());
         return conn;
+    }
+
+    public ServerSession createNestedSession() {
+        return createNestedSession(true);
+    }
+
+    private ServerSession createNestedSession(boolean add) {
+        ServerSession session = database.createSession(getUser(), getScheduler());
+        session.setAutoCommit(isAutoCommit());
+        if (add) {
+            if (nestedSessions == null) {
+                nestedSessions = new ArrayList<>();
+            }
+            nestedSessions.add(session);
+        }
+        session.getTransaction().setParentTransaction(getTransaction());
+        return session;
     }
 
     public static Connection createConnection(ServerSession session, String user, String url) {
