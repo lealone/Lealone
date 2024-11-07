@@ -35,7 +35,7 @@ class StatementListPacketHandlers {
                 causeRef.set(ar.getCause());
             if (count.decrementAndGet() == 0) {
                 if (causeRef.get() != null) {
-                    task.conn.sendError(task.session, task.packetId, causeRef.get());
+                    task.sendError(causeRef.get());
                 } else {
                     sendResult(task, packet, resultRef.get());
                 }
@@ -70,11 +70,11 @@ class StatementListPacketHandlers {
                                     handleAsyncResult(task, packet, ar, count, resultRef, causeRef);
                                 });
                             }
-                            task.si.submitYieldableCommand(task.packetId, yieldable);
+                            task.submitYieldableCommand(yieldable);
                         }
                     };
                     count.incrementAndGet();
-                    task.si.submitTasks(subTask);
+                    task.si().submitTask(subTask, true);
                 }
             }
             PreparedSQLStatement.Yieldable<?> yieldable = statementList.getFirstStatement()
@@ -86,7 +86,7 @@ class StatementListPacketHandlers {
                             causeRef.set(ar.getCause());
                         }
                     });
-            task.si.submitYieldableCommand(task.packetId, yieldable);
+            task.submitYieldableCommand(yieldable);
         }
     }
 
@@ -98,9 +98,9 @@ class StatementListPacketHandlers {
                 causeRef.set(ar.getCause());
             if (count.decrementAndGet() == 0) {
                 if (causeRef.get() != null) {
-                    task.conn.sendError(task.session, task.packetId, causeRef.get());
+                    task.sendError(causeRef.get());
                 } else {
-                    task.conn.sendResponse(task, createAckPacket(task, resultRef.get()));
+                    task.sendResponse(createAckPacket(task, resultRef.get()));
                 }
             }
         }
@@ -130,11 +130,11 @@ class StatementListPacketHandlers {
                                     handleAsyncResult(task, ar, count, resultRef, causeRef);
                                 });
                             }
-                            task.si.submitYieldableCommand(task.packetId, yieldable);
+                            task.submitYieldableCommand(yieldable);
                         }
                     };
                     count.incrementAndGet();
-                    task.si.submitTasks(subTask);
+                    task.si().submitTask(subTask, true);
                 }
             }
 
@@ -147,7 +147,7 @@ class StatementListPacketHandlers {
                             causeRef.set(ar.getCause());
                         }
                     });
-            task.si.submitYieldableCommand(task.packetId, yieldable);
+            task.submitYieldableCommand(yieldable);
         }
     }
 }

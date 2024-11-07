@@ -59,12 +59,12 @@ public class PacketHandlers {
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
                     int updateCount = ar.getResult();
-                    task.conn.sendResponse(task, createAckPacket(task, updateCount));
+                    task.sendResponse(createAckPacket(task, updateCount));
                 } else {
-                    task.conn.sendError(task.session, task.packetId, ar.getCause());
+                    task.sendError(ar.getCause());
                 }
             });
-            task.si.submitYieldableCommand(task.packetId, yieldable);
+            task.submitYieldableCommand(yieldable);
         }
 
         protected Packet createAckPacket(PacketHandleTask task, int updateCount) {
@@ -106,10 +106,10 @@ public class PacketHandlers {
                             Result result = ar.getResult();
                             sendResult(task, packet, result);
                         } else {
-                            task.conn.sendError(task.session, task.packetId, ar.getCause());
+                            task.sendError(ar.getCause());
                         }
                     });
-            task.si.submitYieldableCommand(task.packetId, yieldable);
+            task.submitYieldableCommand(yieldable);
         }
 
         protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result) {
@@ -119,9 +119,9 @@ public class PacketHandlers {
                 int fetch = packet.fetchSize;
                 if (rowCount != -1)
                     fetch = Math.min(rowCount, packet.fetchSize);
-                task.conn.sendResponse(task, createAckPacket(task, result, rowCount, fetch));
+                task.sendResponse(createAckPacket(task, result, rowCount, fetch));
             } catch (Exception e) {
-                task.conn.sendError(task.session, task.packetId, e);
+                task.sendError(e);
             }
         }
 

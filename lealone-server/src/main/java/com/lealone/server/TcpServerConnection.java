@@ -85,8 +85,8 @@ public class TcpServerConnection extends AsyncServerConnection {
                 Packet packet = decoder.decode(in, session.getProtocolVersion());
                 @SuppressWarnings("unchecked")
                 PacketHandler<Packet> handler = PacketHandlers.getHandler(packetType);
-                PacketHandleTask task = new PacketHandleTask(this, packetId, si, packet, handler);
-                si.submitTask(task);
+                PacketHandleTask task = new PacketHandleTask(packetId, si, packet, handler);
+                si.submitTask(task, true);
             } else {
                 logger.warn("Unknow packet type: {}", packetType);
             }

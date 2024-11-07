@@ -40,7 +40,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
             int size = packet.size;
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            task.si.updateLastActiveTime();
+            task.si().updateLastActiveTime();
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 final String sql = packet.batchStatements.get(i);
@@ -51,7 +51,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                         submitYieldableCommand(task, command, results, count, index, autoCommit);
                     }
                 };
-                task.si.submitTask(subTask, false);
+                task.si().submitTask(subTask, false);
             }
             return null;
         }
@@ -82,13 +82,12 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                         for (int i = 0; i < size; i++) {
                             results[i] = result;
                         }
-                        task.conn.sendResponse(task,
-                                new BatchStatementUpdateAck(results.length, results));
+                        task.sendResponse(new BatchStatementUpdateAck(results.length, results));
                     });
-                    task.si.submitYieldableCommand(task.packetId, yieldable);
+                    task.submitYieldableCommand(yieldable);
                 }
             };
-            task.si.submitTask(subTask);
+            task.si().submitTask(subTask, true);
             return null;
         }
 
@@ -102,7 +101,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
             List<? extends CommandParameter> params = command.getParameters();
             int[] results = new int[size];
             AtomicInteger count = new AtomicInteger(size);
-            task.si.updateLastActiveTime();
+            task.si().updateLastActiveTime();
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 final Value[] values = packet.batchParameterValues.get(i);
@@ -117,7 +116,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                         submitYieldableCommand(task, command, results, count, index, autoCommit);
                     }
                 };
-                task.si.submitTask(subTask, false);
+                task.si().submitTask(subTask, false);
             }
             return null;
         }
@@ -138,14 +137,13 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 if (autoCommit) {
                     task.session.asyncCommit(ar2 -> {
                         task.session.setAutoCommit(true);
-                        task.conn.sendResponse(task,
-                                new BatchStatementUpdateAck(results.length, results));
+                        task.sendResponse(new BatchStatementUpdateAck(results.length, results));
                     }, null);
                 } else {
-                    task.conn.sendResponse(task, new BatchStatementUpdateAck(results.length, results));
+                    task.sendResponse(new BatchStatementUpdateAck(results.length, results));
                 }
             }
         });
-        task.si.submitYieldableCommand(task.packetId, yieldable);
+        task.submitYieldableCommand(yieldable);
     }
 }

@@ -14,7 +14,7 @@ import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
-import com.lealone.server.AsyncServerConnection;
+import com.lealone.server.TcpServerConnection;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 
@@ -24,7 +24,7 @@ public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
     private static final Logger logger = LoggerFactory.getLogger(ServerSessionInfo.class);
 
     private final InternalScheduler scheduler;
-    private final AsyncServerConnection conn;
+    private final TcpServerConnection conn;
 
     private final ServerSession session;
     private final int sessionId; // 客户端的sessionId
@@ -35,7 +35,7 @@ public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
     // task统一由scheduler调度执行
     private final LinkableList<LinkableTask> tasks = new LinkableList<>();
 
-    public ServerSessionInfo(InternalScheduler scheduler, AsyncServerConnection conn,
+    public ServerSessionInfo(InternalScheduler scheduler, TcpServerConnection conn,
             ServerSession session, int sessionId, int sessionTimeout) {
         this.scheduler = scheduler;
         this.conn = conn;
@@ -53,6 +53,10 @@ public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
 
     public void updateLastActiveTime() {
         lastActiveTime = System.currentTimeMillis();
+    }
+
+    public TcpServerConnection getConnection() {
+        return conn;
     }
 
     @Override
@@ -81,22 +85,12 @@ public class ServerSessionInfo extends LinkableBase<ServerSessionInfo>
         addTask(ltask);
     }
 
-    public void submitTask(LinkableTask task) {
-        submitTask(task, true);
-    }
-
     public void submitTask(LinkableTask task, boolean updateTime) {
         if (updateTime)
             updateLastActiveTime();
         if (canHandleNextSessionTask()) // 如果可以直接处理下一个task就不必加到队列了
             runTask(task);
         else
-            addTask(task);
-    }
-
-    public void submitTasks(LinkableTask... tasks) {
-        updateLastActiveTime();
-        for (LinkableTask task : tasks)
             addTask(task);
     }
 

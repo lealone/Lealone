@@ -48,7 +48,7 @@ class SessionPacketHandlers extends PacketHandlers {
     private static class Close implements PacketHandler<SessionClose> {
         @Override
         public Packet handle(PacketHandleTask task, SessionClose packet) {
-            task.conn.closeSession(task.packetId, task.sessionId);
+            task.closeSession();
             return null;
         }
     }
