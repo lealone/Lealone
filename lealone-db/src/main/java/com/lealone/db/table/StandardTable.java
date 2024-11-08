@@ -6,6 +6,7 @@
 package com.lealone.db.table;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -79,7 +80,7 @@ public class StandardTable extends Table {
     private DataHandler dataHandler;
     private final boolean useTableLobStorage;
 
-    private final IndexOperator indexOperator;
+    private final ArrayList<IndexOperator> indexOperators = Utils.newSmallArrayList();
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -108,9 +109,6 @@ public class StandardTable extends Table {
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
         indexesSync.add(primaryIndex);
-
-        InternalScheduler scheduler = data.session.getScheduler();
-        indexOperator = new IndexOperator(scheduler, this);
     }
 
     public String getMapName() {
@@ -300,10 +298,12 @@ public class StandardTable extends Table {
         index.setTemporary(isTemporary());
         // 先加到indexesSync或indexesAsync中，新记录可以直接写入
         if (!indexType.isDelegate()) {
-            if (indexType.isUnique())
+            if (indexType.isUnique()) {
                 indexesSync = copyOnAdd(indexesSync, index);
-            else
+            } else {
                 indexesAsync = copyOnAdd(indexesAsync, index);
+                addIndexOperator(session, index);
+            }
         }
         // 可以边构建边查询
         if (index.needRebuild() && getRowCountApproximation() > 0) {
@@ -321,6 +321,17 @@ public class StandardTable extends Table {
         indexes = copyOnAdd(indexes, index); // 包含Delegate索引
         setModified();
         return index;
+    }
+
+    private void addIndexOperator(ServerSession session, Index index) {
+        InternalScheduler scheduler = (InternalScheduler) session.getScheduler().getSchedulerFactory()
+                .getScheduler();
+        IndexOperator operator = new IndexOperator(scheduler, this, index);
+        indexOperators.add(operator);
+    }
+
+    public List<IndexOperator> getIndexOperators() {
+        return indexOperators;
     }
 
     private StandardDelegateIndex createDelegateIndex(int indexId, String indexName, IndexType indexType,
@@ -362,7 +373,7 @@ public class StandardTable extends Table {
             }
             if (count.decrementAndGet() == 0 && !isFailed.get()) {
                 if (io != null)
-                    indexOperator.addIndexOperation(session, io);
+                    IndexOperator.addIndexOperation(session, this, io);
                 ac.setAsyncResult(ar);
                 analyzeIfRequired(session);
             }
@@ -423,7 +434,7 @@ public class StandardTable extends Table {
 
         final IndexOperation io;
         if (isSync && !indexesAsync.isEmpty()) {
-            io = indexOperator.addRowLazy(row.getKey(), row.getColumns());
+            io = IndexOperator.addRowLazy(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         } else {
             io = null;
@@ -441,7 +452,7 @@ public class StandardTable extends Table {
                 if (ar.isSucceeded()) {
                     if (count.decrementAndGet() == 0) {
                         if (io != null)
-                            indexOperator.addIndexOperation(session, io);
+                            IndexOperator.addIndexOperation(session, this, io);
                         ac.setAsyncResult(ar);
                         analyzeIfRequired(session);
                         return;
@@ -491,7 +502,7 @@ public class StandardTable extends Table {
 
         IndexOperation io = null;
         if (isSync && !indexesAsync.isEmpty()) {
-            io = indexOperator.updateRowLazy(oldRow.getKey(), newRow.getKey(), oldColumns,
+            io = IndexOperator.updateRowLazy(oldRow.getKey(), newRow.getKey(), oldColumns,
                     newRow.getColumns(), updateColumns);
             io.setTransaction(session.getTransaction());
         }
@@ -534,7 +545,7 @@ public class StandardTable extends Table {
 
         IndexOperation io = null;
         if (isSync && !indexesAsync.isEmpty()) {
-            io = indexOperator.removeRowLazy(row.getKey(), row.getColumns());
+            io = IndexOperator.removeRowLazy(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         }
 

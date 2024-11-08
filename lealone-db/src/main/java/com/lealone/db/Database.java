@@ -1832,7 +1832,8 @@ public class Database extends DbObjectBase implements DataHandler {
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null) {
             setLobStorage(storageEngine.getLobStorage(this, storage));
-            transactionEngine.addGcTask((GcTask) lobStorage);
+            if (lobStorage instanceof GcTask)
+                transactionEngine.addGcTask((GcTask) lobStorage);
         }
         return storage;
     }

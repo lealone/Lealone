@@ -5,61 +5,89 @@
  */
 package com.lealone.db.index;
 
-import java.util.concurrent.LinkedTransferQueue;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.db.Database;
 import com.lealone.db.async.AsyncPeriodicTask;
+import com.lealone.db.link.LinkableBase;
+import com.lealone.db.link.LinkableList;
 import com.lealone.db.row.Row;
 import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerTaskManager;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.StandardTable;
 import com.lealone.db.value.Value;
 import com.lealone.transaction.Transaction;
 
-public class IndexOperator implements Runnable {
+public class IndexOperator extends SchedulerTaskManager implements Runnable {
 
     private final InternalScheduler scheduler;
     private final StandardTable table;
+    private final Index index;
     private final ServerSession session;
     private final AsyncPeriodicTask task;
 
-    private final LinkedTransferQueue<IndexOperation> indexOperations = new LinkedTransferQueue<>();
+    private final LinkableList<IndexOperation>[] pendingIosArray;
     private final AtomicLong indexOperationSize = new AtomicLong(0);
 
-    public IndexOperator(InternalScheduler scheduler, StandardTable table) {
+    @SuppressWarnings("unchecked")
+    public IndexOperator(InternalScheduler scheduler, StandardTable table, Index index) {
         this.scheduler = scheduler;
         this.table = table;
+        this.index = index;
         Database db = table.getDatabase();
         session = db.createSession(db.getSystemUser(), scheduler);
         session.setUndoLogEnabled(false);
         task = new AsyncPeriodicTask(0, 100, this);
         scheduler.addPeriodicTask(task);
+        pendingIosArray = new LinkableList[scheduler.getSchedulerFactory().getSchedulerCount()];
     }
 
-    public IndexOperation addRowLazy(long rowKey, Value[] columns) {
-        return new AIO(rowKey, columns);
-    }
-
-    public IndexOperation updateRowLazy(long oldRowKey, long newRowKey, Value[] oldColumns,
-            Value[] newColumns, int[] updateColumns) {
-        return new UIO(oldRowKey, newRowKey, oldColumns, newColumns, updateColumns);
-    }
-
-    public IndexOperation removeRowLazy(long rowKey, Value[] columns) {
-        return new RIO(rowKey, columns);
-    }
-
-    public void addIndexOperation(ServerSession session, IndexOperation io) {
-        if (io.rowKey == 0)
-            io.rowKey = session.getLastIdentity();
-        indexOperations.add(io);
+    private void addIndexOperation(InternalScheduler currentScheduler, IndexOperation io) {
+        LinkableList<IndexOperation> pendingIos = pendingIosArray[currentScheduler.getId()];
+        if (pendingIos == null) {
+            pendingIos = new LinkableList<>();
+            pendingIosArray[currentScheduler.getId()] = pendingIos;
+            currentScheduler.addTaskManager(this);
+        }
+        pendingIos.add(io);
         indexOperationSize.incrementAndGet();
+        if (currentScheduler != scheduler)
+            scheduler.wakeUp();
+    }
+
+    @Override
+    public boolean gcCompletedTasks(InternalScheduler scheduler) {
+        LinkableList<IndexOperation> pendingIos = pendingIosArray[scheduler.getId()];
+        if (pendingIos == null)
+            return true;
+        else if (pendingIos.isEmpty()) {
+            pendingIosArray[scheduler.getId()] = null;
+            return true;
+        }
+        IndexOperation io = pendingIos.getHead();
+        while (io != null && io.isCompleted()) {
+            io = io.getNext();
+            pendingIos.decrementSize();
+            pendingIos.setHead(io);
+        }
+        if (pendingIos.getHead() == null) {
+            pendingIos.setTail(null);
+            pendingIosArray[scheduler.getId()] = null;
+            return true;
+        }
+        return false;
     }
 
     private void cancelTask() {
         task.cancel();
         scheduler.removePeriodicTask(task);
+        for (int i = 0; i < pendingIosArray.length; i++)
+            pendingIosArray[i] = null;
+        indexOperationSize.set(0);
     }
 
     @Override
@@ -70,33 +98,54 @@ public class IndexOperator implements Runnable {
         }
         if (indexOperationSize.get() <= 0)
             return;
+
+        int count = 0;
         try {
-            int i = 0;
-            while (true) {
-                IndexOperation io = indexOperations.peek();
-                if (io == null)
-                    return;
-                int status = io.getStatus();
-                if (status == 0)
-                    return; // 未提交，直接返回
-
-                indexOperations.poll();
-                if (status < 0) // 已经回滚，直接废弃
-                    continue;
-
-                session.getTransaction();
-                indexOperationSize.decrementAndGet();
-                try {
-                    io.run(table, session);
-                } catch (Exception e) {
-                    if (table.isInvalid()) {
-                        cancelTask();
+            AtomicInteger index = new AtomicInteger(0);
+            Scheduler[] schedulers = scheduler.getSchedulerFactory().getSchedulers();
+            int schedulerCount = pendingIosArray.length;
+            while (indexOperationSize.get() > 0) {
+                IndexOperation[] lastIos = new IndexOperation[schedulerCount];
+                IndexOperation[] ios = new IndexOperation[schedulerCount];
+                outer: for (int i = 0; i < schedulerCount; i++) {
+                    LinkableList<IndexOperation> pendingIos = pendingIosArray[i];
+                    if (pendingIos == null)
+                        continue;
+                    IndexOperation io = pendingIos.getHead();
+                    while (io != null) {
+                        if (io.isCompleted()) {
+                            io = io.getNext();
+                            continue;
+                        }
+                        int status = io.getStatus();
+                        if (status == 0)
+                            continue outer; // 未提交，不能进行后续处理
+                        else if (status < 0) {
+                            io.setCompleted(true); // 已经回滚，直接废弃
+                            continue;
+                        }
+                        ios[i] = io;
+                        break;
                     }
-                    break;
                 }
-                if ((++i & 127) == 0) {
-                    if (scheduler.yieldIfNeeded(null))
-                        return;
+                // 找出提交时间戳最小的IndexOperation
+                IndexOperation io = nextIndexOperation(ios, index);
+                while (io != null) {
+                    run(io);
+                    int i = index.get();
+                    lastIos[i] = io;
+                    ios[i] = io.getNext();
+                    if ((++count & 127) == 0) {
+                        if (scheduler.yieldIfNeeded(null))
+                            return;
+                    }
+                    io = nextIndexOperation(ios, index);
+                }
+                for (int i = 0; i < schedulerCount; i++) {
+                    if (lastIos[i] == null) {
+                        continue;
+                    }
+                    schedulers[i].wakeUp();
                 }
             }
         } finally {
@@ -104,7 +153,65 @@ public class IndexOperator implements Runnable {
         }
     }
 
-    public static abstract class IndexOperation {
+    private IndexOperation nextIndexOperation(IndexOperation[] ios, AtomicInteger index) {
+        IndexOperation minIo = null;
+        long minCommitTimestamp = Long.MAX_VALUE;
+        for (int i = 0, len = ios.length; i < len; i++) {
+            IndexOperation io = ios[i];
+            while (io != null) {
+                if (io.isCompleted()) {
+                    io = io.getNext();
+                    ios[i] = io;
+                    continue;
+                }
+                if (io.getTransaction().getCommitTimestamp() < minCommitTimestamp) {
+                    minCommitTimestamp = io.getTransaction().getCommitTimestamp();
+                    minIo = io;
+                    index.set(i);
+                }
+                break;
+            }
+        }
+        return minIo;
+    }
+
+    private void run(IndexOperation io) {
+        session.getTransaction();
+        try {
+            io.run(table, index, session);
+        } catch (Exception e) {
+            if (table.isInvalid()) {
+                cancelTask();
+            }
+        } finally {
+            io.setCompleted(true);
+            indexOperationSize.decrementAndGet();
+        }
+    }
+
+    public static void addIndexOperation(ServerSession session, StandardTable table, IndexOperation io) {
+        if (io.rowKey == 0)
+            io.rowKey = session.getLastIdentity();
+        List<IndexOperator> indexOperators = table.getIndexOperators();
+        for (int i = 0, size = indexOperators.size(); i < size; i++) {
+            indexOperators.get(i).addIndexOperation(session.getScheduler(), (i == 0 ? io : io.copy()));
+        }
+    }
+
+    public static IndexOperation addRowLazy(long rowKey, Value[] columns) {
+        return new AIO(rowKey, columns);
+    }
+
+    public static IndexOperation updateRowLazy(long oldRowKey, long newRowKey, Value[] oldColumns,
+            Value[] newColumns, int[] updateColumns) {
+        return new UIO(oldRowKey, newRowKey, oldColumns, newColumns, updateColumns);
+    }
+
+    public static IndexOperation removeRowLazy(long rowKey, Value[] columns) {
+        return new RIO(rowKey, columns);
+    }
+
+    public static abstract class IndexOperation extends LinkableBase<IndexOperation> {
 
         long rowKey; // addRow的场景需要回填
         final Value[] columns;
@@ -134,7 +241,25 @@ public class IndexOperator implements Runnable {
             return transaction.getStatus(savepointId);
         }
 
-        public abstract void run(StandardTable table, ServerSession session);
+        private boolean completed;
+
+        public boolean isCompleted() {
+            return completed;
+        }
+
+        public void setCompleted(boolean completed) {
+            this.completed = completed;
+        }
+
+        public abstract void run(StandardTable table, Index index, ServerSession session);
+
+        public abstract IndexOperation copy();
+
+        public IndexOperation copy(IndexOperation io) {
+            io.transaction = transaction;
+            io.savepointId = savepointId;
+            return io;
+        }
     }
 
     private static class AIO extends IndexOperation {
@@ -144,9 +269,16 @@ public class IndexOperator implements Runnable {
         }
 
         @Override
-        public void run(StandardTable table, ServerSession session) {
-            table.addRowAsync(session, new Row(rowKey, columns)).onComplete(ar -> {
+        public void run(StandardTable table, Index index, ServerSession session) {
+            index.add(session, new Row(rowKey, columns)).onComplete(ar -> {
             });
+            // table.addRowAsync(session, new Row(rowKey, columns)).onComplete(ar -> {
+            // });
+        }
+
+        @Override
+        public IndexOperation copy() {
+            return super.copy(new AIO(rowKey, columns));
         }
     }
 
@@ -165,10 +297,18 @@ public class IndexOperator implements Runnable {
         }
 
         @Override
-        public void run(StandardTable table, ServerSession session) {
-            table.updateRowAsync(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns),
+        public void run(StandardTable table, Index index, ServerSession session) {
+            index.update(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns), oldColumns,
                     updateColumns, true).onComplete(ar -> {
                     });
+            // table.updateRowAsync(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns),
+            // updateColumns, true).onComplete(ar -> {
+            // });
+        }
+
+        @Override
+        public IndexOperation copy() {
+            return super.copy(new UIO(oldRowKey, rowKey, oldColumns, columns, updateColumns));
         }
     }
 
@@ -179,9 +319,16 @@ public class IndexOperator implements Runnable {
         }
 
         @Override
-        public void run(StandardTable table, ServerSession session) {
-            table.removeRowAsync(session, new Row(rowKey, columns), true).onComplete(ar -> {
+        public void run(StandardTable table, Index index, ServerSession session) {
+            index.remove(session, new Row(rowKey, columns), columns, true).onComplete(ar -> {
             });
+            // table.removeRowAsync(session, new Row(rowKey, columns), true).onComplete(ar -> {
+            // });
+        }
+
+        @Override
+        public IndexOperation copy() {
+            return super.copy(new RIO(rowKey, columns));
         }
     }
 }

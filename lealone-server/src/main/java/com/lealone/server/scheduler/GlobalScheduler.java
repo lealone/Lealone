@@ -70,6 +70,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
             runPageOperationTasks();
             runSessionTasks();
             runPendingTransactions();
+            gcCompletedTasks();
             executeNextStatement();
             runPeriodicTasks();
             runEventLoop();
@@ -243,6 +244,7 @@ public class GlobalScheduler extends InternalSchedulerBase implements InternalSc
                 runPageOperationTasks();
                 runSessionTasks();
                 runPendingTransactions();
+                gcCompletedTasks();
                 runMiscTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {

@@ -477,4 +477,9 @@ public class AOTransaction implements Transaction {
         else
             return -1;
     }
+
+    @Override
+    public long getCommitTimestamp() {
+        return commitTimestamp;
+    }
 }

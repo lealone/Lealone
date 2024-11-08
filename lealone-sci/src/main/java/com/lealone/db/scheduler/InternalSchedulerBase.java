@@ -169,6 +169,48 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
         return pendingTransactions.getHead();
     }
 
+    // --------------------- 跟 SchedulerTaskManager 相关 ---------------------
+
+    protected final LinkableList<SchedulerTaskManager> taskManagers = new LinkableList<>();
+
+    protected void gcCompletedTasks() {
+        if (taskManagers.isEmpty())
+            return;
+        while (taskManagers.getHead() != null) {
+            int size = taskManagers.size();
+            SchedulerTaskManager task = taskManagers.getHead();
+            SchedulerTaskManager last = null;
+            while (task != null) {
+                try {
+                    if (!task.gcCompletedTasks(this)) {
+                        last = task;
+                        task = task.next;
+                        continue;
+                    }
+                    task = task.next;
+                    if (last == null)
+                        taskManagers.setHead(task);
+                    else
+                        last.next = task;
+                } catch (Throwable e) {
+                    getLogger().warn("Failed to run task: " + task, e);
+                }
+                taskManagers.decrementSize();
+            }
+            if (taskManagers.getHead() == null)
+                taskManagers.setTail(null);
+            else
+                taskManagers.setTail(last);
+            if (size == taskManagers.size())
+                break;
+        }
+    }
+
+    @Override
+    public void addTaskManager(SchedulerTaskManager taskManager) {
+        taskManagers.add(taskManager);
+    }
+
     // --------------------- 实现 SQLStatement 相关的代码 ---------------------
 
     @Override

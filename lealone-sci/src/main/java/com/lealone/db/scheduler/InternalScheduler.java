@@ -50,4 +50,6 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
     void wakeUpWaitingSchedulers(boolean reset);
 
     boolean yieldIfNeeded(PreparedSQLStatement current);
+
+    void addTaskManager(SchedulerTaskManager taskManager);
 }

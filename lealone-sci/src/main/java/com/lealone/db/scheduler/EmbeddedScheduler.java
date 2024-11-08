@@ -67,6 +67,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
             runSessionTasks();
             runPageOperationTasks();
             runPendingTransactions();
+            gcCompletedTasks();
             executeNextStatement();
             runPeriodicTasks();
             doAwait();
@@ -248,6 +249,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
             if (c == null) {
                 runPageOperationTasks();
                 runPendingTransactions();
+                gcCompletedTasks();
                 runMiscTasks();
                 runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
@@ -256,7 +258,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
                 }
             }
             try {
-                currentSession = (InternalSession) c.getSession();
+                currentSession = c.getSession();
                 c.run();
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {
