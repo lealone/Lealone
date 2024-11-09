@@ -12,6 +12,7 @@ import java.util.concurrent.LinkedTransferQueue;
 import com.lealone.db.async.Future;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.IndexColumn;
+import com.lealone.db.index.IndexOperator;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.row.Row;
 import com.lealone.db.row.SearchRow;
@@ -64,6 +65,10 @@ public class NonUniqueHashIndex extends HashIndex<LinkedTransferQueue<Long>> {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        IndexOperator indexOperator = getIndexOperator();
+        if (indexOperator != null && indexOperator.hasPendingIndexOperation()) {
+            indexOperator.run(session);
+        }
         checkSearchKey(first, last);
         LinkedTransferQueue<Long> rowKeys = rows.get(getIndexKey(first));
         if (rowKeys == null)

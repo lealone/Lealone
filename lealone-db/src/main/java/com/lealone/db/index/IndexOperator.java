@@ -10,9 +10,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.db.Database;
+import com.lealone.db.DbObjectType;
 import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
+import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.row.Row;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
@@ -32,6 +34,7 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
 
     private final LinkableList<IndexOperation>[] pendingIosArray;
     private final AtomicLong indexOperationSize = new AtomicLong(0);
+    private final DbObjectLock lock = new DbObjectLock(DbObjectType.INDEX);
 
     @SuppressWarnings("unchecked")
     public IndexOperator(InternalScheduler scheduler, StandardTable table, Index index) {
@@ -44,6 +47,10 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
         task = new AsyncPeriodicTask(0, 100, this);
         scheduler.addPeriodicTask(task);
         pendingIosArray = new LinkableList[scheduler.getSchedulerFactory().getSchedulerCount()];
+    }
+
+    public boolean hasPendingIndexOperation() {
+        return indexOperationSize.get() > 0;
     }
 
     private void addIndexOperation(InternalScheduler currentScheduler, IndexOperation io) {
@@ -92,13 +99,21 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
 
     @Override
     public void run() {
+        run(session);
+    }
+
+    public void run(ServerSession session) {
+        if (indexOperationSize.get() <= 0)
+            return;
+        if (!lock.tryExclusiveLock(session)) {
+            if (session != this.session)
+                throw DbObjectLock.LOCKED_EXCEPTION;
+            return;
+        }
         if (table.isInvalid()) { // 比如已经drop了
             cancelTask();
             return;
         }
-        if (indexOperationSize.get() <= 0)
-            return;
-
         int count = 0;
         try {
             AtomicInteger index = new AtomicInteger(0);
@@ -149,7 +164,12 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
                 }
             }
         } finally {
-            session.asyncCommit();
+            if (session == this.session) {
+                session.asyncCommit();
+            } else {
+                session.removeLock(lock);
+                lock.unlockFast();
+            }
         }
     }
 

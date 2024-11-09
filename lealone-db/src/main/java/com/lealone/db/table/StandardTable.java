@@ -328,6 +328,7 @@ public class StandardTable extends Table {
                 .getScheduler();
         IndexOperator operator = new IndexOperator(scheduler, this, index);
         indexOperators.add(operator);
+        index.setIndexOperator(operator);
     }
 
     public List<IndexOperator> getIndexOperators() {

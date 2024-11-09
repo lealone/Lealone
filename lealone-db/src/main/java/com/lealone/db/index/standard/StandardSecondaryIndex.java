@@ -15,6 +15,7 @@ import com.lealone.db.async.Future;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
+import com.lealone.db.index.IndexOperator;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.result.SortOrder;
@@ -189,6 +190,10 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        IndexOperator indexOperator = getIndexOperator();
+        if (indexOperator != null && indexOperator.hasPendingIndexOperation()) {
+            indexOperator.run(session);
+        }
         IndexKey min = convertToKey(first);
         if (min != null) {
             min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);

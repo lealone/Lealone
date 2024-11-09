@@ -35,6 +35,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     protected IndexColumn[] indexColumns;
     protected Column[] columns;
     protected int[] columnIds;
+    protected IndexOperator indexOperator;
 
     /**
      * Initialize the base index.
@@ -425,5 +426,15 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public boolean isHidden() {
         return table.isHidden();
+    }
+
+    @Override
+    public IndexOperator getIndexOperator() {
+        return indexOperator;
+    }
+
+    @Override
+    public void setIndexOperator(IndexOperator indexOperator) {
+        this.indexOperator = indexOperator;
     }
 }

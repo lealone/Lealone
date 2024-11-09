@@ -262,4 +262,7 @@ public interface Index extends SchemaObject {
      */
     boolean needRebuild();
 
+    IndexOperator getIndexOperator();
+
+    void setIndexOperator(IndexOperator indexOperator);
 }
