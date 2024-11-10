@@ -57,7 +57,7 @@ public class RowType extends StandardDataType {
     @Override
     public int getMemory(Object obj) {
         Row r = (Row) obj;
-        int memory = 24;
+        int memory = 32;
         if (r == null)
             return memory;
         Value[] columns = Lock.getLockedValue(r);

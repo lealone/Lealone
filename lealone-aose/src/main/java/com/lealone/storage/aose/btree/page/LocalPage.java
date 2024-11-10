@@ -91,10 +91,14 @@ public abstract class LocalPage extends Page {
         int keyLength = keys.length;
         int keyIndex = index >= keyLength ? index - 1 : index;
         Object old = keys[keyIndex];
-        addMemory(-map.getKeyType().getMemory(old));
+        addMemory(-getKeyMemory(old));
         Object[] newKeys = new Object[keyLength - 1];
         DataUtils.copyExcept(keys, newKeys, keyLength, keyIndex);
         keys = newKeys;
+    }
+
+    protected int getKeyMemory(Object old) {
+        return map.getKeyType().getMemory(old);
     }
 
     protected abstract void recalculateMemory();

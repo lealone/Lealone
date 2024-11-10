@@ -1,3 +1,8 @@
+/*
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
+ */
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
@@ -8,20 +13,10 @@ import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.type.StorageDataType;
 
-public class RowPage extends LocalPage {
+public class RowPage extends LeafPage {
 
     public RowPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    @Override
-    public boolean isLeaf() {
-        return true;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return keys == null || keys.length == 0;
     }
 
     @Override
@@ -87,6 +82,12 @@ public class RowPage extends LocalPage {
     }
 
     @Override
+    protected int getKeyMemory(Object old) {
+        // 也用值的类型来计算
+        return map.getValueType().getMemory(old);
+    }
+
+    @Override
     public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
@@ -148,12 +149,6 @@ public class RowPage extends LocalPage {
         return newPage;
     }
 
-    /**
-     * Create a new, empty page.
-     * 
-     * @param map the map
-     * @return the new page
-     */
     public static RowPage createEmpty(BTreeMap<?, ?> map) {
         return createEmpty(map, true);
     }

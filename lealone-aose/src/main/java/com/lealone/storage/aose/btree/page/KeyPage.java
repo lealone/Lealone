@@ -1,3 +1,8 @@
+/*
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
+ */
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
@@ -8,20 +13,11 @@ import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.type.StorageDataType;
 
-public class KeyPage extends LocalPage {
+//只有key的场景，比如用来存索引的数据，索引的key就是由索引字段和rowKey组成
+public class KeyPage extends LeafPage {
 
     public KeyPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    @Override
-    public boolean isLeaf() {
-        return true;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return keys == null || keys.length == 0;
     }
 
     @Override
@@ -153,12 +149,6 @@ public class KeyPage extends LocalPage {
         return newPage;
     }
 
-    /**
-     * Create a new, empty page.
-     * 
-     * @param map the map
-     * @return the new page
-     */
     public static KeyPage createEmpty(BTreeMap<?, ?> map) {
         return createEmpty(map, true);
     }

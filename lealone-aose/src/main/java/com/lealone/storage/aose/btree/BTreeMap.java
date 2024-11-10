@@ -28,7 +28,7 @@ import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.chunk.ChunkManager;
 import com.lealone.storage.aose.btree.page.KeyPage;
-import com.lealone.storage.aose.btree.page.LeafPage;
+import com.lealone.storage.aose.btree.page.KeyValuePage;
 import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageOperations.Append;
 import com.lealone.storage.aose.btree.page.PageOperations.Put;
@@ -134,10 +134,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public Page createEmptyPage(boolean addToUsedMemory) {
         if (getKeyType().isKeyOnly())
             return KeyPage.createEmpty(this);
-        else if (getKeyType().isRowOnly())
+        else if (getKeyType().isRowOnly() && getPageStorageMode() == PageStorageMode.ROW_STORAGE)
             return RowPage.createEmpty(this);
         else
-            return LeafPage.createEmpty(this);
+            return KeyValuePage.createEmpty(this);
     }
 
     public Page getRootPage() {

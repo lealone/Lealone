@@ -28,7 +28,9 @@ public class Page implements IPage {
         switch (type) {
         case PageUtils.PAGE_TYPE_LEAF:
             return map.getKeyType().isKeyOnly() ? new KeyPage(map)
-                    : (map.getKeyType().isRowOnly() ? new RowPage(map) : new LeafPage(map));
+                    : (map.getKeyType().isRowOnly()
+                            && map.getPageStorageMode() == PageStorageMode.ROW_STORAGE ? new RowPage(map)
+                                    : new KeyValuePage(map));
         case PageUtils.PAGE_TYPE_NODE:
             return new NodePage(map);
         case PageUtils.PAGE_TYPE_COLUMN:

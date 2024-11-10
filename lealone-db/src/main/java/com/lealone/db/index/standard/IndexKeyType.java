@@ -43,7 +43,7 @@ public class IndexKeyType extends StandardDataType {
     @Override
     public int getMemory(Object obj) {
         IndexKey k = (IndexKey) obj;
-        int memory = 4;
+        int memory = 24;
         if (k == null)
             return memory;
         Value[] columns = Lock.getLockedValue(k);
