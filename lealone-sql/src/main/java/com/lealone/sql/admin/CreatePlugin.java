@@ -8,6 +8,7 @@ package com.lealone.sql.admin;
 import java.net.URL;
 import java.net.URLClassLoader;
 
+import com.lealone.common.exceptions.ConfigException;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.Utils;
@@ -77,6 +78,8 @@ public class CreatePlugin extends AdminStatement {
             URL[] urls = new URL[a.length];
             for (int i = 0; i < a.length; i++) {
                 urls[i] = Utils.toURL(a[i]);
+                if (urls[i] == null)
+                    throw new ConfigException(a[i] + " not found");
             }
             cl = new URLClassLoader(urls, Plugin.class.getClassLoader());
             try {
