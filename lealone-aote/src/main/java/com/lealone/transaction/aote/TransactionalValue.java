@@ -324,9 +324,9 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static Lockable readMeta(ByteBuffer buff, StorageDataType valueType,
-            StorageDataType oldValueType, int columnCount) {
+            StorageDataType oldValueType, Object obj, int columnCount) {
         DataUtils.readVarLong(buff); // 忽略tid
-        Object value = valueType.readMeta(buff, columnCount);
+        Object value = valueType.readMeta(buff, obj, columnCount);
         return createCommitted(value);
     }
 

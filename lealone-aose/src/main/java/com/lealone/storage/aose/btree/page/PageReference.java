@@ -19,6 +19,7 @@ import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionEngine;
 
+//内存占用32+16=48字节
 public class PageReference {
 
     private final SchedulerLock schedulerLock = new SchedulerLock();

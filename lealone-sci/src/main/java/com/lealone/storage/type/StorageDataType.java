@@ -22,9 +22,9 @@ public interface StorageDataType extends ValueDataType {
         // do nothing
     }
 
-    default Object readMeta(ByteBuffer buff, int columnCount) {
+    default Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
         // do nothing
-        return null;
+        return obj;
     }
 
     default void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
@@ -62,6 +62,9 @@ public interface StorageDataType extends ValueDataType {
 
     default boolean isRowOnly() {
         return false;
+    }
+
+    default void setRowOnly(boolean rowOnly) {
     }
 
     default StorageDataType getRawType() {

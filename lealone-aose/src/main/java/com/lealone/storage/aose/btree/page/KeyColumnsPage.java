@@ -7,20 +7,20 @@ package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.type.StorageDataType;
 
-public class KeyValuePage extends RowStorageLeafPage {
+public class KeyColumnsPage extends ColumnStorageLeafPage {
 
     private Object[] values;
 
-    public KeyValuePage(BTreeMap<?, ?> map) {
+    public KeyColumnsPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
     @Override
     protected int getPageType() {
-        return 3;
+        return 4;
     }
 
     @Override
@@ -49,24 +49,26 @@ public class KeyValuePage extends RowStorageLeafPage {
 
     @Override
     public Page copyAndInsertLeaf(int index, Object key, Object value) {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
         return copyAndInsertLeaf(index, key, value, values);
     }
 
     @Override
     public void remove(int index) {
+        if (columnPages != null)
+            markAllColumnPagesDirty();
         removeKey(index);
         values = removeValue(index, values);
         map.decrementSize(); // 递减全局计数器
     }
 
     @Override
-    protected void readValues(ByteBuffer buff, int keyLength) {
+    protected void readValues(ByteBuffer buff, int keyLength, int columnCount) {
         values = new Object[keyLength];
-        map.getValueType().read(buff, values, keyLength);
-    }
-
-    @Override
-    protected void writeValues(DataBuffer buff, int keyLength) {
-        map.getValueType().write(buff, values, keyLength);
+        StorageDataType valueType = map.getValueType();
+        for (int row = 0; row < keyLength; row++) {
+            values[row] = valueType.readMeta(buff, null, columnCount);
+        }
     }
 }

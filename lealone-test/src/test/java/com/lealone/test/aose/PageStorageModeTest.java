@@ -5,6 +5,8 @@
  */
 package com.lealone.test.aose;
 
+import java.util.HashMap;
+
 import org.junit.Test;
 
 import com.lealone.db.row.Row;
@@ -14,6 +16,7 @@ import com.lealone.db.value.ValueString;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageMapCursor;
+import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.page.PageStorageMode;
@@ -49,8 +52,9 @@ public class PageStorageModeTest extends AoseTestBase {
     private void testStorage(PageStorageMode mode, String mapName) {
         AOStorage storage = openStorage(pageSize, cacheSize);
         RowType valueType = new RowType(null, columnCount);
-        BTreeMap<Integer, Row> map = storage.openBTreeMap(mapName, null, valueType, null);
-        map.setPageStorageMode(mode);
+        HashMap<String, String> parameters = new HashMap<>();
+        parameters.put(StorageSetting.PAGE_STORAGE_MODE.name(), mode.name());
+        BTreeMap<Integer, Row> map = storage.openBTreeMap(mapName, null, valueType, parameters);
         putData(map);
 
         int firstKey = map.firstKey();

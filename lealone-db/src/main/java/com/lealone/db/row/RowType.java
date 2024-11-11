@@ -17,7 +17,6 @@ import com.lealone.db.table.Column.EnumColumn;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
-import com.lealone.db.value.ValueLong;
 
 public class RowType extends StandardDataType {
 
@@ -108,10 +107,15 @@ public class RowType extends StandardDataType {
     }
 
     @Override
-    public Object readMeta(ByteBuffer buff, int columnCount) {
+    public Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
         int version = DataUtils.readVarInt(buff);
         Value[] columns = new Value[columnCount];
-        return new Row(version, columns);
+        Row row = new Row(version, columns);
+        if (rowOnly) {
+            return merge(obj, row);
+        } else {
+            return row;
+        }
     }
 
     @Override
@@ -182,8 +186,24 @@ public class RowType extends StandardDataType {
     @Override
     public Object merge(Object fromObj, Object toObj) {
         Row row = (Row) toObj;
-        if (fromObj != null)
-            row.setKey(((ValueLong) fromObj).getLong());
+        if (fromObj instanceof PrimaryKey)
+            row.setKey(((PrimaryKey) fromObj).getKey());
+        else if (fromObj instanceof Value)
+            row.setKey(((Value) fromObj).getLong());
+        else if (fromObj instanceof Number)
+            row.setKey(((Number) fromObj).longValue());
         return row;
+    }
+
+    private boolean rowOnly;
+
+    @Override
+    public boolean isRowOnly() {
+        return rowOnly;
+    }
+
+    @Override
+    public void setRowOnly(boolean rowOnly) {
+        this.rowOnly = rowOnly;
     }
 }

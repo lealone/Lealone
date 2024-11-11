@@ -82,12 +82,11 @@ public abstract class LocalPage extends Page {
     }
 
     @Override
-    boolean needSplit() {
+    public boolean needSplit() {
         return memory > map.getBTreeStorage().getPageSize() && keys.length > 1;
     }
 
-    @Override
-    public void remove(int index) {
+    protected void removeKey(int index) {
         int keyLength = keys.length;
         int keyIndex = index >= keyLength ? index - 1 : index;
         Object old = keys[keyIndex];

@@ -5,6 +5,7 @@
  */
 package com.lealone.storage.aose.btree.page;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.scheduler.InternalScheduler;
@@ -94,6 +95,8 @@ public abstract class PageOperations {
                     pRef.unlock();
                     if (resultHandler != null) {
                         resultHandler.handle(new AsyncResult<>(t));
+                    } else {
+                        throw DbException.convert(t);
                     }
                 }
                 return PageOperationResult.SUCCEEDED;

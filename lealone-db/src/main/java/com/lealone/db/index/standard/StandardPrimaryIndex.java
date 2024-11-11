@@ -60,6 +60,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         PrimaryKeyType keyType = new PrimaryKeyType();
         RowType rowType = new RowType(database, database.getCompareMode(), sortTypes, columns.length,
                 table.getEnumColumns());
+        rowType.setRowOnly(true);
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

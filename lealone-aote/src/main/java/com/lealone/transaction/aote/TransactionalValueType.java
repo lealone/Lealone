@@ -89,8 +89,8 @@ public class TransactionalValueType implements StorageDataType {
     }
 
     @Override
-    public Object readMeta(ByteBuffer buff, int columnCount) {
-        return TransactionalValue.readMeta(buff, valueType, this, columnCount);
+    public Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
+        return TransactionalValue.readMeta(buff, valueType, this, obj, columnCount);
     }
 
     @Override
@@ -134,6 +134,16 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public boolean isKeyOnly() {
         return valueType.isKeyOnly();
+    }
+
+    @Override
+    public boolean isRowOnly() {
+        return valueType.isRowOnly();
+    }
+
+    @Override
+    public void setRowOnly(boolean rowOnly) {
+        valueType.setRowOnly(rowOnly);
     }
 
     @Override

@@ -27,8 +27,7 @@ import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.chunk.ChunkManager;
-import com.lealone.storage.aose.btree.page.KeyPage;
-import com.lealone.storage.aose.btree.page.KeyValuePage;
+import com.lealone.storage.aose.btree.page.LeafPage;
 import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageOperations.Append;
 import com.lealone.storage.aose.btree.page.PageOperations.Put;
@@ -40,7 +39,6 @@ import com.lealone.storage.aose.btree.page.PageReference;
 import com.lealone.storage.aose.btree.page.PageStorageMode;
 import com.lealone.storage.aose.btree.page.PageUtils;
 import com.lealone.storage.aose.btree.page.PrettyPagePrinter;
-import com.lealone.storage.aose.btree.page.RowPage;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
 import com.lealone.storage.type.StorageDataType;
@@ -67,7 +65,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private final boolean inMemory;
     private final Map<String, Object> config;
     private final BTreeStorage btreeStorage;
-    private PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
+    private final PageStorageMode pageStorageMode;
 
     private static class RootPageReference extends PageReference {
 
@@ -110,6 +108,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Object mode = config.get(StorageSetting.PAGE_STORAGE_MODE.name());
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString().toUpperCase());
+        } else {
+            pageStorageMode = PageStorageMode.ROW_STORAGE;
         }
         btreeStorage = new BTreeStorage(this);
         rootRef = new RootPageReference(btreeStorage);
@@ -132,12 +132,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public Page createEmptyPage(boolean addToUsedMemory) {
-        if (getKeyType().isKeyOnly())
-            return KeyPage.createEmpty(this);
-        else if (getKeyType().isRowOnly() && getPageStorageMode() == PageStorageMode.ROW_STORAGE)
-            return RowPage.createEmpty(this);
-        else
-            return KeyValuePage.createEmpty(this);
+        return LeafPage.createEmpty(this, addToUsedMemory);
     }
 
     public Page getRootPage() {
@@ -166,10 +161,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public PageStorageMode getPageStorageMode() {
         return pageStorageMode;
-    }
-
-    public void setPageStorageMode(PageStorageMode pageStorageMode) {
-        this.pageStorageMode = pageStorageMode;
     }
 
     public SchedulerFactory getSchedulerFactory() {

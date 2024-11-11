@@ -7,6 +7,7 @@ package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 
+//内存占用56字节
 public class PageInfo {
 
     public Page page;
