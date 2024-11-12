@@ -120,7 +120,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             Page root = rootRef.getOrReadPage();
             // 提前设置，如果root page是node类型，子page就能在Page.getChildPage中找到ParentRef
             rootRef.replacePage(root);
-            setMaxKey(lastKey());
+            if (lastChunk.mapMaxKey != null)
+                setMaxKey(lastChunk.mapMaxKey);
+            else
+                setMaxKey(lastKey()); // lealone 6.1.0之前的版本会读取最后一个page,表多时启动数据会稍微慢一点点
         } else {
             Page root = createEmptyPage();
             rootRef.replacePage(root);
@@ -443,9 +446,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
+        if (inMemory)
+            return 0;
         lock.lock();
         try {
-            return inMemory ? 0 : btreeStorage.getBTreeGC().collectDirtyMemory(te, usedMemory);
+            return btreeStorage.getBTreeGC().collectDirtyMemory(te, usedMemory);
         } finally {
             lock.unlock();
         }
@@ -520,6 +525,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     @SuppressWarnings("unchecked")
     public void repair() {
+        if (inMemory)
+            return;
         lock.lock();
         try {
             ChunkManager chunkManager = btreeStorage.getChunkManager();

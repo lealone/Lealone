@@ -360,6 +360,7 @@ public class BTreeStorage {
                 c.fileStorage = getFileStorage(c.fileName);
             }
             c.mapSize = map.size();
+            c.mapMaxKey = map.getMaxKey();
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
             long pos = pInfo.page.writeUnsavedRecursive(pInfo, c, chunkBody);

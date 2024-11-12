@@ -85,6 +85,7 @@ public class Chunk {
     public FileStorage fileStorage;
     public String fileName;
     public long mapSize;
+    public Long mapMaxKey; // 从FORMAT_VERSION=2时新增
 
     private int removedPageOffset;
     private int removedPageCount;
@@ -260,6 +261,8 @@ public class Chunk {
         pagePositionAndLengthOffset = DataUtils.readHexInt(map, "pagePositionAndLengthOffset", 0);
 
         mapSize = DataUtils.readHexLong(map, "mapSize", 0);
+        if (map.containsKey("mapMaxKey"))
+            mapMaxKey = DataUtils.readHexLong(map, "mapMaxKey", 0);
 
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
@@ -287,6 +290,7 @@ public class Chunk {
 
         DataUtils.appendMap(buff, "blockSize", BLOCK_SIZE);
         DataUtils.appendMap(buff, "mapSize", mapSize);
+        DataUtils.appendMap(buff, "mapMaxKey", mapMaxKey);
         DataUtils.appendMap(buff, "format", FORMAT_VERSION);
 
         DataUtils.appendMap(buff, "removedPageOffset", removedPageOffset);

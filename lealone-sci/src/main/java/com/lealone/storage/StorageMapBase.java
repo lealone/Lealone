@@ -71,7 +71,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         }
     }
 
-    private void setMaxKey(long key) {
+    protected void setMaxKey(long key) {
         while (true) {
             long old = maxKey.get();
             if (key > old) {
