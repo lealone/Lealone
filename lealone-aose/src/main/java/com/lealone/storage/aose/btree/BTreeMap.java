@@ -123,7 +123,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (lastChunk.mapMaxKey != null)
                 setMaxKey(lastChunk.mapMaxKey);
             else
-                setMaxKey(lastKey()); // lealone 6.1.0之前的版本会读取最后一个page,表多时启动数据会稍微慢一点点
+                setMaxKey(lastKey()); // lealone 6.1.0之前的版本会读取最后一个page,表多时启动数据库会稍微慢一点点
         } else {
             Page root = createEmptyPage();
             rootRef.replacePage(root);

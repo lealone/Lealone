@@ -12,6 +12,9 @@ import com.lealone.storage.type.StorageDataType;
 
 public class KeyColumnsPage extends ColumnStorageLeafPage {
 
+    // 内存占用48+48+56=152字节
+    public static final int PAGE_MEMORY = 152;
+
     private Object[] values;
 
     public KeyColumnsPage(BTreeMap<?, ?> map) {
@@ -21,6 +24,11 @@ public class KeyColumnsPage extends ColumnStorageLeafPage {
     @Override
     protected int getPageType() {
         return 4;
+    }
+
+    @Override
+    protected int getEmptyPageMemory() {
+        return PAGE_MEMORY;
     }
 
     @Override

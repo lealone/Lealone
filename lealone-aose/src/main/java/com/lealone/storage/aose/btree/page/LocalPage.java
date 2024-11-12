@@ -100,12 +100,15 @@ public abstract class LocalPage extends Page {
         return map.getKeyType().getMemory(old);
     }
 
+    protected abstract int getEmptyPageMemory();
+
     protected abstract void recalculateMemory();
 
     protected int recalculateKeysMemory() {
-        int mem = PageUtils.PAGE_MEMORY;
+        int mem = getEmptyPageMemory();
         StorageDataType keyType = map.getKeyType();
         for (int i = 0, len = keys.length; i < len; i++) {
+            mem += 4; // 数组元素占4个字节
             mem += keyType.getMemory(keys[i]);
         }
         return mem;

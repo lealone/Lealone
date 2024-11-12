@@ -16,11 +16,19 @@ import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 
 public class NodePage extends LocalPage {
 
+    // 内存占用40+48+56=144字节
+    public static final int PAGE_MEMORY = 144;
+
     // 对子page的引用，数组长度比keys的长度多一个
     private PageReference[] children;
 
     NodePage(BTreeMap<?, ?> map) {
         super(map);
+    }
+
+    @Override
+    protected int getEmptyPageMemory() {
+        return PAGE_MEMORY;
     }
 
     @Override
@@ -106,7 +114,7 @@ public class NodePage extends LocalPage {
             removeKey(index);
         addMemory(-PageUtils.PAGE_MEMORY_CHILD);
         // 空的子page也占用内存，删除后要减去它的内存
-        map.getBTreeStorage().getBTreeGC().addUsedMemory(-PageUtils.PAGE_MEMORY);
+        map.getBTreeStorage().getBTreeGC().addUsedMemory(-NodePage.PAGE_MEMORY);
 
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];

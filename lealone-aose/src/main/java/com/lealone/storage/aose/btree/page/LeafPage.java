@@ -154,9 +154,12 @@ public abstract class LeafPage extends LocalPage {
             else
                 pageType = 4;
         }
+        LeafPage p = create(map, pageType);
+        int memory = p.getEmptyPageMemory();
         if (addToUsedMemory)
-            map.getBTreeStorage().getBTreeGC().addUsedMemory(PageUtils.PAGE_MEMORY);
-        return create(map, new Object[0], new Object[0], PageUtils.PAGE_MEMORY, pageType);
+            map.getBTreeStorage().getBTreeGC().addUsedMemory(memory);
+        initPage(p, new Object[0], new Object[0], memory);
+        return p;
     }
 
     public static LeafPage create(BTreeMap<?, ?> map, Object[] keys, int memory, int pageType) {
@@ -167,6 +170,11 @@ public abstract class LeafPage extends LocalPage {
             int pageType) {
         // the position is 0
         LeafPage p = create(map, pageType);
+        initPage(p, keys, values, memory);
+        return p;
+    }
+
+    private static void initPage(LeafPage p, Object[] keys, Object[] values, int memory) {
         p.setKeys(keys);
         p.setValues(values);
         if (memory == 0) {
@@ -174,7 +182,6 @@ public abstract class LeafPage extends LocalPage {
         } else {
             p.addMemory(memory, false);
         }
-        return p;
     }
 
     private static LeafPage create(BTreeMap<?, ?> map, int pageType) {

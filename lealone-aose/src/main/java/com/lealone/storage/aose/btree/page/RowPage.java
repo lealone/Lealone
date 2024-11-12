@@ -12,6 +12,9 @@ import com.lealone.storage.aose.btree.BTreeMap;
 
 public class RowPage extends RowStorageLeafPage {
 
+    // 内存占用32+48+56=136字节
+    public static final int PAGE_MEMORY = 136;
+
     public RowPage(BTreeMap<?, ?> map) {
         super(map);
     }
@@ -19,6 +22,11 @@ public class RowPage extends RowStorageLeafPage {
     @Override
     protected int getPageType() {
         return 1;
+    }
+
+    @Override
+    protected int getEmptyPageMemory() {
+        return PAGE_MEMORY;
     }
 
     @Override

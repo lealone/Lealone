@@ -33,11 +33,6 @@ public class PageUtils {
     public static final int PAGE_COMPRESSED_HIGH = 2 + 4;
 
     /**
-     * The estimated number of bytes used per page object.
-     */
-    public static final int PAGE_MEMORY = 128;
-
-    /**
      * The estimated number of bytes used per child entry.
      */
     public static final int PAGE_MEMORY_CHILD = 16;
