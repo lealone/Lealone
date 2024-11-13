@@ -188,6 +188,11 @@ public class ValueDouble extends Value {
         return compareSecure((ValueDouble) other, null) == 0;
     }
 
+    @Override
+    public int getMemory() {
+        return 24;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

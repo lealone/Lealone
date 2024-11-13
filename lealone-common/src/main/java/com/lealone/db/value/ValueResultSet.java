@@ -159,4 +159,9 @@ public class ValueResultSet extends Value {
         }
         return ValueResultSet.get(new SimpleResultSet());
     }
+
+    @Override
+    public int getMemory() {
+        return 16;
+    }
 }

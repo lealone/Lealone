@@ -132,11 +132,6 @@ public class ValueBytes extends Value {
     }
 
     @Override
-    public int getMemory() {
-        return value.length + 24;
-    }
-
-    @Override
     public boolean equals(Object other) {
         return other instanceof ValueBytes && Arrays.equals(value, ((ValueBytes) other).value);
     }
@@ -150,5 +145,10 @@ public class ValueBytes extends Value {
         byte[] buff = new byte[len];
         System.arraycopy(value, 0, buff, 0, len);
         return get(buff);
+    }
+
+    @Override
+    public int getMemory() {
+        return value.length + 20;
     }
 }

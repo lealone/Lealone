@@ -284,6 +284,11 @@ public class ValueTimestamp extends Value {
         return DateTimeUtils.normalizeTimestamp(d1 - d2, nanos - t.nanos);
     }
 
+    @Override
+    public int getMemory() {
+        return 32;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

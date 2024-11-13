@@ -223,6 +223,11 @@ public class ValueUuid extends Value {
         return DISPLAY_SIZE;
     }
 
+    @Override
+    public int getMemory() {
+        return 32;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

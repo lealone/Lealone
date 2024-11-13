@@ -155,6 +155,11 @@ public class ValueByte extends Value {
         return other instanceof ValueByte && value == ((ValueByte) other).value;
     }
 
+    @Override
+    public int getMemory() {
+        return 16;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

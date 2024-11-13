@@ -192,15 +192,6 @@ public class ValueMap extends Value {
     }
 
     @Override
-    public int getMemory() {
-        int memory = 32;
-        for (Entry<Value, Value> e : map.entrySet()) {
-            memory += e.getKey().getMemory() + e.getValue().getMemory() + Constants.MEMORY_POINTER;
-        }
-        return memory;
-    }
-
-    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (!force) {
             return this;
@@ -247,5 +238,14 @@ public class ValueMap extends Value {
         }
         map.clear();
         map.putAll(newMap);
+    }
+
+    @Override
+    public int getMemory() {
+        int memory = 32;
+        for (Entry<Value, Value> e : map.entrySet()) {
+            memory += e.getKey().getMemory() + e.getValue().getMemory() + Constants.MEMORY_POINTER;
+        }
+        return memory;
     }
 }

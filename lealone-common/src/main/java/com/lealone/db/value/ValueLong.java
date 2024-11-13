@@ -225,6 +225,11 @@ public class ValueLong extends Value implements PrimaryKey {
         return other instanceof ValueLong && value == ((ValueLong) other).value;
     }
 
+    @Override
+    public int getMemory() {
+        return 24;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

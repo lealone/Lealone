@@ -258,11 +258,6 @@ public class ValueDecimal extends Value {
         return other instanceof ValueDecimal && value.equals(((ValueDecimal) other).value);
     }
 
-    @Override
-    public int getMemory() {
-        return value.precision() + 120;
-    }
-
     /**
      * Set the scale of a BigDecimal value.
      *
@@ -275,6 +270,11 @@ public class ValueDecimal extends Value {
             throw DbException.getInvalidValueException("scale", scale);
         }
         return bd.setScale(scale, RoundingMode.HALF_UP);
+    }
+
+    @Override
+    public int getMemory() {
+        return value.precision() + 24;
     }
 
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {

@@ -212,6 +212,11 @@ public class ValueTime extends Value {
         }
     }
 
+    @Override
+    public int getMemory() {
+        return 24;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

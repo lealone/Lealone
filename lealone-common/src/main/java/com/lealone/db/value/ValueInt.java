@@ -181,6 +181,11 @@ public class ValueInt extends Value {
         return other instanceof ValueInt && value == ((ValueInt) other).value;
     }
 
+    @Override
+    public int getMemory() {
+        return 16;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

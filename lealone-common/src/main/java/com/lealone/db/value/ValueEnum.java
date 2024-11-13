@@ -161,4 +161,9 @@ public class ValueEnum extends Value {
     public void setLabel(String label) {
         this.label = label;
     }
+
+    @Override
+    public int getMemory() {
+        return 24;
+    }
 }

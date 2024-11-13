@@ -159,6 +159,11 @@ public class ValueDate extends Value {
         StringUtils.appendZeroPadded(buff, 2, d);
     }
 
+    @Override
+    public int getMemory() {
+        return 24;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

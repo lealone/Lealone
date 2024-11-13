@@ -75,11 +75,6 @@ public class ValueString extends Value {
     }
 
     @Override
-    public int getMemory() {
-        return value.length() * 2 + 48;
-    }
-
-    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (precision == 0 || value.length() <= precision) {
             return this;
@@ -174,6 +169,11 @@ public class ValueString extends Value {
      */
     protected ValueString getNew(String s) {
         return ValueString.get(s);
+    }
+
+    @Override
+    public int getMemory() {
+        return 16 + 2 * value.length();
     }
 
     public static final StringDataType type = new StringDataType();

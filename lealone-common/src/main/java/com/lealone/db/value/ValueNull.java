@@ -173,6 +173,11 @@ public class ValueNull extends Value {
         return other == this;
     }
 
+    @Override
+    public int getMemory() {
+        return 0; // 总是在内存中
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
@@ -193,7 +198,7 @@ public class ValueNull extends Value {
 
         @Override
         public int getMemory(Object obj) {
-            return 16;
+            return 0;
         }
 
         @Override

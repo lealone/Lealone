@@ -186,6 +186,11 @@ public class ValueFloat extends Value {
         return compareSecure((ValueFloat) other, null) == 0;
     }
 
+    @Override
+    public int getMemory() {
+        return 16;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override

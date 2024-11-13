@@ -209,9 +209,7 @@ public abstract class Value implements Comparable<Value> {
      *
      * @return the memory used in bytes
      */
-    public int getMemory() {
-        return DataType.getDataType(getType()).memory;
-    }
+    public abstract int getMemory();
 
     /**
      * Get the value as a string.

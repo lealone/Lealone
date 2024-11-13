@@ -184,15 +184,6 @@ public class ValueSet extends Value {
     }
 
     @Override
-    public int getMemory() {
-        int memory = 32;
-        for (Value v : values) {
-            memory += v.getMemory() + Constants.MEMORY_POINTER;
-        }
-        return memory;
-    }
-
-    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (!force) {
             return this;
@@ -245,5 +236,14 @@ public class ValueSet extends Value {
         }
         values.clear();
         values.addAll(newValues);
+    }
+
+    @Override
+    public int getMemory() {
+        int memory = 24;
+        for (Value v : values) {
+            memory += v.getMemory() + Constants.MEMORY_POINTER;
+        }
+        return memory;
     }
 }

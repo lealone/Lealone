@@ -112,6 +112,11 @@ public class ValueBoolean extends Value {
         return this == other;
     }
 
+    @Override
+    public int getMemory() {
+        return 16;
+    }
+
     public static final ValueDataTypeBase type = new ValueDataTypeBase() {
 
         @Override
