@@ -56,15 +56,19 @@ public class RowType extends StandardDataType {
     @Override
     public int getMemory(Object obj) {
         Row r = (Row) obj;
-        int memory = 32;
-        if (r == null)
+        return 32 + getColumnsMemory(r);
+    }
+
+    public static int getColumnsMemory(Lockable lockable) {
+        int memory = 0;
+        Value[] columns = Lock.getLockedValue(lockable);
+        if (columns == null)
             return memory;
-        Value[] columns = Lock.getLockedValue(r);
+        // 16是数组header的长度
+        memory += 16 + columns.length * 4;
         for (int i = 0, len = columns.length; i < len; i++) {
             Value c = columns[i];
-            if (c == null)
-                memory += 4;
-            else
+            if (c != null)
                 memory += c.getMemory();
         }
         return memory;

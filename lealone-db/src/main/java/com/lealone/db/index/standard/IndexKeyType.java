@@ -11,6 +11,7 @@ import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.row.Row;
+import com.lealone.db.row.RowType;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
@@ -43,18 +44,7 @@ public class IndexKeyType extends StandardDataType {
     @Override
     public int getMemory(Object obj) {
         IndexKey k = (IndexKey) obj;
-        int memory = 24;
-        if (k == null)
-            return memory;
-        Value[] columns = Lock.getLockedValue(k);
-        for (int i = 0, len = columns.length; i < len; i++) {
-            Value c = columns[i];
-            if (c == null)
-                memory += 4;
-            else
-                memory += c.getMemory();
-        }
-        return memory;
+        return 24 + RowType.getColumnsMemory(k);
     }
 
     @Override
