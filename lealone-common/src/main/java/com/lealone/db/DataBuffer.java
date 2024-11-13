@@ -120,6 +120,10 @@ public class DataBuffer {
         return createDirect();
     }
 
+    public static DataBuffer create(int capacity) {
+        return createDirect(capacity);
+    }
+
     public static DataBuffer createHeap() {
         return new DataBuffer(null, MIN_GROW, false);
     }

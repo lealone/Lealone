@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.session.ServerSession;
+import com.lealone.server.TcpServerConnection;
 import com.lealone.server.handler.PacketHandler;
 import com.lealone.server.protocol.Packet;
 import com.lealone.sql.PreparedSQLStatement;
@@ -23,14 +24,16 @@ public class PacketHandleTask extends LinkableTask {
     private final ServerSessionInfo si;
     private final Packet packet;
     private final PacketHandler<Packet> handler;
+    private final TcpServerConnection conn;
 
     public PacketHandleTask(int packetId, ServerSessionInfo si, Packet packet,
-            PacketHandler<Packet> handler) {
+            PacketHandler<Packet> handler, TcpServerConnection conn) {
         this.packetId = packetId;
         this.session = si.getSession();
         this.si = si;
         this.packet = packet;
         this.handler = handler;
+        this.conn = conn;
     }
 
     @Override
@@ -57,15 +60,15 @@ public class PacketHandleTask extends LinkableTask {
     }
 
     public void closeSession() {
-        si.getConnection().closeSession(packetId, si.getSessionId());
+        conn.closeSession(packetId, si.getSessionId());
     }
 
     public void sendResponse(Packet ack) {
-        si.getConnection().sendResponse(this, ack);
+        conn.sendResponse(this, ack);
     }
 
     public void sendError(Throwable t) {
-        si.getConnection().sendError(session, packetId, t);
+        conn.sendError(session, packetId, t);
     }
 
     public void submitYieldableCommand(PreparedSQLStatement.Yieldable<?> yieldable) {
