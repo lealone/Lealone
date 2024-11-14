@@ -65,6 +65,11 @@ public class IndexKeyType extends StandardDataType {
     }
 
     @Override
+    public boolean isLockable() {
+        return true;
+    }
+
+    @Override
     public boolean isKeyOnly() {
         return true;
     }

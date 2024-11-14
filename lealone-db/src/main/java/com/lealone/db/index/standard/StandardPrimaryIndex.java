@@ -31,7 +31,6 @@ import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueLong;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.Storage;
-import com.lealone.storage.page.IPage;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionEngine;
 import com.lealone.transaction.TransactionMap;
@@ -242,8 +241,6 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        if (session.getCurrentPage() != null)
-            session.addDirtyPage(session.getCurrentPage());
         Value key = newRow.getPrimaryKey();
         int ret = map.tryUpdate(key, newRow, oldRow, isLockedBySelf);
         session.setLastIdentity(newRow.getKey());
@@ -265,8 +262,6 @@ public class StandardPrimaryIndex extends StandardIndex {
                 unlinkLargeObject(session, v);
             }
         }
-        if (session.getCurrentPage() != null)
-            session.addDirtyPage(session.getCurrentPage());
         return Future.succeededFuture(map.tryRemove(key, row, isLockedBySelf));
     }
 
@@ -302,11 +297,9 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        Object[] objects = getMap(session).getObjects(ValueLong.get(key), columnIndexes);
-        Lockable lockable = (Lockable) objects[1];
+        Lockable lockable = getMap(session).get(ValueLong.get(key), columnIndexes);
         if (lockable == null || lockable.getLockedValue() == null) // 已经删除了
             return null;
-        session.setCurrentPage((IPage) objects[0]);
         Row row = (Row) lockable;
         row.setKey(key);
         return row;
@@ -451,7 +444,6 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         private void createRow() {
             row = cursor.getValue();
-            session.setCurrentPage(cursor.getPage());
             int version = row.getVersion();
             if (table.getVersion() > version) {
                 alterRow(version + 1, table.getVersion());

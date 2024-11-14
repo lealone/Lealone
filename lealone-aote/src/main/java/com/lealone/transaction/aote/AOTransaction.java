@@ -315,9 +315,6 @@ public class AOTransaction implements Transaction {
             return;
 
         maxCommittedLogId = t.undoLog.commit(transactionEngine); // 先提交，事务变成结束状态再解锁
-        // 在删除事务前标记脏页，这样GC线程看到事务没结束就不会对脏页进行GC
-        if (t.session != null)
-            t.session.markDirtyPages();
         t.endTransaction(false);
     }
 

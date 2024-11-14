@@ -8,8 +8,6 @@ package com.lealone.storage;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import com.lealone.storage.page.IPage;
-
 public interface StorageMapCursor<K, V> {
 
     /**
@@ -25,10 +23,6 @@ public interface StorageMapCursor<K, V> {
      * @return the value or null
      */
     V getValue();
-
-    default IPage getPage() {
-        return null;
-    }
 
     boolean next();
 

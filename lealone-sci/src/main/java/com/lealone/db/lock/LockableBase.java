@@ -7,6 +7,8 @@ package com.lealone.db.lock;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.lealone.storage.page.PageListener;
+
 public abstract class LockableBase implements Lockable {
 
     private static final AtomicReferenceFieldUpdater<LockableBase, Lock> lockUpdater = //
@@ -27,5 +29,17 @@ public abstract class LockableBase implements Lockable {
     @Override
     public boolean compareAndSetLock(Lock expect, Lock update) {
         return lockUpdater.compareAndSet(this, expect, update);
+    }
+
+    private volatile PageListener pageListener;
+
+    @Override
+    public PageListener getPageListener() {
+        return pageListener;
+    }
+
+    @Override
+    public void setPageListener(PageListener pageListener) {
+        this.pageListener = pageListener;
     }
 }

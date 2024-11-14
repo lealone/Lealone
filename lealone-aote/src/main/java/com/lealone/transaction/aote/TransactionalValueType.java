@@ -132,6 +132,11 @@ public class TransactionalValueType implements StorageDataType {
     }
 
     @Override
+    public boolean isLockable() {
+        return true;
+    }
+
+    @Override
     public boolean isKeyOnly() {
         return valueType.isKeyOnly();
     }

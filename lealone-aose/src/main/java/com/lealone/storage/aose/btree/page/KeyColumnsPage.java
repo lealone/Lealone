@@ -78,5 +78,6 @@ public class KeyColumnsPage extends ColumnStorageLeafPage {
         for (int row = 0; row < keyLength; row++) {
             values[row] = valueType.readMeta(buff, null, columnCount);
         }
+        setPageListener(valueType, values);
     }
 }

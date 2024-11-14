@@ -5,6 +5,8 @@
  */
 package com.lealone.db.lock;
 
+import com.lealone.storage.page.PageListener;
+
 public interface Lockable {
 
     public default void setKey(Object key) {
@@ -27,4 +29,7 @@ public interface Lockable {
 
     public boolean compareAndSetLock(Lock expect, Lock update);
 
+    public PageListener getPageListener();
+
+    public void setPageListener(PageListener pageListener);
 }

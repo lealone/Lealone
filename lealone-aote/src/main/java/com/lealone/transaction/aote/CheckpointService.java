@@ -161,7 +161,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     public void fullGc() {
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                map.fullGc(aote);
+                map.fullGc();
             }
         }
     }
@@ -229,7 +229,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private void gcMaps() {
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                map.gc(aote);
+                map.gc();
             }
         }
     }
@@ -369,7 +369,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
             usedMemory = new AtomicLong();
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                long dm = map.collectDirtyMemory(aote, usedMemory);
+                long dm = map.collectDirtyMemory(usedMemory);
                 if (dm > 0) {
                     dirtyMemory.addAndGet(dm);
                     dirtyMaps.put(map.getName(), dm);

@@ -6,7 +6,9 @@
 package com.lealone.storage.aose.btree.page;
 
 import com.lealone.common.util.DataUtils;
+import com.lealone.db.lock.Lockable;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.page.PageListener;
 import com.lealone.storage.type.StorageDataType;
 
 public abstract class LeafPage extends LocalPage {
@@ -24,8 +26,6 @@ public abstract class LeafPage extends LocalPage {
     protected void setValues(Object[] values) {
     }
 
-    protected abstract Object[] getValues();
-
     @Override
     public boolean isLeaf() {
         return true;
@@ -42,6 +42,7 @@ public abstract class LeafPage extends LocalPage {
         StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         getValues()[index] = value;
+        setPageListener(valueType, value);
         return old;
     }
 
@@ -93,8 +94,10 @@ public abstract class LeafPage extends LocalPage {
         DataUtils.copyWithGap(keys, newKeys, len - 1, index);
         newKeys[index] = value; // 只有keys没有values的page只存放value
         LeafPage p = copyLeaf(newKeys, null);
-        p.addMemory(map.getValueType().getMemory(value));
+        StorageDataType valueType = map.getValueType();
+        p.addMemory(valueType.getMemory(value));
         map.incrementSize();// 累加全局计数器
+        setPageListener(valueType, value);
         return p;
     }
 
@@ -107,9 +110,26 @@ public abstract class LeafPage extends LocalPage {
         newKeys[index] = key;
         newValues[index] = value;
         LeafPage p = copyLeaf(newKeys, newValues);
-        p.addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
+        StorageDataType valueType = map.getValueType();
+        p.addMemory(map.getKeyType().getMemory(key) + valueType.getMemory(value));
         map.incrementSize();// 累加全局计数器
+        setPageListener(valueType, value);
         return p;
+    }
+
+    protected void setPageListener(StorageDataType type, Object value) {
+        if (type.isLockable()) {
+            ((Lockable) value).setPageListener(getRef().getPageListener());
+        }
+    }
+
+    protected void setPageListener(StorageDataType type, Object[] objs) {
+        if (type.isLockable()) {
+            PageListener pageListener = getRef().getPageListener();
+            for (Object obj : objs) {
+                ((Lockable) obj).setPageListener(pageListener);
+            }
+        }
     }
 
     @Override

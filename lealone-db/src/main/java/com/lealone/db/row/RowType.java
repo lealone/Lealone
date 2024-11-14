@@ -199,6 +199,11 @@ public class RowType extends StandardDataType {
         return row;
     }
 
+    @Override
+    public boolean isLockable() {
+        return true;
+    }
+
     private boolean rowOnly;
 
     @Override

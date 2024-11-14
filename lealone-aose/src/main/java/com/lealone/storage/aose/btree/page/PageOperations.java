@@ -8,10 +8,12 @@ package com.lealone.storage.aose.btree.page;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.InternalSession;
 import com.lealone.storage.aose.btree.BTreeGC;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.page.PageListener;
 import com.lealone.storage.page.PageOperation;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
 
@@ -84,7 +86,7 @@ public abstract class PageOperations {
 
             if (pRef.tryLock(scheduler, waitingIfLocked)) {
                 // 这一步检查是必需的，不能在一个不再使用的page上面进行写操作
-                if (isPageChanged()) {
+                if (isPageChanged() || pRef.getPage() != p) { // GC线程可能回收了，此时要重试
                     p = null;
                     pRef.unlock();
                     return PageOperationResult.RETRY;
@@ -108,8 +110,6 @@ public abstract class PageOperations {
         @SuppressWarnings("unchecked")
         private void writeLocal(InternalScheduler scheduler) {
             currentSession = scheduler.getCurrentSession();
-            p = pRef.getOrReadPage(); // 使用最新的page
-            Page old = p;
             int index = getKeyIndex();
             result = (R) writeLocal(index, scheduler);
 
@@ -122,10 +122,6 @@ public abstract class PageOperations {
 
             pRef.unlock(); // 快速释放锁，不用等处理结果
 
-            InternalSession s = currentSession;
-            if (s != null) {
-                s.addDirtyPage(old != p ? old : null, p);
-            }
             if (resultHandler != null) {
                 resultHandler.handle(new AsyncResult<>(result));
             }
@@ -375,6 +371,14 @@ public abstract class PageOperations {
             super(session, pRef);
         }
 
+        private void setPageListener(PageReference ref) {
+            PageListener pageListener = ref.getPageListener();
+            for (Object obj : ref.getPage().getValues()) {
+                if (obj instanceof Lockable)
+                    ((Lockable) obj).setPageListener(pageListener);
+            }
+        }
+
         @Override
         protected PageOperationResult runLocked(InternalScheduler scheduler, boolean waitingIfLocked) {
             TmpNodePage tmpNodePage;
@@ -393,8 +397,12 @@ public abstract class PageOperations {
                 bgc.addUsedMemory(tmpNodePage.left.getPageInfo().getTotalMemory());
                 bgc.addUsedMemory(tmpNodePage.right.getPageInfo().getTotalMemory());
 
-                PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent,
-                        scheduler);
+                if (tmpNodePage.left.isLeafPage()) {
+                    setPageListener(tmpNodePage.left);
+                    setPageListener(tmpNodePage.right);
+                }
+
+                PageReference.replaceSplittedPage(tmpNodePage, pRef, pRef, tmpNodePage.parent);
 
                 if (p.isNode())
                     setParentRef(tmpNodePage);
@@ -404,11 +412,17 @@ public abstract class PageOperations {
                 tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
-                PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent, scheduler);
+                PageReference.replaceSplittedPage(tmpNodePage, parentRef, pRef, newParent);
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
                     asyncSplitPage(scheduler, waitingIfLocked, null, parentRef);
                 }
+
+                if (tmpNodePage.left.isLeafPage()) {
+                    setPageListener(tmpNodePage.left);
+                    setPageListener(tmpNodePage.right);
+                }
+
                 // 非root page被切割后，原有的ref被废弃
                 pRef.setDataStructureChanged(true);
                 if (p.isNode())

@@ -80,7 +80,9 @@ public class TableIterator {
         }
         Object oldValue = oldRow.getLockedValue();
         int ret = table.tryLockRow(session, oldRow);
-        if (ret < 0) { // 已经删除了
+        if (ret < 0) { // 已经删除或过期了
+            if (ret == -2) // 记录已经过期
+                this.oldRow = tableFilter.getTable().getRow(session, oldRow.getKey());
             return -1;
         } else if (ret == 0) { // 被其他事务锁住了
             this.oldRow = oldRow;

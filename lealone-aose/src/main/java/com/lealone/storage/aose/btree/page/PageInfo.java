@@ -30,9 +30,10 @@ public class PageInfo {
 
     public void updateTime() {
         lastTime = System.currentTimeMillis();
-        hits++;
-        if (hits < 0)
-            hits = 1;
+        int h = hits + 1;
+        if (h < 0)
+            h = 1;
+        hits = h;
     }
 
     public void updateTime(PageInfo pInfoOld) {
@@ -104,24 +105,12 @@ public class PageInfo {
         return null;
     }
 
-    public PageReference getLeftRef() {
-        return null;
-    }
-
-    public PageReference getRightRef() {
-        return null;
-    }
-
     public static class SplittedPageInfo extends PageInfo {
 
         private final PageReference pRefNew;
-        private final PageReference lRef;
-        private final PageReference rRef;
 
-        public SplittedPageInfo(PageReference pRefNew, PageReference lRef, PageReference rRef) {
+        public SplittedPageInfo(PageReference pRefNew) {
             this.pRefNew = pRefNew;
-            this.lRef = lRef;
-            this.rRef = rRef;
         }
 
         @Override
@@ -132,16 +121,6 @@ public class PageInfo {
         @Override
         public PageReference getNewRef() {
             return pRefNew;
-        }
-
-        @Override
-        public PageReference getLeftRef() {
-            return lRef;
-        }
-
-        @Override
-        public PageReference getRightRef() {
-            return rRef;
         }
     }
 }

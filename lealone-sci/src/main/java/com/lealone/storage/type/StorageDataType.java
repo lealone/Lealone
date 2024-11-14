@@ -55,6 +55,10 @@ public interface StorageDataType extends ValueDataType {
         return null;
     }
 
+    default boolean isLockable() {
+        return false;
+    }
+
     // 是否只存放key，比如索引不需要value
     default boolean isKeyOnly() {
         return false;

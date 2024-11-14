@@ -43,6 +43,7 @@ public class KeyPage extends RowStorageLeafPage {
             buff.get();
             buff.get();
         }
+        setPageListener(map.getValueType(), keys);
     }
 
     @Override

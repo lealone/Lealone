@@ -71,6 +71,7 @@ public class KeyValuePage extends RowStorageLeafPage {
     protected void readValues(ByteBuffer buff, int keyLength) {
         values = new Object[keyLength];
         map.getValueType().read(buff, values, keyLength);
+        setPageListener(map.getValueType(), values);
     }
 
     @Override

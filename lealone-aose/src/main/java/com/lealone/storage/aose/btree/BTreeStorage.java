@@ -24,11 +24,11 @@ import com.lealone.storage.aose.btree.chunk.ChunkCompactor;
 import com.lealone.storage.aose.btree.chunk.ChunkManager;
 import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageInfo;
+import com.lealone.storage.aose.btree.page.PageReference;
 import com.lealone.storage.aose.btree.page.PageUtils;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.fs.FileUtils;
-import com.lealone.transaction.TransactionEngine;
 
 /**
  * A persistent storage for btree map.
@@ -160,12 +160,12 @@ public class BTreeStorage {
             p.markDirty();
             return;
         }
-        Page leaf = readPage(pos).page;
+        Page leaf = readPage(null, pos).page;
         Object key = leaf.getKey(0);
         map.markDirty(key);
     }
 
-    public PageInfo readPage(long pos) {
+    public PageInfo readPage(PageReference ref, long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
@@ -177,14 +177,15 @@ public class BTreeStorage {
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
         ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        return readPage(pos, buff, pageLength);
+        return readPage(ref, pos, buff, pageLength);
     }
 
-    public PageInfo readPage(long pos, ByteBuffer buff, int pageLength) {
+    public PageInfo readPage(PageReference ref, long pos, ByteBuffer buff, int pageLength) {
         int type = PageUtils.getPageType(pos);
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
         Page p = Page.create(map, type, buff);
+        p.setRef(ref);
         // buff要复用，并且要支持多线程同时读，所以直接用slice
         p.read(buff.slice(), chunkId, offset, pageLength);
 
@@ -306,14 +307,12 @@ public class BTreeStorage {
         }
     }
 
-    private int collectDirtyMemory(TransactionEngine te) {
-        if (te == null)
-            te = TransactionEngine.getDefaultTransactionEngine();
-        return (int) map.collectDirtyMemory(te, null);
+    private int collectDirtyMemory() {
+        return (int) map.collectDirtyMemory(null);
     }
 
     void save() {
-        save(true, collectDirtyMemory(null));
+        save(true, collectDirtyMemory());
     }
 
     void save(int dirtyMemory) {
@@ -342,7 +341,7 @@ public class BTreeStorage {
     }
 
     public synchronized void executeSave(boolean appendModeEnabled) {
-        executeSave(appendModeEnabled, collectDirtyMemory(null));
+        executeSave(appendModeEnabled, collectDirtyMemory());
     }
 
     private synchronized void executeSave(boolean appendModeEnabled, int dirtyMemory) {

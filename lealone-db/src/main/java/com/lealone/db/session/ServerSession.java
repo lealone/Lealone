@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
@@ -63,7 +62,6 @@ import com.lealone.sql.SQLEngine;
 import com.lealone.sql.SQLParser;
 import com.lealone.sql.SQLStatement;
 import com.lealone.storage.lob.LobStorage;
-import com.lealone.storage.page.IPage;
 import com.lealone.transaction.Transaction;
 
 /**
@@ -128,9 +126,6 @@ public class ServerSession extends SessionBase implements InternalSession {
     private boolean containsDatabaseStatement;
 
     private Transaction transaction;
-    private HashSet<IPage> dirtyPages;
-    private IPage currentPage;
-    private ConcurrentHashMap<Object, Object> pageRefs = new ConcurrentHashMap<>();
 
     private ArrayList<Connection> nestedConnections;
     private ArrayList<ServerSession> nestedSessions;
@@ -501,13 +496,8 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     private short executingStatements;
-    private boolean isForUpdate; // 记录当前事务执行过的语句是否带有更新语句(含select for update)
 
     public void startCurrentCommand(PreparedSQLStatement statement) {
-        if (!isForUpdate) {
-            isForUpdate = statement.isForUpdate()
-                    || (!statement.isQuery() && !statement.isTransactionStatement());
-        }
         if (executingStatements++ == 0) {
             currentCommand = statement;
             if (queryTimeout > 0) {
@@ -640,7 +630,6 @@ public class ServerSession extends SessionBase implements InternalSession {
     private void endTransaction() {
         containsDDL = false;
         containsDatabaseStatement = false;
-        isForUpdate = false;
         wakeUpWaitingSchedulers();
         transactionStart = 0;
         transaction = null;
@@ -740,7 +729,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         commitOrRollbackNestedConnections(false);
         checkCommitRollback();
         transaction.rollback();
-        clearDirtyPages();
         cleanTempTables(false);
         unlockAll(false);
         endTransaction();
@@ -1726,11 +1714,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         return c != null && c.isQuery();
     }
 
-    @Override
-    public boolean isForUpdate() {
-        return isForUpdate;
-    }
-
     private boolean undoLogEnabled = true;
 
     @Override
@@ -1740,61 +1723,6 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     public void setUndoLogEnabled(boolean enabled) {
         undoLogEnabled = enabled;
-    }
-
-    @Override
-    public void addPageReference(Object ref) {
-        pageRefs.put(ref, ref);
-    }
-
-    @Override
-    public void addPageReference(Object oldRef, Object lRef, Object rRef) {
-        if (pageRefs.containsKey(oldRef)) {
-            pageRefs.put(lRef, lRef);
-            pageRefs.put(rRef, rRef);
-        }
-    }
-
-    @Override
-    public boolean containsPageReference(Object ref) {
-        return pageRefs.containsKey(ref);
-    }
-
-    @Override
-    public void addDirtyPage(IPage old, IPage page) {
-        // 切割page可能是异步的，如果事务已经结束那就直接标记脏页
-        if (transaction == null) {
-            page.markDirtyBottomUp();
-            return;
-        }
-        if (dirtyPages == null)
-            dirtyPages = new HashSet<>();
-        else if (old != null)
-            dirtyPages.remove(old);
-        dirtyPages.add(page);
-    }
-
-    @Override
-    public void markDirtyPages() {
-        if (dirtyPages != null) {
-            for (IPage page : dirtyPages)
-                page.markDirtyBottomUp();
-        }
-        clearDirtyPages();
-    }
-
-    private void clearDirtyPages() {
-        dirtyPages = null;
-        pageRefs = new ConcurrentHashMap<>();
-        currentPage = null;
-    }
-
-    public IPage getCurrentPage() {
-        return currentPage;
-    }
-
-    public void setCurrentPage(IPage currentPage) {
-        this.currentPage = currentPage;
     }
 
     private boolean markClosed;

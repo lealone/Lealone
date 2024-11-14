@@ -81,8 +81,8 @@ public class LobStreamStorage implements LobStorage, com.lealone.transaction.Tra
     @Override
     public void gc(TransactionEngine te) {
         if (lobMap != null) {
-            lobMap.gc(te);
-            lobStreamMap.gc(te);
+            lobMap.gc();
+            lobStreamMap.gc();
         }
     }
 

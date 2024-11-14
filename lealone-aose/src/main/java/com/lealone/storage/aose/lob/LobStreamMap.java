@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.storage.aose.btree.BTreeMap;
-import com.lealone.transaction.TransactionEngine;
 
 /**
  * A facility to store streams in a map. Streams are split into blocks, which
@@ -50,8 +49,8 @@ public class LobStreamMap {
         map.save();
     }
 
-    public void gc(TransactionEngine te) {
-        map.gc(te);
+    public void gc() {
+        map.gc();
     }
 
     public void clear() {

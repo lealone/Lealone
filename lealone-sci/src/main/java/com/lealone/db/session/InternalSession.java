@@ -9,7 +9,6 @@ import com.lealone.db.lock.Lock;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
-import com.lealone.storage.page.IPage;
 import com.lealone.transaction.Transaction;
 
 public interface InternalSession extends Session {
@@ -48,32 +47,8 @@ public interface InternalSession extends Session {
         return false;
     }
 
-    default boolean isForUpdate() {
-        return false;
-    }
-
     default boolean isUndoLogEnabled() {
         return true;
-    }
-
-    default void addPageReference(Object ref) {
-    }
-
-    default void addPageReference(Object oldRef, Object lRef, Object rRef) {
-    }
-
-    default boolean containsPageReference(Object ref) {
-        return false;
-    }
-
-    default void addDirtyPage(IPage page) {
-        addDirtyPage(null, page);
-    }
-
-    default void addDirtyPage(IPage old, IPage page) {
-    }
-
-    default void markDirtyPages() {
     }
 
     void init();

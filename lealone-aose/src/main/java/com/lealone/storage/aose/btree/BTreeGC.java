@@ -16,7 +16,6 @@ import com.lealone.db.MemoryManager;
 import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageInfo;
 import com.lealone.storage.aose.btree.page.PageReference;
-import com.lealone.transaction.TransactionEngine;
 
 public class BTreeGC {
 
@@ -67,36 +66,36 @@ public class BTreeGC {
         return memoryManager.needGc();
     }
 
-    public void fullGc(TransactionEngine te) {
+    public void fullGc() {
         memoryManager.forceGc(true);
         try {
-            gc(te);
+            gc();
         } finally {
             memoryManager.forceGc(false);
         }
     }
 
-    public void gc(TransactionEngine te) {
-        gc(te, memoryManager);
+    public void gc() {
+        gc(memoryManager);
     }
 
-    public long collectDirtyMemory(TransactionEngine te, AtomicLong usedMemory) {
+    public long collectDirtyMemory(AtomicLong usedMemory) {
         AtomicLong dirtyMemory = new AtomicLong();
-        gcPages(te, 15 * 60 * 1000, 0, dirtyMemory, usedMemory); // 15+分钟都没再访问过，释放page字段和buff字段
+        gcPages(15 * 60 * 1000, 0, dirtyMemory, usedMemory); // 15+分钟都没再访问过，释放page字段和buff字段
         return dirtyMemory.get();
     }
 
-    private void gc(TransactionEngine te, MemoryManager memoryManager) {
+    private void gc(MemoryManager memoryManager) {
         if (!memoryManager.needGc())
             return;
         long used = memoryManager.getUsedMemory();
-        // gcPages(te, 15 * 60 * 1000, 0, null, null); // 15+分钟都没再访问过，释放page字段和buff字段
+        // gcPages(15 * 60 * 1000, 0, null, null); // 15+分钟都没再访问过，释放page字段和buff字段
         if (memoryManager.needGc())
-            gcPages(te, 5 * 60 * 1000, 1, null, null); // 5+分钟都没再访问过，释放page字段保留buff字段
+            gcPages(5 * 60 * 1000, 1, null, null); // 5+分钟都没再访问过，释放page字段保留buff字段
         if (memoryManager.needGc())
-            gcPages(te, -2, 0, null, null); // 全表扫描的场景，释放page字段和buff字段
+            gcPages(-2, 0, null, null); // 全表扫描的场景，释放page字段和buff字段
         if (memoryManager.needGc())
-            lru(te, memoryManager); // 按LRU算法回收
+            lru(memoryManager); // 按LRU算法回收
         if (DEBUG) {
             System.out.println(
                     "Map: " + map.getName() + ", GC: " + used + " -> " + memoryManager.getUsedMemory());
@@ -104,26 +103,26 @@ public class BTreeGC {
     }
 
     // gcType: 0释放page和buff、1释放page、2释放buff
-    private void gcPages(TransactionEngine te, long hitsOrIdleTime, int gcType, AtomicLong dirtyMemory,
+    private void gcPages(long hitsOrIdleTime, int gcType, AtomicLong dirtyMemory,
             AtomicLong usedMemory) {
-        gcPages(te, System.currentTimeMillis(), hitsOrIdleTime, gcType, map.getRootPageRef(),
-                dirtyMemory, usedMemory);
+        gcPages(System.currentTimeMillis(), hitsOrIdleTime, gcType, map.getRootPageRef(), dirtyMemory,
+                usedMemory);
     }
 
-    private void gcPages(TransactionEngine te, long now, long hitsOrIdleTime, int gcType,
-            PageReference ref, AtomicLong dirtyMemory, AtomicLong usedMemory) {
+    private void gcPages(long now, long hitsOrIdleTime, int gcType, PageReference ref,
+            AtomicLong dirtyMemory, AtomicLong usedMemory) {
         PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                gcPages(te, now, hitsOrIdleTime, gcType, childRef, dirtyMemory, usedMemory);
+                gcPages(now, hitsOrIdleTime, gcType, childRef, dirtyMemory, usedMemory);
             });
         }
         if (hitsOrIdleTime < 0) {
-            if (pInfo.getHits() < -hitsOrIdleTime && ref.canGc(te)) {
+            if (pInfo.getHits() < -hitsOrIdleTime && ref.canGc()) {
                 ref.gcPage(pInfo, gcType);
             }
-        } else if (now - pInfo.getLastTime() > hitsOrIdleTime && ref.canGc(te)) {
+        } else if (now - pInfo.getLastTime() > hitsOrIdleTime && ref.canGc()) {
             ref.gcPage(pInfo, gcType);
         }
         if (dirtyMemory != null && pInfo.getPos() == 0) {
@@ -154,11 +153,11 @@ public class BTreeGC {
         }
     }
 
-    private void lru(TransactionEngine te, MemoryManager memoryManager) {
+    private void lru(MemoryManager memoryManager) {
         // 按层级收集node page，单独收集leaf page
         HashMap<Integer, ArrayList<GcingPage>> nodePageMap = new HashMap<>();
         ArrayList<GcingPage> leafPages = new ArrayList<>();
-        collect(te, map.getRootPageRef(), leafPages, nodePageMap, 1);
+        collect(map.getRootPageRef(), leafPages, nodePageMap, 1);
 
         // leaf page按LastTime从小到大释放
         releaseLeafPages(leafPages, memoryManager);
@@ -168,16 +167,16 @@ public class BTreeGC {
             releaseNodePages(nodePageMap, memoryManager);
     }
 
-    private void collect(TransactionEngine te, PageReference ref, ArrayList<GcingPage> leafPages,
+    private void collect(PageReference ref, ArrayList<GcingPage> leafPages,
             HashMap<Integer, ArrayList<GcingPage>> nodePageMap, int level) {
         PageInfo pInfo = ref.getPageInfo();
         Page p = pInfo.page;
         if (p != null && p.isNode()) {
             forEachPage(p, childRef -> {
-                collect(te, childRef, leafPages, nodePageMap, level + 1);
+                collect(childRef, leafPages, nodePageMap, level + 1);
             });
         }
-        if (ref.canGc(te)) {
+        if (ref.canGc()) {
             if (ref.isNodePage()) {
                 if (gcNodePages) {
                     ArrayList<GcingPage> nodePages = nodePageMap.get(level);

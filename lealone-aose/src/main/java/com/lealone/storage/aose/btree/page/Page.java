@@ -115,6 +115,10 @@ public class Page implements IPage {
         throw ie();
     }
 
+    protected Object[] getValues() {
+        throw ie();
+    }
+
     public boolean isEmpty() {
         throw ie();
     }

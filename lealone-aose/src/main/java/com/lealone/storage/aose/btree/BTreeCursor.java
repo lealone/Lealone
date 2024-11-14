@@ -8,7 +8,6 @@ package com.lealone.storage.aose.btree;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.StorageMapCursor;
 import com.lealone.storage.aose.btree.page.Page;
-import com.lealone.storage.page.IPage;
 
 /**
  * A cursor to iterate over elements in ascending order.
@@ -43,11 +42,6 @@ public class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     @Override
     public V getValue() {
         return value;
-    }
-
-    @Override
-    public IPage getPage() {
-        return pos.page;
     }
 
     @Override
