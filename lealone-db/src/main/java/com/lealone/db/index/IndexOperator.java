@@ -120,6 +120,7 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
             Scheduler[] schedulers = scheduler.getSchedulerFactory().getSchedulers();
             int schedulerCount = pendingIosArray.length;
             while (indexOperationSize.get() > 0) {
+                long lastSize = indexOperationSize.get();
                 IndexOperation[] lastIos = new IndexOperation[schedulerCount];
                 IndexOperation[] ios = new IndexOperation[schedulerCount];
                 outer: for (int i = 0; i < schedulerCount; i++) {
@@ -162,6 +163,9 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
                     }
                     schedulers[i].wakeUp();
                 }
+                // 所有的事务都没提交，直接退出
+                if (lastSize == indexOperationSize.get())
+                    break;
             }
         } finally {
             if (session == this.session) {
