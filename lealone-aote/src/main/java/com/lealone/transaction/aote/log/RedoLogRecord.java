@@ -173,20 +173,7 @@ public abstract class RedoLogRecord {
         @Override
         public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
             ByteBuffer buff = operations;
-            while (buff.hasRemaining()) {
-                // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
-                // 写时格式参照UndoLogRecord.writeForRedo()
-                String mapName = ValueString.type.read(buff);
-                List<ByteBuffer> keyValues = pendingRedoLog.get(mapName);
-                if (keyValues == null) {
-                    keyValues = new LinkedList<>();
-                    pendingRedoLog.put(mapName, keyValues);
-                }
-                int len = buff.getInt();
-                byte[] keyValue = new byte[len];
-                buff.get(keyValue);
-                keyValues.add(ByteBuffer.wrap(keyValue));
-            }
+            UndoLogRecord.readForRedo(buff, pendingRedoLog);
         }
 
         @Override

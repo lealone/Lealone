@@ -261,9 +261,6 @@ public interface StorageMap<K, V> {
         return 0;
     }
 
-    default void markDirty(Object key) {
-    }
-
     //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {

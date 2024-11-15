@@ -5,6 +5,11 @@
  */
 package com.lealone.transaction.aote.log;
 
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueString;
@@ -79,17 +84,7 @@ public abstract class UndoLogRecord {
         }
     }
 
-    protected abstract void writeForRedo0(DataBuffer writeBuffer);
-
-    public void writeForRedo(DataBuffer writeBuffer) {
-        if (ignore())
-            return;
-
-        if (oldValue != null) {
-            map.markDirty(key);
-        }
-        writeForRedo0(writeBuffer);
-    }
+    public abstract void writeForRedo(DataBuffer buff);
 
     public static class KeyOnlyULR extends UndoLogRecord {
 
@@ -103,7 +98,7 @@ public abstract class UndoLogRecord {
         }
 
         @Override
-        protected void writeForRedo0(DataBuffer writeBuffer) {
+        public void writeForRedo(DataBuffer buff) {
             // 直接结束了
             // 比如索引不用写redo log
         }
@@ -124,23 +119,40 @@ public abstract class UndoLogRecord {
             TransactionalValue.commit(false, map, lockable);
         }
 
-        // 用于redo时，不关心oldValue
         @Override
-        protected void writeForRedo0(DataBuffer writeBuffer) {
-            ValueString.type.write(writeBuffer, map.getName());
-            int keyValueLengthStartPos = writeBuffer.position();
-            writeBuffer.putInt(0);
+        public void writeForRedo(DataBuffer buff) { // 写redo时，不关心oldValue
+            if (ignore())
+                return;
 
-            map.getKeyType().write(writeBuffer, key);
+            ValueString.type.write(buff, map.getName());
+            int keyValueLengthStartPos = buff.position();
+            buff.putInt(0);
+
+            map.getKeyType().write(buff, key);
             if (newValue == null)
-                writeBuffer.put((byte) 0);
+                buff.put((byte) 0);
             else {
-                writeBuffer.put((byte) 1);
+                buff.put((byte) 1);
                 // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-                map.getValueType().getRawType().write(writeBuffer, newValue, lockable);
+                map.getValueType().getRawType().write(buff, newValue, lockable);
             }
-            writeBuffer.putInt(keyValueLengthStartPos,
-                    writeBuffer.position() - keyValueLengthStartPos - 4);
+            buff.putInt(keyValueLengthStartPos, buff.position() - keyValueLengthStartPos - 4);
+        }
+    }
+
+    public static void readForRedo(ByteBuffer buff, Map<String, List<ByteBuffer>> pendingRedoLog) {
+        while (buff.hasRemaining()) {
+            // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
+            String mapName = ValueString.type.read(buff);
+            List<ByteBuffer> keyValues = pendingRedoLog.get(mapName);
+            if (keyValues == null) {
+                keyValues = new LinkedList<>();
+                pendingRedoLog.put(mapName, keyValues);
+            }
+            int len = buff.getInt();
+            byte[] keyValue = new byte[len];
+            buff.get(keyValue);
+            keyValues.add(ByteBuffer.wrap(keyValue));
         }
     }
 }
