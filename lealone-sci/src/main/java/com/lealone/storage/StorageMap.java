@@ -6,7 +6,6 @@
 package com.lealone.storage;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
@@ -257,7 +256,7 @@ public interface StorageMap<K, V> {
     default void fullGc() {
     }
 
-    default long collectDirtyMemory(AtomicLong usedMemory) {
+    default long collectDirtyMemory() {
         return 0;
     }
 

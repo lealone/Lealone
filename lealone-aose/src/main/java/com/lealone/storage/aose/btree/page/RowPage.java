@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.type.StorageDataType;
 
 public class RowPage extends RowStorageLeafPage {
 
@@ -52,7 +53,15 @@ public class RowPage extends RowStorageLeafPage {
     }
 
     @Override
-    protected void writeValues(DataBuffer buff, int keyLength) {
-        map.getValueType().write(buff, keys, keyLength);
+    protected boolean writeValues(DataBuffer buff, int keyLength) {
+        StorageDataType type = map.getValueType();
+        boolean isLockable = type.isLockable();
+        boolean isLocked = false;
+        for (int i = 0; i < keyLength; i++) {
+            type.write(buff, keys[i]);
+            if (isLockable && !isLocked)
+                isLocked = isLocked(keys[i]);
+        }
+        return isLocked;
     }
 }

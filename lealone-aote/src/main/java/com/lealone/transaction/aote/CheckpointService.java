@@ -369,7 +369,9 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
             usedMemory = new AtomicLong();
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                long dm = map.collectDirtyMemory(usedMemory);
+                long dm = map.collectDirtyMemory();
+                if (DEBUG)
+                    usedMemory.addAndGet(map.getMemorySpaceUsed());
                 if (dm > 0) {
                     dirtyMemory.addAndGet(dm);
                     dirtyMaps.put(map.getName(), dm);

@@ -11,6 +11,8 @@ public interface IPageReference {
 
     void markDirtyBottomUp();
 
+    boolean markDirtyPage(PageListener oldPageListener);
+
     PageListener getPageListener();
 
 }

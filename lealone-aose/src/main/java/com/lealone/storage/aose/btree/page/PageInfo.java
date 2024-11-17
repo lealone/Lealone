@@ -7,6 +7,8 @@ package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 
+import com.lealone.storage.page.PageListener;
+
 //内存占用56字节
 public class PageInfo {
 
@@ -19,6 +21,16 @@ public class PageInfo {
 
     public long lastTime;
     public int hits; // 只是一个预估值，不需要精确
+
+    private PageListener pageListener;
+
+    public PageListener getPageListener() {
+        return pageListener;
+    }
+
+    public void setPageListener(PageListener pageListener) {
+        this.pageListener = pageListener;
+    }
 
     public PageInfo() {
     }
@@ -89,12 +101,21 @@ public class PageInfo {
         pInfo.pos = pos;
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
+        pInfo.pageListener = pageListener;
         pInfo.markDirtyCount = markDirtyCount;
         if (!gc) {
             pInfo.lastTime = lastTime;
             pInfo.hits = hits;
         }
         return pInfo;
+    }
+
+    public boolean isOnline() {
+        return pos > 0 && (page != null || buff != null);
+    }
+
+    public boolean isDirty() {
+        return pos == 0;
     }
 
     public boolean isSplitted() {

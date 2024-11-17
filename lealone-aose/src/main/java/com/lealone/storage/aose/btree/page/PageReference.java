@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.storage.aose.btree.BTreeStorage;
@@ -23,15 +22,16 @@ public class PageReference implements IPageReference {
 
     private final SchedulerLock schedulerLock = new SchedulerLock();
 
-    private volatile PageListener pageListener = new PageListener(this);
-
     @Override
     public PageListener getPageListener() {
-        return pageListener;
+        return pInfo.getPageListener();
     }
 
     public void setPageListener(PageListener pageListener) {
-        this.pageListener = pageListener;
+        pInfo.setPageListener(pageListener);
+        if (parentRef != null) {
+            pageListener.setParent(parentRef.getPageListener());
+        }
     }
 
     private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
@@ -48,6 +48,9 @@ public class PageReference implements IPageReference {
 
     public void setParentRef(PageReference parentRef) {
         this.parentRef = parentRef;
+        if (parentRef != null) {
+            getPageListener().setParent(parentRef.getPageListener());
+        }
     }
 
     public PageReference getParentRef() {
@@ -80,6 +83,7 @@ public class PageReference implements IPageReference {
     public PageReference(BTreeStorage bs) {
         this.bs = bs;
         pInfo = new PageInfo();
+        setPageListener(new PageListener(this));
     }
 
     public PageReference(BTreeStorage bs, long pos) {
@@ -217,10 +221,58 @@ public class PageReference implements IPageReference {
     }
 
     @Override
+    public boolean markDirtyPage(PageListener oldPageListener) {
+        if (markDirtyPage0(oldPageListener)) {
+            PageReference parentRef = getParentRef();
+            while (parentRef != null) {
+                oldPageListener = oldPageListener.getParent();
+                if (markDirtyPage0(oldPageListener)) {
+                    parentRef = parentRef.getParentRef();
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public void markDirtyBottomUp() {
         Page p = pInfo.page;
         if (p != null)
             p.markDirtyBottomUp();
+    }
+
+    private boolean markDirtyPage0(PageListener oldPageListener) {
+        while (true) {
+            PageInfo pInfoOld = this.pInfo;
+            if (pInfoOld.getPageListener() != oldPageListener)
+                return false;
+            if (pInfoOld.isSplitted() || pInfoOld.page == null) {
+                return true;
+            }
+            PageInfo pInfoNew = pInfoOld.copy(0);
+            pInfoNew.buff = null; // 废弃了
+            pInfoNew.markDirtyCount++;
+            if (replacePage(pInfoOld, pInfoNew)) {
+                if (Page.ASSERT) {
+                    checkPageInfo(pInfoNew);
+                }
+                if (pInfoOld.getPos() != 0) {
+                    addRemovedPage(pInfoOld.getPos());
+                    bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
+                }
+                return true;
+            } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
+                continue;
+            } else {
+                if (this.pInfo.getPageListener() != oldPageListener)
+                    return false;
+                return true; // 如果pos为0就不需要试了
+            }
+        }
     }
 
     // 不改变page，只是改变pos
@@ -267,31 +319,26 @@ public class PageReference implements IPageReference {
     }
 
     // 刷完脏页后需要用新的位置更新，如果当前page不是oldPage了，那么把oldPage标记为删除
-    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved) {
+    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved, boolean isLocked) {
         PageInfo pInfoOld = pInfoSaved;
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
-        while (true) {
+        if (isLocked || isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
+            addRemovedPage(newPos);
+            return;
+        }
+        PageInfo pInfoNew = pInfoOld.copy(newPos);
+        pInfoNew.buff = null; // 废弃了
+        if (replacePage(pInfoOld, pInfoNew)) {
+            if (Page.ASSERT) {
+                checkPageInfo(pInfoNew);
+            }
+            bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
+        } else {
             if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
                 addRemovedPage(newPos);
-                return;
-            }
-            PageInfo pInfoNew = pInfoOld.copy(newPos);
-            pInfoNew.buff = null; // 废弃了
-            if (replacePage(pInfoOld, pInfoNew)) {
+            } else {
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
-                }
-                bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
-                return;
-            } else {
-                if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
-                    addRemovedPage(newPos);
-                    return;
-                } else {
-                    pInfoOld = getPageInfo();
-                    // 读操作调用PageReference.getOrReadPage()时会用新的PageInfo替换，
-                    // 但是page还是相同的，此时不能删除pos
-                    continue;
                 }
             }
         }
@@ -299,23 +346,13 @@ public class PageReference implements IPageReference {
 
     public boolean canGc() {
         PageInfo pInfo = this.pInfo;
-        if (pInfo.page == null && pInfo.buff == null)
+        Page p = pInfo.page;
+        if (p == null && pInfo.buff == null)
             return false;
         if (pInfo.pos == 0) // pos为0时说明page被修改了，不能回收
             return false;
         if (isLocked()) // 如果page处于被加锁的状态，不能回收
             return false;
-        if (pInfo.page != null) { // 如果有page中某条记录处于被加锁的状态，也不能回收
-            Object[] values = pInfo.page.getValues();
-            if (values != null) {
-                for (Object value : values) {
-                    if (value instanceof Lockable) {
-                        if (((Lockable) value).getLock() != null)
-                            return false;
-                    }
-                }
-            }
-        }
         return true;
     }
 
@@ -345,17 +382,18 @@ public class PageReference implements IPageReference {
             pInfoNew.releaseBuff();
             gc = true;
         }
-        if (gc && replacePage(pInfoOld, pInfoNew)) {
-            if (Page.ASSERT) {
-                checkPageInfo(pInfoNew);
+        if (gc) {
+            pInfoNew.setPageListener(new PageListener(this));
+            if (replacePage(pInfoOld, pInfoNew)) {
+                if (Page.ASSERT) {
+                    checkPageInfo(pInfoNew);
+                }
+                bs.getBTreeGC().addUsedMemory(-memory);
+                if (gcType == 1)
+                    return pInfoNew;
+                else
+                    return pInfoOld;
             }
-            // 让所有持有PageListener的Lockable对象重新从新的page中读取
-            if (gcType != 1) {
-                setPageListener(new PageListener(this));
-            }
-            bs.getBTreeGC().addUsedMemory(-memory);
-            if (gcType == 1)
-                return pInfoNew;
         }
         return null;
     }

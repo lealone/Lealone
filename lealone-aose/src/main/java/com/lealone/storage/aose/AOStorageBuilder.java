@@ -57,6 +57,7 @@ public class AOStorageBuilder extends StorageBuilder {
                 for (Map.Entry<String, Object> e : this.config.entrySet()) {
                     config.put(e.getKey(), e.getValue().toString());
                 }
+                config.put("embedded", "true");
                 sf = SchedulerFactory.initDefaultSchedulerFactory(EmbeddedScheduler.class.getName(),
                         config);
             }

@@ -8,6 +8,7 @@ package com.lealone.storage.aose.btree;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.compress.CompressDeflate;
 import com.lealone.common.compress.CompressLZF;
@@ -190,10 +191,9 @@ public class BTreeStorage {
         p.read(buff.slice(), chunkId, offset, pageLength);
 
         PageInfo pInfo = new PageInfo(p, pos);
-        if (!p.isNode() || BTreeGC.gcNodePages) {
-            pInfo.buff = buff;
-            pInfo.pageLength = pageLength;
-        }
+        pInfo.buff = buff;
+        pInfo.pageLength = pageLength;
+        pInfo.setPageListener(ref.getPageListener());
         return pInfo;
     }
 
@@ -308,7 +308,7 @@ public class BTreeStorage {
     }
 
     private int collectDirtyMemory() {
-        return (int) map.collectDirtyMemory(null);
+        return (int) map.collectDirtyMemory();
     }
 
     void save() {
@@ -362,7 +362,7 @@ public class BTreeStorage {
             c.mapMaxKey = map.getMaxKey();
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
-            long pos = pInfo.page.writeUnsavedRecursive(pInfo, c, chunkBody);
+            long pos = pInfo.page.write(pInfo, c, chunkBody, new AtomicBoolean(false));
             c.rootPagePos = pos;
             c.write(chunkBody, appendMode, chunkManager);
             if (!appendMode) {

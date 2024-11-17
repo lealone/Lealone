@@ -47,12 +47,17 @@ public class KeyPage extends RowStorageLeafPage {
     }
 
     @Override
-    protected void writeValues(DataBuffer buff, int keyLength) {
+    protected boolean writeValues(DataBuffer buff, int keyLength) {
+        boolean isLockable = map.getValueType().isLockable();
+        boolean isLocked = false;
         // 兼容老版本
         for (int i = 0; i < keyLength; i++) {
             buff.put((byte) 0);
             buff.put((byte) 0);
             buff.put((byte) 0);
+            if (isLockable && !isLocked)
+                isLocked = isLocked(keys[i]);
         }
+        return isLocked;
     }
 }

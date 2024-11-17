@@ -8,6 +8,7 @@ package com.lealone.storage.page;
 public class PageListener {
 
     private final IPageReference pageReference;
+    private PageListener parent;
 
     public PageListener(IPageReference pageReference) {
         this.pageReference = pageReference;
@@ -19,5 +20,13 @@ public class PageListener {
 
     public boolean isPageStale() {
         return pageReference.getPageListener() != this;
+    }
+
+    public PageListener getParent() {
+        return parent;
+    }
+
+    public void setParent(PageListener parent) {
+        this.parent = parent;
     }
 }

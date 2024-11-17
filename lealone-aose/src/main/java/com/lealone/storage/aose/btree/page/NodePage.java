@@ -6,6 +6,7 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
@@ -157,7 +158,9 @@ public class NodePage extends LocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private long[] write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
+    @Override
+    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
+        beforeWrite(pInfoOld);
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -184,8 +187,32 @@ public class NodePage extends LocalPage {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type);
-        return new long[] { typePos + 1, pos };
+        long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, false, false);
+        int patch = typePos + 1;
+        AtomicBoolean isChildrenLocked = new AtomicBoolean(false);
+        writeChildren(chunk, buff, patch, isChildrenLocked);
+        if (isChildrenLocked.get())
+            isLocked.set(true);
+        getRef().updatePage(pos, this, pInfoOld, isLocked.get());
+        return pos;
+    }
+
+    private void writeChildren(Chunk chunk, DataBuffer buff, int patch, AtomicBoolean isLocked) {
+        long[] positions = new long[children.length];
+        for (int i = 0, len = children.length; i < len; i++) {
+            PageInfo pInfo = children[i].getPageInfo();
+            Page p = pInfo.page;
+            if (p != null && pInfo.getPos() == 0) {
+                long pos = p.write(pInfo, chunk, buff, isLocked);
+                positions[i] = pos;
+            } else {
+                positions[i] = pInfo.pos;
+            }
+        }
+        int old = buff.position();
+        buff.position(patch);
+        writeChildrenPositions(buff, positions);
+        buff.position(old);
     }
 
     private void writeChildrenPositions(DataBuffer buff, long[] positions) {
@@ -198,29 +225,6 @@ public class NodePage extends LocalPage {
                 buff.putLong(positions[i]); // pos通常是个很大的long，所以不值得用VarLong
             }
         }
-    }
-
-    @Override
-    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
-        beforeWrite(pInfoOld);
-        long ret[] = write(pInfoOld, chunk, buff);
-        int patch = (int) ret[0];
-        long[] positions = new long[children.length];
-        for (int i = 0, len = children.length; i < len; i++) {
-            PageInfo pInfo = children[i].getPageInfo();
-            Page p = pInfo.page;
-            if (p != null && pInfo.getPos() == 0) {
-                long pos = p.writeUnsavedRecursive(pInfo, chunk, buff);
-                positions[i] = pos;
-            } else {
-                positions[i] = pInfo.pos;
-            }
-        }
-        int old = buff.position();
-        buff.position(patch);
-        writeChildrenPositions(buff, positions);
-        buff.position(old);
-        return ret[1];
     }
 
     @Override

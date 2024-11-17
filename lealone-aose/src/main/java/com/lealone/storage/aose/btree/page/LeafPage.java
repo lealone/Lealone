@@ -132,6 +132,10 @@ public abstract class LeafPage extends LocalPage {
         }
     }
 
+    protected boolean isLocked(Object obj) {
+        return ((Lockable) obj).getLock() != null;
+    }
+
     @Override
     protected void recalculateMemory() {
         int mem = recalculateKeysMemory();

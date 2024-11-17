@@ -17,6 +17,7 @@ import com.lealone.storage.CursorParameters;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageMapCursor;
+import com.lealone.storage.page.PageListener;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionMap;
@@ -409,7 +410,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         }
         if (lockable.getLock() == null) {
             TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
-            if (lockable.getPageListener().isPageStale())
+            if (!markDirtyPage(lockable))
                 map.put(key, lockable);
         }
         Object oldValue = lockable.getLockedValue();
@@ -423,9 +424,15 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
         int ret = TransactionalValue.tryLock(lockable, transaction);
-        if (lockable.getPageListener().isPageStale())
+        if (ret > 0 && !markDirtyPage(lockable)) {
             ret = -2;
+        }
         return ret;
+    }
+
+    private static boolean markDirtyPage(Lockable lockable) {
+        PageListener oldPageListener = lockable.getPageListener();
+        return oldPageListener.getPageReference().markDirtyPage(oldPageListener);
     }
 
     @Override

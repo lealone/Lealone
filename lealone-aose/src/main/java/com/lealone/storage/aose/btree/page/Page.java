@@ -6,6 +6,7 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.compress.Compressor;
 import com.lealone.common.exceptions.DbException;
@@ -234,7 +235,7 @@ public class Page implements IPage {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    public long writeUnsavedRecursive(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
+    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         throw ie();
     }
 
@@ -366,7 +367,8 @@ public class Page implements IPage {
         return buff;
     }
 
-    long updateChunkAndPage(PageInfo pInfoOld, Chunk chunk, int start, int pageLength, int type) {
+    long updateChunkAndPage(PageInfo pInfoOld, Chunk chunk, int start, int pageLength, int type,
+            boolean isLocked, boolean updatePage) {
         long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
@@ -376,7 +378,8 @@ public class Page implements IPage {
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
         }
-        ref.updatePage(pos, this, pInfoOld);
+        if (updatePage)
+            ref.updatePage(pos, this, pInfoOld, isLocked);
         return pos;
     }
 }

@@ -390,14 +390,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void save() {
-        if (!inMemory) {
-            lock.lock();
-            try {
-                btreeStorage.save();
-            } finally {
-                lock.unlock();
-            }
-        }
+        save(collectDirtyMemory());
     }
 
     @Override
@@ -431,11 +424,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void fullGc() {
+        fullGc(true);
+    }
+
+    public void fullGc(boolean save) {
         if (!inMemory) {
             // 如果加锁失败可以直接返回
             if (lock.tryLock()) {
                 try {
-                    btreeStorage.save(false, (int) collectDirtyMemory(null));
+                    if (save)
+                        btreeStorage.save(false, (int) collectDirtyMemory());
                     btreeStorage.getBTreeGC().fullGc();
                 } finally {
                     lock.unlock();
@@ -445,12 +443,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public long collectDirtyMemory(AtomicLong usedMemory) {
+    public long collectDirtyMemory() {
         if (inMemory)
             return 0;
         lock.lock();
         try {
-            return btreeStorage.getBTreeGC().collectDirtyMemory(usedMemory);
+            return btreeStorage.getBTreeGC().collectDirtyMemory();
         } finally {
             lock.unlock();
         }
