@@ -455,7 +455,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void markDirty(Object key) {
-        gotoLeafPage(key).markDirtyBottomUp();
+        gotoLeafPage(key).getRef().markDirtyPage();
     }
 
     public int getChildPageCount(Page p) {
@@ -686,6 +686,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 --maxRetryCount;
             } else if (result == PageOperationResult.RETRY) {
                 continue;
+            } else if (result == PageOperationResult.FAILED) {
+                return null;
             }
             if (maxRetryCount < 1)
                 break;

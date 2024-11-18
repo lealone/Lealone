@@ -158,7 +158,7 @@ public class BTreeStorage {
         Page p = map.getRootPage();
         // 刚保存过然后接着被重写
         if (p.getPos() == pos) {
-            p.markDirty();
+            p.getRef().markDirtyPage();
             return;
         }
         Page leaf = readPage(null, pos).page;

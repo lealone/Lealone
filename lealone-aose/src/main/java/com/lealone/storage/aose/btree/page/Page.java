@@ -16,9 +16,8 @@ import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
-import com.lealone.storage.page.IPage;
 
-public class Page implements IPage {
+public class Page {
 
     /**
      * Whether assertions are enabled.
@@ -246,22 +245,6 @@ public class Page implements IPage {
                         "Page already stored");
             if (pInfoOld.buff != null)
                 DbException.throwInternalError();
-        }
-    }
-
-    public void markDirty() {
-        ref.markDirtyPage();
-    }
-
-    // 需要自下而上标记脏页，因为刷脏页时是自上而下的，
-    // 如果标记脏页也是自上而下，有可能导致刷脏页的线程执行过快从而把最下层的脏页遗漏了。
-    @Override
-    public void markDirtyBottomUp() {
-        markDirty();
-        PageReference parentRef = getRef().getParentRef();
-        while (parentRef != null) {
-            parentRef.markDirtyPage();
-            parentRef = parentRef.getParentRef();
         }
     }
 

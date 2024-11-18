@@ -13,7 +13,8 @@ public interface PageOperation {
     public static enum PageOperationResult {
         SUCCEEDED,
         RETRY,
-        LOCKED;
+        LOCKED,
+        FAILED;
     }
 
     default PageOperationResult run(InternalScheduler scheduler) {

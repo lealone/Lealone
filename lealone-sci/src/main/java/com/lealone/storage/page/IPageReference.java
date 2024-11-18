@@ -7,10 +7,6 @@ package com.lealone.storage.page;
 
 public interface IPageReference {
 
-    IPage getOrReadPage();
-
-    void markDirtyBottomUp();
-
     boolean markDirtyPage(PageListener oldPageListener);
 
     PageListener getPageListener();

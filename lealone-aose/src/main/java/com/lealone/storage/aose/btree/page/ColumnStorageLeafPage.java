@@ -66,22 +66,12 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
                 readAllColumnPages();
             }
             for (PageReference ref : columnPages) {
-                if (ref != null) {
-                    Page p = ref.getPage();
-                    if (p != null) {
-                        p.markDirty();
-                    }
+                if (ref != null && ref.getPage() != null) {
+                    ref.markDirtyPage();
                 }
             }
             columnPages = null;
         }
-    }
-
-    @Override
-    public void markDirty() {
-        if (columnPages != null)
-            markAllColumnPagesDirty();
-        super.markDirty();
     }
 
     @Override

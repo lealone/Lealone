@@ -129,7 +129,6 @@ public class PageReference implements IPageReference {
         return "PageReference[" + pInfo.pos + "]";
     }
 
-    @Override
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
         if (pInfo.isSplitted()) { // 发生 split 了
@@ -214,10 +213,9 @@ public class PageReference implements IPageReference {
         }
     }
 
-    private void checkPageInfo(PageInfo pInfoNew) {
-        if (pInfoNew.page == null && pInfoNew.pos == 0) {
-            DbException.throwInternalError();
-        }
+    // 不改变page，只是改变pos
+    public void markDirtyPage() {
+        markDirtyPage(getPageListener());
     }
 
     @Override
@@ -236,13 +234,6 @@ public class PageReference implements IPageReference {
         } else {
             return false;
         }
-    }
-
-    @Override
-    public void markDirtyBottomUp() {
-        Page p = pInfo.page;
-        if (p != null)
-            p.markDirtyBottomUp();
     }
 
     private boolean markDirtyPage0(PageListener oldPageListener) {
@@ -275,30 +266,9 @@ public class PageReference implements IPageReference {
         }
     }
 
-    // 不改变page，只是改变pos
-    public void markDirtyPage() {
-        while (true) {
-            PageInfo pInfoOld = this.pInfo;
-            if (pInfoOld.isSplitted() || pInfoOld.page == null) {
-                return;
-            }
-            PageInfo pInfoNew = pInfoOld.copy(0);
-            pInfoNew.buff = null; // 废弃了
-            pInfoNew.markDirtyCount++;
-            if (replacePage(pInfoOld, pInfoNew)) {
-                if (Page.ASSERT) {
-                    checkPageInfo(pInfoNew);
-                }
-                if (pInfoOld.getPos() != 0) {
-                    addRemovedPage(pInfoOld.getPos());
-                    bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
-                }
-                return;
-            } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
-                continue;
-            } else {
-                return; // 如果pos为0就不需要试了
-            }
+    private void checkPageInfo(PageInfo pInfoNew) {
+        if (pInfoNew.page == null && pInfoNew.pos == 0) {
+            DbException.throwInternalError();
         }
     }
 
@@ -399,22 +369,21 @@ public class PageReference implements IPageReference {
     }
 
     public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
-            PageReference ref, Page newPage) {
+            PageReference oldChildRef, Page newParentPage) {
         while (true) {
             PageInfo pInfoOld1 = parentRef.getPageInfo();
-            PageInfo pInfoOld2 = ref.getPageInfo();
-            PageInfo pInfoNew = new PageInfo();
-            pInfoNew.page = newPage;
-            pInfoNew.updateTime(pInfoOld1);
+            PageInfo pInfoOld2 = oldChildRef.getPageInfo();
+            PageInfo pInfoNew = pInfoOld1.copy(0);
+            pInfoNew.page = newParentPage;
             if (!parentRef.replacePage(pInfoOld1, pInfoNew))
                 continue;
-            if (ref != parentRef) {
+            if (oldChildRef != parentRef) {
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
                 PageReference tmpRef = tmpNodePage.parent.getRef();
                 tmpRef.setParentRef(parentRef);
                 pInfoNew = new SplittedPageInfo(tmpRef);
                 pInfoNew.page = tmpNodePage.parent;
-                if (!ref.replacePage(pInfoOld2, pInfoNew))
+                if (!oldChildRef.replacePage(pInfoOld2, pInfoNew))
                     continue;
             }
             break;

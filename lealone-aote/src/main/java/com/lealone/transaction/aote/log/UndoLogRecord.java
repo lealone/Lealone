@@ -66,10 +66,11 @@ public abstract class UndoLogRecord {
             commitUpdate();
         }
         // 标记脏页
-        IPageReference ref = lockable.getPageListener().getPageReference();
-        if (ref != last) // 避免反复标记
-            ref.markDirtyBottomUp();
-        return ref;
+        // IPageReference ref = lockable.getPageListener().getPageReference();
+        // if (ref != last) // 避免反复标记
+        // ref.markDirtyPage(lockable.getPageListener());
+        // return ref;
+        return null;
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
