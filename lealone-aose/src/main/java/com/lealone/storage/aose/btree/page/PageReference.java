@@ -12,8 +12,6 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.storage.aose.btree.BTreeStorage;
-import com.lealone.storage.aose.btree.page.PageInfo.SplittedPageInfo;
-import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 import com.lealone.storage.page.IPageReference;
 import com.lealone.storage.page.PageListener;
 
@@ -34,14 +32,8 @@ public class PageReference implements IPageReference {
         }
     }
 
-    private boolean dataStructureChanged; // 比如发生了切割或page从父节点中删除
-
     public boolean isDataStructureChanged() {
-        return dataStructureChanged;
-    }
-
-    public void setDataStructureChanged(boolean dataStructureChanged) {
-        this.dataStructureChanged = dataStructureChanged;
+        return pInfo.isDataStructureChanged();
     }
 
     private PageReference parentRef;
@@ -176,7 +168,7 @@ public class PageReference implements IPageReference {
         }
     }
 
-    private boolean replacePage(PageInfo expect, PageInfo update) {
+    public boolean replacePage(PageInfo expect, PageInfo update) {
         return pageInfoUpdater.compareAndSet(this, expect, update);
     }
 
@@ -224,7 +216,7 @@ public class PageReference implements IPageReference {
             PageReference parentRef = getParentRef();
             while (parentRef != null) {
                 oldPageListener = oldPageListener.getParent();
-                if (markDirtyPage0(oldPageListener)) {
+                if (parentRef.markDirtyPage0(oldPageListener)) {
                     parentRef = parentRef.getParentRef();
                 } else {
                     return false;
@@ -366,27 +358,5 @@ public class PageReference implements IPageReference {
             }
         }
         return null;
-    }
-
-    public static void replaceSplittedPage(TmpNodePage tmpNodePage, PageReference parentRef,
-            PageReference oldChildRef, Page newParentPage) {
-        while (true) {
-            PageInfo pInfoOld1 = parentRef.getPageInfo();
-            PageInfo pInfoOld2 = oldChildRef.getPageInfo();
-            PageInfo pInfoNew = pInfoOld1.copy(0);
-            pInfoNew.page = newParentPage;
-            if (!parentRef.replacePage(pInfoOld1, pInfoNew))
-                continue;
-            if (oldChildRef != parentRef) {
-                // 如果其他事务引用的是一个已经split的节点，让它重定向到临时的中间节点
-                PageReference tmpRef = tmpNodePage.parent.getRef();
-                tmpRef.setParentRef(parentRef);
-                pInfoNew = new SplittedPageInfo(tmpRef);
-                pInfoNew.page = tmpNodePage.parent;
-                if (!oldChildRef.replacePage(pInfoOld2, pInfoNew))
-                    continue;
-            }
-            break;
-        }
     }
 }

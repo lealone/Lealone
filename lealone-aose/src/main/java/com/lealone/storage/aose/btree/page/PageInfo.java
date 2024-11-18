@@ -122,8 +122,20 @@ public class PageInfo {
         return false;
     }
 
+    // 比如发生了切割或page从父节点中删除
+    public boolean isDataStructureChanged() {
+        return false;
+    }
+
     public PageReference getNewRef() {
         return null;
+    }
+
+    public static class RemovedPageInfo extends PageInfo {
+        @Override
+        public boolean isDataStructureChanged() {
+            return true;
+        }
     }
 
     public static class SplittedPageInfo extends PageInfo {
@@ -136,6 +148,11 @@ public class PageInfo {
 
         @Override
         public boolean isSplitted() {
+            return true;
+        }
+
+        @Override
+        public boolean isDataStructureChanged() {
             return true;
         }
 
