@@ -5,6 +5,8 @@
  */
 package com.lealone.test.aose;
 
+import java.util.HashMap;
+
 public class BTreeGCTest extends AoseTestBase {
 
     public static void main(String[] args) {
@@ -13,9 +15,10 @@ public class BTreeGCTest extends AoseTestBase {
 
     // @Test
     public void run() {
-        putData();
+        // putData();
         // testGc();
-        testSave();
+        // testSave();
+        testSplit();
     }
 
     public void testGc() {
@@ -44,15 +47,43 @@ public class BTreeGCTest extends AoseTestBase {
         map.save(dirtyMemory);
     }
 
+    public void testSplit() {
+        // Random random = new Random();
+        openMap();
+        // ConcurrentSkipListMap<Integer, String> map = new ConcurrentSkipListMap<>();
+        for (int n = 1; n <= 50; n++) {
+            map.clear();
+            long t1 = System.currentTimeMillis();
+            for (int i = 1; i <= count; i++) {
+                Integer key = i;
+                // key = random.nextInt(count);
+                String value = "value-" + i;
+                map.put(key, value);
+            }
+            long t2 = System.currentTimeMillis();
+            System.out.println("put count: " + count + ", time: " + (t2 - t1) + " ms");
+        }
+        map.size();
+        // map.save();
+    }
+
     int count = 100 * 10000;
 
-    public void putData() {
+    @Override
+    public void openMap() {
         int cacheSize = 16; // 单位是MB
-        pageSize = 16 * 1024; // 16K
+        pageSize = 2 * 1024; // 16K
         storage = openStorage(pageSize, cacheSize);
-        map = storage.openBTreeMap("BTreeGCTest");
-        if (!map.isEmpty())
-            return;
+        HashMap<String, String> parameters = new HashMap<>();
+        // parameters.put(StorageSetting.IN_MEMORY.name(), "true");
+        map = storage.openBTreeMap("BTreeGCTest", null, null, parameters);
+    }
+
+    public void putData() {
+        openMap();
+        // if (!map.isEmpty())
+        // return;
+        // ConcurrentSkipListMap<Integer, String> map = new ConcurrentSkipListMap<>();
         long t1 = System.currentTimeMillis();
         long total = t1;
         int saveCount = 0;
@@ -70,6 +101,6 @@ public class BTreeGCTest extends AoseTestBase {
         }
         System.out.println(
                 "put count: " + count + " total time: " + (System.currentTimeMillis() - total) + " ms");
-        map.save();
+        // map.save();
     }
 }

@@ -146,7 +146,7 @@ public abstract class PageOperations {
         }
 
         protected Object beforeWrite(int index) {
-            if (pRef.markDirtyPage(pListener))
+            if (map.isInMemory() || pRef.markDirtyPage(pListener))
                 return PageOperationResult.SUCCEEDED;
             else
                 return PageOperationResult.RETRY;

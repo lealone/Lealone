@@ -18,59 +18,15 @@ import com.lealone.storage.page.PageListener;
 //内存占用32+16=48字节
 public class PageReference implements IPageReference {
 
-    private final SchedulerLock schedulerLock = new SchedulerLock();
-
-    @Override
-    public PageListener getPageListener() {
-        return pInfo.getPageListener();
-    }
-
-    public void setPageListener(PageListener pageListener) {
-        pInfo.setPageListener(pageListener);
-        if (parentRef != null) {
-            pageListener.setParent(parentRef.getPageListener());
-        }
-    }
-
-    public boolean isDataStructureChanged() {
-        return pInfo.isDataStructureChanged();
-    }
-
-    private PageReference parentRef;
-
-    public void setParentRef(PageReference parentRef) {
-        this.parentRef = parentRef;
-        if (parentRef != null) {
-            getPageListener().setParent(parentRef.getPageListener());
-        }
-    }
-
-    public PageReference getParentRef() {
-        return parentRef;
-    }
-
-    public boolean tryLock(InternalScheduler newLockOwner, boolean waitingIfLocked) {
-        return schedulerLock.tryLock(newLockOwner, waitingIfLocked);
-    }
-
-    public void unlock() {
-        schedulerLock.unlock();
-    }
-
-    public boolean isLocked() {
-        return schedulerLock.isLocked();
-    }
-
-    public boolean isRoot() {
-        return false;
-    }
-
     private static final AtomicReferenceFieldUpdater<PageReference, PageInfo> //
     pageInfoUpdater = AtomicReferenceFieldUpdater.newUpdater(PageReference.class, PageInfo.class,
             "pInfo");
 
-    private final BTreeStorage bs;
     private volatile PageInfo pInfo; // 已经确保不会为null
+    private PageReference parentRef;
+
+    private final BTreeStorage bs;
+    private final SchedulerLock schedulerLock = new SchedulerLock();
 
     public PageReference(BTreeStorage bs) {
         this.bs = bs;
@@ -86,6 +42,10 @@ public class PageReference implements IPageReference {
     public PageReference(BTreeStorage bs, Page page) {
         this(bs);
         pInfo.page = page;
+    }
+
+    public boolean isRoot() {
+        return false;
     }
 
     public PageInfo getPageInfo() {
@@ -119,6 +79,45 @@ public class PageReference implements IPageReference {
     @Override
     public String toString() {
         return "PageReference[" + pInfo.pos + "]";
+    }
+
+    @Override
+    public PageListener getPageListener() {
+        return pInfo.getPageListener();
+    }
+
+    public void setPageListener(PageListener pageListener) {
+        pInfo.setPageListener(pageListener);
+        if (parentRef != null) {
+            pageListener.setParent(parentRef.getPageListener());
+        }
+    }
+
+    public boolean isDataStructureChanged() {
+        return pInfo.isDataStructureChanged();
+    }
+
+    public void setParentRef(PageReference parentRef) {
+        this.parentRef = parentRef;
+        if (parentRef != null) {
+            getPageListener().setParent(parentRef.getPageListener());
+        }
+    }
+
+    public PageReference getParentRef() {
+        return parentRef;
+    }
+
+    public boolean tryLock(InternalScheduler newLockOwner, boolean waitingIfLocked) {
+        return schedulerLock.tryLock(newLockOwner, waitingIfLocked);
+    }
+
+    public void unlock() {
+        schedulerLock.unlock();
+    }
+
+    public boolean isLocked() {
+        return schedulerLock.isLocked();
     }
 
     public Page getOrReadPage() {
@@ -172,37 +171,14 @@ public class PageReference implements IPageReference {
         return pageInfoUpdater.compareAndSet(this, expect, update);
     }
 
-    // 强制改变page和pos
-    // 在这里不需要把父节点标记为脏页，事务提交前会调用markDirtyBottomUp把涉及的所有节点标记为脏页
+    // 这个方法是在初始化root page时执行
+    // 或对page已经加锁且标记为脏页后，写操作完成了才执行
     public void replacePage(Page newPage) {
-        while (true) {
-            PageInfo pInfoOld = this.pInfo;
-            Page oldPage = pInfoOld.page;
-            if (oldPage == newPage)
-                return;
-            if (Page.ASSERT) {
-                if (!isRoot() && !isLocked())
-                    DbException.throwInternalError("not locked");
-            }
-            if (oldPage != null) {
-                PageInfo pInfoNew = pInfoOld.copy(0);
-                pInfoNew.page = newPage;
-                pInfoNew.buff = null;
-                if (replacePage(pInfoOld, pInfoNew)) {
-                    if (pInfoOld.getPos() != 0) {
-                        addRemovedPage(pInfoOld.getPos());
-                        bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
-                    }
-                    return;
-                } else {
-                    continue;
-                }
-            } else {
-                this.pInfo.page = newPage;
-                this.pInfo.updateTime();
-                return;
-            }
+        if (Page.ASSERT) {
+            if (!isRoot() && !isLocked() && !pInfo.isDirty())
+                DbException.throwInternalError("not locked");
         }
+        pInfo.page = newPage;
     }
 
     // 不改变page，只是改变pos
@@ -212,6 +188,7 @@ public class PageReference implements IPageReference {
 
     @Override
     public boolean markDirtyPage(PageListener oldPageListener) {
+        // 从下往上标记脏页,只要有一个新的PageListener跟旧的不一样，那就返回false，然后调用者会重新从root获取新的
         if (markDirtyPage0(oldPageListener)) {
             PageReference parentRef = getParentRef();
             while (parentRef != null) {
@@ -234,7 +211,7 @@ public class PageReference implements IPageReference {
             if (pInfoOld.getPageListener() != oldPageListener)
                 return false;
             if (pInfoOld.isSplitted() || pInfoOld.page == null) {
-                return true;
+                return false;
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
             pInfoNew.buff = null; // 废弃了
@@ -308,8 +285,7 @@ public class PageReference implements IPageReference {
 
     public boolean canGc() {
         PageInfo pInfo = this.pInfo;
-        Page p = pInfo.page;
-        if (p == null && pInfo.buff == null)
+        if (pInfo.page == null && pInfo.buff == null)
             return false;
         if (pInfo.pos == 0) // pos为0时说明page被修改了，不能回收
             return false;
