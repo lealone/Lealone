@@ -20,8 +20,33 @@ public class BTreeGCTest extends AoseTestBase {
         // putData();
         // testGc();
         // testSave();
-        testSplit();
+        // testSplit();
         // testMemory();
+        testConcurrent();
+    }
+
+    public void testConcurrent() {
+        openMap();
+        map.clear();
+        Integer key = 10;
+        String value = "value" + key;
+        map.put(key, value);
+        map.save();
+        map.get(key);
+        Thread t1 = new Thread(() -> {
+            map.fullGc(false);
+        });
+        t1.start();
+        Thread t2 = new Thread(() -> {
+            map.put(key, value);
+        });
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public void testGc() {
@@ -88,7 +113,7 @@ public class BTreeGCTest extends AoseTestBase {
 
     public void testSplit() {
         // Random random = new Random();
-        openMap();
+        openMap(true);
         // ConcurrentSkipListMap<Integer, String> map = new ConcurrentSkipListMap<>();
         for (int n = 1; n <= 50; n++) {
             map.clear();
@@ -110,11 +135,16 @@ public class BTreeGCTest extends AoseTestBase {
 
     @Override
     public void openMap() {
+        openMap(false);
+    }
+
+    public void openMap(boolean inMemory) {
         int cacheSize = 16; // 单位是MB
         pageSize = 2 * 1024; // 16K
         storage = openStorage(pageSize, cacheSize);
         HashMap<String, String> parameters = new HashMap<>();
-        parameters.put(StorageSetting.IN_MEMORY.name(), "true");
+        if (inMemory)
+            parameters.put(StorageSetting.IN_MEMORY.name(), "true");
         map = storage.openBTreeMap("BTreeGCTest", null, null, parameters);
     }
 

@@ -34,6 +34,10 @@ public abstract class PageOperations {
 
         Page p; // 最终要操作的leaf page
         PageReference pRef;
+
+        // 在标记脏页时
+        // 如果pRef及它的父节点中的最新PageListener与pListener及它的parent不同
+        // 说明被GC线程回收了需要重试
         PageListener pListener;
 
         InternalSession currentSession;
@@ -73,18 +77,15 @@ public abstract class PageOperations {
 
         @Override
         public PageOperationResult run(InternalScheduler scheduler, boolean waitingIfLocked) {
-            while (p == null) {
+            if (pRef == null) {
                 // 先定位到leaf page，加轻量级锁失败后再次运行时不用再定位leaf page
-                p = gotoLeafPage();
-                pRef = p.getRef();
-                PageInfo pInfo = pRef.getPageInfo();
-                pListener = pInfo.getPageListener();
-                p = pInfo.page; // 使用最新的，执行前面几步时可能被GC线程回收了
+                pRef = gotoLeafPage().getRef();
+                pListener = pRef.getPageListener();
             }
-
-            // 页面发生了结构性变动，重新从root定位leaf page
-            // 这一步可以没有，但可以避免多线程在一个不再使用的page上加锁
-            if (isPageChanged())
+            p = pRef.getPage(); // 使用最新的
+            // 如果被GC线程回收了需要重试
+            // 页面发生了结构性变动，也要重新从root定位leaf page
+            if (p == null || isPageChanged())
                 return retry(false);
 
             if (pRef.tryLock(scheduler, waitingIfLocked)) {
@@ -108,9 +109,9 @@ public abstract class PageOperations {
         }
 
         private PageOperationResult retry(boolean unlock) {
-            p = null;
             if (unlock)
                 pRef.unlock();
+            pRef = null;
             return PageOperationResult.RETRY; // 不用递归调用，让调度器重试
         }
 
