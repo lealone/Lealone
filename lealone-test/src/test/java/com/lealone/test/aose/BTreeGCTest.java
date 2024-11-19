@@ -7,6 +7,8 @@ package com.lealone.test.aose;
 
 import java.util.HashMap;
 
+import com.lealone.storage.StorageSetting;
+
 public class BTreeGCTest extends AoseTestBase {
 
     public static void main(String[] args) {
@@ -19,6 +21,7 @@ public class BTreeGCTest extends AoseTestBase {
         // testGc();
         // testSave();
         testSplit();
+        // testMemory();
     }
 
     public void testGc() {
@@ -28,6 +31,42 @@ public class BTreeGCTest extends AoseTestBase {
         map.get(key);
         map.fullGc(false);
         map.get(key);
+    }
+
+    public void testMemory() {
+        openMap();
+        map.clear();
+        printUsedMemory();
+
+        Integer key = 10;
+        String value = "value" + key;
+        map.put(key, value);
+        value = "value" + key * 100;
+        map.put(key, value);
+
+        printUsedMemory();
+
+        map.remove(key);
+
+        printUsedMemory();
+
+        int count = 1000;
+        for (int i = 1; i <= count; i++) {
+            key = i;
+            value = "value-" + i;
+            map.put(key, value);
+        }
+        printUsedMemory();
+
+        for (int i = 1; i <= count; i++) {
+            key = i;
+            map.remove(key);
+        }
+        printUsedMemory();
+    }
+
+    private void printUsedMemory() {
+        System.out.println("Used Memory: " + map.getMemorySpaceUsed());
     }
 
     public void testSave() {
@@ -75,7 +114,7 @@ public class BTreeGCTest extends AoseTestBase {
         pageSize = 2 * 1024; // 16K
         storage = openStorage(pageSize, cacheSize);
         HashMap<String, String> parameters = new HashMap<>();
-        // parameters.put(StorageSetting.IN_MEMORY.name(), "true");
+        parameters.put(StorageSetting.IN_MEMORY.name(), "true");
         map = storage.openBTreeMap("BTreeGCTest", null, null, parameters);
     }
 

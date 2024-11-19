@@ -139,7 +139,7 @@ public abstract class LeafPage extends LocalPage {
     @Override
     protected void recalculateMemory() {
         int mem = recalculateKeysMemory();
-        if (getPageType() < 3) {
+        if (getPageType() >= 3) {
             Object[] values = getValues();
             StorageDataType valueType = map.getValueType();
             for (int i = 0; i < keys.length; i++) {

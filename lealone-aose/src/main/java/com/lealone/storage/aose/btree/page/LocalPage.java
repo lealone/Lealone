@@ -108,7 +108,8 @@ public abstract class LocalPage extends Page {
         int mem = getEmptyPageMemory();
         StorageDataType keyType = map.getKeyType();
         for (int i = 0, len = keys.length; i < len; i++) {
-            mem += 4; // 数组元素占4个字节
+            // 忽略数组元素占用的字节，简化实现
+            // mem += 4; // 数组元素占4个字节
             mem += keyType.getMemory(keys[i]);
         }
         return mem;
