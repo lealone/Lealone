@@ -5,6 +5,7 @@
  */
 package com.lealone.db.row;
 
+import com.lealone.common.util.MathUtils;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.LockableBase;
@@ -15,7 +16,7 @@ import com.lealone.db.value.ValueLong;
 /**
  * Represents a row in a table.
  */
-public class Row extends LockableBase implements SearchRow, PrimaryKey {
+public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparable<Row> {
 
     private long key;
     private Value[] columns;
@@ -125,5 +126,10 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey {
             }
         }
         return buff.append(')').toString();
+    }
+
+    @Override
+    public int compareTo(Row o) {
+        return MathUtils.compareLong(this.key, o.key);
     }
 }

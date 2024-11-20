@@ -145,6 +145,10 @@ public class BTreeStorage {
         return e;
     }
 
+    public BTreeMap<?, ?> getMap() {
+        return map;
+    }
+
     public ChunkManager getChunkManager() {
         return chunkManager;
     }

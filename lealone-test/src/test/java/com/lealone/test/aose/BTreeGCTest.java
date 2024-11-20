@@ -5,9 +5,18 @@
  */
 package com.lealone.test.aose;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 
+import com.lealone.db.index.standard.PrimaryKeyType;
+import com.lealone.db.row.Row;
+import com.lealone.db.row.RowType;
+import com.lealone.db.value.Value;
+import com.lealone.db.value.ValueString;
 import com.lealone.storage.StorageSetting;
+import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.type.StorageDataTypeFactory;
 
 public class BTreeGCTest extends AoseTestBase {
 
@@ -15,14 +24,18 @@ public class BTreeGCTest extends AoseTestBase {
         new BTreeGCTest().run();
     }
 
+    int count = 100 * 10000;
+
     // @Test
     public void run() {
         // putData();
         // testGc();
         // testSave();
         // testSplit();
+        // testRead();
+        testRowType();
         // testMemory();
-        testConcurrent();
+        // testConcurrent();
     }
 
     public void testConcurrent() {
@@ -111,27 +124,116 @@ public class BTreeGCTest extends AoseTestBase {
         map.save(dirtyMemory);
     }
 
+    public void testRowType() {
+        int columnCount = 1;
+        PrimaryKeyType kType = new PrimaryKeyType();
+        RowType rType = new RowType(null, columnCount);
+        rType.setRowOnly(true);
+        ArrayList<Long> keys = new ArrayList<>(count);
+        for (int i = 1; i <= count; i++) {
+            Long key = Long.valueOf(i);
+            keys.add(key);
+        }
+        // Collections.shuffle(keys);
+
+        int cacheSize = 16; // 单位是MB
+        pageSize = 2 * 1024; // 16K
+        storage = openStorage(pageSize, cacheSize);
+        HashMap<String, String> parameters = new HashMap<>();
+        parameters.put(StorageSetting.IN_MEMORY.name(), "true");
+        BTreeMap<Row, Row> map = storage.openBTreeMap("BTreeGCTest", kType, rType, parameters);
+        // ConcurrentSkipListMap<Row, Row> map = new ConcurrentSkipListMap<>();
+        long total = 0;
+        int loop = 20;
+        for (int n = 1; n <= loop * 2; n++) {
+            map.clear();
+            long t1 = System.currentTimeMillis();
+            for (int i = 0; i < count; i++) {
+                long key = keys.get(i);
+
+                String value = "value-" + key;
+
+                Value[] columns = new Value[columnCount];
+                columns[0] = ValueString.get(value);
+                Row r = new Row(key, columns);
+                map.put(r, r);
+            }
+            long t2 = System.currentTimeMillis();
+            if (n > loop)
+                total += (t2 - t1);
+            System.out.println("put count: " + map.size() + ", time: " + (t2 - t1) + " ms");
+        }
+        System.out.println("total time: " + total + " ms, avg time: " + (total / loop) + " ms");
+        // map.save();
+
+        // for (int n = 1; n <= 50; n++) {
+        // long t1 = System.currentTimeMillis();
+        // for (int i = 0; i < count; i++) {
+        // long key = keys.get(i);
+        // Row r = new Row(key, null);
+        // map.get(r);
+        // }
+        // long t2 = System.currentTimeMillis();
+        // System.out.println("put count: " + map.size() + ", time: " + (t2 - t1) + " ms");
+        // }
+    }
+
     public void testSplit() {
-        // Random random = new Random();
+        ArrayList<Integer> keys = new ArrayList<>(count);
+        for (int i = 1; i <= count; i++) {
+            Integer key = i;
+            keys.add(key);
+        }
+        Collections.shuffle(keys);
+
         openMap(true);
         // ConcurrentSkipListMap<Integer, String> map = new ConcurrentSkipListMap<>();
         for (int n = 1; n <= 50; n++) {
             map.clear();
             long t1 = System.currentTimeMillis();
-            for (int i = 1; i <= count; i++) {
-                Integer key = i;
-                // key = random.nextInt(count);
+            for (int i = 0; i < count; i++) {
+                Integer key = keys.get(i);
                 String value = "value-" + i;
                 map.put(key, value);
             }
             long t2 = System.currentTimeMillis();
-            System.out.println("put count: " + count + ", time: " + (t2 - t1) + " ms");
+            System.out.println("put count: " + map.size() + ", time: " + (t2 - t1) + " ms");
         }
         map.size();
         // map.save();
     }
 
-    int count = 100 * 10000;
+    public void testRead() {
+        ArrayList<Long> keys = new ArrayList<>(count);
+        for (int i = 1; i <= count; i++) {
+            Long key = Long.valueOf(i);
+            keys.add(key);
+        }
+
+        openMap(true);
+        HashMap<String, String> parameters = new HashMap<>();
+        parameters.put(StorageSetting.IN_MEMORY.name(), "true");
+        BTreeMap<Long, String> map = storage.openBTreeMap("testRead",
+                StorageDataTypeFactory.getLongType(), null, parameters);
+        // ConcurrentSkipListMap<Long, String> map = new ConcurrentSkipListMap<>();
+        map.clear();
+        for (int i = 0; i < count; i++) {
+            Long key = keys.get(i);
+            String value = "value-" + i;
+            map.put(key, value);
+        }
+
+        // Collections.shuffle(keys);
+        for (int n = 1; n <= 50; n++) {
+            long t1 = System.currentTimeMillis();
+            for (int i = 0; i < count; i++) {
+                Long key = keys.get(i);
+                map.get(key);
+            }
+            long t2 = System.currentTimeMillis();
+            System.out.println("put count: " + map.size() + ", time: " + (t2 - t1) + " ms");
+        }
+    }
 
     @Override
     public void openMap() {
@@ -145,7 +247,7 @@ public class BTreeGCTest extends AoseTestBase {
         HashMap<String, String> parameters = new HashMap<>();
         if (inMemory)
             parameters.put(StorageSetting.IN_MEMORY.name(), "true");
-        map = storage.openBTreeMap("BTreeGCTest", null, null, parameters);
+        map = storage.openBTreeMap("BTreeGCTest", StorageDataTypeFactory.getIntType(), null, parameters);
     }
 
     public void putData() {

@@ -125,6 +125,8 @@ public class PageReference implements IPageReference {
         if (pInfo.isSplitted()) { // 发生 split 了
             return pInfo.getNewRef().getOrReadPage();
         }
+        if (bs.getMap().isInMemory())
+            return pInfo.page;
         Page p = pInfo.page; // 先取出来，GC线程可能把pInfo.page置null
         if (p != null) {
             pInfo.updateTime();
