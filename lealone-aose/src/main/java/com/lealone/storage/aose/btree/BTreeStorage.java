@@ -197,7 +197,8 @@ public class BTreeStorage {
         PageInfo pInfo = new PageInfo(p, pos);
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
-        pInfo.setPageListener(ref.getPageListener());
+        if (ref != null)
+            pInfo.setPageListener(ref.getPageListener());
         return pInfo;
     }
 

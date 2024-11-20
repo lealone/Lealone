@@ -82,16 +82,17 @@ public abstract class PageOperations {
                 pRef = gotoLeafPage().getRef();
                 pListener = pRef.getPageListener();
             }
-            p = pRef.getPage(); // 使用最新的
-            // 如果被GC线程回收了需要重试
             // 页面发生了结构性变动，也要重新从root定位leaf page
-            if (p == null || isPageChanged())
+            if (isPageChanged())
                 return retry(false);
 
             if (pRef.tryLock(scheduler, waitingIfLocked)) {
+                p = pRef.getPage(); // 使用最新的
+                // 如果被GC线程回收了需要重试
                 // 这一步检查是必需的，不能在一个不再使用的page上面进行写操作
-                if (isPageChanged())
+                if (p == null || isPageChanged())
                     return retry(true);
+
                 try {
                     return writeLocal(scheduler);
                 } catch (Throwable t) {

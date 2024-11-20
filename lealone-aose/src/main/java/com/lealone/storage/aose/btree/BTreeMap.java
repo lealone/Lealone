@@ -347,6 +347,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         lock.lock();
         try {
             checkWrite();
+            rootRef.markDirtyPage();
             btreeStorage.clear();
             size.set(0);
             maxKey.set(0);

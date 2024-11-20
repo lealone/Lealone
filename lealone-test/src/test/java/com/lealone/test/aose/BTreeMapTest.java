@@ -9,7 +9,6 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
-import com.lealone.db.value.ValueLong;
 import com.lealone.storage.StorageMapCursor;
 import com.lealone.storage.aose.btree.BTreeMap;
 
@@ -281,15 +280,15 @@ public class BTreeMapTest extends AoseTestBase {
     }
 
     void testAppend() {
-        BTreeMap<ValueLong, String> map = storage.openBTreeMap("BTreeMapTestAppend");
+        BTreeMap<Long, String> map = storage.openBTreeMap("BTreeMapTestAppend");
         map.clear();
         assertEquals(0, map.getMaxKey());
 
         int count = 20;
         for (int i = 1; i <= count; i++) {
             String value = "value-" + i;
-            ValueLong key = map.append(value);
-            assertEquals(i, key.getLong());
+            Long key = map.append(value);
+            assertEquals(i, key.longValue());
         }
         assertEquals(count, map.getMaxKey());
     }

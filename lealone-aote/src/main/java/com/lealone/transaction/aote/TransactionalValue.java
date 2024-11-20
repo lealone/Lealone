@@ -316,11 +316,12 @@ public class TransactionalValue extends LockableBase {
         RowLock rowLock = (RowLock) lockable.getLock();
         if (rowLock == null)
             return lockable.getValue();
+        Object oldValue = rowLock.getOldValue();
         AOTransaction t = rowLock.getTransaction();
         if (t == null || t.commitTimestamp > 0)
             return lockable.getValue();
         else
-            return rowLock.getOldValue();
+            return lockable.copy(oldValue, rowLock);
     }
 
     public static Lockable readMeta(ByteBuffer buff, StorageDataType valueType,
