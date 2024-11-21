@@ -101,7 +101,7 @@ public class TransactionMapTest extends AoteTestBase {
         TransactionMap<String, String> map = t.openMap(createMapName("testTryOperations"), storage);
         map.clear();
 
-        map.addIfAbsent("1", "a").get();
+        map.putIfAbsent("1", "a");
         t.commit();
         assertNotNull(map.get("1"));
 

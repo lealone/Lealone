@@ -52,12 +52,10 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
-    public Future<Integer> addIfAbsent(K key, V value);
+    public Future<Integer> addIfAbsent(K key, Lockable lockable);
 
-    // 如果也命名为addIfAbsent，调用addIfAbsent(key,lockable)时java的泛型会识别为addIfAbsent(K key, V value)
-    public Future<Integer> addIfAbsentNoCast(K key, Lockable lockable);
-
-    public void appendNoCast(Lockable lockable, AsyncHandler<AsyncResult<K>> handler);
+    // 若是定义成append(lockable,handler)，java的泛型会识别为append(V value,handler)
+    public void append(AsyncHandler<AsyncResult<K>> handler, Lockable lockable);
 
     public default int tryUpdate(K key, V newValue) {
         Lockable lockable = getLockableValue(key);

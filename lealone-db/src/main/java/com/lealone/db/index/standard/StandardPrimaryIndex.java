@@ -174,7 +174,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         TransactionMap<Value, Row> map = getMap(session);
         if (checkDuplicateKey) {
             Value key = row.getPrimaryKey();
-            map.addIfAbsentNoCast(key, row).onComplete(ar -> {
+            map.addIfAbsent(key, row).onComplete(ar -> {
                 if (ar.isSucceeded()) {
                     if (ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                         String sql = "PRIMARY KEY ON " + table.getSQL();
@@ -190,7 +190,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 ac.setAsyncResult(ar);
             });
         } else {
-            map.appendNoCast(row, ar -> {
+            map.append(ar -> {
                 if (ar.isSucceeded()) {
                     // 在PrimaryKeyType.getAppendKey中已经设置row key
                     session.setLastIdentity(row.getKey());
@@ -198,7 +198,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 } else {
                     ac.setAsyncResult(ar.getCause());
                 }
-            });
+            }, row);
         }
         return ac;
     }

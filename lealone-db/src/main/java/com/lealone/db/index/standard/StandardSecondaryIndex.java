@@ -134,7 +134,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         final IndexKey key = convertToKey(row);
 
         AsyncCallback<Integer> ac = session.createCallback();
-        map.addIfAbsentNoCast(key, key).onComplete(ar -> {
+        map.addIfAbsent(key, key).onComplete(ar -> {
             if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
