@@ -24,7 +24,7 @@ public abstract class PageOperations {
     private PageOperations() {
     }
 
-    // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove、Append
+    // 只针对单Key的写操作，包括: Put、PutIfAbsent、Remove、Append
     public static abstract class WriteOperation<K, V, R> implements PageOperation {
 
         final BTreeMap<K, V> map;
@@ -122,7 +122,7 @@ public abstract class PageOperations {
             int index = getKeyIndex();
 
             // 如果GC线程在写之前回收page了，要重试
-            // 如果像PutIfAbsent、Replace这类操作不满足条件可以提前返回结果
+            // 如果像PutIfAbsent这类操作不满足条件可以提前返回结果
             Object r = beforeWrite(index);
             if (r == PageOperationResult.SUCCEEDED) {
                 result = (R) writeLocal(index, scheduler);
@@ -246,36 +246,6 @@ public abstract class PageOperations {
             key = (K) map.getKeyType().getAppendKey(k, value);
             insertLeaf(index, value); // 执行insertLeaf的过程中已经把当前页标记为脏页了
             return key;
-        }
-    }
-
-    public static class Replace<K, V> extends Put<K, V, Boolean> {
-
-        private final V oldValue;
-
-        public Replace(BTreeMap<K, V> map, K key, V oldValue, V newValue,
-                AsyncHandler<AsyncResult<Boolean>> resultHandler) {
-            super(map, key, newValue, resultHandler);
-            this.oldValue = oldValue;
-        }
-
-        @Override
-        protected Object beforeWrite(int index) {
-            // 对应的key不存在，直接返回false
-            if (index < 0) {
-                return Boolean.FALSE;
-            }
-            Object old = p.getValue(index);
-            if (!map.areValuesEqual(old, oldValue)) { // 值不相同也直接返回false
-                return Boolean.FALSE;
-            }
-            return super.beforeWrite(index);
-        }
-
-        @Override
-        protected Boolean writeLocal(int index, InternalScheduler scheduler) {
-            p.setValue(index, value);
-            return Boolean.TRUE;
         }
     }
 

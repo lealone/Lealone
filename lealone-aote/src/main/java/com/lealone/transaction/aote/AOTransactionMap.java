@@ -248,11 +248,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return map.areValuesEqual(a, b);
-    }
-
-    @Override
     public boolean isInMemory() {
         return map.isInMemory();
     }
@@ -499,38 +494,6 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        return replace0(transaction.getSession(), key, oldValue, newValue, null);
-    }
-
-    @Override
-    public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace0(transaction.getSession(), key, oldValue, newValue, handler);
-    }
-
-    @Override
-    public void replace(InternalSession session, K key, V oldValue, V newValue,
-            AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace0(session, key, oldValue, newValue, handler);
-    }
-
-    private boolean replace0(InternalSession session, K key, V oldValue, V newValue,
-            AsyncHandler<AsyncResult<Boolean>> handler) {
-        V old = get(key);
-        if (areValuesEqual(old, oldValue)) {
-            DataUtils.checkNotNull(newValue, "value");
-            writeOperation(session, key, newValue, ar -> {
-                if (ar.isSucceeded())
-                    handler.handle(new AsyncResult<>(true));
-                else
-                    handler.handle(new AsyncResult<>(ar.getCause()));
-            });
-            return true;
-        }
-        return false;
-    }
-
-    @Override
     public K append(V value) {
         return append0(transaction.getSession(), value, null);
     }
@@ -627,8 +590,13 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             AsyncHandler<AsyncResult<V>> handler, Lockable oldLockable, V retValue) {
         // insert
         if (oldLockable == null) {
-            addIfAbsent(key, value).onSuccess(r -> handler.handle(new AsyncResult<>(retValue)))
-                    .onFailure(t -> handler.handle(new AsyncResult<>(t)));
+            addIfAbsent(key, value).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    handler.handle(new AsyncResult<>(retValue));
+                } else {
+                    handler.handle(new AsyncResult<>(ar.getCause()));
+                }
+            });
         } else {
             if (tryUpdateOrRemove(key, value, oldLockable, false) == Transaction.OPERATION_COMPLETE)
                 handler.handle(new AsyncResult<>(retValue));

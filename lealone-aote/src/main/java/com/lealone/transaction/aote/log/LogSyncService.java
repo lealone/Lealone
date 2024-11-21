@@ -46,8 +46,7 @@ public abstract class LogSyncService extends Thread {
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(RunMode.isEmbedded(config));
-        // 多加一个，给其他类型的调度器使用，比如集群环境下checkpoint服务线程也是个调度器
-        int schedulerCount = MapUtils.getSchedulerCount(config) + 1;
+        int schedulerCount = MapUtils.getSchedulerCount(config);
         waitingSchedulers = new InternalScheduler[schedulerCount];
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config, this);

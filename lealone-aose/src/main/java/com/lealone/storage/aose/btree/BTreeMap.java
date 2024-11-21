@@ -33,7 +33,6 @@ import com.lealone.storage.aose.btree.page.PageOperations.Append;
 import com.lealone.storage.aose.btree.page.PageOperations.Put;
 import com.lealone.storage.aose.btree.page.PageOperations.PutIfAbsent;
 import com.lealone.storage.aose.btree.page.PageOperations.Remove;
-import com.lealone.storage.aose.btree.page.PageOperations.Replace;
 import com.lealone.storage.aose.btree.page.PageOperations.WriteOperation;
 import com.lealone.storage.aose.btree.page.PageReference;
 import com.lealone.storage.aose.btree.page.PageStorageMode;
@@ -292,16 +291,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
             x += min ? -1 : 1;
         }
-    }
-
-    @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        if (a == b) {
-            return true;
-        } else if (a == null || b == null) {
-            return false;
-        }
-        return valueType.compare(a, b) == 0;
     }
 
     @Override
@@ -597,29 +586,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
         return runPageOperation(session, putIfAbsent);
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        return replace0(null, key, oldValue, newValue, null);
-    }
-
-    @Override
-    public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace0(null, key, oldValue, newValue, handler);
-    }
-
-    @Override
-    public void replace(InternalSession session, K key, V oldValue, V newValue,
-            AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace0(session, key, oldValue, newValue, handler);
-    }
-
-    private Boolean replace0(InternalSession session, K key, V oldValue, V newValue,
-            AsyncHandler<AsyncResult<Boolean>> handler) {
-        checkWrite(newValue);
-        Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);
-        return runPageOperation(session, replace);
     }
 
     @Override

@@ -81,16 +81,6 @@ public interface StorageMap<K, V> {
      */
     V remove(K key);
 
-    /**
-     * Replace a value for an existing key, if the value matches.
-     *
-     * @param key the key (may not be null)
-     * @param oldValue the expected value
-     * @param newValue the new value
-     * @return true if the value was replaced
-     */
-    boolean replace(K key, V oldValue, V newValue);
-
     K append(V value);
 
     void setMaxKey(K key);
@@ -142,15 +132,6 @@ public interface StorageMap<K, V> {
      * @return the result
      */
     K ceilingKey(K key);
-
-    /**
-     * Check whether the two values are equal.
-     *
-     * @param a the first value
-     * @param b the second value
-     * @return true if they are equal
-     */
-    boolean areValuesEqual(Object a, Object b);
 
     /**
      * Get the number of entries.
@@ -298,16 +279,6 @@ public interface StorageMap<K, V> {
 
     default void append(InternalSession session, V value, AsyncHandler<AsyncResult<K>> handler) {
         append(value, handler);
-    }
-
-    default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        Boolean b = replace(key, oldValue, newValue);
-        handleAsyncResult(handler, b);
-    }
-
-    default void replace(InternalSession session, K key, V oldValue, V newValue,
-            AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace(key, oldValue, newValue, handler);
     }
 
     default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
