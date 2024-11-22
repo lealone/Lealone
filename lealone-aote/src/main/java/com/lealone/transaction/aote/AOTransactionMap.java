@@ -328,7 +328,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 
-    @Override
+    @Override // put和putIfAbsent需要先执行get，而addIfAbsent不需要
     public Future<Integer> addIfAbsent(K key, Lockable lockable) {
         return add(key, lockable, true, null);
     }
@@ -482,27 +482,33 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private V put0(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler,
             boolean ifAbsent) {
-        Lockable lockable = toLockable(value);
         AtomicReference<V> vRef = new AtomicReference<>();
         if (handler != null) {
-            put0(session, key, lockable, handler, ifAbsent, vRef);
+            put0(session, key, value, handler, ifAbsent, vRef);
         } else {
             SchedulerListener<V> listener = SchedulerListener.createSchedulerListener();
-            put0(session, key, lockable, listener, ifAbsent, vRef);
+            put0(session, key, value, listener, ifAbsent, vRef);
             listener.await();
         }
         return vRef.get();
     }
 
-    private void put0(InternalSession session, K key, Lockable lockable,
-            AsyncHandler<AsyncResult<V>> handler, boolean ifAbsent, AtomicReference<V> vRef) {
-        add(key, lockable, ifAbsent, vRef).onComplete(ar -> {
-            if (ar.isSucceeded()) {
-                handler.handle(new AsyncResult<>(vRef.get()));
-            } else {
-                handler.handle(new AsyncResult<>(ar.getCause()));
-            }
-        });
+    private void put0(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler,
+            boolean ifAbsent, AtomicReference<V> vRef) {
+        // 为了支持可重复读事务，还是要读出旧值
+        Lockable lockable = map.get(key);
+        if (lockable != null) {
+            tryUpdateOrRemove(key, value, lockable, handler, vRef);
+        } else {
+            lockable = toLockable(value);
+            add(key, lockable, ifAbsent, vRef).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    handler.handle(new AsyncResult<>(vRef.get()));
+                } else {
+                    handler.handle(new AsyncResult<>(ar.getCause()));
+                }
+            });
+        }
     }
 
     private Lockable toLockable(V value) {
@@ -570,42 +576,44 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public V remove(K key) {
-        return remove0(transaction.getSession(), key, null);
+        return remove0(key, null);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
-        remove0(transaction.getSession(), key, handler);
+        remove0(key, handler);
     }
 
     @Override
     public void remove(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
-        remove0(session, key, handler);
+        remove0(key, handler);
     }
 
-    private V remove0(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
+    private V remove0(K key, AsyncHandler<AsyncResult<V>> handler) {
+        AtomicReference<V> vRef = new AtomicReference<>();
         Lockable lockable = map.get(key);
         if (lockable == null) {
-            handler.handle(new AsyncResult<>((V) null));
-            return null;
+            if (handler != null)
+                handler.handle(new AsyncResult<>((V) null));
         } else {
-            // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
-            V retValue = getUnwrapValue(key, lockable);
             if (handler != null) {
-                remove0(session, key, lockable, handler);
+                tryUpdateOrRemove(key, null, lockable, handler, vRef);
             } else {
                 SchedulerListener<V> listener = SchedulerListener.createSchedulerListener();
-                remove0(session, key, lockable, handler);
+                tryUpdateOrRemove(key, null, lockable, listener, vRef);
                 listener.await();
             }
-            return retValue;
         }
+        return vRef.get();
     }
 
-    private void remove0(InternalSession session, K key, Lockable lockable,
-            AsyncHandler<AsyncResult<V>> handler) {
-        if (tryRemove(key, lockable, false) == Transaction.OPERATION_COMPLETE)
-            handler.handle(new AsyncResult<>((V) null));
+    private void tryUpdateOrRemove(K key, V value, Lockable lockable,
+            AsyncHandler<AsyncResult<V>> handler, AtomicReference<V> vRef) {
+        // tryUpdateOrRemove可能会改变oldValue的内部状态，所以提前拿到返回值
+        V oldValue = getUnwrapValue(key, lockable);
+        vRef.set(oldValue);
+        if (tryUpdateOrRemove(key, value, lockable, false) == Transaction.OPERATION_COMPLETE)
+            handler.handle(new AsyncResult<>(oldValue));
         else
             handler.handle(new AsyncResult<>(DataUtils
                     .newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked")));
