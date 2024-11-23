@@ -17,7 +17,7 @@ import com.lealone.net.NetInputStream;
 public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
 
     private volatile boolean runEnd;
-    private volatile AsyncHandler<AsyncResult<T>> completeHandler;
+    private volatile AsyncResultHandler<T> completeHandler;
     private volatile AsyncHandler<T> successHandler;
     private volatile AsyncHandler<Throwable> failureHandler;
     private volatile AsyncResult<T> asyncResult;
@@ -109,7 +109,7 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
     }
 
     @Override
-    public synchronized Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
+    public synchronized Future<T> onComplete(AsyncResultHandler<T> handler) {
         completeHandler = handler;
         if (asyncResult != null) {
             handler.handle(asyncResult);

@@ -7,8 +7,8 @@ package com.lealone.sql.executor;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.sql.StatementBase;
 
@@ -19,8 +19,7 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     private boolean loopEnd;
     private int pendingOperationCount;
 
-    public YieldableLoopUpdateBase(StatementBase statement,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableLoopUpdateBase(StatementBase statement, AsyncResultHandler<Integer> asyncHandler) {
         super(statement, asyncHandler);
     }
 

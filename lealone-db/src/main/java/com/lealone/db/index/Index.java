@@ -6,8 +6,7 @@
 package com.lealone.db.index;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.result.SortOrder;
 import com.lealone.db.row.Row;
 import com.lealone.db.row.SearchRow;
@@ -82,21 +81,21 @@ public interface Index extends SchemaObject {
      * @param session the session to use
      * @param row the row to add
      */
-    default Future<Integer> add(ServerSession session, Row row) {
+    default void add(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
         throw DbException.getUnsupportedException("add row");
     }
 
-    default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
-            int[] updateColumns, boolean isLockedBySelf) {
-        AsyncCallback<Integer> ac = session.createCallback();
-        remove(session, oldRow, oldColumns, isLockedBySelf).onSuccess(v -> {
-            add(session, newRow).onComplete(ar -> {
-                ac.setAsyncResult(ar);
-            });
-        }).onFailure(t -> {
-            ac.setAsyncResult(t);
+    default void update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
+            int[] updateColumns, boolean isLockedBySelf, AsyncResultHandler<Integer> handler) {
+        remove(session, oldRow, oldColumns, isLockedBySelf, ar1 -> {
+            if (ar1.isSucceeded()) {
+                add(session, newRow, ar2 -> {
+                    handler.handle(ar2);
+                });
+            } else {
+                handler.handle(ar1);
+            }
         });
-        return ac;
     }
 
     /**
@@ -105,8 +104,8 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @param row the row
      */
-    default Future<Integer> remove(ServerSession session, Row row, Value[] oldColumns,
-            boolean isLockedBySelf) {
+    default void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         throw DbException.getUnsupportedException("remove row");
     }
 

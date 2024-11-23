@@ -8,10 +8,10 @@ package com.lealone.db.scheduler;
 import java.util.concurrent.CountDownLatch;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 
-public abstract class SchedulerListener<R> implements AsyncHandler<AsyncResult<R>> {
+public abstract class SchedulerListener<R> implements AsyncResultHandler<R> {
 
     protected volatile R result;
     protected volatile DbException exception;

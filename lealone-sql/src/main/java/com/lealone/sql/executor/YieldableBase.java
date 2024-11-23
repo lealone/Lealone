@@ -15,15 +15,15 @@ import com.lealone.db.Constants;
 import com.lealone.db.Database;
 import com.lealone.db.api.DatabaseEventListener;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.sql.StatementBase;
 import com.lealone.sql.PreparedSQLStatement.Yieldable;
+import com.lealone.sql.StatementBase;
 import com.lealone.sql.expression.Parameter;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
@@ -31,7 +31,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected StatementBase statement;
     protected final ServerSession session;
     protected final Trace trace;
-    protected final AsyncHandler<AsyncResult<T>> asyncHandler;
+    protected final AsyncResultHandler<T> asyncHandler;
     protected AsyncResult<T> asyncResult;
     protected long startTimeNanos;
     protected boolean started;
@@ -40,7 +40,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected boolean stopped;
     protected boolean yieldEnabled = true;
 
-    public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
+    public YieldableBase(StatementBase statement, AsyncResultHandler<T> asyncHandler) {
         this.statement = statement;
         this.session = statement.getSession();
         this.trace = session.getTrace(TraceModuleType.COMMAND);

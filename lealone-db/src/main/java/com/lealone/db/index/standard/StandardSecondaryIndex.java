@@ -10,8 +10,7 @@ import java.util.Map;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
@@ -129,12 +128,11 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> add(ServerSession session, Row row) {
+    public void add(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
         final TransactionMap<IndexKey, IndexKey> map = getMap(session);
         final IndexKey key = convertToKey(row);
 
-        AsyncCallback<Integer> ac = session.createCallback();
-        map.addIfAbsent(key, key).onComplete(ar -> {
+        map.addIfAbsent(key, key, ar -> {
             if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
@@ -142,17 +140,16 @@ public class StandardSecondaryIndex extends StandardIndex {
                 // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
                 // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
                 DbException e = getDuplicateKeyException(key.toString());
-                ac.setAsyncResult(e);
+                onException(handler, e);
             } else {
-                ac.setAsyncResult(ar);
+                handler.handle(ar);
             }
         });
-        return ac;
     }
 
     @Override
-    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
-            int[] updateColumns, boolean isLockedBySelf) {
+    public void update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
+            int[] updateColumns, boolean isLockedBySelf, AsyncResultHandler<Integer> handler) {
         boolean needUpdate = false;
         // row key不同了都要更新索引
         if (oldRow.getKey() != newRow.getKey()) {
@@ -171,21 +168,21 @@ public class StandardSecondaryIndex extends StandardIndex {
             }
         }
         if (needUpdate)
-            return super.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf);
+            super.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf, handler);
         else
-            return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
+            onComplete(handler);
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, Value[] oldColumns,
-            boolean isLockedBySelf) {
+    public void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         TransactionMap<IndexKey, IndexKey> map = getMap(session);
         IndexKey key = convertToKey(row, oldColumns);
         Lockable lockable = map.getLockableValue(key);
         if (!isLockedBySelf && map.isLocked(lockable))
-            return Future.succeededFuture(map.addWaitingTransaction(lockable));
+            onComplete(handler, map.addWaitingTransaction(lockable));
         else
-            return Future.succeededFuture(map.tryRemove(key, lockable, isLockedBySelf));
+            onComplete(handler, map.tryRemove(key, lockable, isLockedBySelf));
     }
 
     @Override

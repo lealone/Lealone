@@ -24,10 +24,7 @@ import com.lealone.db.DbObjectType;
 import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.constraint.Constraint;
 import com.lealone.db.constraint.ConstraintReferential;
 import com.lealone.db.index.Index;
@@ -366,16 +363,17 @@ public class StandardTable extends Table {
     }
 
     // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
-    private AsyncHandler<AsyncResult<Integer>> createHandler(ServerSession session,
-            AsyncCallback<Integer> ac, AtomicInteger count, AtomicBoolean isFailed, IndexOperation io) {
+    private AsyncResultHandler<Integer> createHandler(ServerSession session,
+            AsyncResultHandler<Integer> handler, AtomicInteger count, AtomicBoolean isFailed,
+            IndexOperation io) {
         return ar -> {
             if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
-                ac.setAsyncResult(ar);
+                handler.handle(ar);
             }
             if (count.decrementAndGet() == 0 && !isFailed.get()) {
                 if (io != null)
                     IndexOperator.addIndexOperation(session, this, io);
-                ac.setAsyncResult(ar);
+                handler.handle(ar);
                 analyzeIfRequired(session);
             }
         };
@@ -392,117 +390,83 @@ public class StandardTable extends Table {
             tableAnalyzer.analyze(session, sample);
     }
 
-    private AsyncCallback<Integer> createAsyncCallbackForAddRow(ServerSession session, Row row) {
-        AsyncCallback<Integer> ac = session.createCallback();
+    @Override
+    public void addRow(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
+        row.setVersion(getVersion());
+        lastModificationId = database.getNextModificationDataId();
         if (containsLargeObject()) {
+            AsyncResultHandler<Integer> topHandler = handler;
             // 增加row全部成功后再连接大对象
-            AsyncCallback<Integer> acLob = session.createCallback();
-            acLob.onComplete(ar -> {
+            handler = ar -> {
                 if (ar.isSucceeded()) {
                     primaryIndex.onAddSucceeded(session, row);
                 }
-                ac.setAsyncResult(ar);
-            });
-            return acLob;
+                topHandler.handle(ar);
+            };
         }
-        return ac;
-    }
-
-    @Override
-    public Future<Integer> addRow(ServerSession session, Row row) {
-        return addRow(session, row, true);
-    }
-
-    public Future<Integer> addRowAsync(ServerSession session, Row row) {
-        return addRow(session, row, false);
-    }
-
-    private Future<Integer> addRow(ServerSession session, Row row, boolean isSync) {
-        row.setVersion(getVersion());
-        lastModificationId = database.getNextModificationDataId();
-        AsyncCallback<Integer> ac;
-        ArrayList<Index> oldIndexes;
-        if (isSync) {
-            ac = createAsyncCallbackForAddRow(session, row);
-            oldIndexes = indexesSync;
-        } else {
-            ac = session.createCallback();
-            oldIndexes = indexesAsync;
-        }
+        ArrayList<Index> oldIndexes = indexesSync;
         int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
 
         final IndexOperation io;
-        if (isSync && !indexesAsync.isEmpty()) {
+        if (!indexesAsync.isEmpty()) {
             io = IndexOperator.addRowLazy(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         } else {
             io = null;
         }
 
-        if (!isSync || primaryIndex.containsMainIndexColumn()) {
+        AsyncResultHandler<Integer> topHandler = handler;
+        if (primaryIndex.containsMainIndexColumn()) {
             // 第一个是PrimaryIndex
             for (int i = 0; i < size && !isFailed.get(); i++) {
                 Index index = oldIndexes.get(i);
-                index.add(session, row).onComplete(createHandler(session, ac, count, isFailed, io));
+                index.add(session, row, createHandler(session, topHandler, count, isFailed, io));
             }
         } else {
             // 如果表没有主键，需要等primaryIndex写成功得到一个row id后才能写其他索引
-            primaryIndex.add(session, row).onComplete(ar -> {
+            primaryIndex.add(session, row, ar -> {
                 if (ar.isSucceeded()) {
                     if (count.decrementAndGet() == 0) {
                         if (io != null)
                             IndexOperator.addIndexOperation(session, this, io);
-                        ac.setAsyncResult(ar);
+                        topHandler.handle(ar);
                         analyzeIfRequired(session);
                         return;
                     }
                     for (int i = 1; i < size && !isFailed.get(); i++) {
                         Index index = oldIndexes.get(i);
-                        index.add(session, row)
-                                .onComplete(createHandler(session, ac, count, isFailed, io));
+                        index.add(session, row, createHandler(session, topHandler, count, isFailed, io));
                     }
                 } else {
-                    ac.setAsyncResult(ar.getCause());
+                    topHandler.handle(ar);
                 }
             });
         }
 
         // 看看有没有刚刚创建的索引，如果有就让它也写入新记录
-        ArrayList<Index> newIndexes = isSync ? indexesSync : indexesAsync;
+        ArrayList<Index> newIndexes = indexesSync;
         if (oldIndexes != newIndexes) {
             for (Index index : getNewIndexes(oldIndexes, newIndexes)) {
-                index.add(session, row);
+                index.add(session, row, AsyncResultHandler.emptyHandler());
             }
         }
-        return ac;
     }
 
     @Override
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
-            boolean isLockedBySelf) {
-        return updateRow(session, oldRow, newRow, updateColumns, isLockedBySelf, true);
-    }
-
-    public Future<Integer> updateRowAsync(ServerSession session, Row oldRow, Row newRow,
-            int[] updateColumns, boolean isLockedBySelf) {
-        return updateRow(session, oldRow, newRow, updateColumns, isLockedBySelf, false);
-    }
-
-    private Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
-            boolean isLockedBySelf, boolean isSync) {
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
+            boolean isLockedBySelf, AsyncResultHandler<Integer> handler) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
-        AsyncCallback<Integer> ac = session.createCallback();
-        ArrayList<Index> oldIndexes = isSync ? indexesSync : indexesAsync;
+        ArrayList<Index> oldIndexes = indexesSync;
         int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
         Value[] oldColumns = oldRow.getColumns(); // 会改变，所以提前保留旧的
 
         IndexOperation io = null;
-        if (isSync && !indexesAsync.isEmpty()) {
+        if (!indexesAsync.isEmpty()) {
             io = IndexOperator.updateRowLazy(oldRow.getKey(), newRow.getKey(), oldColumns,
                     newRow.getColumns(), updateColumns);
             io.setTransaction(session.getTransaction());
@@ -511,59 +475,50 @@ public class StandardTable extends Table {
         // 第一个是PrimaryIndex
         for (int i = 0; i < size && !isFailed.get(); i++) {
             Index index = oldIndexes.get(i);
-            index.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf)
-                    .onComplete(createHandler(session, ac, count, isFailed, io));
+            index.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf,
+                    createHandler(session, handler, count, isFailed, io));
         }
 
         // 看看有没有刚刚创建的索引，如果有也更新它
-        ArrayList<Index> newIndexes = isSync ? indexesSync : indexesAsync;
+        ArrayList<Index> newIndexes = indexesSync;
         if (oldIndexes != newIndexes) {
             for (Index index : getNewIndexes(oldIndexes, newIndexes)) {
-                index.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf);
+                index.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf,
+                        AsyncResultHandler.emptyHandler());
             }
         }
-        return ac;
     }
 
     @Override
-    public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
-        return removeRow(session, row, isLockedBySelf, true);
-    }
-
-    public Future<Integer> removeRowAsync(ServerSession session, Row row, boolean isLockedBySelf) {
-        return removeRow(session, row, isLockedBySelf, false);
-    }
-
-    private Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf,
-            boolean isSync) {
+    public void removeRow(ServerSession session, Row row, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         lastModificationId = database.getNextModificationDataId();
-        AsyncCallback<Integer> ac = session.createCallback();
-        ArrayList<Index> oldIndexes = isSync ? indexesSync : indexesAsync;
+        ArrayList<Index> oldIndexes = indexesSync;
         int size = oldIndexes.size();
         AtomicInteger count = new AtomicInteger(size);
         AtomicBoolean isFailed = new AtomicBoolean();
         Value[] oldColumns = row.getColumns(); // 会改变，所以提前保留旧的
 
         IndexOperation io = null;
-        if (isSync && !indexesAsync.isEmpty()) {
+        if (!indexesAsync.isEmpty()) {
             io = IndexOperator.removeRowLazy(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         }
 
         for (int i = size - 1; i >= 0 && !isFailed.get(); i--) {
             Index index = oldIndexes.get(i);
-            index.remove(session, row, oldColumns, isLockedBySelf)
-                    .onComplete(createHandler(session, ac, count, isFailed, io));
+            index.remove(session, row, oldColumns, isLockedBySelf,
+                    createHandler(session, handler, count, isFailed, io));
         }
 
         // 看看有没有刚刚创建的索引，如果有也删除它的记录
-        ArrayList<Index> newIndexes = isSync ? indexesSync : indexesAsync;
+        ArrayList<Index> newIndexes = indexesSync;
         if (oldIndexes != newIndexes) {
             for (Index index : getNewIndexes(oldIndexes, newIndexes)) {
-                index.remove(session, row, oldColumns, isLockedBySelf);
+                index.remove(session, row, oldColumns, isLockedBySelf,
+                        AsyncResultHandler.emptyHandler());
             }
         }
-        return ac;
     }
 
     @Override

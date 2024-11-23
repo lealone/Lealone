@@ -12,8 +12,7 @@ import java.util.List;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.Database;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.index.IndexConditionType;
 import com.lealone.db.result.Result;
@@ -50,7 +49,7 @@ public abstract class Query extends ManipulationStatement implements com.lealone
      */
     protected Expression limitExpr;
 
-    /**
+    /** 
      * The offset expression as specified in the LIMIT .. OFFSET clause.
      */
     protected Expression offsetExpr;
@@ -245,12 +244,12 @@ public abstract class Query extends ManipulationStatement implements com.lealone
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            AsyncResultHandler<Result> asyncHandler) {
         return createYieldableQuery(maxRows, scrollable, asyncHandler, null);
     }
 
     public abstract YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target);
+            AsyncResultHandler<Result> asyncHandler, ResultTarget target);
 
     public void setOffset(Expression offset) {
         this.offsetExpr = offset;

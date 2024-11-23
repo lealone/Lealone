@@ -12,8 +12,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.DataHandler;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.result.ResultTarget;
@@ -169,7 +168,7 @@ public abstract class MerSert extends ManipulationStatement {
         int index;
         YieldableBase<Result> yieldableQuery;
 
-        public YieldableMerSert(MerSert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableMerSert(MerSert statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
@@ -271,7 +270,7 @@ public abstract class MerSert extends ManipulationStatement {
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
                 onPendingOperationStart();
-                table.addRow(session, newRow).onComplete(ar -> {
+                table.addRow(session, newRow, ar -> {
                     if (ar.isSucceeded()) {
                         try {
                             // 有可能抛出异常

@@ -13,8 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DbSetting;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.db.scheduler.SchedulerListener;
@@ -550,16 +549,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    public void put(K key, V value, AsyncResultHandler<V> handler) {
         put0(null, key, value, handler);
     }
 
     @Override
-    public void put(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    public void put(InternalSession session, K key, V value, AsyncResultHandler<V> handler) {
         put0(session, key, value, handler);
     }
 
-    private V put0(InternalSession session, K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    private V put0(InternalSession session, K key, V value, AsyncResultHandler<V> handler) {
         checkWrite(value);
         Put<K, V, V> put = new Put<>(this, key, value, handler);
         return runPageOperation(session, put);
@@ -571,18 +570,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+    public void putIfAbsent(K key, V value, AsyncResultHandler<V> handler) {
         putIfAbsent0(null, key, value, handler);
     }
 
     @Override
-    public void putIfAbsent(InternalSession session, K key, V value,
-            AsyncHandler<AsyncResult<V>> handler) {
+    public void putIfAbsent(InternalSession session, K key, V value, AsyncResultHandler<V> handler) {
         putIfAbsent0(session, key, value, handler);
     }
 
-    private V putIfAbsent0(InternalSession session, K key, V value,
-            AsyncHandler<AsyncResult<V>> handler) {
+    private V putIfAbsent0(InternalSession session, K key, V value, AsyncResultHandler<V> handler) {
         checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
         return runPageOperation(session, putIfAbsent);
@@ -594,16 +591,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void append(V value, AsyncHandler<AsyncResult<K>> handler) {
+    public void append(V value, AsyncResultHandler<K> handler) {
         append0(null, value, handler);
     }
 
     @Override
-    public void append(InternalSession session, V value, AsyncHandler<AsyncResult<K>> handler) {
+    public void append(InternalSession session, V value, AsyncResultHandler<K> handler) {
         append0(session, value, handler);
     }
 
-    private K append0(InternalSession session, V value, AsyncHandler<AsyncResult<K>> handler) {
+    private K append0(InternalSession session, V value, AsyncResultHandler<K> handler) {
         checkWrite(value);
         Append<K, V> append = new Append<>(this, value, handler);
         return runPageOperation(session, append);
@@ -627,16 +624,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
+    public void remove(K key, AsyncResultHandler<V> handler) {
         remove0(null, key, handler);
     }
 
     @Override
-    public void remove(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
+    public void remove(InternalSession session, K key, AsyncResultHandler<V> handler) {
         remove0(session, key, handler);
     }
 
-    private V remove0(InternalSession session, K key, AsyncHandler<AsyncResult<V>> handler) {
+    private V remove0(InternalSession session, K key, AsyncResultHandler<V> handler) {
         checkWrite();
         Remove<K, V> remove = new Remove<>(this, key, handler);
         return runPageOperation(session, remove);

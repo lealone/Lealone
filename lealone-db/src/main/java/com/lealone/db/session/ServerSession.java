@@ -32,8 +32,8 @@ import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.auth.User;
 import com.lealone.db.command.Command;
@@ -527,7 +527,7 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     public <T> void stopCurrentCommand(PreparedSQLStatement statement,
-            AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+            AsyncResultHandler<T> asyncHandler, AsyncResult<T> asyncResult) {
         // 执行rollback命令时executingStatements会置0，然后再执行stopCurrentCommand
         // 此时executingStatements不需要再减了
         if (executingStatements > 0 && --executingStatements > 0) {
@@ -585,7 +585,7 @@ public class ServerSession extends SessionBase implements InternalSession {
         asyncCommit(null, null);
     }
 
-    public <T> void asyncCommit(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+    public <T> void asyncCommit(AsyncResultHandler<T> asyncHandler, AsyncResult<T> asyncResult) {
         if (transaction != null) {
             beforeCommit();
             transaction.asyncCommit(() -> {

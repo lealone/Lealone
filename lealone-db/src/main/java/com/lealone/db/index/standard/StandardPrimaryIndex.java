@@ -12,8 +12,7 @@ import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
 import com.lealone.db.RunMode;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
@@ -158,7 +157,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> add(ServerSession session, Row row) {
+    public void add(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
@@ -169,12 +168,10 @@ public class StandardPrimaryIndex extends StandardIndex {
             long k = row.getValue(mainIndexColumn).getLong();
             row.setKey(k);
         }
-
-        AsyncCallback<Integer> ac = session.createCallback();
         TransactionMap<Value, Row> map = getMap(session);
         if (checkDuplicateKey) {
             Value key = row.getPrimaryKey();
-            map.addIfAbsent(key, row).onComplete(ar -> {
+            map.addIfAbsent(key, row, ar -> {
                 if (ar.isSucceeded()) {
                     if (ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                         String sql = "PRIMARY KEY ON " + table.getSQL();
@@ -182,25 +179,24 @@ public class StandardPrimaryIndex extends StandardIndex {
                             sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
                         }
                         DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-                        ac.setAsyncResult(e);
+                        onException(handler, e);
                         return;
                     }
                     session.setLastIdentity(row.getKey());
                 }
-                ac.setAsyncResult(ar);
+                handler.handle(ar);
             });
         } else {
             map.append(ar -> {
                 if (ar.isSucceeded()) {
                     // 在PrimaryKeyType.getAppendKey中已经设置row key
                     session.setLastIdentity(row.getKey());
-                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
+                    onComplete(handler);
                 } else {
-                    ac.setAsyncResult(ar.getCause());
+                    onException(handler, ar.getCause());
                 }
             }, row);
         }
-        return ac;
     }
 
     static boolean containsColumn(int[] updateColumns, int cid) {
@@ -213,21 +209,26 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
-            int[] updateColumns, boolean isLockedBySelf) {
+    public void update(ServerSession session, Row oldRow, Row newRow, Value[] oldColumns,
+            int[] updateColumns, boolean isLockedBySelf, AsyncResultHandler<Integer> handler) {
         if (mainIndexColumn != -1 && containsColumn(updateColumns, mainIndexColumn)) {
             Value oldKey = oldRow.getValue(mainIndexColumn);
             Value newKey = newRow.getValue(mainIndexColumn);
             // 修改了主键字段并且新值与旧值不同时才会册除原有的并增加新的，因为这种场景下性能慢一些
             if (!oldKey.equals(newKey)) {
-                return super.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf);
+                super.update(session, oldRow, newRow, oldColumns, updateColumns, isLockedBySelf,
+                        handler);
+                return;
             } else if (updateColumns.length == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
-                return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
+                onComplete(handler);
+                return;
             }
         }
         TransactionMap<Value, Row> map = getMap(session);
-        if (!isLockedBySelf && map.isLocked(oldRow))
-            return Future.succeededFuture(map.addWaitingTransaction(oldRow));
+        if (!isLockedBySelf && map.isLocked(oldRow)) {
+            onComplete(handler, map.addWaitingTransaction(oldRow));
+            return;
+        }
 
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
@@ -244,17 +245,19 @@ public class StandardPrimaryIndex extends StandardIndex {
         Value key = newRow.getPrimaryKey();
         int ret = map.tryUpdate(key, newRow, oldRow, isLockedBySelf);
         session.setLastIdentity(newRow.getKey());
-        return Future.succeededFuture(ret);
+        onComplete(handler, ret);
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, Value[] oldColumns,
-            boolean isLockedBySelf) {
+    public void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         Value key = row.getPrimaryKey();
         TransactionMap<Value, Row> map = getMap(session);
 
-        if (!isLockedBySelf && map.isLocked(row))
-            return Future.succeededFuture(map.addWaitingTransaction(row));
+        if (!isLockedBySelf && map.isLocked(row)) {
+            onComplete(handler, map.addWaitingTransaction(row));
+            return;
+        }
 
         if (table.containsLargeObject()) {
             for (int columnId : table.getLargeObjectColumns()) {
@@ -262,7 +265,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 unlinkLargeObject(session, v);
             }
         }
-        return Future.succeededFuture(map.tryRemove(key, row, isLockedBySelf));
+        onComplete(handler, map.tryRemove(key, row, isLockedBySelf));
     }
 
     public int tryLock(ServerSession session, Row row) {

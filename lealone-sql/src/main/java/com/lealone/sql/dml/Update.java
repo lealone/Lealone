@@ -14,8 +14,7 @@ import com.lealone.common.util.StatementBuilder;
 import com.lealone.common.util.Utils;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.api.Trigger;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
@@ -103,8 +102,7 @@ public class Update extends UpDel {
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableUpdate(this, asyncHandler);
     }
 
@@ -115,7 +113,7 @@ public class Update extends UpDel {
         final int[] updateColumnIndexes;
         final int columnCount;
 
-        public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableUpdate(Update statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
                     statement.condition);
             this.statement = statement;
@@ -179,7 +177,7 @@ public class Update extends UpDel {
 
         private void updateRow(Row oldRow, Row newRow) {
             onPendingOperationStart();
-            table.updateRow(session, oldRow, newRow, updateColumnIndexes, true).onComplete(ar -> {
+            table.updateRow(session, oldRow, newRow, updateColumnIndexes, true, ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, oldRow, newRow, false);
                 }

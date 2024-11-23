@@ -14,7 +14,6 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.RunMode;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
@@ -421,10 +420,6 @@ public class AOTransaction implements Transaction {
         buff.append(':');
         buff.append(tid);
         return buff.toString();
-    }
-
-    public <T> AsyncCallback<T> createCallback() {
-        return session != null ? session.createCallback() : AsyncCallback.createConcurrentCallback();
     }
 
     protected InternalScheduler scheduler;

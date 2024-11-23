@@ -23,5 +23,5 @@ public interface Future<T> {
 
     Future<T> onFailure(AsyncHandler<Throwable> handler);
 
-    Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler);
+    Future<T> onComplete(AsyncResultHandler<T> handler);
 }

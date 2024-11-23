@@ -19,7 +19,7 @@ import com.lealone.db.DataHandler;
 import com.lealone.db.DbObject;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.constraint.Constraint;
 import com.lealone.db.constraint.ConstraintReferential;
@@ -194,7 +194,11 @@ public abstract class Table extends SchemaObjectBase {
      * @param row the row
      * @throws DbException if a constraint was violated
      */
-    public Future<Integer> addRow(ServerSession session, Row row) {
+    public void addRow(ServerSession session, Row row) {
+        addRow(session, row, AsyncResultHandler.emptyHandler());
+    }
+
+    public void addRow(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
         throw newUnsupportedException();
     }
 
@@ -205,13 +209,14 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow,
-            int[] updateColumns) {
-        return updateRow(session, oldRow, newRow, updateColumns, false);
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
+            boolean isLockedBySelf) {
+        updateRow(session, oldRow, newRow, updateColumns, isLockedBySelf,
+                AsyncResultHandler.emptyHandler());
     }
 
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
-            boolean isLockedBySelf) {
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, int[] updateColumns,
+            boolean isLockedBySelf, AsyncResultHandler<Integer> handler) {
         throw newUnsupportedException();
     }
 
@@ -221,11 +226,12 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @param row the row
      */
-    public Future<Integer> removeRow(ServerSession session, Row row) {
-        return removeRow(session, row, false);
+    public void removeRow(ServerSession session, Row row) {
+        removeRow(session, row, false, AsyncResultHandler.emptyHandler());
     }
 
-    public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
+    public void removeRow(ServerSession session, Row row, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         throw newUnsupportedException();
     }
 

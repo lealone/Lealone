@@ -11,8 +11,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.api.Trigger;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.index.Index;
 import com.lealone.db.row.Row;
@@ -112,7 +111,7 @@ public class Merge extends MerSert {
     }
 
     @Override
-    public YieldableMerge createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableMerge createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableMerge(this, asyncHandler);
     }
 
@@ -120,7 +119,7 @@ public class Merge extends MerSert {
 
         final Merge mergeStatement;
 
-        public YieldableMerge(Merge statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableMerge(Merge statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
             this.mergeStatement = statement;
         }

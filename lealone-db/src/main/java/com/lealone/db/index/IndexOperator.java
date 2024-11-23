@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.db.Database;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.async.AsyncPeriodicTask;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.lock.DbObjectLock;
@@ -294,10 +295,7 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
 
         @Override
         public void run(StandardTable table, Index index, ServerSession session) {
-            index.add(session, new Row(rowKey, columns)).onComplete(ar -> {
-            });
-            // table.addRowAsync(session, new Row(rowKey, columns)).onComplete(ar -> {
-            // });
+            index.add(session, new Row(rowKey, columns), AsyncResultHandler.emptyHandler());
         }
 
         @Override
@@ -323,11 +321,7 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
         @Override
         public void run(StandardTable table, Index index, ServerSession session) {
             index.update(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns), oldColumns,
-                    updateColumns, true).onComplete(ar -> {
-                    });
-            // table.updateRowAsync(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns),
-            // updateColumns, true).onComplete(ar -> {
-            // });
+                    updateColumns, true, AsyncResultHandler.emptyHandler());
         }
 
         @Override
@@ -344,10 +338,8 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
 
         @Override
         public void run(StandardTable table, Index index, ServerSession session) {
-            index.remove(session, new Row(rowKey, columns), columns, true).onComplete(ar -> {
-            });
-            // table.removeRowAsync(session, new Row(rowKey, columns), true).onComplete(ar -> {
-            // });
+            index.remove(session, new Row(rowKey, columns), columns, true,
+                    AsyncResultHandler.emptyHandler());
         }
 
         @Override

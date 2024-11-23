@@ -48,7 +48,7 @@ public abstract class AsyncCallback<T> implements Future<T> {
     }
 
     @Override
-    public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
+    public Future<T> onComplete(AsyncResultHandler<T> handler) {
         return this;
     }
 

@@ -13,7 +13,7 @@ import com.lealone.net.NetInputStream;
 // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
 public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
 
-    private AsyncHandler<AsyncResult<T>> completeHandler;
+    private AsyncResultHandler<T> completeHandler;
     private AsyncHandler<T> successHandler;
     private AsyncHandler<Throwable> failureHandler;
     private AsyncResult<T> asyncResult;
@@ -85,7 +85,7 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
     }
 
     @Override
-    public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
+    public Future<T> onComplete(AsyncResultHandler<T> handler) {
         completeHandler = handler;
         if (asyncResult != null) {
             handler.handle(asyncResult);

@@ -7,8 +7,7 @@ package com.lealone.sql.dml;
 
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.api.Trigger;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
@@ -53,13 +52,13 @@ public class Insert extends MerSert {
     }
 
     @Override
-    public YieldableInsert createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableInsert createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableInsert(this, asyncHandler);
     }
 
     private static class YieldableInsert extends YieldableMerSert {
 
-        public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableInsert(Insert statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
         }
 

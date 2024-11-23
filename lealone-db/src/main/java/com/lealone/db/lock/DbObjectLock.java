@@ -8,8 +8,8 @@ package com.lealone.db.lock;
 import java.util.ArrayList;
 
 import com.lealone.db.DbObjectType;
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
 
@@ -19,7 +19,7 @@ public class DbObjectLock extends Lock {
     public static final RuntimeException LOCKED_EXCEPTION = new RuntimeException();
 
     private final DbObjectType type;
-    private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
+    private ArrayList<AsyncResultHandler<Boolean>> handlers;
 
     public DbObjectLock(DbObjectType type) {
         this.type = type;
@@ -56,7 +56,7 @@ public class DbObjectLock extends Lock {
         unlock(oldSession, newSession);
     }
 
-    public void addHandler(AsyncHandler<AsyncResult<Boolean>> handler) {
+    public void addHandler(AsyncResultHandler<Boolean> handler) {
         if (handlers == null)
             handlers = new ArrayList<>(1);
         handlers.add(handler);

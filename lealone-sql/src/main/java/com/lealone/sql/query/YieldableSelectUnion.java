@@ -6,8 +6,7 @@
 package com.lealone.sql.query;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.result.ResultTarget;
@@ -37,7 +36,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
     private boolean done;
 
     public YieldableSelectUnion(SelectUnion selectUnion, int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+            AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         super(selectUnion, maxRows, scrollable, asyncHandler);
         this.selectUnion = selectUnion;
         this.target = target;

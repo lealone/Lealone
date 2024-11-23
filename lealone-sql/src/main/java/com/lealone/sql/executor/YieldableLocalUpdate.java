@@ -5,15 +5,13 @@
  */
 package com.lealone.sql.executor;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.sql.StatementBase;
 
 public class YieldableLocalUpdate extends YieldableUpdateBase {
 
-    public YieldableLocalUpdate(StatementBase statement,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableLocalUpdate(StatementBase statement, AsyncResultHandler<Integer> asyncHandler) {
         super(statement, asyncHandler);
     }
 

@@ -7,8 +7,7 @@ package com.lealone.sql.dml;
 
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.api.Trigger;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
@@ -53,14 +52,13 @@ public class Delete extends UpDel {
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableDelete(this, asyncHandler);
     }
 
     private static class YieldableDelete extends YieldableUpDel {
 
-        public YieldableDelete(Delete statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        public YieldableDelete(Delete statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
                     statement.condition);
         }
@@ -89,7 +87,7 @@ public class Delete extends UpDel {
 
         private void removeRow(Row row) {
             onPendingOperationStart();
-            table.removeRow(session, row, true).onComplete(ar -> {
+            table.removeRow(session, row, true, ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, row, null, false);
                 }

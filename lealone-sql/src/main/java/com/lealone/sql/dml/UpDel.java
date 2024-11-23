@@ -8,8 +8,7 @@ package com.lealone.sql.dml;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.DataHandler;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
@@ -87,7 +86,7 @@ public abstract class UpDel extends ManipulationStatement {
         private final ExpressionEvaluator conditionEvaluator;
         private final TableIterator tableIterator;
 
-        public YieldableUpDel(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler,
+        public YieldableUpDel(StatementBase statement, AsyncResultHandler<Integer> asyncHandler,
                 TableFilter tableFilter, Expression limitExpr, Expression condition) {
             super(statement, asyncHandler);
             table = tableFilter.getTable();

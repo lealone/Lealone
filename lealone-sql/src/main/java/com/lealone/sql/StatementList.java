@@ -7,8 +7,7 @@ package com.lealone.sql;
 
 import java.util.ArrayList;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.ServerSession;
@@ -92,13 +91,12 @@ public class StatementList extends StatementBase {
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            AsyncResultHandler<Result> asyncHandler) {
         return new YieldableStatementList<>(this, maxRows, scrollable, asyncHandler, true);
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableStatementList<>(this, -1, false, asyncHandler, false);
     }
 
@@ -113,7 +111,7 @@ public class StatementList extends StatementBase {
         private boolean executeQuery;
 
         private YieldableStatementList(StatementList statementList, int maxRows, boolean scrollable,
-                AsyncHandler<AsyncResult<T>> asyncHandler, boolean executeQuery) {
+                AsyncResultHandler<T> asyncHandler, boolean executeQuery) {
             super(statementList, asyncHandler);
             nestedSession = session.createNestedSession();
             if (session.isAutoCommit())

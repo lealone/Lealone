@@ -11,6 +11,7 @@ import com.lealone.common.util.MathUtils;
 import com.lealone.db.Database;
 import com.lealone.db.api.DatabaseEventListener;
 import com.lealone.db.async.AsyncPeriodicTask;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;
@@ -56,7 +57,7 @@ public class IndexRebuilder implements Runnable {
             Database database = table.getSchema().getDatabase();
             while (!index.isClosed() && cursor.next()) {
                 Row row = cursor.get();
-                index.add(session, row);
+                index.add(session, row, AsyncResultHandler.emptyHandler());
                 index.setLastIndexedRowKey(row.getKey());
                 if ((++i & 127) == 0) {
                     database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n,

@@ -5,8 +5,7 @@
  */
 package com.lealone.sql.query;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.result.LocalResult;
@@ -27,7 +26,7 @@ public class YieldableSelect extends YieldableQueryBase {
     private Operator queryOperator;
 
     public YieldableSelect(Select select, int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+            AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         super(select, maxRows, scrollable, asyncHandler);
         this.select = select;
         this.target = target;

@@ -5,8 +5,7 @@
  */
 package com.lealone.sql.query;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.sql.StatementBase;
@@ -14,7 +13,7 @@ import com.lealone.sql.StatementBase;
 public class YieldableLocalQuery extends YieldableQueryBase {
 
     public YieldableLocalQuery(StatementBase statement, int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            AsyncResultHandler<Result> asyncHandler) {
         super(statement, maxRows, scrollable, asyncHandler);
     }
 

@@ -8,8 +8,7 @@ package com.lealone.sql;
 import java.util.List;
 
 import com.lealone.db.ManualCloseable;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.Session;
@@ -69,9 +68,9 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
     int update();
 
     Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler);
+            AsyncResultHandler<Result> asyncHandler);
 
-    Yieldable<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler);
+    Yieldable<Integer> createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler);
 
     static interface Yieldable<T> {
 

@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.lealone.common.util.MapUtils;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
@@ -117,8 +116,7 @@ public class RedoLog {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = map.getValueType().getRawType();
             // 异步redo，忽略操作结果
-            AsyncHandler<AsyncResult<Object>> handler = ar -> {
-            };
+            AsyncResultHandler<Object> handler = AsyncResultHandler.emptyHandler();
             for (ByteBuffer kv : pendingKeyValues) {
                 Object key = kt.read(kv);
                 if (kv.get() == 0) {

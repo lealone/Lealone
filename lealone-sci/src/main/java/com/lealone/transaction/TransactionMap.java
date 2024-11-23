@@ -5,9 +5,7 @@
  */
 package com.lealone.transaction;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.CursorParameters;
 import com.lealone.storage.StorageMap;
@@ -52,10 +50,10 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public TransactionMap<K, V> getInstance(Transaction transaction);
 
-    public Future<Integer> addIfAbsent(K key, Lockable lockable);
+    public void addIfAbsent(K key, Lockable lockable, AsyncResultHandler<Integer> handler);
 
     // 若是定义成append(lockable,handler)，java的泛型会识别为append(V value,handler)
-    public void append(AsyncHandler<AsyncResult<K>> handler, Lockable lockable);
+    public void append(AsyncResultHandler<K> handler, Lockable lockable);
 
     public default int tryUpdate(K key, V newValue) {
         Lockable lockable = getLockableValue(key);

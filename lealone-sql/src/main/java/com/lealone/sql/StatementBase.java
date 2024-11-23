@@ -15,8 +15,7 @@ import com.lealone.db.SysProperties;
 import com.lealone.db.api.DatabaseEventListener;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
@@ -578,13 +577,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            AsyncResultHandler<Result> asyncHandler) {
         return new YieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
     }
 
     @Override
-    public YieldableBase<Integer> createYieldableUpdate(
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableBase<Integer> createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableLocalUpdate(this, asyncHandler);
     }
 }

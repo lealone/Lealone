@@ -5,14 +5,12 @@
  */
 package com.lealone.sql.executor;
 
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.sql.StatementBase;
 
 public abstract class YieldableUpdateBase extends YieldableBase<Integer> {
 
-    public YieldableUpdateBase(StatementBase statement,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public YieldableUpdateBase(StatementBase statement, AsyncResultHandler<Integer> asyncHandler) {
         super(statement, asyncHandler);
     }
 

@@ -13,8 +13,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
@@ -280,7 +279,7 @@ public class SelectUnion extends Query implements ISelectUnion {
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+            AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
     }
 }

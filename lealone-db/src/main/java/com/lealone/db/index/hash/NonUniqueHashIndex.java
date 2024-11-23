@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.LinkedTransferQueue;
 
-import com.lealone.db.async.Future;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.index.Cursor;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexOperator;
@@ -19,7 +19,6 @@ import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
-import com.lealone.transaction.Transaction;
 
 //单个线程写多个线程读
 public class NonUniqueHashIndex extends HashIndex<LinkedTransferQueue<Long>> {
@@ -30,27 +29,25 @@ public class NonUniqueHashIndex extends HashIndex<LinkedTransferQueue<Long>> {
     }
 
     @Override
-    public Future<Integer> add(ServerSession session, Row row) {
+    public void add(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
         Value indexKey = getIndexKey(row);
-        return update(indexKey, row, true);
+        update(indexKey, row, true, handler);
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row, Value[] oldColumns,
-            boolean isLockedBySelf) {
+    public void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
+            AsyncResultHandler<Integer> handler) {
         Value indexKey = getIndexKey(oldColumns);
-        return update(indexKey, row, false);
+        update(indexKey, row, false, handler);
     }
 
-    private Future<Integer> update(Value indexKey, Row row, boolean add) {
+    private void update(Value indexKey, Row row, boolean add, AsyncResultHandler<Integer> handler) {
         Long rowKey = Long.valueOf(row.getKey());
         LinkedTransferQueue<Long> rowKeys = rows.get(indexKey);
         if (rowKeys == null) {
             if (add) {
                 rowKeys = new LinkedTransferQueue<>();
                 rows.put(indexKey, rowKeys);
-            } else {
-                return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
             }
         }
         if (add) {
@@ -60,7 +57,7 @@ public class NonUniqueHashIndex extends HashIndex<LinkedTransferQueue<Long>> {
             if (rowKeys.isEmpty())
                 rows.remove(indexKey);
         }
-        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
+        onComplete(handler);
     }
 
     @Override

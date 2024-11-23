@@ -6,8 +6,8 @@
 package com.lealone.storage.aose.btree.page;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.async.AsyncHandler;
 import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.InternalSession;
@@ -29,7 +29,7 @@ public abstract class PageOperations {
 
         final BTreeMap<K, V> map;
         K key; // 允许append操作设置
-        AsyncHandler<AsyncResult<R>> resultHandler;
+        AsyncResultHandler<R> resultHandler;
         R result;
 
         Page p; // 最终要操作的leaf page
@@ -42,18 +42,18 @@ public abstract class PageOperations {
 
         InternalSession currentSession;
 
-        public WriteOperation(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> resultHandler) {
+        public WriteOperation(BTreeMap<K, V> map, K key, AsyncResultHandler<R> resultHandler) {
             this.map = map;
             this.key = key;
             this.resultHandler = resultHandler;
         }
 
         // 可以延后设置
-        public void setResultHandler(AsyncHandler<AsyncResult<R>> resultHandler) {
+        public void setResultHandler(AsyncResultHandler<R> resultHandler) {
             this.resultHandler = resultHandler;
         }
 
-        public AsyncHandler<AsyncResult<R>> getResultHandler() {
+        public AsyncResultHandler<R> getResultHandler() {
             return resultHandler;
         }
 
@@ -184,7 +184,7 @@ public abstract class PageOperations {
 
         final V value;
 
-        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> resultHandler) {
+        public Put(BTreeMap<K, V> map, K key, V value, AsyncResultHandler<R> resultHandler) {
             super(map, key, resultHandler);
             this.value = value;
         }
@@ -203,7 +203,7 @@ public abstract class PageOperations {
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
 
         public PutIfAbsent(BTreeMap<K, V> map, K key, V value, //
-                AsyncHandler<AsyncResult<V>> resultHandler) {
+                AsyncResultHandler<V> resultHandler) {
             super(map, key, value, resultHandler);
         }
 
@@ -224,7 +224,7 @@ public abstract class PageOperations {
 
     public static class Append<K, V> extends Put<K, V, K> {
 
-        public Append(BTreeMap<K, V> map, V value, AsyncHandler<AsyncResult<K>> resultHandler) {
+        public Append(BTreeMap<K, V> map, V value, AsyncResultHandler<K> resultHandler) {
             super(map, null, value, resultHandler);
         }
 
@@ -256,7 +256,7 @@ public abstract class PageOperations {
 
     public static class Remove<K, V> extends WriteOperation<K, V, V> {
 
-        public Remove(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> resultHandler) {
+        public Remove(BTreeMap<K, V> map, K key, AsyncResultHandler<V> resultHandler) {
             super(map, key, resultHandler);
         }
 

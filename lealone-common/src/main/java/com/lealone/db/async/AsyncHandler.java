@@ -13,4 +13,5 @@ public interface AsyncHandler<E> {
      * @param event the event to handle
      */
     void handle(E event);
+
 }

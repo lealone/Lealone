@@ -18,8 +18,7 @@ import com.lealone.db.Database;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.api.Trigger;
-import com.lealone.db.async.AsyncHandler;
-import com.lealone.db.async.AsyncResult;
+import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
@@ -1026,7 +1025,7 @@ public class Select extends Query {
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+            AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }
 }
