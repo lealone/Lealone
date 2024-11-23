@@ -7,7 +7,6 @@ package com.lealone.storage;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.session.InternalSession;
@@ -290,7 +289,7 @@ public interface StorageMap<K, V> {
     }
 
     static <R> void handleAsyncResult(AsyncResultHandler<R> handler, R result) {
-        handler.handle(new AsyncResult<>(result));
+        handler.handleResult(result);
     }
 
     default ConcurrentHashMap<Object, Object> getOldValueCache() {

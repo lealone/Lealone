@@ -8,7 +8,6 @@ package com.lealone.transaction.aote;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.common.util.DataUtils;
-import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.SchedulerListener;
@@ -361,16 +360,16 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                                 addUndoLog(key, old, lockable.getLockedValue());
                             }
                         } else {
-                            topHandler.handle(new AsyncResult<>(Transaction.OPERATION_DATA_DUPLICATE));
+                            topHandler.handleResult(Transaction.OPERATION_DATA_DUPLICATE);
                             return;
                         }
                     }
                 }
-                topHandler.handle(new AsyncResult<>(Transaction.OPERATION_COMPLETE));
+                topHandler.handleResult(Transaction.OPERATION_COMPLETE);
             } else {
                 if (r != null)
                     r.setUndone(true);
-                topHandler.handle(new AsyncResult<>(ar.getCause()));
+                topHandler.handleException(ar.getCause());
             }
         };
         if (ifAbsent)
@@ -499,9 +498,9 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             lockable = toLockable(value);
             add(key, lockable, ifAbsent, vRef, ar -> {
                 if (ar.isSucceeded()) {
-                    handler.handle(new AsyncResult<>(vRef.get()));
+                    handler.handleResult(vRef.get());
                 } else {
-                    handler.handle(new AsyncResult<>(ar.getCause()));
+                    handler.handleException(ar.getCause());
                 }
             });
         }
@@ -590,7 +589,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         Lockable lockable = map.get(key);
         if (lockable == null) {
             if (handler != null)
-                handler.handle(new AsyncResult<>((V) null));
+                handler.handleResult(null);
         } else {
             if (handler != null) {
                 tryUpdateOrRemove(key, null, lockable, handler, vRef);
@@ -609,9 +608,9 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         V oldValue = getUnwrapValue(key, lockable);
         vRef.set(oldValue);
         if (tryUpdateOrRemove(key, value, lockable, false) == Transaction.OPERATION_COMPLETE)
-            handler.handle(new AsyncResult<>(oldValue));
+            handler.handleResult(oldValue);
         else
-            handler.handle(new AsyncResult<>(DataUtils
-                    .newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked")));
+            handler.handleException(DataUtils
+                    .newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked"));
     }
 }

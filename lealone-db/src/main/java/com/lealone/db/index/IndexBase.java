@@ -11,7 +11,6 @@ import com.lealone.common.util.StringUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.result.SortOrder;
@@ -442,14 +441,14 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     protected void onComplete(AsyncResultHandler<Integer> handler) {
-        handler.handle(new AsyncResult<>(Transaction.OPERATION_COMPLETE));
+        handler.handleResult(Transaction.OPERATION_COMPLETE);
     }
 
     protected void onComplete(AsyncResultHandler<Integer> handler, Integer result) {
-        handler.handle(new AsyncResult<>(result));
+        handler.handleResult(result);
     }
 
     protected void onException(AsyncResultHandler<Integer> handler, Throwable cause) {
-        handler.handle(new AsyncResult<>(cause));
+        handler.handleException(cause);
     }
 }

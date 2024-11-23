@@ -10,6 +10,14 @@ public interface AsyncResultHandler<T> extends AsyncHandler<AsyncResult<T>> {
     @Override
     void handle(AsyncResult<T> ar);
 
+    default void handleResult(T result) {
+        handle(new AsyncResult<>(result));
+    }
+
+    default void handleException(Throwable cause) {
+        handle(new AsyncResult<>(cause));
+    }
+
     public static final AsyncResultHandler<?> EMPTY = ar -> {
     };
 

@@ -147,7 +147,7 @@ public abstract class PageOperations {
             pRef.unlock(); // 快速释放锁，不用等处理结果
 
             if (resultHandler != null) {
-                resultHandler.handle(new AsyncResult<>(result));
+                resultHandler.handleResult(result);
             }
             return PageOperationResult.SUCCEEDED;
         }
