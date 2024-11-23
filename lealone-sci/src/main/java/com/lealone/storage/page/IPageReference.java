@@ -11,4 +11,6 @@ public interface IPageReference {
 
     PageListener getPageListener();
 
+    void remove(Object key);
+
 }

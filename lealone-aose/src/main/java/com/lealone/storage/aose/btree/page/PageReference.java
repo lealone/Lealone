@@ -93,6 +93,11 @@ public class PageReference implements IPageReference {
         }
     }
 
+    @Override
+    public void remove(Object key) {
+        bs.getMap().remove(this, key);
+    }
+
     public boolean isDataStructureChanged() {
         return pInfo.isDataStructureChanged();
     }

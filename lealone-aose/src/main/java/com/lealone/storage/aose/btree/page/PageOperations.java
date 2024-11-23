@@ -57,6 +57,11 @@ public abstract class PageOperations {
             return resultHandler;
         }
 
+        public void setPageReference(PageReference ref) {
+            pRef = ref;
+            pListener = pRef.getPageListener();
+        }
+
         @Override
         public InternalSession getSession() {
             return currentSession;

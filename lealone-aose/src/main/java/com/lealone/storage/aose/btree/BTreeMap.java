@@ -609,6 +609,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return runPageOperation(session, append);
     }
 
+    @SuppressWarnings("unchecked")
+    public void remove(PageReference ref, Object key) {
+        if (ref.isDataStructureChanged()) {
+            remove0(null, (K) key, null);
+        } else {
+            checkWrite();
+            Remove<K, V> remove = new Remove<>(this, (K) key, null);
+            remove.setPageReference(ref);
+            runPageOperation(null, remove);
+        }
+    }
+
     @Override
     public V remove(K key) {
         return remove0(null, key, null);

@@ -57,7 +57,7 @@ public abstract class UndoLogRecord {
             TransactionalValue.commit(true, map, lockable);
         } else if (lockable != null && lockable.getLockedValue() == null) { // delete
             if (!te.containsRepeatableReadTransactions()) {
-                map.remove(key);
+                lockable.getPageListener().getPageReference().remove(key);
             } else {
                 map.decrementSize(); // 要减去1
                 TransactionalValue.commit(false, map, lockable);
@@ -79,7 +79,7 @@ public abstract class UndoLogRecord {
             return;
 
         if (oldValue == null) {
-            map.remove(key);
+            lockable.getPageListener().getPageReference().remove(key);
         } else {
             TransactionalValue.rollback(oldValue, lockable);
         }
