@@ -364,17 +364,18 @@ public class StandardTable extends Table {
 
     // 向多个索引异步执行add/update/remove记录时，如果其中之一出错了，其他的就算成功了也不能当成最终的回调结果，而是取第一个异常
     private AsyncResultHandler<Integer> createHandler(ServerSession session,
-            AsyncResultHandler<Integer> handler, AtomicInteger count, AtomicBoolean isFailed,
+            AsyncResultHandler<Integer> topHandler, AtomicInteger count, AtomicBoolean isFailed,
             IndexOperation io) {
         return ar -> {
-            if (ar.isFailed() && isFailed.compareAndSet(false, true)) {
-                handler.handle(ar);
-            }
-            if (count.decrementAndGet() == 0 && !isFailed.get()) {
-                if (io != null)
-                    IndexOperator.addIndexOperation(session, this, io);
-                handler.handle(ar);
-                analyzeIfRequired(session);
+            if (ar.isSucceeded()) {
+                if (count.decrementAndGet() == 0 && !isFailed.get()) {
+                    if (io != null)
+                        IndexOperator.addIndexOperation(session, this, io);
+                    topHandler.handle(ar);
+                    analyzeIfRequired(session);
+                }
+            } else if (isFailed.compareAndSet(false, true)) {
+                topHandler.handle(ar);
             }
         };
     }

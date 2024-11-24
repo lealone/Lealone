@@ -28,12 +28,10 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private final AOTransaction transaction;
     private final StorageMap<K, Lockable> map;
-    private final boolean isKeyOnly;
 
     public AOTransactionMap(AOTransaction transaction, StorageMap<K, Lockable> map) {
         this.transaction = transaction;
         this.map = map;
-        isKeyOnly = map.getKeyType().isKeyOnly();
     }
 
     public AOTransaction getTransaction() {
@@ -566,7 +564,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     private UndoLogRecord addUndoLog(Object key, Lockable lockable, Object oldValue) {
-        return transaction.undoLog.add(map, key, lockable, oldValue, isKeyOnly);
+        return transaction.undoLog.add(map, key, lockable, oldValue);
     }
 
     @Override

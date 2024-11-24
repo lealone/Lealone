@@ -40,9 +40,8 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue,
-            boolean isKeyOnly) {
-        if (isKeyOnly)
+    public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
+        if (map.getKeyType().isKeyOnly())
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
         else
             return add(new KeyValueULR(map, key, lockable, oldValue));
