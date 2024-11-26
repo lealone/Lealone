@@ -106,10 +106,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     public Future<ResultSet> executeQueryAsync() {
-        return executeQueryInternal(true);
+        return executeQueryInternal(true).getFuture();
     }
 
-    private Future<ResultSet> executeQueryInternal(boolean async) {
+    private JdbcFuture<ResultSet> executeQueryInternal(boolean async) {
         return conn.executeAsyncTask(ac -> {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
@@ -173,10 +173,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
     public Future<Integer> executeUpdateAsync() {
         debugCodeCall("executeUpdateAsync");
-        return executeUpdateInternal(null);
+        return executeUpdateInternal(null).getFuture();
     }
 
-    private Future<Integer> executeUpdateInternal(Value[] parameterValues) {
+    private JdbcFuture<Integer> executeUpdateInternal(Value[] parameterValues) {
         return conn.executeAsyncTask(ac -> {
             checkAndClose();
             setExecutingStatement(command);
@@ -377,7 +377,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     protected Future<Integer> executeBatchUpdateAsync(int index) {
         Value[] parameterValues = batchParameters.get(index);
-        return executeUpdateInternal(parameterValues);
+        return executeUpdateInternal(parameterValues).getFuture();
     }
 
     /**

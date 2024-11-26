@@ -243,11 +243,15 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off,
             int length) {
         try {
-            LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
-            if (ack.buff != null && ack.buff.length > 0) {
-                System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
-                return ack.buff.length;
-            }
+            AsyncCallback<Integer> ac = createCallback();
+            execute(ac, () -> {
+                LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
+                if (ack.buff != null && ack.buff.length > 0) {
+                    System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
+                    ac.setAsyncResult(ack.buff.length);
+                }
+            });
+            return ac.get();
         } catch (Exception e) {
             handleException(e);
         }

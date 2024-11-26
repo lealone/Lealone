@@ -36,4 +36,9 @@ public class JdbcWrapper extends TraceObject implements Wrapper {
         // 转换成SQLException
         ac.setAsyncResult(DbException.toSQLException(cause));
     }
+
+    @Override
+    public SQLException logAndConvert(Exception e) {
+        return super.logAndConvert(e);
+    }
 }

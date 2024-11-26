@@ -120,21 +120,27 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         void run(AsyncCallback<T> ac) throws Exception;
     }
 
-    <T> Future<T> executeAsyncTask(JdbcAsyncTask<T> task) {
-        AsyncCallback<T> ac = session.createCallback();
-        session.execute(ac, () -> {
-            // 在调度线程中运行，总是线程安全的
-            boolean old = session.isSingleThreadCallback();
-            session.setSingleThreadCallback(true);
-            try {
-                task.run(ac);
-            } catch (Throwable t) {
-                setAsyncResult(ac, t);
-            } finally {
-                session.setSingleThreadCallback(old);
-            }
-        });
-        return ac;
+    <T> JdbcFuture<T> executeAsyncTask(JdbcAsyncTask<T> task) {
+        try {
+            checkClosed();
+            AsyncCallback<T> ac = session.createCallback();
+            JdbcFuture<T> jf = new JdbcFuture<>(ac, this);
+            session.execute(ac, () -> {
+                // 在调度线程中运行，总是线程安全的
+                boolean old = session.isSingleThreadCallback();
+                session.setSingleThreadCallback(true);
+                try {
+                    task.run(ac);
+                } catch (Throwable t) {
+                    setAsyncResult(ac, t);
+                } finally {
+                    session.setSingleThreadCallback(old);
+                }
+            });
+            return jf;
+        } catch (Exception e) {
+            return new JdbcFuture<>(Future.failedFuture(DbException.toSQLException(e)), this);
+        }
     }
 
     /**
@@ -213,20 +219,20 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
     }
 
-    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
+    private JdbcFuture<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql,
             int fetchSize) {
         int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
         return prepareStatementInternal(async, sql, id, ResultSet.TYPE_FORWARD_ONLY,
                 Constants.DEFAULT_RESULT_SET_CONCURRENCY, false, fetchSize);
     }
 
-    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
+    private JdbcFuture<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
             int resultSetType, int resultSetConcurrency) {
         return prepareStatementInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
                 SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
     }
 
-    private Future<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
+    private JdbcFuture<JdbcPreparedStatement> prepareStatementInternal(boolean async, String sql, int id,
             int resultSetType, int resultSetConcurrency, boolean closedByResultSet, int fetchSize) {
         return executeAsyncTask(ac -> {
             checkClosed();
@@ -481,7 +487,11 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             if (autoCommit && !session.isAutoCommit()) {
                 commit();
             }
-            session.setAutoCommit(autoCommit);
+            if (autoCommit != session.isAutoCommit()) {
+                executeAsyncTask(ac -> {
+                    session.setAutoCommit(autoCommit);
+                });
+            }
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -516,12 +526,12 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         commitInternal().get();
     }
 
-    public Future<Boolean> commitAsync() throws SQLException {
+    public Future<Boolean> commitAsync() {
         debugCodeCall("commitAsync");
-        return commitInternal();
+        return commitInternal().getFuture();
     }
 
-    private Future<Boolean> commitInternal() throws SQLException {
+    private JdbcFuture<Boolean> commitInternal() {
         return executeAsyncTask(ac -> {
             prepareStatement0("COMMIT", commit).onComplete(ar0 -> {
                 checkClosed();
@@ -554,12 +564,12 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         rollbackInternal().get();
     }
 
-    public Future<Boolean> rollbackAsync() throws SQLException {
+    public Future<Boolean> rollbackAsync() {
         debugCodeCall("rollbackAsync");
-        return rollbackInternal();
+        return rollbackInternal().getFuture();
     }
 
-    private Future<Boolean> rollbackInternal() throws SQLException {
+    private JdbcFuture<Boolean> rollbackInternal() {
         return executeAsyncTask(ac -> {
             prepareStatement0("ROLLBACK", rollback).onComplete(ar0 -> {
                 checkClosed();
@@ -887,13 +897,13 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
     }
 
-    private Future<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
+    private JdbcFuture<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
             int resultSetType, int resultSetConcurrency) {
         return prepareCallInternal(async, sql, id, resultSetType, resultSetConcurrency, false,
                 SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
     }
 
-    private Future<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
+    private JdbcFuture<JdbcCallableStatement> prepareCallInternal(boolean async, String sql, int id,
             int resultSetType, int resultSetConcurrency, boolean closedByResultSet, int fetchSize) {
         return executeAsyncTask(ac -> {
             checkClosed();
@@ -1070,9 +1080,9 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         createStatement().executeUpdate(sql);
     }
 
-    private Future<JdbcPreparedStatement> prepareStatement0(String sql, JdbcPreparedStatement old) {
+    private JdbcFuture<JdbcPreparedStatement> prepareStatement0(String sql, JdbcPreparedStatement old) {
         if (old != null) {
-            return Future.succeededFuture(old);
+            return new JdbcFuture<>(Future.succeededFuture(old), this);
         }
         return prepareStatementInternal(true, sql, Integer.MAX_VALUE);
     }

@@ -77,10 +77,10 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     public Future<ResultSet> executeQueryAsync(String sql) {
-        return executeQueryInternal(sql, true);
+        return executeQueryInternal(sql, true).getFuture();
     }
 
-    private Future<ResultSet> executeQueryInternal(String sql, boolean async) {
+    private JdbcFuture<ResultSet> executeQueryInternal(String sql, boolean async) {
         return conn.executeAsyncTask(ac -> {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
@@ -216,14 +216,14 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         if (isDebugEnabled()) {
             debugCodeCall("executeUpdateAsync", sql);
         }
-        return executeUpdateInternal(sql);
+        return executeUpdateInternal(sql).getFuture();
     }
 
     private int executeUpdateSync(String sql) throws SQLException {
         return executeUpdateInternal(sql).get();
     }
 
-    private Future<Integer> executeUpdateInternal(String sql) {
+    private JdbcFuture<Integer> executeUpdateInternal(String sql) {
         return conn.executeAsyncTask(ac -> {
             SQLCommand command = createSQLCommand(sql, false);
             command.executeUpdate().onComplete(ar -> {
