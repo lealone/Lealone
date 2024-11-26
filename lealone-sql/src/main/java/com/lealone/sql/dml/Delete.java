@@ -11,6 +11,7 @@ import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.row.Row;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.SQLStatement;
 import com.lealone.sql.executor.YieldableBase;
@@ -86,10 +87,12 @@ public class Delete extends UpDel {
         }
 
         private void removeRow(Row row) {
+            Value[] oldColumns = row.getColumns();
             onPendingOperationStart();
             table.removeRow(session, row, true, ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
-                    table.fireAfterRow(session, row, null, false);
+                    Row oldRow = new Row(row.getKey(), oldColumns);
+                    table.fireAfterRow(session, oldRow, null, false);
                 }
                 onPendingOperationComplete(ar);
             });

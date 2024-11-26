@@ -112,7 +112,10 @@ public class TransactionalValue extends LockableBase {
             t = (AOTransaction) lockOwner.getTransaction();
             // 如果拥有锁的事务是当前事务或当前事务的父事务，直接返回当前值
             if (t != null && (t == transaction || t == transaction.getParentTransaction())) {
-                return lockable.getValue();
+                if (lockable.getLockedValue() == null)
+                    return null; // 已经删除
+                else
+                    return lockable.getValue();
             }
         }
         // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录

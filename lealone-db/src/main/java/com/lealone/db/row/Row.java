@@ -78,7 +78,10 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
 
     @Override
     public void setValue(int i, Value v) {
-        columns[i] = v;
+        if (i < 0)
+            key = v.getLong();
+        else
+            columns[i] = v;
     }
 
     ////////////// 以下是Lockable接口的实现 //////////////
