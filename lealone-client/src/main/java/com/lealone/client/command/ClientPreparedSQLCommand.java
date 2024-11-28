@@ -80,7 +80,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     @Override
     public Future<Boolean> prepare(boolean readParams) {
         reconnectIfNeeded();
-        AsyncCallback<Boolean> ac = session.createCallback();
+        AsyncCallback<Boolean> ac = session.createSingleThreadCallback();
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
@@ -211,7 +211,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public AsyncCallback<int[]> executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
         reconnectIfNeeded();
-        AsyncCallback<int[]> ac = session.createCallback();
+        AsyncCallback<int[]> ac = session.createSingleThreadCallback();
         try {
             Future<BatchStatementUpdateAck> f = session.send(new BatchStatementPreparedUpdate(commandId,
                     batchParameters.size(), batchParameters));

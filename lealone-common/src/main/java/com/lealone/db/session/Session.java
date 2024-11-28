@@ -163,6 +163,8 @@ public interface Session extends Closeable {
 
     <T> AsyncCallback<T> createCallback();
 
+    <T> AsyncCallback<T> createSingleThreadCallback();
+
     default boolean isBio() {
         return false;
     }

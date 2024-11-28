@@ -126,15 +126,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             AsyncCallback<T> ac = session.createCallback();
             JdbcFuture<T> jf = new JdbcFuture<>(ac, this);
             session.execute(ac, () -> {
-                // 在调度线程中运行，总是线程安全的
-                boolean old = session.isSingleThreadCallback();
-                session.setSingleThreadCallback(true);
                 try {
                     task.run(ac);
                 } catch (Throwable t) {
                     setAsyncResult(ac, t);
-                } finally {
-                    session.setSingleThreadCallback(old);
                 }
             });
             return jf;

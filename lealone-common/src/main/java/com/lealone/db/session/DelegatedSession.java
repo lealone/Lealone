@@ -178,6 +178,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public <T> AsyncCallback<T> createSingleThreadCallback() {
+        return session.createSingleThreadCallback();
+    }
+
+    @Override
     public boolean isBio() {
         return session.isBio();
     }
