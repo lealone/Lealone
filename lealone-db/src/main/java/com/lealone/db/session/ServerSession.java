@@ -1725,6 +1725,17 @@ public class ServerSession extends SessionBase implements InternalSession {
         undoLogEnabled = enabled;
     }
 
+    private boolean redoLogEnabled = true;
+
+    @Override
+    public boolean isRedoLogEnabled() {
+        return redoLogEnabled;
+    }
+
+    public void setRedoLogEnabled(boolean redoLogEnabled) {
+        this.redoLogEnabled = redoLogEnabled;
+    }
+
     private boolean markClosed;
 
     public void markClosed() {

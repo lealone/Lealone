@@ -30,7 +30,8 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
     private final InternalScheduler scheduler;
     private final StandardTable table;
     private final Index index;
-    private final ServerSession session;
+    private final ServerSession session; // 这个session只用于加锁
+    private final ServerSession ioSession; // 这个session只用于执行索引操作
     private final AsyncPeriodicTask task;
 
     private final LinkableList<IndexOperation>[] pendingIosArray;
@@ -44,7 +45,8 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
         this.index = index;
         Database db = table.getDatabase();
         session = db.createSession(db.getSystemUser(), scheduler);
-        session.setUndoLogEnabled(false);
+        ioSession = db.createSession(db.getSystemUser(), scheduler);
+        ioSession.setRedoLogEnabled(false);
         task = new AsyncPeriodicTask(0, 100, this);
         scheduler.addPeriodicTask(task);
         pendingIosArray = new LinkableList[scheduler.getSchedulerFactory().getSchedulerCount()];
@@ -201,9 +203,10 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
     }
 
     private void run(IndexOperation io) {
-        session.getTransaction();
+        Transaction transaction = ioSession.getTransaction();
+        transaction.setParentTransaction(io.getTransaction());
         try {
-            io.run(table, index, session);
+            io.run(table, index, ioSession);
         } catch (Exception e) {
             if (table.isInvalid()) {
                 cancelTask();
@@ -211,6 +214,7 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
         } finally {
             io.setCompleted(true);
             indexOperationSize.decrementAndGet();
+            ioSession.asyncCommit();
         }
     }
 

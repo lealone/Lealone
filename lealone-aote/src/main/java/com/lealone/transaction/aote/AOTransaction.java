@@ -243,6 +243,11 @@ public class AOTransaction implements Transaction {
 
     private void writeRedoLog(boolean asyncCommit) {
         checkNotClosed();
+        if (session != null && !session.isRedoLogEnabled()) {
+            if (asyncCommit)
+                asyncCommitComplete();
+            return;
+        }
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
             long logId = logSyncService.nextLogId();
             RedoLogRecord r = createLocalTransactionRedoLogRecord();

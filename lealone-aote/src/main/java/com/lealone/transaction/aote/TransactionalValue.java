@@ -247,9 +247,12 @@ public class TransactionalValue extends LockableBase {
         Object value = lockable.getLockedValue();
         AOTransactionEngine te = t.transactionEngine;
         if (te.containsRepeatableReadTransactions()) {
+            // 如果parent不为null就用parent的commitTimestamp，比如执行异步索引操作时就要用parent的commitTimestamp
+            Transaction parent = t.getParentTransaction();
+            long commitTimestamp = parent != null ? parent.getCommitTimestamp() : t.commitTimestamp;
             ConcurrentHashMap<Object, Object> oldValueCache = map.getOldValueCache();
             if (isInsert) {
-                OldValue v = new OldValue(t.commitTimestamp, value);
+                OldValue v = new OldValue(commitTimestamp, value);
                 oldValueCache.put(lockable, v);
             } else {
                 long maxTid = te.getMaxRepeatableReadTransactionId();
@@ -259,7 +262,7 @@ public class TransactionalValue extends LockableBase {
                     old.useLast = true;
                     return;
                 }
-                OldValue v = new OldValue(t.commitTimestamp, value);
+                OldValue v = new OldValue(commitTimestamp, value);
                 if (old == null) {
                     OldValue ov = new OldValue(0, rowLock.getOldValue());
                     v.next = ov;

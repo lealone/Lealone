@@ -51,6 +51,10 @@ public interface InternalSession extends Session {
         return true;
     }
 
+    default boolean isRedoLogEnabled() {
+        return true;
+    }
+
     void init();
 
     @Override
