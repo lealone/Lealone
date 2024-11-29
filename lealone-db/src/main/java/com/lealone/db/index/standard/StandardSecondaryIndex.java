@@ -185,12 +185,16 @@ public class StandardSecondaryIndex extends StandardIndex {
             onComplete(handler, map.tryRemove(key, lockable, isLockedBySelf));
     }
 
-    @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+    private void runIndexOperations(ServerSession session) {
         IndexOperator indexOperator = getIndexOperator();
         if (indexOperator != null && indexOperator.hasPendingIndexOperation()) {
             indexOperator.run(session);
         }
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        runIndexOperations(session);
         IndexKey min = convertToKey(first);
         if (min != null) {
             min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
@@ -263,6 +267,7 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public SearchRow findFirstOrLast(ServerSession session, boolean first) {
+        runIndexOperations(session);
         TransactionMap<IndexKey, IndexKey> map = getMap(session);
         IndexKey key = first ? map.firstKey() : map.lastKey();
         while (true) {
@@ -284,6 +289,7 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     @Override
     public Cursor findDistinct(ServerSession session) {
+        runIndexOperations(session);
         return new SsiDistinctCursor(session);
     }
 
