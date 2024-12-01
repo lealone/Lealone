@@ -153,7 +153,25 @@ public class IndexOperator extends SchedulerTaskManager implements Runnable {
                     run(io);
                     int i = index.get();
                     lastIos[i] = io;
-                    ios[i] = io.getNext();
+                    while (true) {
+                        io = io.getNext();
+                        if (io == null) {
+                            ios[i] = null;
+                            break;
+                        }
+                        // 索引操作链表中的下一个索引操作对应的父事务若是没有提交就不能执行它了
+                        int status = io.getStatus();
+                        if (status == 0) {
+                            ios[i] = null; // 未提交，不能进行后续处理
+                            break;
+                        } else if (status < 0) {
+                            io.setCompleted(true); // 已经回滚，直接废弃
+                            continue;
+                        } else {
+                            ios[i] = io;
+                            break;
+                        }
+                    }
                     if ((++count & 127) == 0) {
                         if (scheduler.yieldIfNeeded(null))
                             return;
