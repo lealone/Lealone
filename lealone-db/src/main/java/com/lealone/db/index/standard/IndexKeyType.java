@@ -36,8 +36,14 @@ public class IndexKeyType extends StandardDataType {
         } else if (b == null) {
             return 1;
         }
+        IndexKey bKey = (IndexKey) b;
         Value[] ax = Lock.getLockedValue((IndexKey) a);
-        Value[] bx = Lock.getLockedValue((IndexKey) b);
+        Value[] bx = Lock.getLockedValue(bKey);
+        if (bx == null) {
+            bx = (Value[]) index.getDataMap().getOldValue(bKey);
+            if (bx == null)
+                return 1;
+        }
         return compareValues(ax, bx);
     }
 
@@ -50,13 +56,22 @@ public class IndexKeyType extends StandardDataType {
     @Override
     public Object read(ByteBuffer buff) {
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
-        return new IndexKey(a.getList());
+        Value[] columns = a.getList();
+        if (columns.length == 0)
+            columns = null;
+        return new IndexKey(columns);
     }
 
     @Override
     public void write(DataBuffer buff, Object obj) {
         IndexKey k = (IndexKey) obj;
-        buff.writeValue(ValueArray.get(k.columns));
+        Value[] columns = k.columns;
+        if (columns == null) {
+            columns = (Value[]) index.getDataMap().getOldValue(k);
+            if (columns == null)
+                columns = new Value[0];
+        }
+        buff.writeValue(ValueArray.get(columns));
     }
 
     @Override

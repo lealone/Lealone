@@ -5,6 +5,7 @@
  */
 package com.lealone.transaction.aote;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.common.util.DataUtils;
@@ -21,6 +22,7 @@ import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionMap;
 import com.lealone.transaction.TransactionMapCursor;
+import com.lealone.transaction.aote.TransactionalValue.OldValue;
 import com.lealone.transaction.aote.log.UndoLog;
 import com.lealone.transaction.aote.log.UndoLogRecord;
 
@@ -439,6 +441,17 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Lockable getLockableValue(K key) {
         return map.get(key);
+    }
+
+    @Override
+    public Object getOldValue(Lockable lockable) {
+        ConcurrentHashMap<Lockable, Object> cache = map.getOldValueCache();
+        if (cache != null) {
+            OldValue v = (OldValue) cache.get(lockable);
+            if (v != null)
+                return v.value;
+        }
+        return null;
     }
 
     //////////////////// 以下是StorageMap与写操作相关的同步和异步API的实现 ////////////////////////////////

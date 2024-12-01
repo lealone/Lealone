@@ -77,4 +77,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public Lockable getLockableValue(K key);
 
+    public Object getOldValue(Lockable lockable);
+
 }

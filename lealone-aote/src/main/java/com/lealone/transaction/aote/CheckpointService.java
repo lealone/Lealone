@@ -23,6 +23,7 @@ import com.lealone.common.util.MapUtils;
 import com.lealone.db.MemoryManager;
 import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.link.LinkableList;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.fs.FileStorage;
@@ -175,16 +176,17 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private void gcTValues() {
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
-                gcTValues(map.getOldValueCache());
+                gcTValues(map);
             }
         }
     }
 
-    private void gcTValues(ConcurrentHashMap<Object, Object> tValues) {
+    private void gcTValues(StorageMap<?, ?> map) {
+        ConcurrentHashMap<Lockable, Object> tValues = map.getOldValueCache();
         if (tValues.isEmpty())
             return;
         if (!aote.containsRepeatableReadTransactions()) {
-            removeTValues(tValues);
+            removeTValues(map, tValues);
             return;
         }
         long minTid = Long.MAX_VALUE;
@@ -193,10 +195,10 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
                 minTid = t.getTransactionId();
         }
         if (minTid != Long.MAX_VALUE) {
-            for (Entry<Object, Object> e : tValues.entrySet()) {
+            for (Entry<Lockable, Object> e : tValues.entrySet()) {
                 OldValue oldValue = (OldValue) e.getValue();
                 if (oldValue != null && oldValue.tid < minTid) {
-                    tValues.remove(e.getKey(), oldValue); // 如果不是原来的就不删除
+                    removeTValue(map, tValues, e.getKey(), oldValue);
                     continue;
                 }
                 while (oldValue != null) {
@@ -208,14 +210,22 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
                 }
             }
         } else {
-            removeTValues(tValues);
+            removeTValues(map, tValues);
         }
     }
 
-    private void removeTValues(ConcurrentHashMap<Object, Object> tValues) {
-        for (Entry<Object, Object> e : tValues.entrySet()) {
-            tValues.remove(e.getKey(), e.getValue()); // 如果不是原来的就不删除
+    private void removeTValues(StorageMap<?, ?> map, ConcurrentHashMap<Lockable, Object> tValues) {
+        for (Entry<Lockable, Object> e : tValues.entrySet()) {
+            removeTValue(map, tValues, e.getKey(), (OldValue) e.getValue());
         }
+    }
+
+    private void removeTValue(StorageMap<?, ?> map, ConcurrentHashMap<Lockable, Object> tValues,
+            Lockable lockable, OldValue oldValue) {
+        if (lockable.getLockedValue() == null) {
+            lockable.getPageListener().getPageReference().remove(oldValue.key);
+        }
+        tValues.remove(lockable, oldValue); // 如果不是原来的就不删除
     }
 
     private void executeGcTasks() {

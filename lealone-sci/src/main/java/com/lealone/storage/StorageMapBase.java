@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.common.util.DataUtils;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueDataType.PrimaryKey;
 import com.lealone.db.value.ValueLong;
 import com.lealone.storage.type.StorageDataType;
@@ -96,10 +97,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return maxKey.incrementAndGet();
     }
 
-    private final ConcurrentHashMap<Object, Object> oldValueCache = new ConcurrentHashMap<>(1);
+    private final ConcurrentHashMap<Lockable, Object> oldValueCache = new ConcurrentHashMap<>(1);
 
     @Override
-    public ConcurrentHashMap<Object, Object> getOldValueCache() {
+    public ConcurrentHashMap<Lockable, Object> getOldValueCache() {
         return oldValueCache;
     }
 }
