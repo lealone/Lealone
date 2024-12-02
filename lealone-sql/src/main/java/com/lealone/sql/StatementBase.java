@@ -523,7 +523,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
         // checkScheduler();
-        AsyncCallback<Result> ac = session.createSingleThreadCallback();
+        AsyncCallback<Result> ac = session.createCallback();
         AsyncTask task = () -> {
             YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
                 if (ar.isSucceeded()) {
@@ -549,7 +549,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public Future<Integer> executeUpdate(Value[] parameterValues) {
         // checkScheduler();
-        AsyncCallback<Integer> ac = session.createSingleThreadCallback();
+        AsyncCallback<Integer> ac = session.createCallback();
         AsyncTask task = () -> {
             YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
                 if (ar.isSucceeded()) {
