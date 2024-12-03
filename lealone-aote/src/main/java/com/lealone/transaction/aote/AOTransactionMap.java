@@ -389,10 +389,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         return tryUpdateOrRemove(key, null, lockable, isLockedBySelf);
     }
 
-    // 在SQL层对应update或delete语句，用于支持行锁和列锁。
-    // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
-    // 当前事务要让出当前线程。
-    // 当value为null时代表delete，否则代表update。
+    // 在SQL层对应update或delete语句，当value为null时代表delete，否则代表update。
+    // 如果当前行已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，当前事务要让出当前线程。
     protected int tryUpdateOrRemove(K key, V value, Lockable lockable, boolean isLockedBySelf) {
         transaction.checkNotClosed();
         DataUtils.checkNotNull(lockable, "lockable");

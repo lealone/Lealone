@@ -117,6 +117,14 @@ public abstract class UndoLogRecord {
 
         @Override
         protected void commitUpdate() {
+            Object newValue = lockable.getLockedValue();
+            lockable.setLockedValue(oldValue);
+            int memory = map.getValueType().getMemory(lockable);
+            lockable.setLockedValue(newValue);
+            memory = map.getValueType().getMemory(lockable) - memory;
+            if (memory != 0)
+                map.addUsedMemory(memory);
+
             TransactionalValue.commit(false, map, key, lockable);
         }
 

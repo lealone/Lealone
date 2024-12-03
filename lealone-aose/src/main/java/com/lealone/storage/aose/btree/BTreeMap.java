@@ -443,6 +443,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    @Override
+    public void addUsedMemory(long delta) {
+        if (!inMemory) {
+            btreeStorage.getBTreeGC().addUsedMemory(delta);
+        }
+    }
+
     public void markDirty(Object key) {
         gotoLeafPage(key).getRef().markDirtyPage();
     }
