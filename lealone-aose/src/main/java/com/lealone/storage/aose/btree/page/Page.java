@@ -233,6 +233,7 @@ public class Page {
      * 
      * @param chunk the chunk
      * @param buff the target buffer
+     * @return the position of page 
      */
     public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         throw ie();

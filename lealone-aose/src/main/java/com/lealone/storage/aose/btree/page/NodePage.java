@@ -151,13 +151,6 @@ public class NodePage extends LocalPage {
         recalculateMemory();
     }
 
-    /**
-    * Store the page and update the position.
-    *
-    * @param chunk the chunk
-    * @param buff the target buffer
-    * @return the position of the buffer just after the type
-    */
     @Override
     public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         beforeWrite(pInfoOld);
