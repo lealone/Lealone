@@ -252,6 +252,7 @@ public class TransferOutputStream implements NetOutputStream {
     public TransferOutputStream writePageKey(PageKey pk) throws IOException {
         writeValue((Value) pk.key);
         writeBoolean(pk.first);
+        writeInt(pk.level);
         return this;
     }
 

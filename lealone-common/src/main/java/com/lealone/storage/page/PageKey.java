@@ -5,36 +5,38 @@
  */
 package com.lealone.storage.page;
 
+import java.util.Objects;
+
 public class PageKey {
 
     public final Object key;
     public final boolean first;
+    public final int level;
     public final long pos;
 
     public PageKey(Object key, boolean first) {
-        this.key = key;
-        this.first = first;
-        this.pos = -1;
+        this(key, first, -1, -1);
     }
 
-    public PageKey(Object key, boolean first, long pos) {
+    public PageKey(Object key, boolean first, int level) {
+        this(key, first, level, -1);
+    }
+
+    public PageKey(Object key, boolean first, int level, long pos) {
         this.key = key;
         this.first = first;
+        this.level = level;
         this.pos = pos;
     }
 
     @Override
     public String toString() {
-        return "PageKey [key=" + key + ", first=" + first + "]";
+        return "PageKey [key=" + key + ", first=" + first + ", level=" + level + "]";
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (first ? 1231 : 1237);
-        result = prime * result + ((key == null) ? 0 : key.hashCode());
-        return result;
+        return Objects.hash(first, key, level);
     }
 
     @Override
@@ -46,13 +48,6 @@ public class PageKey {
         if (getClass() != obj.getClass())
             return false;
         PageKey other = (PageKey) obj;
-        if (first != other.first)
-            return false;
-        if (key == null) {
-            if (other.key != null)
-                return false;
-        } else if (!key.equals(other.key))
-            return false;
-        return true;
+        return first == other.first && Objects.equals(key, other.key) && level == other.level;
     }
 }

@@ -208,7 +208,8 @@ public class TransferInputStream implements NetInputStream {
     public PageKey readPageKey() throws IOException {
         Object value = readValue();
         boolean first = readBoolean();
-        return new PageKey(value, first);
+        int level = readInt();
+        return new PageKey(value, first, level);
     }
 
     /**
