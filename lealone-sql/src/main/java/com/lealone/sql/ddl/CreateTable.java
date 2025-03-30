@@ -227,8 +227,13 @@ public class CreateTable extends SchemaStatement {
             throw e;
         }
 
+        String varName = "disable_generate_code";
+        if (session.getDatabase().getSettings().databaseToUpper)
+            varName = varName.toUpperCase();
+        boolean disableGenCode = session.getVariable(varName).getBoolean();
+
         // 数据库在启动阶段执行建表语句时不用再生成代码
-        if (genCode && !session.getDatabase().isStarting()) {
+        if (genCode && !session.getDatabase().isStarting() && !disableGenCode) {
             if (codeGenerator == null)
                 codeGenerator = "default_table_code_generator"; // 采用ORM框架的默认值，兼容老版本
             TableCodeGenerator tGenerator = PluginManager.getPlugin(TableCodeGenerator.class,
