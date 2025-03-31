@@ -528,14 +528,10 @@ public class DataBuffer {
         return value;
     }
 
-    public ByteBuffer write(ValueDataType type, Object obj) {
-        type.write(this, obj);
-        ByteBuffer buff = getAndFlipBuffer();
-
-        ByteBuffer v = allocate(buff.limit());
-        v.put(buff);
-        v.flip();
-        return v;
+    public static ByteBuffer write(ValueDataType type, Object obj) {
+        DataBuffer b = DataBuffer.create();
+        type.write(b, obj);
+        return b.getAndFlipBuffer();
     }
 
     /**
