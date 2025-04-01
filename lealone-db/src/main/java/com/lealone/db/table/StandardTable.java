@@ -602,7 +602,7 @@ public class StandardTable extends Table {
 
     @Override
     public boolean containsIndex() {
-        return indexes.size() > 1;
+        return indexesSync.size() + indexesAsync.size() > 1;
     }
 
     @Override
