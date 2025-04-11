@@ -557,8 +557,9 @@ public class TransferOutputStream implements NetOutputStream {
             buffer.getDataBuffer().checkCapacity(capacity);
         }
 
+        // 插件用到这个api
         public void flush() {
-            flush(0, buffer.position());
+            flush(startPos, buffer.position());
         }
 
         public void flush(int start, int end) {

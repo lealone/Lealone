@@ -264,13 +264,7 @@ public class NioEventLoop implements NetEventLoop {
             Iterator<WritableChannel> iterator = channels.keySet().iterator();
             while (iterator.hasNext()) {
                 WritableChannel channel = iterator.next();
-                List<WritableBuffer> buffers = channel.getBuffers();
-                if (buffers != null && !buffers.isEmpty()) {
-                    SelectionKey key = channel.getSelectionKey();
-                    if (key != null && key.isValid()) {
-                        batchWrite(key, channel.getSocketChannel(), buffers);
-                    }
-                }
+                batchWrite(channel);
                 // 如果SocketChannel关闭了，会在channels中把它删除，
                 // 此时调用iterator.next()会产生ConcurrentModificationException，
                 // 所以在这里需要判断一下，若是发生变动了就创建新的iterator
@@ -285,10 +279,7 @@ public class NioEventLoop implements NetEventLoop {
     @Override
     public void write(SelectionKey key) {
         WritableChannel channel = ((NioAttachment) key.attachment()).conn.getWritableChannel();
-        List<WritableBuffer> buffers = channel.getBuffers();
-        if (buffers != null && !buffers.isEmpty()) {
-            batchWrite(key, channel.getSocketChannel(), buffers);
-        }
+        batchWrite(channel);
     }
 
     @Override
@@ -303,7 +294,9 @@ public class NioEventLoop implements NetEventLoop {
         }
         boolean writeImmediately;
         if (channel.getBuffers().size() > 2 || needWriteImmediately()) {
-            writeImmediately = true;
+            channel.addBuffer(buffer);
+            batchWrite(channel);
+            return;
         } else if (scheduler.isBusy()) {
             writeImmediately = false;
         } else {
@@ -326,6 +319,16 @@ public class NioEventLoop implements NetEventLoop {
     private void recycleBuffer(WritableBuffer buffer) {
         if (buffer != null) {
             buffer.recycle();
+        }
+    }
+
+    private void batchWrite(WritableChannel channel) {
+        List<WritableBuffer> buffers = channel.getBuffers();
+        if (buffers != null && !buffers.isEmpty()) {
+            SelectionKey key = channel.getSelectionKey();
+            if (key != null && key.isValid()) {
+                batchWrite(key, channel.getSocketChannel(), buffers);
+            }
         }
     }
 
