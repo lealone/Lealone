@@ -15,7 +15,6 @@ import com.lealone.db.MemoryManager;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
-import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.InternalSchedulerBase;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
@@ -30,7 +29,7 @@ import com.lealone.storage.page.PageOperation;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
 import com.lealone.transaction.TransactionEngine;
 
-public class GlobalScheduler extends InternalSchedulerBase implements InternalScheduler {
+public class GlobalScheduler extends InternalSchedulerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalScheduler.class);
 

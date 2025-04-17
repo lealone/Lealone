@@ -121,12 +121,15 @@ public class RedoLog {
                 Object key = kt.read(kv);
                 if (kv.get() == 0) {
                     map.remove(key, ar -> {
-                        Object value = ((Lockable) ar.getResult()).getValue();
-                        if (indexMaps != null) {
-                            for (StorageMap<Object, Object> im : indexMaps) {
-                                StorageDataType ikt = im.getKeyType();
-                                Object indexKey = ikt.convertToIndexKey(key, value);
-                                im.remove(indexKey);
+                        Object result = ar.getResult();
+                        if (result != null) {
+                            Object value = ((Lockable) result).getValue();
+                            if (indexMaps != null) {
+                                for (StorageMap<Object, Object> im : indexMaps) {
+                                    StorageDataType ikt = im.getKeyType();
+                                    Object indexKey = ikt.convertToIndexKey(key, value);
+                                    im.remove(indexKey);
+                                }
                             }
                         }
                     });
