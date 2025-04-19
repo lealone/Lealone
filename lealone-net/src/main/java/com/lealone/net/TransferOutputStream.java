@@ -494,8 +494,8 @@ public class TransferOutputStream implements NetOutputStream {
         private final NetBuffer buffer;
 
         GlobalNetBufferOutputStream(WritableChannel writableChannel, NetBuffer buffer) {
-            channel = new GlobalWritableChannel(writableChannel, buffer);
-            this.buffer = channel.getGlobalBuffer();
+            this.channel = new GlobalWritableChannel(writableChannel, buffer);
+            this.buffer = buffer;
         }
 
         @Override
@@ -511,7 +511,7 @@ public class TransferOutputStream implements NetOutputStream {
         @Override
         public void flush() throws IOException {
             int pos = buffer.position();
-            int length = buffer.position() - channel.startPos - 4;
+            int length = pos - channel.startPos - 4;
             writePacketLength(channel.startPos, length);
             channel.flush(channel.startPos, pos);
         }
@@ -524,7 +524,7 @@ public class TransferOutputStream implements NetOutputStream {
             buffer.setByte(pos + 3, (byte) (v & 0xFF));
         }
 
-        protected void startWrite(int status) {
+        private void startWrite(int status) {
             channel.startWrite(status);
             // 协议包头占4个字节，最后flush时再回填
             buffer.appendInt(0);
