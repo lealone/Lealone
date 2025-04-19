@@ -38,17 +38,6 @@
 * 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
 
 
-##### 云服务版
-
-* 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
-
-* 支持自动化分片 (Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
-
-* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server 模式、复制模式、Sharding 模式
-
-* 支持不停机快速手动或自动转换运行模式: Client/Server 模式 -> 复制模式 -> Sharding 模式
-
-
 ### Lealone 文档
 
 * [快速入门](https://github.com/lealone/Lealone-Docs/blob/master/应用文档/Lealone数据库快速入门.md)
@@ -63,18 +52,18 @@
 * [插件首页](https://github.com/lealone-plugins)
 
 
-### Lealone 微服务框架
-
-* 非常新颖的基于数据库技术实现的微服务框架，开发分布式微服务应用跟开发单体应用一样简单
-
-* [微服务框架文档](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%92%8CORM%E6%A1%86%E6%9E%B6%E6%96%87%E6%A1%A3.md#lealone-%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%A1%86%E6%9E%B6)
-
-
 ### Lealone ORM 框架
 
 * 超简洁的类型安全的 ORM 框架，不需要配置文件和注解
 
 * [ORM 框架文档](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%92%8CORM%E6%A1%86%E6%9E%B6%E6%96%87%E6%A1%A3.md#lealone-orm-%E6%A1%86%E6%9E%B6)
+
+
+### Lealone 微服务框架
+
+* 非常新颖的基于数据库技术实现的微服务框架，开发分布式微服务应用跟开发单体应用一样简单
+
+* [微服务框架文档](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%92%8CORM%E6%A1%86%E6%9E%B6%E6%96%87%E6%A1%A3.md#lealone-%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%A1%86%E6%9E%B6)
 
 
 ### Lealone 名字的由来
@@ -94,3 +83,13 @@
 
 ### [Lealone License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
 
+
+### Lealone 集群版/商业版
+
+* 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
+
+* 支持自动化分片 (Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
+
+* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server 模式、复制模式、Sharding 模式
+
+* 支持不停机快速手动或自动转换运行模式: Client/Server 模式 -> 复制模式 -> Sharding 模式
