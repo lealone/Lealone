@@ -150,15 +150,14 @@ public class TcpServerConnection extends AsyncServerConnection {
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
             session.setScheduler(scheduler);
-            session.setCache(
-                    new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), true, cObject -> {
-                        try {
-                            cObject.value.close();
-                        } catch (Exception e) {
-                            logger.warn(e.getMessage());
-                        }
-                        return null;
-                    }));
+            session.setCache(new ExpiringMap<>(scheduler, tcpServer.getSessionTimeout(), cObject -> {
+                try {
+                    cObject.value.close();
+                } catch (Exception e) {
+                    logger.warn(e.getMessage());
+                }
+                return null;
+            }));
             ServerSessionInfo si = new ServerSessionInfo(scheduler, this, session, sessionId,
                     tcpServer.getSessionTimeout());
             sessions.put(sessionId, si);

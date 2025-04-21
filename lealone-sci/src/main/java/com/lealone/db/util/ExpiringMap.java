@@ -6,9 +6,9 @@
 package com.lealone.db.util;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -19,6 +19,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncPeriodicTask;
 import com.lealone.db.async.AsyncTaskHandler;
 
+//只在单线程中使用
 public class ExpiringMap<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);
@@ -41,7 +42,7 @@ public class ExpiringMap<K, V> {
         }
     }
 
-    private final Map<K, CacheableObject<V>> cache;
+    private final Map<K, CacheableObject<V>> cache = new HashMap<>();
     private final long defaultExpiration;
     private final AsyncTaskHandler asyncTaskHandler;
     private final AsyncPeriodicTask task;
@@ -50,25 +51,22 @@ public class ExpiringMap<K, V> {
      *
      * @param defaultExpiration the TTL for objects in the cache in milliseconds
      */
-    public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration, boolean isThreadSafe,
+    public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration,
             final Function<ExpiringMap.CacheableObject<V>, ?> postExpireHook) {
-        if (isThreadSafe)
-            cache = new HashMap<>();
-        else
-            cache = new ConcurrentHashMap<>();
         this.defaultExpiration = defaultExpiration;
         this.asyncTaskHandler = asyncTaskHandler;
         if (defaultExpiration > 0) {
             task = new AsyncPeriodicTask(1000, () -> {
                 long start = System.nanoTime();
                 int n = 0;
-                for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
+                Iterator<Map.Entry<K, CacheableObject<V>>> iterator = cache.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<K, CacheableObject<V>> entry = iterator.next();
                     if (entry.getValue().isReadyToDieAt(start)) {
-                        if (cache.remove(entry.getKey()) != null) {
-                            n++;
-                            if (postExpireHook != null)
-                                postExpireHook.apply(entry.getValue());
-                        }
+                        n++;
+                        if (postExpireHook != null)
+                            postExpireHook.apply(entry.getValue());
+                        iterator.remove();
                     }
                 }
                 if (logger.isTraceEnabled())
