@@ -12,7 +12,7 @@ import com.lealone.test.sql.SqlTestBase;
 public class MainIndexColumnTest extends SqlTestBase {
 
     @Test
-    public void run() {
+    public void run() throws Exception {
         executeUpdate("drop table IF EXISTS MainIndexColumnTest CASCADE");
         executeUpdate(
                 "create table IF NOT EXISTS MainIndexColumnTest(id int not null, name varchar(50))");
@@ -26,6 +26,10 @@ public class MainIndexColumnTest extends SqlTestBase {
 
         sql = "select * from MainIndexColumnTest";
         printResultSet();
+
+        sql = "select min(id),max(id) from MainIndexColumnTest";
+        assertEquals(10, getIntValue(1, false));
+        assertEquals(30, getIntValue(2, true));
     }
 
 }
