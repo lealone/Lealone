@@ -68,6 +68,16 @@ public class Lealone {
         new Lealone().run(true, null);
     }
 
+    public static void executeSql(String url, String sql) {
+        try (Connection conn = DriverManager.getConnection(url);
+                Statement stmt = conn.createStatement()) {
+            logger.info("Execute sql: " + sql);
+            stmt.execute(sql);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
     public static void runScript(String url, String... sqlScripts) {
         try (Connection conn = DriverManager.getConnection(url);
                 Statement stmt = conn.createStatement()) {
