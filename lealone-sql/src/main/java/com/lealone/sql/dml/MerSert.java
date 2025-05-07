@@ -26,6 +26,7 @@ import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.executor.YieldableLoopUpdateBase;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.Parameter;
+import com.lealone.sql.optimizer.TableFilter;
 import com.lealone.sql.query.Query;
 
 // merge和insert的基类
@@ -299,6 +300,20 @@ public abstract class MerSert extends ManipulationStatement {
         @Override
         public int getRowCount() {
             return updateCount.get();
+        }
+
+        @Override
+        public boolean optimizeInsertFromSelect() {
+            // 对于insert into t select * from t这样的场景需要禁用优化
+            // 因为会产生无限循环
+            if (statement.query != null) {
+                for (TableFilter tf : statement.query.getFilters()) {
+                    if (table.getId() == tf.getTable().getId())
+                        return false;
+                }
+                return true;
+            }
+            return false;
         }
     }
 }

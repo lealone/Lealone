@@ -27,4 +27,7 @@ public interface ResultTarget {
      */
     int getRowCount();
 
+    default boolean optimizeInsertFromSelect() {
+        return false;
+    }
 }

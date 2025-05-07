@@ -183,7 +183,9 @@ public class YieldableSelect extends YieldableQueryBase {
 
     private LocalResult createLocalResultIfNeeded(int limitRows) {
         LocalResult result = null;
-        if (target == null || !session.getDatabase().getSettings().optimizeInsertFromSelect) {
+        if (target == null //
+                || !session.getDatabase().getSettings().optimizeInsertFromSelect //
+                || target != null && !target.optimizeInsertFromSelect()) {
             result = createLocalResult(result);
         }
         if (select.sort != null && (!select.sortUsingIndex || select.distinct)) {
