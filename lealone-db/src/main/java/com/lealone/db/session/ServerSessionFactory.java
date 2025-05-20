@@ -34,10 +34,10 @@ public class ServerSessionFactory extends SessionFactoryBase {
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
         if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {
             Scheduler scheduler = EmbeddedScheduler.getScheduler(ci);
-            AsyncCallback<Session> ac = AsyncCallback.create(ci.isSingleThreadCallback());
+            // 当前线程不是调度线程，需要用ConcurrentCallback
+            AsyncCallback<Session> ac = AsyncCallback.createConcurrentCallback();
             scheduler.handle(() -> {
-                ServerSession session = createServerSession(ci);
-                ac.setAsyncResult(session);
+                ac.setAsyncResult(createServerSession(ci));
             });
             return ac;
         }
@@ -45,12 +45,13 @@ public class ServerSessionFactory extends SessionFactoryBase {
     }
 
     private ServerSession createServerSession(ConnectionInfo ci) {
+        LealoneDatabase ldb = LealoneDatabase.getInstance();
         String dbName = ci.getDatabaseName();
         // 内嵌数据库，如果不存在，则自动创建
-        if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
-            LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
+        if (ci.isEmbedded() && ldb.findDatabase(dbName) == null) {
+            ldb.createEmbeddedDatabase(dbName, ci);
         }
-        Database database = LealoneDatabase.getInstance().getDatabase(dbName);
+        Database database = ldb.getDatabase(dbName);
         String targetNodes;
         if (ci.isEmbedded()) {
             targetNodes = null;
@@ -61,8 +62,7 @@ public class ServerSessionFactory extends SessionFactoryBase {
             if (targetNodes == null) {
                 targetNodes = localNode.getHostAndPort();
             } else if (!database.isTargetNode(localNode)) {
-                ServerSession session = new ServerSession(database,
-                        LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
+                ServerSession session = new ServerSession(database, ldb.getSystemSession().getUser(), 0);
                 session.setTargetNodes(targetNodes);
                 session.setRunMode(database.getRunMode());
                 session.setInvalid(true);
