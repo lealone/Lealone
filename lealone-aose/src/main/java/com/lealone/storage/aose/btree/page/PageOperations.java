@@ -351,6 +351,18 @@ public abstract class PageOperations {
             }
             return true;
         }
+
+        protected static void replaceParentPage(PageReference parentRef, Page newParent) {
+            // 不能这样直接替换，否则标记脏页时有可能使用旧的父page
+            // parentRef.replacePage(newParent);
+            while (true) {
+                PageInfo pInfoOld = parentRef.getPageInfo();
+                PageInfo pInfoNew = pInfoOld.copy(false);
+                pInfoNew.page = newParent;
+                if (parentRef.replacePage(pInfoOld, pInfoNew))
+                    break;
+            }
+        }
     }
 
     // 不处理root leaf page的场景，在Remove类那里已经保证不会删除root leaf page
@@ -383,7 +395,7 @@ public abstract class PageOperations {
             int index = parent.getPageIndex(key);
             parent = parent.copy();
             parent.remove(index);
-            parentRef.replacePage(parent);
+            replaceParentPage(parentRef, parent);
             // 先看看父节点是否需要删除
             if (parent.isEmpty()) {
                 // 如果是root node page，那么直接替换
@@ -435,7 +447,7 @@ public abstract class PageOperations {
                 tmpNodePage.right.setParentRef(pRef);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
-                pRef.replacePage(tmpNodePage.parent);
+                replaceParentPage(pRef, tmpNodePage.parent);
 
                 // 放到最后做
                 if (tmpNodePage.left.isLeafPage()) {
@@ -451,7 +463,7 @@ public abstract class PageOperations {
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
                 if (p.isNode())
                     setParentRef(tmpNodePage);
-                parentRef.replacePage(newParent);
+                replaceParentPage(parentRef, newParent);
 
                 // 非root page被切割后，原有的ref被废弃
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到父节点
