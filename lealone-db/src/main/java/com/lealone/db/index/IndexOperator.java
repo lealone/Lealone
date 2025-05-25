@@ -25,7 +25,7 @@ import com.lealone.db.table.StandardTable;
 import com.lealone.db.value.Value;
 import com.lealone.transaction.Transaction;
 
-public class IndexOperator extends SchedulerTaskManager implements Runnable {
+public class IndexOperator implements Runnable, SchedulerTaskManager {
 
     private final InternalScheduler scheduler;
     private final StandardTable table;

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
@@ -171,15 +172,32 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
 
     // --------------------- 跟 SchedulerTaskManager 相关 ---------------------
 
-    protected final LinkableList<SchedulerTaskManager> taskManagers = new LinkableList<>();
+    protected final LinkableList<SchedulerTaskManagerWrapper> taskManagers = new LinkableList<>();
+
+    // SchedulerTaskManager需要传递给多个Scheduler，需要包装成SchedulerTaskManagerWrapper
+    // 如果SchedulerTaskManager直接继承自LinkableBase，多个Scheduler修改它的next会有并发问题
+    protected static class SchedulerTaskManagerWrapper extends LinkableBase<SchedulerTaskManagerWrapper>
+            implements SchedulerTaskManager {
+
+        protected SchedulerTaskManager schedulerTaskManager;
+
+        public SchedulerTaskManagerWrapper(SchedulerTaskManager schedulerTaskManager) {
+            this.schedulerTaskManager = schedulerTaskManager;
+        }
+
+        @Override
+        public boolean gcCompletedTasks(InternalScheduler scheduler) {
+            return schedulerTaskManager.gcCompletedTasks(scheduler);
+        }
+    }
 
     protected void gcCompletedTasks() {
         if (taskManagers.isEmpty())
             return;
         while (taskManagers.getHead() != null) {
             int size = taskManagers.size();
-            SchedulerTaskManager task = taskManagers.getHead();
-            SchedulerTaskManager last = null;
+            SchedulerTaskManagerWrapper task = taskManagers.getHead();
+            SchedulerTaskManagerWrapper last = null;
             while (task != null) {
                 try {
                     if (!task.gcCompletedTasks(this)) {
@@ -208,7 +226,7 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
 
     @Override
     public void addTaskManager(SchedulerTaskManager taskManager) {
-        taskManagers.add(taskManager);
+        taskManagers.add(new SchedulerTaskManagerWrapper(taskManager));
     }
 
     // --------------------- 实现 SQLStatement 相关的代码 ---------------------

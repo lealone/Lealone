@@ -5,10 +5,8 @@
  */
 package com.lealone.db.scheduler;
 
-import com.lealone.db.link.LinkableBase;
+public interface SchedulerTaskManager {
 
-public abstract class SchedulerTaskManager extends LinkableBase<SchedulerTaskManager> {
-
-    public abstract boolean gcCompletedTasks(InternalScheduler scheduler);
+    public boolean gcCompletedTasks(InternalScheduler scheduler);
 
 }
