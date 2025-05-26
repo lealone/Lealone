@@ -14,12 +14,13 @@ import com.lealone.db.result.ResultTarget;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueNull;
+import com.lealone.sql.StatementBase;
 import com.lealone.sql.operator.Operator;
 import com.lealone.sql.operator.OperatorFactory;
 
 public class YieldableSelect extends YieldableQueryBase {
 
-    private final Select select;
+    private Select select;
     private final ResultTarget target;
     private final int olapThreshold;
     private boolean olapDisabled;
@@ -209,5 +210,10 @@ public class YieldableSelect extends YieldableQueryBase {
         return old != null ? old
                 : new LocalResult(session, select.expressionArray, select.visibleColumnCount,
                         select.rawExpressionInfoList);
+    }
+
+    @Override
+    protected void onRecompiled(StatementBase newStatement) {
+        select = (Select) newStatement;
     }
 }

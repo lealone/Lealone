@@ -6,6 +6,7 @@
 package com.lealone.sql;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
@@ -212,6 +213,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      */
     public void setParameterList(ArrayList<Parameter> parameters) {
         this.parameters = parameters;
+    }
+
+    public void setBatchParameterValues(List<Value[]> batchParameterValues) {
+    }
+
+    public List<Value[]> getBatchParameterValues() {
+        return null;
     }
 
     /**

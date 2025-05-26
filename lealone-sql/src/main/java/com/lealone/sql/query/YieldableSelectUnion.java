@@ -14,13 +14,14 @@ import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueInt;
 import com.lealone.db.value.ValueNull;
+import com.lealone.sql.StatementBase;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.ValueExpression;
 
 class YieldableSelectUnion extends YieldableQueryBase {
 
-    private final SelectUnion selectUnion;
+    private SelectUnion selectUnion;
     private final ResultTarget target;
 
     private Expression limitExpr;
@@ -294,5 +295,10 @@ class YieldableSelectUnion extends YieldableQueryBase {
             newValues[i] = values[i].convertTo(e.getType());
         }
         return newValues;
+    }
+
+    @Override
+    protected void onRecompiled(StatementBase newStatement) {
+        selectUnion = (SelectUnion) newStatement;
     }
 }

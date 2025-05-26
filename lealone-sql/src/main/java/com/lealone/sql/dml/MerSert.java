@@ -22,6 +22,7 @@ import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
+import com.lealone.sql.StatementBase;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.executor.YieldableLoopUpdateBase;
 import com.lealone.sql.expression.Expression;
@@ -72,8 +73,14 @@ public abstract class MerSert extends ManipulationStatement {
         list.clear();
     }
 
+    @Override
     public void setBatchParameterValues(List<Value[]> batchParameterValues) {
         this.batchParameterValues = batchParameterValues;
+    }
+
+    @Override
+    public List<Value[]> getBatchParameterValues() {
+        return batchParameterValues;
     }
 
     @Override
@@ -162,7 +169,7 @@ public abstract class MerSert extends ManipulationStatement {
     protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase
             implements ResultTarget {
 
-        final MerSert statement;
+        MerSert merSertStatement;
         final Table table;
         final int listSize;
 
@@ -171,7 +178,7 @@ public abstract class MerSert extends ManipulationStatement {
 
         public YieldableMerSert(MerSert statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
-            this.statement = statement;
+            this.merSertStatement = statement;
             table = statement.table;
             listSize = statement.batchParameterValues != null ? statement.batchParameterValues.size()
                     : statement.list.size();
@@ -179,9 +186,9 @@ public abstract class MerSert extends ManipulationStatement {
 
         @Override
         protected boolean startInternal() {
-            statement.setCurrentRowNumber(0);
-            if (statement.query != null) {
-                yieldableQuery = statement.query.createYieldableQuery(0, false, null, this);
+            merSertStatement.setCurrentRowNumber(0);
+            if (merSertStatement.query != null) {
+                yieldableQuery = merSertStatement.query.createYieldableQuery(0, false, null, this);
             }
             return false;
         }
@@ -221,20 +228,20 @@ public abstract class MerSert extends ManipulationStatement {
         protected Row createNewRow() {
             Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
             Expression[] expr;
-            if (statement.batchParameterValues != null) {
-                expr = statement.list.get(0);
-                Value[] parameters = statement.batchParameterValues.get(index);
-                List<? extends CommandParameter> params = statement.getParameters();
+            if (merSertStatement.batchParameterValues != null) {
+                expr = merSertStatement.list.get(0);
+                Value[] parameters = merSertStatement.batchParameterValues.get(index);
+                List<? extends CommandParameter> params = merSertStatement.getParameters();
                 for (int i = 0, size = parameters.length; i < size; i++) {
                     CommandParameter p = params.get(i);
                     p.setValue(parameters[i]);
                 }
             } else {
-                expr = statement.list.get(index);
+                expr = merSertStatement.list.get(index);
             }
-            int columnLen = statement.columns.length;
+            int columnLen = merSertStatement.columns.length;
             for (int i = 0; i < columnLen; i++) {
-                Column c = statement.columns[i];
+                Column c = merSertStatement.columns[i];
                 int index = c.getColumnId(); // 从0开始
                 Expression e = expr[i];
                 if (e != null) {
@@ -244,7 +251,7 @@ public abstract class MerSert extends ManipulationStatement {
                         Value v = c.convert(e.getValue(session));
                         newRow.setValue(index, v);
                     } catch (DbException ex) {
-                        throw statement.setRow(ex, this.index + 1, getSQL(expr));
+                        throw merSertStatement.setRow(ex, this.index + 1, getSQL(expr));
                     }
                 }
             }
@@ -253,14 +260,14 @@ public abstract class MerSert extends ManipulationStatement {
 
         protected Row createNewRow(Value[] values) {
             Row newRow = table.getTemplateRow();
-            for (int i = 0, len = statement.columns.length; i < len; i++) {
-                Column c = statement.columns[i];
+            for (int i = 0, len = merSertStatement.columns.length; i < len; i++) {
+                Column c = merSertStatement.columns[i];
                 int index = c.getColumnId();
                 try {
                     Value v = c.convert(values[i]);
                     newRow.setValue(index, v);
                 } catch (DbException ex) {
-                    throw statement.setRow(ex, updateCount.get() + 1, getSQL(values));
+                    throw merSertStatement.setRow(ex, updateCount.get() + 1, getSQL(values));
                 }
             }
             return newRow;
@@ -306,14 +313,19 @@ public abstract class MerSert extends ManipulationStatement {
         public boolean optimizeInsertFromSelect() {
             // 对于insert into t select * from t这样的场景需要禁用优化
             // 因为会产生无限循环
-            if (statement.query != null) {
-                for (TableFilter tf : statement.query.getFilters()) {
+            if (merSertStatement.query != null) {
+                for (TableFilter tf : merSertStatement.query.getFilters()) {
                     if (table.getId() == tf.getTable().getId())
                         return false;
                 }
                 return true;
             }
             return false;
+        }
+
+        @Override
+        protected void onRecompiled(StatementBase newStatement) {
+            merSertStatement = (MerSert) newStatement;
         }
     }
 }

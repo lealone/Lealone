@@ -7,6 +7,7 @@ package com.lealone.sql.executor;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
@@ -138,23 +139,31 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     private void recompileIfNeeded() {
         if (statement.needRecompile()) {
             statement.setModificationMetaId(0);
-            String sql = statement.getSQL();
-            ArrayList<Parameter> oldParams = statement.getParameters();
-            statement = (StatementBase) session.parseStatement(sql);
-            long mod = statement.getModificationMetaId();
-            statement.setModificationMetaId(0);
-            ArrayList<Parameter> newParams = statement.getParameters();
-            for (int i = 0, size = newParams.size(); i < size; i++) {
-                Parameter old = oldParams.get(i);
-                if (old.isValueSet()) {
-                    Value v = old.getValue(session);
-                    Parameter p = newParams.get(i);
-                    p.setValue(v);
+            List<Value[]> batchParameterValues = statement.getBatchParameterValues();
+            StatementBase newStatement = (StatementBase) session.parseStatement(statement.getSQL());
+            newStatement.setBatchParameterValues(batchParameterValues);
+            if (batchParameterValues == null) {
+                ArrayList<Parameter> oldParams = statement.getParameters();
+                ArrayList<Parameter> newParams = newStatement.getParameters();
+                for (int i = 0, size = newParams.size(); i < size; i++) {
+                    Parameter old = oldParams.get(i);
+                    if (old.isValueSet()) {
+                        Value v = old.getValue(session);
+                        Parameter p = newParams.get(i);
+                        p.setValue(v);
+                    }
                 }
             }
-            statement.prepare();
-            statement.setModificationMetaId(mod);
+            newStatement.prepare();
+            session.removeCache(statement.getId(), true);
+            session.addCache(statement.getId(), newStatement);
+            statement = newStatement;
+            onRecompiled(newStatement);
         }
+    }
+
+    protected void onRecompiled(StatementBase newStatement) {
+        statement = newStatement;
     }
 
     private void setProgress(int state) {
