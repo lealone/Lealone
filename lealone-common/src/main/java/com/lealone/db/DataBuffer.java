@@ -551,6 +551,11 @@ public class DataBuffer {
         return buff;
     }
 
+    public ByteBuffer growCapacity(int plus) {
+        grow(plus);
+        return buff;
+    }
+
     private void grow(int additional) {
         int pos = buff.position();
         ByteBuffer temp = buff;

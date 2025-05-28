@@ -158,8 +158,9 @@ public class NioEventLoop implements NetEventLoop {
         // 如果客户端关闭连接，服务器再次循环读数据检测到连接已经关闭就不再读取数据，避免抛出异常
         if (conn.isClosed())
             return;
+
         SocketChannel channel = (SocketChannel) key.channel();
-        NetBuffer inBuffer = attachment.inBuffer;
+        int packetLength = attachment.state; // 看看是不是上一次记下的packetLength
         try {
             // 每次循环重新取一次，一些实现会返回不同的limit
             int packetLengthByteCount = conn.getPacketLengthByteCount();
@@ -167,66 +168,82 @@ public class NioEventLoop implements NetEventLoop {
                 conn.handle(null, false);
                 return;
             }
-            int packetLength = attachment.state; // 看看是不是上一次记下的packetLength
-            if (attachment.state == -1) {
+
+            // 继续读上一个未读完的包
+            if (attachment.inBuffer != null) {
+                NetBuffer inBuffer = attachment.inBuffer;
                 ByteBuffer buffer = inBuffer.getByteBuffer();
-                if (!read(conn, channel, buffer) || buffer.position() < packetLengthByteCount) {
+                if (!read(conn, channel, buffer) || buffer.remaining() > 0) {
                     return;
                 } else {
-                    buffer.flip();
-                    packetLength = conn.getPacketLength(buffer);
                     attachment.inBuffer = null;
-                    attachment.state = 0;
-                    inBuffer.recycle();
-                    inBuffer = null;
-                }
-            }
-            if (attachment.state >= 0) {
-                if (inBuffer == null) {
-                    inBuffer = inputBuffer;
-                }
-                ByteBuffer buffer = inBuffer.getByteBuffer();
-                int start = buffer.position();
-                if (!read(conn, channel, buffer)) {
-                    if (packetLength != 0)
-                        attachment.state = packetLength; // 记下packetLength
-                    return;
-                }
-                buffer.flip();
-                if (start != 0 && inBuffer.isGlobal())
-                    buffer.position(start); // 从上一个包的后续位置开始读
-                while (true) {
-                    int remaining = buffer.remaining();
-                    if (remaining >= packetLengthByteCount) {
-                        if (packetLength == 0) {
-                            packetLength = conn.getPacketLength(buffer);
-                            remaining = buffer.remaining();
-                        }
-                        BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
-                        if (remaining >= packetLength) {
-                            attachment.state = 0;
-                            attachment.inBuffer = null;
-                            packetLength = 0;
-                            conn.handle(inBuffer, false);
-                        } else {
-                            start = buffer.position();
-                            attachment.state = packetLength;
-                            attachment.inBuffer = inBuffer.createReadableBuffer(start, packetLength);
-                            attachment.inBuffer.position(remaining);
-                            return;
-                        }
+                    buffer.flip();
+                    if (attachment.state == -1) { // 上次连packetLength都没有读出来，先计算packetLength
+                        attachment.state = 0;
+                        packetLength = conn.getPacketLength(buffer);
                     } else {
-                        if (remaining == 0) {
-                            inBuffer.recycle();
-                        } else {
-                            start = buffer.position();
-                            attachment.state = -1;
-                            attachment.inBuffer = inBuffer.createReadableBuffer(start,
-                                    packetLengthByteCount);
-                            attachment.inBuffer.position(remaining);
-                        }
+                        attachment.state = 0;
+                        conn.handle(inBuffer, false);
+                        inBuffer.recycle();
                         return;
                     }
+                }
+            }
+
+            // 以下是正常从全局inputBuffer中读数据
+
+            ByteBuffer buffer = inputBuffer.getByteBuffer();
+            int start = buffer.position();
+            if (!read(conn, channel, buffer)) {
+                if (packetLength != 0)
+                    attachment.state = packetLength; // 记下packetLength
+                return;
+            }
+            buffer.flip();
+            if (start != 0)
+                buffer.position(start); // 从上一个包的后续位置开始读
+
+            while (true) {
+                int remaining = buffer.remaining();
+                if (remaining >= packetLengthByteCount) {
+                    if (packetLength == 0) {
+                        packetLength = conn.getPacketLength(buffer);
+                        remaining = buffer.remaining();
+                    }
+                    BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
+                    if (remaining >= packetLength) {
+                        packetLength = 0;
+                        conn.handle(inputBuffer, false);
+                    } else {
+                        start = buffer.position();
+                        // 如果是因为容量不够，扩容后再读一次
+                        if (buffer.capacity() - start < packetLength) {
+                            buffer = inputBuffer.getDataBuffer().growCapacity(packetLength);
+                            buffer.position(start + remaining); // 从新的位置开始读
+                            if (read(conn, channel, buffer)) {
+                                buffer.flip();
+                                buffer.position(start);
+                                continue;
+                            } else {
+                                buffer.position(start); // 恢复位置
+                            }
+                        }
+                        attachment.state = packetLength;
+                        attachment.inBuffer = inputBuffer.createReadableBuffer(start, packetLength);
+                        attachment.inBuffer.position(remaining);
+                        return;
+                    }
+                } else {
+                    if (remaining == 0) {
+                        inputBuffer.recycle();
+                    } else { // 可用字节还不够读packetLength
+                        start = buffer.position();
+                        attachment.state = -1;
+                        attachment.inBuffer = inputBuffer.createReadableBuffer(start,
+                                packetLengthByteCount);
+                        attachment.inBuffer.position(remaining);
+                    }
+                    return;
                 }
             }
         } catch (Exception e) {

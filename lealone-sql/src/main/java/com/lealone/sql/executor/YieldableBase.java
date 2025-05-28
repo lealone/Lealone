@@ -155,8 +155,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
                 }
             }
             newStatement.prepare();
-            session.removeCache(statement.getId(), true);
-            session.addCache(statement.getId(), newStatement);
+            if (session.removeCache(statement.getId(), true) != null)
+                session.addCache(statement.getId(), newStatement);
             statement = newStatement;
             onRecompiled(newStatement);
         }
