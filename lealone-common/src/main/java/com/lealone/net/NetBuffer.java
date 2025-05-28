@@ -78,12 +78,19 @@ public class NetBuffer {
     }
 
     public void recycle() {
+        recycle(-1);
+    }
+
+    public void recycle(int pos) {
         // 还有包要处理不能回收
         if (packetCount <= 0) {
             packetCount = 0;
             dataBuffer.clear();
         } else {
-            dataBuffer.getBuffer().limit(dataBuffer.capacity());
+            ByteBuffer buffer = dataBuffer.getBuffer();
+            if (pos >= 0)
+                buffer.position(pos);
+            buffer.limit(dataBuffer.capacity());
         }
     }
 

@@ -202,6 +202,7 @@ public class NioEventLoop implements NetEventLoop {
             buffer.flip();
             if (start != 0)
                 buffer.position(start); // 从上一个包的后续位置开始读
+            int recyclePos = start;
 
             while (true) {
                 int remaining = buffer.remaining();
@@ -212,7 +213,7 @@ public class NioEventLoop implements NetEventLoop {
                         remaining = buffer.remaining();
                     } else {
                         if (remaining == 0) {
-                            inputBuffer.recycle();
+                            inputBuffer.recycle(recyclePos);
                         } else {
                             // 可用字节还不够读packetLength
                             start = buffer.position();
@@ -234,7 +235,7 @@ public class NioEventLoop implements NetEventLoop {
                         attachment.packetLength = packetLength; // 记下packetLength
 
                     if (remaining == 0) {
-                        inputBuffer.recycle();
+                        inputBuffer.recycle(recyclePos);
                     } else {
                         start = buffer.position();
                         // 如果是因为容量不够，扩容后再读一次
