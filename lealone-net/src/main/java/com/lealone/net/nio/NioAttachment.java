@@ -12,7 +12,7 @@ public class NioAttachment {
 
     public final AsyncConnection conn;
     NetBuffer inBuffer;
-    int state = 0;
+    int packetLength = 0;
 
     public NioAttachment(AsyncConnection conn) {
         this.conn = conn;
