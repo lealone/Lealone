@@ -65,8 +65,10 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         }
         pendingIos.add(io);
         indexOperationSize.incrementAndGet();
-        if (currentScheduler != scheduler)
-            scheduler.wakeUp();
+
+        // 调用wakeUp会降低一点点性能
+        // if (currentScheduler != scheduler)
+        // scheduler.wakeUp();
     }
 
     @Override

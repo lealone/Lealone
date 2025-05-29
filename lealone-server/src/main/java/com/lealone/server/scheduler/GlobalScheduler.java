@@ -288,6 +288,10 @@ public class GlobalScheduler extends InternalSchedulerBase {
         runSessionTasks();
         netEventLoop.write();
 
+        // 提前调用一下，前面执行handleSelectedKeys可能把数据包读完了，
+        // 如果后面执行runEventLoop可能会在select()等待一会
+        wakeUp();
+
         // 如果为null说明当前执行的任务优先级很低，比如正在为一个现有的表创建新的索引
         if (current == null) {
             int priority = PreparedSQLStatement.MIN_PRIORITY - 1;
