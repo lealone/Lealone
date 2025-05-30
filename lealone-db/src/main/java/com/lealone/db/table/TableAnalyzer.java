@@ -5,17 +5,13 @@
  */
 package com.lealone.db.table;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.StatementBuilder;
-import com.lealone.db.Database;
 import com.lealone.db.auth.Right;
-import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;
-import com.lealone.db.value.ValueInt;
 import com.lealone.db.value.ValueNull;
 import com.lealone.sql.PreparedSQLStatement;
 
@@ -55,6 +51,7 @@ public class TableAnalyzer {
         }
     }
 
+    // 通过手工执行ANALYZE语句调用
     public void analyze(ServerSession session, int sample) {
         if (analyzing.compareAndSet(false, true)) {
             try {
@@ -77,10 +74,8 @@ public class TableAnalyzer {
         if (table.getTableType() != TableType.STANDARD_TABLE || table.isHidden() || session == null) {
             return;
         }
-        if (!manual) {
-            if (table.hasSelectTrigger()) {
-                return;
-            }
+        if (!manual && table.hasSelectTrigger()) {
+            return;
         }
         if (table.isTemporary() && !table.isGlobalTemporary()
                 && session.findLocalTempTable(table.getName()) == null) {
@@ -89,15 +84,14 @@ public class TableAnalyzer {
         if (!session.getUser().hasRight(table, Right.SELECT)) {
             return;
         }
+        // if the connection is closed and there is something to undo
         if (session.getCancel() != 0) {
-            // if the connection is closed and there is something to undo
             return;
         }
         Column[] columns = table.getColumns();
         if (columns.length == 0) {
             return;
         }
-        Database db = session.getDatabase();
         StatementBuilder buff = new StatementBuilder("SELECT ");
         for (Column col : columns) {
             buff.appendExceptFirst(", ");
@@ -112,24 +106,33 @@ public class TableAnalyzer {
         }
         buff.append(" FROM ").append(table.getSQL());
         if (sample > 0) {
-            buff.append(" LIMIT ? SAMPLE_SIZE ? ");
+            buff.append(" LIMIT 1 SAMPLE_SIZE ").append(sample);
         }
         String sql = buff.toString();
-        PreparedSQLStatement command = session.prepareStatement(sql);
-        if (sample > 0) {
-            List<? extends CommandParameter> params = command.getParameters();
-            params.get(0).setValue(ValueInt.get(1));
-            params.get(1).setValue(ValueInt.get(sample));
+        if (manual) {
+            analyzeTable(session, table, sql);
+        } else {
+            // 如果是在执行insert/update/delete时触发，需要异步通过新任务的方式执行
+            // 不能在同一个session中嵌套执行，这样会修改session的状态，导致各种并发问题
+            session.getSessionInfo().submitTask(() -> {
+                analyzeTable(session, table, sql);
+            });
         }
+    }
+
+    private static void analyzeTable(ServerSession session, Table table, String sql) {
+        // 执行updateMeta时会修改modificationMetaID，所以queryCache不起作用
+        PreparedSQLStatement command = session.prepareStatement(sql);
+        Column[] columns = table.getColumns();
         Result result = command.query(0);
         result.next();
-        for (int j = 0; j < columns.length; j++) {
-            Value v = result.currentRow()[j];
+        for (int i = 0; i < columns.length; i++) {
+            Value v = result.currentRow()[i];
             if (v != ValueNull.INSTANCE) {
                 int selectivity = v.getInt();
-                columns[j].setSelectivity(selectivity);
+                columns[i].setSelectivity(selectivity);
             }
         }
-        db.updateMeta(session, table);
+        session.getDatabase().updateMeta(session, table);
     }
 }
