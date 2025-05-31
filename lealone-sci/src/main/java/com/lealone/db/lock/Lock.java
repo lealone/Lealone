@@ -8,6 +8,7 @@ package com.lealone.db.lock;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.db.session.InternalSession;
+import com.lealone.storage.page.PageListener;
 import com.lealone.transaction.Transaction;
 
 public abstract class Lock {
@@ -93,6 +94,17 @@ public abstract class Lock {
 
     public Lockable getLockable() {
         return null;
+    }
+
+    public PageListener getPageListener() {
+        return null;
+    }
+
+    public void setPageListener(PageListener pageListener) {
+    }
+
+    public boolean isPageLock() {
+        return false;
     }
 
     @SuppressWarnings("unchecked")

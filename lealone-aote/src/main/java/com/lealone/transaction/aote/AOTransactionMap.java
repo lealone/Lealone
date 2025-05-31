@@ -399,7 +399,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // 当前行已经被其他事务锁住了
             return Transaction.OPERATION_NEED_WAIT;
         }
-        if (lockable.getLock() == null) {
+        if (lockable.isNoneLock()) {
             TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
             if (!markDirtyPage(lockable))
                 map.put(key, lockable);

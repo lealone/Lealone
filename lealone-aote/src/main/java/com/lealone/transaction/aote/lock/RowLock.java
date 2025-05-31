@@ -9,6 +9,7 @@ import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.LockOwner;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.session.InternalSession;
+import com.lealone.storage.page.PageListener;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.aote.AOTransaction;
 
@@ -56,12 +57,28 @@ public class RowLock extends Lock {
     @Override
     public void unlock(InternalSession oldSession, InternalSession newSession) {
         // 先置null再unlock，否则其他事务加锁成功后又被当前事务置null，会导致两个新事务都加锁成功
-        lockable.setLock(null); // 重置为NULL，释放RowLock对象占用的内存
+        PageListener pListener = getPageListener();
+        if (pListener != null)
+            lockable.setLock(pListener.getLock());
+        else
+            lockable.setLock(null); // 重置为NULL，释放RowLock对象占用的内存
         super.unlock(oldSession, newSession);
     }
 
     @Override
     public Lockable getLockable() {
         return lockable;
+    }
+
+    private volatile PageListener pageListener;
+
+    @Override
+    public PageListener getPageListener() {
+        return pageListener;
+    }
+
+    @Override
+    public void setPageListener(PageListener pageListener) {
+        this.pageListener = pageListener;
     }
 }

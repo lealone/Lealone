@@ -26,6 +26,7 @@ import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.SystemPropertyUtils;
+import com.lealone.db.DataBuffer;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.AsyncConnection;
@@ -192,7 +193,12 @@ public class NioEventLoop implements NetEventLoop {
 
             // 以下是正常从全局inputBuffer中读数据
 
+            NetBuffer inputBuffer = this.inputBuffer;
             ByteBuffer buffer = inputBuffer.getByteBuffer();
+            if (buffer.remaining() == 0) {
+                inputBuffer = new NetBuffer(DataBuffer.create());
+                buffer = inputBuffer.getByteBuffer();
+            }
             int start = buffer.position();
             if (!read(conn, channel, buffer)) {
                 if (packetLength != 0)

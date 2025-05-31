@@ -108,6 +108,7 @@ public class AsyncServerManager {
                 SelectionKey key = asyncServer.getSelectionKey();
                 key.interestOps(key.interestOps() & ~SelectionKey.OP_ACCEPT);
                 registerAccepter(asyncServer, nextScheduler);
+                nextScheduler.wakeUp();
             }
         }
     }

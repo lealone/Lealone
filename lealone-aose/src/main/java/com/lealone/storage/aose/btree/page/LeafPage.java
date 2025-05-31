@@ -6,9 +6,9 @@
 package com.lealone.storage.aose.btree.page;
 
 import com.lealone.common.util.DataUtils;
+import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.aose.btree.BTreeMap;
-import com.lealone.storage.page.PageListener;
 import com.lealone.storage.type.StorageDataType;
 
 public abstract class LeafPage extends LocalPage {
@@ -119,7 +119,12 @@ public abstract class LeafPage extends LocalPage {
 
     protected void setPageListener(StorageDataType type, Object value) {
         if (type.isLockable()) {
-            ((Lockable) value).setPageListener(getRef().getPageListener());
+            Lockable lockable = (Lockable) value;
+            Lock lock = lockable.getLock();
+            if (lock != null)
+                lock.setPageListener(getRef().getPageListener());
+            else
+                lockable.setLock(getRef().getLock());
         }
     }
 
@@ -128,15 +133,15 @@ public abstract class LeafPage extends LocalPage {
             PageReference ref = getRef();
             if (ref == null) // 执行ChunkCompactor.rewrite时为null
                 return;
-            PageListener pageListener = ref.getPageListener();
+            Lock lock = ref.getLock();
             for (Object obj : objs) {
-                ((Lockable) obj).setPageListener(pageListener);
+                ((Lockable) obj).setLock(lock);
             }
         }
     }
 
     protected boolean isLocked(Object obj) {
-        return ((Lockable) obj).getLock() != null;
+        return !((Lockable) obj).isNoneLock();
     }
 
     @Override

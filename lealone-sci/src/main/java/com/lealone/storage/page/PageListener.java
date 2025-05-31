@@ -5,6 +5,8 @@
  */
 package com.lealone.storage.page;
 
+import com.lealone.db.lock.Lock;
+
 public class PageListener {
 
     private final IPageReference pageReference;
@@ -28,5 +30,9 @@ public class PageListener {
 
     public void setParent(PageListener parent) {
         this.parent = parent;
+    }
+
+    public Lock getLock() {
+        return pageReference.getLock();
     }
 }

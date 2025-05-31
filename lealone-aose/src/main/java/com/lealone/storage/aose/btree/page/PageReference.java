@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
+import com.lealone.db.lock.Lock;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.storage.aose.btree.BTreeStorage;
@@ -28,9 +29,12 @@ public class PageReference implements IPageReference {
     private final BTreeStorage bs;
     private final SchedulerLock schedulerLock = new SchedulerLock();
 
+    private final PageLock pageLock;
+
     public PageReference(BTreeStorage bs) {
         this.bs = bs;
         pInfo = new PageInfo();
+        pageLock = new PageLock();
         setPageListener(new PageListener(this));
     }
 
@@ -88,9 +92,15 @@ public class PageReference implements IPageReference {
 
     public void setPageListener(PageListener pageListener) {
         pInfo.setPageListener(pageListener);
+        pageLock.setPageListener(pageListener);
         if (parentRef != null) {
             pageListener.setParent(parentRef.getPageListener());
         }
+    }
+
+    @Override
+    public Lock getLock() {
+        return pageLock;
     }
 
     @Override
@@ -328,8 +338,10 @@ public class PageReference implements IPageReference {
             gc = true;
         }
         if (gc) {
-            pInfoNew.setPageListener(new PageListener(this));
+            PageListener newPageListener = new PageListener(this);
+            pInfoNew.setPageListener(newPageListener);
             if (replacePage(pInfoOld, pInfoNew)) {
+                getLock().setPageListener(newPageListener);
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
                 }

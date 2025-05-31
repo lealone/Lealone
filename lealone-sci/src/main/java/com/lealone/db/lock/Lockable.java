@@ -31,5 +31,5 @@ public interface Lockable {
 
     public PageListener getPageListener();
 
-    public void setPageListener(PageListener pageListener);
+    public boolean isNoneLock();
 }

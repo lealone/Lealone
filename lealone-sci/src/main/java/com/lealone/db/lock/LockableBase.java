@@ -31,15 +31,14 @@ public abstract class LockableBase implements Lockable {
         return lockUpdater.compareAndSet(this, expect, update);
     }
 
-    private volatile PageListener pageListener;
-
     @Override
     public PageListener getPageListener() {
-        return pageListener;
+        return getLock().getPageListener();
     }
 
     @Override
-    public void setPageListener(PageListener pageListener) {
-        this.pageListener = pageListener;
+    public boolean isNoneLock() {
+        Lock lock = this.lock;
+        return lock == null || lock.isPageLock();
     }
 }

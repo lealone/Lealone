@@ -7,6 +7,7 @@ package com.lealone.storage.aose.btree.page;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.async.AsyncResultHandler;
+import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.session.InternalSession;
@@ -445,15 +446,8 @@ public abstract class PageOperations {
                 tmpNodePage.parent.setRef(pRef);
                 tmpNodePage.left.setParentRef(pRef);
                 tmpNodePage.right.setParentRef(pRef);
-                if (p.isNode())
-                    setParentRef(tmpNodePage);
-                replaceParentPage(pRef, tmpNodePage.parent);
 
-                // 放到最后做
-                if (tmpNodePage.left.isLeafPage()) {
-                    setPageListener(tmpNodePage.left);
-                    setPageListener(tmpNodePage.right);
-                }
+                replaceParentPage(pRef, tmpNodePage.parent, p, tmpNodePage);
             } else {
                 if (!tryLockParentRef(pRef, scheduler, waitingIfLocked))
                     return PageOperationResult.LOCKED;
@@ -461,9 +455,7 @@ public abstract class PageOperations {
                 TmpNodePage tmpNodePage = splitPage(p); // 先锁再切，避免做无用功
                 PageReference parentRef = pRef.getParentRef();
                 Page newParent = parentRef.getOrReadPage().copyAndInsertChild(tmpNodePage);
-                if (p.isNode())
-                    setParentRef(tmpNodePage);
-                replaceParentPage(parentRef, newParent);
+                replaceParentPage(parentRef, newParent, p, tmpNodePage);
 
                 // 非root page被切割后，原有的ref被废弃
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到父节点
@@ -472,12 +464,6 @@ public abstract class PageOperations {
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
                     asyncSplitPage(scheduler, waitingIfLocked, null, parentRef);
-                }
-
-                // 放到最后做
-                if (tmpNodePage.left.isLeafPage()) {
-                    setPageListener(tmpNodePage.left);
-                    setPageListener(tmpNodePage.right);
                 }
 
                 parentRef.unlock();
@@ -508,12 +494,17 @@ public abstract class PageOperations {
             return new TmpNodePage(parent, leftRef, rightRef, k, pInfoOld);
         }
 
-        private static void setPageListener(PageReference ref) {
-            PageListener pageListener = ref.getPageListener();
-            for (Object obj : ref.getPage().getValues()) {
-                if (obj instanceof Lockable)
-                    ((Lockable) obj).setPageListener(pageListener);
+        private static void replaceParentPage(PageReference parentRef, Page newParent, Page p,
+                TmpNodePage tmpNodePage) {
+            if (p.isNode()) {
+                setParentRef(tmpNodePage);
             }
+            // 放到前面做
+            if (tmpNodePage.left.isLeafPage()) {
+                setPageListener(tmpNodePage.left);
+                setPageListener(tmpNodePage.right);
+            }
+            replaceParentPage(parentRef, newParent);
         }
 
         private static void setParentRef(TmpNodePage tmpNodePage) {
@@ -524,6 +515,23 @@ public abstract class PageOperations {
             }
             for (PageReference ref : rRef.getPage().getChildren()) {
                 ref.setParentRef(rRef);
+            }
+        }
+
+        private static void setPageListener(PageReference ref) {
+            PageListener pageListener = ref.getPageListener();
+            Page page = ref.getPage();
+            if (page == null)
+                return;
+            Object[] values = page.getValues();
+            if (values == null)
+                return;
+            for (Object obj : values) {
+                if (obj instanceof Lockable) {
+                    Lock lock = ((Lockable) obj).getLock();
+                    if (lock != null)
+                        lock.setPageListener(pageListener);
+                }
             }
         }
     }
