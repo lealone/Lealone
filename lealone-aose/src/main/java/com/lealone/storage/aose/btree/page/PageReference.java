@@ -195,7 +195,15 @@ public class PageReference implements IPageReference {
             if (!isRoot() && !isLocked() && !pInfo.isDirty())
                 DbException.throwInternalError("not locked");
         }
-        pInfo.page = newPage;
+        // 不能这样直接替换，否则其他线程标记脏页时有可能使用旧的page
+        // pInfo.page = newPage;
+        while (true) {
+            PageInfo pInfoOld = getPageInfo();
+            PageInfo pInfoNew = pInfoOld.copy(false);
+            pInfoNew.page = newPage;
+            if (replacePage(pInfoOld, pInfoNew))
+                break;
+        }
     }
 
     // 不改变page，只是改变pos

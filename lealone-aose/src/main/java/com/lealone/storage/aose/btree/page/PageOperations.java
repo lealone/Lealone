@@ -352,18 +352,6 @@ public abstract class PageOperations {
             }
             return true;
         }
-
-        protected static void replaceParentPage(PageReference parentRef, Page newParent) {
-            // 不能这样直接替换，否则标记脏页时有可能使用旧的父page
-            // parentRef.replacePage(newParent);
-            while (true) {
-                PageInfo pInfoOld = parentRef.getPageInfo();
-                PageInfo pInfoNew = pInfoOld.copy(false);
-                pInfoNew.page = newParent;
-                if (parentRef.replacePage(pInfoOld, pInfoNew))
-                    break;
-            }
-        }
     }
 
     // 不处理root leaf page的场景，在Remove类那里已经保证不会删除root leaf page
@@ -396,7 +384,7 @@ public abstract class PageOperations {
             int index = parent.getPageIndex(key);
             parent = parent.copy();
             parent.remove(index);
-            replaceParentPage(parentRef, parent);
+            parentRef.replacePage(parent);
             // 先看看父节点是否需要删除
             if (parent.isEmpty()) {
                 // 如果是root node page，那么直接替换
@@ -504,7 +492,7 @@ public abstract class PageOperations {
                 setPageListener(tmpNodePage.left);
                 setPageListener(tmpNodePage.right);
             }
-            replaceParentPage(parentRef, newParent);
+            parentRef.replacePage(newParent);
         }
 
         private static void setParentRef(TmpNodePage tmpNodePage) {
