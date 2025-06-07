@@ -198,7 +198,7 @@ public class BTreeStorage {
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
         if (ref != null)
-            pInfo.setPageListener(ref.getPageListener());
+            pInfo.setPageLock(ref.getLock());
         return pInfo;
     }
 

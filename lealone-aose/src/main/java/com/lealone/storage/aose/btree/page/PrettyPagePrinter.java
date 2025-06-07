@@ -39,6 +39,8 @@ public class PrettyPagePrinter {
     }
 
     private static void getPrettyPageInfoRecursive(Page p, String indent, PrettyPageInfo info) {
+        if (info.pageCount > 1000)
+            return;
         StringBuilder buff = info.buff;
         info.pageCount++;
         if (p.isNode())

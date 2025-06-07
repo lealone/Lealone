@@ -266,7 +266,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     public int tryLock(ServerSession session, Row row) {
-        return getMap(session).tryLock(row);
+        return getMap(session).tryLock(row, row);
     }
 
     @Override

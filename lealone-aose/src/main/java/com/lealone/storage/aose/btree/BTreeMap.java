@@ -144,6 +144,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void newRoot(Page newRoot) {
+        // 变更PageLock，让老的记录重新定位
+        rootRef.setNewPageLock();
         rootRef.replacePage(newRoot);
     }
 

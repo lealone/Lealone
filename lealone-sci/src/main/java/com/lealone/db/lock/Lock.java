@@ -96,6 +96,9 @@ public abstract class Lock {
         return null;
     }
 
+    public void setLockable(Lockable lockable) {
+    }
+
     public PageListener getPageListener() {
         return null;
     }

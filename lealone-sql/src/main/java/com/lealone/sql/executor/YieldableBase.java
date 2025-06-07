@@ -129,13 +129,14 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
             startTimeNanos = System.nanoTime();
         }
-        recompileIfNeeded();
+        // recompileIfNeeded();
         session.startCurrentCommand(statement);
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         statement.checkParameters();
         return startInternal();
     }
 
+    @SuppressWarnings("unused")
     private void recompileIfNeeded() {
         if (statement.needRecompile()) {
             statement.setModificationMetaId(0);

@@ -334,7 +334,7 @@ public class AOTransaction implements Transaction {
     public int addWaitingTransaction(Object lockedObject, InternalSession session,
             AsyncHandler<SessionStatus> asyncHandler) {
         // 如果已经提交了，通知重试
-        if (isClosed() || isWaiting())
+        if (isClosed())
             return OPERATION_NEED_RETRY;
         if (session == null) // 单元测试时session为null
             return OPERATION_NEED_WAIT;
@@ -349,7 +349,7 @@ public class AOTransaction implements Transaction {
         this.session.addWaitingScheduler(session.getScheduler());
 
         // 如果已经提交了，要恢复到原来的状态，通知重试
-        if (isClosed() || isWaiting()) {
+        if (isClosed()) {
             if (asyncHandler != null) {
                 asyncHandler.handle(null);
             } else {

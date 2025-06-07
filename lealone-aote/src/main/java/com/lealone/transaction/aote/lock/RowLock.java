@@ -15,7 +15,7 @@ import com.lealone.transaction.aote.AOTransaction;
 
 public class RowLock extends Lock {
 
-    private final Lockable lockable;
+    private Lockable lockable;
 
     public RowLock(Lockable lockable) {
         this.lockable = lockable;
@@ -58,16 +58,23 @@ public class RowLock extends Lock {
     public void unlock(InternalSession oldSession, InternalSession newSession) {
         // 先置null再unlock，否则其他事务加锁成功后又被当前事务置null，会导致两个新事务都加锁成功
         PageListener pListener = getPageListener();
-        if (pListener != null)
+        if (pListener != null) {
+            // 不需要考虑page被切割或被垃圾收集的情况，在加锁时就处理了
             lockable.setLock(pListener.getLock());
-        else
+        } else {
             lockable.setLock(null); // 重置为NULL，释放RowLock对象占用的内存
+        }
         super.unlock(oldSession, newSession);
     }
 
     @Override
     public Lockable getLockable() {
         return lockable;
+    }
+
+    @Override
+    public void setLockable(Lockable lockable) {
+        this.lockable = lockable;
     }
 
     private volatile PageListener pageListener;

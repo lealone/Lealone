@@ -118,6 +118,12 @@ public class TransactionalValue extends LockableBase {
             lockOwner = null;
             t = null;
         } else {
+            if (lock.isPageLock()) {
+                if (lockable.getLockedValue() == null)
+                    return null; // 已经删除
+                else
+                    return lockable.getValue();
+            }
             // 先拿到LockOwner再用它获取信息，否则会产生并发问题
             lockOwner = lock.getLockOwner();
             t = (AOTransaction) lockOwner.getTransaction();

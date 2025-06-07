@@ -69,7 +69,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public int tryRemove(K key, Lockable lockable, boolean isLockedBySelf);
 
-    public int tryLock(Lockable lockable);
+    public int tryLock(K key, Lockable lockable);
 
     public boolean isLocked(Lockable lockable);
 

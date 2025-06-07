@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.storage.aose.btree.BTreeStorage;
@@ -29,13 +30,10 @@ public class PageReference implements IPageReference {
     private final BTreeStorage bs;
     private final SchedulerLock schedulerLock = new SchedulerLock();
 
-    private final PageLock pageLock;
-
     public PageReference(BTreeStorage bs) {
         this.bs = bs;
         pInfo = new PageInfo();
-        pageLock = new PageLock();
-        setPageListener(new PageListener(this));
+        pInfo.setPageLock(createPageLock());
     }
 
     public PageReference(BTreeStorage bs, long pos) {
@@ -46,6 +44,16 @@ public class PageReference implements IPageReference {
     public PageReference(BTreeStorage bs, Page page) {
         this(bs);
         pInfo.page = page;
+    }
+
+    private PageLock createPageLock() {
+        PageLock pageLock = new PageLock();
+        pageLock.setPageListener(new PageListener(this));
+        return pageLock;
+    }
+
+    public void setNewPageLock() {
+        getPageInfo().setPageLock(createPageLock());
     }
 
     public boolean isRoot() {
@@ -90,17 +98,9 @@ public class PageReference implements IPageReference {
         return pInfo.getPageListener();
     }
 
-    public void setPageListener(PageListener pageListener) {
-        pInfo.setPageListener(pageListener);
-        pageLock.setPageListener(pageListener);
-        if (parentRef != null) {
-            pageListener.setParent(parentRef.getPageListener());
-        }
-    }
-
     @Override
-    public Lock getLock() {
-        return pageLock;
+    public PageLock getLock() {
+        return pInfo.getPageLock();
     }
 
     @Override
@@ -212,31 +212,65 @@ public class PageReference implements IPageReference {
     }
 
     @Override
+    public Lockable markDirtyPage(Object key, PageListener oldPageListener) {
+        int ret = markDirtyPage0(oldPageListener);
+        if (ret > 0 && key != null) {
+            Page page = bs.getMap().gotoLeafPage(key);
+            int index = page.binarySearch(key);
+            if (index >= 0) {
+                Object value = page.getValue(index);
+                if (value instanceof Lockable) {
+                    // 如果page被切割过了，调用markDirtyPage前已经加了行锁，这时替换锁后重试是安全的
+                    // 如果是被垃圾收集过了，这时不能替换锁，直接返回新的记录重试即可
+                    Lockable lockable = (Lockable) value;
+                    if (ret == 2) {
+                        Lock old = lockable.getLock();
+                        lockable.setLock(page.getRef().getLock());
+                        if (old != null)
+                            old.unlockFast();
+                    } else {
+                        lockable.getLock().setPageListener(page.getRef().getPageListener());
+                    }
+                    return lockable;
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean markDirtyPage(PageListener oldPageListener) {
-        // 从下往上标记脏页,只要有一个新的PageListener跟旧的不一样，那就返回false，然后调用者会重新从root获取新的
-        if (markDirtyPage0(oldPageListener)) {
+        return markDirtyPage0(oldPageListener) == 0;
+    }
+
+    private int markDirtyPage0(PageListener oldPageListener) {
+        int ret = markDirtyPage1(oldPageListener);
+        // 从下往上标记脏页,只要有一个新的PageListener跟旧的不一样，那就退出，然后调用者会重新从root获取新的
+        if (ret == 0) {
             PageReference parentRef = getParentRef();
             while (parentRef != null) {
                 oldPageListener = oldPageListener.getParent();
-                if (parentRef.markDirtyPage0(oldPageListener)) {
+                ret = parentRef.markDirtyPage1(oldPageListener);
+                if (ret == 0) {
                     parentRef = parentRef.getParentRef();
                 } else {
-                    return false;
+                    return ret;
                 }
             }
-            return true;
-        } else {
-            return false;
         }
+        return ret;
     }
 
-    private boolean markDirtyPage0(PageListener oldPageListener) {
+    // 0：成功
+    // 1：被垃圾收集过了
+    // 2：page被切割过了
+    private int markDirtyPage1(PageListener oldPageListener) {
         while (true) {
             PageInfo pInfoOld = this.pInfo;
-            if (pInfoOld.getPageListener() != oldPageListener)
-                return false;
-            if (pInfoOld.isSplitted() || pInfoOld.page == null) {
-                return false;
+            if (pInfoOld.getPageListener() != oldPageListener || pInfoOld.page == null) {
+                return 1;
+            }
+            if (pInfoOld.isSplitted()) {
+                return 2;
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
             pInfoNew.buff = null; // 废弃了
@@ -249,13 +283,13 @@ public class PageReference implements IPageReference {
                     addRemovedPage(pInfoOld.getPos());
                     bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
                 }
-                return true;
+                return 0;
             } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
                 continue;
             } else {
                 if (this.pInfo.getPageListener() != oldPageListener)
-                    return false;
-                return true; // 如果pos为0就不需要试了
+                    return 1;
+                return 0; // 如果pos为0就不需要试了
             }
         }
     }
@@ -346,10 +380,8 @@ public class PageReference implements IPageReference {
             gc = true;
         }
         if (gc) {
-            PageListener newPageListener = new PageListener(this);
-            pInfoNew.setPageListener(newPageListener);
+            pInfoNew.setPageLock(createPageLock());
             if (replacePage(pInfoOld, pInfoNew)) {
-                getLock().setPageListener(newPageListener);
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
                 }

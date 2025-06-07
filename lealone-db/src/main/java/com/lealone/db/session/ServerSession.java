@@ -1401,8 +1401,7 @@ public class ServerSession extends SessionBase implements InternalSession {
     // 当前事务申请锁失败被挂起时，只是把session变成等待状态，然后用lockedByTransaction指向占有锁的事务，
     // 等lockedByTransaction提交或回滚后，不需要修改被挂起事务的状态，只需要唤醒被挂起事务的调度线程重试即可。
     private void wakeUpIfNeeded() {
-        if (lockedByTransaction != null
-                && (lockedByTransaction.isClosed() || lockedByTransaction.isWaiting())) {
+        if (lockedByTransaction != null && (lockedByTransaction.isClosed())) {
             reset(SessionStatus.RETRYING_RETURN_ACK);
         }
     }

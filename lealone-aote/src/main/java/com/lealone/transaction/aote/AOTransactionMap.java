@@ -401,7 +401,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         }
         if (lockable.isNoneLock()) {
             TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
-            if (!markDirtyPage(lockable))
+            if (markDirtyPage(key, lockable) != null)
                 map.put(key, lockable);
         }
         Object oldValue = lockable.getLockedValue();
@@ -411,19 +411,23 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public int tryLock(Lockable lockable) {
+    public int tryLock(K key, Lockable lockable) {
         DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
         int ret = TransactionalValue.tryLock(lockable, transaction);
-        if (ret > 0 && !markDirtyPage(lockable)) {
-            ret = -2;
+        if (ret > 0) {
+            Lockable value = markDirtyPage(key, lockable);
+            if (value != null) {
+                lockable.getLock().setLockable(value);
+                ret = -2;
+            }
         }
         return ret;
     }
 
-    private static boolean markDirtyPage(Lockable lockable) {
+    private static Lockable markDirtyPage(Object key, Lockable lockable) {
         PageListener oldPageListener = lockable.getPageListener();
-        return oldPageListener.getPageReference().markDirtyPage(oldPageListener);
+        return oldPageListener.getPageReference().markDirtyPage(key, oldPageListener);
     }
 
     @Override
