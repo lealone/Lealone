@@ -70,7 +70,7 @@ public class TableAnalyzer {
      * @param sample the number of sample rows
      * @param manual whether the command was called by the user
      */
-    private static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
+    private void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
         if (table.getTableType() != TableType.STANDARD_TABLE || table.isHidden() || session == null) {
             return;
         }
@@ -115,7 +115,14 @@ public class TableAnalyzer {
             // 如果是在执行insert/update/delete时触发，需要异步通过新任务的方式执行
             // 不能在同一个session中嵌套执行，这样会修改session的状态，导致各种并发问题
             session.getSessionInfo().submitTask(() -> {
-                analyzeTable(session, table, sql);
+                // 如果有多个线程要执行analyze，只需要其中一个执行即可
+                if (analyzing.compareAndSet(false, true)) {
+                    try {
+                        analyzeTable(session, table, sql);
+                    } finally {
+                        analyzing.set(false);
+                    }
+                }
             });
         }
     }
@@ -134,5 +141,6 @@ public class TableAnalyzer {
             }
         }
         session.getDatabase().updateMeta(session, table);
+        session.asyncCommit();
     }
 }
