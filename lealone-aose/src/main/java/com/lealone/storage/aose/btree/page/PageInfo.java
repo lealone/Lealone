@@ -139,6 +139,11 @@ public class PageInfo {
     }
 
     public static class RemovedPageInfo extends PageInfo {
+
+        public RemovedPageInfo(PageLock pageLock) {
+            setPageLock(pageLock);
+        }
+
         @Override
         public boolean isDataStructureChanged() {
             return true;
@@ -149,8 +154,9 @@ public class PageInfo {
 
         private final PageReference pRefNew;
 
-        public SplittedPageInfo(PageReference pRefNew) {
+        public SplittedPageInfo(PageReference pRefNew, PageLock pageLock) {
             this.pRefNew = pRefNew;
+            setPageLock(pageLock);
         }
 
         @Override
