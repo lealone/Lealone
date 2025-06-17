@@ -60,4 +60,9 @@ public class KeyPage extends RowStorageLeafPage {
         }
         return isLocked;
     }
+
+    @Override
+    public Object getSplitKey(int index) {
+        return map.getKeyType().getSplitKey(getKey(index));
+    }
 }

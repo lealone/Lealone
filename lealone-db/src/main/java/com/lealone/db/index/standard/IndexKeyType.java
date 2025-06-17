@@ -88,4 +88,9 @@ public class IndexKeyType extends StandardDataType {
     public boolean isKeyOnly() {
         return true;
     }
+
+    @Override
+    public Object getSplitKey(Object keyObj) {
+        return new IndexKey(((IndexKey) keyObj).columns);
+    }
 }
