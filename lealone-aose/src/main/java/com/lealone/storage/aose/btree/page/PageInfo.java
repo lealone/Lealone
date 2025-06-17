@@ -138,30 +138,13 @@ public class PageInfo {
         return null;
     }
 
-    public static class RemovedPageInfo extends PageInfo {
-
-        public RemovedPageInfo(PageLock pageLock) {
-            setPageLock(pageLock);
-        }
-
-        @Override
-        public boolean isDataStructureChanged() {
-            return true;
-        }
-    }
-
-    public static class SplittedPageInfo extends PageInfo {
+    public static class DataStructureChangedPageInfo extends PageInfo {
 
         private final PageReference pRefNew;
 
-        public SplittedPageInfo(PageReference pRefNew, PageLock pageLock) {
+        public DataStructureChangedPageInfo(PageReference pRefNew, PageLock pageLock) {
             this.pRefNew = pRefNew;
             setPageLock(pageLock);
-        }
-
-        @Override
-        public boolean isSplitted() {
-            return true;
         }
 
         @Override
@@ -172,6 +155,25 @@ public class PageInfo {
         @Override
         public PageReference getNewRef() {
             return pRefNew;
+        }
+    }
+
+    public static class RemovedPageInfo extends DataStructureChangedPageInfo {
+
+        public RemovedPageInfo(PageReference pRefNew, PageLock pageLock) {
+            super(pRefNew, pageLock);
+        }
+    }
+
+    public static class SplittedPageInfo extends DataStructureChangedPageInfo {
+
+        public SplittedPageInfo(PageReference pRefNew, PageLock pageLock) {
+            super(pRefNew, pageLock);
+        }
+
+        @Override
+        public boolean isSplitted() {
+            return true;
         }
     }
 }

@@ -393,7 +393,7 @@ public abstract class PageOperations {
                     asyncRemovePage(scheduler, waitingIfLocked, null, parentRef, key);
             }
             // 非root page被删除后，原有的ref被废弃
-            pRef.replacePage(pRef.getPageInfo(), new RemovedPageInfo(pRef.getLock()));
+            pRef.replacePage(pRef.getPageInfo(), new RemovedPageInfo(parentRef, pRef.getLock()));
             parentRef.unlock();
             return PageOperationResult.SUCCEEDED;
         }

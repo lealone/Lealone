@@ -137,7 +137,7 @@ public class PageReference implements IPageReference {
 
     public Page getOrReadPage() {
         PageInfo pInfo = this.pInfo;
-        if (pInfo.isSplitted()) { // 发生 split 了
+        if (pInfo.isDataStructureChanged()) { // 发生 page split 或 page remove
             return pInfo.getNewRef().getOrReadPage();
         }
         if (bs.getMap().isInMemory())
