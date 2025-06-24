@@ -94,7 +94,10 @@ public class RowType extends StandardDataType {
     public void write(DataBuffer buff, Object obj) {
         Row r = (Row) obj;
         buff.putVarInt(r.getVersion());
-        buff.writeValue(ValueArray.get(r.getColumns()));
+        Value[] columns = r.getColumns();
+        if (columns == null)
+            columns = new Value[0];
+        buff.writeValue(ValueArray.get(columns));
     }
 
     @Override

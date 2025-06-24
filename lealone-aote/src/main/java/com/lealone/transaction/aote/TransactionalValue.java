@@ -111,6 +111,10 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static Object getValue(Lockable lockable, AOTransaction transaction, StorageMap<?, ?> map) {
+        // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
+        int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
+                : transaction.getIsolationLevel();
+
         Lock lock = lockable.getLock();
         LockOwner lockOwner;
         AOTransaction t;
@@ -118,7 +122,7 @@ public class TransactionalValue extends LockableBase {
             lockOwner = null;
             t = null;
         } else {
-            if (lock.isPageLock()) {
+            if (lock.isPageLock() && isolationLevel < Transaction.IL_REPEATABLE_READ) {
                 if (lockable.getLockedValue() == null)
                     return null; // 已经删除
                 else
@@ -135,9 +139,6 @@ public class TransactionalValue extends LockableBase {
                     return lockable.getValue();
             }
         }
-        // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
-        int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
-                : transaction.getIsolationLevel();
         switch (isolationLevel) {
         case Transaction.IL_READ_COMMITTED: {
             if (t == null) {
