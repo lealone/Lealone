@@ -117,7 +117,7 @@ public class Merge extends MerSert {
 
     private static class YieldableMerge extends YieldableMerSert {
 
-        Merge mergeStatement;
+        final Merge mergeStatement;
 
         public YieldableMerge(Merge statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
@@ -168,12 +168,6 @@ public class Merge extends MerSert {
             } else if (count != 1) {
                 throw DbException.get(ErrorCode.DUPLICATE_KEY_1, table.getSQL());
             }
-        }
-
-        @Override
-        protected void onRecompiled(StatementBase newStatement) {
-            mergeStatement = (Merge) newStatement;
-            super.onRecompiled(newStatement);
         }
     }
 }

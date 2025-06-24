@@ -22,7 +22,6 @@ import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.sql.StatementBase;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.executor.YieldableLoopUpdateBase;
 import com.lealone.sql.expression.Expression;
@@ -76,11 +75,6 @@ public abstract class MerSert extends ManipulationStatement {
     @Override
     public void setBatchParameterValues(List<Value[]> batchParameterValues) {
         this.batchParameterValues = batchParameterValues;
-    }
-
-    @Override
-    public List<Value[]> getBatchParameterValues() {
-        return batchParameterValues;
     }
 
     @Override
@@ -169,7 +163,7 @@ public abstract class MerSert extends ManipulationStatement {
     protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase
             implements ResultTarget {
 
-        MerSert merSertStatement;
+        final MerSert merSertStatement;
         final Table table;
         final int listSize;
 
@@ -321,11 +315,6 @@ public abstract class MerSert extends ManipulationStatement {
                 return true;
             }
             return false;
-        }
-
-        @Override
-        protected void onRecompiled(StatementBase newStatement) {
-            merSertStatement = (MerSert) newStatement;
         }
     }
 }

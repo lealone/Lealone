@@ -218,10 +218,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public void setBatchParameterValues(List<Value[]> batchParameterValues) {
     }
 
-    public List<Value[]> getBatchParameterValues() {
-        return null;
-    }
-
     /**
      * Check if all parameters have been set.
      *

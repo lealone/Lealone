@@ -6,8 +6,6 @@
 package com.lealone.sql.executor;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
@@ -21,15 +19,13 @@ import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
-import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.Yieldable;
 import com.lealone.sql.StatementBase;
-import com.lealone.sql.expression.Parameter;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
 
-    protected StatementBase statement;
+    protected final StatementBase statement;
     protected final ServerSession session;
     protected final Trace trace;
     protected final AsyncResultHandler<T> asyncHandler;
@@ -129,42 +125,10 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
             startTimeNanos = System.nanoTime();
         }
-        // recompileIfNeeded();
         session.startCurrentCommand(statement);
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         statement.checkParameters();
         return startInternal();
-    }
-
-    @SuppressWarnings("unused")
-    private void recompileIfNeeded() {
-        if (statement.needRecompile()) {
-            statement.setModificationMetaId(0);
-            List<Value[]> batchParameterValues = statement.getBatchParameterValues();
-            StatementBase newStatement = (StatementBase) session.parseStatement(statement.getSQL());
-            newStatement.setBatchParameterValues(batchParameterValues);
-            if (batchParameterValues == null) {
-                ArrayList<Parameter> oldParams = statement.getParameters();
-                ArrayList<Parameter> newParams = newStatement.getParameters();
-                for (int i = 0, size = newParams.size(); i < size; i++) {
-                    Parameter old = oldParams.get(i);
-                    if (old.isValueSet()) {
-                        Value v = old.getValue(session);
-                        Parameter p = newParams.get(i);
-                        p.setValue(v);
-                    }
-                }
-            }
-            newStatement.prepare();
-            if (session.removeCache(statement.getId(), true) != null)
-                session.addCache(statement.getId(), newStatement);
-            statement = newStatement;
-            onRecompiled(newStatement);
-        }
-    }
-
-    protected void onRecompiled(StatementBase newStatement) {
-        statement = newStatement;
     }
 
     private void setProgress(int state) {

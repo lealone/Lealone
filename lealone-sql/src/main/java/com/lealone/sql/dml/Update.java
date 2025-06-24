@@ -22,7 +22,6 @@ import com.lealone.db.table.Column;
 import com.lealone.db.value.Value;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.SQLStatement;
-import com.lealone.sql.StatementBase;
 import com.lealone.sql.executor.YieldableBase;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.Parameter;
@@ -109,7 +108,7 @@ public class Update extends UpDel {
 
     private static class YieldableUpdate extends YieldableUpDel {
 
-        Update updateStatement;
+        final Update updateStatement;
         final Column[] columns;
         final int[] updateColumnIndexes;
         final int columnCount;
@@ -184,11 +183,6 @@ public class Update extends UpDel {
                 }
                 onPendingOperationComplete(ar);
             });
-        }
-
-        @Override
-        protected void onRecompiled(StatementBase newStatement) {
-            updateStatement = (Update) newStatement;
         }
     }
 }
