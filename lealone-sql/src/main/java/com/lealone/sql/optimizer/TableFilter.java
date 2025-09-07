@@ -146,19 +146,6 @@ public class TableFilter extends ColumnResolverBase {
     }
 
     /**
-     * Lock the table. This will also lock joined tables.
-     *
-     * @param s the session
-     * @param exclusive true if an exclusive lock is required
-     */
-    public void lock(ServerSession s, boolean exclusive) {
-        table.lock(s, exclusive);
-        if (join != null) {
-            join.lock(s, exclusive);
-        }
-    }
-
-    /**
      * Get the best plan item (index, cost) to use for the current join order.
      *
      * @param s the session

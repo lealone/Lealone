@@ -43,7 +43,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
     }
 
     @Override
-    protected boolean startInternal() {
+    protected void startInternal() {
         selectUnion.fireBeforeSelectTriggers();
         // union doesn't always know the parameter list of the left and right queries
         if (maxRows != 0) {
@@ -71,7 +71,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
                     insertFromSelect = true;
                     leftYieldableQuery = selectUnion.left.createYieldableQuery(0, false, null, target);
                     rightYieldableQuery = selectUnion.right.createYieldableQuery(0, false, null, target);
-                    return false;
+                    return;
                 }
             }
         }
@@ -105,7 +105,6 @@ class YieldableSelectUnion extends YieldableQueryBase {
         }
         leftYieldableQuery = selectUnion.left.createYieldableQuery(0, false, null, null);
         rightYieldableQuery = selectUnion.right.createYieldableQuery(0, false, null, null);
-        return false;
     }
 
     @Override

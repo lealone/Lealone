@@ -63,12 +63,10 @@ public class Insert extends MerSert {
         }
 
         @Override
-        protected boolean startInternal() {
-            if (!table.trySharedLock(session))
-                return true;
+        protected void startInternal() {
             session.getUser().checkRight(table, Right.INSERT);
             table.fire(session, Trigger.INSERT, true);
-            return super.startInternal();
+            super.startInternal();
         }
 
         @Override

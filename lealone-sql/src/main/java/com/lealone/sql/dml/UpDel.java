@@ -123,14 +123,11 @@ public abstract class UpDel extends ManipulationStatement {
         protected abstract boolean upDelRow(Row oldRow);
 
         @Override
-        protected boolean startInternal() {
-            if (!table.trySharedLock(session))
-                return true;
+        protected void startInternal() {
             session.getUser().checkRight(table, getRightMask());
             table.fire(session, getTriggerType(), true);
             statement.setCurrentRowNumber(0);
             tableIterator.start();
-            return false;
         }
 
         @Override

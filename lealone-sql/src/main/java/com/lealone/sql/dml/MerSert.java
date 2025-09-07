@@ -179,12 +179,11 @@ public abstract class MerSert extends ManipulationStatement {
         }
 
         @Override
-        protected boolean startInternal() {
+        protected void startInternal() {
             merSertStatement.setCurrentRowNumber(0);
             if (merSertStatement.query != null) {
                 yieldableQuery = merSertStatement.query.createYieldableQuery(0, false, null, this);
             }
-            return false;
         }
 
         @Override

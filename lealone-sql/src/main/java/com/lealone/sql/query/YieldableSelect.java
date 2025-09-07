@@ -71,12 +71,11 @@ public class YieldableSelect extends YieldableQueryBase {
     }
 
     @Override
-    protected boolean startInternal() {
+    protected void startInternal() {
         // select.getTopTableFilter().lock(session, select.isForUpdate);
         select.fireBeforeSelectTriggers();
         queryOperator = createQueryOperator();
         queryOperator.start();
-        return false;
     }
 
     @Override

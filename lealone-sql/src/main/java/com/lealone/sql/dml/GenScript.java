@@ -239,7 +239,6 @@ public class GenScript extends ScriptBase {
                 if (table.isHidden()) {
                     continue;
                 }
-                table.lock(session, false);
                 String sql = table.getCreateSQL();
                 if (sql == null) {
                     // null for metadata tables
@@ -281,7 +280,6 @@ public class GenScript extends ScriptBase {
                 if (table.isHidden()) {
                     continue;
                 }
-                table.lock(session, false);
                 String createTableSql = table.getCreateSQL();
                 if (createTableSql == null) {
                     // null for metadata tables

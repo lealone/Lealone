@@ -29,17 +29,6 @@ public class DbObjectLock extends Lock {
         return type.name();
     }
 
-    public boolean lock(ServerSession session, boolean exclusive) {
-        if (exclusive)
-            return tryExclusiveLock(session);
-        else
-            return trySharedLock(session);
-    }
-
-    public boolean trySharedLock(ServerSession session) {
-        return true;
-    }
-
     public boolean tryExclusiveLock(ServerSession session) {
         return tryLock(session.getTransaction(), this, null);
     }

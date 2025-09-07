@@ -125,13 +125,11 @@ public class Merge extends MerSert {
         }
 
         @Override
-        protected boolean startInternal() {
-            if (!table.trySharedLock(session))
-                return true;
+        protected void startInternal() {
             session.getUser().checkRight(table, Right.INSERT);
             session.getUser().checkRight(table, Right.UPDATE);
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
-            return super.startInternal();
+            super.startInternal();
         }
 
         @Override

@@ -45,8 +45,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     // 子类通常只需要实现以下三个方法
-    protected boolean startInternal() {
-        return false;
+    protected void startInternal() {
     }
 
     protected void stopInternal() {
@@ -95,10 +94,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     public final void run() {
         try {
             if (!started) {
-                if (start()) {
+                if (session.isExclusiveMode() && session.getDatabase().addWaitingSession(session)) {
                     session.setStatus(SessionStatus.STATEMENT_RUNNING);
                     return;
                 }
+                start();
                 started = true;
             }
 
@@ -118,17 +118,14 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         }
     }
 
-    private boolean start() {
-        if (session.isExclusiveMode() && session.getDatabase().addWaitingSession(session)) {
-            return true;
-        }
+    private void start() {
         if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
             startTimeNanos = System.nanoTime();
         }
         session.startCurrentCommand(statement);
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         statement.checkParameters();
-        return startInternal();
+        startInternal();
     }
 
     private void setProgress(int state) {

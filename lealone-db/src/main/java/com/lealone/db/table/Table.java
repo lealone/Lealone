@@ -143,22 +143,6 @@ public abstract class Table extends SchemaObjectBase {
         // nothing to do
     }
 
-    /**
-     * Lock the table for the given session.
-     * This method waits until the lock is granted.
-     *
-     * @param session the session
-     * @param exclusive true for write locks, false for read locks
-     * @throws DbException if a lock timeout occurred
-     */
-    public boolean lock(ServerSession session, boolean exclusive) {
-        return dbObjectLock.lock(session, exclusive);
-    }
-
-    public boolean trySharedLock(ServerSession session) {
-        return dbObjectLock.trySharedLock(session);
-    }
-
     public boolean tryExclusiveLock(ServerSession session) {
         return dbObjectLock.tryExclusiveLock(session);
     }
