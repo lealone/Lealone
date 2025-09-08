@@ -636,7 +636,6 @@ public class InfoMetaTable extends MetaTable {
 
             // database settings
             TreeMap<String, String> s = new TreeMap<>(database.getSettings().getSettings());
-            s.put("EXCLUSIVE", database.getExclusiveSession() == null ? "false" : "true");
             s.put("MODE", database.getMode().getName());
             s.put("MULTI_THREADED", "1");
             s.put("MVCC", database.isMultiVersion() ? "true" : "false");

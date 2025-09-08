@@ -1836,7 +1836,7 @@ public class ErrorCode {
      * SET EXCLUSIVE TRUE;
      * </pre>
      */
-    public static final int DATABASE_IS_IN_EXCLUSIVE_MODE = 90135;
+    // public static final int DATABASE_IS_IN_EXCLUSIVE_MODE = 90135; //已经废弃
 
     /**
      * The error with code <code>90136</code> is thrown when

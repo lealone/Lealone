@@ -1189,18 +1189,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         return list;
     }
 
-    public boolean isExclusiveMode() {
-        ServerSession exclusive = database.getExclusiveSession();
-        if (exclusive == null || exclusive == this) {
-            return false;
-        }
-        if (Thread.holdsLock(exclusive)) {
-            // if another connection is used within the connection
-            return false;
-        }
-        return true;
-    }
-
     /**
      * Remember the result set and close it as soon as the transaction is
      * committed (if it needs to be closed). This is done to delete temporary
@@ -1307,8 +1295,6 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public SessionStatus getStatus() {
-        if (isExclusiveMode())
-            return SessionStatus.EXCLUSIVE_MODE;
         // 如果session的调度器检测到session处于等待状态时要尝试一下主动唤醒，
         // 否则在新session中加锁有可能导致旧session一直占用锁从而陷入死循环
         if (sessionStatus == SessionStatus.WAITING) {
@@ -1392,7 +1378,6 @@ public class ServerSession extends SessionBase implements InternalSession {
             }
         case TRANSACTION_COMMITTING:
         case STATEMENT_RUNNING:
-        case EXCLUSIVE_MODE:
             return null;
         }
         return yieldableCommand;

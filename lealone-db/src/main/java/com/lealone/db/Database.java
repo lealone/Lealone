@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -55,7 +54,6 @@ import com.lealone.db.schema.Sequence;
 import com.lealone.db.schema.TriggerObject;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
-import com.lealone.db.session.SessionStatus;
 import com.lealone.db.stats.QueryStatisticsData;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.CreateTableData;
@@ -148,8 +146,6 @@ public class Database extends DbObjectBase implements DataHandler {
     }
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
-    private LinkedList<ServerSession> waitingSessions;
-    private ServerSession exclusiveSession;
     private ServerSession systemSession;
     private User systemUser;
     private Role publicRole;
@@ -1080,9 +1076,6 @@ public class Database extends DbObjectBase implements DataHandler {
     // 创建session是低频且不耗时的操作，所以直接用synchronized即可，不必搞成异步增加复杂性
     public synchronized ServerSession createSession(User user, ConnectionInfo ci,
             InternalScheduler scheduler) {
-        if (exclusiveSession != null) {
-            throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
-        }
         // systemUser不存在，执行CreateSchema会出错
         if (user == systemUser) {
             for (User u : getAllUsers()) {
@@ -1109,9 +1102,6 @@ public class Database extends DbObjectBase implements DataHandler {
      */
     public synchronized void removeSession(ServerSession session) {
         if (session != null) {
-            if (exclusiveSession == session) {
-                setExclusiveSession(null, false);
-            }
             userSessions.remove(session);
             if (session != systemSession && session.getTrace().isInfoEnabled()) {
                 session.getTrace().setType(TraceModuleType.DATABASE).info("disconnected session #{0}",
@@ -1665,39 +1655,6 @@ public class Database extends DbObjectBase implements DataHandler {
 
     public Mode getMode() {
         return mode;
-    }
-
-    public ServerSession getExclusiveSession() {
-        return exclusiveSession;
-    }
-
-    /**
-     * Set the session that can exclusively access the database.
-     *
-     * @param session the session
-     * @param closeOthers whether other sessions are closed
-     */
-    public synchronized void setExclusiveSession(ServerSession session, boolean closeOthers) {
-        this.exclusiveSession = session;
-        if (closeOthers) {
-            closeAllSessionsException(session);
-        }
-        if (session == null && waitingSessions != null) {
-            for (ServerSession s : waitingSessions) {
-                s.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
-                s.getScheduler().wakeUp();
-            }
-            waitingSessions = null;
-        }
-    }
-
-    public synchronized boolean addWaitingSession(ServerSession session) {
-        if (exclusiveSession == null)
-            return false;
-        if (waitingSessions == null)
-            waitingSessions = new LinkedList<>();
-        waitingSessions.add(session);
-        return true;
     }
 
     /**

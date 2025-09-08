@@ -1139,26 +1139,6 @@ It has no effect for in-memory databases.
 SET DEFAULT_TABLE_TYPE MEMORY
 "
 
-"Commands (Other)","SET EXCLUSIVE","
-SET EXCLUSIVE { 0 | 1 | 2 }
-","
-Switched the database to exclusive mode (1, 2) and back to normal mode (0).
-
-In exclusive mode, new connections are rejected, and operations by
-other connections are paused until the exclusive mode is disabled.
-When using the value 1, existing connections stay open.
-When using the value 2, all existing connections are closed
-(and current transactions are rolled back) except the connection
-that executes SET EXCLUSIVE.
-Only the connection that set the exclusive mode can disable it.
-When the connection is closed, it is automatically disabled.
-
-Admin rights are required to execute this command.
-
-","
-SET EXCLUSIVE 1
-"
-
 "Commands (Other)","SET IGNORECASE","
 SET IGNORECASE { TRUE | FALSE }
 ","

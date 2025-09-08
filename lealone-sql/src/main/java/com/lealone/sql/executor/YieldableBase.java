@@ -94,10 +94,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     public final void run() {
         try {
             if (!started) {
-                if (session.isExclusiveMode() && session.getDatabase().addWaitingSession(session)) {
-                    session.setStatus(SessionStatus.STATEMENT_RUNNING);
-                    return;
-                }
                 start();
                 started = true;
             }

@@ -152,20 +152,7 @@ public class SetDatabase extends SetStatement {
             break;
         }
         case EXCLUSIVE: {
-            int value = getIntValue();
-            switch (value) {
-            case 0:
-                database.setExclusiveSession(null, false);
-                break;
-            case 1:
-                database.setExclusiveSession(session, false);
-                break;
-            case 2:
-                database.setExclusiveSession(session, true);
-                break;
-            default:
-                throw DbException.getInvalidValueException(name, value);
-            }
+            // 已经废弃
             break;
         }
         case IGNORECASE: {
