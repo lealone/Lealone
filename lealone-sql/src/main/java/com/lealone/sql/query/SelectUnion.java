@@ -272,12 +272,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public Result query(int maxRows, ResultTarget target) {
-        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, maxRows, false, null, target);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);

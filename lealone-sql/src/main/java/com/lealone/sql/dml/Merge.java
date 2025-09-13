@@ -105,12 +105,6 @@ public class Merge extends MerSert {
     }
 
     @Override
-    public int update() {
-        YieldableMerge yieldable = new YieldableMerge(this, null);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableMerge createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableMerge(this, asyncHandler);
     }

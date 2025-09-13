@@ -240,7 +240,9 @@ public abstract class Query extends ManipulationStatement implements com.lealone
      * @param target the target result (null will return the result)
      * @return the result set (if the target is not set).
      */
-    public abstract Result query(int maxRows, ResultTarget target);
+    public Result query(int maxRows, ResultTarget target) {
+        return syncExecute(createYieldableQuery(maxRows, false, null, target));
+    }
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,

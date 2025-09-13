@@ -46,12 +46,6 @@ public class Insert extends MerSert {
     }
 
     @Override
-    public int update() {
-        YieldableInsert yieldable = new YieldableInsert(this, null);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableInsert createYieldableUpdate(AsyncResultHandler<Integer> asyncHandler) {
         return new YieldableInsert(this, asyncHandler);
     }

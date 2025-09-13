@@ -160,6 +160,11 @@ public abstract class MerSert extends ManipulationStatement {
         return this;
     }
 
+    @Override
+    public int update() {
+        return syncExecute(createYieldableUpdate(null));
+    }
+
     protected static abstract class YieldableMerSert extends YieldableLoopUpdateBase
             implements ResultTarget {
 

@@ -1018,12 +1018,6 @@ public class Select extends Query {
     }
 
     @Override
-    public Result query(int maxRows, ResultTarget target) {
-        YieldableSelect yieldable = new YieldableSelect(this, maxRows, false, null, target);
-        return syncExecute(yieldable);
-    }
-
-    @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncResultHandler<Result> asyncHandler, ResultTarget target) {
         return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
