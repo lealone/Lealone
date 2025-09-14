@@ -75,27 +75,23 @@ public class Delete extends UpDel {
         }
 
         @Override
-        protected boolean upDelRow(Row oldRow) {
+        protected boolean upDel(Row oldRow) {
             boolean done = false;
-            if (table.fireRow()) {
-                done = table.fireBeforeRow(session, oldRow, null);
+            boolean fireRow = table.fireRow();
+            if (fireRow) {
+                done = fireBeforeRow(table, oldRow, null);
             }
-            if (!done) {
-                removeRow(oldRow);
+            if (!done) { // remove row
+                Value[] oldColumns = oldRow.getColumns(); // oldRow对象会改变，所以提前保留旧值
+                onPendingOperationStart();
+                table.removeRow(session, oldRow, true, ar -> {
+                    if (fireRow && ar.isSucceeded()) {
+                        fireAfterRow(table, new Row(oldRow.getKey(), oldColumns), null);
+                    }
+                    onPendingOperationComplete(ar);
+                });
             }
             return !done;
-        }
-
-        private void removeRow(Row row) {
-            Value[] oldColumns = row.getColumns();
-            onPendingOperationStart();
-            table.removeRow(session, row, true, ar -> {
-                if (ar.isSucceeded() && table.fireRow()) {
-                    Row oldRow = new Row(row.getKey(), oldColumns);
-                    table.fireAfterRow(session, oldRow, null, false);
-                }
-                onPendingOperationComplete(ar);
-            });
         }
     }
 }

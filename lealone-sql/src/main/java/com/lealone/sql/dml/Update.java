@@ -143,15 +143,22 @@ public class Update extends UpDel {
         }
 
         @Override
-        protected boolean upDelRow(Row oldRow) {
+        protected boolean upDel(Row oldRow) {
             Row newRow = createNewRow(oldRow);
             table.validateConvertUpdateSequence(session, newRow);
             boolean done = false;
-            if (table.fireRow()) {
-                done = table.fireBeforeRow(session, oldRow, newRow);
+            boolean fireRow = table.fireRow();
+            if (fireRow) {
+                done = fireBeforeRow(table, oldRow, newRow);
             }
-            if (!done) {
-                updateRow(oldRow, newRow);
+            if (!done) { // update row
+                onPendingOperationStart();
+                table.updateRow(session, oldRow, newRow, updateColumnIndexes, true, ar -> {
+                    if (fireRow && ar.isSucceeded()) {
+                        fireAfterRow(table, oldRow, newRow);
+                    }
+                    onPendingOperationComplete(ar);
+                });
             }
             return !done;
         }
@@ -173,16 +180,6 @@ public class Update extends UpDel {
                 newRow.setValue(i, newValue);
             }
             return newRow;
-        }
-
-        private void updateRow(Row oldRow, Row newRow) {
-            onPendingOperationStart();
-            table.updateRow(session, oldRow, newRow, updateColumnIndexes, true, ar -> {
-                if (ar.isSucceeded() && table.fireRow()) {
-                    table.fireAfterRow(session, oldRow, newRow, false);
-                }
-                onPendingOperationComplete(ar);
-            });
         }
     }
 }

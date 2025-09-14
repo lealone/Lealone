@@ -120,7 +120,7 @@ public abstract class UpDel extends ManipulationStatement {
 
         protected abstract int getTriggerType();
 
-        protected abstract boolean upDelRow(Row oldRow);
+        protected abstract boolean upDel(Row oldRow);
 
         @Override
         protected void startInternal() {
@@ -174,7 +174,7 @@ public abstract class UpDel extends ManipulationStatement {
                         return;
                     }
                     Row row = tableIterator.getRow();
-                    if (upDelRow(row)) {
+                    if (upDel(row)) {
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
                             break;
                         }

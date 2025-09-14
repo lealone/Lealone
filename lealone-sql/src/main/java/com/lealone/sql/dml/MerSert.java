@@ -273,17 +273,15 @@ public abstract class MerSert extends ManipulationStatement {
 
         protected void addRowInternal(Row newRow) {
             table.validateConvertUpdateSequence(session, newRow);
-            boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
-            if (!done) {
+            boolean done = false;
+            boolean fireRow = table.fireRow();
+            if (fireRow)
+                done = fireBeforeRow(table, null, newRow);
+            if (!done) { // add row
                 onPendingOperationStart();
                 table.addRow(session, newRow, ar -> {
-                    if (ar.isSucceeded()) {
-                        try {
-                            // 有可能抛出异常
-                            table.fireAfterRow(session, null, newRow, false);
-                        } catch (Throwable e) {
-                            setPendingException(e);
-                        }
+                    if (fireRow && ar.isSucceeded()) {
+                        fireAfterRow(table, null, newRow);
                     }
                     onPendingOperationComplete(ar);
                 });

@@ -9,7 +9,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncResultHandler;
+import com.lealone.db.row.Row;
 import com.lealone.db.session.SessionStatus;
+import com.lealone.db.table.Table;
 import com.lealone.sql.StatementBase;
 
 public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
@@ -64,5 +66,24 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         }
         pendingOperationCount--;
         handleResult();
+    }
+
+    protected boolean fireBeforeRow(Table table, Row oldRow, Row newRow) {
+        try {
+            // 有可能抛出异常
+            return table.fireBeforeRow(session, oldRow, newRow); // INSTEAD OF触发器会返回true
+        } catch (Throwable e) {
+            setPendingException(e);
+            return true;
+        }
+    }
+
+    protected void fireAfterRow(Table table, Row oldRow, Row newRow) {
+        try {
+            // 有可能抛出异常
+            table.fireAfterRow(session, oldRow, newRow, false);
+        } catch (Throwable e) {
+            setPendingException(e);
+        }
     }
 }
