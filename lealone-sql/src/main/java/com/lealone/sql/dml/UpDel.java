@@ -15,7 +15,6 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Table;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueNull;
-import com.lealone.sql.StatementBase;
 import com.lealone.sql.executor.YieldableLoopUpdateBase;
 import com.lealone.sql.expression.Expression;
 import com.lealone.sql.expression.evaluator.AlwaysTrueEvaluator;
@@ -86,13 +85,12 @@ public abstract class UpDel extends ManipulationStatement {
         private final ExpressionEvaluator conditionEvaluator;
         private final TableIterator tableIterator;
 
-        public YieldableUpDel(StatementBase statement, AsyncResultHandler<Integer> asyncHandler,
-                TableFilter tableFilter, Expression limitExpr, Expression condition) {
+        public YieldableUpDel(UpDel statement, AsyncResultHandler<Integer> asyncHandler) {
             super(statement, asyncHandler);
-            table = tableFilter.getTable();
+            table = statement.tableFilter.getTable();
             int limitRows = -1;
-            if (limitExpr != null) {
-                Value v = limitExpr.getValue(session);
+            if (statement.limitExpr != null) {
+                Value v = statement.limitExpr.getValue(session);
                 if (v != ValueNull.INSTANCE) {
                     limitRows = v.getInt();
                 }
@@ -100,20 +98,20 @@ public abstract class UpDel extends ManipulationStatement {
             this.limitRows = limitRows;
 
             if (limitRows == 0) {
-                tableIterator = new TableIterator(session, tableFilter) {
+                tableIterator = new TableIterator(session, statement.tableFilter) {
                     @Override
                     public boolean next() {
                         return false;
                     }
                 };
             } else {
-                tableIterator = new TableIterator(session, tableFilter);
+                tableIterator = new TableIterator(session, statement.tableFilter);
             }
 
-            if (condition == null)
+            if (statement.condition == null)
                 conditionEvaluator = new AlwaysTrueEvaluator();
             else
-                conditionEvaluator = new ExpressionInterpreter(session, condition);
+                conditionEvaluator = new ExpressionInterpreter(session, statement.condition);
         }
 
         protected abstract int getRightMask();

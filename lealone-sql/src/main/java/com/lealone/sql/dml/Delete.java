@@ -60,8 +60,7 @@ public class Delete extends UpDel {
     private static class YieldableDelete extends YieldableUpDel {
 
         public YieldableDelete(Delete statement, AsyncResultHandler<Integer> asyncHandler) {
-            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
-                    statement.condition);
+            super(statement, asyncHandler);
         }
 
         @Override

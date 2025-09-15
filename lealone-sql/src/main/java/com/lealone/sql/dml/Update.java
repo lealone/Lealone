@@ -114,8 +114,7 @@ public class Update extends UpDel {
         final int columnCount;
 
         public YieldableUpdate(Update statement, AsyncResultHandler<Integer> asyncHandler) {
-            super(statement, asyncHandler, statement.tableFilter, statement.limitExpr,
-                    statement.condition);
+            super(statement, asyncHandler);
             this.updateStatement = statement;
             columns = table.getColumns();
             columnCount = columns.length;
