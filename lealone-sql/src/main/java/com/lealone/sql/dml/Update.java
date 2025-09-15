@@ -137,11 +137,6 @@ public class Update extends UpDel {
         }
 
         @Override
-        public int[] getUpdateColumnIndexes() {
-            return updateColumnIndexes;
-        }
-
-        @Override
         protected boolean upDel(Row oldRow) {
             Row newRow = createNewRow(oldRow);
             table.validateConvertUpdateSequence(session, newRow);

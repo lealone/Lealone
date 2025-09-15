@@ -133,10 +133,6 @@ public abstract class UpDel extends ManipulationStatement {
             table.fire(session, getTriggerType(), false);
         }
 
-        protected int[] getUpdateColumnIndexes() {
-            return null;
-        }
-
         @Override
         protected void executeLoopUpdate() {
             try {
