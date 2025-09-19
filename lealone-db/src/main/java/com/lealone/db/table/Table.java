@@ -23,6 +23,7 @@ import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.auth.Right;
 import com.lealone.db.constraint.Constraint;
 import com.lealone.db.constraint.ConstraintReferential;
+import com.lealone.db.constraint.ConstraintUnique;
 import com.lealone.db.index.Index;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
@@ -830,8 +831,21 @@ public abstract class Table extends SchemaObjectBase {
      *  @return if there are any triggers or rows defined
      */
     public boolean fireRow() {
-        return (constraints != null && !constraints.isEmpty())
-                || (triggers != null && !triggers.isEmpty());
+        if (triggers != null && !triggers.isEmpty())
+            return true;
+        if (constraints != null) {
+            int size = constraints.size();
+            if (size > 0) {
+                for (int i = 0; i < size; i++) {
+                    Constraint constraint = constraints.get(i);
+                    // 不需要触发主键或唯一约束，避免调用fireBeforeRow/fireAfterRow
+                    if (!(constraint instanceof ConstraintUnique)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
