@@ -81,6 +81,7 @@ public abstract class Table extends SchemaObjectBase {
 
     private ArrayList<TriggerObject> triggers;
     private ArrayList<Constraint> constraints;
+    private ArrayList<Constraint> fireConstraints; // 不包括主键或唯一约束
     private ArrayList<Sequence> sequences;
     private ArrayList<TableView> views;
 
@@ -465,6 +466,9 @@ public abstract class Table extends SchemaObjectBase {
             constraints.remove(0);
             schema.remove(session, constraint, lock);
         }
+        if (fireConstraints != null) {
+            fireConstraints = null;
+        }
         for (Right right : database.getAllRights()) {
             if (right.getGrantedObject() == this) {
                 database.removeDatabaseObject(session, right, lock);
@@ -708,6 +712,9 @@ public abstract class Table extends SchemaObjectBase {
      */
     public void removeConstraint(Constraint constraint) {
         remove(constraints, constraint);
+        if (!(constraint instanceof ConstraintUnique)) {
+            remove(fireConstraints, constraint);
+        }
     }
 
     /**
@@ -746,6 +753,11 @@ public abstract class Table extends SchemaObjectBase {
     public void addConstraint(Constraint constraint) {
         if (constraints == null || constraints.indexOf(constraint) < 0) {
             constraints = add(constraints, constraint);
+        }
+        if (!(constraint instanceof ConstraintUnique)) {
+            if (fireConstraints == null || fireConstraints.indexOf(constraint) < 0) {
+                fireConstraints = add(fireConstraints, constraint);
+            }
         }
     }
 
@@ -831,21 +843,8 @@ public abstract class Table extends SchemaObjectBase {
      *  @return if there are any triggers or rows defined
      */
     public boolean fireRow() {
-        if (triggers != null && !triggers.isEmpty())
-            return true;
-        if (constraints != null) {
-            int size = constraints.size();
-            if (size > 0) {
-                for (int i = 0; i < size; i++) {
-                    Constraint constraint = constraints.get(i);
-                    // 不需要触发主键或唯一约束，避免调用fireBeforeRow/fireAfterRow
-                    if (!(constraint instanceof ConstraintUnique)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        return (triggers != null && !triggers.isEmpty())
+                || (fireConstraints != null && !fireConstraints.isEmpty());
     }
 
     /**
@@ -863,10 +862,10 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     private void fireConstraints(ServerSession session, Row oldRow, Row newRow, boolean before) {
-        if (constraints != null) {
+        if (fireConstraints != null) {
             // don't use enhanced for loop to avoid creating objects
-            for (int i = 0, size = constraints.size(); i < size; i++) {
-                Constraint constraint = constraints.get(i);
+            for (int i = 0, size = fireConstraints.size(); i < size; i++) {
+                Constraint constraint = fireConstraints.get(i);
                 if (constraint.isBefore() == before) {
                     constraint.checkRow(session, this, oldRow, newRow);
                 }
