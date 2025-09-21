@@ -226,7 +226,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         Transaction transaction = ioSession.getTransaction();
         transaction.setParentTransaction(io.getTransaction());
         try {
-            io.run(table, index, ioSession);
+            io.run(index, ioSession);
         } catch (Exception e) {
             if (table.isInvalid()) {
                 cancelTask();
@@ -300,7 +300,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
             this.completed = completed;
         }
 
-        public abstract void run(StandardTable table, Index index, ServerSession session);
+        public abstract void run(Index index, ServerSession session);
 
         public abstract IndexOperation copy();
 
@@ -318,7 +318,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         }
 
         @Override
-        public void run(StandardTable table, Index index, ServerSession session) {
+        public void run(Index index, ServerSession session) {
             index.add(session, new Row(rowKey, columns), AsyncResultHandler.emptyHandler());
         }
 
@@ -343,7 +343,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         }
 
         @Override
-        public void run(StandardTable table, Index index, ServerSession session) {
+        public void run(Index index, ServerSession session) {
             index.update(session, new Row(oldRowKey, oldColumns), new Row(rowKey, columns), oldColumns,
                     updateColumns, true, AsyncResultHandler.emptyHandler());
         }
@@ -361,7 +361,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         }
 
         @Override
-        public void run(StandardTable table, Index index, ServerSession session) {
+        public void run(Index index, ServerSession session) {
             index.remove(session, new Row(rowKey, columns), columns, true,
                     AsyncResultHandler.emptyHandler());
         }
