@@ -412,7 +412,7 @@ public class StandardTable extends Table {
 
         final IndexOperation io;
         if (!indexesAsync.isEmpty()) {
-            io = IndexOperator.addRowLazy(row.getKey(), row.getColumns());
+            io = IndexOperator.createAIO(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         } else {
             io = null;
@@ -468,7 +468,7 @@ public class StandardTable extends Table {
 
         IndexOperation io = null;
         if (!indexesAsync.isEmpty()) {
-            io = IndexOperator.updateRowLazy(oldRow.getKey(), newRow.getKey(), oldColumns,
+            io = IndexOperator.createUIO(oldRow.getKey(), newRow.getKey(), oldColumns,
                     newRow.getColumns(), updateColumns);
             io.setTransaction(session.getTransaction());
         }
@@ -502,7 +502,7 @@ public class StandardTable extends Table {
 
         IndexOperation io = null;
         if (!indexesAsync.isEmpty()) {
-            io = IndexOperator.removeRowLazy(row.getKey(), row.getColumns());
+            io = IndexOperator.createRIO(row.getKey(), row.getColumns());
             io.setTransaction(session.getTransaction());
         }
 

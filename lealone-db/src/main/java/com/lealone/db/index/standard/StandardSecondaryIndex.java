@@ -28,6 +28,7 @@ import com.lealone.db.value.ValueEnum;
 import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueNull;
 import com.lealone.storage.Storage;
+import com.lealone.storage.StorageMap;
 import com.lealone.storage.StorageSetting;
 import com.lealone.transaction.Transaction;
 import com.lealone.transaction.TransactionMap;
@@ -127,11 +128,19 @@ public class StandardSecondaryIndex extends StandardIndex {
         return building;
     }
 
+    @SuppressWarnings("unchecked")
+    private StorageMap<IndexKey, IndexKey> getStorageMap() {
+        return (StorageMap<IndexKey, IndexKey>) dataMap.getRawMap();
+    }
+
     @Override
     public void add(ServerSession session, Row row, AsyncResultHandler<Integer> handler) {
-        final TransactionMap<IndexKey, IndexKey> map = getMap(session);
         final IndexKey key = convertToKey(row);
-
+        if (session.isFastPath()) {
+            getStorageMap().put(key, key, AsyncResultHandler.emptyHandler());
+            return;
+        }
+        final TransactionMap<IndexKey, IndexKey> map = getMap(session);
         map.addIfAbsent(key, key, ar -> {
             if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
@@ -176,8 +185,12 @@ public class StandardSecondaryIndex extends StandardIndex {
     @Override
     public void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
             AsyncResultHandler<Integer> handler) {
-        TransactionMap<IndexKey, IndexKey> map = getMap(session);
         IndexKey key = convertToKey(row, oldColumns);
+        if (session.isFastPath()) {
+            getStorageMap().remove(key, AsyncResultHandler.emptyHandler());
+            return;
+        }
+        TransactionMap<IndexKey, IndexKey> map = getMap(session);
         Lockable lockable = map.getLockableValue(key);
         if (!isLockedBySelf && map.isLocked(lockable))
             onComplete(handler, map.addWaitingTransaction(lockable));

@@ -1720,6 +1720,16 @@ public class ServerSession extends SessionBase implements InternalSession {
         this.redoLogEnabled = redoLogEnabled;
     }
 
+    private boolean fastPath;
+
+    public boolean isFastPath() {
+        return fastPath;
+    }
+
+    public void setFastPath(boolean fastPath) {
+        this.fastPath = fastPath;
+    }
+
     private boolean markClosed;
 
     public void markClosed() {

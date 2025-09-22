@@ -223,8 +223,14 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
     }
 
     private void run(IndexOperation io) {
-        Transaction transaction = ioSession.getTransaction();
-        transaction.setParentTransaction(io.getTransaction());
+        // 在没有可重复读事务的情况下，对索引执行insert或delete操作可以不用走事务层，直接走存储层
+        boolean fastPath = !(table.getDatabase().getTransactionEngine()
+                .containsRepeatableReadTransactions() || io instanceof UIO);
+        ioSession.setFastPath(fastPath);
+        if (!fastPath) {
+            Transaction transaction = ioSession.getTransaction();
+            transaction.setParentTransaction(io.getTransaction());
+        }
         try {
             io.run(index, ioSession);
         } catch (Exception e) {
@@ -234,7 +240,9 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         } finally {
             io.setCompleted(true);
             indexOperationSize.decrementAndGet();
-            ioSession.asyncCommit();
+            if (!fastPath) {
+                ioSession.asyncCommit();
+            }
         }
     }
 
@@ -247,16 +255,16 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         }
     }
 
-    public static IndexOperation addRowLazy(long rowKey, Value[] columns) {
+    public static IndexOperation createAIO(long rowKey, Value[] columns) {
         return new AIO(rowKey, columns);
     }
 
-    public static IndexOperation updateRowLazy(long oldRowKey, long newRowKey, Value[] oldColumns,
+    public static IndexOperation createUIO(long oldRowKey, long newRowKey, Value[] oldColumns,
             Value[] newColumns, int[] updateColumns) {
         return new UIO(oldRowKey, newRowKey, oldColumns, newColumns, updateColumns);
     }
 
-    public static IndexOperation removeRowLazy(long rowKey, Value[] columns) {
+    public static IndexOperation createRIO(long rowKey, Value[] columns) {
         return new RIO(rowKey, columns);
     }
 
