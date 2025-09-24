@@ -40,6 +40,12 @@ public abstract class Lock {
         session.addLock(this);
     }
 
+    // 比tryLock更快，直接锁定
+    public void lockFast(Transaction t, Object key, Object oldValue) {
+        ref.set(createLockOwner(t, oldValue));
+        addLock(t.getSession(), t);
+    }
+
     public boolean tryLock(Transaction t, Object key, Object oldValue) {
         InternalSession session = t.getSession();
         while (true) {

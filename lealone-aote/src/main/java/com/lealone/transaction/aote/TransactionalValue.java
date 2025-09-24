@@ -82,7 +82,7 @@ public class TransactionalValue extends LockableBase {
     public static void insertLock(Lockable Lockable, AOTransaction t) {
         RowLock rowLock = new RowLock(Lockable);
         Lockable.setLock(rowLock);
-        rowLock.tryLock(t, Lockable, null); // insert的场景，old value是null
+        rowLock.lockFast(t, Lockable, null); // insert的场景，old value是null
     }
 
     // 二级索引需要设置
