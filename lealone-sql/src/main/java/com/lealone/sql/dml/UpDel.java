@@ -169,7 +169,7 @@ public abstract class UpDel extends ManipulationStatement {
                     }
                     Row row = tableIterator.getRow();
                     if (upDel(row)) {
-                        if (limitRows > 0 && updateCount.get() >= limitRows) {
+                        if (limitRows > 0 && updateCount >= limitRows) {
                             break;
                         }
                     }

@@ -265,7 +265,7 @@ public abstract class MerSert extends ManipulationStatement {
                     Value v = c.convert(values[i]);
                     newRow.setValue(index, v);
                 } catch (DbException ex) {
-                    throw merSertStatement.setRow(ex, updateCount.get() + 1, getSQL(values));
+                    throw merSertStatement.setRow(ex, updateCount + 1, getSQL(values));
                 }
             }
             return newRow;
@@ -294,7 +294,7 @@ public abstract class MerSert extends ManipulationStatement {
         @Override
         public boolean addRow(Value[] values) {
             merSert(createNewRow(values));
-            if (yieldIfNeeded(updateCount.get() + 1)) {
+            if (yieldIfNeeded(updateCount + 1)) {
                 return true;
             }
             return false;
@@ -302,7 +302,7 @@ public abstract class MerSert extends ManipulationStatement {
 
         @Override
         public int getRowCount() {
-            return updateCount.get();
+            return updateCount;
         }
 
         @Override

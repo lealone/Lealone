@@ -151,7 +151,7 @@ public class Merge extends MerSert {
             // 先更新，如果没有记录被更新，说明是一条新的记录，接着再插入
             int count = mergeStatement.update.update();
             if (count > 0) {
-                updateCount.addAndGet(count);
+                updateCount += count;
             } else if (count == 0) {
                 addRowInternal(row);
             } else if (count != 1) {
