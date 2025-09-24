@@ -27,9 +27,12 @@ public class IndexRebuilder implements Runnable {
     private AsyncPeriodicTask task;
 
     public IndexRebuilder(ServerSession session, Table table, Index index) {
-        this.session = session;
         this.table = table;
         this.index = index;
+        // 在新的session中执行
+        Database db = table.getDatabase();
+        this.session = db.createSession(db.getSystemUser(), session.getScheduler());
+        this.session.setFastPath(true);
     }
 
     public void rebuild() {
@@ -46,11 +49,11 @@ public class IndexRebuilder implements Runnable {
         index.setLastIndexedRowKey(null);
         task.cancel();
         session.getScheduler().removePeriodicTask(task);
+        session.close();
     }
 
     @Override
     public void run() {
-        session.setUndoLogEnabled(false);
         try {
             long i = 0;
             String n = table.getName() + ":" + index.getName();
@@ -80,8 +83,6 @@ public class IndexRebuilder implements Runnable {
                 throw e2;
             }
             throw e;
-        } finally {
-            session.setUndoLogEnabled(true);
         }
     }
 }

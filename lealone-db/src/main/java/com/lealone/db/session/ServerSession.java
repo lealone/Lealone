@@ -1698,17 +1698,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         return c != null && c.isQuery();
     }
 
-    private boolean undoLogEnabled = true;
-
-    @Override
-    public boolean isUndoLogEnabled() {
-        return undoLogEnabled;
-    }
-
-    public void setUndoLogEnabled(boolean enabled) {
-        undoLogEnabled = enabled;
-    }
-
     private boolean redoLogEnabled = true;
 
     @Override

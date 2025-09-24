@@ -335,14 +335,8 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             AsyncResultHandler<Integer> topHandler) {
         DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
-        UndoLogRecord r;
-        InternalSession session = transaction.getSession();
-        if (session == null || session.isUndoLogEnabled()) {
-            r = addUndoLog(key, lockable, null);
-            TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
-        } else {
-            r = null;
-        }
+        UndoLogRecord r = addUndoLog(key, lockable, null);
+        TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
         AsyncResultHandler<Lockable> handler = ar -> {
             if (ar.isSucceeded()) {
                 Lockable old = ar.getResult();
@@ -351,14 +345,11 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                         vRef.set((V) old.getLockedValue());
                     if (ifAbsent) {
                         // 在提交或回滚时直接忽略即可
-                        if (r != null)
-                            r.setUndone(true);
+                        r.setUndone(true);
                         // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
                         if (old.getLockedValue() == null) {
                             old.setLockedValue(lockable.getLockedValue());
-                            if (r != null) {
-                                addUndoLog(key, old, lockable.getLockedValue());
-                            }
+                            addUndoLog(key, old, lockable.getLockedValue());
                         } else {
                             topHandler.handleResult(Transaction.OPERATION_DATA_DUPLICATE);
                             return;
@@ -367,15 +358,14 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                 }
                 topHandler.handleResult(Transaction.OPERATION_COMPLETE);
             } else {
-                if (r != null)
-                    r.setUndone(true);
+                r.setUndone(true);
                 topHandler.handleException(ar.getCause());
             }
         };
         if (ifAbsent)
-            map.putIfAbsent(session, key, lockable, handler);
+            map.putIfAbsent(transaction.getSession(), key, lockable, handler);
         else
-            map.put(session, key, lockable, handler);
+            map.put(transaction.getSession(), key, lockable, handler);
     }
 
     @Override
@@ -556,12 +546,10 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
 
     // 追加新记录时不会产生事务冲突
     private K append0(InternalSession session, Lockable lockable, AsyncResultHandler<K> handler) {
-        boolean isUndoLogEnabled = (session == null || session.isUndoLogEnabled());
-        if (isUndoLogEnabled)
-            TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
+        TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
         if (handler != null) {
             map.append(session, lockable, ar -> {
-                if (isUndoLogEnabled && ar.isSucceeded()) {
+                if (ar.isSucceeded()) {
                     addUndoLog(ar.getResult(), lockable, null);
                 }
                 handler.handle(ar);
@@ -571,9 +559,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             K key = map.append(lockable);
             // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
             // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-            if (isUndoLogEnabled) {
-                addUndoLog(key, lockable, null);
-            }
+            addUndoLog(key, lockable, null);
             return key;
         }
     }

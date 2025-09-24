@@ -47,10 +47,6 @@ public interface InternalSession extends Session {
         return false;
     }
 
-    default boolean isUndoLogEnabled() {
-        return true;
-    }
-
     default boolean isRedoLogEnabled() {
         return true;
     }
