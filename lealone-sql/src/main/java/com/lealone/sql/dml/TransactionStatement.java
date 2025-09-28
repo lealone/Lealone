@@ -36,11 +36,6 @@ public class TransactionStatement extends ManipulationStatement {
     }
 
     @Override
-    public boolean isTransactionStatement() {
-        return true;
-    }
-
-    @Override
     public boolean needRecompile() {
         return false;
     }

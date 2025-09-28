@@ -877,11 +877,6 @@ public class Select extends Query {
     }
 
     @Override
-    public boolean isForUpdate() {
-        return isForUpdate;
-    }
-
-    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         for (Expression e : expressions) {
             e.mapColumns(resolver, level);
