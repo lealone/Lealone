@@ -162,6 +162,7 @@ public class NioEventLoop implements NetEventLoop {
 
         SocketChannel channel = (SocketChannel) key.channel();
         int packetLength = attachment.packetLength; // 看看是不是上一次记下的packetLength
+        int recyclePos = -1;
         try {
             if (conn.getPacketLengthByteCount() <= 0) { // http server自己读取数据
                 conn.handle(null, false);
@@ -205,7 +206,7 @@ public class NioEventLoop implements NetEventLoop {
             }
 
             int start = buffer.position();
-            int recyclePos = start;
+            recyclePos = start;
             if (!read(conn, channel, buffer)) {
                 if (packetLength != 0)
                     attachment.packetLength = packetLength; // 记下packetLength
@@ -273,6 +274,9 @@ public class NioEventLoop implements NetEventLoop {
                 }
             }
         } catch (Exception e) {
+            // 发生异常时释放当前连接在共享inputBuffer中已经占用的内存
+            if (recyclePos != -1)
+                inputBuffer.recycle(recyclePos);
             handleReadException(e, key);
         }
     }
