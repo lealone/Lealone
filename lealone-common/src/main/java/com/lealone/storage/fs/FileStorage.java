@@ -20,6 +20,7 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.TempFileDeleter;
 import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
+import com.lealone.db.DbSetting;
 import com.lealone.db.SysProperties;
 import com.lealone.storage.fs.impl.disk.FilePathDisk;
 import com.lealone.storage.fs.impl.encrypt.FileEncrypt;
@@ -142,8 +143,8 @@ public class FileStorage {
 
     protected FileStorage(String fileName, Map<String, ?> config) {
         this.fileName = fileName;
-        Object encryptionKey = config.get("encryptionKey");
-        boolean readOnly = config.containsKey("readOnly");
+        Object encryptionKey = config.get(DbSetting.ENCRYPTION_KEY.name());
+        boolean readOnly = config.containsKey(DbSetting.READ_ONLY.name());
         mode = (String) config.get("mode");
         if (fileName != null) {
             FilePath p = FilePath.get(fileName);

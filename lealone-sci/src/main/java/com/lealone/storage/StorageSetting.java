@@ -7,7 +7,6 @@ package com.lealone.storage;
 
 public enum StorageSetting {
     STORAGE_PATH,
-    ENCRYPTION_KEY,
     IN_MEMORY,
     PAGE_STORAGE_MODE,
     MIN_FILL_RATE,

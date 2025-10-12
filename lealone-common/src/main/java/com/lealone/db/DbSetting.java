@@ -67,6 +67,7 @@ public enum DbSetting {
     TRACE_MAX_FILE_SIZE,
 
     // 在存储层也可用的参数
+    ENCRYPTION_KEY,
     COMPRESS,
     READ_ONLY,
     PAGE_SIZE,

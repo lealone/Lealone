@@ -55,7 +55,7 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder encryptionKey(char[] password) {
-        return set(StorageSetting.ENCRYPTION_KEY.name(), password);
+        return set(DbSetting.ENCRYPTION_KEY.name(), password);
     }
 
     /**
