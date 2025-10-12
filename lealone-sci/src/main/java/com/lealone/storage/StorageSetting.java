@@ -12,7 +12,6 @@ public enum StorageSetting {
     PAGE_STORAGE_MODE,
     MIN_FILL_RATE,
     MAP_TYPE,
-    SCHEDULER_FACTORY,
     USE_TABLE_LOB_STORAGE,
     MAX_CHUNK_SIZE,
 

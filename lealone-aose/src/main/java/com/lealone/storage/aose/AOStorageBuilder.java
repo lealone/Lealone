@@ -49,18 +49,14 @@ public class AOStorageBuilder extends StorageBuilder {
     }
 
     private SchedulerFactory getSchedulerFactory() {
-        SchedulerFactory sf = (SchedulerFactory) config.get(StorageSetting.SCHEDULER_FACTORY.name());
+        SchedulerFactory sf = SchedulerFactory.getDefaultSchedulerFactory();
         if (sf == null) {
-            sf = SchedulerFactory.getDefaultSchedulerFactory();
-            if (sf == null) {
-                CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(this.config.size());
-                for (Map.Entry<String, Object> e : this.config.entrySet()) {
-                    config.put(e.getKey(), e.getValue().toString());
-                }
-                config.put("embedded", "true");
-                sf = SchedulerFactory.initDefaultSchedulerFactory(EmbeddedScheduler.class.getName(),
-                        config);
+            CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(this.config.size());
+            for (Map.Entry<String, Object> e : this.config.entrySet()) {
+                config.put(e.getKey(), e.getValue().toString());
             }
+            config.put("embedded", "true");
+            sf = SchedulerFactory.initDefaultSchedulerFactory(EmbeddedScheduler.class.getName(), config);
         }
         // 嵌入模式下打开新的Storage，如果EmbeddedScheduler没启动则自动启动
         if (!sf.isStarted() && sf.getSchedulerCount() > 0

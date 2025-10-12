@@ -9,7 +9,6 @@ import java.util.HashMap;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DbSetting;
-import com.lealone.db.scheduler.SchedulerFactory;
 
 /**
  * A storage builder.
@@ -140,10 +139,6 @@ public abstract class StorageBuilder {
 
     public StorageBuilder minFillRate(int minFillRate) {
         return set(StorageSetting.MIN_FILL_RATE.name(), minFillRate);
-    }
-
-    public StorageBuilder schedulerFactory(SchedulerFactory schedulerFactory) {
-        return set(StorageSetting.SCHEDULER_FACTORY.name(), schedulerFactory);
     }
 
     @Override

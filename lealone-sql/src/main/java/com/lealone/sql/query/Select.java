@@ -876,6 +876,11 @@ public class Select extends Query {
         this.isForUpdate = b;
     }
 
+    // 插件有用到这个方法
+    public boolean isForUpdate() {
+        return isForUpdate;
+    }
+
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         for (Expression e : expressions) {
