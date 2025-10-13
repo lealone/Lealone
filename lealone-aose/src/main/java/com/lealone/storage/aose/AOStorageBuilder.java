@@ -19,7 +19,6 @@ public class AOStorageBuilder extends StorageBuilder {
     private static final HashMap<String, AOStorage> cache = new HashMap<>();
 
     public AOStorageBuilder() {
-        this(null);
     }
 
     public AOStorageBuilder(Map<String, String> defaultConfig) {
