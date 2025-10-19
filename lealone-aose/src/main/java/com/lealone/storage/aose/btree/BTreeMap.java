@@ -389,7 +389,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (!inMemory) {
             lock.lock();
             try {
-                btreeStorage.save((int) dirtyMemory);
+                btreeStorage.save(dirtyMemory);
             } finally {
                 lock.unlock();
             }
@@ -424,7 +424,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (lock.tryLock()) {
                 try {
                     if (save)
-                        btreeStorage.save(false, (int) collectDirtyMemory());
+                        btreeStorage.save(false, collectDirtyMemory());
                     btreeStorage.getBTreeGC().fullGc();
                 } finally {
                     lock.unlock();

@@ -18,7 +18,6 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DbSetting;
-import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.chunk.ChunkCompactor;
@@ -65,22 +64,21 @@ public class BTreeStorage {
      */
     BTreeStorage(BTreeMap<?, ?> map) {
         this.map = map;
-        pageSize = getIntValue(DbSetting.PAGE_SIZE.name(), Constants.DEFAULT_PAGE_SIZE);
-        int minFillRate = getIntValue(StorageSetting.MIN_FILL_RATE.name(), 30);
+        pageSize = getIntValue(DbSetting.PAGE_SIZE, Constants.DEFAULT_PAGE_SIZE);
+        int minFillRate = getIntValue(StorageSetting.MIN_FILL_RATE, 30);
         if (minFillRate > 50) // 超过50没有实际意义
             minFillRate = 50;
         this.minFillRate = minFillRate;
         compressionLevel = parseCompressionLevel();
 
         // 32M (32 * 1024 * 1024)，到达一半时就启用GC
-        int cacheSize = getIntValue(DbSetting.CACHE_SIZE.name(),
-                Constants.DEFAULT_CACHE_SIZE * 1024 * 1024);
+        int cacheSize = getIntValue(DbSetting.CACHE_SIZE, Constants.DEFAULT_CACHE_SIZE * 1024 * 1024);
         if (cacheSize > 0 && cacheSize < pageSize)
             cacheSize = pageSize * 2;
         bgc = new BTreeGC(map, cacheSize);
 
         // 默认256M
-        int maxChunkSize = getIntValue(StorageSetting.MAX_CHUNK_SIZE.name(), 256 * 1024 * 1024);
+        int maxChunkSize = getIntValue(StorageSetting.MAX_CHUNK_SIZE, 256 * 1024 * 1024);
         if (maxChunkSize > Chunk.MAX_SIZE)
             maxChunkSize = Chunk.MAX_SIZE;
         this.maxChunkSize = maxChunkSize;
@@ -98,8 +96,8 @@ public class BTreeStorage {
         }
     }
 
-    private int getIntValue(String key, int defaultValue) {
-        Object value = map.getConfig(key);
+    private int getIntValue(Enum<?> key, int defaultValue) {
+        Object value = map.getConfig(key.name());
         if (value instanceof Integer) {
             return (Integer) value;
         } else if (value != null) {
@@ -135,16 +133,6 @@ public class BTreeStorage {
         }
     }
 
-    public IllegalStateException panic(int errorCode, String message, Object... arguments) {
-        IllegalStateException e = DataUtils.newIllegalStateException(errorCode, message, arguments);
-        return panic(e);
-    }
-
-    public IllegalStateException panic(IllegalStateException e) {
-        closeImmediately(true);
-        return e;
-    }
-
     public BTreeMap<?, ?> getMap() {
         return map;
     }
@@ -153,8 +141,52 @@ public class BTreeStorage {
         return chunkManager;
     }
 
-    public SchedulerFactory getSchedulerFactory() {
-        return map.getSchedulerFactory();
+    public BTreeGC getBTreeGC() {
+        return bgc;
+    }
+
+    public int getCompressionLevel() {
+        return compressionLevel;
+    }
+
+    public Compressor getCompressorFast() {
+        if (compressorFast == null) {
+            compressorFast = new CompressLZF();
+        }
+        return compressorFast;
+    }
+
+    public Compressor getCompressorHigh() {
+        if (compressorHigh == null) {
+            compressorHigh = new CompressDeflate();
+        }
+        return compressorHigh;
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public int getMinFillRate() {
+        return minFillRate;
+    }
+
+    public long getDiskSpaceUsed() {
+        return FileUtils.folderSize(new File(mapBaseDir));
+    }
+
+    public long getMemorySpaceUsed() {
+        return bgc.getUsedMemory();
+    }
+
+    public IllegalStateException panic(int errorCode, String message, Object... arguments) {
+        IllegalStateException e = DataUtils.newIllegalStateException(errorCode, message, arguments);
+        return panic(e);
+    }
+
+    public IllegalStateException panic(IllegalStateException e) {
+        closeImmediately(true);
+        return e;
     }
 
     // ChunkCompactor在重写chunk中的page时会用到
@@ -202,62 +234,6 @@ public class BTreeStorage {
         return pInfo;
     }
 
-    public BTreeGC getBTreeGC() {
-        return bgc;
-    }
-
-    public int getCompressionLevel() {
-        return compressionLevel;
-    }
-
-    public Compressor getCompressorFast() {
-        if (compressorFast == null) {
-            compressorFast = new CompressLZF();
-        }
-        return compressorFast;
-    }
-
-    public Compressor getCompressorHigh() {
-        if (compressorHigh == null) {
-            compressorHigh = new CompressDeflate();
-        }
-        return compressorHigh;
-    }
-
-    public int getPageSize() {
-        return pageSize;
-    }
-
-    public int getMinFillRate() {
-        return minFillRate;
-    }
-
-    /**
-     * Get the maximum cache size, in MB.
-     * 
-     * @return the cache size
-     */
-    public long getCacheSize() {
-        return bgc.getMaxMemory();
-    }
-
-    /**
-     * Set the read cache size in MB.
-     * 
-     * @param mb the cache size in MB.
-     */
-    public void setCacheSize(long mb) {
-        bgc.setMaxMemory(mb * 1024 * 1024);
-    }
-
-    public long getDiskSpaceUsed() {
-        return FileUtils.folderSize(new File(mapBaseDir));
-    }
-
-    public long getMemorySpaceUsed() {
-        return bgc.getUsedMemory();
-    }
-
     synchronized void clear() {
         if (map.isInMemory())
             return;
@@ -265,9 +241,6 @@ public class BTreeStorage {
         chunkManager.close();
     }
 
-    /**
-     * Remove this storage.
-     */
     synchronized void remove() {
         closeImmediately(false);
         if (map.isInMemory())
@@ -312,15 +285,11 @@ public class BTreeStorage {
         }
     }
 
-    private int collectDirtyMemory() {
-        return (int) map.collectDirtyMemory();
-    }
-
     void save() {
-        save(true, collectDirtyMemory());
+        save(true, map.collectDirtyMemory());
     }
 
-    void save(int dirtyMemory) {
+    void save(long dirtyMemory) {
         save(true, dirtyMemory);
     }
 
@@ -328,7 +297,7 @@ public class BTreeStorage {
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
      */
-    synchronized void save(boolean compact, int dirtyMemory) {
+    synchronized void save(boolean compact, long dirtyMemory) {
         if (!map.hasUnsavedChanges() || closed || map.isInMemory()) {
             return;
         }
@@ -346,11 +315,11 @@ public class BTreeStorage {
     }
 
     public synchronized void executeSave(boolean appendModeEnabled) {
-        executeSave(appendModeEnabled, collectDirtyMemory());
+        executeSave(appendModeEnabled, map.collectDirtyMemory());
     }
 
-    private synchronized void executeSave(boolean appendModeEnabled, int dirtyMemory) {
-        DataBuffer chunkBody = DataBuffer.createDirect(dirtyMemory);
+    private synchronized void executeSave(boolean appendModeEnabled, long dirtyMemory) {
+        DataBuffer chunkBody = DataBuffer.createDirect((int) dirtyMemory);
         boolean appendMode = false;
         try {
             Chunk c;
@@ -379,21 +348,12 @@ public class BTreeStorage {
         }
     }
 
-    public boolean isInMemory() {
-        return map.isInMemory();
-    }
-
     public FileStorage getFileStorage(int chunkId) {
-        String chunkFileName = mapBaseDir + File.separator + chunkManager.getChunkFileName(chunkId);
-        return openFileStorage(chunkFileName);
+        return getFileStorage(chunkManager.getChunkFileName(chunkId));
     }
 
     private FileStorage getFileStorage(String chunkFileName) {
         chunkFileName = mapBaseDir + File.separator + chunkFileName;
-        return openFileStorage(chunkFileName);
-    }
-
-    private FileStorage openFileStorage(String chunkFileName) {
         return FileStorage.open(chunkFileName, map.getConfig());
     }
 
