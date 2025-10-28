@@ -6,7 +6,6 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
@@ -152,7 +151,7 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
+    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         beforeWrite(pInfoOld);
         int start = buff.position();
         int keyLength = keys.length;
@@ -180,23 +179,20 @@ public class NodePage extends LocalPage {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, false, false);
+        long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, false);
         int patch = typePos + 1;
-        AtomicBoolean isChildrenLocked = new AtomicBoolean(false);
-        writeChildren(chunk, buff, patch, isChildrenLocked);
-        if (isChildrenLocked.get())
-            isLocked.set(true);
-        getRef().updatePage(pos, this, pInfoOld, isLocked.get());
+        writeChildren(chunk, buff, patch);
+        getRef().updatePage(pos, this, pInfoOld);
         return pos;
     }
 
-    private void writeChildren(Chunk chunk, DataBuffer buff, int patch, AtomicBoolean isLocked) {
+    private void writeChildren(Chunk chunk, DataBuffer buff, int patch) {
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
             Page p = pInfo.page;
             if (p != null && pInfo.getPos() == 0) {
-                long pos = p.write(pInfo, chunk, buff, isLocked);
+                long pos = p.write(pInfo, chunk, buff);
                 positions[i] = pos;
             } else {
                 positions[i] = pInfo.pos;

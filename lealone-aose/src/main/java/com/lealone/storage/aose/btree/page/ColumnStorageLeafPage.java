@@ -6,7 +6,6 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
@@ -110,7 +109,7 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
     }
 
     @Override
-    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
+    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
         beforeWrite(pInfoOld);
         int start = buff.position();
         int keyLength = keys.length;
@@ -130,15 +129,9 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength);
         Object[] values = getValues();
-        boolean isLockable = valueType.isLockable();
-        boolean isLockedPage = false;
         for (int row = 0; row < keyLength; row++) {
             valueType.writeMeta(buff, values[row]);
-            if (isLockable && !isLockedPage)
-                isLockedPage = isLocked(values[row]);
         }
-        if (isLockedPage)
-            isLocked.set(true);
         buff.putInt(0); // replicationHostIds
         compressPage(buff, compressStart, type, typePos);
 
@@ -160,6 +153,6 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         }
         buff.position(oldPos);
 
-        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, isLockedPage, true);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true);
     }
 }

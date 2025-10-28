@@ -8,7 +8,6 @@ package com.lealone.storage.aose.btree;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.compress.CompressDeflate;
 import com.lealone.common.compress.CompressLZF;
@@ -336,7 +335,7 @@ public class BTreeStorage {
             c.mapMaxKey = map.getMaxKey();
 
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
-            long pos = pInfo.page.write(pInfo, c, chunkBody, new AtomicBoolean(false));
+            long pos = pInfo.page.write(pInfo, c, chunkBody);
             c.rootPagePos = pos;
             c.write(chunkBody, appendMode, chunkManager);
             if (!appendMode) {

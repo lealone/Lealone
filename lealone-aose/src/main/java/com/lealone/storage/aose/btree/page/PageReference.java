@@ -317,10 +317,10 @@ public class PageReference implements IPageReference {
     }
 
     // 刷完脏页后需要用新的位置更新，如果当前page不是oldPage了，那么把oldPage标记为删除
-    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved, boolean isLocked) {
+    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved) {
         PageInfo pInfoOld = pInfoSaved;
         // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
-        if (isLocked || isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
+        if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
             addRemovedPage(newPos);
             return;
         }

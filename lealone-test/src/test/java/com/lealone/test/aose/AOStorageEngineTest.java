@@ -28,8 +28,9 @@ public class AOStorageEngineTest extends AoseTestBase {
         se = new AOStorageEngine();
         builder = se.getStorageBuilder();
         try {
-            builder.openStorage(); // 还没有设置storagePath
-            fail();
+            Storage s = builder.openStorage(); // 还没有设置storagePath
+            assertNotNull(s); // 如果内存null路径事先打开了，会返回一个Storage实例
+            // fail();
         } catch (Exception e) {
         }
 
