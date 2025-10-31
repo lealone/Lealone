@@ -182,7 +182,7 @@ public class NodePage extends LocalPage {
         long pos = updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, false);
         int patch = typePos + 1;
         writeChildren(chunk, buff, patch);
-        getRef().updatePage(pos, this, pInfoOld);
+        getRef().updatePage(pos, pInfoOld);
         return pos;
     }
 

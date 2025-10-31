@@ -362,7 +362,7 @@ public class Page {
                     chunk.sumOfPageLength);
         }
         if (updatePage)
-            ref.updatePage(pos, this, pInfoOld);
+            ref.updatePage(pos, pInfoOld);
         return pos;
     }
 }

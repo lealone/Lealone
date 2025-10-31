@@ -177,7 +177,7 @@ public class PageReference implements IPageReference {
             int memory = p.getMemory();
             if (buff == null)
                 memory += pInfoNew.getBuffMemory();
-            bs.getBTreeGC().addUsedMemory(memory);
+            addUsedMemory(memory);
             return p;
         } else {
             return getOrReadPage();
@@ -274,14 +274,13 @@ public class PageReference implements IPageReference {
             }
             PageInfo pInfoNew = pInfoOld.copy(0);
             pInfoNew.buff = null; // 废弃了
-            pInfoNew.markDirtyCount++;
             if (replacePage(pInfoOld, pInfoNew)) {
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
                 }
                 if (pInfoOld.getPos() != 0) {
                     addRemovedPage(pInfoOld.getPos());
-                    bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
+                    addUsedMemory(-pInfoOld.getBuffMemory());
                 }
                 return 0;
             } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
@@ -300,45 +299,28 @@ public class PageReference implements IPageReference {
         }
     }
 
+    private void addUsedMemory(long delta) {
+        if (delta != 0) {
+            bs.getBTreeGC().addUsedMemory(delta);
+        }
+    }
+
     private void addRemovedPage(long pos) {
         bs.getChunkManager().addRemovedPage(pos);
     }
 
-    private boolean isDirtyPage(Page oldPage, long oldMarkDirtyCount) {
-        // 如果page被split了，刷脏页时要标记为删除
-        if (isDataStructureChanged())
-            return true;
-        PageInfo pInfo = this.pInfo;
-        if (pInfo.page != oldPage)
-            return true;
-        if (pInfo.pos == 0 && pInfo.markDirtyCount != oldMarkDirtyCount)
-            return true;
-        return false;
-    }
-
-    // 刷完脏页后需要用新的位置更新，如果当前page不是oldPage了，那么把oldPage标记为删除
-    public void updatePage(long newPos, Page oldPage, PageInfo pInfoSaved) {
-        PageInfo pInfoOld = pInfoSaved;
-        // 两种情况需要删除当前page：1.当前page已经发生新的变动; 2.已经被标记为脏页
-        if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
-            addRemovedPage(newPos);
-            return;
-        }
+    // 刷完脏页后需要用新的位置更新
+    public void updatePage(long newPos, PageInfo pInfoOld) {
         PageInfo pInfoNew = pInfoOld.copy(newPos);
         pInfoNew.buff = null; // 废弃了
         if (replacePage(pInfoOld, pInfoNew)) {
             if (Page.ASSERT) {
                 checkPageInfo(pInfoNew);
             }
-            bs.getBTreeGC().addUsedMemory(-pInfoOld.getBuffMemory());
+            addUsedMemory(-pInfoOld.getBuffMemory());
         } else {
-            if (isDirtyPage(oldPage, pInfoSaved.markDirtyCount)) {
-                addRemovedPage(newPos);
-            } else {
-                if (Page.ASSERT) {
-                    checkPageInfo(pInfoNew);
-                }
-            }
+            // 当前page又被标记为脏页了，此时把写完的page标记为删除
+            addRemovedPage(newPos);
         }
     }
 
@@ -385,7 +367,7 @@ public class PageReference implements IPageReference {
                 if (Page.ASSERT) {
                     checkPageInfo(pInfoNew);
                 }
-                bs.getBTreeGC().addUsedMemory(-memory);
+                addUsedMemory(-memory);
                 if (gcType == 1)
                     return pInfoNew;
                 else
