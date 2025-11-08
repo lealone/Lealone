@@ -327,6 +327,8 @@ public class Chunk {
     }
 
     public void updateRemovedPages(HashSet<Long> removedPages) {
+        // 先删除旧removedPages的所有位置信息
+        fileStorage.truncate(fileStorage.size() - removedPageCount * 8);
         this.removedPages = removedPages;
         removedPageCount = removedPages.size();
         writeHeader();

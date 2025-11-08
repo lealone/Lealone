@@ -65,23 +65,21 @@ public class ChunkCompactor {
         ArrayList<Chunk> unusedChunks = new ArrayList<>();
         for (Chunk c : chunks) {
             c.sumOfLivePageLength = 0;
-            boolean unused = true;
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
                 if (!removedPages.contains(e.getKey())) {
                     c.sumOfLivePageLength += e.getValue();
-                    unused = false;
                 }
             }
-            if (unused)
+            if (c.sumOfLivePageLength == 0)
                 unusedChunks.add(c);
         }
         return unusedChunks;
     }
 
     private void removeUnusedChunks(List<Chunk> unusedChunks, HashSet<Long> removedPages) {
-        if (removedPages.isEmpty())
-            return;
         int size = removedPages.size();
+        if (size == 0)
+            return;
         for (Chunk c : unusedChunks) {
             chunkManager.removeUnusedChunk(c);
             removedPages.removeAll(c.pagePositionToLengthMap.keySet());
