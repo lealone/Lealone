@@ -12,7 +12,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.common.util.DataUtils;
-import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerThread;
@@ -35,8 +34,7 @@ public class Chunk {
      * written twice, one copy in each block, to ensure it survives a crash.
      */
     private static final int BLOCK_SIZE = 4 * 1024;
-    private static final int CHUNK_HEADER_BLOCKS = 2;
-    private static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
+    private static final int CHUNK_HEADER_SIZE = 2 * BLOCK_SIZE;
 
     public static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
@@ -60,11 +58,6 @@ public class Chunk {
      * The position of the root page.
      */
     public long rootPagePos;
-
-    /**
-     * The total number of blocks in this chunk, include chunk header(2 blocks).
-     */
-    public int blockCount;
 
     /**
      * The total number of pages in this chunk.
@@ -253,8 +246,6 @@ public class Chunk {
         // int id = DataUtils.readHexInt(map, "id", 0);
         rootPagePos = DataUtils.readHexLong(map, "rootPagePos", 0);
 
-        blockCount = DataUtils.readHexInt(map, "blockCount", 0);
-
         pageCount = DataUtils.readHexInt(map, "pageCount", 0);
         sumOfPageLength = DataUtils.readHexLong(map, "sumOfPageLength", 0);
 
@@ -281,8 +272,6 @@ public class Chunk {
         DataUtils.appendMap(buff, "id", id);
         DataUtils.appendMap(buff, "rootPagePos", rootPagePos);
 
-        DataUtils.appendMap(buff, "blockCount", blockCount);
-
         DataUtils.appendMap(buff, "pageCount", pageCount);
         DataUtils.appendMap(buff, "sumOfPageLength", sumOfPageLength);
 
@@ -298,26 +287,23 @@ public class Chunk {
         return buff;
     }
 
+    public void startAppend() {
+        // 如果是append模式，先删除旧的pagePositions和removedPages数据
+        if (fileStorage.size() > 0) {
+            // 因为新append的数据总会大于原有文件长度，所以直接设置size即可，无需调用truncate
+            fileStorage.setSize(pagePositionAndLengthOffset + CHUNK_HEADER_SIZE);
+        }
+    }
+
     public void write(DataBuffer body, boolean appendMode, ChunkManager chunkManager) {
         writePagePositions(body);
         writeRemovedPages(body, chunkManager);
 
-        ByteBuffer buffer = body.getAndFlipBuffer();
-        int blockCount = MathUtils.roundUpInt(buffer.limit(), BLOCK_SIZE) / BLOCK_SIZE;
-
-        long bodyPos;
-        if (appendMode) {
-            bodyPos = fileStorage.size();
-            this.blockCount += blockCount;
-        } else {
-            bodyPos = CHUNK_HEADER_SIZE;
-            this.blockCount = blockCount + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
-        }
-
         // chunk header
         writeHeader();
         // chunk body
-        fileStorage.writeFully(bodyPos, buffer);
+        long bodyPos = appendMode ? fileStorage.size() : CHUNK_HEADER_SIZE;
+        fileStorage.writeFully(bodyPos, body.getAndFlipBuffer());
 
         InternalScheduler scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
         if (scheduler != null && scheduler.isFsyncDisabled())

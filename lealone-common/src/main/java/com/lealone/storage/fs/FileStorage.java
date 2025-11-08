@@ -515,6 +515,10 @@ public class FileStorage {
         return fileSize;
     }
 
+    public void setSize(long size) {
+        fileSize = size;
+    }
+
     /**
      * Get the file instance in use.
      * <p>

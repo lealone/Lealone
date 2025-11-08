@@ -327,6 +327,7 @@ public class BTreeStorage {
                     && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
                 c = lastChunk;
                 appendMode = true;
+                c.startAppend();
             } else {
                 c = chunkManager.createChunk();
                 c.fileStorage = getFileStorage(c.fileName);
