@@ -6,6 +6,7 @@
 package com.lealone.storage.aose.btree.chunk;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -82,7 +83,12 @@ public class ChunkCompactor {
             return;
         for (Chunk c : unusedChunks) {
             chunkManager.removeUnusedChunk(c);
-            removedPages.removeAll(c.pagePositionToLengthMap.keySet());
+            Collection<Long> keys = c.pagePositionToLengthMap.keySet();
+            removedPages.removeAll(keys);
+            // LastChunk中的RemovedPages也要删除，否则RemovedPages对应的chunk找不到就抛出异常
+            if (chunkManager.getLastChunk() != null) {
+                chunkManager.getLastChunk().getRemovedPages().removeAll(keys);
+            }
         }
         if (size > removedPages.size()) {
             if (chunkManager.getLastChunk() != null) {
