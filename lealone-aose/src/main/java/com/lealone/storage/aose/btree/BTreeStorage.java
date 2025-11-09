@@ -38,6 +38,7 @@ public class BTreeStorage {
     private final String mapBaseDir;
 
     private final ChunkManager chunkManager;
+    private final ChunkCompactor chunkCompactor;
 
     private final int pageSize;
     private final int minFillRate;
@@ -83,6 +84,7 @@ public class BTreeStorage {
         this.maxChunkSize = maxChunkSize;
 
         chunkManager = new ChunkManager(this);
+        chunkCompactor = new ChunkCompactor(this, chunkManager);
         if (map.isInMemory()) {
             mapBaseDir = null;
             return;
@@ -140,6 +142,10 @@ public class BTreeStorage {
         return chunkManager;
     }
 
+    public ChunkCompactor getChunkCompactor() {
+        return chunkCompactor;
+    }
+
     public BTreeGC getBTreeGC() {
         return bgc;
     }
@@ -188,19 +194,6 @@ public class BTreeStorage {
         return e;
     }
 
-    // ChunkCompactor在重写chunk中的page时会用到
-    public void markDirtyLeafPage(long pos) {
-        Page p = map.getRootPage();
-        // 刚保存过然后接着被重写
-        if (p.getPos() == pos) {
-            p.getRef().markDirtyPage();
-            return;
-        }
-        Page leaf = readPage(null, pos).page;
-        Object key = leaf.getKey(0);
-        map.markDirty(key);
-    }
-
     public PageInfo readPage(PageReference ref, long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
@@ -217,6 +210,7 @@ public class BTreeStorage {
     }
 
     public PageInfo readPage(PageReference ref, long pos, ByteBuffer buff, int pageLength) {
+        DataUtils.checkNotNull(ref, "ref");
         int type = PageUtils.getPageType(pos);
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
@@ -228,8 +222,7 @@ public class BTreeStorage {
         PageInfo pInfo = new PageInfo(p, pos);
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
-        if (ref != null)
-            pInfo.setPageLock(ref.getLock());
+        pInfo.setPageLock(ref.getLock());
         return pInfo;
     }
 
@@ -305,16 +298,12 @@ public class BTreeStorage {
                     "This storage is read-only");
         }
         try {
-            executeSave(true, dirtyMemory);
             if (compact)
-                new ChunkCompactor(this, chunkManager).executeCompact();
+                chunkCompactor.executeCompact();
+            executeSave(true, dirtyMemory);
         } catch (IllegalStateException e) {
             throw panic(e);
         }
-    }
-
-    public synchronized void executeSave(boolean appendModeEnabled) {
-        executeSave(appendModeEnabled, map.collectDirtyMemory());
     }
 
     private synchronized void executeSave(boolean appendModeEnabled, long dirtyMemory) {
@@ -323,7 +312,7 @@ public class BTreeStorage {
         try {
             Chunk c;
             Chunk lastChunk = chunkManager.getLastChunk();
-            if (appendModeEnabled && lastChunk != null
+            if (appendModeEnabled && lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk)
                     && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
                 c = lastChunk;
                 appendMode = true;
@@ -338,6 +327,7 @@ public class BTreeStorage {
             PageInfo pInfo = map.getRootPageRef().getPageInfo();
             long pos = pInfo.page.write(pInfo, c, chunkBody);
             c.rootPagePos = pos;
+            chunkCompactor.clear(); // 提前做一些清理工作，比如删除不再使用的chunk
             c.write(chunkBody, appendMode, chunkManager);
             if (!appendMode) {
                 chunkManager.addChunk(c);

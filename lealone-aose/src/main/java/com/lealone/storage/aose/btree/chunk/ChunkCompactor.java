@@ -12,9 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 
-import com.lealone.common.exceptions.DbException;
 import com.lealone.storage.aose.btree.BTreeStorage;
-import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageUtils;
 
 /**
@@ -28,9 +26,28 @@ public class ChunkCompactor {
     private final BTreeStorage btreeStorage;
     private final ChunkManager chunkManager;
 
+    private List<Chunk> unusedChunks;
+    private HashSet<Long> rewritePages;
+
     public ChunkCompactor(BTreeStorage btreeStorage, ChunkManager chunkManager) {
         this.btreeStorage = btreeStorage;
         this.chunkManager = chunkManager;
+    }
+
+    public boolean isUnusedChunk(Chunk c) {
+        return unusedChunks != null && unusedChunks.contains(c);
+    }
+
+    public boolean isRewritePage(long pos) {
+        return rewritePages != null && rewritePages.contains(pos);
+    }
+
+    public void clear() {
+        if (unusedChunks != null) {
+            removeUnusedChunks(unusedChunks, null);
+            unusedChunks = null;
+        }
+        rewritePages = null;
     }
 
     public void executeCompact() {
@@ -49,7 +66,7 @@ public class ChunkCompactor {
         }
 
         // 看看哪些chunk中未被删除的page占比<=MinFillRate，然后重写它们到一个新的chunk中
-        rewrite(chunks, removedPages);
+        prepareRewrite(chunks, removedPages);
     }
 
     private List<Chunk> readChunks(HashSet<Long> removedPages) {
@@ -78,55 +95,34 @@ public class ChunkCompactor {
     }
 
     private void removeUnusedChunks(List<Chunk> unusedChunks, HashSet<Long> removedPages) {
-        int size = removedPages.size();
-        if (size == 0)
-            return;
         for (Chunk c : unusedChunks) {
             chunkManager.removeUnusedChunk(c);
             Collection<Long> keys = c.pagePositionToLengthMap.keySet();
-            removedPages.removeAll(keys);
+            if (removedPages != null)
+                removedPages.removeAll(keys);
             // LastChunk中的RemovedPages也要删除，否则RemovedPages对应的chunk找不到就抛出异常
             if (chunkManager.getLastChunk() != null) {
                 chunkManager.getLastChunk().getRemovedPages().removeAll(keys);
             }
         }
-        if (size > removedPages.size()) {
-            if (chunkManager.getLastChunk() != null) {
-                removedPages = chunkManager.getAllRemovedPages();
-                chunkManager.getLastChunk().updateRemovedPages(removedPages);
-            }
-        }
     }
 
-    private void rewrite(List<Chunk> chunks, HashSet<Long> removedPages) {
+    private void prepareRewrite(List<Chunk> chunks, HashSet<Long> removedPages) {
         // minFillRate <= 0时相当于禁用rewrite了，removedPages为空说明没有page被删除了
         if (btreeStorage.getMinFillRate() <= 0 || removedPages.isEmpty())
             return;
-
         List<Chunk> old = getRewritableChunks(chunks);
-        boolean saveIfNeeded = false;
+        if (old.isEmpty())
+            return;
+        unusedChunks = old;
+        rewritePages = new HashSet<>();
         for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
-                long pos = e.getKey();
+                Long pos = e.getKey();
                 if (!removedPages.contains(pos)) {
-                    if (PageUtils.isNodePage(pos)) {
-                        chunkManager.addRemovedPage(pos);
-                    } else {
-                        // 直接标记为脏页即可，不用更新元素
-                        btreeStorage.markDirtyLeafPage(pos);
-                        saveIfNeeded = true;
-                        if (Page.ASSERT) {
-                            if (!chunkManager.getRemovedPages().contains(pos)) {
-                                DbException.throwInternalError("not dirty: " + pos);
-                            }
-                        }
-                    }
+                    rewritePages.add(pos);
                 }
             }
-        }
-        if (saveIfNeeded) {
-            btreeStorage.executeSave(false);
-            removeUnusedChunks(old, removedPages);
         }
     }
 

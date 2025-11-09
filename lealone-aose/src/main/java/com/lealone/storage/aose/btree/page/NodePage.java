@@ -195,7 +195,15 @@ public class NodePage extends LocalPage {
                 long pos = p.write(pInfo, chunk, buff);
                 positions[i] = pos;
             } else {
-                positions[i] = pInfo.pos;
+                // 看看是否是需要重写的page
+                if (map.getBTreeStorage().getChunkCompactor().isRewritePage(pInfo.pos)) {
+                    map.getBTreeStorage().readPage(children[i], pInfo.pos);
+                    children[i].markDirtyPage();
+                    long pos = children[i].getPage().write(pInfo, chunk, buff);
+                    positions[i] = pos;
+                } else {
+                    positions[i] = pInfo.pos;
+                }
             }
         }
         int old = buff.position();
