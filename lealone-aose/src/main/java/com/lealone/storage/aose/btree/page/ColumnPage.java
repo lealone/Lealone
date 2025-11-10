@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.type.StorageDataType;
 
@@ -80,5 +81,12 @@ public class ColumnPage extends Page {
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
         return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true);
+    }
+
+    // 重写ColumnPage，只需要修改CheckValue即可
+    public static long rewrite(BTreeStorage bs, Chunk chunk, DataBuffer buff, long pos) {
+        ByteBuffer pageBuff = bs.readPageBuffer(pos);
+        int pageLength = pageBuff.limit();
+        return LeafPage.rewrite(chunk, buff, pageBuff, pageLength, 4, PageUtils.PAGE_TYPE_COLUMN);
     }
 }

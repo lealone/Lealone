@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.storage.aose.btree.BTreeMap;
-import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 
 public abstract class RowStorageLeafPage extends LeafPage {
@@ -83,16 +82,8 @@ public abstract class RowStorageLeafPage extends LeafPage {
         return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true);
     }
 
-    public static long rewrite(BTreeStorage bs, Chunk chunk, DataBuffer buff, long pos) {
-        Chunk c = bs.getChunkManager().getChunk(pos);
-        long filePos = Chunk.getFilePos(PageUtils.getPageOffset(pos));
-        int pageLength = c.getPageLength(pos);
-        ByteBuffer pageBuff = c.fileStorage.readFully(filePos, pageLength);
-        int start = buff.position();
-        int checkPos = start + 5;
-        buff.put(pageBuff);
-        writeCheckValue(buff, chunk, start, pageLength, checkPos);
-
-        return updateChunk(chunk, start, pageLength, PageUtils.PAGE_TYPE_LEAF);
+    // 重写所有的RowStorageLeafPage，只需要修改CheckValue即可
+    public static long rewrite(Chunk chunk, DataBuffer buff, ByteBuffer pageBuff, int pageLength) {
+        return LeafPage.rewrite(chunk, buff, pageBuff, pageLength, 5, PageUtils.PAGE_TYPE_LEAF);
     }
 }

@@ -202,7 +202,9 @@ public class NodePage extends LocalPage {
                     long pos;
                     if (PageUtils.isLeafPage(pInfo.pos)) {
                         // 如果是leaf page直接写原始数据，不需要把记录反序列化后读到内存
-                        pos = RowStorageLeafPage.rewrite(bs, chunk, buff, pInfo.pos);
+                        pos = LeafPage.rewrite(bs, chunk, buff, pInfo.pos);
+                        // 替换掉旧的pos并清除page，下一次重新读
+                        children[i].updatePage(pos, pInfo, true);
                     } else {
                         bs.readPage(children[i], pInfo.pos);
                         children[i].markDirtyPage();

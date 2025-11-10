@@ -282,6 +282,9 @@ public class PageReference implements IPageReference {
                     addRemovedPage(pInfoOld.getPos());
                     addUsedMemory(-pInfoOld.getBuffMemory());
                 }
+                if (pInfoNew.page instanceof ColumnStorageLeafPage) {
+                    ((ColumnStorageLeafPage) pInfoNew.page).markAllColumnPagesDirty();
+                }
                 return 0;
             } else if (getPageInfo().getPos() != 0) { // 刷脏页线程刚写完，需要重试
                 continue;
@@ -311,8 +314,15 @@ public class PageReference implements IPageReference {
 
     // 刷完脏页后需要用新的位置更新
     public void updatePage(long newPos, PageInfo pInfoOld) {
+        updatePage(newPos, pInfoOld, false);
+    }
+
+    // 重写page后会把clearPage设为true来调用
+    public void updatePage(long newPos, PageInfo pInfoOld, boolean clearPage) {
         PageInfo pInfoNew = pInfoOld.copy(newPos);
         pInfoNew.buff = null; // 废弃了
+        if (clearPage)
+            pInfoNew.page = null;
         if (replacePage(pInfoOld, pInfoNew)) {
             if (Page.ASSERT) {
                 checkPageInfo(pInfoNew);

@@ -194,7 +194,7 @@ public class BTreeStorage {
         return e;
     }
 
-    public PageInfo readPage(PageReference ref, long pos) {
+    public ByteBuffer readPageBuffer(long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
@@ -205,8 +205,13 @@ public class BTreeStorage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
-        ByteBuffer buff = c.fileStorage.readFully(filePos, pageLength);
-        return readPage(ref, pos, buff, pageLength);
+        return c.fileStorage.readFully(filePos, pageLength);
+    }
+
+    public PageInfo readPage(PageReference ref, long pos) {
+        ByteBuffer pageBuff = readPageBuffer(pos);
+        int pageLength = pageBuff.limit();
+        return readPage(ref, pos, pageBuff, pageLength);
     }
 
     public PageInfo readPage(PageReference ref, long pos, ByteBuffer buff, int pageLength) {
