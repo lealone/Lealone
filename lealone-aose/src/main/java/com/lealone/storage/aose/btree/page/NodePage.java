@@ -11,6 +11,7 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.storage.aose.btree.BTreeGC;
 import com.lealone.storage.aose.btree.BTreeMap;
+import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.page.PageOperations.TmpNodePage;
 
@@ -187,6 +188,7 @@ public class NodePage extends LocalPage {
     }
 
     private void writeChildren(Chunk chunk, DataBuffer buff, int patch) {
+        BTreeStorage bs = map.getBTreeStorage();
         long[] positions = new long[children.length];
         for (int i = 0, len = children.length; i < len; i++) {
             PageInfo pInfo = children[i].getPageInfo();
@@ -196,10 +198,16 @@ public class NodePage extends LocalPage {
                 positions[i] = pos;
             } else {
                 // 看看是否是需要重写的page
-                if (map.getBTreeStorage().getChunkCompactor().isRewritePage(pInfo.pos)) {
-                    map.getBTreeStorage().readPage(children[i], pInfo.pos);
-                    children[i].markDirtyPage();
-                    long pos = children[i].getPage().write(pInfo, chunk, buff);
+                if (bs.getChunkCompactor().isRewritePage(pInfo.pos)) {
+                    long pos;
+                    if (PageUtils.isLeafPage(pInfo.pos)) {
+                        // 如果是leaf page直接写原始数据，不需要把记录反序列化后读到内存
+                        pos = RowStorageLeafPage.rewrite(bs, chunk, buff, pInfo.pos);
+                    } else {
+                        bs.readPage(children[i], pInfo.pos);
+                        children[i].markDirtyPage();
+                        pos = children[i].getPage().write(pInfo, chunk, buff);
+                    }
                     positions[i] = pos;
                 } else {
                     positions[i] = pInfo.pos;

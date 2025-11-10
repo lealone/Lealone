@@ -352,6 +352,13 @@ public class Page {
 
     long updateChunkAndPage(PageInfo pInfoOld, Chunk chunk, int start, int pageLength, int type,
             boolean updatePage) {
+        long pos = updateChunk(chunk, start, pageLength, type);
+        if (updatePage)
+            ref.updatePage(pos, pInfoOld);
+        return pos;
+    }
+
+    static long updateChunk(Chunk chunk, int start, int pageLength, int type) {
         long pos = PageUtils.getPagePos(chunk.id, chunk.getOffset() + start, type);
         chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
@@ -361,8 +368,6 @@ public class Page {
                     "Chunk too large, max size: {0}, current size: {1}", Chunk.MAX_SIZE,
                     chunk.sumOfPageLength);
         }
-        if (updatePage)
-            ref.updatePage(pos, pInfoOld);
         return pos;
     }
 }
