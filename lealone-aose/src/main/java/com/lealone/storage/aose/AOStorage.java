@@ -47,7 +47,7 @@ public class AOStorage extends StorageBase {
 
     @Override
     protected InputStream getInputStream(String mapName, FilePath file) {
-        return openBTreeMap(mapName).getInputStream(file);
+        return openBTreeMap(mapName).getBTreeStorage().getChunkManager().getChunkInputStream(file);
     }
 
     @Override

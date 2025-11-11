@@ -6,7 +6,6 @@
 package com.lealone.storage.aose.btree;
 
 import java.io.File;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 import com.lealone.common.compress.CompressDeflate;
@@ -25,7 +24,6 @@ import com.lealone.storage.aose.btree.page.Page;
 import com.lealone.storage.aose.btree.page.PageInfo;
 import com.lealone.storage.aose.btree.page.PageReference;
 import com.lealone.storage.aose.btree.page.PageUtils;
-import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.fs.FileUtils;
 
@@ -184,6 +182,14 @@ public class BTreeStorage {
         return bgc.getUsedMemory();
     }
 
+    private FileStorage getFileStorage(String chunkFileName) {
+        return FileStorage.open(mapBaseDir + File.separator + chunkFileName, map.getConfig());
+    }
+
+    public FileStorage getFileStorage(int chunkId) {
+        return getFileStorage(chunkManager.getChunkFileName(chunkId));
+    }
+
     public IllegalStateException panic(int errorCode, String message, Object... arguments) {
         IllegalStateException e = DataUtils.newIllegalStateException(errorCode, message, arguments);
         return panic(e);
@@ -311,48 +317,31 @@ public class BTreeStorage {
         }
     }
 
-    private synchronized void executeSave(boolean appendModeEnabled, long dirtyMemory) {
+    private void executeSave(boolean appendModeEnabled, long dirtyMemory) {
         DataBuffer chunkBody = DataBuffer.createDirect((int) dirtyMemory);
         boolean appendMode = false;
-        try {
-            Chunk c;
-            Chunk lastChunk = chunkManager.getLastChunk();
-            if (appendModeEnabled && lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk)
-                    && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
-                c = lastChunk;
-                appendMode = true;
-                c.startAppend();
-            } else {
-                c = chunkManager.createChunk();
-                c.fileStorage = getFileStorage(c.fileName);
-            }
-            c.mapSize = map.size();
-            c.mapMaxKey = map.getMaxKey();
-
-            PageInfo pInfo = map.getRootPageRef().getPageInfo();
-            long pos = pInfo.page.write(pInfo, c, chunkBody);
-            c.rootPagePos = pos;
-            chunkCompactor.clear(); // 提前做一些清理工作，比如删除不再使用的chunk
-            c.write(chunkBody, appendMode, chunkManager);
-            if (!appendMode) {
-                chunkManager.addChunk(c);
-                chunkManager.setLastChunk(c);
-            }
-        } catch (IllegalStateException e) {
-            throw panic(e);
+        Chunk c;
+        Chunk lastChunk = chunkManager.getLastChunk();
+        if (appendModeEnabled && lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk)
+                && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
+            c = lastChunk;
+            appendMode = true;
+            c.startAppend();
+        } else {
+            c = chunkManager.createChunk();
+            c.fileStorage = getFileStorage(c.fileName);
         }
-    }
+        c.mapSize = map.size();
+        c.mapMaxKey = map.getMaxKey();
 
-    public FileStorage getFileStorage(int chunkId) {
-        return getFileStorage(chunkManager.getChunkFileName(chunkId));
-    }
-
-    private FileStorage getFileStorage(String chunkFileName) {
-        chunkFileName = mapBaseDir + File.separator + chunkFileName;
-        return FileStorage.open(chunkFileName, map.getConfig());
-    }
-
-    InputStream getInputStream(FilePath file) {
-        return chunkManager.getChunkInputStream(file);
+        PageInfo pInfo = map.getRootPageRef().getPageInfo();
+        long pos = pInfo.page.write(pInfo, c, chunkBody);
+        c.rootPagePos = pos;
+        chunkCompactor.clear(); // 提前做一些清理工作，比如删除不再使用的chunk
+        c.write(chunkBody, appendMode, chunkManager);
+        if (!appendMode) {
+            chunkManager.addChunk(c);
+            chunkManager.setLastChunk(c);
+        }
     }
 }
