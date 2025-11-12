@@ -47,7 +47,7 @@ public class Chunk {
 
     public static final int MAX_SIZE = Integer.MAX_VALUE - CHUNK_HEADER_SIZE;
 
-    private static final int FORMAT_VERSION = 1;
+    private static final int FORMAT_VERSION = 2;
 
     /**
      * The chunk id.
@@ -79,6 +79,7 @@ public class Chunk {
     public String fileName;
     public long mapSize;
     public Long mapMaxKey; // 从FORMAT_VERSION=2时新增
+    public int formatVersion = FORMAT_VERSION;
 
     private int removedPageOffset;
     private int removedPageCount;
@@ -255,12 +256,13 @@ public class Chunk {
         if (map.containsKey("mapMaxKey"))
             mapMaxKey = DataUtils.readHexLong(map, "mapMaxKey", 0);
 
-        long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
+        int format = DataUtils.readHexInt(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
                     "The chunk format {0} is larger than the supported format {1}", format,
                     FORMAT_VERSION);
         }
+        formatVersion = format;
 
         removedPageOffset = DataUtils.readHexInt(map, "removedPageOffset", 0);
         removedPageCount = DataUtils.readHexInt(map, "removedPageCount", 0);
@@ -280,7 +282,7 @@ public class Chunk {
         DataUtils.appendMap(buff, "blockSize", BLOCK_SIZE);
         DataUtils.appendMap(buff, "mapSize", mapSize);
         DataUtils.appendMap(buff, "mapMaxKey", mapMaxKey);
-        DataUtils.appendMap(buff, "format", FORMAT_VERSION);
+        DataUtils.appendMap(buff, "format", formatVersion);
 
         DataUtils.appendMap(buff, "removedPageOffset", removedPageOffset);
         DataUtils.appendMap(buff, "removedPageCount", removedPageCount);

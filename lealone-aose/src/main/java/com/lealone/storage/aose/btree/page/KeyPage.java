@@ -36,23 +36,27 @@ public class KeyPage extends RowStorageLeafPage {
     }
 
     @Override
-    protected void readValues(ByteBuffer buff, int keyLength) {
-        // 兼容老版本
-        for (int i = 0; i < keyLength; i++) {
-            buff.get();
-            buff.get();
-            buff.get();
+    protected void readValues(ByteBuffer buff, int keyLength, int formatVersion) {
+        if (formatVersion < 2) {
+            // 兼容老版本
+            for (int i = 0; i < keyLength; i++) {
+                buff.get();
+                buff.get();
+                buff.get();
+            }
         }
         setPageListener(map.getValueType(), keys);
     }
 
     @Override
-    protected void writeValues(DataBuffer buff, int keyLength) {
-        // 兼容老版本
-        for (int i = 0; i < keyLength; i++) {
-            buff.put((byte) 0);
-            buff.put((byte) 0);
-            buff.put((byte) 0);
+    protected void writeValues(DataBuffer buff, int keyLength, int formatVersion) {
+        if (formatVersion < 2) {
+            // 兼容老版本
+            for (int i = 0; i < keyLength; i++) {
+                buff.put((byte) 0);
+                buff.put((byte) 0);
+                buff.put((byte) 0);
+            }
         }
     }
 

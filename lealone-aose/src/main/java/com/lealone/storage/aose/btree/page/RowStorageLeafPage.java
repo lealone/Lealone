@@ -33,7 +33,7 @@ public abstract class RowStorageLeafPage extends LeafPage {
         return getValues()[index];
     }
 
-    protected abstract void readValues(ByteBuffer buff, int keyLength);
+    protected abstract void readValues(ByteBuffer buff, int keyLength, int formatVersion);
 
     @Override
     public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
@@ -49,12 +49,13 @@ public abstract class RowStorageLeafPage extends LeafPage {
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
-        readValues(buff, keyLength);
+        readValues(buff, keyLength,
+                map.getBTreeStorage().getChunkManager().getChunk(chunkId).formatVersion);
         buff.getInt(); // replicationHostIds
         recalculateMemory();
     }
 
-    protected abstract void writeValues(DataBuffer buff, int keyLength);
+    protected abstract void writeValues(DataBuffer buff, int keyLength, int formatVersion);
 
     @Override
     public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
@@ -70,7 +71,7 @@ public abstract class RowStorageLeafPage extends LeafPage {
         buff.put((byte) type);
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength);
-        writeValues(buff, keyLength);
+        writeValues(buff, keyLength, chunk.formatVersion);
         buff.putInt(0); // replicationHostIds
 
         compressPage(buff, compressStart, type, typePos);

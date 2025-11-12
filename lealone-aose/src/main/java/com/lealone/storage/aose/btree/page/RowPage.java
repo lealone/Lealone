@@ -47,13 +47,13 @@ public class RowPage extends RowStorageLeafPage {
     }
 
     @Override
-    protected void readValues(ByteBuffer buff, int keyLength) {
+    protected void readValues(ByteBuffer buff, int keyLength, int formatVersion) {
         map.getValueType().read(buff, keys, keyLength);
         setPageListener(map.getValueType(), keys);
     }
 
     @Override
-    protected void writeValues(DataBuffer buff, int keyLength) {
+    protected void writeValues(DataBuffer buff, int keyLength, int formatVersion) {
         StorageDataType type = map.getValueType();
         for (int i = 0; i < keyLength; i++) {
             type.write(buff, keys[i]);
