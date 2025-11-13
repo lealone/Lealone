@@ -108,6 +108,13 @@ public class PageReference implements IPageReference {
         bs.getMap().remove(this, key);
     }
 
+    @Override
+    public void addPageUsedMemory(int delta) {
+        Page p = pInfo.getPage();
+        if (p != null)
+            p.addMemory(delta);
+    }
+
     public boolean isDataStructureChanged() {
         return pInfo.isDataStructureChanged();
     }

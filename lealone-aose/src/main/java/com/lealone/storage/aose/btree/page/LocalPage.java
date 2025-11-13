@@ -120,7 +120,8 @@ public abstract class LocalPage extends Page {
         return memory;
     }
 
-    protected void addMemory(int mem) {
+    @Override
+    public void addMemory(int mem) {
         addMemory(mem, true);
     }
 

@@ -54,6 +54,11 @@ public class IndexKeyType extends StandardDataType {
     }
 
     @Override
+    public int getColumnsMemory(Object obj) {
+        return RowType.getColumnsMemory((Value[]) obj);
+    }
+
+    @Override
     public Object read(ByteBuffer buff) {
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         Value[] columns = a.getList();

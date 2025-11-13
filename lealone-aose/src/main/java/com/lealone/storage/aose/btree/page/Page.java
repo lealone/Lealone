@@ -256,6 +256,9 @@ public class Page {
         return 0;
     }
 
+    public void addMemory(int mem) {
+    }
+
     /**
      * Create a copy of this page.
      *

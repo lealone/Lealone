@@ -27,6 +27,7 @@ import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.fs.FileStorage;
+import com.lealone.storage.page.IPageReference;
 import com.lealone.transaction.TransactionEngine.GcTask;
 import com.lealone.transaction.aote.TransactionalValue.OldValue;
 import com.lealone.transaction.aote.log.RedoLogRecord;
@@ -223,7 +224,12 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     private void removeTValue(StorageMap<?, ?> map, ConcurrentHashMap<Lockable, Object> tValues,
             Lockable lockable, OldValue oldValue) {
         if (lockable.getLockedValue() == null) {
-            lockable.getPageListener().getPageReference().remove(oldValue.key);
+            IPageReference ref = lockable.getPageListener().getPageReference();
+            // 删除记录时会把lockable中的列置null，这里需要减去所有列占用的内存
+            int memory = map.getValueType().getColumnsMemory(oldValue.value);
+            if (memory != 0)
+                ref.addPageUsedMemory(-memory);
+            ref.remove(oldValue.key);
         }
         tValues.remove(lockable, oldValue); // 如果不是原来的就不删除
     }

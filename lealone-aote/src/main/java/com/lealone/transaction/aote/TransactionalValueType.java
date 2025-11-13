@@ -43,6 +43,11 @@ public class TransactionalValueType implements StorageDataType {
     }
 
     @Override
+    public int getColumnsMemory(Object obj) {
+        return valueType.getColumnsMemory(obj);
+    }
+
+    @Override
     public int compare(Object aObj, Object bObj) {
         if (aObj == bObj) {
             return 0;

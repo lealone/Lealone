@@ -833,16 +833,18 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     public void unlockLast() {
-        if (!locks.isEmpty()) {
-            Lock lock = locks.remove(locks.size() - 1);
+        int size = locks.size();
+        if (size > 0) {
+            Lock lock = locks.remove(size - 1);
             lock.unlock(this, true, null);
         }
     }
 
     private void unlockAll(boolean succeeded) {
-        if (!locks.isEmpty()) {
+        int size = locks.size();
+        if (size > 0) {
             // don't use the enhanced for loop to save memory
-            for (int i = 0, size = locks.size(); i < size; i++) {
+            for (int i = 0; i < size; i++) {
                 Lock lock = locks.get(i);
                 lock.unlock(this, succeeded, null);
             }

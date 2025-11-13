@@ -51,6 +51,10 @@ public interface StorageDataType extends ValueDataType {
         return getMemory(obj);
     }
 
+    default int getColumnsMemory(Object obj) {
+        return 0;
+    }
+
     default Object convertToIndexKey(Object key, Object value) {
         return null;
     }

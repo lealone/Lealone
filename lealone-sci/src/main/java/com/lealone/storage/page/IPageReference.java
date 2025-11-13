@@ -18,4 +18,6 @@ public interface IPageReference {
 
     void remove(Object key);
 
+    void addPageUsedMemory(int delta);
+
 }

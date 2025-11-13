@@ -241,9 +241,6 @@ public interface StorageMap<K, V> {
         return 0;
     }
 
-    default void addUsedMemory(long delta) {
-    }
-
     //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////
 
     default void get(K key, AsyncResultHandler<V> handler) {

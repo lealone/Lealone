@@ -110,6 +110,13 @@ public class TransactionalValue extends LockableBase {
         return lock != null ? lock.getOldValue() : null;
     }
 
+    private static Object maybeDeleted(Lockable lockable) {
+        if (lockable.getLockedValue() == null)
+            return null; // 已经删除
+        else
+            return lockable.getValue();
+    }
+
     public static Object getValue(Lockable lockable, AOTransaction transaction, StorageMap<?, ?> map) {
         // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
         int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
@@ -123,20 +130,14 @@ public class TransactionalValue extends LockableBase {
             t = null;
         } else {
             if (lock.isPageLock() && isolationLevel < Transaction.IL_REPEATABLE_READ) {
-                if (lockable.getLockedValue() == null)
-                    return null; // 已经删除
-                else
-                    return lockable.getValue();
+                return maybeDeleted(lockable);
             }
             // 先拿到LockOwner再用它获取信息，否则会产生并发问题
             lockOwner = lock.getLockOwner();
             t = (AOTransaction) lockOwner.getTransaction();
             // 如果拥有锁的事务是当前事务或当前事务的父事务，直接返回当前值
             if (t != null && (t == transaction || t == transaction.getParentTransaction())) {
-                if (lockable.getLockedValue() == null)
-                    return null; // 已经删除
-                else
-                    return lockable.getValue();
+                return maybeDeleted(lockable);
             }
         }
         switch (isolationLevel) {
@@ -163,10 +164,11 @@ public class TransactionalValue extends LockableBase {
             OldValue oldValue = (OldValue) oldValueCache.get(lockable);
             if (oldValue != null) {
                 if (tid >= oldValue.tid) {
-                    if (t != null && lockOwner.getOldValue() != null)
+                    if (t != null && lockOwner.getOldValue() != null) {
                         return lockable.copy(lockOwner.getOldValue(), lock);
-                    else
-                        return lockable.getValue();
+                    } else {
+                        return maybeDeleted(lockable);
+                    }
                 }
                 while (oldValue != null) {
                     if (tid >= oldValue.tid)

@@ -14,7 +14,6 @@ import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueString;
 import com.lealone.storage.StorageMap;
-import com.lealone.storage.page.IPageReference;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.TransactionalValue;
 
@@ -49,9 +48,9 @@ public abstract class UndoLogRecord {
     protected abstract void commitUpdate();
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public IPageReference commit(AOTransactionEngine te, IPageReference last) {
+    public void commit(AOTransactionEngine te) {
         if (ignore())
-            return null;
+            return;
 
         if (oldValue == null) { // insert
             TransactionalValue.commit(true, map, key, lockable);
@@ -65,12 +64,6 @@ public abstract class UndoLogRecord {
         } else { // update
             commitUpdate();
         }
-        // 标记脏页
-        // IPageReference ref = lockable.getPageListener().getPageReference();
-        // if (ref != last) // 避免反复标记
-        // ref.markDirtyPage(lockable.getPageListener());
-        // return ref;
-        return null;
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
@@ -117,13 +110,10 @@ public abstract class UndoLogRecord {
 
         @Override
         protected void commitUpdate() {
-            Object newValue = lockable.getLockedValue();
-            lockable.setLockedValue(oldValue);
-            int memory = map.getValueType().getMemory(lockable);
-            lockable.setLockedValue(newValue);
-            memory = map.getValueType().getMemory(lockable) - memory;
+            int memory = map.getValueType().getColumnsMemory(lockable.getLockedValue())
+                    - map.getValueType().getColumnsMemory(oldValue);
             if (memory != 0)
-                map.addUsedMemory(memory);
+                lockable.getPageListener().getPageReference().addPageUsedMemory(memory);
 
             TransactionalValue.commit(false, map, key, lockable);
         }

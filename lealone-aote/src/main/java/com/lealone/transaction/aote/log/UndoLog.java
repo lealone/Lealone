@@ -8,7 +8,6 @@ package com.lealone.transaction.aote.log;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
-import com.lealone.storage.page.IPageReference;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.log.UndoLogRecord.KeyOnlyULR;
 import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
@@ -74,10 +73,9 @@ public class UndoLog {
     }
 
     public int commit(AOTransactionEngine te) {
-        IPageReference last = null;
         UndoLogRecord r = first;
         while (r != null) {
-            last = r.commit(te, last);
+            r.commit(te);
             r = r.next;
         }
         return logId;
