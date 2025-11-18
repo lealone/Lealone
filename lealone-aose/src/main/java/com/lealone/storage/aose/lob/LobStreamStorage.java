@@ -73,7 +73,7 @@ public class LobStreamStorage implements LobStorage, com.lealone.transaction.Tra
     @Override
     public void save() {
         if (lobMap != null) {
-            lobMap.save();
+            lobMap.save(true);
             lobStreamMap.save();
         }
     }

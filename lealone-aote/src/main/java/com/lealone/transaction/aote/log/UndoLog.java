@@ -5,6 +5,9 @@
  */
 package com.lealone.transaction.aote.log;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
@@ -14,6 +17,8 @@ import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
 
 // 只有一个线程访问
 public class UndoLog {
+
+    private final ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     private int logId;
     private UndoLogRecord first;// 指向最早加进来的，执行commit时从first开始遍历
@@ -39,7 +44,12 @@ public class UndoLog {
         return logId != 0;
     }
 
+    public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+        return maps;
+    }
+
     public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
+        maps.put(map, map);
         if (map.getKeyType().isKeyOnly())
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
         else
@@ -88,11 +98,16 @@ public class UndoLog {
         }
     }
 
-    public void toRedoLogRecordBuffer(DataBuffer buffer) {
+    public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
+            Map<String, StorageMap<?, ?>> maps) {
+        int len = 0;
         UndoLogRecord r = first;
         while (r != null) {
-            r.writeForRedo(buffer);
+            if (r.map.isClosed() || r.map.isInMemory())
+                this.maps.remove(r.map);
+            len += r.writeForRedo(logs, maps);
             r = r.next;
         }
+        return len;
     }
 }

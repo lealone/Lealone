@@ -46,7 +46,7 @@ public class LobStreamMap {
     }
 
     public void save() {
-        map.save();
+        map.save(true);
     }
 
     public void gc() {

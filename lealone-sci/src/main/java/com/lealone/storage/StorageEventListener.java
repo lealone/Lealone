@@ -7,10 +7,11 @@ package com.lealone.storage;
 
 public interface StorageEventListener {
 
-    void beforeClose(Storage storage);
+    default void beforeClose(Storage storage) {
+    }
 
     // void beforeDrop(Storage storage);
 
-    void afterStorageMapOpen(StorageMap<?, ?> map);
-
+    default void afterStorageMapOpen(StorageMap<?, ?> map) {
+    }
 }

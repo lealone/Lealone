@@ -58,9 +58,6 @@ public interface TransactionEngine extends PluggableEngine {
         return null;
     }
 
-    default void fullGc(int schedulerId) {
-    }
-
     default void addGcTask(GcTask gcTask) {
     }
 

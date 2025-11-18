@@ -186,15 +186,6 @@ public abstract class SchedulerBase implements Scheduler {
         }
     }
 
-    protected DataBuffer logBuffer;
-
-    @Override
-    public DataBuffer getLogBuffer() {
-        if (logBuffer == null)
-            logBuffer = DataBuffer.createDirect();
-        return logBuffer;
-    }
-
     protected NetBuffer inputBuffer;
 
     @Override

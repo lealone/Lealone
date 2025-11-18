@@ -5,6 +5,7 @@
  */
 package com.lealone.storage.aose.btree;
 
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -109,7 +110,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         btreeStorage = new BTreeStorage(this);
         rootRef = new RootPageReference(btreeStorage);
         Chunk lastChunk = btreeStorage.getChunkManager().getLastChunk();
-        if (lastChunk != null) {
+        if (lastChunk != null && lastChunk.rootPagePos != 0) {
             size.set(lastChunk.mapSize);
             rootRef.getPageInfo().pos = lastChunk.rootPagePos;
             Page root = rootRef.getOrReadPage();
@@ -384,10 +385,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void save(long dirtyMemory) {
+        save(true, false, dirtyMemory);
+    }
+
+    public void save(boolean appendModeEnabled) {
+        save(true, appendModeEnabled, collectDirtyMemory());
+    }
+
+    public void save(boolean compact, boolean appendModeEnabled, long dirtyMemory) {
         if (!inMemory) {
             lock.lock();
             try {
-                btreeStorage.save(dirtyMemory);
+                btreeStorage.save(compact, appendModeEnabled, dirtyMemory);
             } finally {
                 lock.unlock();
             }
@@ -422,7 +431,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (lock.tryLock()) {
                 try {
                     if (save)
-                        btreeStorage.save(false, collectDirtyMemory());
+                        btreeStorage.save(false, false, collectDirtyMemory());
                     btreeStorage.getBTreeGC().fullGc();
                 } finally {
                     lock.unlock();
@@ -684,5 +693,26 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             scheduler.handlePageOperation(po);
             return null;
         }
+    }
+
+    @Override
+    public void writeRedoLog(ByteBuffer log) {
+        lock.lock();
+        try {
+            if (!isClosed())
+                btreeStorage.writeRedoLog(log);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public ByteBuffer readRedoLog() {
+        return btreeStorage.readRedoLog();
+    }
+
+    @Override
+    public void sync() {
+        btreeStorage.sync();
     }
 }

@@ -5,6 +5,7 @@
  */
 package com.lealone.storage;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.db.async.AsyncResultHandler;
@@ -295,5 +296,17 @@ public interface StorageMap<K, V> {
 
     default ConcurrentHashMap<Lockable, Object> getOldValueCache() {
         return null;
+    }
+
+    //////////////////// 以下是RedoLog相关API ////////////////////////////////
+
+    default void writeRedoLog(ByteBuffer log) {
+    }
+
+    default ByteBuffer readRedoLog() {
+        return null;
+    }
+
+    default void sync() {
     }
 }

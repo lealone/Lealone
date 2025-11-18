@@ -78,7 +78,8 @@ public abstract class UndoLogRecord {
         }
     }
 
-    public abstract void writeForRedo(DataBuffer buff);
+    public abstract int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
+            Map<String, StorageMap<?, ?>> maps);
 
     public static class KeyOnlyULR extends UndoLogRecord {
 
@@ -92,15 +93,17 @@ public abstract class UndoLogRecord {
         }
 
         @Override
-        public void writeForRedo(DataBuffer buff) {
+        public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
+                Map<String, StorageMap<?, ?>> maps) {
             // 直接结束了
             // 比如索引不用写redo log
+            return 0;
         }
     }
 
     public static class KeyValueULR extends UndoLogRecord {
 
-        // 使用LazyRedoLogRecord时需要用它，不能直接使用lockable.getValue()，因为会变动
+        // 写redo log时需要用它，不能直接使用lockable.getValue()，因为会变动
         private final Object newValue;
 
         public KeyValueULR(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
@@ -118,27 +121,32 @@ public abstract class UndoLogRecord {
             TransactionalValue.commit(false, map, key, lockable);
         }
 
-        @Override
-        public void writeForRedo(DataBuffer buff) { // 写redo时，不关心oldValue
-            if (ignore())
-                return;
+        @Override // 写redo log时，不关心oldValue
+        public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
+                Map<String, StorageMap<?, ?>> maps) {
+            if (ignore() || map.isInMemory() || !maps.containsKey(map.getName()))
+                return 0;
 
-            ValueString.type.write(buff, map.getName());
-            int keyValueLengthStartPos = buff.position();
-            buff.putInt(0);
-
-            map.getKeyType().write(buff, key);
-            if (newValue == null)
-                buff.put((byte) 0);
-            else {
-                buff.put((byte) 1);
-                // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-                map.getValueType().getRawType().write(buff, newValue, lockable);
+            DataBuffer log = logs.get(map);
+            if (log == null) {
+                log = DataBuffer.createHeap();
+                logs.put(map, log);
             }
-            buff.putInt(keyValueLengthStartPos, buff.position() - keyValueLengthStartPos - 4);
+            int pos = log.position();
+            if (newValue == null) {
+                log.put((byte) 0);
+                map.getKeyType().write(log, key);
+            } else {
+                log.put((byte) 1);
+                map.getKeyType().write(log, key);
+                // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
+                map.getValueType().getRawType().write(log, newValue, lockable);
+            }
+            return log.position() - pos;
         }
     }
 
+    // 兼容老版本的redo log
     public static void readForRedo(ByteBuffer buff, Map<String, List<ByteBuffer>> pendingRedoLog) {
         while (buff.hasRemaining()) {
             // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组

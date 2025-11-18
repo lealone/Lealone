@@ -8,7 +8,6 @@ package com.lealone.db.scheduler;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.page.PageOperation;
 import com.lealone.transaction.PendingTransaction;
 
@@ -32,14 +31,6 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
     void addPendingTransaction(PendingTransaction pt);
 
     PendingTransaction getPendingTransaction();
-
-    void setFsyncDisabled(boolean fsyncDisabled);
-
-    boolean isFsyncDisabled();
-
-    void setFsyncingFileStorage(FileStorage fsyncingFileStorage);
-
-    FileStorage getFsyncingFileStorage();
 
     void handlePageOperation(PageOperation po);
 

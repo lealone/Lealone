@@ -289,18 +289,18 @@ public class BTreeStorage {
     }
 
     void save() {
-        save(true, map.collectDirtyMemory());
+        save(true, false, map.collectDirtyMemory());
     }
 
     void save(long dirtyMemory) {
-        save(true, dirtyMemory);
+        save(true, false, dirtyMemory);
     }
 
     /**
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
      */
-    synchronized void save(boolean compact, long dirtyMemory) {
+    synchronized void save(boolean compact, boolean appendModeEnabled, long dirtyMemory) {
         if (!map.hasUnsavedChanges() || closed || map.isInMemory()) {
             return;
         }
@@ -311,7 +311,7 @@ public class BTreeStorage {
         try {
             if (compact)
                 chunkCompactor.executeCompact();
-            executeSave(true, dirtyMemory);
+            executeSave(appendModeEnabled, dirtyMemory);
         } catch (IllegalStateException e) {
             throw panic(e);
         }
@@ -322,11 +322,11 @@ public class BTreeStorage {
         boolean appendMode = false;
         Chunk c;
         Chunk lastChunk = chunkManager.getLastChunk();
-        if (appendModeEnabled && lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk)
+        boolean isLastChunkUsed = lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk);
+        if (appendModeEnabled && isLastChunkUsed
                 && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
             c = lastChunk;
             appendMode = true;
-            c.startAppend();
         } else {
             c = chunkManager.createChunk();
             c.fileStorage = getFileStorage(c.fileName);
@@ -338,10 +338,39 @@ public class BTreeStorage {
         long pos = pInfo.page.write(pInfo, c, chunkBody);
         c.rootPagePos = pos;
         chunkCompactor.clear(); // 提前做一些清理工作，比如删除不再使用的chunk
-        c.write(chunkBody, appendMode, chunkManager);
+        c.write(map, chunkBody, appendMode, chunkManager);
         if (!appendMode) {
             chunkManager.addChunk(c);
             chunkManager.setLastChunk(c);
+            if (isLastChunkUsed) {
+                lastChunk.removeRedoLogAndRemovedPages(map);
+            }
         }
+    }
+
+    synchronized void writeRedoLog(ByteBuffer log) {
+        Chunk c = chunkManager.getLastChunk();
+        if (c == null) {
+            c = chunkManager.createChunk();
+            c.fileStorage = getFileStorage(c.fileName);
+            chunkManager.addChunk(c);
+            chunkManager.setLastChunk(c);
+        }
+        c.mapMaxKey = map.getMaxKey();
+        c.writeRedoLog(log);
+    }
+
+    synchronized ByteBuffer readRedoLog() {
+        Chunk c = chunkManager.getLastChunk();
+        if (c == null)
+            return null;
+        else
+            return c.readRedoLog();
+    }
+
+    synchronized void sync() {
+        Chunk c = chunkManager.getLastChunk();
+        if (c != null)
+            c.fileStorage.sync();
     }
 }

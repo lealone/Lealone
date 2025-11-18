@@ -27,7 +27,6 @@ import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
 import com.lealone.storage.page.PageOperation;
 import com.lealone.storage.page.PageOperation.PageOperationResult;
-import com.lealone.transaction.TransactionEngine;
 
 public class GlobalScheduler extends InternalSchedulerBase {
 
@@ -211,8 +210,6 @@ public class GlobalScheduler extends InternalSchedulerBase {
                 si.getSession().clearQueryCache();
                 si = si.next;
             }
-            TransactionEngine te = TransactionEngine.getDefaultTransactionEngine();
-            te.fullGc(getId());
         }
     }
 

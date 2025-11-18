@@ -44,7 +44,7 @@ public class ChunkCompactor {
 
     public void clear() {
         if (unusedChunks != null) {
-            removeUnusedChunks(unusedChunks, null);
+            removeUnusedChunks(unusedChunks, null, false);
             unusedChunks = null;
         }
         rewritePages = null;
@@ -61,7 +61,8 @@ public class ChunkCompactor {
         // 如果chunk中的page都被标记为删除了，说明这个chunk已经不再使用了，可以直接删除它
         List<Chunk> unusedChunks = findUnusedChunks(chunks, removedPages);
         if (!unusedChunks.isEmpty()) {
-            removeUnusedChunks(unusedChunks, removedPages);
+            this.unusedChunks = unusedChunks;
+            removeUnusedChunks(unusedChunks, removedPages, true);
             chunks.removeAll(unusedChunks);
         }
 
@@ -94,12 +95,16 @@ public class ChunkCompactor {
         return unusedChunks;
     }
 
-    private void removeUnusedChunks(List<Chunk> unusedChunks, HashSet<Long> removedPages) {
+    private void removeUnusedChunks(List<Chunk> unusedChunks, HashSet<Long> removedPages,
+            boolean lazyRemove) {
         for (Chunk c : unusedChunks) {
-            chunkManager.removeUnusedChunk(c);
             Collection<Long> keys = c.pagePositionToLengthMap.keySet();
             if (removedPages != null)
                 removedPages.removeAll(keys);
+            if (lazyRemove)
+                chunkManager.getRemovedPages().removeAll(keys);
+            else
+                chunkManager.removeUnusedChunk(c);
             // LastChunk中的RemovedPages也要删除，否则RemovedPages对应的chunk找不到就抛出异常
             if (chunkManager.getLastChunk() != null) {
                 chunkManager.getLastChunk().getRemovedPages().removeAll(keys);
@@ -114,7 +119,10 @@ public class ChunkCompactor {
         List<Chunk> old = getRewritableChunks(chunks);
         if (old.isEmpty())
             return;
-        unusedChunks = old;
+        if (unusedChunks == null)
+            unusedChunks = old;
+        else
+            unusedChunks.addAll(old);
         rewritePages = new HashSet<>();
         for (Chunk c : old) {
             for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {

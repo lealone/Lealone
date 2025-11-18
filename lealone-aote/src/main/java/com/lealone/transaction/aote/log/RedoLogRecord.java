@@ -9,110 +9,50 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.link.LinkableBase;
 import com.lealone.db.value.ValueString;
+import com.lealone.storage.StorageMap;
 
+// initPendingRedoLog和read方法都是为了兼容老版本的redo log
+// 新版本的redo log只需要write方法
 public abstract class RedoLogRecord {
 
-    private static byte TYPE_CHECKPOINT = 0;
-    private static byte TYPE_DROPPED_MAP = 1;
-    private static byte TYPE_LOCAL_TRANSACTION = 2;
-
-    public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
-    }
-
-    boolean isCheckpoint() {
-        return false;
-    }
-
-    abstract void write(DataBuffer buff);
-
-    static RedoLogRecord read(ByteBuffer buff) {
+    public static RedoLogRecord read(ByteBuffer buff) {
         int type = buff.get();
-        if (type == TYPE_CHECKPOINT) {
+        if (type == 0) {
             return CheckpointRLR.read(buff);
-        } else if (type == TYPE_DROPPED_MAP) {
+        } else if (type == 1) {
             return DroppedMapRLR.read(buff);
-        } else if (type == TYPE_LOCAL_TRANSACTION) {
+        } else if (type == 2) {
             return LocalTransactionRLR.read(buff);
         } else {
             throw DbException.getInternalError("unknow type: " + type);
         }
     }
 
-    public static CheckpointRLR createCheckpoint(long checkpointId, boolean saved) {
-        return new CheckpointRLR(checkpointId, saved);
+    public boolean isCheckpoint() {
+        return false;
     }
 
-    public static DroppedMapRLR createDroppedMapRedoLogRecord(String mapName) {
-        return new DroppedMapRLR(mapName);
+    public abstract void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog);
+
+    public int write(Map<StorageMap<Object, ?>, DataBuffer> logs, Map<String, StorageMap<?, ?>> maps) {
+        return 0;
     }
 
-    public static PendingCheckpoint createPendingCheckpoint(long checkpointId, boolean saved,
-            boolean force) {
-        return new PendingCheckpoint(new CheckpointRLR(checkpointId, saved), force);
+    public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+        return null;
     }
 
-    public static class PendingCheckpoint extends LinkableBase<PendingCheckpoint> {
-
-        private final CheckpointRLR checkpoint;
-        private boolean synced;
-        private boolean force;
-
-        public PendingCheckpoint(CheckpointRLR checkpoint, boolean force) {
-            this.checkpoint = checkpoint;
-        }
-
-        public CheckpointRLR getCheckpoint() {
-            return checkpoint;
-        }
-
-        public long getCheckpointId() {
-            return checkpoint.getCheckpointId();
-        }
-
-        public boolean isSaved() {
-            return checkpoint.isSaved();
-        }
-
-        public boolean isForce() {
-            return force;
-        }
-
-        public boolean isSynced() {
-            return synced;
-        }
-
-        public void setSynced(boolean synced) {
-            this.synced = synced;
-        }
-    }
-
-    static class CheckpointRLR extends RedoLogRecord {
-
-        private final long checkpointId;
-        private final boolean saved;
-
-        CheckpointRLR(long checkpointId, boolean saved) {
-            this.checkpointId = checkpointId;
-            this.saved = saved;
-        }
-
-        public long getCheckpointId() {
-            return checkpointId;
-        }
+    public static class CheckpointRLR extends RedoLogRecord {
 
         @Override
         public boolean isCheckpoint() {
             return true;
-        }
-
-        public boolean isSaved() {
-            return saved;
         }
 
         @Override
@@ -120,23 +60,17 @@ public abstract class RedoLogRecord {
             pendingRedoLog.clear();
         }
 
-        @Override
-        public void write(DataBuffer buff) {
-            buff.put(TYPE_CHECKPOINT);
-            buff.putVarLong(0); // checkpointId兼容老版本
-        }
-
         public static RedoLogRecord read(ByteBuffer buff) {
             DataUtils.readVarLong(buff); // checkpointId兼容老版本
-            return new CheckpointRLR(0, true);
+            return new CheckpointRLR();
         }
     }
 
-    static class DroppedMapRLR extends RedoLogRecord {
+    public static class DroppedMapRLR extends RedoLogRecord {
 
         private final String mapName;
 
-        DroppedMapRLR(String mapName) {
+        public DroppedMapRLR(String mapName) {
             DataUtils.checkNotNull(mapName, "mapName");
             this.mapName = mapName;
         }
@@ -150,94 +84,51 @@ public abstract class RedoLogRecord {
             }
         }
 
-        @Override
-        public void write(DataBuffer buff) {
-            buff.put(TYPE_DROPPED_MAP);
-            ValueString.type.write(buff, mapName);
-        }
-
         public static RedoLogRecord read(ByteBuffer buff) {
             String mapName = ValueString.type.read(buff);
             return new DroppedMapRLR(mapName);
         }
     }
 
-    static class TransactionRLR extends RedoLogRecord {
+    public static class LocalTransactionRLR extends RedoLogRecord {
 
-        protected ByteBuffer operations;
+        private final UndoLog undoLog;
+        private final ByteBuffer operations;
 
-        public TransactionRLR(ByteBuffer operations) {
+        public LocalTransactionRLR(UndoLog undoLog, ByteBuffer operations) {
+            this.undoLog = undoLog;
             this.operations = operations;
         }
 
         @Override
         public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
-            ByteBuffer buff = operations;
-            UndoLogRecord.readForRedo(buff, pendingRedoLog);
+            UndoLogRecord.readForRedo(operations, pendingRedoLog);
         }
 
         @Override
-        public void write(DataBuffer buff) {
-            write(buff, TYPE_LOCAL_TRANSACTION);
+        public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+            return undoLog.getMaps();
         }
 
-        public void write(DataBuffer buff, byte type) {
-            buff.put(type);
-            buff.putVarLong(0); // transactionId兼容老版本
-            writeOperations(buff);
-        }
-
-        public void writeOperations(DataBuffer buff) {
-            buff.putInt(operations.remaining());
-            buff.put(operations);
-        }
-
-        public static ByteBuffer readOperations(ByteBuffer buff) {
-            byte[] bytes = new byte[buff.getInt()];
-            buff.get(bytes);
-            return ByteBuffer.wrap(bytes);
-        }
-    }
-
-    public static class LocalTransactionRLR extends TransactionRLR {
-
-        public LocalTransactionRLR(ByteBuffer operations) {
-            super(operations);
+        @Override
+        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
+                Map<String, StorageMap<?, ?>> maps) {
+            return undoLog.writeForRedo(logs, maps);
         }
 
         public static LocalTransactionRLR read(ByteBuffer buff) {
             DataUtils.readVarLong(buff); // transactionId兼容老版本
-            ByteBuffer operations = readOperations(buff);
-            return new LocalTransactionRLR(operations);
-        }
-    }
-
-    public static class LazyLocalTransactionRLR extends LocalTransactionRLR {
-
-        private final UndoLog undoLog;
-
-        public LazyLocalTransactionRLR(UndoLog undoLog) {
-            super((ByteBuffer) null);
-            this.undoLog = undoLog;
-        }
-
-        @Override
-        public void writeOperations(DataBuffer buff) {
-            writeOperations(buff, undoLog);
-        }
-
-        static void writeOperations(DataBuffer buff, UndoLog undoLog) {
-            int pos = buff.position();
-            buff.putInt(0);
-            undoLog.toRedoLogRecordBuffer(buff);
-            buff.putInt(pos, buff.position() - pos - 4);
+            byte[] bytes = new byte[buff.getInt()];
+            buff.get(bytes);
+            ByteBuffer operations = ByteBuffer.wrap(bytes);
+            return new LocalTransactionRLR(null, operations);
         }
     }
 
     public static class LobSave extends RedoLogRecord {
 
-        Runnable lobTask;
-        RedoLogRecord r;
+        private final Runnable lobTask;
+        private final RedoLogRecord r;
 
         public LobSave(Runnable lobTask, RedoLogRecord r) {
             this.lobTask = lobTask;
@@ -249,9 +140,10 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        void write(DataBuffer buff) {
+        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
+                Map<String, StorageMap<?, ?>> maps) {
             lobTask.run();
-            r.write(buff);
+            return r.write(logs, maps);
         }
     }
 }

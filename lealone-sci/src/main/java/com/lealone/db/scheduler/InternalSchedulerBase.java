@@ -15,7 +15,6 @@ import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.page.PageOperation;
 import com.lealone.transaction.PendingTransaction;
 
@@ -155,8 +154,6 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
         }
         if (pendingTransactions.getHead() == null) {
             pendingTransactions.setTail(null);
-            if (logBuffer != null && logBuffer.position() > 0)
-                logBuffer.clear();
         }
     }
 
@@ -238,31 +235,6 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     @Override
     public boolean yieldIfNeeded(PreparedSQLStatement current) {
         return false;
-    }
-
-    // --------------------- 实现 fsync 相关的代码 ---------------------
-
-    protected boolean fsyncDisabled;
-    protected FileStorage fsyncingFileStorage;
-
-    @Override
-    public boolean isFsyncDisabled() {
-        return fsyncDisabled;
-    }
-
-    @Override
-    public void setFsyncDisabled(boolean fsyncDisabled) {
-        this.fsyncDisabled = fsyncDisabled;
-    }
-
-    @Override
-    public FileStorage getFsyncingFileStorage() {
-        return fsyncingFileStorage;
-    }
-
-    @Override
-    public void setFsyncingFileStorage(FileStorage fsyncingFileStorage) {
-        this.fsyncingFileStorage = fsyncingFileStorage;
     }
 
     @Override

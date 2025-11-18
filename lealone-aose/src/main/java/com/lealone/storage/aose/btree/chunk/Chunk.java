@@ -13,8 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.scheduler.InternalScheduler;
-import com.lealone.db.scheduler.SchedulerThread;
+import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.fs.FileStorage;
 
@@ -286,18 +285,12 @@ public class Chunk {
 
         DataUtils.appendMap(buff, "removedPageOffset", removedPageOffset);
         DataUtils.appendMap(buff, "removedPageCount", removedPageCount);
+
         return buff;
     }
 
-    public void startAppend() {
-        // 如果是append模式，先删除旧的pagePositions和removedPages数据
-        if (fileStorage.size() > 0) {
-            // 因为新append的数据总会大于原有文件长度，所以直接设置size即可，无需调用truncate
-            fileStorage.setSize(pagePositionAndLengthOffset + CHUNK_HEADER_SIZE);
-        }
-    }
-
-    public void write(DataBuffer body, boolean appendMode, ChunkManager chunkManager) {
+    public synchronized void write(BTreeMap<?, ?> map, DataBuffer body, boolean appendMode,
+            ChunkManager chunkManager) {
         writePagePositions(body);
         writeRemovedPages(body, chunkManager);
 
@@ -306,11 +299,39 @@ public class Chunk {
         // chunk body
         long bodyPos = appendMode ? fileStorage.size() : CHUNK_HEADER_SIZE;
         fileStorage.writeFully(bodyPos, body.getAndFlipBuffer());
+        fileStorage.sync();
+    }
 
-        InternalScheduler scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
-        if (scheduler != null && scheduler.isFsyncDisabled())
-            scheduler.setFsyncingFileStorage(fileStorage);
-        else
+    // 这个方法未调用sync，上层调用者需要额外按需调用sync
+    public synchronized void writeRedoLog(ByteBuffer log) {
+        long size = fileStorage.size();
+        long pos = size;
+        if (size == 0) {
+            writeHeader();
+            pos = CHUNK_HEADER_SIZE;
+        }
+        fileStorage.writeFully(pos, log);
+    }
+
+    public synchronized ByteBuffer readRedoLog() {
+        long pos = getFilePos(removedPageOffset + removedPageCount * 8);
+        int len = (int) (fileStorage.size() - pos);
+        if (len == 0)
+            return null;
+        return fileStorage.readFully(pos, len);
+    }
+
+    public synchronized void removeRedoLogAndRemovedPages(BTreeMap<?, ?> map) {
+        long pos = getFilePos(removedPageOffset);
+        // 只有redo log的chunk可以直接删除
+        if (pos == CHUNK_HEADER_SIZE) {
+            map.getBTreeStorage().getChunkManager().removeUnusedChunk(this);
+            return;
+        }
+        long len = fileStorage.size() - pos;
+        if (len != 0) {
+            fileStorage.truncate(pos);
             fileStorage.sync();
+        }
     }
 }
