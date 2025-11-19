@@ -337,8 +337,16 @@ public class BTreeStorage {
         PageInfo pInfo = map.getRootPageRef().getPageInfo();
         long pos = pInfo.page.write(pInfo, c, chunkBody);
         c.rootPagePos = pos;
-        chunkCompactor.clear(); // 提前做一些清理工作，比如删除不再使用的chunk
+
+        // 提前清理UnusedChunks中的pages，这样在RemovedPages中不会保留它们，也不会写到最新的chunk中
+        chunkCompactor.clearUnusedChunkPages();
+
         c.write(map, chunkBody, appendMode, chunkManager);
+
+        // 最新的chunk写成功后再删除UnusedChunks，不能提前删除，因为UnusedChunks也包含被重写的chunk
+        // 若最新的chunk写失败了，被重写的chunk文件也提前删除就会丢失数据
+        chunkCompactor.removeUnusedChunks();
+
         if (!appendMode) {
             chunkManager.addChunk(c);
             chunkManager.setLastChunk(c);

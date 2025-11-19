@@ -42,9 +42,25 @@ public class ChunkCompactor {
         return rewritePages != null && rewritePages.contains(pos);
     }
 
-    public void clear() {
+    // UnusedChunk中的page不需要继续放在RemovedPages中
+    public void clearUnusedChunkPages() {
         if (unusedChunks != null) {
-            removeUnusedChunks(unusedChunks, null, false);
+            for (Chunk c : unusedChunks) {
+                Collection<Long> keys = c.pagePositionToLengthMap.keySet();
+                chunkManager.getRemovedPages().removeAll(keys);
+                // LastChunk中的RemovedPages也要删除，否则RemovedPages对应的chunk找不到就抛出异常
+                if (chunkManager.getLastChunk() != null) {
+                    chunkManager.getLastChunk().getRemovedPages().removeAll(keys);
+                }
+            }
+        }
+    }
+
+    public void removeUnusedChunks() {
+        if (unusedChunks != null) {
+            for (Chunk c : unusedChunks) {
+                chunkManager.removeUnusedChunk(c);
+            }
             unusedChunks = null;
         }
         rewritePages = null;
@@ -58,12 +74,12 @@ public class ChunkCompactor {
         // 读取被删除了至少一个page的chunk的元数据
         List<Chunk> chunks = readChunks(removedPages);
 
-        // 如果chunk中的page都被标记为删除了，说明这个chunk已经不再使用了，可以直接删除它
+        // 如果chunk中的page都被标记为删除了，说明这个chunk已经不再使用了
+        // 但是还不能直接删除，等最新的trunk写成功后再调用removeUnusedChunks()删除
         List<Chunk> unusedChunks = findUnusedChunks(chunks, removedPages);
         if (!unusedChunks.isEmpty()) {
-            this.unusedChunks = unusedChunks;
-            removeUnusedChunks(unusedChunks, removedPages, true);
             chunks.removeAll(unusedChunks);
+            this.unusedChunks = unusedChunks;
         }
 
         // 看看哪些chunk中未被删除的page占比<=MinFillRate，然后重写它们到一个新的chunk中
@@ -95,30 +111,14 @@ public class ChunkCompactor {
         return unusedChunks;
     }
 
-    private void removeUnusedChunks(List<Chunk> unusedChunks, HashSet<Long> removedPages,
-            boolean lazyRemove) {
-        for (Chunk c : unusedChunks) {
-            Collection<Long> keys = c.pagePositionToLengthMap.keySet();
-            if (removedPages != null)
-                removedPages.removeAll(keys);
-            if (lazyRemove)
-                chunkManager.getRemovedPages().removeAll(keys);
-            else
-                chunkManager.removeUnusedChunk(c);
-            // LastChunk中的RemovedPages也要删除，否则RemovedPages对应的chunk找不到就抛出异常
-            if (chunkManager.getLastChunk() != null) {
-                chunkManager.getLastChunk().getRemovedPages().removeAll(keys);
-            }
-        }
-    }
-
     private void prepareRewrite(List<Chunk> chunks, HashSet<Long> removedPages) {
         // minFillRate <= 0时相当于禁用rewrite了，removedPages为空说明没有page被删除了
-        if (btreeStorage.getMinFillRate() <= 0 || removedPages.isEmpty())
+        if (btreeStorage.getMinFillRate() <= 0 || chunks.isEmpty() || removedPages.isEmpty())
             return;
         List<Chunk> old = getRewritableChunks(chunks);
         if (old.isEmpty())
             return;
+        // 被重写的chunk文件等最新的trunk写成功后再调用removeUnusedChunks()删除
         if (unusedChunks == null)
             unusedChunks = old;
         else

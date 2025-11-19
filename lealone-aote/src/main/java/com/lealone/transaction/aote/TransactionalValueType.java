@@ -15,13 +15,8 @@ import com.lealone.storage.type.StorageDataType;
 
 public class TransactionalValueType implements StorageDataType {
 
-    public final StorageDataType valueType;
+    private final StorageDataType valueType;
     private final boolean isByteStorage;
-
-    public TransactionalValueType(StorageDataType valueType) {
-        this.valueType = valueType;
-        this.isByteStorage = false;
-    }
 
     public TransactionalValueType(StorageDataType valueType, boolean isByteStorage) {
         this.valueType = valueType;
