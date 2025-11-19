@@ -46,6 +46,12 @@ public class ColumnsPage extends ColumnStorageLeafPage {
     }
 
     @Override
+    protected StorageDataType getKeyTypeForRecalculateMemory() {
+        // 也用值的类型来计算
+        return map.getValueType();
+    }
+
+    @Override
     protected void readValues(ByteBuffer buff, int keyLength, int columnCount) {
         StorageDataType valueType = map.getValueType();
         for (int row = 0; row < keyLength; row++) {

@@ -47,6 +47,12 @@ public class RowPage extends RowStorageLeafPage {
     }
 
     @Override
+    protected StorageDataType getKeyTypeForRecalculateMemory() {
+        // 也用值的类型来计算
+        return map.getValueType();
+    }
+
+    @Override
     protected void readValues(ByteBuffer buff, int keyLength, int formatVersion) {
         map.getValueType().read(buff, keys, keyLength);
         setPageListener(map.getValueType(), keys);
