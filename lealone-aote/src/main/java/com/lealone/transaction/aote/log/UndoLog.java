@@ -18,6 +18,7 @@ import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
 // 只有一个线程访问
 public class UndoLog {
 
+    // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
     private final ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     private int logId;
@@ -49,11 +50,13 @@ public class UndoLog {
     }
 
     public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
-        maps.put(map, map);
-        if (map.getKeyType().isKeyOnly())
+        if (map.getKeyType().isKeyOnly()) {
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
-        else
+        } else {
+            if (!map.isInMemory())
+                maps.put(map, map);
             return add(new KeyValueULR(map, key, lockable, oldValue));
+        }
     }
 
     private UndoLogRecord add(UndoLogRecord r) {
@@ -103,7 +106,7 @@ public class UndoLog {
         int len = 0;
         UndoLogRecord r = first;
         while (r != null) {
-            if (r.map.isClosed() || r.map.isInMemory())
+            if (r.map.isClosed())
                 this.maps.remove(r.map);
             len += r.writeForRedo(logs, maps);
             r = r.next;

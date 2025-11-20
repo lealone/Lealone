@@ -41,9 +41,20 @@ public class RedoLog {
     // key: mapName, value: map key/value ByteBuffer list
     private HashMap<String, List<ByteBuffer>> pendingRedoLog;
 
+    // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
+    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+
     public RedoLog(Map<String, String> config, LogSyncService logSyncService) {
         this.config = config;
         this.logSyncService = logSyncService;
+    }
+
+    public void addMap(StorageMap<?, ?> map) {
+        maps.put(map.getName(), map);
+    }
+
+    public void removeMap(String mapName) {
+        maps.remove(mapName);
     }
 
     // 兼容老版本的redo log
@@ -211,9 +222,6 @@ public class RedoLog {
     }
 
     public void save() {
-        // 由logSyncService负责的StorageMap
-        ConcurrentHashMap<String, StorageMap<?, ?>> maps = logSyncService.getCheckpointService()
-                .getMaps();
         // 事务中涉及的StorageMap
         HashMap<StorageMap<Object, ?>, DataBuffer> logs = new HashMap<>();
 
@@ -257,7 +265,7 @@ public class RedoLog {
                 logQueueSize.decrementAndGet();
                 // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
                 if (logSyncService.isPeriodic()) {
-                    setSynced(pt, maps);
+                    setSynced(pt);
                 }
                 int index = pt.getScheduler().getId();
                 lastPts[index] = pt;
@@ -280,7 +288,7 @@ public class RedoLog {
                 if (!logSyncService.isPeriodic()) {
                     pt = scheduler.getPendingTransaction();
                     while (pt != null) {
-                        setSynced(pt, maps);
+                        setSynced(pt);
                         if (pt == lastPts[i])
                             break;
                         pt = pt.getNext();
@@ -294,7 +302,9 @@ public class RedoLog {
         }
     }
 
-    private void setSynced(PendingTransaction pt, ConcurrentHashMap<String, StorageMap<?, ?>> maps) {
+    private void setSynced(PendingTransaction pt) {
+        if (pt.isSynced())
+            return;
         ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> ptMaps = pt.getMaps();
         if (ptMaps != null) {
             for (StorageMap<?, ?> map : maps.values()) {

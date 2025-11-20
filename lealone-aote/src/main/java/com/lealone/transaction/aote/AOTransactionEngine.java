@@ -129,8 +129,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     public void afterStorageMapOpen(StorageMap<?, ?> map) {
         if (logSyncService == null)
             return;
+        // 内存表刷脏页时已经被过滤了
         int index = nextLogSyncServiceIndex();
         logSyncServices[index].getCheckpointService().addMap(map);
+
+        // 内存表和索引不需要写redo log
+        if (!map.isInMemory() && !map.getKeyType().isKeyOnly()) {
+            logSyncServices[index].getRedoLog().addMap(map);
+        }
     }
 
     void removeStorageMap(AOTransaction transaction, String mapName) {
@@ -142,6 +148,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private void removeStorageMap(String mapName) {
         for (int i = 0; i < logSyncServices.length; i++) {
             logSyncServices[i].getCheckpointService().removeMap(mapName);
+            logSyncServices[i].getRedoLog().removeMap(mapName);
         }
     }
 

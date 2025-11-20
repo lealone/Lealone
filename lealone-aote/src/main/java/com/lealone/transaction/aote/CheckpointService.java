@@ -83,10 +83,6 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         maps.remove(mapName);
     }
 
-    public ConcurrentHashMap<String, StorageMap<?, ?>> getMaps() {
-        return maps;
-    }
-
     public void addGcTask(GcTask gcTask) {
         gcTasks.add(gcTask);
     }
