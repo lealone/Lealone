@@ -6,6 +6,7 @@
 package com.lealone.storage.aose.btree;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -525,14 +526,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         lock.lock();
         try {
             ChunkManager chunkManager = btreeStorage.getChunkManager();
-            HashSet<Long> removedPages = new HashSet<>();
             HashSet<Long> pages = new HashSet<>();
+            HashSet<Long> removedPages = chunkManager.getAllRemovedPages();
+            ArrayList<Chunk> oldChunks = new ArrayList<>();
             for (Integer id : chunkManager.getAllChunkIds()) {
                 Chunk c = chunkManager.getChunk(id);
+                oldChunks.add(c);
                 removedPages.addAll(c.getRemovedPages());
                 pages.addAll(c.pagePositionToLengthMap.keySet());
             }
-            clear();
             pages.removeAll(removedPages);
             for (Long p : pages) {
                 if (PageUtils.isNodePage(p))
@@ -545,6 +547,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 }
             }
             btreeStorage.save();
+            for (Chunk c : oldChunks) {
+                chunkManager.removeUnusedChunk(c);
+            }
         } finally {
             lock.unlock();
         }
