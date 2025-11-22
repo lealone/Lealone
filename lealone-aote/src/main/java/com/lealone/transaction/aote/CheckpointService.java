@@ -249,7 +249,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
                 if (!dirtyMaps.isEmpty()) {
                     for (Entry<String, Long> e : dirtyMaps.entrySet()) {
                         StorageMap<?, ?> map = maps.get(e.getKey());
-                        // 准备耍脏页前如果表被删除了那就直接忽略
+                        // 准备耍刷页前如果表被删除了那就直接忽略
                         if (map != null && !map.isClosed())
                             map.save(e.getValue().longValue());
                     }
