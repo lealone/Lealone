@@ -140,7 +140,7 @@ public abstract class UndoLogRecord {
                 log.put((byte) 1);
                 map.getKeyType().write(log, key);
                 // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-                map.getValueType().getRawType().write(log, newValue, lockable);
+                map.getValueType().getRawType().write(log, lockable, newValue);
             }
             return log.position() - pos;
         }

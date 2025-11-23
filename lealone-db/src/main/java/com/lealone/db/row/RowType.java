@@ -94,6 +94,8 @@ public class RowType extends StandardDataType {
     public Object read(ByteBuffer buff) {
         int version = DataUtils.readVarInt(buff);
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
+        if (a == null || a.getList().length == 0)
+            return new Row(version, null);
         if (enumColumns != null)
             setEnumColumns(a);
         return new Row(version, a.getList());
@@ -102,18 +104,20 @@ public class RowType extends StandardDataType {
     @Override
     public void write(DataBuffer buff, Object obj) {
         Row r = (Row) obj;
-        buff.putVarInt(r.getVersion());
         Value[] columns = r.getColumns();
-        if (columns == null)
-            columns = new Value[0];
-        buff.writeValue(ValueArray.get(columns));
+        write(buff, r, columns);
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj, Lockable lockable) {
-        Row r = (Row) lockable;
+    public void write(DataBuffer buff, Lockable lockable, Object lockedValue) {
+        write(buff, (Row) lockable, (Value[]) lockedValue);
+    }
+
+    private static void write(DataBuffer buff, Row r, Value[] columns) {
         buff.putVarInt(r.getVersion());
-        buff.writeValue(ValueArray.get((Value[]) obj));
+        if (columns == null)
+            columns = new Value[0];
+        buff.writeValue(ValueArray.get(columns));
     }
 
     @Override
@@ -201,7 +205,7 @@ public class RowType extends StandardDataType {
 
     @Override
     public Object merge(Object fromObj, Object toObj) {
-        Row row = (Row) toObj;
+        Row row = toObj != null ? (Row) toObj : new Row(null);
         if (fromObj instanceof PrimaryKey)
             row.setKey(((PrimaryKey) fromObj).getKey());
         else if (fromObj instanceof Value)

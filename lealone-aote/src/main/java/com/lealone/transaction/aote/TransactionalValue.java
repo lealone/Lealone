@@ -331,21 +331,25 @@ public class TransactionalValue extends LockableBase {
             buff.put((byte) 0);
         } else {
             buff.put((byte) 1);
-            valueType.write(buff, value);
+            valueType.write(buff, lockable, value);
         }
     }
 
     private static Object getCommittedValue(Lockable lockable) {
-        return lockable.getValue();
-        // RowLock rowLock = (RowLock) lockable.getLock();
-        // if (rowLock == null)
-        // return lockable.getValue();
-        // Object oldValue = rowLock.getOldValue();
-        // AOTransaction t = rowLock.getTransaction();
-        // if (oldValue == null || t == null || t.commitTimestamp > 0)
-        // return lockable.getValue();
-        // else
-        // return lockable.copy(oldValue, rowLock);
+        Object newValue = lockable.getLockedValue();
+        Lock lock = lockable.getLock();
+        if (lock == null || lock.isPageLock())
+            return newValue;
+
+        Transaction t = lock.getTransaction();
+        if (t == null || t.getCommitTimestamp() > 0)
+            return newValue;
+
+        Object oldValue = lock.getOldValue();
+        if (oldValue != null)
+            return oldValue;
+        else
+            return null;
     }
 
     public static Lockable readMeta(ByteBuffer buff, StorageDataType valueType,
@@ -359,7 +363,10 @@ public class TransactionalValue extends LockableBase {
             StorageDataType oldValueType) {
         DataUtils.readVarLong(buff); // 忽略tid
         Object value = readValue(buff, valueType);
-        return createCommitted(value);
+        if (value == null)
+            return null;
+        else
+            return createCommitted(value);
     }
 
     private static Object readValue(ByteBuffer buff, StorageDataType valueType) {

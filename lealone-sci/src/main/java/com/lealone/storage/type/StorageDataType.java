@@ -14,8 +14,8 @@ import com.lealone.db.value.ValueDataType;
 
 public interface StorageDataType extends ValueDataType {
 
-    default void write(DataBuffer buff, Object obj, Lockable lockable) {
-        write(buff, obj);
+    default void write(DataBuffer buff, Lockable lockable, Object lockedValue) {
+        write(buff, lockedValue);
     }
 
     default void writeMeta(DataBuffer buff, Object obj) {
