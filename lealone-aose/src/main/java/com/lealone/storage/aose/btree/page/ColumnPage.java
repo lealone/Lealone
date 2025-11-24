@@ -81,7 +81,7 @@ public class ColumnPage extends Page {
         buff.putInt(start, pageLength);
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
-        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true, false);
     }
 
     // 重写ColumnPage，只需要修改CheckValue即可

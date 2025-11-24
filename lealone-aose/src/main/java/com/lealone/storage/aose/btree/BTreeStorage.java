@@ -7,6 +7,7 @@ package com.lealone.storage.aose.btree;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.compress.CompressDeflate;
 import com.lealone.common.compress.CompressLZF;
@@ -342,7 +343,7 @@ public class BTreeStorage {
         c.mapMaxKey = map.getMaxKey();
 
         PageInfo pInfo = map.getRootPageRef().getPageInfo();
-        long pos = pInfo.page.write(pInfo, c, chunkBody);
+        long pos = pInfo.page.write(pInfo, c, chunkBody, new AtomicBoolean(false));
         c.rootPagePos = pos;
 
         // 提前清理UnusedChunks中的pages，这样在RemovedPages中不会保留它们，也不会写到最新的chunk中

@@ -336,12 +336,17 @@ public class PageReference implements IPageReference {
     }
 
     // 刷完脏页后需要用新的位置更新
-    public void updatePage(long newPos, PageInfo pInfoOld) {
-        updatePage(newPos, pInfoOld, false);
+    public void updatePage(long newPos, PageInfo pInfoOld, boolean isLocked) {
+        updatePage(newPos, pInfoOld, isLocked, false);
     }
 
     // 重写page后会把clearPage设为true来调用
-    public void updatePage(long newPos, PageInfo pInfoOld, boolean clearPage) {
+    public void updatePage(long newPos, PageInfo pInfoOld, boolean isLocked, boolean clearPage) {
+        // 如果加有行锁，说明事务还没结束，不能把当前page的pos设置成非0值，因为设置成非0值后就会被垃圾收集掉，会导致错误
+        if (isLocked) {
+            addRemovedPage(newPos);
+            return;
+        }
         PageInfo pInfoNew = pInfoOld.copy(newPos);
         pInfoNew.buff = null; // 废弃了
         if (clearPage)

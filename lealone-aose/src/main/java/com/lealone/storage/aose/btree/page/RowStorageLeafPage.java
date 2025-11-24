@@ -7,6 +7,7 @@ package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
@@ -75,10 +76,10 @@ public abstract class RowStorageLeafPage extends LeafPage {
         return metaVersion;
     }
 
-    protected abstract void writeValues(DataBuffer buff, int keyLength, int formatVersion);
+    protected abstract boolean writeValues(DataBuffer buff, int keyLength, int formatVersion);
 
     @Override
-    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff) {
+    public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         beforeWrite(pInfoOld);
         int start = buff.position();
         int keyLength = keys.length;
@@ -91,7 +92,9 @@ public abstract class RowStorageLeafPage extends LeafPage {
         buff.put((byte) type);
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
-        writeValues(buff, keyLength, chunk.formatVersion);
+        boolean isLockedPage = writeValues(buff, keyLength, chunk.formatVersion);
+        if (isLockedPage)
+            isLocked.set(true);
         buff.putInt(0); // replicationHostIds
         if (chunk.isNewFormatVersion())
             buff.putVarInt(pInfoOld.metaVersion);
@@ -101,7 +104,7 @@ public abstract class RowStorageLeafPage extends LeafPage {
 
         writeCheckValue(buff, chunk, start, pageLength, checkPos);
 
-        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true);
+        return updateChunkAndPage(pInfoOld, chunk, start, pageLength, type, true, isLockedPage);
     }
 
     // 重写所有的RowStorageLeafPage，只需要修改CheckValue即可

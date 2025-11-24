@@ -50,7 +50,7 @@ public class KeyPage extends RowStorageLeafPage {
     }
 
     @Override
-    protected void writeValues(DataBuffer buff, int keyLength, int formatVersion) {
+    protected boolean writeValues(DataBuffer buff, int keyLength, int formatVersion) {
         if (FormatVersion.isOldFormatVersion(formatVersion)) {
             // 兼容老版本
             for (int i = 0; i < keyLength; i++) {
@@ -59,6 +59,13 @@ public class KeyPage extends RowStorageLeafPage {
                 buff.put((byte) 0);
             }
         }
+        boolean isLockable = map.getValueType().isLockable();
+        boolean isLocked = false;
+        for (int i = 0; i < keyLength; i++) {
+            if (isLockable && !isLocked)
+                isLocked = isLocked(keys[i]);
+        }
+        return isLocked;
     }
 
     @Override
