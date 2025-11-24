@@ -52,10 +52,10 @@ public class ColumnsPage extends ColumnStorageLeafPage {
     }
 
     @Override
-    protected void readValues(ByteBuffer buff, int keyLength, int columnCount) {
+    protected void readValues(ByteBuffer buff, int keyLength, int columnCount, int formatVersion) {
         StorageDataType valueType = map.getValueType();
         for (int row = 0; row < keyLength; row++) {
-            keys[row] = valueType.readMeta(buff, keys[row], columnCount);
+            keys[row] = valueType.readMeta(buff, keys[row], columnCount, formatVersion);
         }
         setPageListener(valueType, keys);
     }

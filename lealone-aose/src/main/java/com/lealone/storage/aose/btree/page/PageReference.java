@@ -34,6 +34,7 @@ public class PageReference implements IPageReference {
         this.bs = bs;
         pInfo = new PageInfo();
         pInfo.setPageLock(createPageLock());
+        pInfo.metaVersion = bs.getMap().getValueType().getMetaVersion();
     }
 
     public PageReference(BTreeStorage bs, long pos) {
@@ -113,6 +114,21 @@ public class PageReference implements IPageReference {
         Page p = pInfo.getPage();
         if (p != null)
             p.addMemory(delta);
+    }
+
+    @Override
+    public int getMetaVersion() {
+        return pInfo.metaVersion;
+    }
+
+    @Override
+    public void setMetaVersion(int mv) {
+        pInfo.metaVersion = mv;
+    }
+
+    @Override
+    public Object[] getValues() {
+        return getOrReadPage().getValues();
     }
 
     public boolean isDataStructureChanged() {

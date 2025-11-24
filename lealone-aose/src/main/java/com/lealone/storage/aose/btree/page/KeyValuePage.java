@@ -71,7 +71,7 @@ public class KeyValuePage extends RowStorageLeafPage {
     @Override
     protected void readValues(ByteBuffer buff, int keyLength, int formatVersion) {
         values = new Object[keyLength];
-        map.getValueType().read(buff, values, keyLength);
+        map.getValueType().read(buff, values, keyLength, formatVersion);
         setPageListener(map.getValueType(), values);
     }
 
@@ -79,7 +79,7 @@ public class KeyValuePage extends RowStorageLeafPage {
     protected void writeValues(DataBuffer buff, int keyLength, int formatVersion) {
         StorageDataType type = map.getValueType();
         for (int i = 0; i < keyLength; i++) {
-            type.write(buff, values[i]);
+            type.write(buff, values[i], formatVersion);
         }
     }
 }

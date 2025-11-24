@@ -43,7 +43,7 @@ public class PageStorageModeTest extends AoseTestBase {
             for (int col = 0; col < columnCount; col++) {
                 columns[col] = ValueString.get("value-row" + row + "-col" + (col + 1));
             }
-            Row r = new Row(row, columns);
+            Row r = new Row(columns);
             map.put(key, r);
         }
         map.save();

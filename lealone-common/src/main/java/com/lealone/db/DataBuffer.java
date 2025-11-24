@@ -52,6 +52,7 @@ import com.lealone.db.value.ValueStringIgnoreCase;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
 import com.lealone.db.value.ValueUuid;
+import com.lealone.storage.FormatVersion;
 
 /**
  * @author H2 Group
@@ -530,7 +531,7 @@ public class DataBuffer {
 
     public static ByteBuffer write(ValueDataType type, Object obj) {
         DataBuffer b = DataBuffer.create();
-        type.write(b, obj);
+        type.write(b, obj, FormatVersion.FORMAT_VERSION);
         return b.getAndFlipBuffer();
     }
 

@@ -29,7 +29,7 @@ public class ColumnPage extends Page {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public int read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -40,15 +40,16 @@ public class ColumnPage extends Page {
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
         this.buff = expandPage(buff, compressType, start, pageLength);
+        return 0;
     }
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
-    void readColumn(Object[] values, int columnIndex) {
+    void readColumn(Object[] values, int columnIndex, int formatVersion) {
         int memory = 0;
         ByteBuffer buff = this.buff.slice(); // 要支持多线程同时读，所以直接用slice
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-            valueType.readColumn(buff, values[row], columnIndex);
+            valueType.readColumn(buff, values[row], columnIndex, formatVersion);
             memory += valueType.getMemory(values[row], columnIndex);
         }
         if (this.memory.compareAndSet(0, memory)) {
@@ -73,7 +74,7 @@ public class ColumnPage extends Page {
         buff.put((byte) compressType); // 调用compressPage时会回填
         int compressStart = buff.position();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-            valueType.writeColumn(buff, values[row], columnIndex);
+            valueType.writeColumn(buff, values[row], columnIndex, chunk.formatVersion);
         }
         compressPage(buff, compressStart, compressType, compressTypePos);
         int pageLength = buff.position() - start;

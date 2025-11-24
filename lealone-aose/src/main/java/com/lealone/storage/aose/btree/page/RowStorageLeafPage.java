@@ -6,9 +6,11 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.db.lock.Lockable;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 
@@ -36,7 +38,7 @@ public abstract class RowStorageLeafPage extends LeafPage {
     protected abstract void readValues(ByteBuffer buff, int keyLength, int formatVersion);
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public int read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -48,11 +50,29 @@ public abstract class RowStorageLeafPage extends LeafPage {
         int type = buff.get();
         buff = expandPage(buff, type, start, pageLength);
 
-        map.getKeyType().read(buff, keys, keyLength);
-        readValues(buff, keyLength,
-                map.getBTreeStorage().getChunkManager().getChunk(chunkId).formatVersion);
+        Chunk chunk = map.getBTreeStorage().getChunkManager().getChunk(chunkId);
+        map.getKeyType().read(buff, keys, keyLength, chunk.formatVersion);
+        readValues(buff, keyLength, chunk.formatVersion);
         buff.getInt(); // replicationHostIds
+        int metaVersion = 0;
+        if (chunk.isNewFormatVersion())
+            metaVersion = DataUtils.readVarInt(buff); // metaVersion
         recalculateMemory();
+
+        // 删除null记录
+        ArrayList<Integer> deletedIndexs = new ArrayList<>(1);
+        for (int i = 0; i < keyLength; i++) {
+            Object v = getValue(i);
+            if ((v == null) || ((v instanceof Lockable) && ((Lockable) v).getLockedValue() == null)) {
+                deletedIndexs.add(i);
+            }
+        }
+        if (!deletedIndexs.isEmpty()) {
+            for (int index : deletedIndexs) {
+                remove(index);
+            }
+        }
+        return metaVersion;
     }
 
     protected abstract void writeValues(DataBuffer buff, int keyLength, int formatVersion);
@@ -70,10 +90,11 @@ public abstract class RowStorageLeafPage extends LeafPage {
         int typePos = buff.position();
         buff.put((byte) type);
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, keyLength);
+        map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
         writeValues(buff, keyLength, chunk.formatVersion);
         buff.putInt(0); // replicationHostIds
-
+        if (chunk.isNewFormatVersion())
+            buff.putVarInt(pInfoOld.metaVersion);
         compressPage(buff, compressStart, type, typePos);
         int pageLength = buff.position() - start;
         buff.putInt(start, pageLength);

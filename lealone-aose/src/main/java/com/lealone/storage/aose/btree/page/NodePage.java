@@ -124,7 +124,7 @@ public class NodePage extends LocalPage {
     }
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public int read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -147,8 +147,10 @@ public class NodePage extends LocalPage {
         }
         buff = expandPage(buff, type, start, pageLength);
 
-        map.getKeyType().read(buff, keys, keyLength);
+        Chunk chunk = map.getBTreeStorage().getChunkManager().getChunk(chunkId);
+        map.getKeyType().read(buff, keys, keyLength, chunk.formatVersion);
         recalculateMemory();
+        return 0;
     }
 
     @Override
@@ -172,7 +174,7 @@ public class NodePage extends LocalPage {
             }
         }
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, keyLength);
+        map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
 
         compressPage(buff, compressStart, type, typePos);
 

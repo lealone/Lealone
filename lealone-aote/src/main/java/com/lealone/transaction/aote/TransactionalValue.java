@@ -15,6 +15,7 @@ import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.LockOwner;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.lock.LockableBase;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.type.StorageDataType;
 import com.lealone.transaction.Transaction;
@@ -308,30 +309,25 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static void write(Lockable lockable, DataBuffer buff, StorageDataType valueType,
-            boolean isByteStorage) {
-        writeMeta(lockable, buff);
-        writeValue(lockable, buff, valueType, isByteStorage);
+            boolean isByteStorage, int formatVersion) {
+        writeMeta(lockable, buff, formatVersion);
+        writeValue(lockable, buff, valueType, isByteStorage, formatVersion);
     }
 
-    public static void writeMeta(Lockable lockable, DataBuffer buff) {
-        // AOTransaction t = rowLock.getTransaction();
-        // if (t == null) {
-        // buff.putVarLong(0);
-        // } else {
-        // buff.putVarLong(t.transactionId);
-        // }
-        buff.putVarLong(0); // 兼容老版本
+    public static void writeMeta(Lockable lockable, DataBuffer buff, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            buff.putVarLong(0); // transactionId 兼容老版本
     }
 
     private static void writeValue(Lockable lockable, DataBuffer buff, StorageDataType valueType,
-            boolean isByteStorage) {
+            boolean isByteStorage, int formatVersion) {
         // 一些存储引擎写入key和value前都需要事先转成字节数组，所以需要先写未提交的数据
         Object value = isByteStorage ? lockable.getValue() : getCommittedValue(lockable);
         if (value == null) {
             buff.put((byte) 0);
         } else {
             buff.put((byte) 1);
-            valueType.write(buff, lockable, value);
+            valueType.write(buff, lockable, value, formatVersion);
         }
     }
 
@@ -353,25 +349,27 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static Lockable readMeta(ByteBuffer buff, StorageDataType valueType,
-            StorageDataType oldValueType, Object obj, int columnCount) {
-        DataUtils.readVarLong(buff); // 忽略tid
-        Object value = valueType.readMeta(buff, obj, columnCount);
+            StorageDataType oldValueType, Object obj, int columnCount, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            DataUtils.readVarLong(buff); // 忽略tid
+        Object value = valueType.readMeta(buff, obj, columnCount, formatVersion);
         return createCommitted(value);
     }
 
-    public static Lockable read(ByteBuffer buff, StorageDataType valueType,
-            StorageDataType oldValueType) {
-        DataUtils.readVarLong(buff); // 忽略tid
-        Object value = readValue(buff, valueType);
+    public static Lockable read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
+            int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            DataUtils.readVarLong(buff); // 忽略tid
+        Object value = readValue(buff, valueType, formatVersion);
         if (value == null)
             return null;
         else
             return createCommitted(value);
     }
 
-    private static Object readValue(ByteBuffer buff, StorageDataType valueType) {
+    private static Object readValue(ByteBuffer buff, StorageDataType valueType, int formatVersion) {
         if (buff.get() == 1)
-            return valueType.read(buff);
+            return valueType.read(buff, formatVersion);
         else
             return null;
     }

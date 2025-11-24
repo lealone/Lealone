@@ -41,4 +41,27 @@ public abstract class LockableBase implements Lockable {
         Lock lock = this.lock;
         return lock == null || lock.isPageLock();
     }
+
+    @Override
+    public int getMetaVersion() {
+        Lock lock = this.lock;
+        if (lock != null) {
+            if (!lock.isPageLock())
+                return lock.getMetaVersion();
+            else
+                return lock.getPageListener().getPageReference().getMetaVersion();
+        }
+        return 0;
+    }
+
+    @Override
+    public void setMetaVersion(int mv) {
+        Lock lock = this.lock;
+        if (lock != null) {
+            if (!lock.isPageLock())
+                lock.setMetaVersion(mv);
+            else
+                lock.getPageListener().getPageReference().setMetaVersion(mv);
+        }
+    }
 }

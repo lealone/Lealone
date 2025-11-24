@@ -39,15 +39,6 @@ public interface SearchRow {
     void setKey(long key);
 
     /**
-     * Get the version of the row.
-     *
-     * @return the version
-     */
-    int getVersion();
-
-    void setVersion(int version);
-
-    /**
      * Get the value for the column
      *
      * @param index the column number (starting with 0)

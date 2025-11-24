@@ -335,8 +335,9 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             AsyncResultHandler<Integer> topHandler) {
         DataUtils.checkNotNull(lockable, "lockable");
         transaction.checkNotClosed();
-        UndoLogRecord r = addUndoLog(key, lockable, null);
         TransactionalValue.insertLock(lockable, transaction); // 内部有增加行锁
+        lockable.setMetaVersion(getValueType().getMetaVersion());
+        UndoLogRecord r = addUndoLog(key, lockable, null);
         AsyncResultHandler<Lockable> handler = ar -> {
             if (ar.isSucceeded()) {
                 Lockable old = ar.getResult();
@@ -394,6 +395,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             if (markDirtyPage(key, lockable) != null)
                 map.put(key, lockable);
         }
+        lockable.setMetaVersion(getValueType().getMetaVersion());
         Object oldValue = lockable.getLockedValue();
         lockable.setLockedValue(value);
         addUndoLog(key, lockable, oldValue);

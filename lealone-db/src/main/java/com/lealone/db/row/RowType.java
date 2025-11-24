@@ -14,24 +14,33 @@ import com.lealone.db.index.standard.StandardDataType;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.table.Column.EnumColumn;
+import com.lealone.db.table.StandardTable;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.storage.FormatVersion;
 
 public class RowType extends StandardDataType {
 
     final int columnCount;
     final EnumColumn[] enumColumns;
+    final StandardTable table;
 
     public RowType(int[] sortTypes, int columnCount) {
         this(null, null, sortTypes, columnCount, null);
     }
 
     public RowType(DataHandler handler, CompareMode compareMode, int[] sortTypes, int columnCount,
-            EnumColumn[] enumColumns) {
+            StandardTable table) {
         super(handler, compareMode, sortTypes);
         this.columnCount = columnCount;
-        this.enumColumns = enumColumns;
+        if (table != null) {
+            this.enumColumns = table.getEnumColumns();
+            this.table = table;
+        } else {
+            this.enumColumns = null;
+            this.table = null;
+        }
     }
 
     @Override
@@ -46,7 +55,7 @@ public class RowType extends StandardDataType {
         }
         Row a = (Row) aObj;
         Row b = (Row) bObj;
-        long comp = a.getVersion() - b.getVersion();
+        long comp = a.getMetaVersion() - b.getMetaVersion();
         if (comp == 0) {
             return compareValues(a.getColumns(), b.getColumns());
         }
@@ -84,53 +93,58 @@ public class RowType extends StandardDataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len) {
+    public void read(ByteBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            obj[i] = merge(obj[i], read(buff));
+            obj[i] = merge(obj[i], read(buff, formatVersion));
         }
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
-        int version = DataUtils.readVarInt(buff);
+    public Object read(ByteBuffer buff, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            DataUtils.readVarInt(buff); // version
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         if (a == null || a.getList().length == 0)
-            return new Row(version, null);
+            return new Row(null);
         if (enumColumns != null)
             setEnumColumns(a);
-        return new Row(version, a.getList());
+        return new Row(a.getList());
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         Row r = (Row) obj;
         Value[] columns = r.getColumns();
-        write(buff, r, columns);
+        write(buff, r, columns, formatVersion);
     }
 
     @Override
-    public void write(DataBuffer buff, Lockable lockable, Object lockedValue) {
-        write(buff, (Row) lockable, (Value[]) lockedValue);
+    public void write(DataBuffer buff, Lockable lockable, Object lockedValue, int formatVersion) {
+        write(buff, (Row) lockable, (Value[]) lockedValue, formatVersion);
     }
 
-    private static void write(DataBuffer buff, Row r, Value[] columns) {
-        buff.putVarInt(r.getVersion());
+    private void write(DataBuffer buff, Row r, Value[] columns, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            buff.putVarInt(r.getMetaVersion());
         if (columns == null)
             columns = new Value[0];
         buff.writeValue(ValueArray.get(columns));
     }
 
     @Override
-    public void writeMeta(DataBuffer buff, Object obj) {
-        Row r = (Row) obj;
-        buff.putVarInt(r.getVersion());
+    public void writeMeta(DataBuffer buff, Object obj, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            Row r = (Row) obj;
+            buff.putVarInt(r.getMetaVersion());
+        }
     }
 
     @Override
-    public Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
-        int version = DataUtils.readVarInt(buff);
+    public Object readMeta(ByteBuffer buff, Object obj, int columnCount, int formatVersion) {
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            DataUtils.readVarInt(buff);
         Value[] columns = new Value[columnCount];
-        Row row = new Row(version, columns);
+        Row row = new Row(columns);
         if (rowOnly) {
             return merge(obj, row);
         } else {
@@ -139,7 +153,7 @@ public class RowType extends StandardDataType {
     }
 
     @Override
-    public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
+    public void writeColumn(DataBuffer buff, Object obj, int columnIndex, int formatVersion) {
         Row r = (Row) obj;
         Value[] columns = r.getColumns();
         if (columnIndex >= 0 && columnIndex < columns.length)
@@ -147,7 +161,7 @@ public class RowType extends StandardDataType {
     }
 
     @Override
-    public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+    public void readColumn(ByteBuffer buff, Object obj, int columnIndex, int formatVersion) {
         Row r = (Row) obj;
         Value[] columns = r.getColumns();
         if (columnIndex >= 0 && columnIndex < columns.length) {
@@ -230,5 +244,10 @@ public class RowType extends StandardDataType {
     @Override
     public void setRowOnly(boolean rowOnly) {
         this.rowOnly = rowOnly;
+    }
+
+    @Override
+    public int getMetaVersion() {
+        return table != null ? table.getVersion() : 0;
     }
 }

@@ -32,7 +32,7 @@ public class BigIntegerType extends ValueDataTypeBase {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         BigInteger x = (BigInteger) obj;
         if (BigInteger.ZERO.equals(x)) {
             buff.put((byte) TAG_BIG_INTEGER_0);
@@ -50,7 +50,7 @@ public class BigIntegerType extends ValueDataTypeBase {
     }
 
     @Override
-    public Object read(ByteBuffer buff, int tag) {
+    public Object read(ByteBuffer buff, int tag, int formatVersion) {
         switch (tag) {
         case TAG_BIG_INTEGER_0:
             return BigInteger.ZERO;

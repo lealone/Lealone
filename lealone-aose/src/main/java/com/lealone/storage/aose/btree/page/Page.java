@@ -222,7 +222,7 @@ public class Page {
      * @param offset the offset within the chunk
      * @param expectedPageLength the expected page length
      */
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public int read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         throw ie();
     }
 

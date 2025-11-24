@@ -5,8 +5,6 @@
  */
 package com.lealone.db.index.standard;
 
-import java.util.ArrayList;
-
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.Constants;
 import com.lealone.db.DataHandler;
@@ -24,7 +22,6 @@ import com.lealone.db.row.SearchRow;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.StandardTable;
-import com.lealone.db.table.TableAlterHistoryRecord;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueLong;
@@ -57,7 +54,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         PrimaryKeyType keyType = new PrimaryKeyType();
         RowType rowType = new RowType(database, database.getCompareMode(), sortTypes, columns.length,
-                table.getEnumColumns());
+                table);
         rowType.setRowOnly(true);
 
         Storage storage = database.getStorage(table.getStorageEngine());
@@ -182,6 +179,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                         return;
                     }
                     session.setLastIdentity(row.getKey());
+                    table.alterRowsIfNeeded(session, row, true);
                 }
                 handler.handle(ar);
             });
@@ -190,6 +188,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 if (ar.isSucceeded()) {
                     // 在PrimaryKeyType.getAppendKey中已经设置row key
                     session.setLastIdentity(row.getKey());
+                    table.alterRowsIfNeeded(session, row, true);
                     onComplete(handler);
                 } else {
                     onException(handler, ar.getCause());
@@ -442,28 +441,7 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         private void createRow() {
             row = cursor.getValue();
-            int version = row.getVersion();
-            if (table.getVersion() > version) {
-                alterRow(version + 1, table.getVersion());
-            }
-        }
-
-        private void alterRow(int versionMin, int versionMax) {
-            ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistory()
-                    .getRecords(session, table.getId(), versionMin, versionMax);
-            Value[] oldValues = row.getColumns();
-            Value[] newValues = new Value[oldValues.length];
-            System.arraycopy(oldValues, 0, newValues, 0, oldValues.length);
-            for (TableAlterHistoryRecord record : records) {
-                newValues = record.redo(session, newValues);
-            }
-
-            Row newRow = new Row(table.getVersion(), newValues);
-            newRow.setKey(row.getKey());
-            table.removeRow(session, row);
-            table.addRow(session, newRow);
-            // 先remove后add，只是替换新值，存储层并没有替换成newRow，更新一下新的版本即可
-            row.setVersion(table.getVersion());
+            table.alterRowsIfNeeded(session, row, false);
         }
     }
 }

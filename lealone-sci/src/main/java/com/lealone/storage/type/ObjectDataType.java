@@ -63,16 +63,16 @@ public class ObjectDataType extends ValueDataTypeBase {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         switchType(obj);
-        last.write(buff, obj);
+        last.write(buff, obj, formatVersion);
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
+    public Object read(ByteBuffer buff, int formatVersion) {
         int tag = buff.get();
         int typeId = ValueDataType.getTypeId(tag);
-        return switchType(typeId).read(buff, tag);
+        return switchType(typeId).read(buff, tag, formatVersion);
     }
 
     @Override

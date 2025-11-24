@@ -70,10 +70,10 @@ public class SerializedObjectType extends ValueDataTypeBase {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         ValueDataTypeBase t = getType(obj);
         if (t != this) {
-            t.write(buff, obj);
+            t.write(buff, obj, formatVersion);
             return;
         }
         byte[] data = serialize(obj);
@@ -87,7 +87,7 @@ public class SerializedObjectType extends ValueDataTypeBase {
     }
 
     @Override
-    public Object read(ByteBuffer buff, int tag) {
+    public Object read(ByteBuffer buff, int tag, int formatVersion) {
         int len = DataUtils.readVarInt(buff);
         byte[] data = DataUtils.newBytes(len);
         buff.get(data);

@@ -133,7 +133,7 @@ public class ObjectArrayType extends ValueDataTypeBase {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         Class<?> type = obj.getClass().getComponentType();
         Integer classId = getCommonClassId(type);
         if (classId != null) {
@@ -180,12 +180,12 @@ public class ObjectArrayType extends ValueDataTypeBase {
         int len = array.length;
         buff.putVarInt(len);
         for (Object x : array) {
-            elementType.write(buff, x);
+            elementType.write(buff, x, formatVersion);
         }
     }
 
     @Override
-    public Object read(ByteBuffer buff, int tag) {
+    public Object read(ByteBuffer buff, int tag, int formatVersion) {
         if (tag != TYPE_ARRAY) {
             byte[] data;
             int len = tag - TAG_BYTE_ARRAY_0_15;
@@ -197,7 +197,7 @@ public class ObjectArrayType extends ValueDataTypeBase {
         Class<?> clazz;
         Object obj;
         if (ct == -1) {
-            String componentType = ValueString.type.read(buff);
+            String componentType = ValueString.type.read(buff, formatVersion);
             try {
                 clazz = Class.forName(componentType);
             } catch (Exception e) {
@@ -237,7 +237,7 @@ public class ObjectArrayType extends ValueDataTypeBase {
         } else {
             Object[] array = (Object[]) obj;
             for (int i = 0; i < len; i++) {
-                array[i] = elementType.read(buff);
+                array[i] = elementType.read(buff, formatVersion);
             }
         }
         return obj;

@@ -59,7 +59,7 @@ public class IndexKeyType extends StandardDataType {
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
+    public Object read(ByteBuffer buff, int formatVersion) {
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         Value[] columns = a.getList();
         if (columns.length == 0)
@@ -68,7 +68,7 @@ public class IndexKeyType extends StandardDataType {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         IndexKey k = (IndexKey) obj;
         Value[] columns = k.columns;
         if (columns == null) {

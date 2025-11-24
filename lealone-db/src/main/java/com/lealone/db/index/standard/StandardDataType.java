@@ -110,26 +110,26 @@ public class StandardDataType extends StorageDataTypeBase {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len) {
+    public void read(ByteBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            obj[i] = read(buff);
+            obj[i] = read(buff, formatVersion);
         }
     }
 
     @Override
-    public void write(DataBuffer buff, Object[] obj, int len) {
+    public void write(DataBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            write(buff, obj[i]);
+            write(buff, obj[i], formatVersion);
         }
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
+    public Object read(ByteBuffer buff, int formatVersion) {
         return DataBuffer.readValue(buff);
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         Value x = (Value) obj;
         buff.writeValue(x);
     }

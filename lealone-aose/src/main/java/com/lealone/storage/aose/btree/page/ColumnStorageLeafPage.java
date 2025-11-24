@@ -18,6 +18,7 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
 
     private PageReference[] columnPages;
     private boolean isAllColumnPagesRead;
+    private int formatVersionForRead;
 
     public ColumnStorageLeafPage(BTreeMap<?, ?> map) {
         super(map);
@@ -57,7 +58,7 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         PageReference ref = columnPages[columnIndex];
         ColumnPage page = (ColumnPage) ref.getOrReadPage();
         if (page.getMemory() <= 0)
-            page.readColumn(getValues(), columnIndex);
+            page.readColumn(getValues(), columnIndex, formatVersionForRead);
     }
 
     void markAllColumnPagesDirty() {
@@ -74,10 +75,11 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         }
     }
 
-    protected abstract void readValues(ByteBuffer buff, int keyLength, int columnCount);
+    protected abstract void readValues(ByteBuffer buff, int keyLength, int columnCount,
+            int formatVersion);
 
     @Override
-    public void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
+    public int read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, expectedPageLength);
@@ -95,11 +97,17 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         }
         buff = expandPage(buff, type, start, pageLength);
 
-        map.getKeyType().read(buff, keys, keyLength);
-        readValues(buff, keyLength, columnCount);
+        Chunk chunk = map.getBTreeStorage().getChunkManager().getChunk(chunkId);
+        map.getKeyType().read(buff, keys, keyLength, chunk.formatVersion);
+        readValues(buff, keyLength, columnCount, chunk.formatVersion);
         buff.getInt(); // replicationHostIds
+        int metaVersion = 0;
+        if (chunk.isNewFormatVersion())
+            metaVersion = DataUtils.readVarInt(buff); // metaVersion
         recalculateMemory();
+        formatVersionForRead = chunk.formatVersion;
         // 延迟加载列
+        return metaVersion;
     }
 
     @Override
@@ -121,12 +129,14 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
             buff.putLong(0);
         }
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, keyLength);
+        map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
         Object[] values = getValues();
         for (int row = 0; row < keyLength; row++) {
-            valueType.writeMeta(buff, values[row]);
+            valueType.writeMeta(buff, values[row], chunk.formatVersion);
         }
         buff.putInt(0); // replicationHostIds
+        if (chunk.isNewFormatVersion())
+            buff.putVarInt(pInfoOld.metaVersion);
         compressPage(buff, compressStart, type, typePos);
 
         int pageLength = buff.position() - start;

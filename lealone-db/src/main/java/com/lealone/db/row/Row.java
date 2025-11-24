@@ -20,20 +20,14 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
 
     private long key;
     private Value[] columns;
-    private int version; // 表的元数据版本号
 
     public Row(Value[] columns) {
         this.columns = columns;
     }
 
     public Row(long key, Value[] columns) {
-        this(columns);
         this.key = key;
-    }
-
-    public Row(int version, Value[] columns) {
-        this(columns);
-        this.version = version;
+        this.columns = columns;
     }
 
     @Override
@@ -44,6 +38,10 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
     @Override
     public Value[] getColumns() {
         return columns;
+    }
+
+    public void setColumns(Value[] columns) {
+        this.columns = columns;
     }
 
     @Override
@@ -59,16 +57,6 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
     @Override
     public void setKey(long key) {
         this.key = key;
-    }
-
-    @Override
-    public int getVersion() {
-        return version;
-    }
-
-    @Override
-    public void setVersion(int version) {
-        this.version = version;
     }
 
     @Override
@@ -108,8 +96,7 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
 
     @Override
     public Object copy(Object oldLockedValue, Lock lock) {
-        Row row = new Row(getVersion(), (Value[]) oldLockedValue);
-        row.setKey(getKey());
+        Row row = new Row(getKey(), (Value[]) oldLockedValue);
         row.setLock(lock);
         return row;
     }
@@ -118,9 +105,6 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
     public String toString() {
         StatementBuilder buff = new StatementBuilder("( /* key:");
         buff.append(getKey());
-        if (version != 0) {
-            buff.append(" v:" + version);
-        }
         buff.append(" */ ");
         if (columns != null) {
             for (Value v : columns) {

@@ -14,24 +14,24 @@ import com.lealone.db.value.ValueDataType;
 
 public interface StorageDataType extends ValueDataType {
 
-    default void write(DataBuffer buff, Lockable lockable, Object lockedValue) {
-        write(buff, lockedValue);
+    default void write(DataBuffer buff, Lockable lockable, Object lockedValue, int formatVersion) {
+        write(buff, lockedValue, formatVersion);
     }
 
-    default void writeMeta(DataBuffer buff, Object obj) {
+    default void writeMeta(DataBuffer buff, Object obj, int formatVersion) {
         // do nothing
     }
 
-    default Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
+    default Object readMeta(ByteBuffer buff, Object obj, int columnCount, int formatVersion) {
         // do nothing
         return obj;
     }
 
-    default void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
-        write(buff, obj);
+    default void writeColumn(DataBuffer buff, Object obj, int columnIndex, int formatVersion) {
+        write(buff, obj, formatVersion);
     }
 
-    default void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+    default void readColumn(ByteBuffer buff, Object obj, int columnIndex, int formatVersion) {
         // do nothing
     }
 
@@ -89,5 +89,9 @@ public interface StorageDataType extends ValueDataType {
 
     default Object getAppendKey(long key, Object valueObj) {
         return Long.valueOf(key);
+    }
+
+    default int getMetaVersion() {
+        return 0;
     }
 }

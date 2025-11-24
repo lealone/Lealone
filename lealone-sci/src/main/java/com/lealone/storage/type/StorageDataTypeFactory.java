@@ -65,13 +65,23 @@ public class StorageDataTypeFactory {
             }
 
             @Override
-            public void write(DataBuffer buff, Object obj) {
-                type.write(buff, obj);
+            public void write(DataBuffer buff, Object obj, int formatVersion) {
+                type.write(buff, obj, formatVersion);
             }
 
             @Override
             public void writeValue(DataBuffer buff, Value v) {
                 type.writeValue(buff, v);
+            }
+
+            @Override
+            public Object read(ByteBuffer buff, int formatVersion) {
+                return type.read(buff, formatVersion);
+            }
+
+            @Override
+            public Object read(ByteBuffer buff, int tag, int formatVersion) {
+                return type.read(buff, tag, formatVersion);
             }
 
             @Override

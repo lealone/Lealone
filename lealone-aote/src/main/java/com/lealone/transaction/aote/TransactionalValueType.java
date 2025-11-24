@@ -57,52 +57,52 @@ public class TransactionalValueType implements StorageDataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len) {
+    public void read(ByteBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            obj[i] = valueType.merge(obj[i], read(buff));
+            obj[i] = valueType.merge(obj[i], read(buff, formatVersion));
         }
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
-        return TransactionalValue.read(buff, valueType, this);
+    public Object read(ByteBuffer buff, int formatVersion) {
+        return TransactionalValue.read(buff, valueType, this, formatVersion);
     }
 
     @Override
-    public void write(DataBuffer buff, Object[] obj, int len) {
+    public void write(DataBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            write(buff, obj[i]);
+            write(buff, obj[i], formatVersion);
         }
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         Lockable lockable = (Lockable) obj;
-        TransactionalValue.write(lockable, buff, valueType, isByteStorage);
+        TransactionalValue.write(lockable, buff, valueType, isByteStorage, formatVersion);
     }
 
     @Override
-    public void writeMeta(DataBuffer buff, Object obj) {
+    public void writeMeta(DataBuffer buff, Object obj, int formatVersion) {
         Lockable lockable = (Lockable) obj;
-        TransactionalValue.writeMeta(lockable, buff);
-        valueType.writeMeta(buff, lockable.getValue());
+        TransactionalValue.writeMeta(lockable, buff, formatVersion);
+        valueType.writeMeta(buff, lockable.getValue(), formatVersion);
     }
 
     @Override
-    public Object readMeta(ByteBuffer buff, Object obj, int columnCount) {
-        return TransactionalValue.readMeta(buff, valueType, this, obj, columnCount);
+    public Object readMeta(ByteBuffer buff, Object obj, int columnCount, int formatVersion) {
+        return TransactionalValue.readMeta(buff, valueType, this, obj, columnCount, formatVersion);
     }
 
     @Override
-    public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
+    public void writeColumn(DataBuffer buff, Object obj, int columnIndex, int formatVersion) {
         Lockable v = (Lockable) obj;
-        valueType.writeColumn(buff, v.getValue(), columnIndex);
+        valueType.writeColumn(buff, v.getValue(), columnIndex, formatVersion);
     }
 
     @Override
-    public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+    public void readColumn(ByteBuffer buff, Object obj, int columnIndex, int formatVersion) {
         Lockable v = (Lockable) obj;
-        valueType.readColumn(buff, v.getValue(), columnIndex);
+        valueType.readColumn(buff, v.getValue(), columnIndex, formatVersion);
     }
 
     @Override

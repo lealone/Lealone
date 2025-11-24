@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.fs.FileStorage;
@@ -46,8 +47,6 @@ public class Chunk {
 
     public static final int MAX_SIZE = Integer.MAX_VALUE - CHUNK_HEADER_SIZE;
 
-    private static final int FORMAT_VERSION = 2;
-
     /**
      * The chunk id.
      */
@@ -78,7 +77,7 @@ public class Chunk {
     public String fileName;
     public long mapSize;
     public Long mapMaxKey; // 从FORMAT_VERSION=2时新增
-    public int formatVersion = FORMAT_VERSION;
+    public int formatVersion = FormatVersion.FORMAT_VERSION;
 
     private int removedPageOffset;
     private int removedPageCount;
@@ -86,6 +85,10 @@ public class Chunk {
 
     public Chunk(int id) {
         this.id = id;
+    }
+
+    public boolean isNewFormatVersion() {
+        return formatVersion >= 2;
     }
 
     public int getPageLength(long pagePosition) {
@@ -255,11 +258,11 @@ public class Chunk {
         if (map.containsKey("mapMaxKey"))
             mapMaxKey = DataUtils.readHexLong(map, "mapMaxKey", 0);
 
-        int format = DataUtils.readHexInt(map, "format", FORMAT_VERSION);
-        if (format > FORMAT_VERSION) {
+        int format = DataUtils.readHexInt(map, "format", FormatVersion.FORMAT_VERSION);
+        if (format > FormatVersion.FORMAT_VERSION) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
                     "The chunk format {0} is larger than the supported format {1}", format,
-                    FORMAT_VERSION);
+                    FormatVersion.FORMAT_VERSION);
         }
         formatVersion = format;
 

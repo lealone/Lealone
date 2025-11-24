@@ -32,4 +32,8 @@ public interface Lockable {
     public PageListener getPageListener();
 
     public boolean isNoneLock();
+
+    public int getMetaVersion();
+
+    public void setMetaVersion(int mv);
 }

@@ -87,7 +87,7 @@ public class TransactionalValueTest extends AoteTestBase {
         String key = "1";
 
         ValueArray valueArray = createValueArray(0, 0, 0, 0);
-        Row r = new Row(1, valueArray.getList());
+        Row r = new Row(valueArray.getList());
         map.put(key, r);
         t.commit();
 
@@ -158,7 +158,7 @@ public class TransactionalValueTest extends AoteTestBase {
         Row vv = map.get(key);
         Value[] values = vv.getColumns().clone();
         values[columnIndex] = ValueInt.get(value);
-        vv = new Row(1, values);
+        vv = new Row(values);
         return vv;
     }
 

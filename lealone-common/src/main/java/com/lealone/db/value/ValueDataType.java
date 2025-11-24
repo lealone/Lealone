@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
+import com.lealone.storage.FormatVersion;
 
 /**
  * A data type.
@@ -101,7 +102,11 @@ public interface ValueDataType {
      * @param buff the target buffer
      * @param obj the value
      */
-    void write(DataBuffer buff, Object obj);
+    void write(DataBuffer buff, Object obj, int formatVersion);
+
+    default void write(DataBuffer buff, Object obj) {
+        write(buff, obj, FormatVersion.FORMAT_VERSION);
+    }
 
     /**
      * Write a list of objects.
@@ -110,9 +115,9 @@ public interface ValueDataType {
      * @param obj the objects
      * @param len the number of objects to write
      */
-    default void write(DataBuffer buff, Object[] obj, int len) {
+    default void write(DataBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            write(buff, obj[i]);
+            write(buff, obj[i], formatVersion);
         }
     }
 
@@ -122,7 +127,11 @@ public interface ValueDataType {
      * @param buff the source buffer
      * @return the object
      */
-    Object read(ByteBuffer buff);
+    Object read(ByteBuffer buff, int formatVersion);
+
+    default Object read(ByteBuffer buff) {
+        return read(buff, FormatVersion.FORMAT_VERSION);
+    }
 
     /**
      * Read a list of objects.
@@ -131,9 +140,9 @@ public interface ValueDataType {
      * @param obj the objects
      * @param len the number of objects to read
      */
-    default void read(ByteBuffer buff, Object[] obj, int len) {
+    default void read(ByteBuffer buff, Object[] obj, int len, int formatVersion) {
         for (int i = 0; i < len; i++) {
-            obj[i] = read(buff);
+            obj[i] = read(buff, formatVersion);
         }
     }
 

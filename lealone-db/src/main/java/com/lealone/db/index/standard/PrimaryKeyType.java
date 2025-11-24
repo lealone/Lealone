@@ -34,12 +34,12 @@ public class PrimaryKeyType extends StandardDataType {
     }
 
     @Override
-    public Object read(ByteBuffer buff) {
+    public Object read(ByteBuffer buff, int formatVersion) {
         return DataBuffer.readValue(buff);
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         Value x;
         if (obj instanceof ValueLong)
             x = (ValueLong) obj;

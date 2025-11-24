@@ -13,6 +13,7 @@ import java.util.Map;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueString;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.TransactionalValue;
@@ -105,10 +106,12 @@ public abstract class UndoLogRecord {
 
         // 写redo log时需要用它，不能直接使用lockable.getValue()，因为会变动
         private final Object newValue;
+        private final int metaVersion;
 
         public KeyValueULR(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
             super(map, key, lockable, oldValue);
             this.newValue = lockable.getLockedValue();
+            this.metaVersion = lockable.getMetaVersion();
         }
 
         @Override
@@ -135,12 +138,14 @@ public abstract class UndoLogRecord {
             int pos = log.position();
             if (newValue == null) {
                 log.put((byte) 0);
-                map.getKeyType().write(log, key);
+                map.getKeyType().write(log, key, FormatVersion.FORMAT_VERSION);
             } else {
                 log.put((byte) 1);
-                map.getKeyType().write(log, key);
+                log.putVarInt(metaVersion);
+                map.getKeyType().write(log, key, FormatVersion.FORMAT_VERSION);
                 // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
-                map.getValueType().getRawType().write(log, lockable, newValue);
+                map.getValueType().getRawType().write(log, lockable, newValue,
+                        FormatVersion.FORMAT_VERSION);
             }
             return log.position() - pos;
         }
@@ -150,7 +155,7 @@ public abstract class UndoLogRecord {
     public static void readForRedo(ByteBuffer buff, Map<String, List<ByteBuffer>> pendingRedoLog) {
         while (buff.hasRemaining()) {
             // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
-            String mapName = ValueString.type.read(buff);
+            String mapName = ValueString.type.read(buff, FormatVersion.FORMAT_VERSION_1);
             List<ByteBuffer> keyValues = pendingRedoLog.get(mapName);
             if (keyValues == null) {
                 keyValues = new LinkedList<>();

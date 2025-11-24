@@ -23,6 +23,8 @@ public class PageInfo {
 
     private volatile PageLock pageLock;
 
+    public int metaVersion;
+
     public PageInfo() {
     }
 
@@ -108,6 +110,7 @@ public class PageInfo {
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
         pInfo.pageLock = pageLock;
+        pInfo.metaVersion = metaVersion;
         if (!gc) {
             pInfo.lastTime = lastTime;
             pInfo.hits = hits;

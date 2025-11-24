@@ -20,4 +20,10 @@ public interface IPageReference {
 
     void addPageUsedMemory(int delta);
 
+    int getMetaVersion();
+
+    void setMetaVersion(int mv);
+
+    Object[] getValues();
+
 }

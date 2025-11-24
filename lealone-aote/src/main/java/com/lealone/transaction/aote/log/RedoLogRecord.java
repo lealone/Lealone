@@ -15,6 +15,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.value.ValueString;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
 
 // initPendingRedoLog和read方法都是为了兼容老版本的redo log
@@ -85,7 +86,7 @@ public abstract class RedoLogRecord {
         }
 
         public static RedoLogRecord read(ByteBuffer buff) {
-            String mapName = ValueString.type.read(buff);
+            String mapName = ValueString.type.read(buff, FormatVersion.FORMAT_VERSION_1);
             return new DroppedMapRLR(mapName);
         }
     }

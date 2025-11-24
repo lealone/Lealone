@@ -16,6 +16,7 @@ import com.lealone.common.util.DataUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DbSetting;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.btree.chunk.Chunk;
 import com.lealone.storage.aose.btree.chunk.ChunkCompactor;
@@ -228,12 +229,13 @@ public class BTreeStorage {
         Page p = Page.create(map, type, buff);
         p.setRef(ref);
         // buff要复用，并且要支持多线程同时读，所以直接用slice
-        p.read(buff.slice(), chunkId, offset, pageLength);
+        int metaVersion = p.read(buff.slice(), chunkId, offset, pageLength);
 
         PageInfo pInfo = new PageInfo(p, pos);
         pInfo.buff = buff;
         pInfo.pageLength = pageLength;
         pInfo.setPageLock(ref.getLock());
+        pInfo.metaVersion = metaVersion;
         return pInfo;
     }
 
@@ -322,6 +324,11 @@ public class BTreeStorage {
         boolean appendMode = false;
         Chunk c;
         Chunk lastChunk = chunkManager.getLastChunk();
+        // 老版本的chunk不再append
+        if (appendModeEnabled && lastChunk != null
+                && FormatVersion.isOldFormatVersion(lastChunk.formatVersion)) {
+            appendModeEnabled = false;
+        }
         boolean isLastChunkUsed = lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk);
         if (appendModeEnabled && isLastChunkUsed
                 && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {

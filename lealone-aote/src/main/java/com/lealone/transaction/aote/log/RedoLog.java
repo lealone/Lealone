@@ -17,12 +17,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.fs.FileStorage;
@@ -155,7 +157,7 @@ public class RedoLog {
             }
             if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
                 for (ByteBuffer kv : pendingKeyValues) {
-                    redo(map, indexMaps, kt, vt, kv, handler, true);
+                    redo(map, indexMaps, kt, vt, kv, handler, FormatVersion.FORMAT_VERSION_1);
                 }
                 map.save();
             }
@@ -170,22 +172,23 @@ public class RedoLog {
         ByteBuffer log = map.readRedoLog();
         if (log != null) {
             while (log.hasRemaining()) {
-                redo(map, indexMaps, kt, vt, log, handler, false);
+                redo(map, indexMaps, kt, vt, log, handler, FormatVersion.FORMAT_VERSION);
             }
         }
     }
 
     private void redo(StorageMap<Object, Object> map, List<StorageMap<Object, Object>> indexMaps,
             StorageDataType kt, StorageDataType vt, ByteBuffer kv, AsyncResultHandler<Object> handler,
-            boolean old) {
+            int formatVersion) {
         Object key;
         byte type;
-        if (old) {
-            key = kt.read(kv);
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            key = kt.read(kv, formatVersion);
             type = kv.get();
         } else {
             type = kv.get();
-            key = kt.read(kv);
+            DataUtils.readVarInt(kv); // metaVersion
+            key = kt.read(kv, formatVersion);
         }
         if (type == 0) {
             map.remove(key, ar -> {
@@ -202,7 +205,7 @@ public class RedoLog {
                 }
             });
         } else {
-            Object value = vt.read(kv);
+            Object value = vt.read(kv, formatVersion);
             Lockable lockable;
             if (value instanceof Lockable) {
                 lockable = (Lockable) value;

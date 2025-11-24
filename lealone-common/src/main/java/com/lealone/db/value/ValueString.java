@@ -14,6 +14,7 @@ import com.lealone.common.util.MathUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.SysProperties;
+import com.lealone.storage.FormatVersion;
 
 /**
  * Implementation of the VARCHAR data type.
@@ -224,9 +225,13 @@ public class ValueString extends Value {
             buff.putStringData(s, len);
         }
 
-        @Override
         public String read(ByteBuffer buff) {
-            return (String) super.read(buff);
+            return read(buff, FormatVersion.FORMAT_VERSION_1);
+        }
+
+        @Override
+        public String read(ByteBuffer buff, int formatVersion) {
+            return (String) super.read(buff, formatVersion);
         }
 
         @Override

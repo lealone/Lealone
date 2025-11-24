@@ -8,6 +8,7 @@ package com.lealone.storage.aose.btree.page;
 import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
+import com.lealone.storage.FormatVersion;
 import com.lealone.storage.aose.btree.BTreeMap;
 
 //只有key的场景，比如用来存索引的数据，索引的key就是由索引字段和rowKey组成
@@ -37,7 +38,7 @@ public class KeyPage extends RowStorageLeafPage {
 
     @Override
     protected void readValues(ByteBuffer buff, int keyLength, int formatVersion) {
-        if (formatVersion < 2) {
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
             // 兼容老版本
             for (int i = 0; i < keyLength; i++) {
                 buff.get();
@@ -50,7 +51,7 @@ public class KeyPage extends RowStorageLeafPage {
 
     @Override
     protected void writeValues(DataBuffer buff, int keyLength, int formatVersion) {
-        if (formatVersion < 2) {
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
             // 兼容老版本
             for (int i = 0; i < keyLength; i++) {
                 buff.put((byte) 0);

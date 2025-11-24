@@ -116,6 +116,13 @@ public abstract class Lock {
         return false;
     }
 
+    public int getMetaVersion() {
+        return 0;
+    }
+
+    public void setMetaVersion(int mv) {
+    }
+
     @SuppressWarnings("unchecked")
     public static <V> V getLockedValue(Lockable lockable) {
         Object v = lockable.getLockedValue();

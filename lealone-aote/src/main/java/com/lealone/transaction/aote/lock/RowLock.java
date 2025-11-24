@@ -88,4 +88,16 @@ public class RowLock extends Lock {
     public void setPageListener(PageListener pageListener) {
         this.pageListener = pageListener;
     }
+
+    private int metaVersion;
+
+    @Override
+    public int getMetaVersion() {
+        return metaVersion;
+    }
+
+    @Override
+    public void setMetaVersion(int mv) {
+        metaVersion = mv;
+    }
 }

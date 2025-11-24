@@ -30,13 +30,13 @@ public class CharacterType extends ValueDataTypeBase {
     }
 
     @Override
-    public void write(DataBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj, int formatVersion) {
         buff.put((byte) TYPE_CHAR);
         buff.putChar(((Character) obj).charValue());
     }
 
     @Override
-    public Object read(ByteBuffer buff, int tag) {
+    public Object read(ByteBuffer buff, int tag, int formatVersion) {
         return Character.valueOf(buff.getChar());
     }
 }

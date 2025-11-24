@@ -68,11 +68,11 @@ public class KeyColumnsPage extends ColumnStorageLeafPage {
     }
 
     @Override
-    protected void readValues(ByteBuffer buff, int keyLength, int columnCount) {
+    protected void readValues(ByteBuffer buff, int keyLength, int columnCount, int formatVersion) {
         values = new Object[keyLength];
         StorageDataType valueType = map.getValueType();
         for (int row = 0; row < keyLength; row++) {
-            values[row] = valueType.readMeta(buff, null, columnCount);
+            values[row] = valueType.readMeta(buff, null, columnCount, formatVersion);
         }
         setPageListener(valueType, values);
     }
