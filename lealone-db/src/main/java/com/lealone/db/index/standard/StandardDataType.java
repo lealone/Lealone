@@ -30,10 +30,6 @@ public class StandardDataType extends StorageDataTypeBase {
         this.sortTypes = sortTypes;
     }
 
-    protected boolean isUniqueKey() {
-        return false;
-    }
-
     @Override
     public int compare(Object a, Object b) {
         if (a == b) {
@@ -51,9 +47,7 @@ public class StandardDataType extends StorageDataTypeBase {
         int al = ax.length;
         int bl = bx.length;
         int len = Math.min(al, bl);
-        // 唯一索引key不需要比较最后的rowId
-        int size = isUniqueKey() ? len - 1 : len;
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < len; i++) {
             int sortType = sortTypes[i];
             int comp = compareValue(ax[i], bx[i], sortType);
             if (comp != 0) {

@@ -5,23 +5,36 @@
  */
 package com.lealone.db.index.standard;
 
-import java.util.Arrays;
-
 import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.LockableBase;
+import com.lealone.db.row.Row;
 import com.lealone.db.value.Value;
 
 public class IndexKey extends LockableBase {
 
-    Value[] columns;
+    private long key;
+    private Value[] columns;
 
-    public IndexKey(Value[] columns) {
+    public IndexKey(long key, Value[] columns) {
+        this.key = key;
         this.columns = columns;
+    }
+
+    public void setKey(long key) {
+        this.key = key;
+    }
+
+    public long getKey() {
+        return key;
+    }
+
+    public Value[] getColumns() {
+        return columns;
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(columns);
+        return Row.toString(key, columns);
     }
 
     @Override
@@ -39,7 +52,7 @@ public class IndexKey extends LockableBase {
 
     @Override
     public Object copy(Object oldLockedValue, Lock lock) {
-        IndexKey k = new IndexKey((Value[]) oldLockedValue);
+        IndexKey k = new IndexKey(key, (Value[]) oldLockedValue);
         k.setLock(lock);
         return k;
     }

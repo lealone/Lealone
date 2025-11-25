@@ -42,7 +42,6 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     private final StandardTable table;
     private final String mapName;
-    private final int keyColumns;
     private final TransactionMap<IndexKey, IndexKey> dataMap;
 
     private Long lastIndexedRowKey;
@@ -56,19 +55,14 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (!database.isStarting()) {
             checkIndexColumnTypes(indexColumns);
         }
-        // always store the row key in the map key,
-        // even for unique indexes, as some of the index columns could be null
-        keyColumns = indexColumns.length + 1;
-
         dataMap = openMap(session, mapName);
     }
 
     private TransactionMap<IndexKey, IndexKey> openMap(ServerSession session, String mapName) {
-        int[] sortTypes = new int[keyColumns];
+        int[] sortTypes = new int[indexColumns.length];
         for (int i = 0; i < indexColumns.length; i++) {
             sortTypes[i] = indexColumns[i].sortType;
         }
-        sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
 
         IndexKeyType keyType;
         if (indexType.isUnique())
@@ -210,7 +204,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         runIndexOperations(session);
         IndexKey min = convertToKey(first);
         if (min != null) {
-            min.columns[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+            min.setKey(Long.MIN_VALUE);
         }
         TransactionMap<IndexKey, IndexKey> map = getMap(session);
         if (isBuilding()) {
@@ -248,8 +242,9 @@ public class StandardSecondaryIndex extends StandardIndex {
     private IndexKey convertToKey(SearchRow r, Value[] columnArray) {
         if (r == null)
             return null;
-        Value[] array = new Value[keyColumns];
-        for (int i = 0; i < columns.length; i++) {
+        int len = columns.length;
+        Value[] array = new Value[len];
+        for (int i = 0; i < len; i++) {
             Column c = columns[i];
             int idx = c.getColumnId();
             Value v = columnArray[idx];
@@ -265,8 +260,7 @@ public class StandardSecondaryIndex extends StandardIndex {
                 }
             }
         }
-        array[keyColumns - 1] = r.getPrimaryKey();
-        return new IndexKey(array);
+        return new IndexKey(r.getKey(), array);
     }
 
     @Override
@@ -287,7 +281,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             if (key == null) {
                 return null;
             }
-            if (key.columns[0] != ValueNull.INSTANCE) {
+            if (key.getColumns()[0] != ValueNull.INSTANCE) {
                 break;
             }
             key = first ? map.higherKey(key) : map.lowerKey(key);
@@ -348,14 +342,14 @@ public class StandardSecondaryIndex extends StandardIndex {
     /**
      * Convert array of values to a SearchRow.
      *
-     * @param array the index key
+     * @param iKey the index key
      * @return the row
      */
-    private SearchRow convertToSearchRow(IndexKey key) {
-        Value[] array = key.columns;
-        int len = array.length - 1;
+    private SearchRow convertToSearchRow(IndexKey iKey) {
+        Value[] array = iKey.getColumns();
+        int len = array.length;
         SearchRow searchRow = table.getTemplateRow();
-        searchRow.setKey((array[len]).getLong());
+        searchRow.setKey(iKey.getKey());
         Column[] cols = getColumns();
         for (int i = 0; i < len; i++) {
             Column c = cols[i];
@@ -368,7 +362,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         int idx = table.getScanIndex(null).getMainIndexColumn();
         if (idx >= 0) {
             Column c = table.getColumn(idx);
-            Value v = c.convert(array[len]);
+            Value v = c.convert(ValueLong.get(iKey.getKey()));
             searchRow.setValue(idx, v);
         }
         return searchRow;
@@ -512,15 +506,15 @@ public class StandardSecondaryIndex extends StandardIndex {
         protected SearchRow nextSearchRow() {
             IndexKey current = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
             if (current != null) {
-                Value[] currentValues = current.columns;
+                int len = columns.length;
+                Value[] currentValues = current.getColumns();
                 if (oldKey == null) {
-                    Value[] oldValues = new Value[keyColumns];
-                    System.arraycopy(currentValues, 0, oldValues, 0, keyColumns - 1);
-                    oldValues[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
-                    oldKey = new IndexKey(oldValues);
+                    Value[] oldValues = new Value[len];
+                    System.arraycopy(currentValues, 0, oldValues, 0, len);
+                    oldKey = new IndexKey(Long.MAX_VALUE, oldValues);
                 } else {
-                    Value[] oldValues = oldKey.columns;
-                    for (int i = 0, size = keyColumns - 1; i < size; i++)
+                    Value[] oldValues = oldKey.getColumns();
+                    for (int i = 0; i < len; i++)
                         oldValues[i] = currentValues[i];
                 }
             }

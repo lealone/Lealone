@@ -7,6 +7,7 @@ package com.lealone.db.index.standard;
 
 import java.nio.ByteBuffer;
 
+import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
 import com.lealone.db.lock.Lock;
@@ -15,6 +16,8 @@ import com.lealone.db.row.RowType;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.db.value.ValueLong;
+import com.lealone.storage.FormatVersion;
 
 public class IndexKeyType extends StandardDataType {
 
@@ -24,6 +27,10 @@ public class IndexKeyType extends StandardDataType {
             StandardSecondaryIndex index) {
         super(handler, compareMode, sortTypes);
         this.index = index;
+    }
+
+    protected boolean isUniqueKey() {
+        return false;
     }
 
     @Override
@@ -36,21 +43,26 @@ public class IndexKeyType extends StandardDataType {
         } else if (b == null) {
             return 1;
         }
+        IndexKey aKey = (IndexKey) a;
         IndexKey bKey = (IndexKey) b;
-        Value[] ax = Lock.getLockedValue((IndexKey) a);
+        Value[] ax = Lock.getLockedValue(aKey);
         Value[] bx = Lock.getLockedValue(bKey);
         if (bx == null) {
             bx = (Value[]) index.getDataMap().getOldValue(bKey);
             if (bx == null)
                 return 1;
         }
-        return compareValues(ax, bx);
+        int comp = compareValues(ax, bx);
+        if (comp == 0 && !isUniqueKey()) // 唯一索引key不需要比较最后的rowId
+            return Long.compare(aKey.getKey(), bKey.getKey());
+        else
+            return Long.signum(comp);
     }
 
     @Override
     public int getMemory(Object obj) {
         IndexKey k = (IndexKey) obj;
-        return 24 + RowType.getColumnsMemory(k);
+        return 32 + RowType.getColumnsMemory(k);
     }
 
     @Override
@@ -60,23 +72,44 @@ public class IndexKeyType extends StandardDataType {
 
     @Override
     public Object read(ByteBuffer buff, int formatVersion) {
+        long key;
         ValueArray a = (ValueArray) DataBuffer.readValue(buff);
         Value[] columns = a.getList();
         if (columns.length == 0)
             columns = null;
-        return new IndexKey(columns);
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            if (columns != null) {
+                key = columns[columns.length - 1].getLong();
+                Value[] newColumns = new Value[columns.length - 1];
+                System.arraycopy(columns, 0, newColumns, 0, newColumns.length);
+                columns = newColumns;
+            } else {
+                key = 0;
+            }
+        } else {
+            key = DataUtils.readVarLong(buff);
+        }
+        return new IndexKey(key, columns);
     }
 
     @Override
     public void write(DataBuffer buff, Object obj, int formatVersion) {
-        IndexKey k = (IndexKey) obj;
-        Value[] columns = k.columns;
+        IndexKey iKey = (IndexKey) obj;
+        Value[] columns = iKey.getColumns();
         if (columns == null) {
-            columns = (Value[]) index.getDataMap().getOldValue(k);
+            columns = (Value[]) index.getDataMap().getOldValue(iKey);
             if (columns == null)
                 columns = new Value[0];
         }
-        buff.writeValue(ValueArray.get(columns));
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            Value[] newColumns = new Value[columns.length + 1];
+            System.arraycopy(columns, 0, newColumns, 0, columns.length);
+            newColumns[columns.length] = ValueLong.get(iKey.getKey());
+            buff.writeValue(ValueArray.get(newColumns));
+        } else {
+            buff.writeValue(ValueArray.get(columns));
+            buff.putVarLong(iKey.getKey());
+        }
     }
 
     @Override
@@ -96,6 +129,7 @@ public class IndexKeyType extends StandardDataType {
 
     @Override
     public Object getSplitKey(Object keyObj) {
-        return new IndexKey(((IndexKey) keyObj).columns);
+        IndexKey iKey = (IndexKey) keyObj;
+        return new IndexKey(iKey.getKey(), iKey.getColumns());
     }
 }

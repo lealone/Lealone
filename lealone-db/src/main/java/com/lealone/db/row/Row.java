@@ -102,9 +102,18 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
     }
 
     @Override
+    public int compareTo(Row o) {
+        return MathUtils.compareLong(this.key, o.key);
+    }
+
+    @Override
     public String toString() {
+        return toString(key, columns);
+    }
+
+    public static String toString(long key, Value[] columns) {
         StatementBuilder buff = new StatementBuilder("( /* key:");
-        buff.append(getKey());
+        buff.append(key);
         buff.append(" */ ");
         if (columns != null) {
             for (Value v : columns) {
@@ -113,10 +122,5 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
             }
         }
         return buff.append(')').toString();
-    }
-
-    @Override
-    public int compareTo(Row o) {
-        return MathUtils.compareLong(this.key, o.key);
     }
 }
