@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataHandler;
 import com.lealone.db.index.standard.StandardDataType;
 import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
@@ -22,17 +21,16 @@ import com.lealone.storage.FormatVersion;
 
 public class RowType extends StandardDataType {
 
-    final int columnCount;
-    final EnumColumn[] enumColumns;
-    final StandardTable table;
+    private final int columnCount;
+    private final EnumColumn[] enumColumns;
+    private final StandardTable table;
 
     public RowType(int[] sortTypes, int columnCount) {
-        this(null, null, sortTypes, columnCount, null);
+        this(null, sortTypes, columnCount, null);
     }
 
-    public RowType(DataHandler handler, CompareMode compareMode, int[] sortTypes, int columnCount,
-            StandardTable table) {
-        super(handler, compareMode, sortTypes);
+    public RowType(CompareMode compareMode, int[] sortTypes, int columnCount, StandardTable table) {
+        super(compareMode, sortTypes);
         this.columnCount = columnCount;
         if (table != null) {
             this.enumColumns = table.getEnumColumns();

@@ -53,8 +53,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             sortTypes[i] = SortOrder.ASCENDING;
         }
         PrimaryKeyType keyType = new PrimaryKeyType();
-        RowType rowType = new RowType(database, database.getCompareMode(), sortTypes, columns.length,
-                table);
+        RowType rowType = new RowType(database.getCompareMode(), sortTypes, columns.length, table);
         rowType.setRowOnly(true);
 
         Storage storage = database.getStorage(table.getStorageEngine());

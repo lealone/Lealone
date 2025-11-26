@@ -17,7 +17,7 @@ import com.lealone.db.value.ValueLong;
 public class PrimaryKeyType extends StandardDataType {
 
     public PrimaryKeyType() {
-        super(null, null, null);
+        super(null, null);
     }
 
     @Override

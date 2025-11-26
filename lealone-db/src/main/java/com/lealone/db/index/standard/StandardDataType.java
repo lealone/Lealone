@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.lealone.db.DataBuffer;
-import com.lealone.db.DataHandler;
 import com.lealone.db.result.SortOrder;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.Value;
@@ -20,12 +19,10 @@ import com.lealone.storage.type.StorageDataTypeBase;
 
 public class StandardDataType extends StorageDataTypeBase {
 
-    final DataHandler handler;
-    final CompareMode compareMode;
-    final int[] sortTypes;
+    protected final CompareMode compareMode;
+    protected final int[] sortTypes;
 
-    public StandardDataType(DataHandler handler, CompareMode compareMode, int[] sortTypes) {
-        this.handler = handler;
+    public StandardDataType(CompareMode compareMode, int[] sortTypes) {
         this.compareMode = compareMode;
         this.sortTypes = sortTypes;
     }
@@ -62,7 +59,7 @@ public class StandardDataType extends StorageDataTypeBase {
         return 0;
     }
 
-    private int compareValue(Value a, Value b, int sortType) {
+    public int compareValue(Value a, Value b, int sortType) {
         if (a == b) {
             return 0;
         }
@@ -80,27 +77,16 @@ public class StandardDataType extends StorageDataTypeBase {
         if (aNull || bNull) {
             return SortOrder.compareNull(aNull, sortType);
         }
-        int comp = compareTypeSafe(a, b);
+        int comp = a.compareTypeSafe(b, compareMode);
         if ((sortType & SortOrder.DESCENDING) != 0) {
             comp = -comp;
         }
         return comp;
     }
 
-    private int compareTypeSafe(Value a, Value b) {
-        if (a == b) {
-            return 0;
-        }
-        return a.compareTypeSafe(b, compareMode);
-    }
-
     @Override
     public int getMemory(Object obj) {
-        return getMemory((Value) obj);
-    }
-
-    private static int getMemory(Value v) {
-        return v == null ? 0 : v.getMemory();
+        return obj == null ? 0 : ((Value) obj).getMemory();
     }
 
     @Override

@@ -45,7 +45,7 @@ public class ResultTempMap implements ResultExternal {
         parent = null;
         if (distinct) {
             Database db = session.getDatabase();
-            StandardDataType type = new StandardDataType(db, db.getCompareMode(), getSortTypes());
+            StandardDataType type = new StandardDataType(db.getCompareMode(), getSortTypes());
             type.setKeyOnly(true);
             openMap(db, type, type);
         } else if (sort != null) {
@@ -57,14 +57,14 @@ public class ResultTempMap implements ResultExternal {
             keySortTypes[sortColumnIndexes.length] = SortOrder.ASCENDING;
 
             Database db = session.getDatabase();
-            StandardDataType keyType = new StandardDataType(db, db.getCompareMode(), keySortTypes);
-            StandardDataType valueType = new StandardDataType(db, db.getCompareMode(), getSortTypes());
+            StandardDataType keyType = new StandardDataType(db.getCompareMode(), keySortTypes);
+            StandardDataType valueType = new StandardDataType(db.getCompareMode(), getSortTypes());
             openMap(db, keyType, valueType);
         } else {
             Database db = session.getDatabase();
-            StandardDataType keyType = new StandardDataType(db, db.getCompareMode(),
+            StandardDataType keyType = new StandardDataType(db.getCompareMode(),
                     new int[] { SortOrder.ASCENDING });
-            StandardDataType valueType = new StandardDataType(db, db.getCompareMode(), getSortTypes());
+            StandardDataType valueType = new StandardDataType(db.getCompareMode(), getSortTypes());
             openMap(db, keyType, valueType);
         }
     }

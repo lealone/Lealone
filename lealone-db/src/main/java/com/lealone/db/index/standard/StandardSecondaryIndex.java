@@ -63,13 +63,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         for (int i = 0; i < indexColumns.length; i++) {
             sortTypes[i] = indexColumns[i].sortType;
         }
-
-        IndexKeyType keyType;
-        if (indexType.isUnique())
-            keyType = new UniqueKeyType(database, database.getCompareMode(), sortTypes, this);
-        else
-            keyType = new IndexKeyType(database, database.getCompareMode(), sortTypes, this);
-
+        IndexKeyType keyType = IndexKeyType.create(database.getCompareMode(), sortTypes, this);
         Storage storage = database.getStorage(table.getStorageEngine());
         Map<String, String> parameters = table.getParameters();
         if (!table.isPersistIndexes()) {
@@ -260,7 +254,7 @@ public class StandardSecondaryIndex extends StandardIndex {
                 }
             }
         }
-        return new IndexKey(r.getKey(), array);
+        return IndexKey.create(r.getKey(), array);
     }
 
     @Override
@@ -506,17 +500,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         protected SearchRow nextSearchRow() {
             IndexKey current = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
             if (current != null) {
-                int len = columns.length;
-                Value[] currentValues = current.getColumns();
-                if (oldKey == null) {
-                    Value[] oldValues = new Value[len];
-                    System.arraycopy(currentValues, 0, oldValues, 0, len);
-                    oldKey = new IndexKey(Long.MAX_VALUE, oldValues);
-                } else {
-                    Value[] oldValues = oldKey.getColumns();
-                    for (int i = 0; i < len; i++)
-                        oldValues[i] = currentValues[i];
-                }
+                oldKey = IndexKey.create(Long.MAX_VALUE, current.getColumns());
             }
             return createSearchRow(current);
         }
