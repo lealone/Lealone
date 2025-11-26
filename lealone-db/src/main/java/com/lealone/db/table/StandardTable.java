@@ -805,11 +805,9 @@ public class StandardTable extends Table {
             return;
         IPageReference ref = pListener.getPageReference();
         if (ref.getMetaVersion() < getVersion()) {
-            int versionMin = ref.getMetaVersion() + 1;
-            int versionMax = getVersion();
-            ref.setMetaVersion(versionMax);
-            ArrayList<TableAlterHistoryRecord> records = getDatabase().getTableAlterHistory()
-                    .getRecords(session, getId(), versionMin, versionMax);
+            ArrayList<TableAlterHistoryRecord> records = getTableAlterHistoryRecords(session,
+                    ref.getMetaVersion());
+            ref.setMetaVersion(getVersion());
             for (Object v : ref.getValues()) {
                 if (exclude && v == row)
                     continue;
@@ -819,15 +817,20 @@ public class StandardTable extends Table {
         }
     }
 
+    private ArrayList<TableAlterHistoryRecord> getTableAlterHistoryRecords(ServerSession session,
+            int metaVersion) {
+        int versionMin = metaVersion + 1;
+        int versionMax = getVersion();
+        return getDatabase().getTableAlterHistory().getRecords(session, getId(), versionMin, versionMax);
+    }
+
     private void alterRow(ServerSession session, Row row, ArrayList<TableAlterHistoryRecord> records) {
         Value[] oldValues = row.getColumns();
-        Value[] newValues = new Value[oldValues.length];
-        System.arraycopy(oldValues, 0, newValues, 0, oldValues.length);
-        for (TableAlterHistoryRecord record : records) {
-            newValues = record.redo(session, newValues);
-        }
-        row.setColumns(newValues);
+        redoMeta(session, row, records);
+        alterIndexes(session, row, oldValues);
+    }
 
+    private void alterIndexes(ServerSession session, Row row, Value[] oldValues) {
         int size = indexes.size();
         if (size > 1) {
             boolean fastPath = session.isFastPath();
@@ -845,5 +848,35 @@ public class StandardTable extends Table {
                 session.setFastPath(fastPath);
             }
         }
+    }
+
+    private void redoMeta(ServerSession session, Row row, ArrayList<TableAlterHistoryRecord> records) {
+        Value[] oldValues = row.getColumns();
+        Value[] newValues = new Value[oldValues.length];
+        System.arraycopy(oldValues, 0, newValues, 0, oldValues.length);
+        for (TableAlterHistoryRecord record : records) {
+            newValues = record.redo(session, newValues);
+        }
+        row.setColumns(newValues);
+    }
+
+    @SuppressWarnings("unchecked")
+    public void redo(Row row, int metaVersion) {
+        Value[] oldValues = row.getColumns();
+        ServerSession session = getDatabase().getSystemSession();
+        if (metaVersion < getVersion()) {
+            ArrayList<TableAlterHistoryRecord> records = getTableAlterHistoryRecords(session,
+                    metaVersion);
+            redoMeta(session, row, records);
+        }
+        // 直接覆盖，不能调用addRow，因为可能抛出重复异常
+        (((StorageMap<Row, Row>) primaryIndex.getDataMap().getRawMap())).put(row, row, ar -> {
+            alterRowsIfNeeded(session, row, true);
+            alterIndexes(session, row, oldValues);
+            if (ar.isSucceeded())
+                session.commit();
+            else
+                session.rollback();
+        });
     }
 }

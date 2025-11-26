@@ -431,8 +431,12 @@ public class Database extends DbObjectBase implements DataHandler {
 
         initTraceSystem();
         openDatabase();
-        recover();
+        // 表结构变动之后redo log的记录可能需要转换，所以先恢复它
+        Table historyTable = TableAlterHistory.findTable(this);
+        if (historyTable != null)
+            historyTable.recover();
         initTableAlterHistory();
+        recover(historyTable);
         addShutdownHook();
 
         if (eventListener != null) {
@@ -482,9 +486,9 @@ public class Database extends DbObjectBase implements DataHandler {
         }
     }
 
-    private void recover() {
+    private void recover(Table exclude) {
         for (Table table : getAllTablesAndViews(false)) {
-            if (table != meta)
+            if (table != meta && table != exclude)
                 table.recover();
         }
     }

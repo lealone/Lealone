@@ -94,4 +94,11 @@ public interface StorageDataType extends ValueDataType {
     default int getMetaVersion() {
         return 0;
     }
+
+    default boolean supportsRedo() {
+        return false;
+    }
+
+    default void redo(Object obj, int metaVersion) {
+    }
 }

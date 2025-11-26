@@ -27,7 +27,7 @@ public class TableAlterHistory {
         return "table_alter_history";
     }
 
-    private static Table findTable(Database db) {
+    public static Table findTable(Database db) {
         return db.findSchema(null, "INFORMATION_SCHEMA").findTableOrView(null, getName());
     }
 

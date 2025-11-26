@@ -182,12 +182,15 @@ public class RedoLog {
             int formatVersion) {
         Object key;
         byte type;
+        int metaVersion = 0;
         if (FormatVersion.isOldFormatVersion(formatVersion)) {
             key = kt.read(kv, formatVersion);
             type = kv.get();
+            if (type != 0)
+                metaVersion = DataUtils.readVarInt(kv); // 老版本也写了version，提前读出来
         } else {
             type = kv.get();
-            DataUtils.readVarInt(kv); // metaVersion
+            metaVersion = DataUtils.readVarInt(kv);
             key = kt.read(kv, formatVersion);
         }
         if (type == 0) {
@@ -199,13 +202,13 @@ public class RedoLog {
                         for (StorageMap<Object, Object> im : indexMaps) {
                             StorageDataType ikt = im.getKeyType();
                             Object indexKey = ikt.convertToIndexKey(key, value);
-                            im.remove(indexKey);
+                            im.remove(indexKey, handler);
                         }
                     }
                 }
             });
         } else {
-            Object value = vt.read(kv, formatVersion);
+            Object value = vt.read(kv, FormatVersion.FORMAT_VERSION); // 新老版本的redo log都用新的格式读
             Lockable lockable;
             if (value instanceof Lockable) {
                 lockable = (Lockable) value;
@@ -213,12 +216,16 @@ public class RedoLog {
             } else {
                 lockable = TransactionalValue.createCommitted(value);
             }
-            map.put(key, lockable, handler);
-            if (indexMaps != null) {
-                for (StorageMap<Object, Object> im : indexMaps) {
-                    StorageDataType ikt = im.getKeyType();
-                    Object indexKey = ikt.convertToIndexKey(key, value);
-                    im.put(indexKey, indexKey, handler);
+            if (vt.supportsRedo()) {
+                vt.redo(lockable, metaVersion);
+            } else {
+                map.put(key, lockable, handler);
+                if (indexMaps != null) {
+                    for (StorageMap<Object, Object> im : indexMaps) {
+                        StorageDataType ikt = im.getKeyType();
+                        Object indexKey = ikt.convertToIndexKey(key, value);
+                        im.put(indexKey, indexKey, handler);
+                    }
                 }
             }
         }

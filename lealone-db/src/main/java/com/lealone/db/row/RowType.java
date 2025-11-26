@@ -250,4 +250,14 @@ public class RowType extends StandardDataType {
     public int getMetaVersion() {
         return table != null ? table.getVersion() : 0;
     }
+
+    @Override
+    public boolean supportsRedo() {
+        return table != null;
+    }
+
+    @Override
+    public void redo(Object obj, int metaVersion) {
+        table.redo((Row) obj, metaVersion);
+    }
 }
