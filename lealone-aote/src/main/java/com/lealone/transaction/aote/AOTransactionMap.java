@@ -220,7 +220,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
         String mapName = map.getName();
         if (mapName != null) {
             map.remove();
-            transaction.transactionEngine.removeStorageMap(transaction, mapName);
+            transaction.transactionEngine.removeStorageMap(mapName);
         }
     }
 

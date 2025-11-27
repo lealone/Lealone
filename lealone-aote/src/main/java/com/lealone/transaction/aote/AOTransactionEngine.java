@@ -26,8 +26,6 @@ import com.lealone.storage.StorageEventListener;
 import com.lealone.storage.StorageMap;
 import com.lealone.transaction.TransactionEngineBase;
 import com.lealone.transaction.aote.log.LogSyncService;
-import com.lealone.transaction.aote.log.RedoLogRecord;
-import com.lealone.transaction.aote.log.RedoLogRecord.DroppedMapRLR;
 import com.lealone.transaction.aote.tm.TransactionManager;
 
 //Async adaptive Optimization Transaction Engine
@@ -139,13 +137,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    void removeStorageMap(AOTransaction transaction, String mapName) {
-        RedoLogRecord r = new DroppedMapRLR(mapName);
-        logSyncService.syncWrite(transaction, r, logSyncService.nextLogId());
-        removeStorageMap(mapName);
-    }
-
-    private void removeStorageMap(String mapName) {
+    public void removeStorageMap(String mapName) {
         for (int i = 0; i < logSyncServices.length; i++) {
             logSyncServices[i].getCheckpointService().removeMap(mapName);
             logSyncServices[i].getRedoLog().removeMap(mapName);

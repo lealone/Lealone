@@ -190,7 +190,8 @@ public class RedoLog {
                 metaVersion = DataUtils.readVarInt(kv); // 老版本也写了version，提前读出来
         } else {
             type = kv.get();
-            metaVersion = DataUtils.readVarInt(kv);
+            if (type != 0)
+                metaVersion = DataUtils.readVarInt(kv);
             key = kt.read(kv, formatVersion);
         }
         if (type == 0) {

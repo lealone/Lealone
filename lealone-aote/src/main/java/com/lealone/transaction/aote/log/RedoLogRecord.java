@@ -49,7 +49,8 @@ public abstract class RedoLogRecord {
         return null;
     }
 
-    public static class CheckpointRLR extends RedoLogRecord {
+    // 兼容老版本的redo log
+    private static class CheckpointRLR extends RedoLogRecord {
 
         @Override
         public boolean isCheckpoint() {
@@ -67,7 +68,8 @@ public abstract class RedoLogRecord {
         }
     }
 
-    public static class DroppedMapRLR extends RedoLogRecord {
+    // 兼容老版本的redo log
+    private static class DroppedMapRLR extends RedoLogRecord {
 
         private final String mapName;
 
