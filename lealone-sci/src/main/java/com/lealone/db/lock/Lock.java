@@ -13,7 +13,7 @@ import com.lealone.transaction.Transaction;
 
 public abstract class Lock {
 
-    static final NullLockOwner NULL = new NullLockOwner();
+    private static final LockOwner NULL = new LockOwner();
 
     private final AtomicReference<LockOwner> ref = new AtomicReference<>(NULL);
 

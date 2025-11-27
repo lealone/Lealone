@@ -50,10 +50,6 @@ public abstract class IndexKey extends LockableBase {
             this.column = column;
         }
 
-        public Value getColumn() {
-            return column;
-        }
-
         @Override
         public Value[] getColumns() {
             return new Value[] { column };
