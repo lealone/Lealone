@@ -181,6 +181,9 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 break;
             }
             for (Column column : columnsToAdd) {
+                if (table.doesColumnExist(column.getName())) {
+                    throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, column.getName());
+                }
                 if (column.isAutoIncrement()) {
                     int objId = getObjectId();
                     column.convertAutoIncrementToSequence(session, getSchema(), objId,

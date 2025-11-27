@@ -190,7 +190,10 @@ public class RowType extends StandardDataType {
 
     @Override
     public int getColumnCount() {
-        return columnCount;
+        if (table == null)
+            return columnCount;
+        else
+            return Math.max(columnCount, table.getColumns().length); // 增删列时会改变
     }
 
     @Override

@@ -36,6 +36,16 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
             for (int columnIndex : columnIndexes) {
                 readColumnPage(columnIndex);
             }
+            if (columnIndexes.length >= columnPages.length) {
+                boolean allRead = true;
+                for (PageReference ref : columnPages) {
+                    if (ref.getPage() == null) {
+                        allRead = false;
+                        break;
+                    }
+                }
+                isAllColumnPagesRead = allRead;
+            }
         }
         return getValues()[index];
     }
@@ -56,6 +66,10 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
     }
 
     private void readColumnPage(int columnIndex) {
+        if (columnIndex < 0) // _rowid_ 直接忽略
+            return;
+        else if (columnIndex >= columnPages.length) // 新增加的列
+            return;
         PageReference ref = columnPages[columnIndex];
         ColumnPage page = (ColumnPage) ref.getOrReadPage();
         if (page.getMemory() <= 0)
