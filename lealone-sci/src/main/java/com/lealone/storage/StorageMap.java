@@ -309,4 +309,11 @@ public interface StorageMap<K, V> {
 
     default void sync() {
     }
+
+    default void setRedoLogServiceIndex(int index) {
+    }
+
+    default int getRedoLogServiceIndex() {
+        return -1;
+    }
 }

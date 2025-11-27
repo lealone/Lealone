@@ -720,4 +720,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void sync() {
         btreeStorage.sync();
     }
+
+    private int redoLogServiceIndex = -1;
+
+    @Override
+    public void setRedoLogServiceIndex(int index) {
+        redoLogServiceIndex = index;
+    }
+
+    @Override
+    public int getRedoLogServiceIndex() {
+        return redoLogServiceIndex;
+    }
 }

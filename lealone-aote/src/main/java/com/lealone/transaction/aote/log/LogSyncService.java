@@ -161,19 +161,19 @@ public abstract class LogSyncService extends Thread {
     }
 
     public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-        asyncWrite(new PendingTransaction(t, r, logId));
+        asyncWrite(new PendingTransaction(t, r, logId), t);
     }
 
-    protected void asyncWrite(PendingTransaction pt) {
+    protected void asyncWrite(PendingTransaction pt, AOTransaction t) {
         InternalScheduler scheduler = pt.getScheduler();
         scheduler.addPendingTransaction(pt);
         LogSyncService[] logSyncServices = engine.getLogSyncServices();
-        for (int i = 0; i < logSyncServices.length; i++) {
-            logSyncServices[i].asyncWrite0(scheduler);
+        for (int i : t.getUndoLog().getRedoLogServiceIndexs()) {
+            logSyncServices[i].wakeUp(scheduler);
         }
     }
 
-    protected void asyncWrite0(InternalScheduler scheduler) {
+    private void wakeUp(InternalScheduler scheduler) {
         waitingSchedulers[scheduler.getId()] = scheduler;
         asyncLogQueueSize.getAndIncrement();
         wakeUp();
@@ -181,23 +181,15 @@ public abstract class LogSyncService extends Thread {
 
     public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
         CountDownLatch latch = new CountDownLatch(1);
-        addRedoLogRecord(t, r, logId, latch);
+        PendingTransaction pt = new PendingTransaction(t, r, logId);
+        pt.setCompleted(true);
+        pt.setLatch(latch);
+        asyncWrite(pt, t);
         try {
             latch.await();
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
-    }
-
-    public void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId) {
-        addRedoLogRecord(t, r, logId, null);
-    }
-
-    private void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId, CountDownLatch latch) {
-        PendingTransaction pt = new PendingTransaction(t, r, logId);
-        pt.setCompleted(true);
-        pt.setLatch(latch);
-        asyncWrite(pt);
     }
 
     public static LogSyncService create(Map<String, String> config) {
@@ -251,10 +243,6 @@ public abstract class LogSyncService extends Thread {
         public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
             t.onSynced();
         }
-
-        @Override
-        public void addRedoLogRecord(AOTransaction t, RedoLogRecord r, long logId) {
-        }
     }
 
     private static class Periodic extends LogSyncService {
@@ -285,10 +273,10 @@ public abstract class LogSyncService extends Thread {
             if (!waitForSyncToCatchUp()) {
                 t.onSynced(); // 不能直接pt.setSynced(true);
                 pt.setCompleted(true);
-                asyncWrite(pt);
+                asyncWrite(pt, t);
                 t.asyncCommitComplete();
             } else {
-                asyncWrite(pt);
+                asyncWrite(pt, t);
             }
         }
 
@@ -300,7 +288,7 @@ public abstract class LogSyncService extends Thread {
                 t.onSynced();
                 pt.setCompleted(true);
                 // 同步调用无需t.asyncCommitComplete();
-                asyncWrite(pt);
+                asyncWrite(pt, t);
             } else {
                 super.syncWrite(t, r, logId);
             }

@@ -5,6 +5,7 @@
  */
 package com.lealone.transaction.aote.log;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,6 +21,7 @@ public class UndoLog {
 
     // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
     private final ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    private final HashSet<Integer> redoLogServiceIndexs = new HashSet<>();
 
     private int logId;
     private UndoLogRecord first;// 指向最早加进来的，执行commit时从first开始遍历
@@ -49,12 +51,20 @@ public class UndoLog {
         return maps;
     }
 
+    public HashSet<Integer> getRedoLogServiceIndexs() {
+        return redoLogServiceIndexs;
+    }
+
     public UndoLogRecord add(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
         if (map.getKeyType().isKeyOnly()) {
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
         } else {
-            if (!map.isInMemory())
+            if (!map.isInMemory()) {
                 maps.put(map, map);
+                int index = map.getRedoLogServiceIndex();
+                if (index >= 0)
+                    redoLogServiceIndexs.add(index);
+            }
             return add(new KeyValueULR(map, key, lockable, oldValue));
         }
     }
