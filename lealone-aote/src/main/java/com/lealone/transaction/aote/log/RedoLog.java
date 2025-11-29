@@ -14,7 +14,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.common.util.DataUtils;
@@ -22,8 +24,10 @@ import com.lealone.common.util.MapUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncResultHandler;
+import com.lealone.db.link.LinkableList;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.InternalScheduler;
+import com.lealone.db.value.ValueString;
 import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.fs.FilePath;
@@ -46,6 +50,10 @@ public class RedoLog {
     // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
     private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 
+    // 如果事务涉及多个表，要等所有事务的redo log都fsync后才能执行检查点刷脏页
+    private final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
+    private long lastTransactionId;
+
     public RedoLog(Map<String, String> config, LogSyncService logSyncService) {
         this.config = config;
         this.logSyncService = logSyncService;
@@ -57,6 +65,10 @@ public class RedoLog {
 
     public void removeMap(String mapName) {
         maps.remove(mapName);
+    }
+
+    public long getLastTransactionId() {
+        return lastTransactionId;
     }
 
     // 兼容老版本的redo log
@@ -189,12 +201,24 @@ public class RedoLog {
             if (type != 0)
                 metaVersion = DataUtils.readVarInt(kv); // 老版本也写了version，提前读出来
         } else {
+            int len = kv.getInt();
+            int pos = kv.position();
             type = kv.get();
-            if (type != 0)
+            if (type == 1) {
                 metaVersion = DataUtils.readVarInt(kv);
+            } else if (type > 1) {
+                long transactionId = DataUtils.readVarLong(kv);
+                if (!readMapNames(map, kv, transactionId)) {
+                    kv.position(pos + len); // 无效的事务直接忽略
+                    return;
+                }
+                if (type == 3) {
+                    metaVersion = DataUtils.readVarInt(kv);
+                }
+            }
             key = kt.read(kv, formatVersion);
         }
-        if (type == 0) {
+        if (type == 0 || type == 2) {
             map.remove(key, ar -> {
                 Object result = ar.getResult();
                 if (result != null) {
@@ -232,6 +256,18 @@ public class RedoLog {
         }
     }
 
+    private boolean readMapNames(StorageMap<Object, Object> map, ByteBuffer buff, long transactionId) {
+        int size = DataUtils.readVarInt(buff);
+        for (int i = 0; i < size; i++) {
+            String mapName = ValueString.type.read(buff);
+            if (!map.getName().equalsIgnoreCase(mapName)) {
+                if (!map.getStorage().getMap(mapName).validateRedoLog(transactionId))
+                    return false;
+            }
+        }
+        return true;
+    }
+
     public void save() {
         // 事务中涉及的StorageMap
         HashMap<StorageMap<Object, ?>, DataBuffer> logs = new HashMap<>();
@@ -267,7 +303,20 @@ public class RedoLog {
             }
             while (pt != null) {
                 RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
+                Set<Integer> serviceIndexs = r.getRedoLogServiceIndexs();
+                if (serviceIndexs == null
+                        || !serviceIndexs.contains(logSyncService.getSyncServiceIndex())) {
+                    int index = pt.getScheduler().getId();
+                    pts[index] = pt.getNext();
+                    pt = nextPendingTransaction(pts);
+                    continue;
+                }
                 pt.setMaps(r.getMaps());
+                if (serviceIndexs.size() > 1) {
+                    pendingTransactions.add(pt);
+                }
+                lastTransactionId = pt.getTransaction().getTransactionId();
+
                 buffLength += r.write(logs, maps);
                 if (buffLength > BUFF_SIZE) {
                     buffLength = 0;
@@ -316,12 +365,21 @@ public class RedoLog {
     private void setSynced(PendingTransaction pt) {
         if (pt.isSynced())
             return;
-        ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> ptMaps = pt.getMaps();
+        ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> ptMaps = pt.getMaps();
         if (ptMaps != null) {
-            for (StorageMap<?, ?> map : maps.values()) {
-                ptMaps.remove(map);
+            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : ptMaps.entrySet()) {
+                if (maps.containsKey(e.getKey().getName())) {
+                    e.getValue().set(true);
+                }
             }
-            if (ptMaps.isEmpty())
+            boolean isAllSynced = true;
+            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : ptMaps.entrySet()) {
+                if (e.getValue().get() == false) {
+                    isAllSynced = false;
+                    break;
+                }
+            }
+            if (isAllSynced)
                 pt.setSynced(true);
         } else {
             pt.setSynced(true);
@@ -365,5 +423,30 @@ public class RedoLog {
         for (StorageMap<Object, ?> m : logs.keySet()) {
             m.sync();
         }
+        runPendingTransactions();
+    }
+
+    public void runPendingTransactions() {
+        if (pendingTransactions.isEmpty())
+            return;
+        PendingTransaction pt = pendingTransactions.getHead();
+        while (pt != null && pt.isSynced()) {
+            RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
+            r.removeRedoLogServiceIndex(logSyncService.getSyncServiceIndex());
+            if (r.getRedoLogServiceIndexs() == null || r.getRedoLogServiceIndexs().isEmpty()) {
+                pt = pt.getNext();
+                pendingTransactions.decrementSize();
+                pendingTransactions.setHead(pt);
+            } else {
+                break;
+            }
+        }
+        if (pendingTransactions.getHead() == null) {
+            pendingTransactions.setTail(null);
+        }
+    }
+
+    public boolean hasPendingTransactions() {
+        return !pendingTransactions.isEmpty();
     }
 }

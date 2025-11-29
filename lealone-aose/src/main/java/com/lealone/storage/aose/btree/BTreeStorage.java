@@ -349,6 +349,7 @@ public class BTreeStorage {
         // 提前清理UnusedChunks中的pages，这样在RemovedPages中不会保留它们，也不会写到最新的chunk中
         chunkCompactor.clearUnusedChunkPages();
 
+        c.setLastTransactionId(map.getLastTransactionId());
         c.write(map, chunkBody, appendMode, chunkManager);
 
         // 最新的chunk写成功后再删除UnusedChunks，不能提前删除，因为UnusedChunks也包含被重写的chunk
@@ -388,5 +389,26 @@ public class BTreeStorage {
         Chunk c = chunkManager.getLastChunk();
         if (c != null)
             c.fileStorage.sync();
+    }
+
+    synchronized boolean validateRedoLog(long lastTransactionId) {
+        Chunk c = chunkManager.getLastChunk();
+        if (c != null && c.getLastTransactionId() >= lastTransactionId)
+            return true;
+        ByteBuffer log = readRedoLog();
+        if (log == null)
+            return false;
+        while (log.hasRemaining()) {
+            int len = log.getInt();
+            int pos = log.position();
+            int type = log.get();
+            if (type > 1) {
+                long transactionId = DataUtils.readVarLong(log);
+                if (transactionId == lastTransactionId)
+                    return true;
+            }
+            log.position(pos + len);
+        }
+        return false;
     }
 }

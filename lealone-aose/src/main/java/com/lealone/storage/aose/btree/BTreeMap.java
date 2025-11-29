@@ -732,4 +732,21 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public int getRedoLogServiceIndex() {
         return redoLogServiceIndex;
     }
+
+    private long lastTransactionId = -1;
+
+    @Override
+    public long getLastTransactionId() {
+        return lastTransactionId;
+    }
+
+    @Override
+    public void setLastTransactionId(long lastTransactionId) {
+        this.lastTransactionId = lastTransactionId;
+    }
+
+    @Override
+    public boolean validateRedoLog(long lastTransactionId) {
+        return btreeStorage.validateRedoLog(lastTransactionId);
+    }
 }

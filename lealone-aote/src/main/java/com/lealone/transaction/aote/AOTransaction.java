@@ -43,7 +43,7 @@ public class AOTransaction implements Transaction {
     public final LogSyncService logSyncService;
     protected volatile long commitTimestamp;
 
-    protected UndoLog undoLog = new UndoLog();
+    protected UndoLog undoLog = new UndoLog(this);
     final RunMode runMode;
     protected Runnable asyncTask;
 

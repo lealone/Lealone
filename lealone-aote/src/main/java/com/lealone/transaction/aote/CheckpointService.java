@@ -247,11 +247,18 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         {
             try {
                 if (!dirtyMaps.isEmpty()) {
+                    long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
                     for (Entry<String, Long> e : dirtyMaps.entrySet()) {
                         StorageMap<?, ?> map = maps.get(e.getKey());
                         // 准备耍刷页前如果表被删除了那就直接忽略
-                        if (map != null && !map.isClosed())
-                            map.save(e.getValue().longValue());
+                        if (map != null && !map.isClosed()) {
+                            map.setLastTransactionId(lastTransactionId);
+                            try {
+                                map.save(e.getValue().longValue());
+                            } finally {
+                                map.setLastTransactionId(-1);
+                            }
+                        }
                     }
                     lastSavedAt = System.currentTimeMillis();
                 }

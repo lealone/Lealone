@@ -9,7 +9,9 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
@@ -45,8 +47,15 @@ public abstract class RedoLogRecord {
         return 0;
     }
 
-    public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+    public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
         return null;
+    }
+
+    public Set<Integer> getRedoLogServiceIndexs() {
+        return null;
+    }
+
+    public void removeRedoLogServiceIndex(int index) {
     }
 
     // 兼容老版本的redo log
@@ -109,14 +118,24 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
+                Map<String, StorageMap<?, ?>> maps) {
+            return undoLog.writeForRedo(logs, maps);
+        }
+
+        @Override
+        public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
             return undoLog.getMaps();
         }
 
         @Override
-        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps) {
-            return undoLog.writeForRedo(logs, maps);
+        public Set<Integer> getRedoLogServiceIndexs() {
+            return undoLog.getRedoLogServiceIndexs();
+        }
+
+        @Override
+        public void removeRedoLogServiceIndex(int index) {
+            undoLog.getRedoLogServiceIndexs().remove(index);
         }
 
         public static LocalTransactionRLR read(ByteBuffer buff) {
@@ -140,6 +159,21 @@ public abstract class RedoLogRecord {
 
         @Override
         public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
+        }
+
+        @Override
+        public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
+            return r.getMaps();
+        }
+
+        @Override
+        public Set<Integer> getRedoLogServiceIndexs() {
+            return r.getRedoLogServiceIndexs();
+        }
+
+        @Override
+        public void removeRedoLogServiceIndex(int index) {
+            r.removeRedoLogServiceIndex(index);
         }
 
         @Override

@@ -268,6 +268,8 @@ public class Chunk {
 
         removedPageOffset = DataUtils.readHexInt(map, "removedPageOffset", 0);
         removedPageCount = DataUtils.readHexInt(map, "removedPageCount", 0);
+
+        lastTransactionId = DataUtils.readHexLong(map, "lastTransactionId", -1);
     }
 
     private StringBuilder asStringBuilder() {
@@ -289,6 +291,7 @@ public class Chunk {
         DataUtils.appendMap(buff, "removedPageOffset", removedPageOffset);
         DataUtils.appendMap(buff, "removedPageCount", removedPageCount);
 
+        DataUtils.appendMap(buff, "lastTransactionId", lastTransactionId);
         return buff;
     }
 
@@ -336,5 +339,15 @@ public class Chunk {
             fileStorage.truncate(pos);
             fileStorage.sync();
         }
+    }
+
+    private long lastTransactionId = -1;
+
+    public long getLastTransactionId() {
+        return lastTransactionId;
+    }
+
+    public void setLastTransactionId(long lastTransactionId) {
+        this.lastTransactionId = lastTransactionId;
     }
 }

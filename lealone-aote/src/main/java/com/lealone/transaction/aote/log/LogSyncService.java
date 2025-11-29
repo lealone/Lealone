@@ -49,6 +49,8 @@ public abstract class LogSyncService extends Thread {
     private AOTransactionEngine engine;
     private CheckpointService checkpointService;
 
+    private int syncServiceIndex;
+
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(RunMode.isEmbedded(config));
@@ -56,6 +58,14 @@ public abstract class LogSyncService extends Thread {
         waitingSchedulers = new InternalScheduler[schedulerCount];
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config, this);
+    }
+
+    public int getSyncServiceIndex() {
+        return syncServiceIndex;
+    }
+
+    public void setSyncServiceIndex(int syncServiceIndex) {
+        this.syncServiceIndex = syncServiceIndex;
     }
 
     public void setEngine(AOTransactionEngine engine) {
@@ -105,6 +115,7 @@ public abstract class LogSyncService extends Thread {
         while (running) {
             long syncStarted = System.currentTimeMillis();
             sync();
+            redoLog.runPendingTransactions();
             lastSyncedAt = syncStarted;
             if (!isPeriodic()) {
                 // 如果是instant sync，只要一有redo log就接着马上同步，无需等待
@@ -119,7 +130,8 @@ public abstract class LogSyncService extends Thread {
             long now = System.currentTimeMillis();
             if (checkpointService.forceCheckpoint()
                     || checkpointInterval + checkpointService.getLoopInterval() < now) {
-                checkpointService.run();
+                if (!redoLog.hasPendingTransactions())
+                    checkpointService.run();
                 checkpointInterval = now;
             }
             long sleep = syncStarted + syncIntervalMillis - now;
@@ -129,7 +141,18 @@ public abstract class LogSyncService extends Thread {
         }
         // 结束前最后sync一次
         sync();
-        checkpointService.run();
+        while (true) {
+            redoLog.runPendingTransactions();
+            if (!redoLog.hasPendingTransactions()) {
+                checkpointService.run();
+                break;
+            } else {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
         if (latchOnClose != null) {
             latchOnClose.countDown();
         }

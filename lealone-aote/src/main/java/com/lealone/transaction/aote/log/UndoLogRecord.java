@@ -9,6 +9,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
@@ -80,7 +82,7 @@ public abstract class UndoLogRecord {
     }
 
     public abstract int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-            Map<String, StorageMap<?, ?>> maps);
+            Map<String, StorageMap<?, ?>> maps, UndoLog undoLog);
 
     public static class KeyOnlyULR extends UndoLogRecord {
 
@@ -95,7 +97,7 @@ public abstract class UndoLogRecord {
 
         @Override
         public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps) {
+                Map<String, StorageMap<?, ?>> maps, UndoLog undoLog) {
             // 直接结束了
             // 比如索引不用写redo log
             return 0;
@@ -126,7 +128,7 @@ public abstract class UndoLogRecord {
 
         @Override // 写redo log时，不关心oldValue
         public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps) {
+                Map<String, StorageMap<?, ?>> maps, UndoLog undoLog) {
             if (ignore() || map.isInMemory() || !maps.containsKey(map.getName()))
                 return 0;
 
@@ -136,18 +138,40 @@ public abstract class UndoLogRecord {
                 logs.put(map, log);
             }
             int pos = log.position();
-            if (newValue == null) {
-                log.put((byte) 0);
+            log.putInt(0);
+            if (newValue == null) { // 删除
+                if (undoLog.isMultiMaps()) {
+                    log.put((byte) 2);
+                    log.putVarLong(undoLog.getTransactionId());
+                    writeMapNames(log, undoLog);
+                } else {
+                    log.put((byte) 0);
+                }
                 map.getKeyType().write(log, key, FormatVersion.FORMAT_VERSION);
-            } else {
-                log.put((byte) 1);
+            } else { // 增加
+                if (undoLog.isMultiMaps()) {
+                    log.put((byte) 3);
+                    log.putVarLong(undoLog.getTransactionId());
+                    writeMapNames(log, undoLog);
+                } else {
+                    log.put((byte) 1);
+                }
                 log.putVarInt(metaVersion);
                 map.getKeyType().write(log, key, FormatVersion.FORMAT_VERSION);
                 // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
                 map.getValueType().getRawType().write(log, lockable, newValue,
                         FormatVersion.FORMAT_VERSION);
             }
-            return log.position() - pos;
+            int len = log.position() - pos;
+            log.putInt(pos, len - 4);
+            return len;
+        }
+
+        private void writeMapNames(DataBuffer buff, UndoLog undoLog) {
+            ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> maps = undoLog.getMaps();
+            buff.putVarInt(maps.size());
+            for (StorageMap<?, ?> map : maps.keySet())
+                ValueString.type.write(buff, map.getName());
         }
     }
 

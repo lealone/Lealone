@@ -316,4 +316,15 @@ public interface StorageMap<K, V> {
     default int getRedoLogServiceIndex() {
         return -1;
     }
+
+    default long getLastTransactionId() {
+        return -1;
+    }
+
+    default void setLastTransactionId(long lastTransactionId) {
+    }
+
+    default boolean validateRedoLog(long lastTransactionId) {
+        return true;
+    }
 }

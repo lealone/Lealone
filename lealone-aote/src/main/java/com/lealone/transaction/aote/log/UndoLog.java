@@ -5,13 +5,16 @@
  */
 package com.lealone.transaction.aote.log;
 
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
+import com.lealone.transaction.aote.AOTransaction;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.log.UndoLogRecord.KeyOnlyULR;
 import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
@@ -20,12 +23,18 @@ import com.lealone.transaction.aote.log.UndoLogRecord.KeyValueULR;
 public class UndoLog {
 
     // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
-    private final ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
-    private final HashSet<Integer> redoLogServiceIndexs = new HashSet<>();
+    private final ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> maps = new ConcurrentHashMap<>();
+    private final ConcurrentSkipListSet<Integer> redoLogServiceIndexs = new ConcurrentSkipListSet<>();
+
+    private final AOTransaction t;
 
     private int logId;
     private UndoLogRecord first;// 指向最早加进来的，执行commit时从first开始遍历
     private UndoLogRecord last; // 总是指向新增加的，执行rollback时从first开始遍历
+
+    public UndoLog(AOTransaction t) {
+        this.t = t;
+    }
 
     public int getLogId() {
         return logId;
@@ -47,11 +56,11 @@ public class UndoLog {
         return logId != 0;
     }
 
-    public ConcurrentHashMap<StorageMap<?, ?>, StorageMap<?, ?>> getMaps() {
+    public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
         return maps;
     }
 
-    public HashSet<Integer> getRedoLogServiceIndexs() {
+    public Set<Integer> getRedoLogServiceIndexs() {
         return redoLogServiceIndexs;
     }
 
@@ -60,7 +69,7 @@ public class UndoLog {
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
         } else {
             if (!map.isInMemory()) {
-                maps.put(map, map);
+                maps.put(map, new AtomicBoolean(false));
                 int index = map.getRedoLogServiceIndex();
                 if (index >= 0)
                     redoLogServiceIndexs.add(index);
@@ -118,9 +127,17 @@ public class UndoLog {
         while (r != null) {
             if (r.map.isClosed())
                 this.maps.remove(r.map);
-            len += r.writeForRedo(logs, maps);
+            len += r.writeForRedo(logs, maps, this);
             r = r.next;
         }
         return len;
+    }
+
+    public boolean isMultiMaps() {
+        return maps.size() > 1;
+    }
+
+    public long getTransactionId() {
+        return t.getTransactionId();
     }
 }
