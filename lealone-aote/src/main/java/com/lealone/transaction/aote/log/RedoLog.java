@@ -80,18 +80,29 @@ public class RedoLog {
         if (!ids.isEmpty()) {
             pendingRedoLog = new HashMap<>();
             String namePrefix = logDir + File.separator + "redoLog" + Constants.NAME_SEPARATOR;
+            // 第一次打开时只有一个线程读，所以用LinkedList即可
+            LinkedList<RedoLogRecord> redoLogRecords = new LinkedList<>();
             for (int id : ids) {
-                FileStorage fileStorage = null;
+                FileStorage fileStorage = FileStorage.open(namePrefix + id, config);
                 try {
-                    String chunkFileName = namePrefix + id;
-                    fileStorage = FileStorage.open(chunkFileName, config);
-                    for (RedoLogRecord r : readRedoLogRecords(fileStorage)) {
-                        r.initPendingRedoLog(pendingRedoLog);
+                    int pos = (int) fileStorage.size();
+                    if (pos > 0) {
+                        ByteBuffer buffer = fileStorage.readFully(0, pos);
+                        while (buffer.remaining() > 0) {
+                            RedoLogRecord r = RedoLogRecord.read(buffer);
+                            // 遇到检查点可以丢弃前面的redo log
+                            if (r.isCheckpoint())
+                                redoLogRecords = new LinkedList<>();
+                            else
+                                redoLogRecords.add(r);
+                        }
                     }
                 } finally {
-                    if (fileStorage != null)
-                        fileStorage.close();
+                    fileStorage.close();
                 }
+            }
+            for (RedoLogRecord r : redoLogRecords) {
+                r.initPendingRedoLog(pendingRedoLog);
             }
         }
     }
@@ -115,22 +126,6 @@ public class RedoLog {
         }
         Collections.sort(ids); // 必须排序，按id从小到大的顺序读取文件，才能正确的redo
         return ids;
-    }
-
-    // 第一次打开时只有一个线程读，所以用LinkedList即可
-    private LinkedList<RedoLogRecord> readRedoLogRecords(FileStorage fileStorage) {
-        LinkedList<RedoLogRecord> list = new LinkedList<>();
-        long pos = fileStorage.size();
-        if (pos <= 0)
-            return list;
-        ByteBuffer buffer = fileStorage.readFully(0, (int) pos);
-        while (buffer.remaining() > 0) {
-            RedoLogRecord r = RedoLogRecord.read(buffer);
-            if (r.isCheckpoint())
-                list = new LinkedList<>();// 丢弃之前的
-            list.add(r);
-        }
-        return list;
     }
 
     // 重新执行一次上次已经成功并且在检查点之后的事务操作

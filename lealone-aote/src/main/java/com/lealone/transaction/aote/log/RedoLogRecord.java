@@ -6,7 +6,6 @@
 package com.lealone.transaction.aote.log;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,7 +40,8 @@ public abstract class RedoLogRecord {
         return false;
     }
 
-    public abstract void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog);
+    public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
+    }
 
     public int write(Map<StorageMap<Object, ?>, DataBuffer> logs, Map<String, StorageMap<?, ?>> maps) {
         return 0;
@@ -66,11 +66,6 @@ public abstract class RedoLogRecord {
             return true;
         }
 
-        @Override
-        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
-            pendingRedoLog.clear();
-        }
-
         public static RedoLogRecord read(ByteBuffer buff) {
             DataUtils.readVarLong(buff); // checkpointId兼容老版本
             return new CheckpointRLR();
@@ -89,11 +84,7 @@ public abstract class RedoLogRecord {
 
         @Override
         public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
-            List<ByteBuffer> logs = pendingRedoLog.get(mapName);
-            if (logs != null) {
-                logs = new LinkedList<>();
-                pendingRedoLog.put(mapName, logs);
-            }
+            pendingRedoLog.remove(mapName);
         }
 
         public static RedoLogRecord read(ByteBuffer buff) {
@@ -155,10 +146,6 @@ public abstract class RedoLogRecord {
         public LobSave(Runnable lobTask, RedoLogRecord r) {
             this.lobTask = lobTask;
             this.r = r;
-        }
-
-        @Override
-        public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
         }
 
         @Override
