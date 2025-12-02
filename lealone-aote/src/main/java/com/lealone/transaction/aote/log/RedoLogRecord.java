@@ -14,10 +14,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
-import com.lealone.db.DataBuffer;
 import com.lealone.db.value.ValueString;
 import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
+import com.lealone.storage.StorageMap.RedoLogBuffer;
 
 // initPendingRedoLog和read方法都是为了兼容老版本的redo log
 // 新版本的redo log只需要write方法
@@ -43,7 +43,7 @@ public abstract class RedoLogRecord {
     public void initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog) {
     }
 
-    public int write(Map<StorageMap<Object, ?>, DataBuffer> logs, Map<String, StorageMap<?, ?>> maps) {
+    public int write(Map<String, RedoLogBuffer> logs, int logServiceIndex) {
         return 0;
     }
 
@@ -109,9 +109,8 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps) {
-            return undoLog.writeForRedo(logs, maps);
+        public int write(Map<String, RedoLogBuffer> logs, int logServiceIndex) {
+            return undoLog.writeForRedo(logs, logServiceIndex);
         }
 
         @Override
@@ -164,10 +163,9 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public int write(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps) {
+        public int write(Map<String, RedoLogBuffer> logs, int logServiceIndex) {
             lobTask.run();
-            return r.write(logs, maps);
+            return r.write(logs, logServiceIndex);
         }
     }
 }

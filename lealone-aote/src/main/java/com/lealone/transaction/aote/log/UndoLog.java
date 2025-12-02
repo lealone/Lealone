@@ -11,9 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.lealone.db.DataBuffer;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
+import com.lealone.storage.StorageMap.RedoLogBuffer;
 import com.lealone.transaction.aote.AOTransaction;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.log.UndoLogRecord.KeyOnlyULR;
@@ -68,13 +68,17 @@ public class UndoLog {
         if (map.getKeyType().isKeyOnly()) {
             return add(new KeyOnlyULR(map, key, lockable, oldValue));
         } else {
+            int logServiceIndex;
             if (!map.isInMemory()) {
                 maps.put(map, new AtomicBoolean(false));
-                int index = map.getRedoLogServiceIndex();
-                if (index >= 0)
-                    redoLogServiceIndexs.add(index);
+                logServiceIndex = map.getRedoLogServiceIndex();
+                if (logServiceIndex >= 0) {
+                    redoLogServiceIndexs.add(logServiceIndex);
+                }
+            } else {
+                logServiceIndex = -1;
             }
-            return add(new KeyValueULR(map, key, lockable, oldValue));
+            return add(new KeyValueULR(map, key, lockable, oldValue, logServiceIndex));
         }
     }
 
@@ -120,14 +124,11 @@ public class UndoLog {
         }
     }
 
-    public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-            Map<String, StorageMap<?, ?>> maps) {
+    public int writeForRedo(Map<String, RedoLogBuffer> logs, int logServiceIndex) {
         int len = 0;
         UndoLogRecord r = first;
         while (r != null) {
-            if (r.map.isClosed())
-                this.maps.remove(r.map);
-            len += r.writeForRedo(logs, maps, this);
+            len += r.writeForRedo(logs, logServiceIndex, this);
             r = r.next;
         }
         return len;

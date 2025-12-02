@@ -5,13 +5,10 @@
  */
 package com.lealone.transaction;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.scheduler.InternalScheduler;
-import com.lealone.storage.StorageMap;
 
 public class PendingTransaction extends LinkableBase<PendingTransaction> {
 
@@ -66,15 +63,5 @@ public class PendingTransaction extends LinkableBase<PendingTransaction> {
 
     public InternalScheduler getScheduler() {
         return transaction.getScheduler();
-    }
-
-    private ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> maps;
-
-    public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
-        return maps;
-    }
-
-    public void setMaps(ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> maps) {
-        this.maps = maps;
     }
 }

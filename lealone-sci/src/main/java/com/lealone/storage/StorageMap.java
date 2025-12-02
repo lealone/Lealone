@@ -8,6 +8,7 @@ package com.lealone.storage;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.lock.Lockable;
@@ -310,11 +311,18 @@ public interface StorageMap<K, V> {
     default void sync() {
     }
 
+    default int getRedoLogServiceIndex() {
+        return -1;
+    }
+
     default void setRedoLogServiceIndex(int index) {
     }
 
-    default int getRedoLogServiceIndex() {
-        return -1;
+    default RedoLogBuffer getRedoLogBuffer() {
+        return null;
+    }
+
+    default void setRedoLogBuffer(RedoLogBuffer redoLogBuffer) {
     }
 
     default long getLastTransactionId() {
@@ -326,5 +334,46 @@ public interface StorageMap<K, V> {
 
     default boolean validateRedoLog(long lastTransactionId) {
         return true;
+    }
+
+    // 只有一个线程访问
+    public static class RedoLogBuffer {
+
+        private final StorageMap<?, ?> map;
+        private DataBuffer log;
+        private long lastSyncedAt = System.currentTimeMillis();
+
+        public RedoLogBuffer(StorageMap<?, ?> map) {
+            this.map = map;
+        }
+
+        public StorageMap<?, ?> getMap() {
+            return map;
+        }
+
+        public DataBuffer getLog() {
+            if (log == null)
+                log = DataBuffer.createDirect();
+            return log;
+        }
+
+        public void sync() {
+            map.sync();
+            lastSyncedAt = System.currentTimeMillis();
+        }
+
+        public int writeRedoLog() {
+            ByteBuffer buffer = log.getAndFlipBuffer();
+            int length = buffer.limit();
+            map.writeRedoLog(buffer);
+            log.clear();
+            return length;
+        }
+
+        public void clearIdleBuffer(long now, long maxIdleTime) {
+            if (log != null && lastSyncedAt + maxIdleTime < now) {
+                log = null;
+            }
+        }
     }
 }

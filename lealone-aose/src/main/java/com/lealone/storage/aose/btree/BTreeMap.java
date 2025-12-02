@@ -724,13 +724,25 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private int redoLogServiceIndex = -1;
 
     @Override
+    public int getRedoLogServiceIndex() {
+        return redoLogServiceIndex;
+    }
+
+    @Override
     public void setRedoLogServiceIndex(int index) {
         redoLogServiceIndex = index;
     }
 
+    private RedoLogBuffer redoLogBuffer;
+
     @Override
-    public int getRedoLogServiceIndex() {
-        return redoLogServiceIndex;
+    public RedoLogBuffer getRedoLogBuffer() {
+        return redoLogBuffer;
+    }
+
+    @Override
+    public void setRedoLogBuffer(RedoLogBuffer redoLogBuffer) {
+        this.redoLogBuffer = redoLogBuffer;
     }
 
     private long lastTransactionId = -1;

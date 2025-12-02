@@ -111,7 +111,7 @@ public abstract class LogSyncService extends Thread {
     @Override
     public void run() {
         running = true;
-        long checkpointInterval = System.currentTimeMillis();
+        long lastCheckedAt = System.currentTimeMillis();
         while (running) {
             long syncStarted = System.currentTimeMillis();
             sync();
@@ -129,10 +129,11 @@ public abstract class LogSyncService extends Thread {
                 checkpointService.fullGc();
             long now = System.currentTimeMillis();
             if (checkpointService.forceCheckpoint()
-                    || checkpointInterval + checkpointService.getLoopInterval() < now) {
+                    || lastCheckedAt + checkpointService.getLoopInterval() < now) {
                 if (!redoLog.hasPendingTransactions())
                     checkpointService.run();
-                checkpointInterval = now;
+                redoLog.clearIdleBuffers(now);
+                lastCheckedAt = now;
             }
             long sleep = syncStarted + syncIntervalMillis - now;
             if (sleep < 0)

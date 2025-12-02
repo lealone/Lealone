@@ -17,6 +17,7 @@ import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueString;
 import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
+import com.lealone.storage.StorageMap.RedoLogBuffer;
 import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.TransactionalValue;
 
@@ -81,8 +82,8 @@ public abstract class UndoLogRecord {
         }
     }
 
-    public abstract int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-            Map<String, StorageMap<?, ?>> maps, UndoLog undoLog);
+    public abstract int writeForRedo(Map<String, RedoLogBuffer> logs, int logServiceIndex,
+            UndoLog undoLog);
 
     public static class KeyOnlyULR extends UndoLogRecord {
 
@@ -96,8 +97,7 @@ public abstract class UndoLogRecord {
         }
 
         @Override
-        public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps, UndoLog undoLog) {
+        public int writeForRedo(Map<String, RedoLogBuffer> logs, int logServiceIndex, UndoLog undoLog) {
             // 直接结束了
             // 比如索引不用写redo log
             return 0;
@@ -109,11 +109,14 @@ public abstract class UndoLogRecord {
         // 写redo log时需要用它，不能直接使用lockable.getValue()，因为会变动
         private final Object newValue;
         private final int metaVersion;
+        private final int logServiceIndex;
 
-        public KeyValueULR(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue) {
+        public KeyValueULR(StorageMap<?, ?> map, Object key, Lockable lockable, Object oldValue,
+                int logServiceIndex) {
             super(map, key, lockable, oldValue);
             this.newValue = lockable.getLockedValue();
             this.metaVersion = lockable.getMetaVersion();
+            this.logServiceIndex = logServiceIndex;
         }
 
         @Override
@@ -127,16 +130,14 @@ public abstract class UndoLogRecord {
         }
 
         @Override // 写redo log时，不关心oldValue
-        public int writeForRedo(Map<StorageMap<Object, ?>, DataBuffer> logs,
-                Map<String, StorageMap<?, ?>> maps, UndoLog undoLog) {
-            if (ignore() || map.isInMemory() || !maps.containsKey(map.getName()))
+        public int writeForRedo(Map<String, RedoLogBuffer> logs, int logServiceIndex, UndoLog undoLog) {
+            if (logServiceIndex != this.logServiceIndex || ignore() || map.isInMemory())
                 return 0;
-
-            DataBuffer log = logs.get(map);
-            if (log == null) {
-                log = DataBuffer.createHeap();
-                logs.put(map, log);
-            }
+            RedoLogBuffer logBuffer = map.getRedoLogBuffer();
+            if (logBuffer == null)
+                return 0;
+            logs.put(map.getName(), logBuffer);
+            DataBuffer log = logBuffer.getLog();
             int pos = log.position();
             log.putInt(0);
             if (newValue == null) { // 删除

@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.Constants;
-import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.lock.Lockable;
@@ -30,6 +29,7 @@ import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.value.ValueString;
 import com.lealone.storage.FormatVersion;
 import com.lealone.storage.StorageMap;
+import com.lealone.storage.StorageMap.RedoLogBuffer;
 import com.lealone.storage.fs.FilePath;
 import com.lealone.storage.fs.FileStorage;
 import com.lealone.storage.fs.FileUtils;
@@ -43,12 +43,13 @@ public class RedoLog {
 
     private final Map<String, String> config;
     private final LogSyncService logSyncService;
+    private final long maxIdleTime;
 
     // key: mapName, value: map key/value ByteBuffer list
     private HashMap<String, List<ByteBuffer>> pendingRedoLog;
 
     // 保存需要写redo log的StorageMap，索引或内存表对应的StorageMap不需要写redo log
-    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, RedoLogBuffer> logBuffers = new ConcurrentHashMap<>();
 
     // 如果事务涉及多个表，要等所有事务的redo log都fsync后才能执行检查点刷脏页
     private final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
@@ -57,14 +58,23 @@ public class RedoLog {
     public RedoLog(Map<String, String> config, LogSyncService logSyncService) {
         this.config = config;
         this.logSyncService = logSyncService;
+        maxIdleTime = MapUtils.getLong(config, "redo_log_buffer_max_idle_time", 60 * 1000);
     }
 
     public void addMap(StorageMap<?, ?> map) {
-        maps.put(map.getName(), map);
+        RedoLogBuffer logBuffer = new RedoLogBuffer(map);
+        logBuffers.put(map.getName(), logBuffer);
+        map.setRedoLogServiceIndex(logSyncService.getSyncServiceIndex());
+        map.setRedoLogBuffer(logBuffer);
     }
 
     public void removeMap(String mapName) {
-        maps.remove(mapName);
+        RedoLogBuffer logBuffer = logBuffers.remove(mapName);
+        if (logBuffer != null) {
+            StorageMap<?, ?> map = logBuffer.getMap();
+            map.setRedoLogServiceIndex(-1);
+            map.setRedoLogBuffer(null);
+        }
     }
 
     public long getLastTransactionId() {
@@ -264,8 +274,9 @@ public class RedoLog {
     }
 
     public void save() {
-        // 事务中涉及的StorageMap
-        HashMap<StorageMap<Object, ?>, DataBuffer> logs = new HashMap<>();
+        // 事务中涉及的StorageMap对应的log
+        HashMap<String, RedoLogBuffer> logs = new HashMap<>();
+        int logServiceIndex = logSyncService.getSyncServiceIndex();
 
         InternalScheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
         int waitingSchedulerCount = waitingSchedulers.length;
@@ -293,34 +304,25 @@ public class RedoLog {
             int buffLength = 0;
             // 找出提交时间戳最小的PendingTransaction
             PendingTransaction pt = nextPendingTransaction(pts);
-            if (pt == null && logQueueSize.get() > 0) {
-                logQueueSize.decrementAndGet();
-            }
             while (pt != null) {
                 RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
                 Set<Integer> serviceIndexs = r.getRedoLogServiceIndexs();
-                if (serviceIndexs == null
-                        || !serviceIndexs.contains(logSyncService.getSyncServiceIndex())) {
-                    int index = pt.getScheduler().getId();
-                    pts[index] = pt.getNext();
-                    pt = nextPendingTransaction(pts);
-                    continue;
-                }
-                pt.setMaps(r.getMaps());
-                if (serviceIndexs.size() > 1) {
-                    pendingTransactions.add(pt);
-                }
-                lastTransactionId = pt.getTransaction().getTransactionId();
+                if (serviceIndexs != null && serviceIndexs.contains(logServiceIndex)) {
+                    if (serviceIndexs.size() > 1) {
+                        pendingTransactions.add(pt);
+                    }
+                    lastTransactionId = pt.getTransaction().getTransactionId();
 
-                buffLength += r.write(logs, maps);
-                if (buffLength > BUFF_SIZE) {
-                    buffLength = 0;
-                    logLength += write(logs);
-                }
-                logQueueSize.decrementAndGet();
-                // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
-                if (logSyncService.isPeriodic()) {
-                    setSynced(pt);
+                    buffLength += r.write(logs, logServiceIndex);
+                    if (buffLength > BUFF_SIZE) {
+                        buffLength = 0;
+                        logLength += write(logs);
+                    }
+                    logQueueSize.decrementAndGet();
+                    // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
+                    if (logSyncService.isPeriodic()) {
+                        setSynced(pt);
+                    }
                 }
                 int index = pt.getScheduler().getId();
                 lastPts[index] = pt;
@@ -360,15 +362,16 @@ public class RedoLog {
     private void setSynced(PendingTransaction pt) {
         if (pt.isSynced())
             return;
-        ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> ptMaps = pt.getMaps();
-        if (ptMaps != null) {
-            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : ptMaps.entrySet()) {
-                if (maps.containsKey(e.getKey().getName())) {
+        RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
+        ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> rMaps = r.getMaps();
+        if (rMaps != null) {
+            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : rMaps.entrySet()) {
+                if (logBuffers.containsKey(e.getKey().getName())) {
                     e.getValue().set(true);
                 }
             }
             boolean isAllSynced = true;
-            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : ptMaps.entrySet()) {
+            for (Entry<StorageMap<?, ?>, AtomicBoolean> e : rMaps.entrySet()) {
                 if (e.getValue().get() == false) {
                     isAllSynced = false;
                     break;
@@ -402,23 +405,25 @@ public class RedoLog {
         return minPendingTransaction;
     }
 
-    private int write(HashMap<StorageMap<Object, ?>, DataBuffer> logs) {
+    private int write(Map<String, RedoLogBuffer> logs) {
         int length = 0;
-        for (Entry<StorageMap<Object, ?>, DataBuffer> e : logs.entrySet()) {
-            DataBuffer log = e.getValue();
-            ByteBuffer buffer = log.getAndFlipBuffer();
-            length += buffer.limit();
-            e.getKey().writeRedoLog(buffer);
-            log.clear();
+        for (RedoLogBuffer logBuffer : logs.values()) {
+            length += logBuffer.writeRedoLog();
         }
         return length;
     }
 
-    private void sync(HashMap<StorageMap<Object, ?>, DataBuffer> logs) {
-        for (StorageMap<Object, ?> m : logs.keySet()) {
-            m.sync();
+    private void sync(Map<String, RedoLogBuffer> logs) {
+        for (RedoLogBuffer logBuffer : logs.values()) {
+            logBuffer.sync();
         }
         runPendingTransactions();
+    }
+
+    public void clearIdleBuffers(long now) {
+        for (RedoLogBuffer logBuffer : logBuffers.values()) {
+            logBuffer.clearIdleBuffer(now, maxIdleTime);
+        }
     }
 
     public void runPendingTransactions() {

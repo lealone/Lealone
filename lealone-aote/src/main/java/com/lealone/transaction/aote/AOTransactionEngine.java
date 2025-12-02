@@ -134,7 +134,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         // 内存表和索引不需要写redo log
         if (!map.isInMemory() && !map.getKeyType().isKeyOnly()) {
             logSyncServices[index].getRedoLog().addMap(map);
-            map.setRedoLogServiceIndex(index);
         }
     }
 
