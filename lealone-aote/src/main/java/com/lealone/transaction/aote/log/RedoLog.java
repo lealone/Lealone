@@ -366,7 +366,9 @@ public class RedoLog {
         ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> rMaps = r.getMaps();
         if (rMaps != null) {
             for (Entry<StorageMap<?, ?>, AtomicBoolean> e : rMaps.entrySet()) {
-                if (logBuffers.containsKey(e.getKey().getName())) {
+                StorageMap<?, ?> map = e.getKey();
+                // 如果表删除直接设置为true
+                if (map.isClosed() || logBuffers.containsKey(map.getName())) {
                     e.getValue().set(true);
                 }
             }
@@ -390,7 +392,8 @@ public class RedoLog {
         for (int i = 0, len = pts.length; i < len; i++) {
             PendingTransaction pt = pts[i];
             while (pt != null) {
-                if (pt.isSynced()) {
+                // 涉及多表的事务，如果没有全部同步完，当前线程不能重复写
+                if (pt.isSynced() || containsPendingTransaction(pt)) {
                     pt = pt.getNext();
                     pts[i] = pt;
                     continue;
@@ -424,6 +427,18 @@ public class RedoLog {
         for (RedoLogBuffer logBuffer : logBuffers.values()) {
             logBuffer.clearIdleBuffer(now, maxIdleTime);
         }
+    }
+
+    private boolean containsPendingTransaction(PendingTransaction pt) {
+        if (pendingTransactions.isEmpty())
+            return false;
+        PendingTransaction pt0 = pendingTransactions.getHead();
+        while (pt0 != null) {
+            if (pt0 == pt)
+                return true;
+            pt0 = pt0.getNext();
+        }
+        return false;
     }
 
     public void runPendingTransactions() {
