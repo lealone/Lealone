@@ -363,7 +363,7 @@ public class RedoLog {
         if (pt.isSynced())
             return;
         RedoLogRecord r = (RedoLogRecord) pt.getRedoLogRecord();
-        ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> rMaps = r.getMaps();
+        Map<StorageMap<?, ?>, AtomicBoolean> rMaps = r.getMaps();
         if (rMaps != null) {
             for (Entry<StorageMap<?, ?>, AtomicBoolean> e : rMaps.entrySet()) {
                 StorageMap<?, ?> map = e.getKey();

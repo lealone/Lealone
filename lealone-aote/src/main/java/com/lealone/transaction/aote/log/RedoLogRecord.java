@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.exceptions.DbException;
@@ -47,7 +46,7 @@ public abstract class RedoLogRecord {
         return 0;
     }
 
-    public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
+    public Map<StorageMap<?, ?>, AtomicBoolean> getMaps() {
         return null;
     }
 
@@ -114,7 +113,7 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
+        public Map<StorageMap<?, ?>, AtomicBoolean> getMaps() {
             return undoLog.getMaps();
         }
 
@@ -148,7 +147,7 @@ public abstract class RedoLogRecord {
         }
 
         @Override
-        public ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> getMaps() {
+        public Map<StorageMap<?, ?>, AtomicBoolean> getMaps() {
             return r.getMaps();
         }
 

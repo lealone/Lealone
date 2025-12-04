@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.db.DataBuffer;
@@ -169,7 +168,7 @@ public abstract class UndoLogRecord {
         }
 
         private void writeMapNames(DataBuffer buff, UndoLog undoLog) {
-            ConcurrentHashMap<StorageMap<?, ?>, AtomicBoolean> maps = undoLog.getMaps();
+            Map<StorageMap<?, ?>, AtomicBoolean> maps = undoLog.getMaps();
             buff.putVarInt(maps.size());
             for (StorageMap<?, ?> map : maps.keySet())
                 ValueString.type.write(buff, map.getName());

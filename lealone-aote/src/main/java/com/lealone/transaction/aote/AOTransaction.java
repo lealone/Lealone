@@ -227,6 +227,7 @@ public class AOTransaction implements Transaction {
             return;
         }
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
+            undoLog.prepareWrite();
             long logId = logSyncService.nextLogId();
             RedoLogRecord r = new LocalTransactionRLR(undoLog, null);
             if (lobTask != null)
