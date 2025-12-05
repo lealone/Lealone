@@ -358,14 +358,16 @@ public interface StorageMap<K, V> {
         }
 
         public void sync() {
-            map.sync();
+            if (!map.isClosed())
+                map.sync();
             lastSyncedAt = System.currentTimeMillis();
         }
 
         public int writeRedoLog() {
             ByteBuffer buffer = log.getAndFlipBuffer();
             int length = buffer.limit();
-            map.writeRedoLog(buffer);
+            if (!map.isClosed())
+                map.writeRedoLog(buffer);
             log.clear();
             return length;
         }

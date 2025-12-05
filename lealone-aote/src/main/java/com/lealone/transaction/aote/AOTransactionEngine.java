@@ -284,7 +284,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         logSyncService = LogSyncService.create(config);
         logSyncService.setEngine(this);
         logSyncService.setCheckpointService(new CheckpointService(this, config, logSyncService));
-        logSyncService.setSyncServiceIndex(0);
+        logSyncService.getRedoLog().setSyncServiceIndex(0);
         logSyncService.getRedoLog().init(); // 兼容老版本的redo log
 
         // 嵌入式场景需要启动logSyncService
@@ -302,7 +302,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             logSyncServices[i].setEngine(this);
             logSyncServices[i]
                     .setCheckpointService(new CheckpointService(this, config, logSyncServices[i]));
-            logSyncServices[i].setSyncServiceIndex(i);
+            logSyncServices[i].getRedoLog().setSyncServiceIndex(i);
             logSyncServices[i].start();
         }
     }

@@ -49,8 +49,6 @@ public abstract class LogSyncService extends Thread {
     private AOTransactionEngine engine;
     private CheckpointService checkpointService;
 
-    private int syncServiceIndex;
-
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(RunMode.isEmbedded(config));
@@ -58,14 +56,6 @@ public abstract class LogSyncService extends Thread {
         waitingSchedulers = new InternalScheduler[schedulerCount];
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config, this);
-    }
-
-    public int getSyncServiceIndex() {
-        return syncServiceIndex;
-    }
-
-    public void setSyncServiceIndex(int syncServiceIndex) {
-        this.syncServiceIndex = syncServiceIndex;
     }
 
     public void setEngine(AOTransactionEngine engine) {
@@ -161,7 +151,8 @@ public abstract class LogSyncService extends Thread {
 
     private void sync() {
         try {
-            redoLog.save();
+            if (asyncLogQueueSize.get() > 0)
+                redoLog.save();
         } catch (Exception e) {
             logger.error("Failed to sync redo log", e);
         }

@@ -54,9 +54,6 @@ public abstract class RedoLogRecord {
         return null;
     }
 
-    public void removeRedoLogServiceIndex(int index) {
-    }
-
     // 兼容老版本的redo log
     private static class CheckpointRLR extends RedoLogRecord {
 
@@ -122,11 +119,6 @@ public abstract class RedoLogRecord {
             return undoLog.getRedoLogServiceIndexs();
         }
 
-        @Override
-        public void removeRedoLogServiceIndex(int index) {
-            undoLog.getRedoLogServiceIndexs().remove(index);
-        }
-
         public static LocalTransactionRLR read(ByteBuffer buff) {
             DataUtils.readVarLong(buff); // transactionId兼容老版本
             byte[] bytes = new byte[buff.getInt()];
@@ -154,11 +146,6 @@ public abstract class RedoLogRecord {
         @Override
         public Set<Integer> getRedoLogServiceIndexs() {
             return r.getRedoLogServiceIndexs();
-        }
-
-        @Override
-        public void removeRedoLogServiceIndex(int index) {
-            r.removeRedoLogServiceIndex(index);
         }
 
         @Override
