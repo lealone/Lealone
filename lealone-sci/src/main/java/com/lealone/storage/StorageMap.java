@@ -364,6 +364,8 @@ public interface StorageMap<K, V> {
         }
 
         public int writeRedoLog() {
+            if (log.length() == 0)
+                return 0;
             ByteBuffer buffer = log.getAndFlipBuffer();
             int length = buffer.limit();
             if (!map.isClosed())

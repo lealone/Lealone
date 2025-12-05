@@ -281,14 +281,22 @@ public class RedoLog {
     }
 
     public void save() {
+        boolean isPeriodic = logSyncService.isPeriodic();
         // 事务中涉及的StorageMap对应的log
-        HashMap<String, RedoLogBuffer> logs = new HashMap<>();
-
+        HashMap<String, RedoLogBuffer> logs = null;
+        // Periodic的场景在save执行期间只会调用一次sync，所以创建一次就够了
+        if (isPeriodic) {
+            logs = new HashMap<>();
+        }
         InternalScheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
         int waitingSchedulerCount = waitingSchedulers.length;
         AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
         long logLength = 0;
         while (logQueueSize.get() > 0) {
+            // Instant的场景会在while循环内调用sync，所以重新创建，避免重复执行
+            if (!isPeriodic) {
+                logs = new HashMap<>();
+            }
             PendingTransaction[] lastPts = new PendingTransaction[waitingSchedulerCount];
             PendingTransaction[] pts = new PendingTransaction[waitingSchedulerCount];
             // 先找到每个调度器还没有同步的PendingTransaction
@@ -327,7 +335,7 @@ public class RedoLog {
                     }
                     logQueueSize.decrementAndGet();
                     // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
-                    if (logSyncService.isPeriodic()) {
+                    if (isPeriodic) {
                         setSynced(pt);
                     }
                 }
@@ -340,7 +348,7 @@ public class RedoLog {
             if (buffLength > 0)
                 logLength += write(logs);
 
-            if (logLength > 0 && !logSyncService.isPeriodic()) {
+            if (logLength > 0 && !isPeriodic) {
                 logLength = 0;
                 sync(logs);
             }
@@ -349,7 +357,7 @@ public class RedoLog {
                 if (scheduler == null || lastPts[i] == null) { // 没有同步过任何RedoLogRecord
                     continue;
                 }
-                if (!logSyncService.isPeriodic()) {
+                if (!isPeriodic) {
                     pt = scheduler.getPendingTransaction();
                     while (pt != null) {
                         setSynced(pt);
@@ -361,7 +369,7 @@ public class RedoLog {
                 scheduler.wakeUp();
             }
         }
-        if (logLength > 0 && logSyncService.isPeriodic()) {
+        if (logLength > 0 && isPeriodic) {
             sync(logs);
         }
     }

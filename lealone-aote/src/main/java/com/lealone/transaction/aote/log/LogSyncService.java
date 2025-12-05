@@ -6,6 +6,7 @@
 package com.lealone.transaction.aote.log;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -183,7 +184,13 @@ public abstract class LogSyncService extends Thread {
         InternalScheduler scheduler = pt.getScheduler();
         scheduler.addPendingTransaction(pt);
         LogSyncService[] logSyncServices = engine.getLogSyncServices();
-        for (int i : t.getUndoLog().getRedoLogServiceIndexs()) {
+        Set<Integer> serviceIndexs = t.getUndoLog().getRedoLogServiceIndexs();
+        for (int i : serviceIndexs) {
+            // 不用写RedoLog的内存表直接返回
+            if (i < 0 && serviceIndexs.size() == 1) {
+                pt.setSynced(true);
+                return;
+            }
             logSyncServices[i].wakeUp(scheduler);
         }
     }
