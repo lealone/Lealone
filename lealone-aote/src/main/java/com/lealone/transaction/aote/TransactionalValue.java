@@ -323,10 +323,14 @@ public class TransactionalValue extends LockableBase {
             boolean isByteStorage, int formatVersion) {
         // 一些存储引擎写入key和value前都需要事先转成字节数组，所以需要先写未提交的数据
         Object value = isByteStorage ? lockable.getValue() : getCommittedValue(lockable);
-        if (value == null) {
-            buff.put((byte) 0);
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            if (value == null) {
+                buff.put((byte) 0);
+            } else {
+                buff.put((byte) 1);
+                valueType.write(buff, lockable, value, formatVersion);
+            }
         } else {
-            buff.put((byte) 1);
             valueType.write(buff, lockable, value, formatVersion);
         }
     }
@@ -358,20 +362,19 @@ public class TransactionalValue extends LockableBase {
 
     public static Lockable read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
             int formatVersion) {
-        if (FormatVersion.isOldFormatVersion(formatVersion))
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
             DataUtils.readVarLong(buff); // 忽略tid
-        Object value = readValue(buff, valueType, formatVersion);
-        if (value == null)
-            return null;
-        else
-            return createCommitted(value);
-    }
-
-    private static Object readValue(ByteBuffer buff, StorageDataType valueType, int formatVersion) {
-        if (buff.get() == 1)
-            return valueType.read(buff, formatVersion);
-        else
-            return null;
+            if (buff.get() == 0)
+                return null;
+            else
+                return createCommitted(valueType.read(buff, formatVersion));
+        } else {
+            Object value = valueType.read(buff, formatVersion);
+            if (value == null)
+                return null;
+            else
+                return createCommitted(value);
+        }
     }
 
     public static Lockable createCommitted(Object value) {

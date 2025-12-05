@@ -99,9 +99,26 @@ public class RowType extends StandardDataType {
 
     @Override
     public Object read(ByteBuffer buff, int formatVersion) {
-        if (FormatVersion.isOldFormatVersion(formatVersion))
-            DataUtils.readVarInt(buff); // version
-        ValueArray a = (ValueArray) DataBuffer.readValue(buff);
+        return read(buff, formatVersion, true);
+    }
+
+    @Override
+    public Object read(ByteBuffer buff, int formatVersion, boolean readMetaVersion) {
+        ValueArray a;
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
+            if (readMetaVersion)
+                DataUtils.readVarInt(buff); // version
+            a = (ValueArray) DataBuffer.readValue(buff);
+        } else {
+            int len = DataUtils.readVarInt(buff);
+            if (len < 0)
+                return null;
+            Value[] columns = new Value[len];
+            for (int i = 0; i < len; i++) {
+                columns[i] = DataBuffer.readValue(buff);
+            }
+            a = ValueArray.get(columns);
+        }
         if (a == null || a.getList().length == 0)
             return new Row(null);
         if (enumColumns != null)
@@ -122,11 +139,22 @@ public class RowType extends StandardDataType {
     }
 
     private void write(DataBuffer buff, Row r, Value[] columns, int formatVersion) {
-        if (FormatVersion.isOldFormatVersion(formatVersion))
+        if (FormatVersion.isOldFormatVersion(formatVersion)) {
             buff.putVarInt(r.getMetaVersion());
-        if (columns == null)
-            columns = new Value[0];
-        buff.writeValue(ValueArray.get(columns));
+            if (columns == null)
+                columns = new Value[0];
+            buff.writeValue(ValueArray.get(columns));
+        } else {
+            if (columns == null) { // 已经删除的行
+                buff.putVarInt(-1);
+                return;
+            }
+            int len = columns.length;
+            buff.putVarInt(len);
+            for (int i = 0; i < len; i++) {
+                buff.writeValue(columns[i]);
+            }
+        }
     }
 
     @Override

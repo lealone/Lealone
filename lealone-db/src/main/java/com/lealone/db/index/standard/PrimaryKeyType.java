@@ -7,11 +7,13 @@ package com.lealone.db.index.standard;
 
 import java.nio.ByteBuffer;
 
+import com.lealone.common.util.DataUtils;
 import com.lealone.common.util.MathUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.row.Row;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueLong;
+import com.lealone.storage.FormatVersion;
 
 //专门用于StandardPrimaryIndex，它的key是ValueLong且不为null
 public class PrimaryKeyType extends StandardDataType {
@@ -35,7 +37,11 @@ public class PrimaryKeyType extends StandardDataType {
 
     @Override
     public Object read(ByteBuffer buff, int formatVersion) {
-        return DataBuffer.readValue(buff);
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            return DataBuffer.readValue(buff);
+        else {
+            return ValueLong.get(DataUtils.readVarLong(buff));
+        }
     }
 
     @Override
@@ -45,7 +51,10 @@ public class PrimaryKeyType extends StandardDataType {
             x = (ValueLong) obj;
         else
             x = ((Row) obj).getPrimaryKey();
-        buff.writeValue(x);
+        if (FormatVersion.isOldFormatVersion(formatVersion))
+            buff.writeValue(x);
+        else
+            buff.putVarLong(x.getLong());
     }
 
     @Override

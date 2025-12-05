@@ -245,7 +245,7 @@ public class RedoLog {
                 }
             });
         } else {
-            Object value = vt.read(kv, FormatVersion.FORMAT_VERSION); // 新老版本的redo log都用新的格式读
+            Object value = vt.read(kv, formatVersion, false); // 新老版本的redo log已经提前读metaVersion
             Lockable lockable;
             if (value instanceof Lockable) {
                 lockable = (Lockable) value;

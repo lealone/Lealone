@@ -14,6 +14,10 @@ import com.lealone.db.value.ValueDataType;
 
 public interface StorageDataType extends ValueDataType {
 
+    default Object read(ByteBuffer buff, int formatVersion, boolean readMetaVersion) {
+        return read(buff, formatVersion);
+    }
+
     default void write(DataBuffer buff, Lockable lockable, Object lockedValue, int formatVersion) {
         write(buff, lockedValue, formatVersion);
     }
