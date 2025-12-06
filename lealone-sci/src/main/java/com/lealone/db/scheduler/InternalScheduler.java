@@ -5,6 +5,8 @@
  */
 package com.lealone.db.scheduler;
 
+import java.util.concurrent.CountDownLatch;
+
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.sql.PreparedSQLStatement;
@@ -32,6 +34,8 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
 
     PendingTransaction getPendingTransaction();
 
+    void runPendingTransactions();
+
     void handlePageOperation(PageOperation po);
 
     void addWaitingScheduler(Scheduler scheduler);
@@ -43,4 +47,10 @@ public interface InternalScheduler extends Scheduler, SchedulerListener.Factory 
     boolean yieldIfNeeded(PreparedSQLStatement current);
 
     void addTaskManager(SchedulerTaskManager taskManager);
+
+    default void setLatch(CountDownLatch latch) {
+    }
+
+    default void await() {
+    }
 }

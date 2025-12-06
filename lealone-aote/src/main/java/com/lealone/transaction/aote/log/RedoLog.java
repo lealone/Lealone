@@ -40,7 +40,7 @@ import com.lealone.transaction.aote.TransactionalValue;
 
 public class RedoLog {
 
-    private static final int BUFF_SIZE = 16 * 1024;
+    private static final int BUFF_SIZE = 2 * 1024 * 1024;
 
     private final Map<String, String> config;
     private final LogSyncService logSyncService;
@@ -290,9 +290,10 @@ public class RedoLog {
         }
         InternalScheduler[] waitingSchedulers = logSyncService.getWaitingSchedulers();
         int waitingSchedulerCount = waitingSchedulers.length;
-        AtomicLong logQueueSize = logSyncService.getAsyncLogQueueSize();
+        AtomicLong redoLogRecordCount = logSyncService.getRedoLogRecordCount();
         long logLength = 0;
-        while (logQueueSize.get() > 0) {
+        int writeCount = 0;
+        while (redoLogRecordCount.get() > 0) {
             // Instant的场景会在while循环内调用sync，所以重新创建，避免重复执行
             if (!isPeriodic) {
                 logs = new HashMap<>();
@@ -333,10 +334,14 @@ public class RedoLog {
                         buffLength = 0;
                         logLength += write(logs);
                     }
-                    logQueueSize.decrementAndGet();
+                    redoLogRecordCount.decrementAndGet();
                     // 提前设置已经同步完成，让调度线程及时回收PendingTransaction
                     if (isPeriodic) {
                         setSynced(pt);
+                    }
+                    if (++writeCount == 512) {
+                        writeCount = 0;
+                        logSyncService.getCheckpointService().executeCheckpoint();
                     }
                 }
                 int index = pt.getScheduler().getId();
@@ -392,8 +397,9 @@ public class RedoLog {
                     break;
                 }
             }
-            if (isAllSynced)
+            if (isAllSynced) {
                 pt.setSynced(true);
+            }
         } else {
             pt.setSynced(true);
         }

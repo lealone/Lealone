@@ -5,6 +5,7 @@
  */
 package com.lealone.storage.aose.btree.chunk;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -133,7 +134,7 @@ public class Chunk {
     }
 
     public int getOffset() {
-        int size = (int) fileStorage.size();
+        int size = (int) size();
         if (size <= 0)
             return 0;
         else
@@ -189,8 +190,10 @@ public class Chunk {
     }
 
     public void read(BTreeStorage btreeStorage) {
-        if (fileStorage == null)
+        if (fileStorage == null) {
             fileStorage = btreeStorage.getFileStorage(id);
+            fileName = new File(fileStorage.getFileName()).getName();
+        }
         readHeader();
         readPagePositions();
     }
@@ -270,6 +273,8 @@ public class Chunk {
         removedPageCount = DataUtils.readHexInt(map, "removedPageCount", 0);
 
         lastTransactionId = DataUtils.readHexLong(map, "lastTransactionId", -1);
+        lastRedoLogPos = DataUtils.readHexLong(map, "lastRedoLogPos", -1);
+        lastUnusedChunk = map.get("lastUnusedChunk");
     }
 
     private StringBuilder asStringBuilder() {
@@ -292,6 +297,9 @@ public class Chunk {
         DataUtils.appendMap(buff, "removedPageCount", removedPageCount);
 
         DataUtils.appendMap(buff, "lastTransactionId", lastTransactionId);
+        DataUtils.appendMap(buff, "lastRedoLogPos", lastRedoLogPos);
+        if (lastUnusedChunk != null)
+            DataUtils.appendMap(buff, "lastUnusedChunk", lastUnusedChunk);
         return buff;
     }
 
@@ -303,14 +311,14 @@ public class Chunk {
         // chunk header
         writeHeader();
         // chunk body
-        long bodyPos = appendMode ? fileStorage.size() : CHUNK_HEADER_SIZE;
+        long bodyPos = appendMode ? size() : CHUNK_HEADER_SIZE;
         fileStorage.writeFully(bodyPos, body.getAndFlipBuffer());
         fileStorage.sync();
     }
 
     // 这个方法未调用sync，上层调用者需要额外按需调用sync
     public synchronized void writeRedoLog(ByteBuffer log) {
-        long size = fileStorage.size();
+        long size = size();
         long pos = size;
         if (size == 0) {
             writeHeader();
@@ -319,12 +327,17 @@ public class Chunk {
         fileStorage.writeFully(pos, log);
     }
 
-    public synchronized ByteBuffer readRedoLog() {
+    public int getRedoLogSize() {
         long pos = getFilePos(removedPageOffset + removedPageCount * 8);
-        int len = (int) (fileStorage.size() - pos);
-        if (len == 0)
-            return null;
-        return fileStorage.readFully(pos, len);
+        return (int) (size() - pos);
+    }
+
+    public long getRedoLogPos() {
+        return getFilePos(removedPageOffset + removedPageCount * 8);
+    }
+
+    public long size() {
+        return fileStorage.size();
     }
 
     public synchronized void removeRedoLogAndRemovedPages(BTreeMap<?, ?> map) {
@@ -334,11 +347,15 @@ public class Chunk {
             map.getBTreeStorage().getChunkManager().removeUnusedChunk(this);
             return;
         }
-        long len = fileStorage.size() - pos;
+        long len = size() - pos;
         if (len != 0) {
             fileStorage.truncate(pos);
             fileStorage.sync();
         }
+    }
+
+    public boolean isOnlyRedoLog() {
+        return getFilePos(removedPageOffset) == CHUNK_HEADER_SIZE;
     }
 
     private long lastTransactionId = -1;
@@ -349,5 +366,25 @@ public class Chunk {
 
     public void setLastTransactionId(long lastTransactionId) {
         this.lastTransactionId = lastTransactionId;
+    }
+
+    private long lastRedoLogPos = -1;
+
+    public long getLastRedoLogPos() {
+        return lastRedoLogPos;
+    }
+
+    public void setLastRedoLogPos(long lastRedoLogPos) {
+        this.lastRedoLogPos = lastRedoLogPos;
+    }
+
+    private String lastUnusedChunk;
+
+    public String getLastUnusedChunk() {
+        return lastUnusedChunk;
+    }
+
+    public void setLastUnusedChunk(String lastUnusedChunk) {
+        this.lastUnusedChunk = lastUnusedChunk;
     }
 }

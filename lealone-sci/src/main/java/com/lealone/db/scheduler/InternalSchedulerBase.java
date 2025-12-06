@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.lealone.common.util.MapUtils;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
@@ -26,6 +27,8 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     public InternalSchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
         super(id, name, schedulerCount, config);
         waitingSchedulers = new AtomicReferenceArray<>(schedulerCount);
+        int limit = MapUtils.getInt(config, "pending_transaction_limit", 30000);
+        PendingTransaction.setLimit(limit);
     }
 
     @Override
@@ -136,7 +139,8 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     protected final LinkableList<PendingTransaction> pendingTransactions = new LinkableList<>();
 
     // runPendingTransactions和addTransaction已经确保只有一个调度线程执行，所以是单线程安全的
-    protected void runPendingTransactions() {
+    @Override
+    public void runPendingTransactions() {
         if (pendingTransactions.isEmpty())
             return;
         PendingTransaction pt = pendingTransactions.getHead();
@@ -151,6 +155,7 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
             pt = pt.getNext();
             pendingTransactions.decrementSize();
             pendingTransactions.setHead(pt);
+            PendingTransaction.decrement();
         }
         if (pendingTransactions.getHead() == null) {
             pendingTransactions.setTail(null);
@@ -160,6 +165,7 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     @Override
     public void addPendingTransaction(PendingTransaction pt) {
         pendingTransactions.add(pt);
+        PendingTransaction.increment();
     }
 
     @Override

@@ -21,6 +21,12 @@ public class MemoryManager {
         return globalMemoryManager.getUsedMemory() > fullGcThreshold;
     }
 
+    // JVM已经使用的内存超过最大内存的50%就认为内存紧张了
+    public static boolean isPhysicalMemoryTight() {
+        MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+        return mu.getUsed() > mu.getMax() * 0.5;
+    }
+
     private static long getFullGcThreshold() {
         long max = getGlobalMaxMemory();
         long gcThreshold = max / 10 * 6;

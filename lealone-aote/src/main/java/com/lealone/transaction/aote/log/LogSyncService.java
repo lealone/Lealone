@@ -31,20 +31,16 @@ public abstract class LogSyncService extends Thread {
     public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
     private final Awaiter awaiter = new Awaiter(logger);
-    private final AtomicLong asyncLogQueueSize = new AtomicLong();
+    private final AtomicLong redoLogRecordCount = new AtomicLong();
     private final AtomicLong lastLogId = new AtomicLong();
 
     private final InternalScheduler[] waitingSchedulers;
-
-    // 只要达到一定的阈值就可以立即同步了
-    private final int redoLogRecordSyncThreshold;
     private final RedoLog redoLog;
 
     private volatile boolean running;
     private volatile CountDownLatch latchOnClose;
 
-    protected volatile long lastSyncedAt = System.currentTimeMillis();
-    protected long syncIntervalMillis;
+    protected long loopInterval;
 
     private CheckpointService checkpointService;
 
@@ -53,7 +49,7 @@ public abstract class LogSyncService extends Thread {
         setDaemon(RunMode.isEmbedded(config));
         int schedulerCount = MapUtils.getSchedulerCount(config);
         waitingSchedulers = new InternalScheduler[schedulerCount];
-        redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
+        loopInterval = MapUtils.getLong(config, "log_sync_service_loop_interval", 3000);
         redoLog = new RedoLog(config, this);
     }
 
@@ -73,8 +69,8 @@ public abstract class LogSyncService extends Thread {
         return lastLogId.incrementAndGet();
     }
 
-    public AtomicLong getAsyncLogQueueSize() {
-        return asyncLogQueueSize;
+    public AtomicLong getRedoLogRecordCount() {
+        return redoLogRecordCount;
     }
 
     public InternalScheduler[] getWaitingSchedulers() {
@@ -97,36 +93,24 @@ public abstract class LogSyncService extends Thread {
     public void run() {
         running = true;
         long lastCheckedAt = System.currentTimeMillis();
+        long cpLoopInterval = checkpointService.getLoopInterval();
         while (running) {
-            long syncStarted = System.currentTimeMillis();
             sync();
             redoLog.runPendingTransactions();
-            lastSyncedAt = syncStarted;
-            if (!isPeriodic()) {
-                // 如果是instant sync，只要一有redo log就接着马上同步，无需等待
-                if (asyncLogQueueSize.get() > 0)
-                    continue;
-            } else if (asyncLogQueueSize.get() > redoLogRecordSyncThreshold) {
-                // 如果是periodic sync，只要redo log达到阈值也接着马上同步，无需等待
-                continue;
-            }
             if (MemoryManager.needFullGc())
                 checkpointService.fullGc();
             long now = System.currentTimeMillis();
-            if (checkpointService.forceCheckpoint()
-                    || lastCheckedAt + checkpointService.getLoopInterval() < now) {
+            if (lastCheckedAt + cpLoopInterval < now || checkpointService.forceCheckpoint()) {
                 if (!redoLog.hasPendingTransactions())
                     checkpointService.run();
                 redoLog.clearIdleBuffers(now);
                 lastCheckedAt = now;
             }
-            long sleep = syncStarted + syncIntervalMillis - now;
-            if (sleep < 0)
+            if (redoLogRecordCount.get() > 0)
                 continue;
-            awaiter.doAwait(sleep);
+            awaiter.doAwait(loopInterval);
         }
-        // 结束前最后sync一次
-        sync();
+        sync(); // 结束前最后sync一次
         while (true) {
             redoLog.runPendingTransactions();
             if (!redoLog.hasPendingTransactions()) {
@@ -142,11 +126,12 @@ public abstract class LogSyncService extends Thread {
         if (latchOnClose != null) {
             latchOnClose.countDown();
         }
+        running = false;
     }
 
     private void sync() {
         try {
-            if (asyncLogQueueSize.get() > 0)
+            if (redoLogRecordCount.get() > 0)
                 redoLog.save();
         } catch (Exception e) {
             logger.error("Failed to sync redo log", e);
@@ -172,7 +157,7 @@ public abstract class LogSyncService extends Thread {
 
     private void wakeUp(InternalScheduler scheduler) {
         waitingSchedulers[scheduler.getId()] = scheduler;
-        asyncLogQueueSize.getAndIncrement();
+        redoLogRecordCount.getAndIncrement();
         wakeUp();
     }
 
@@ -181,8 +166,15 @@ public abstract class LogSyncService extends Thread {
     public abstract void syncWrite(AOTransaction t, RedoLogRecord r, long logId);
 
     private static void addPendingTransaction(PendingTransaction pt, AOTransaction t) {
+        CountDownLatch latch = null;
         InternalScheduler scheduler = pt.getScheduler();
+        // 积压了大量待处理事务且内存紧张时，调度服务线程要等待
+        if (PendingTransaction.isExceeded() && MemoryManager.isPhysicalMemoryTight()) {
+            latch = new CountDownLatch(1);
+            scheduler.setLatch(latch);
+        }
         scheduler.addPendingTransaction(pt);
+
         LogSyncService[] logSyncServices = t.transactionEngine.getLogSyncServices();
         Set<Integer> serviceIndexs = t.getUndoLog().getRedoLogServiceIndexs();
         for (int i : serviceIndexs) {
@@ -192,6 +184,11 @@ public abstract class LogSyncService extends Thread {
                 return;
             }
             logSyncServices[i].wakeUp(scheduler);
+        }
+
+        if (latch != null) {
+            scheduler.await();
+            scheduler.runPendingTransactions();
         }
     }
 
@@ -245,8 +242,6 @@ public abstract class LogSyncService extends Thread {
 
         Instant(Map<String, String> config) {
             super(config);
-            // 只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
-            syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 100);
         }
 
         @Override
@@ -276,7 +271,9 @@ public abstract class LogSyncService extends Thread {
             super(config);
             // 这个参数只是为了兼容老版本
             // 并不是每隔一段时间同步一次，只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
-            syncIntervalMillis = MapUtils.getLong(config, "log_sync_period", 500);
+            long period = MapUtils.getLong(config, "log_sync_period", -1);
+            if (period > loopInterval)
+                loopInterval = period;
         }
 
         @Override

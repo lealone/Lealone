@@ -27,6 +27,7 @@ public class ChunkManager {
     private final BTreeStorage btreeStorage;
     private final ConcurrentSkipListSet<Long> removedPages = new ConcurrentSkipListSet<>();
     private final ConcurrentHashMap<Integer, String> idToChunkFileNameMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, Integer> seqToIdMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Chunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
 
@@ -53,6 +54,7 @@ public class ChunkManager {
                 }
                 chunkIds.set(id);
                 idToChunkFileNameMap.put(id, f);
+                seqToIdMap.put(seq, id);
             }
         }
         readLastChunk(lastChunkId);
@@ -149,6 +151,7 @@ public class ChunkManager {
         chunkIds.set(c.id);
         chunks.put(c.id, c);
         idToChunkFileNameMap.put(c.id, c.fileName);
+        seqToIdMap.put(getSeq(c.fileName), c.id);
     }
 
     public synchronized void removeUnusedChunk(Chunk c) {
@@ -157,9 +160,15 @@ public class ChunkManager {
         chunkIds.clear(c.id);
         chunks.remove(c.id);
         idToChunkFileNameMap.remove(c.id);
+        seqToIdMap.remove(getSeq(c.fileName));
         removedPages.removeAll(c.pagePositionToLengthMap.keySet());
         if (c == lastChunk)
             lastChunk = null;
+    }
+
+    public static Long getSeq(String chunkFileName) {
+        return Long.valueOf(chunkFileName.substring(chunkFileName.lastIndexOf('_') + 1,
+                chunkFileName.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
     }
 
     List<Chunk> readChunks(HashSet<Integer> chunkIds) {
@@ -202,5 +211,23 @@ public class ChunkManager {
 
     public Set<Integer> getAllChunkIds() {
         return idToChunkFileNameMap.keySet();
+    }
+
+    public synchronized Chunk findThirdLastChunk() {
+        long seq = maxSeq - 2;
+        return findChunk(seq);
+    }
+
+    public synchronized Chunk findChunk(String chunkFileName) {
+        Long seq = getSeq(chunkFileName);
+        return findChunk(seq);
+    }
+
+    public synchronized Chunk findChunk(Long seq) {
+        Integer id = seqToIdMap.get(seq);
+        if (id != null)
+            return getChunk(id.intValue());
+        else
+            return null;
     }
 }

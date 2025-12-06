@@ -8,7 +8,10 @@ package com.lealone.server.scheduler;
 import java.io.IOException;
 import java.nio.channels.Selector;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.MemoryManager;
@@ -16,6 +19,7 @@ import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.scheduler.InternalSchedulerBase;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.Session;
@@ -431,11 +435,6 @@ public class GlobalScheduler extends InternalSchedulerBase {
     }
 
     @Override
-    public void wakeUp() {
-        netEventLoop.wakeUp();
-    }
-
-    @Override
     protected void runEventLoop() {
         try {
             netEventLoop.write();
@@ -450,5 +449,38 @@ public class GlobalScheduler extends InternalSchedulerBase {
     protected void onStopped() {
         super.onStopped();
         netEventLoop.close();
+    }
+
+    private volatile CountDownLatch latch;
+
+    @Override
+    public void setLatch(CountDownLatch latch) {
+        if (DbException.ASSERT) {
+            DbException.assertTrue(SchedulerThread.currentScheduler() == this);
+        }
+        this.latch = latch;
+    }
+
+    @Override
+    public void wakeUp() {
+        netEventLoop.wakeUp();
+        if (latch != null) {
+            latch.countDown();
+        }
+    }
+
+    @Override
+    public void await() {
+        if (DbException.ASSERT) {
+            DbException.assertTrue(SchedulerThread.currentScheduler() == this);
+        }
+        if (latch != null) {
+            try {
+                latch.await(5L, TimeUnit.SECONDS);
+                latch = null;
+            } catch (InterruptedException e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 }

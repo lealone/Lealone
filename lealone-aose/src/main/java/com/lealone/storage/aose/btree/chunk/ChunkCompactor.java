@@ -58,7 +58,10 @@ public class ChunkCompactor {
 
     public void removeUnusedChunks() {
         if (unusedChunks != null) {
+            Chunk lastChunk = chunkManager.getLastChunk();
             for (Chunk c : unusedChunks) {
+                if (c == lastChunk) // 保留lastChunk，可能还有RedoLog，留到下一次再删除
+                    continue;
                 chunkManager.removeUnusedChunk(c);
             }
             unusedChunks = null;

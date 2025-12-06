@@ -358,8 +358,7 @@ public interface StorageMap<K, V> {
         }
 
         public void sync() {
-            if (!map.isClosed())
-                map.sync();
+            map.sync();
             lastSyncedAt = System.currentTimeMillis();
         }
 
@@ -368,8 +367,7 @@ public interface StorageMap<K, V> {
                 return 0;
             ByteBuffer buffer = log.getAndFlipBuffer();
             int length = buffer.limit();
-            if (!map.isClosed())
-                map.writeRedoLog(buffer);
+            map.writeRedoLog(buffer);
             log.clear();
             return length;
         }

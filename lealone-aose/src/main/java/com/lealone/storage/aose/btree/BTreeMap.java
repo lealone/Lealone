@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DbSetting;
@@ -56,7 +56,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // 只允许通过成员方法访问这个特殊的字段
     private final AtomicLong size = new AtomicLong(0);
-    private final ReentrantLock lock = new ReentrantLock();
+
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    // 执行save、垃圾收集、读写RedoLog时用共享锁，它们之间再用RedoLog的锁
+    private final ReentrantReadWriteLock.ReadLock sharedLock = rwLock.readLock();
+    // 执行clear、remove、close、repair用排他锁
+    private final ReentrantReadWriteLock.WriteLock exclusiveLock = rwLock.writeLock();
 
     private final boolean readOnly;
     private final boolean inMemory;
@@ -334,7 +339,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void clear() {
-        lock.lock();
+        exclusiveLock.lock();
         try {
             checkWrite();
             rootRef.markDirtyPage();
@@ -343,19 +348,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             maxKey.set(0);
             newRoot(createEmptyPage());
         } finally {
-            lock.unlock();
+            exclusiveLock.unlock();
         }
     }
 
     @Override
     public void remove() {
-        lock.lock();
+        exclusiveLock.lock();
         try {
             clear(); // 及早释放内存，上层的数据库对象模型可能会引用到，容易产生OOM
             btreeStorage.remove();
             closeMap();
         } finally {
-            lock.unlock();
+            exclusiveLock.unlock();
         }
     }
 
@@ -366,12 +371,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void close() {
-        lock.lock();
+        exclusiveLock.lock();
         try {
             closeMap();
             btreeStorage.close();
         } finally {
-            lock.unlock();
+            exclusiveLock.unlock();
         }
     }
 
@@ -395,11 +400,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public void save(boolean compact, boolean appendModeEnabled, long dirtyMemory) {
         if (!inMemory) {
-            lock.lock();
+            sharedLock.lock();
             try {
                 btreeStorage.save(compact, appendModeEnabled, dirtyMemory);
             } finally {
-                lock.unlock();
+                sharedLock.unlock();
             }
         }
     }
@@ -412,11 +417,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public void gc() {
         if (!inMemory) {
-            lock.lock();
-            try {
-                btreeStorage.getBTreeGC().gc();
-            } finally {
-                lock.unlock();
+            // 如果加锁失败可以直接返回
+            if (sharedLock.tryLock()) {
+                try {
+                    btreeStorage.getBTreeGC().gc();
+                } finally {
+                    sharedLock.unlock();
+                }
             }
         }
     }
@@ -429,13 +436,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void fullGc(boolean save) {
         if (!inMemory) {
             // 如果加锁失败可以直接返回
-            if (lock.tryLock()) {
+            if (sharedLock.tryLock()) {
                 try {
                     if (save)
                         btreeStorage.save(false, false, collectDirtyMemory());
                     btreeStorage.getBTreeGC().fullGc();
                 } finally {
-                    lock.unlock();
+                    sharedLock.unlock();
                 }
             }
         }
@@ -445,11 +452,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public long collectDirtyMemory() {
         if (inMemory)
             return 0;
-        lock.lock();
+        sharedLock.lock();
         try {
             return btreeStorage.getBTreeGC().collectDirtyMemory();
         } finally {
-            lock.unlock();
+            sharedLock.unlock();
         }
     }
 
@@ -523,7 +530,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void repair() {
         if (inMemory)
             return;
-        lock.lock();
+        exclusiveLock.lock();
         try {
             ChunkManager chunkManager = btreeStorage.getChunkManager();
             HashSet<Long> pages = new HashSet<>();
@@ -551,7 +558,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 chunkManager.removeUnusedChunk(c);
             }
         } finally {
-            lock.unlock();
+            exclusiveLock.unlock();
         }
     }
 
@@ -702,23 +709,34 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void writeRedoLog(ByteBuffer log) {
-        lock.lock();
+        sharedLock.lock();
         try {
             if (!isClosed())
                 btreeStorage.writeRedoLog(log);
         } finally {
-            lock.unlock();
+            sharedLock.unlock();
         }
     }
 
     @Override
     public ByteBuffer readRedoLog() {
-        return btreeStorage.readRedoLog();
+        sharedLock.lock();
+        try {
+            return btreeStorage.readRedoLog();
+        } finally {
+            sharedLock.unlock();
+        }
     }
 
     @Override
     public void sync() {
-        btreeStorage.sync();
+        sharedLock.lock();
+        try {
+            if (!isClosed())
+                btreeStorage.sync();
+        } finally {
+            sharedLock.unlock();
+        }
     }
 
     private int redoLogServiceIndex = -1;

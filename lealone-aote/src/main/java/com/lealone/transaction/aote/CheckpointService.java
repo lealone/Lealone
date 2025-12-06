@@ -214,7 +214,11 @@ public class CheckpointService implements Runnable {
         }
     }
 
-    private void executeCheckpoint() {
+    private volatile Thread savingThread;
+
+    public void executeCheckpoint() {
+        if (savingThread != null)
+            return;
         if (!forceCheckpointTasks.isEmpty()) {
             // 每次只执行一个
             Runnable task = forceCheckpointTasks.remove(0);
@@ -225,36 +229,55 @@ public class CheckpointService implements Runnable {
     }
 
     private void executeCheckpoint(boolean force) {
-        if (maps.isEmpty()) {
+        if (maps.isEmpty())
             return;
-        }
         collectDirtyMemory();
+        if (dirtyMaps.isEmpty())
+            return;
 
         if (force // 强制刷脏页
                 || isClosed // 关闭前要刷脏页
                 || dirtyMemoryTotal.get() > dirtyPageCacheSize // 脏页占用的预估总内存大于阈值
                 || lastSavedAt + checkpointPeriod < System.currentTimeMillis()) // 周期超过阈值了
         {
-            try {
-                if (!dirtyMaps.isEmpty()) {
-                    long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
-                    for (Entry<String, Long> e : dirtyMaps.entrySet()) {
-                        StorageMap<?, ?> map = maps.get(e.getKey());
-                        // 准备耍刷页前如果表被删除了那就直接忽略
-                        if (map != null && !map.isClosed()) {
-                            map.setLastTransactionId(lastTransactionId);
-                            try {
-                                map.save(e.getValue().longValue());
-                            } finally {
-                                map.setLastTransactionId(-1);
-                            }
+            savingThread = new Thread(() -> {
+                save(force);
+                savingThread = null;
+            });
+            savingThread.start();
+        }
+    }
+
+    private void save(boolean force) {
+        boolean force0 = force;
+        long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
+        try {
+            while (force0 || dirtyMemoryTotal.get() > dirtyPageCacheSize) {
+                for (Entry<String, Long> e : dirtyMaps.entrySet()) {
+                    StorageMap<?, ?> map = maps.get(e.getKey());
+                    // 准备耍刷页前如果表被删除了那就直接忽略
+                    if (map != null && !map.isClosed()) {
+                        long t1 = System.currentTimeMillis();
+                        long size = e.getValue().longValue();
+                        savingThread.setName("Saving-" + map.getName());
+                        map.setLastTransactionId(lastTransactionId);
+                        try {
+                            map.save(size);
+                        } finally {
+                            map.setLastTransactionId(-1);
+                        }
+                        if (DEBUG) {
+                            long time = System.currentTimeMillis() - t1;
+                            logger.info("Save {}, size: {}, time: {} ms", map.getName(), size, time);
                         }
                     }
-                    lastSavedAt = System.currentTimeMillis();
                 }
-            } catch (Throwable t) {
-                logger.error("Failed to execute save", t);
+                force0 = false;
+                lastSavedAt = System.currentTimeMillis();
+                collectDirtyMemory(); // 再收集一次脏页看看是否需要再次刷脏页
             }
+        } catch (Throwable t) {
+            logger.error("Failed to execute save", t);
         }
     }
 

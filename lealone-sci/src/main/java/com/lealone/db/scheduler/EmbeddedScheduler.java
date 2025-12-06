@@ -87,7 +87,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     // --------------------- 跟 PendingTransaction 相关 ---------------------
     // --------------------- 嵌入式场景可能有多个线程在写，所以需要加synchronized ----
     @Override
-    protected synchronized void runPendingTransactions() {
+    public synchronized void runPendingTransactions() {
         super.runPendingTransactions();
     }
 

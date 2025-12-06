@@ -468,6 +468,10 @@ public class FileStorage {
      */
     public ByteBuffer readFully(long pos, int len) {
         ByteBuffer dst = ByteBuffer.allocate(len);
+        return readFully(pos, len, dst);
+    }
+
+    public ByteBuffer readFully(long pos, int len, ByteBuffer dst) {
         if (len > 0) {
             DataUtils.readFully(file, pos, dst);
             readCount++;

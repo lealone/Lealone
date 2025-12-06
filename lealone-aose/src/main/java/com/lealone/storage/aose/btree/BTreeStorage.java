@@ -8,6 +8,7 @@ package com.lealone.storage.aose.btree;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.lealone.common.compress.CompressDeflate;
 import com.lealone.common.compress.CompressLZF;
@@ -324,20 +325,32 @@ public class BTreeStorage {
         DataBuffer chunkBody = DataBuffer.createDirect((int) dirtyMemory);
         boolean appendMode = false;
         Chunk c;
-        Chunk lastChunk = chunkManager.getLastChunk();
-        // 老版本的chunk不再append
-        if (appendModeEnabled && lastChunk != null
-                && FormatVersion.isOldFormatVersion(lastChunk.formatVersion)) {
-            appendModeEnabled = false;
-        }
-        boolean isLastChunkUsed = lastChunk != null && !chunkCompactor.isUnusedChunk(lastChunk);
-        if (appendModeEnabled && isLastChunkUsed
-                && lastChunk.fileStorage.size() + dirtyMemory < maxChunkSize) {
-            c = lastChunk;
-            appendMode = true;
-        } else {
-            c = chunkManager.createChunk();
-            c.fileStorage = getFileStorage(c.fileName);
+        Chunk lastChunk;
+        String lastUnusedChunk = null;
+        long lastRedoLogPos = -1;
+        boolean isLastChunkUsed = false;
+        redoLogLock.lock();
+        try {
+            lastChunk = chunkManager.getLastChunk();
+            if (lastChunk != null) {
+                lastRedoLogPos = lastChunk.size();
+                // 老版本的chunk不再append
+                if (appendModeEnabled && FormatVersion.isOldFormatVersion(lastChunk.formatVersion)) {
+                    appendModeEnabled = false;
+                }
+                isLastChunkUsed = !chunkCompactor.isUnusedChunk(lastChunk);
+                if (!isLastChunkUsed || lastChunk.isOnlyRedoLog())
+                    lastUnusedChunk = lastChunk.fileName;
+            }
+            if (appendModeEnabled && isLastChunkUsed && lastChunk.size() + dirtyMemory < maxChunkSize) {
+                c = lastChunk;
+                appendMode = true;
+            } else {
+                c = chunkManager.createChunk();
+                c.fileStorage = getFileStorage(c.fileName);
+            }
+        } finally {
+            redoLogLock.unlock();
         }
         c.mapSize = map.size();
         c.mapMaxKey = map.getMaxKey();
@@ -350,6 +363,9 @@ public class BTreeStorage {
         chunkCompactor.clearUnusedChunkPages();
 
         c.setLastTransactionId(map.getLastTransactionId());
+        c.setLastRedoLogPos(lastRedoLogPos);
+        c.setLastUnusedChunk(lastUnusedChunk);
+
         c.write(map, chunkBody, appendMode, chunkManager);
 
         // 最新的chunk写成功后再删除UnusedChunks，不能提前删除，因为UnusedChunks也包含被重写的chunk
@@ -357,58 +373,134 @@ public class BTreeStorage {
         chunkCompactor.removeUnusedChunks();
 
         if (!appendMode) {
-            chunkManager.addChunk(c);
-            chunkManager.setLastChunk(c);
-            if (isLastChunkUsed) {
-                lastChunk.removeRedoLogAndRemovedPages(map);
+            redoLogLock.lock();
+            try {
+                chunkManager.addChunk(c);
+                chunkManager.setLastChunk(c);
+            } finally {
+                redoLogLock.unlock();
+            }
+            if (lastChunk != null) {
+                // 提前删除
+                if (lastUnusedChunk != null && lastRedoLogPos == lastChunk.size()) {
+                    chunkManager.removeUnusedChunk(lastChunk);
+                }
+
+                if (lastChunk.getLastUnusedChunk() != null) {
+                    Chunk chunk = chunkManager.findChunk(lastChunk.getLastUnusedChunk());
+                    // 如果已经提前删除那什么都不需要做
+                    if (chunk != null)
+                        chunkManager.removeUnusedChunk(chunk);
+                } else {
+                    // 倒数第三个chunk的redo log可以删除了
+                    Chunk thirdLastChunk = chunkManager.findThirdLastChunk();
+                    if (thirdLastChunk != null) {
+                        thirdLastChunk.removeRedoLogAndRemovedPages(map);
+                    }
+                }
             }
         }
     }
 
-    synchronized void writeRedoLog(ByteBuffer log) {
-        Chunk c = chunkManager.getLastChunk();
-        if (c == null) {
-            c = chunkManager.createChunk();
-            c.fileStorage = getFileStorage(c.fileName);
-            chunkManager.addChunk(c);
-            chunkManager.setLastChunk(c);
+    private final ReentrantLock redoLogLock = new ReentrantLock();
+    private Chunk lastWriteChunk;
+
+    void writeRedoLog(ByteBuffer log) {
+        redoLogLock.lock();
+        try {
+            Chunk c = chunkManager.getLastChunk();
+            if (c == null) {
+                c = chunkManager.createChunk();
+                c.fileStorage = getFileStorage(c.fileName);
+                chunkManager.addChunk(c);
+                chunkManager.setLastChunk(c);
+            }
+            c.mapMaxKey = map.getMaxKey();
+            c.writeRedoLog(log);
+
+            // 写完后有可能另一个线程刷脏页会创建新的chunk，所以调用sync时不能直接用chunkManager.getLastChunk()
+            lastWriteChunk = c;
+        } finally {
+            redoLogLock.unlock();
         }
-        c.mapMaxKey = map.getMaxKey();
-        c.writeRedoLog(log);
     }
 
-    synchronized ByteBuffer readRedoLog() {
-        Chunk c = chunkManager.getLastChunk();
-        if (c == null)
-            return null;
-        else
-            return c.readRedoLog();
+    ByteBuffer readRedoLog() {
+        redoLogLock.lock();
+        try {
+            Chunk c = chunkManager.getLastChunk();
+            if (c == null) {
+                return null;
+            } else {
+                int size1 = c.getRedoLogSize();
+                ByteBuffer buffer = null;
+                // 倒数第二个chunk也可能有RedoLog
+                Long seq = ChunkManager.getSeq(c.fileName);
+                if (seq > 1 && c.getLastRedoLogPos() > 0) {
+                    Chunk secondLastChunk = chunkManager.findChunk(seq - 1);
+                    if (secondLastChunk != null) {
+                        int size2 = (int) (secondLastChunk.size() - c.getLastRedoLogPos());
+                        int capacity = size1 + size2;
+                        buffer = ByteBuffer.allocate(capacity);
+                        buffer.limit(size2);
+                        secondLastChunk.fileStorage.readFully(c.getLastRedoLogPos(), size2, buffer);
+                        buffer.position(size2);
+                        buffer.limit(capacity);
+                    }
+                }
+                if (size1 <= 0) {
+                    return buffer;
+                } else {
+                    if (buffer == null)
+                        buffer = ByteBuffer.allocate(size1);
+                    c.fileStorage.readFully(c.getRedoLogPos(), size1, buffer);
+                    return buffer;
+                }
+            }
+        } finally {
+            redoLogLock.unlock();
+        }
     }
 
-    synchronized void sync() {
-        Chunk c = chunkManager.getLastChunk();
-        if (c != null)
-            c.fileStorage.sync();
+    void sync() {
+        redoLogLock.lock();
+        try {
+            if (lastWriteChunk != null) {
+                lastWriteChunk.fileStorage.sync();
+                lastWriteChunk = null;
+            } else {
+                Chunk c = chunkManager.getLastChunk();
+                if (c != null)
+                    c.fileStorage.sync();
+            }
+        } finally {
+            redoLogLock.unlock();
+        }
     }
 
-    synchronized boolean validateRedoLog(long lastTransactionId) {
-        Chunk c = chunkManager.getLastChunk();
-        if (c != null && c.getLastTransactionId() >= lastTransactionId)
-            return true;
-        ByteBuffer log = readRedoLog();
-        if (log == null)
+    boolean validateRedoLog(long lastTransactionId) {
+        redoLogLock.lock();
+        try {
+            Chunk c = chunkManager.getLastChunk();
+            if (c != null && c.getLastTransactionId() >= lastTransactionId)
+                return true;
+            ByteBuffer log = readRedoLog();
+            if (log == null)
+                return false;
+            while (log.hasRemaining()) {
+                int len = log.getInt();
+                int pos = log.position();
+                int type = log.get();
+                if (type > 1) {
+                    long transactionId = DataUtils.readVarLong(log);
+                    if (transactionId == lastTransactionId)
+                        return true;
+                }
+                log.position(pos + len);
+            }
             return false;
-        while (log.hasRemaining()) {
-            int len = log.getInt();
-            int pos = log.position();
-            int type = log.get();
-            if (type > 1) {
-                long transactionId = DataUtils.readVarLong(log);
-                if (transactionId == lastTransactionId)
-                    return true;
-            }
-            log.position(pos + len);
+        } finally {
+            redoLogLock.unlock();
         }
-        return false;
     }
 }
