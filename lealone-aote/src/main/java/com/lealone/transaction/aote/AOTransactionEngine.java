@@ -282,7 +282,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
 
     private void initLogSyncServices(int schedulerCount) {
         logSyncService = LogSyncService.create(config);
-        logSyncService.setEngine(this);
         logSyncService.setCheckpointService(new CheckpointService(this, config, logSyncService));
         logSyncService.getRedoLog().setSyncServiceIndex(0);
         logSyncService.getRedoLog().init(); // 兼容老版本的redo log
@@ -299,7 +298,6 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         for (int i = 1; i < schedulerCount; i++) {
             logSyncServices[i] = LogSyncService.create(config);
             logSyncServices[i].setName("FsyncService-" + i);
-            logSyncServices[i].setEngine(this);
             logSyncServices[i]
                     .setCheckpointService(new CheckpointService(this, config, logSyncServices[i]));
             logSyncServices[i].getRedoLog().setSyncServiceIndex(i);

@@ -44,16 +44,4 @@ public class Awaiter {
             semaphore.release(1);
         }
     }
-
-    public void wakeUp(boolean force) {
-        haveWork = true;
-        if (force) {
-            waiting.set(false);
-            semaphore.release(1);
-        } else {
-            if (waiting.compareAndSet(true, false)) {
-                semaphore.release(1);
-            }
-        }
-    }
 }

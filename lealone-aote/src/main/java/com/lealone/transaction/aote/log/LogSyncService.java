@@ -20,7 +20,6 @@ import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.util.Awaiter;
 import com.lealone.transaction.PendingTransaction;
 import com.lealone.transaction.aote.AOTransaction;
-import com.lealone.transaction.aote.AOTransactionEngine;
 import com.lealone.transaction.aote.CheckpointService;
 
 public abstract class LogSyncService extends Thread {
@@ -47,7 +46,6 @@ public abstract class LogSyncService extends Thread {
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected long syncIntervalMillis;
 
-    private AOTransactionEngine engine;
     private CheckpointService checkpointService;
 
     public LogSyncService(Map<String, String> config) {
@@ -57,10 +55,6 @@ public abstract class LogSyncService extends Thread {
         waitingSchedulers = new InternalScheduler[schedulerCount];
         redoLogRecordSyncThreshold = MapUtils.getInt(config, "redo_log_record_sync_threshold", 100);
         redoLog = new RedoLog(config, this);
-    }
-
-    public void setEngine(AOTransactionEngine engine) {
-        this.engine = engine;
     }
 
     public void setCheckpointService(CheckpointService checkpointService) {
@@ -159,10 +153,6 @@ public abstract class LogSyncService extends Thread {
         }
     }
 
-    public void wakeUp() {
-        awaiter.wakeUp();
-    }
-
     // 调用join可能没有效果，run方法可能在main线程中运行，所以统一用CountDownLatch
     public void close() {
         latchOnClose = new CountDownLatch(1);
@@ -176,23 +166,8 @@ public abstract class LogSyncService extends Thread {
         checkpointService.close();
     }
 
-    public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-        asyncWrite(new PendingTransaction(t, r, logId), t);
-    }
-
-    protected void asyncWrite(PendingTransaction pt, AOTransaction t) {
-        InternalScheduler scheduler = pt.getScheduler();
-        scheduler.addPendingTransaction(pt);
-        LogSyncService[] logSyncServices = engine.getLogSyncServices();
-        Set<Integer> serviceIndexs = t.getUndoLog().getRedoLogServiceIndexs();
-        for (int i : serviceIndexs) {
-            // 不用写RedoLog的内存表直接返回
-            if (i < 0 && serviceIndexs.size() == 1) {
-                pt.setSynced(true);
-                return;
-            }
-            logSyncServices[i].wakeUp(scheduler);
-        }
+    public void wakeUp() {
+        awaiter.wakeUp();
     }
 
     private void wakeUp(InternalScheduler scheduler) {
@@ -201,16 +176,22 @@ public abstract class LogSyncService extends Thread {
         wakeUp();
     }
 
-    public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-        CountDownLatch latch = new CountDownLatch(1);
-        PendingTransaction pt = new PendingTransaction(t, r, logId);
-        pt.setCompleted(true);
-        pt.setLatch(latch);
-        asyncWrite(pt, t);
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw DbException.convert(e);
+    public abstract void asyncWrite(AOTransaction t, RedoLogRecord r, long logId);
+
+    public abstract void syncWrite(AOTransaction t, RedoLogRecord r, long logId);
+
+    private static void addPendingTransaction(PendingTransaction pt, AOTransaction t) {
+        InternalScheduler scheduler = pt.getScheduler();
+        scheduler.addPendingTransaction(pt);
+        LogSyncService[] logSyncServices = t.transactionEngine.getLogSyncServices();
+        Set<Integer> serviceIndexs = t.getUndoLog().getRedoLogServiceIndexs();
+        for (int i : serviceIndexs) {
+            // 不用写RedoLog的内存表直接返回
+            if (i < 0 && serviceIndexs.size() == 1) {
+                pt.setSynced(true);
+                return;
+            }
+            logSyncServices[i].wakeUp(scheduler);
         }
     }
 
@@ -226,14 +207,6 @@ public abstract class LogSyncService extends Thread {
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
         return logSyncService;
-    }
-
-    private static class Instant extends LogSyncService {
-
-        Instant(Map<String, String> config) {
-            super(config);
-            syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 100);
-        }
     }
 
     private static class NoSync extends LogSyncService {
@@ -267,14 +240,43 @@ public abstract class LogSyncService extends Thread {
         }
     }
 
-    private static class Periodic extends LogSyncService {
+    // 事务需要等到数据fsync到硬盘才能给客户端发回响应消息
+    private static class Instant extends LogSyncService {
 
-        private final long blockWhenSyncLagsMillis;
+        Instant(Map<String, String> config) {
+            super(config);
+            // 只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
+            syncIntervalMillis = MapUtils.getLong(config, "log_sync_service_loop_interval", 100);
+        }
+
+        @Override
+        public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+            addPendingTransaction(new PendingTransaction(t, r, logId), t);
+        }
+
+        @Override // 会阻塞当前事务直到数据fsync到硬盘
+        public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+            CountDownLatch latch = new CountDownLatch(1);
+            PendingTransaction pt = new PendingTransaction(t, r, logId);
+            pt.setCompleted(true);
+            pt.setLatch(latch);
+            addPendingTransaction(pt, t);
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    // 事务不需要等到数据fsync到硬盘就能提前给客户端发回响应消息
+    private static class Periodic extends LogSyncService {
 
         Periodic(Map<String, String> config) {
             super(config);
+            // 这个参数只是为了兼容老版本
+            // 并不是每隔一段时间同步一次，只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
             syncIntervalMillis = MapUtils.getLong(config, "log_sync_period", 500);
-            blockWhenSyncLagsMillis = (long) (syncIntervalMillis * 1.5);
         }
 
         @Override
@@ -282,38 +284,23 @@ public abstract class LogSyncService extends Thread {
             return true;
         }
 
-        private boolean waitForSyncToCatchUp() {
-            // 如果当前时间是第10毫秒，上次同步时间是在第5毫秒，同步间隔是10毫秒，说时当前时间还是同步周期内，就不用阻塞了
-            // 如果当前时间是第16毫秒，超过了同步周期，需要阻塞
-            return System.currentTimeMillis() > lastSyncedAt + blockWhenSyncLagsMillis;
-        }
-
         @Override
         public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-            PendingTransaction pt = new PendingTransaction(t, r, logId);
-            // 如果在同步周期内，可以提前通知异步提交完成了
-            if (!waitForSyncToCatchUp()) {
-                t.onSynced(); // 不能直接pt.setSynced(true);
-                pt.setCompleted(true);
-                asyncWrite(pt, t);
-                t.asyncCommitComplete();
-            } else {
-                asyncWrite(pt, t);
-            }
+            write(t, r, logId, true);
         }
 
-        @Override
+        @Override // 跟asyncWrite一样，并不会阻塞当前事务，只是不用调用asyncCommitComplete()因为上层负责调用它
         public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-            // 如果在同步周期内，不用等
-            if (!waitForSyncToCatchUp()) {
-                PendingTransaction pt = new PendingTransaction(t, r, logId);
-                t.onSynced();
-                pt.setCompleted(true);
-                // 同步调用无需t.asyncCommitComplete();
-                asyncWrite(pt, t);
-            } else {
-                super.syncWrite(t, r, logId);
-            }
+            write(t, r, logId, false);
+        }
+
+        private void write(AOTransaction t, RedoLogRecord r, long logId, boolean isAsync) {
+            PendingTransaction pt = new PendingTransaction(t, r, logId);
+            t.onSynced(); // 不能直接pt.setSynced(true);
+            pt.setCompleted(true);
+            addPendingTransaction(pt, t);
+            if (isAsync)
+                t.asyncCommitComplete();
         }
     }
 }
