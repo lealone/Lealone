@@ -50,9 +50,6 @@ public class BTreeGC {
     public void addUsedMemory(long delta) {
         memoryManager.addUsedMemory(delta);
         GMM().addUsedMemory(delta);
-        if (delta > 0 && needGc()) {
-            MemoryManager.wakeUpGlobalMemoryListeners();
-        }
     }
 
     public void close() {

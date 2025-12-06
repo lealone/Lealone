@@ -7,7 +7,6 @@ package com.lealone.db;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.common.util.SystemPropertyUtils;
@@ -38,25 +37,6 @@ public class MemoryManager {
 
     public static MemoryManager getGlobalMemoryManager() {
         return globalMemoryManager;
-    }
-
-    public static interface MemoryListener {
-        void wakeUp();
-    }
-
-    private static final CopyOnWriteArrayList<MemoryListener> gmListeners = new CopyOnWriteArrayList<>();
-
-    public static void addGlobalMemoryListener(MemoryListener globalMemoryListener) {
-        MemoryManager.gmListeners.add(globalMemoryListener);
-    }
-
-    public static void removeGlobalMemoryListener(MemoryListener globalMemoryListener) {
-        MemoryManager.gmListeners.remove(globalMemoryListener);
-    }
-
-    public static void wakeUpGlobalMemoryListeners() {
-        for (MemoryListener gmListener : gmListeners)
-            gmListener.wakeUp();
     }
 
     private final AtomicLong usedMemory = new AtomicLong(0);

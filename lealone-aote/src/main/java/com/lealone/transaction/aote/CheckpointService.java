@@ -25,7 +25,7 @@ import com.lealone.transaction.TransactionEngine.GcTask;
 import com.lealone.transaction.aote.TransactionalValue.OldValue;
 import com.lealone.transaction.aote.log.LogSyncService;
 
-public class CheckpointService implements MemoryManager.MemoryListener, Runnable {
+public class CheckpointService implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckpointService.class);
 
@@ -58,8 +58,6 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
         if (checkpointPeriod < loopInterval)
             loopInterval = checkpointPeriod;
         this.loopInterval = loopInterval;
-
-        MemoryManager.addGlobalMemoryListener(this);
     }
 
     public long getLoopInterval() {
@@ -68,11 +66,6 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
 
     public boolean forceCheckpoint() {
         return !forceCheckpointTasks.isEmpty();
-    }
-
-    @Override
-    public void wakeUp() {
-        logSyncService.wakeUp();
     }
 
     public void addMap(StorageMap<?, ?> map) {
@@ -96,10 +89,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
     }
 
     public void close() {
-        if (!isClosed) {
-            isClosed = true;
-            MemoryManager.removeGlobalMemoryListener(this);
-        }
+        isClosed = true;
     }
 
     // 例如通过执行CHECKPOINT语句触发,或者在关闭时触发
@@ -108,7 +98,7 @@ public class CheckpointService implements MemoryManager.MemoryListener, Runnable
             return;
         // 异步执行checkpoint命令
         forceCheckpointTasks.add(() -> executeCheckpoint(true));
-        wakeUp();
+        logSyncService.wakeUp(); // 唤醒执行检查点
     }
 
     // 按周期自动触发
