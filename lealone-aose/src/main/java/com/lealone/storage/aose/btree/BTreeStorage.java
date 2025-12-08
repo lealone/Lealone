@@ -185,12 +185,8 @@ public class BTreeStorage {
         return bgc.getUsedMemory();
     }
 
-    private FileStorage getFileStorage(String chunkFileName) {
+    public FileStorage getFileStorage(String chunkFileName) {
         return FileStorage.open(mapBaseDir + File.separator + chunkFileName, map.getConfig());
-    }
-
-    public FileStorage getFileStorage(int chunkId) {
-        return getFileStorage(chunkManager.getChunkFileName(chunkId));
     }
 
     public IllegalStateException panic(int errorCode, String message, Object... arguments) {
@@ -296,10 +292,6 @@ public class BTreeStorage {
         save(true, false, map.collectDirtyMemory());
     }
 
-    void save(long dirtyMemory) {
-        save(true, false, dirtyMemory);
-    }
-
     /**
      * Save all changes and persist them to disk.
      * This method does nothing if there are no unsaved changes.
@@ -366,7 +358,7 @@ public class BTreeStorage {
         c.setLastRedoLogPos(lastRedoLogPos);
         c.setLastUnusedChunk(lastUnusedChunk);
 
-        c.write(map, chunkBody, appendMode, chunkManager);
+        c.write(chunkBody, chunkManager, appendMode);
 
         // 最新的chunk写成功后再删除UnusedChunks，不能提前删除，因为UnusedChunks也包含被重写的chunk
         // 若最新的chunk写失败了，被重写的chunk文件也提前删除就会丢失数据

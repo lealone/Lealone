@@ -5,7 +5,6 @@
  */
 package com.lealone.storage.aose.btree.chunk;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -191,8 +190,8 @@ public class Chunk {
 
     public void read(BTreeStorage btreeStorage) {
         if (fileStorage == null) {
-            fileStorage = btreeStorage.getFileStorage(id);
-            fileName = new File(fileStorage.getFileName()).getName();
+            fileName = btreeStorage.getChunkManager().getChunkFileName(id);
+            fileStorage = btreeStorage.getFileStorage(fileName);
         }
         readHeader();
         readPagePositions();
@@ -303,8 +302,8 @@ public class Chunk {
         return buff;
     }
 
-    public synchronized void write(BTreeMap<?, ?> map, DataBuffer body, boolean appendMode,
-            ChunkManager chunkManager) {
+    // 调用者已经确保线程安全，所以与write相关的方法不需要加synchronized
+    public void write(DataBuffer body, ChunkManager chunkManager, boolean appendMode) {
         writePagePositions(body);
         writeRemovedPages(body, chunkManager);
 
@@ -317,10 +316,9 @@ public class Chunk {
     }
 
     // 这个方法未调用sync，上层调用者需要额外按需调用sync
-    public synchronized void writeRedoLog(ByteBuffer log) {
-        long size = size();
-        long pos = size;
-        if (size == 0) {
+    public void writeRedoLog(ByteBuffer log) {
+        long pos = size();
+        if (pos == 0) { // 第一次写RedoLog时还是空chunk，先写chunk头
             writeHeader();
             pos = CHUNK_HEADER_SIZE;
         }
@@ -328,7 +326,7 @@ public class Chunk {
     }
 
     public int getRedoLogSize() {
-        long pos = getFilePos(removedPageOffset + removedPageCount * 8);
+        long pos = getRedoLogPos();
         return (int) (size() - pos);
     }
 
@@ -340,7 +338,7 @@ public class Chunk {
         return fileStorage.size();
     }
 
-    public synchronized void removeRedoLogAndRemovedPages(BTreeMap<?, ?> map) {
+    public void removeRedoLogAndRemovedPages(BTreeMap<?, ?> map) {
         long pos = getFilePos(removedPageOffset);
         // 只有redo log的chunk可以直接删除
         if (pos == CHUNK_HEADER_SIZE) {
