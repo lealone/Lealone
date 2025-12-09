@@ -38,11 +38,7 @@ import com.lealone.transaction.TransactionMapCursor;
  * @author H2 Group
  * @author zhh
  */
-public class StandardSecondaryIndex extends StandardIndex {
-
-    private final StandardTable table;
-    private final String mapName;
-    private final TransactionMap<IndexKey, IndexKey> dataMap;
+public class StandardSecondaryIndex extends StandardDataIndex<IndexKey, IndexKey> {
 
     private Long lastIndexedRowKey;
     private boolean building;
@@ -50,8 +46,6 @@ public class StandardSecondaryIndex extends StandardIndex {
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexType indexType, IndexColumn[] indexColumns) {
         super(table, id, indexName, indexType, indexColumns);
-        this.table = table;
-        mapName = table.getMapNameForIndex(id);
         if (!database.isStarting()) {
             checkIndexColumnTypes(indexColumns);
         }
@@ -76,24 +70,6 @@ public class StandardSecondaryIndex extends StandardIndex {
             throw DbException.getInternalError("Incompatible key type");
         }
         return map;
-    }
-
-    @Override
-    public StandardTable getTable() {
-        return table;
-    }
-
-    public String getMapName() {
-        return mapName;
-    }
-
-    public TransactionMap<IndexKey, IndexKey> getDataMap() {
-        return dataMap;
-    }
-
-    @Override
-    public boolean isClosed() {
-        return dataMap.isClosed();
     }
 
     @Override
@@ -128,7 +104,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             getStorageMap().put(key, key, AsyncResultHandler.emptyHandler());
             return;
         }
-        final TransactionMap<IndexKey, IndexKey> map = getMap(session);
+        final TransactionMap<IndexKey, IndexKey> map = getTransactionMap(session);
         map.addIfAbsent(key, key, ar -> {
             if (ar.isSucceeded() && ar.getResult().intValue() == Transaction.OPERATION_DATA_DUPLICATE) {
                 // 违反了唯一性，
@@ -178,7 +154,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             getStorageMap().remove(key, AsyncResultHandler.emptyHandler());
             return;
         }
-        TransactionMap<IndexKey, IndexKey> map = getMap(session);
+        TransactionMap<IndexKey, IndexKey> map = getTransactionMap(session);
         Lockable lockable = map.getLockableValue(key);
         if (!isLockedBySelf && map.isLocked(lockable))
             onComplete(handler, map.addWaitingTransaction(lockable));
@@ -200,7 +176,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         if (min != null) {
             min.setKey(Long.MIN_VALUE);
         }
-        TransactionMap<IndexKey, IndexKey> map = getMap(session);
+        TransactionMap<IndexKey, IndexKey> map = getTransactionMap(session);
         if (isBuilding()) {
             TransactionMapCursor<IndexKey, IndexKey> tmCursor;
             Long lastKey = lastIndexedRowKey;
@@ -269,7 +245,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     @Override
     public SearchRow findFirstOrLast(ServerSession session, boolean first) {
         runIndexOperations(session);
-        TransactionMap<IndexKey, IndexKey> map = getMap(session);
+        TransactionMap<IndexKey, IndexKey> map = getTransactionMap(session);
         IndexKey key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
@@ -292,36 +268,6 @@ public class StandardSecondaryIndex extends StandardIndex {
     public Cursor findDistinct(ServerSession session) {
         runIndexOperations(session);
         return new SsiDistinctCursor(session);
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return dataMap.getDiskSpaceUsed();
-    }
-
-    @Override
-    public long getMemorySpaceUsed() {
-        return dataMap.getMemorySpaceUsed();
-    }
-
-    @Override
-    public void remove(ServerSession session) {
-        TransactionMap<IndexKey, IndexKey> map = getMap(session);
-        if (!map.isClosed()) {
-            map.remove();
-        }
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        getMap(session).clear();
-    }
-
-    private TransactionMap<IndexKey, IndexKey> getMap(ServerSession session) {
-        if (session == null) {
-            return dataMap;
-        }
-        return dataMap.getInstance(session.getTransaction());
     }
 
     @Override
@@ -362,7 +308,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         return searchRow;
     }
 
-    private abstract class StandardSecondaryIndexCursor extends StandardIndexCursor {
+    private abstract class StandardSecondaryIndexCursor extends StandardDataIndexCursor {
 
         private final ServerSession session;
         private SearchRow searchRow;
@@ -493,7 +439,7 @@ public class StandardSecondaryIndex extends StandardIndex {
 
         public SsiDistinctCursor(ServerSession session) {
             super(session);
-            this.map = getMap(session);
+            this.map = getTransactionMap(session);
         }
 
         @Override

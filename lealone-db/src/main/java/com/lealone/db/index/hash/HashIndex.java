@@ -57,11 +57,6 @@ public abstract class HashIndex<T> extends IndexBase {
     }
 
     @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
     public void remove(ServerSession session) {
         // nothing to do
     }
@@ -79,11 +74,6 @@ public abstract class HashIndex<T> extends IndexBase {
             }
         }
         return 2;
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
     }
 
     @Override

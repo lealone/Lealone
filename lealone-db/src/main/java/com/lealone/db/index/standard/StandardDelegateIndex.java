@@ -7,6 +7,7 @@ package com.lealone.db.index.standard;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.index.Cursor;
+import com.lealone.db.index.IndexBase;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.index.IndexType;
 import com.lealone.db.result.SortOrder;
@@ -23,7 +24,7 @@ import com.lealone.storage.CursorParameters;
  * @author H2 Group
  * @author zhh
  */
-public class StandardDelegateIndex extends StandardIndex {
+public class StandardDelegateIndex extends IndexBase {
 
     private final StandardPrimaryIndex mainIndex;
 
@@ -50,6 +51,11 @@ public class StandardDelegateIndex extends StandardIndex {
     @Override
     public Cursor find(ServerSession session, CursorParameters<SearchRow> parameters) {
         return mainIndex.find(session, parameters);
+    }
+
+    @Override
+    public boolean canGetFirstOrLast() {
+        return true;
     }
 
     @Override

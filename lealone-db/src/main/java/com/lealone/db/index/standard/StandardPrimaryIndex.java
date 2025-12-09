@@ -36,18 +36,13 @@ import com.lealone.transaction.TransactionMapCursor;
  * @author H2 Group
  * @author zhh
  */
-public class StandardPrimaryIndex extends StandardIndex {
+public class StandardPrimaryIndex extends StandardDataIndex<Row, Row> {
 
-    private final StandardTable table;
-    private final String mapName;
-    private final TransactionMap<Row, Row> dataMap;
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
         super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan(),
                 IndexColumn.wrap(table.getColumns()));
-        this.table = table;
-        mapName = table.getMapNameForTable(getId());
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
@@ -62,19 +57,6 @@ public class StandardPrimaryIndex extends StandardIndex {
         Transaction t = transactionEngine.beginTransaction(runMode);
         dataMap = t.openMap(mapName, keyType, rowType, storage, table.getParameters());
         t.commit(); // 避免产生内部未提交的事务
-    }
-
-    public TransactionMap<Row, Row> getDataMap() {
-        return dataMap;
-    }
-
-    @Override
-    public StandardTable getTable() {
-        return table;
-    }
-
-    public String getMapName() {
-        return mapName;
     }
 
     @Override
@@ -164,7 +146,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             long k = row.getValue(mainIndexColumn).getLong();
             row.setKey(k);
         }
-        TransactionMap<Row, Row> map = getMap(session);
+        TransactionMap<Row, Row> map = getTransactionMap(session);
         if (checkDuplicateKey) {
             map.addIfAbsent(row, row, ar -> {
                 if (ar.isSucceeded()) {
@@ -221,7 +203,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 return;
             }
         }
-        TransactionMap<Row, Row> map = getMap(session);
+        TransactionMap<Row, Row> map = getTransactionMap(session);
         if (!isLockedBySelf && map.isLocked(oldRow)) {
             onComplete(handler, map.addWaitingTransaction(oldRow));
             return;
@@ -247,7 +229,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     @Override
     public void remove(ServerSession session, Row row, Value[] oldColumns, boolean isLockedBySelf,
             AsyncResultHandler<Integer> handler) {
-        TransactionMap<Row, Row> map = getMap(session);
+        TransactionMap<Row, Row> map = getTransactionMap(session);
 
         if (!isLockedBySelf && map.isLocked(row)) {
             onComplete(handler, map.addWaitingTransaction(row));
@@ -264,7 +246,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     public int tryLock(ServerSession session, Row row) {
-        return getMap(session).tryLock(row, row);
+        return getTransactionMap(session).tryLock(row, row);
     }
 
     @Override
@@ -277,12 +259,13 @@ public class StandardPrimaryIndex extends StandardIndex {
         Row from = getPK(parameters.from);
         Row to = getPK(parameters.to);
         CursorParameters<Row> newParameters = parameters.copy(from, to);
-        return new StandardPrimaryIndexCursor(session, table, getMap(session).cursor(newParameters), to);
+        return new StandardPrimaryIndexCursor(session, table,
+                getTransactionMap(session).cursor(newParameters), to);
     }
 
     @Override
     public SearchRow findFirstOrLast(ServerSession session, boolean first) {
-        TransactionMap<Row, Row> map = getMap(session);
+        TransactionMap<Row, Row> map = getTransactionMap(session);
         Row r = first ? map.firstKey() : map.lastKey();
         return r;
     }
@@ -293,7 +276,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        Lockable lockable = getMap(session).get(new Row(key, null), columnIndexes);
+        Lockable lockable = getTransactionMap(session).get(new Row(key, null), columnIndexes);
         if (lockable == null || lockable.getLockedValue() == null) // 已经删除了
             return null;
         Row row = (Row) lockable;
@@ -324,25 +307,12 @@ public class StandardPrimaryIndex extends StandardIndex {
         return -1;
     }
 
-    @Override
-    public void remove(ServerSession session) {
-        TransactionMap<?, ?> map = getMap(session);
-        if (!map.isClosed()) {
-            map.remove();
-        }
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        getMap(session).clear();
-    }
-
     public void repair(ServerSession session) {
         dataMap.repair();
     }
 
     public long getRowCount(ServerSession session) {
-        return getMap(session).size();
+        return getTransactionMap(session).size();
     }
 
     /**
@@ -363,25 +333,8 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public long getDiskSpaceUsed() {
-        return dataMap.getDiskSpaceUsed();
-    }
-
-    @Override
-    public long getMemorySpaceUsed() {
-        return dataMap.getMemorySpaceUsed();
-    }
-
-    @Override
     public boolean isRowIdIndex() {
         return true;
-    }
-
-    private TransactionMap<Row, Row> getMap(ServerSession session) {
-        if (session == null) {
-            return dataMap;
-        }
-        return dataMap.getInstance(session.getTransaction());
     }
 
     private Row getPK(SearchRow row) {
@@ -404,7 +357,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         return pk == null ? null : new Row(pk.getKey(), null);
     }
 
-    private static class StandardPrimaryIndexCursor extends StandardIndexCursor {
+    private static class StandardPrimaryIndexCursor extends StandardDataIndexCursor {
 
         private final ServerSession session;
         private final StandardTable table;

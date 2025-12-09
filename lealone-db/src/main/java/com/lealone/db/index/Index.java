@@ -119,7 +119,9 @@ public interface Index extends SchemaObject {
      */
     Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
-    Cursor find(ServerSession session, CursorParameters<SearchRow> parameters);
+    default Cursor find(ServerSession session, CursorParameters<SearchRow> parameters) {
+        return find(session, parameters.from, parameters.to);
+    }
 
     /**
      * Check if the index can directly look up the lowest or highest value of a
@@ -127,7 +129,9 @@ public interface Index extends SchemaObject {
      *
      * @return true if it can
      */
-    boolean canGetFirstOrLast();
+    default boolean canGetFirstOrLast() {
+        return false;
+    }
 
     /**
      * Find the first (or last) value of this index.
@@ -137,14 +141,18 @@ public interface Index extends SchemaObject {
      *            value should be returned
      * @return a SearchRow or null
      */
-    SearchRow findFirstOrLast(ServerSession session, boolean first);
+    default SearchRow findFirstOrLast(ServerSession session, boolean first) {
+        throw DbException.getUnsupportedException("findFirstOrLast");
+    }
 
     /**
      * Check if the index supports distinct query.
      *
      * @return true if it supports
      */
-    boolean supportsDistinctQuery();
+    default boolean supportsDistinctQuery() {
+        return false;
+    }
 
     /**
      * Find a distinct list of rows and create a cursor to iterate over the result.
@@ -152,21 +160,27 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @return the cursor to iterate over the results
      */
-    Cursor findDistinct(ServerSession session);
+    default Cursor findDistinct(ServerSession session) {
+        throw DbException.getUnsupportedException("findDistinct");
+    }
 
     /**
      * Can this index iterate over all rows?
      *
      * @return true if it can
      */
-    boolean canScan();
+    default boolean canScan() {
+        return true;
+    }
 
     /**
      * Does this index support lookup by row id?
      *
      * @return true if it does
      */
-    boolean isRowIdIndex();
+    default boolean isRowIdIndex() {
+        return false;
+    }
 
     /**
      * Get the row with the given key.
@@ -175,7 +189,9 @@ public interface Index extends SchemaObject {
      * @param key the unique key
      * @return the row
      */
-    Row getRow(ServerSession session, long key);
+    default Row getRow(ServerSession session, long key) {
+        throw DbException.getUnsupportedException(toString());
+    }
 
     /**
      * Compare two rows.
@@ -200,6 +216,69 @@ public interface Index extends SchemaObject {
      */
     double getCost(ServerSession session, int[] masks, SortOrder sortOrder);
 
+    /**
+     * Get the used disk space for this index.
+     *
+     * @return the estimated number of bytes
+     */
+    default long getDiskSpaceUsed() {
+        return 0;
+    }
+
+    /**
+     * Get the used memory space for this index.
+     *
+     * @return the estimated number of bytes
+     */
+    default long getMemorySpaceUsed() {
+        return 0;
+    }
+
+    /**
+    * Remove the index.
+    *
+    * @param session the session
+    */
+    default void remove(ServerSession session) {
+        throw DbException.getUnsupportedException("remove index");
+    }
+
+    /**
+     * Remove all rows from the index.
+     *
+     * @param session the session
+     */
+    default void truncate(ServerSession session) {
+        throw DbException.getUnsupportedException("truncate index");
+    }
+
+    /**
+     * Check if the index needs to be rebuilt.
+     * This method is called after opening an index.
+     *
+     * @return true if a rebuild is required.
+     */
+    default boolean needRebuild() {
+        return false;
+    }
+
+    /**
+     * Close this index.
+     *
+     * @param session the session used to write data
+     */
+    default void close(ServerSession session) {
+        // nothing to do
+    }
+
+    default boolean isClosed() {
+        return false;
+    }
+
+    IndexOperator getIndexOperator();
+
+    void setIndexOperator(IndexOperator indexOperator);
+
     default void setLastIndexedRowKey(Long rowKey) {
     }
 
@@ -213,55 +292,4 @@ public interface Index extends SchemaObject {
     default boolean isBuilding() {
         return false;
     }
-
-    default boolean isClosed() {
-        return false;
-    }
-
-    /**
-     * Close this index.
-     *
-     * @param session the session used to write data
-     */
-    void close(ServerSession session);
-
-    /**
-     * Remove the index.
-     *
-     * @param session the session
-     */
-    void remove(ServerSession session);
-
-    /**
-     * Remove all rows from the index.
-     *
-     * @param session the session
-     */
-    void truncate(ServerSession session);
-
-    /**
-     * Get the used disk space for this index.
-     *
-     * @return the estimated number of bytes
-     */
-    long getDiskSpaceUsed();
-
-    /**
-     * Get the used memory space for this index.
-     *
-     * @return the estimated number of bytes
-     */
-    long getMemorySpaceUsed();
-
-    /**
-     * Check if the index needs to be rebuilt.
-     * This method is called after opening an index.
-     *
-     * @return true if a rebuild is required.
-     */
-    boolean needRebuild();
-
-    IndexOperator getIndexOperator();
-
-    void setIndexOperator(IndexOperator indexOperator);
 }
