@@ -8,6 +8,7 @@ package com.lealone.db.row;
 import com.lealone.common.util.MathUtils;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.lock.LockableBase;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueDataType.PrimaryKey;
@@ -99,6 +100,11 @@ public class Row extends LockableBase implements SearchRow, PrimaryKey, Comparab
         Row row = new Row(getKey(), (Value[]) oldLockedValue);
         row.setLock(lock);
         return row;
+    }
+
+    @Override
+    public Lockable copySelf(Object oldLockedValue) {
+        return new Row(getKey(), (Value[]) oldLockedValue);
     }
 
     @Override

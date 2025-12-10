@@ -76,15 +76,10 @@ public class KeyValuePage extends RowStorageLeafPage {
     }
 
     @Override
-    protected boolean writeValues(DataBuffer buff, int keyLength, int formatVersion) {
+    protected void writeValues(Object[] values, DataBuffer buff, int keyLength, int formatVersion) {
         StorageDataType type = map.getValueType();
-        boolean isLockable = type.isLockable();
-        boolean isLocked = false;
         for (int i = 0; i < keyLength; i++) {
             type.write(buff, values[i], formatVersion);
-            if (isLockable && !isLocked)
-                isLocked = isLocked(values[i]);
         }
-        return isLocked;
     }
 }

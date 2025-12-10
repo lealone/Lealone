@@ -6,7 +6,9 @@
 package com.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.DataUtils;
@@ -65,6 +67,11 @@ public class TransactionalValue extends LockableBase {
     @Override
     public Object copy(Object oldLockedValue, Lock lock) {
         return oldLockedValue;
+    }
+
+    @Override
+    public Lockable copySelf(Object oldLockedValue) {
+        return new TransactionalValue(oldLockedValue);
     }
 
     public boolean isCommitted() {
@@ -322,7 +329,7 @@ public class TransactionalValue extends LockableBase {
     private static void writeValue(Lockable lockable, DataBuffer buff, StorageDataType valueType,
             boolean isByteStorage, int formatVersion) {
         // 一些存储引擎写入key和value前都需要事先转成字节数组，所以需要先写未提交的数据
-        Object value = isByteStorage ? lockable.getValue() : getCommittedValue(lockable);
+        Object value = isByteStorage ? lockable.getValue() : getCommittedValue(lockable, null);
         if (FormatVersion.isOldFormatVersion(formatVersion)) {
             if (value == null) {
                 buff.put((byte) 0);
@@ -335,7 +342,32 @@ public class TransactionalValue extends LockableBase {
         }
     }
 
-    private static Object getCommittedValue(Lockable lockable) {
+    public static Object[] getCommittedObjects(Object[] keys, Object[] values) {
+        int len = keys.length;
+        Object[] newKeys = new Object[len];
+        Object[] newValues = new Object[len];
+        int index = 0;
+        AtomicBoolean isLocked = new AtomicBoolean();
+        for (int i = 0; i < len; i++) {
+            Lockable lockable = (Lockable) values[i];
+            Object v = getCommittedValue(lockable, isLocked);
+            if (v != null) {
+                newKeys[index] = keys[i];
+                newValues[index] = lockable.copySelf(v);
+                index++;
+            }
+        }
+        if (index == len) {
+            return new Object[] { newKeys, newValues, isLocked.get() };
+        } else {
+            return new Object[] {
+                    Arrays.copyOf(newKeys, index),
+                    Arrays.copyOf(newValues, index),
+                    isLocked.get() };
+        }
+    }
+
+    private static Object getCommittedValue(Lockable lockable, AtomicBoolean isLocked) {
         Object newValue = lockable.getLockedValue();
         Lock lock = lockable.getLock();
         if (lock == null || lock.isPageLock())
@@ -344,7 +376,8 @@ public class TransactionalValue extends LockableBase {
         Transaction t = lock.getTransaction();
         if (t == null || t.getCommitTimestamp() > 0)
             return newValue;
-
+        if (isLocked != null)
+            isLocked.set(true);
         Object oldValue = lock.getOldValue();
         if (oldValue != null)
             return oldValue;

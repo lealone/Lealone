@@ -6,14 +6,13 @@
 package com.lealone.storage.aose.btree.page;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.DataBuffer;
-import com.lealone.db.lock.Lockable;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.aose.btree.chunk.Chunk;
+import com.lealone.storage.type.StorageDataType;
 
 public abstract class RowStorageLeafPage extends LeafPage {
 
@@ -59,28 +58,31 @@ public abstract class RowStorageLeafPage extends LeafPage {
         if (chunk.isNewFormatVersion())
             metaVersion = DataUtils.readVarInt(buff); // metaVersion
         recalculateMemory();
-
-        // 删除null记录
-        ArrayList<Integer> deletedIndexs = new ArrayList<>(1);
-        for (int i = 0; i < keyLength; i++) {
-            Object v = getValue(i);
-            if ((v == null) || ((v instanceof Lockable) && ((Lockable) v).getLockedValue() == null)) {
-                deletedIndexs.add(i);
-            }
-        }
-        if (!deletedIndexs.isEmpty()) {
-            for (int index : deletedIndexs) {
-                remove(index);
-            }
-        }
         return metaVersion;
     }
 
-    protected abstract boolean writeValues(DataBuffer buff, int keyLength, int formatVersion);
+    protected abstract void writeValues(Object[] values, DataBuffer buff, int keyLength,
+            int formatVersion);
 
     @Override
     public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         beforeWrite(pInfoOld);
+        Object[] keys;
+        Object[] values;
+        boolean isLockedPage = false;
+        StorageDataType valueType = map.getValueType();
+        if (valueType.isTransactional()) {
+            Object[] objects = valueType.getCommittedObjects(this.keys, getValues());
+            keys = (Object[]) objects[0];
+            values = (Object[]) objects[1];
+            isLockedPage = (Boolean) objects[2];
+        } else {
+            keys = this.keys;
+            values = getValues();
+        }
+        if (isLockedPage)
+            isLocked.set(true);
+
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -92,9 +94,7 @@ public abstract class RowStorageLeafPage extends LeafPage {
         buff.put((byte) type);
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
-        boolean isLockedPage = writeValues(buff, keyLength, chunk.formatVersion);
-        if (isLockedPage)
-            isLocked.set(true);
+        writeValues(values, buff, keyLength, chunk.formatVersion);
         buff.putInt(0); // replicationHostIds
         if (chunk.isNewFormatVersion())
             buff.putVarInt(pInfoOld.metaVersion);

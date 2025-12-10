@@ -155,4 +155,14 @@ public class TransactionalValueType implements StorageDataType {
     public StorageDataType getRawType() {
         return valueType;
     }
+
+    @Override
+    public boolean isTransactional() {
+        return true;
+    }
+
+    @Override
+    public Object[] getCommittedObjects(Object[] keys, Object[] values) {
+        return TransactionalValue.getCommittedObjects(keys, values);
+    }
 }

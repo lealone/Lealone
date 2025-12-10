@@ -23,6 +23,8 @@ public interface Lockable {
 
     public Object copy(Object oldLockedValue, Lock lock);
 
+    public Lockable copySelf(Object oldLockedValue);
+
     public Lock getLock();
 
     public void setLock(Lock lock);

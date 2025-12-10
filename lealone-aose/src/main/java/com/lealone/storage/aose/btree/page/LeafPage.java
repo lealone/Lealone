@@ -140,13 +140,10 @@ public abstract class LeafPage extends LocalPage {
                 return;
             Lock lock = ref.getLock();
             for (Object obj : objs) {
-                ((Lockable) obj).setLock(lock);
+                if (obj != null)
+                    ((Lockable) obj).setLock(lock);
             }
         }
-    }
-
-    protected boolean isLocked(Object obj) {
-        return !((Lockable) obj).isNoneLock();
     }
 
     @Override

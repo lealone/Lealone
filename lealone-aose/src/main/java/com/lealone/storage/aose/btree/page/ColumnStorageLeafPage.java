@@ -128,12 +128,27 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
     @Override
     public long write(PageInfo pInfoOld, Chunk chunk, DataBuffer buff, AtomicBoolean isLocked) {
         beforeWrite(pInfoOld);
+        Object[] keys;
+        Object[] values;
+        boolean isLockedPage = false;
+        StorageDataType valueType = map.getValueType();
+        if (valueType.isTransactional()) {
+            Object[] objects = valueType.getCommittedObjects(this.keys, getValues());
+            keys = (Object[]) objects[0];
+            values = (Object[]) objects[1];
+            isLockedPage = (Boolean) objects[2];
+        } else {
+            keys = this.keys;
+            values = getValues();
+        }
+        if (isLockedPage)
+            isLocked.set(true);
+
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
         buff.putInt(0); // 回填pageLength
         buff.put((byte) PageStorageMode.COLUMN_STORAGE.ordinal());
-        StorageDataType valueType = map.getValueType();
         int columnCount = valueType.getColumnCount();
         int checkPos = buff.position();
         buff.putShort((short) 0).putVarInt(keyLength).putVarInt(columnCount);
@@ -145,13 +160,8 @@ public abstract class ColumnStorageLeafPage extends LeafPage {
         }
         int compressStart = buff.position();
         map.getKeyType().write(buff, keys, keyLength, chunk.formatVersion);
-        Object[] values = getValues();
-        boolean isLockable = valueType.isLockable();
-        boolean isLockedPage = false;
         for (int row = 0; row < keyLength; row++) {
             valueType.writeMeta(buff, values[row], chunk.formatVersion);
-            if (isLockable && !isLockedPage)
-                isLockedPage = isLocked(values[row]);
         }
         if (isLockedPage)
             isLocked.set(true);

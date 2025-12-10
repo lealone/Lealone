@@ -105,4 +105,12 @@ public interface StorageDataType extends ValueDataType {
 
     default void redo(Object obj, int metaVersion) {
     }
+
+    default boolean isTransactional() {
+        return false;
+    }
+
+    default Object[] getCommittedObjects(Object[] keys, Object[] values) {
+        return new Object[] { keys, values, Boolean.FALSE };
+    }
 }

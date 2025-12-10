@@ -6,6 +6,7 @@
 package com.lealone.db.index.standard;
 
 import com.lealone.db.lock.Lock;
+import com.lealone.db.lock.Lockable;
 import com.lealone.db.lock.LockableBase;
 import com.lealone.db.row.Row;
 import com.lealone.db.value.Value;
@@ -74,6 +75,11 @@ public abstract class IndexKey extends LockableBase {
             k.setLock(lock);
             return k;
         }
+
+        @Override
+        public Lockable copySelf(Object oldLockedValue) {
+            return new SingleIndexKey(getKey(), (Value) oldLockedValue);
+        }
     }
 
     public static class CompoundIndexKey extends IndexKey {
@@ -108,6 +114,11 @@ public abstract class IndexKey extends LockableBase {
             CompoundIndexKey k = new CompoundIndexKey(getKey(), (Value[]) oldLockedValue);
             k.setLock(lock);
             return k;
+        }
+
+        @Override
+        public Lockable copySelf(Object oldLockedValue) {
+            return new CompoundIndexKey(getKey(), (Value[]) oldLockedValue);
         }
     }
 }
