@@ -93,11 +93,11 @@ public class CheckpointService implements Runnable {
     }
 
     // 例如通过执行CHECKPOINT语句触发,或者在关闭时触发
-    public void executeCheckpointAsync() {
+    public void executeCheckpointAsync(boolean isClosing) {
         if (isClosed)
             return;
         // 异步执行checkpoint命令
-        forceCheckpointTasks.add(() -> executeCheckpoint(true));
+        forceCheckpointTasks.add(() -> executeCheckpoint(true, isClosing));
         logSyncService.wakeUp(); // 唤醒执行检查点
     }
 
@@ -224,11 +224,11 @@ public class CheckpointService implements Runnable {
             Runnable task = forceCheckpointTasks.remove(0);
             task.run();
         } else {
-            executeCheckpoint(false);
+            executeCheckpoint(false, false);
         }
     }
 
-    private void executeCheckpoint(boolean force) {
+    private void executeCheckpoint(boolean force, boolean isClosing) {
         if (maps.isEmpty())
             return;
         collectDirtyMemory();
@@ -240,15 +240,19 @@ public class CheckpointService implements Runnable {
                 || dirtyMemoryTotal.get() > dirtyPageCacheSize // 脏页占用的预估总内存大于阈值
                 || lastSavedAt + checkpointPeriod < System.currentTimeMillis()) // 周期超过阈值了
         {
-            savingThread = new Thread(() -> {
-                save(force);
-                savingThread = null;
-            });
-            savingThread.start();
+            if (isClosing) { // 正在关闭时，直接用当前线程保存
+                save(force, true);
+            } else {
+                savingThread = new Thread(() -> {
+                    save(force, false);
+                    savingThread = null;
+                });
+                savingThread.start();
+            }
         }
     }
 
-    private void save(boolean force) {
+    private void save(boolean force, boolean isClosing) {
         boolean force0 = force;
         long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
         try {
@@ -259,7 +263,8 @@ public class CheckpointService implements Runnable {
                     if (map != null && !map.isClosed()) {
                         long t1 = System.currentTimeMillis();
                         long size = e.getValue().longValue();
-                        savingThread.setName("Saving-" + map.getName());
+                        if (!isClosing)
+                            savingThread.setName("Saving-" + map.getName());
                         map.setLastTransactionId(lastTransactionId);
                         try {
                             map.save(size);
@@ -274,7 +279,8 @@ public class CheckpointService implements Runnable {
                 }
                 force0 = false;
                 lastSavedAt = System.currentTimeMillis();
-                collectDirtyMemory(); // 再收集一次脏页看看是否需要再次刷脏页
+                if (!isClosing)
+                    collectDirtyMemory(); // 再收集一次脏页看看是否需要再次刷脏页
             }
         } catch (Throwable t) {
             logger.error("Failed to execute save", t);

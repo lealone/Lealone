@@ -153,6 +153,8 @@ public class Lealone {
     private void run(boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
         try {
+            setGlobalShutdownHook();
+
             // 1. 加载配置
             long t1 = System.currentTimeMillis();
             loadConfig();
@@ -308,11 +310,6 @@ public class Lealone {
                 String name = server.getName();
                 logger.info("Start {}, host: {}, port: {}", name, server.getHost(), server.getPort());
                 server.start();
-                ShutdownHookUtils.addShutdownHook(server, () -> {
-                    if (!server.isStopped())
-                        server.stop();
-                    logger.info(name + " stopped");
-                });
             }
         }
         startPlugins();
@@ -324,5 +321,27 @@ public class Lealone {
             if (pluginObject.isAutoStart())
                 pluginObject.start();
         }
+    }
+
+    private void setGlobalShutdownHook() {
+        ShutdownHookUtils.setGlobalShutdownHook(0, Lealone.class, () -> {
+            stop();
+        });
+    }
+
+    private void stop() {
+        for (ProtocolServerEngine pse : PluginManager.getPlugins(ProtocolServerEngine.class)) {
+            ProtocolServer server = pse.getProtocolServer();
+            if (!server.isStopped()) {
+                server.stop();
+            }
+            pse.close();
+        }
+        LealoneDatabase.getInstance().closeAllDatabases(true);
+        // TransactionEngine内部会关闭Scheduler
+        for (TransactionEngine te : PluginManager.getPlugins(TransactionEngine.class)) {
+            te.close();
+        }
+        logger.info("Lealone stopped");
     }
 }

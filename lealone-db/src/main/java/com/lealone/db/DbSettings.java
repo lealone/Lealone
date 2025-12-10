@@ -106,13 +106,6 @@ public class DbSettings extends SettingsBase {
     public final boolean databaseToUpper = get(DbSetting.DATABASE_TO_UPPER, true);
 
     /**
-     * Database setting <code>DB_CLOSE_ON_EXIT</code> (default: true).<br />
-     * Close the database when the virtual machine exits normally, using a
-     * shutdown hook.
-     */
-    public final boolean dbCloseOnExit = get(DbSetting.DB_CLOSE_ON_EXIT, true);
-
-    /**
      * Database setting <code>DEFAULT_ESCAPE</code> (default: \).<br />
      * The default escape character for LIKE comparisons. To select no escape
      * character, use an empty string.

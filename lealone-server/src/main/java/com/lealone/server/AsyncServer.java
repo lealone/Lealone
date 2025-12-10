@@ -21,7 +21,6 @@ import com.lealone.net.NetFactory;
 import com.lealone.net.NetServer;
 import com.lealone.net.WritableChannel;
 import com.lealone.server.scheduler.GlobalScheduler;
-import com.lealone.transaction.TransactionEngine;
 
 public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedProtocolServer
         implements AsyncConnectionManager {
@@ -79,8 +78,6 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         // 同步块不能包含下面的代码，否则执行System.exit时会触发ShutdownHook又调用到stop，
         // 而System.exit又需要等所有ShutdownHook结束后才能退出，所以就死锁了
         if (ProtocolServerEngine.startedServers.isEmpty()) {
-            TransactionEngine.getDefaultTransactionEngine().close();
-            schedulerFactory.stop();
             // 如果当前线程是ShutdownHook不能再执行System.exit，否则无法退出
             if (!Thread.currentThread().getName().contains("ShutdownHook"))
                 System.exit(0);

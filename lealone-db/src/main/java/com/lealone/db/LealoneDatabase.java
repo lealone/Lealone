@@ -13,8 +13,10 @@ import java.util.Map.Entry;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.lock.DbObjectLock;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.session.ServerSession;
 import com.lealone.transaction.TransactionEngine;
@@ -52,8 +54,19 @@ public class LealoneDatabase extends Database
         return LealoneDatabase.NAME.equalsIgnoreCase(dbName);
     }
 
+    private static void setGlobalShutdownHook() {
+        ShutdownHookUtils.setGlobalShutdownHook(1, LealoneDatabase.class, () -> {
+            LealoneDatabase.getInstance().closeAllDatabases(true);
+            // TransactionEngine内部会关闭Scheduler
+            for (TransactionEngine te : PluginManager.getPlugins(TransactionEngine.class)) {
+                te.close();
+            }
+        });
+    }
+
     private LealoneDatabase() {
         super(ID, NAME, null);
+        setGlobalShutdownHook();
 
         // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
         INSTANCE = this;
@@ -149,6 +162,13 @@ public class LealoneDatabase extends Database
     public boolean isClosed(String dbName) {
         synchronized (CLOSED_DATABASES) {
             return CLOSED_DATABASES.containsKey(dbName);
+        }
+    }
+
+    public synchronized void closeAllDatabases(boolean fromShutdownHook) {
+        for (Database db : getDatabases()) {
+            if (db.isInitialized())
+                db.close(fromShutdownHook);
         }
     }
 

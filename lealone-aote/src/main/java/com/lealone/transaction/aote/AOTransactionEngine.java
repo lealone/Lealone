@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
+import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
@@ -24,6 +25,7 @@ import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.storage.Storage;
 import com.lealone.storage.StorageEventListener;
 import com.lealone.storage.StorageMap;
+import com.lealone.transaction.TransactionEngine;
 import com.lealone.transaction.TransactionEngineBase;
 import com.lealone.transaction.aote.log.LogSyncService;
 import com.lealone.transaction.aote.tm.TransactionManager;
@@ -152,8 +154,14 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             return;
         super.init(config);
         initServices();
-        ShutdownHookUtils.addShutdownHook(this, () -> {
-            close();
+        setGlobalShutdownHook();
+    }
+
+    private static void setGlobalShutdownHook() {
+        ShutdownHookUtils.setGlobalShutdownHook(2, AOTransactionEngine.class, () -> {
+            for (TransactionEngine te : PluginManager.getPlugins(TransactionEngine.class)) {
+                te.close();
+            }
         });
     }
 
@@ -167,19 +175,19 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             return;
         for (int i = 0; i < logSyncServices.length; i++) {
             if (logSyncServices[i].isRunning())
-                logSyncServices[i].getCheckpointService().executeCheckpointAsync();
-        }
-        if (stopScheduler) {
-            try {
-                schedulerFactory.stop();
-            } catch (Exception e) {
-            }
+                logSyncServices[i].getCheckpointService().executeCheckpointAsync(true);
         }
         try {
             for (int i = 0; i < logSyncServices.length; i++) {
                 logSyncServices[i].close();
             }
         } catch (Exception e) {
+        }
+        if (stopScheduler) {
+            try {
+                schedulerFactory.stop();
+            } catch (Exception e) {
+            }
         }
         logSyncService = null;
         logSyncServices = null;
@@ -245,7 +253,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     public void checkpoint() {
         for (int i = 0; i < logSyncServices.length; i++) {
             if (logSyncServices[i].isRunning())
-                logSyncServices[i].getCheckpointService().executeCheckpointAsync();
+                logSyncServices[i].getCheckpointService().executeCheckpointAsync(false);
         }
     }
 

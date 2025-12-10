@@ -97,13 +97,10 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         if (isStopped())
             return;
         if (schedulers.length > 0) {
-            Scheduler master = schedulers[0];
-            master.stop();
-            joinScheduler(master);
-            for (int i = 1; i < schedulers.length; i++) {
+            for (int i = 0; i < schedulers.length; i++) {
                 schedulers[i].stop();
             }
-            for (int i = 1; i < schedulers.length; i++) {
+            for (int i = 0; i < schedulers.length; i++) {
                 joinScheduler(schedulers[i]);
             }
         }

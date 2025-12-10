@@ -27,7 +27,6 @@ import com.lealone.common.trace.TraceModuleType;
 import com.lealone.common.trace.TraceSystem;
 import com.lealone.common.util.BitField;
 import com.lealone.common.util.CaseInsensitiveMap;
-import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.TempFileDeleter;
@@ -172,7 +171,6 @@ public class Database extends DbObjectBase implements DataHandler {
 
     private int closeDelay;
     private long lastSessionRemovedAt = -1;
-    private Thread closeOnExitHook;
 
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     private Mode mode = Mode.getDefaultMode();
@@ -437,7 +435,6 @@ public class Database extends DbObjectBase implements DataHandler {
             historyTable.recover();
         initTableAlterHistory();
         recover(historyTable);
-        addShutdownHook();
 
         if (eventListener != null) {
             eventListener.opened();
@@ -470,18 +467,6 @@ public class Database extends DbObjectBase implements DataHandler {
                         t.setVersion(v);
                     }
                 }
-            }
-        }
-    }
-
-    private void addShutdownHook() {
-        if (dbSettings.dbCloseOnExit) {
-            try {
-                closeOnExitHook = ShutdownHookUtils.addShutdownHook(getName(), () -> close(true));
-            } catch (IllegalStateException | SecurityException e) {
-                // shutdown in progress - just don't register the handler
-                // (maybe an application wants to write something into a
-                // database at shutdown time)
             }
         }
     }
@@ -1157,7 +1142,7 @@ public class Database extends DbObjectBase implements DataHandler {
      *
      * @param fromShutdownHook true if this method is called from the shutdown hook
      */
-    private synchronized void close(boolean fromShutdownHook) {
+    public synchronized void close(boolean fromShutdownHook) {
         if (state == State.CLOSING || state == State.CLOSED) {
             return;
         }
@@ -1239,14 +1224,6 @@ public class Database extends DbObjectBase implements DataHandler {
         closeSystemSession();
         trace.info("closed");
         traceSystem.close();
-        if (closeOnExitHook != null && !fromShutdownHook) {
-            try {
-                ShutdownHookUtils.removeShutdownHook(closeOnExitHook);
-            } catch (Exception e) {
-                // ignore
-            }
-            closeOnExitHook = null;
-        }
         LealoneDatabase.getInstance().closeDatabase(name);
 
         for (Storage s : getStorages()) {
