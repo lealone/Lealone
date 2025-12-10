@@ -343,28 +343,41 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static Object[] getCommittedObjects(Object[] keys, Object[] values) {
-        int len = keys.length;
-        Object[] newKeys = new Object[len];
-        Object[] newValues = new Object[len];
         int index = 0;
+        int len = keys.length;
+        Object[] newKeys;
+        Object[] newValues = new Object[len];
         AtomicBoolean isLocked = new AtomicBoolean();
-        for (int i = 0; i < len; i++) {
-            Lockable lockable = (Lockable) values[i];
-            Object v = getCommittedValue(lockable, isLocked);
-            if (v != null) {
-                newKeys[index] = keys[i];
-                newValues[index] = lockable.copySelf(v);
-                index++;
+        if (keys == values) { // KeyPage和RowPage的keys和values是同一个，KeyPage写的是keys，values不写
+            for (int i = 0; i < len; i++) {
+                Lockable lockable = (Lockable) values[i];
+                Object v = getCommittedValue(lockable, isLocked);
+                if (v != null) {
+                    newValues[index] = lockable.copySelf(v);
+                    index++;
+                }
+            }
+            if (index < len) {
+                newValues = Arrays.copyOf(newValues, index);
+            }
+            newKeys = newValues;
+        } else {
+            newKeys = new Object[len];
+            for (int i = 0; i < len; i++) {
+                Lockable lockable = (Lockable) values[i];
+                Object v = getCommittedValue(lockable, isLocked);
+                if (v != null) {
+                    newKeys[index] = keys[i];
+                    newValues[index] = lockable.copySelf(v);
+                    index++;
+                }
+            }
+            if (index < len) {
+                newKeys = Arrays.copyOf(newKeys, index);
+                newValues = Arrays.copyOf(newValues, index);
             }
         }
-        if (index == len) {
-            return new Object[] { newKeys, newValues, isLocked.get() };
-        } else {
-            return new Object[] {
-                    Arrays.copyOf(newKeys, index),
-                    Arrays.copyOf(newValues, index),
-                    isLocked.get() };
-        }
+        return new Object[] { newKeys, newValues, isLocked.get() };
     }
 
     private static Object getCommittedValue(Lockable lockable, AtomicBoolean isLocked) {
