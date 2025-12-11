@@ -410,40 +410,23 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public boolean needGc() {
-        return !inMemory && btreeStorage.getBTreeGC().needGc();
-    }
-
-    @Override
     public void gc() {
-        if (!inMemory) {
-            // 如果加锁失败可以直接返回
-            if (sharedLock.tryLock()) {
-                try {
-                    btreeStorage.getBTreeGC().gc();
-                } finally {
-                    sharedLock.unlock();
-                }
+        if (!inMemory && sharedLock.tryLock()) { // 如果加锁失败可以直接返回
+            try {
+                btreeStorage.getBTreeGC().gc();
+            } finally {
+                sharedLock.unlock();
             }
         }
     }
 
     @Override
     public void fullGc() {
-        fullGc(true);
-    }
-
-    public void fullGc(boolean save) {
-        if (!inMemory) {
-            // 如果加锁失败可以直接返回
-            if (sharedLock.tryLock()) {
-                try {
-                    if (save)
-                        btreeStorage.save(false, false, collectDirtyMemory());
-                    btreeStorage.getBTreeGC().fullGc();
-                } finally {
-                    sharedLock.unlock();
-                }
+        if (!inMemory && sharedLock.tryLock()) { // 如果加锁失败可以直接返回
+            try {
+                btreeStorage.getBTreeGC().fullGc();
+            } finally {
+                sharedLock.unlock();
             }
         }
     }

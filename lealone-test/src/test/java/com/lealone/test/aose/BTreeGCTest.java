@@ -14,6 +14,7 @@ import com.lealone.db.row.Row;
 import com.lealone.db.row.RowType;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueString;
+import com.lealone.storage.StorageMapCursor;
 import com.lealone.storage.StorageSetting;
 import com.lealone.storage.aose.btree.BTreeMap;
 import com.lealone.storage.type.StorageDataTypeFactory;
@@ -33,9 +34,10 @@ public class BTreeGCTest extends AoseTestBase {
         // testSave();
         // testSplit();
         // testRead();
-        testRowType();
+        // testRowType();
         // testMemory();
         // testConcurrent();
+        testFullGc();
     }
 
     public void testConcurrent() {
@@ -47,7 +49,7 @@ public class BTreeGCTest extends AoseTestBase {
         map.save();
         map.get(key);
         Thread t1 = new Thread(() -> {
-            map.fullGc(false);
+            map.fullGc();
         });
         t1.start();
         Thread t2 = new Thread(() -> {
@@ -67,7 +69,7 @@ public class BTreeGCTest extends AoseTestBase {
         map.get(key);
         key = 11;
         map.get(key);
-        map.fullGc(false);
+        map.fullGc();
         map.get(key);
     }
 
@@ -273,5 +275,26 @@ public class BTreeGCTest extends AoseTestBase {
         System.out.println(
                 "put count: " + count + " total time: " + (System.currentTimeMillis() - total) + " ms");
         // map.save();
+    }
+
+    public void testFullGc() {
+        openMap();
+        for (int i = 1; i <= 10000; i++) {
+            Integer key = i;
+            String value = "value-" + i;
+            map.put(key, value);
+        }
+        map.save();
+        map.getBTreeStorage().getBTreeGC().setMaxMemory(1);
+
+        StorageMapCursor<Integer, String> cursor = map.cursor();
+        while (cursor.next())
+            cursor.getKey();
+        map.gc();
+        for (int i = 1; i <= 10000; i++) {
+            map.get(i);
+        }
+        map.gc();
+        map.fullGc();
     }
 }

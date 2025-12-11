@@ -454,6 +454,10 @@ public class RedoLog {
         return pendingTransactions.containsKey(pt);
     }
 
+    public boolean hasPendingTransactions() {
+        return !pendingTransactions.isEmpty();
+    }
+
     public void runPendingTransactions() {
         if (pendingTransactions.isEmpty())
             return;
@@ -475,9 +479,5 @@ public class RedoLog {
                 }
             }
         }
-    }
-
-    public boolean hasPendingTransactions() {
-        return !pendingTransactions.isEmpty();
     }
 }

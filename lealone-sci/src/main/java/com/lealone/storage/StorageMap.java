@@ -229,10 +229,6 @@ public interface StorageMap<K, V> {
         return false;
     }
 
-    default boolean needGc() {
-        return false;
-    }
-
     default void gc() {
     }
 

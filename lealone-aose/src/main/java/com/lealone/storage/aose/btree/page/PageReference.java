@@ -350,8 +350,11 @@ public class PageReference implements IPageReference {
         clearPage = clearPage || System.currentTimeMillis() - pInfoOld.lastTime > 10;
         PageInfo pInfoNew = pInfoOld.copy(newPos);
         pInfoNew.buff = null; // 废弃了
-        if (clearPage)
+        if (clearPage) {
             pInfoNew.page = null;
+            pInfoNew.lastTime = 0;
+            pInfoNew.hits = 0;
+        }
         if (replacePage(pInfoOld, pInfoNew)) {
             if (Page.ASSERT) {
                 checkPageInfo(pInfoNew);

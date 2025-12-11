@@ -119,7 +119,7 @@ public class PageInfo {
     }
 
     public boolean isOnline() {
-        return pos > 0 && (page != null || buff != null);
+        return pos == 0 || page != null || buff != null;
     }
 
     public boolean isDirty() {

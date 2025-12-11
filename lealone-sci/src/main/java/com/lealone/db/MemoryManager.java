@@ -47,7 +47,6 @@ public class MemoryManager {
 
     private final AtomicLong usedMemory = new AtomicLong(0);
     private long gcThreshold;
-    private boolean forceGc;
 
     public MemoryManager(long maxMemory) {
         setMaxMemory(maxMemory);
@@ -72,17 +71,11 @@ public class MemoryManager {
     }
 
     public boolean needGc() {
-        if (forceGc)
-            return true;
         if (usedMemory.get() > gcThreshold)
             return true;
         // 看看全部使用的内存是否超过阈值
         if (this != globalMemoryManager && globalMemoryManager.needGc())
             return true;
         return false;
-    }
-
-    public void forceGc(boolean b) {
-        forceGc = b;
     }
 }
