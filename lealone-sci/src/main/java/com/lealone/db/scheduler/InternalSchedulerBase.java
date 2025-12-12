@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import com.lealone.common.util.MapUtils;
 import com.lealone.db.link.LinkableBase;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
@@ -27,8 +26,6 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
     public InternalSchedulerBase(int id, String name, int schedulerCount, Map<String, String> config) {
         super(id, name, schedulerCount, config);
         waitingSchedulers = new AtomicReferenceArray<>(schedulerCount);
-        int limit = MapUtils.getInt(config, "pending_transaction_limit", 30000);
-        PendingTransaction.setLimit(limit);
     }
 
     @Override

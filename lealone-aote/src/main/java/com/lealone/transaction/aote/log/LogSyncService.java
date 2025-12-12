@@ -36,21 +36,32 @@ public abstract class LogSyncService extends Thread {
 
     private final InternalScheduler[] waitingSchedulers;
     private final RedoLog redoLog;
+    private final long loopInterval;
 
     private volatile boolean running;
     private volatile CountDownLatch latchOnClose;
 
     private CheckpointService checkpointService;
 
-    long loopInterval;
-
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(RunMode.isEmbedded(config));
         int schedulerCount = MapUtils.getSchedulerCount(config);
         waitingSchedulers = new InternalScheduler[schedulerCount];
-        loopInterval = MapUtils.getLong(config, "log_sync_service_loop_interval", 3000);
         redoLog = new RedoLog(config, this);
+
+        long loopInterval = MapUtils.getLong(config, "log_sync_service_loop_interval", 3000);
+        // 这个参数只是为了兼容老版本
+        // 并不是每隔一段时间同步一次，只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
+        if (config.containsKey("log_sync_period")) {
+            long period = MapUtils.getLong(config, "log_sync_period", -1);
+            if (period > loopInterval)
+                loopInterval = period;
+        }
+        this.loopInterval = loopInterval;
+
+        int limit = MapUtils.getInt(config, "pending_transaction_limit", 30000);
+        PendingTransaction.setLimit(limit);
     }
 
     public void setCheckpointService(CheckpointService checkpointService) {
@@ -95,35 +106,36 @@ public abstract class LogSyncService extends Thread {
         long lastCheckedAt = System.currentTimeMillis();
         long cpLoopInterval = checkpointService.getLoopInterval();
         while (running) {
-            sync();
-            redoLog.runPendingTransactions();
-            if (MemoryManager.needFullGc())
-                checkpointService.fullGc();
-            long now = System.currentTimeMillis();
-            if (lastCheckedAt + cpLoopInterval < now || checkpointService.hasForceCheckpoint()) {
-                if (!redoLog.hasPendingTransactions())
-                    checkpointService.run();
-                redoLog.clearIdleBuffers(now);
-                lastCheckedAt = now;
+            try {
+                if (redoLogRecordCount.get() > 0)
+                    redoLog.save();
+                redoLog.runPendingTransactions();
+                if (MemoryManager.needFullGc())
+                    checkpointService.fullGc();
+                long now = System.currentTimeMillis();
+                if (lastCheckedAt + cpLoopInterval < now || checkpointService.hasForceCheckpoint()) {
+                    if (!redoLog.hasPendingTransactions())
+                        checkpointService.run();
+                    redoLog.clearIdleBuffers(now);
+                    lastCheckedAt = now;
+                }
+                if (redoLogRecordCount.get() > 0)
+                    continue;
+                awaiter.doAwait(loopInterval);
+            } catch (Throwable t) {
+                logger.error("Failed to sync redo log", t);
             }
-            if (redoLogRecordCount.get() > 0)
-                continue;
-            awaiter.doAwait(loopInterval);
         }
-        sync(); // 结束前最后sync一次
-        redoLog.runPendingTransactions();
-        if (!redoLog.hasPendingTransactions())
-            checkpointService.run();
-        if (latchOnClose != null)
-            latchOnClose.countDown();
-    }
-
-    private void sync() {
         try {
+            // 结束前最后sync一次
             if (redoLogRecordCount.get() > 0)
                 redoLog.save();
-        } catch (Exception e) {
-            logger.error("Failed to sync redo log", e);
+            redoLog.runPendingTransactions();
+            if (!redoLog.hasPendingTransactions())
+                checkpointService.run();
+        } finally {
+            if (latchOnClose != null)
+                latchOnClose.countDown();
         }
     }
 
@@ -258,11 +270,6 @@ public abstract class LogSyncService extends Thread {
 
         Periodic(Map<String, String> config) {
             super(config);
-            // 这个参数只是为了兼容老版本
-            // 并不是每隔一段时间同步一次，只是一个睡眠时间，新事务有RedoLog要写就会唤醒它去写
-            long period = MapUtils.getLong(config, "log_sync_period", -1);
-            if (period > loopInterval)
-                loopInterval = period;
         }
 
         @Override
