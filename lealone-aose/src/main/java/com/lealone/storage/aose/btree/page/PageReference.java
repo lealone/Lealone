@@ -48,8 +48,12 @@ public class PageReference implements IPageReference {
     }
 
     private PageLock createPageLock() {
+        PageListener pageListener = new PageListener(this);
+        if (parentRef != null) {
+            pageListener.setParent(parentRef.getPageListener());
+        }
         PageLock pageLock = new PageLock();
-        pageLock.setPageListener(new PageListener(this));
+        pageLock.setPageListener(pageListener);
         return pageLock;
     }
 

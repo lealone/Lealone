@@ -291,10 +291,15 @@ public class BTreeGCTest extends AoseTestBase {
         while (cursor.next())
             cursor.getKey();
         map.gc();
+
         for (int i = 1; i <= 10000; i++) {
             map.get(i);
         }
+        new Thread(() -> {
+            map.put(1, "v1");
+        }).start();
         map.gc();
+
         map.fullGc();
     }
 }

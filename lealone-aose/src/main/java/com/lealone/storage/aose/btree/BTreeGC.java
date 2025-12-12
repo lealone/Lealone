@@ -212,7 +212,8 @@ public class BTreeGC {
         private void release(ArrayList<GcingPage> list, int startIndex, int endIndex, int gcType) {
             for (int i = startIndex; i < endIndex; i++) {
                 GcingPage gp = list.get(i);
-                if (gp.ref.isNodePage() && (gp.gcNodePage == null || !gp.gcNodePage.get())) {
+                // 只要有一个子leaf page或子node page垃圾收集失败，它的父node page就不再需要垃圾收集了
+                if (gp.ref.isNodePage() && (gp.gcNodePage != null && !gp.gcNodePage.get())) {
                     gp.gcParentNodePage.set(false);
                     continue;
                 }
@@ -222,8 +223,6 @@ public class BTreeGC {
                     if (pInfoOld != pInfoNew)
                         gp.pInfo = pInfoNew;
                 } else {
-                    if (gp.gcNodePage != null)
-                        gp.gcNodePage.set(false);
                     gp.gcParentNodePage.set(false);
                 }
             }
