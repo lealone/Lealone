@@ -1198,7 +1198,8 @@ public class Database extends DbObjectBase implements DataHandler {
                     if (table.isGlobalTemporary()) {
                         table.removeChildrenAndResources(systemSession, null);
                     } else {
-                        table.close(systemSession);
+                        if (!fromShutdownHook)
+                            table.close(systemSession);
                     }
                 }
                 for (SchemaObject obj : getAllSchemaObjects(DbObjectType.SEQUENCE)) {
@@ -1213,7 +1214,7 @@ public class Database extends DbObjectBase implements DataHandler {
                         trace.error(e, "close");
                     }
                 }
-                if (meta != null)
+                if (meta != null && !fromShutdownHook)
                     meta.close(systemSession);
                 systemSession.commit();
             }
@@ -1226,8 +1227,11 @@ public class Database extends DbObjectBase implements DataHandler {
         traceSystem.close();
         LealoneDatabase.getInstance().closeDatabase(name);
 
-        for (Storage s : getStorages()) {
-            s.close();
+        // 如果是ShutdownHook不需要在关闭数据库时关闭存储，在关闭事务引擎时会自动刷脏页
+        if (!fromShutdownHook) {
+            for (Storage s : getStorages()) {
+                s.close();
+            }
         }
         state = State.CLOSED;
     }
