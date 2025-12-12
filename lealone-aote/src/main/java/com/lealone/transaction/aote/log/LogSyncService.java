@@ -40,9 +40,9 @@ public abstract class LogSyncService extends Thread {
     private volatile boolean running;
     private volatile CountDownLatch latchOnClose;
 
-    protected long loopInterval;
-
     private CheckpointService checkpointService;
+
+    long loopInterval;
 
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
@@ -150,9 +150,9 @@ public abstract class LogSyncService extends Thread {
         wakeUp();
     }
 
-    public abstract void asyncWrite(AOTransaction t, RedoLogRecord r, long logId);
+    public abstract void asyncWrite(AOTransaction t, RedoLogRecord r);
 
-    public abstract void syncWrite(AOTransaction t, RedoLogRecord r, long logId);
+    public abstract void syncWrite(AOTransaction t, RedoLogRecord r);
 
     private static void addPendingTransaction(PendingTransaction pt, AOTransaction t) {
         CountDownLatch latch = null;
@@ -215,13 +215,13 @@ public abstract class LogSyncService extends Thread {
         }
 
         @Override
-        public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        public void asyncWrite(AOTransaction t, RedoLogRecord r) {
             t.onSynced();
             t.asyncCommitComplete();
         }
 
         @Override
-        public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        public void syncWrite(AOTransaction t, RedoLogRecord r) {
             t.onSynced();
         }
     }
@@ -234,14 +234,14 @@ public abstract class LogSyncService extends Thread {
         }
 
         @Override
-        public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-            addPendingTransaction(new PendingTransaction(t, r, logId), t);
+        public void asyncWrite(AOTransaction t, RedoLogRecord r) {
+            addPendingTransaction(new PendingTransaction(t, r, nextLogId()), t);
         }
 
         @Override // 会阻塞当前事务直到数据fsync到硬盘
-        public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
+        public void syncWrite(AOTransaction t, RedoLogRecord r) {
             CountDownLatch latch = new CountDownLatch(1);
-            PendingTransaction pt = new PendingTransaction(t, r, logId);
+            PendingTransaction pt = new PendingTransaction(t, r, nextLogId());
             pt.setCompleted(true);
             pt.setLatch(latch);
             addPendingTransaction(pt, t);
@@ -271,17 +271,17 @@ public abstract class LogSyncService extends Thread {
         }
 
         @Override
-        public void asyncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-            write(t, r, logId, true);
+        public void asyncWrite(AOTransaction t, RedoLogRecord r) {
+            write(t, r, true);
         }
 
         @Override // 跟asyncWrite一样，并不会阻塞当前事务，只是不用调用asyncCommitComplete()因为上层负责调用它
-        public void syncWrite(AOTransaction t, RedoLogRecord r, long logId) {
-            write(t, r, logId, false);
+        public void syncWrite(AOTransaction t, RedoLogRecord r) {
+            write(t, r, false);
         }
 
-        private void write(AOTransaction t, RedoLogRecord r, long logId, boolean isAsync) {
-            PendingTransaction pt = new PendingTransaction(t, r, logId);
+        private void write(AOTransaction t, RedoLogRecord r, boolean isAsync) {
+            PendingTransaction pt = new PendingTransaction(t, r, nextLogId());
             t.onSynced(); // 不能直接pt.setSynced(true);
             pt.setCompleted(true);
             addPendingTransaction(pt, t);
