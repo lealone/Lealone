@@ -341,7 +341,8 @@ public class RedoLog {
                     }
                     if (++writeCount == 512) {
                         writeCount = 0;
-                        logSyncService.getCheckpointService().executeCheckpoint();
+                        if (!hasPendingTransactions())
+                            logSyncService.getCheckpointService().executeCheckpoint();
                     }
                 }
                 int index = pt.getScheduler().getId();

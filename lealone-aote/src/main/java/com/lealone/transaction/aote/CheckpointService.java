@@ -5,8 +5,6 @@
  */
 package com.lealone.transaction.aote;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -17,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.MapUtils;
-import com.lealone.db.MemoryManager;
 import com.lealone.db.lock.Lockable;
 import com.lealone.storage.StorageMap;
 import com.lealone.storage.page.IPageReference;
@@ -42,6 +39,7 @@ public class CheckpointService implements Runnable {
 
     private long lastSavedAt = System.currentTimeMillis();
     private volatile boolean isClosed;
+    private volatile Thread workingThread; // 正在执行刷脏页或fullGc的线程
 
     public CheckpointService(AOTransactionEngine aote, Map<String, String> config,
             LogSyncService logSyncService) {
@@ -64,7 +62,7 @@ public class CheckpointService implements Runnable {
         return loopInterval;
     }
 
-    public boolean forceCheckpoint() {
+    public boolean hasForceCheckpoint() {
         return !forceCheckpointTasks.isEmpty();
     }
 
@@ -119,13 +117,18 @@ public class CheckpointService implements Runnable {
     }
 
     public void fullGc() {
-        if (maps.isEmpty())
+        if (workingThread != null || maps.isEmpty())
             return;
-        for (StorageMap<?, ?> map : maps.values()) {
-            if (!map.isClosed()) {
-                map.fullGc();
+        workingThread = new Thread(() -> {
+            for (StorageMap<?, ?> map : maps.values()) {
+                if (!map.isClosed()) {
+                    workingThread.setName("FullGc-" + map.getName());
+                    map.fullGc();
+                }
             }
-        }
+            workingThread = null;
+        });
+        workingThread.start();
     }
 
     private void gc() {
@@ -214,10 +217,8 @@ public class CheckpointService implements Runnable {
         }
     }
 
-    private volatile Thread savingThread;
-
     public void executeCheckpoint() {
-        if (savingThread != null)
+        if (workingThread != null)
             return;
         if (!forceCheckpointTasks.isEmpty()) {
             // 每次只执行一个
@@ -243,11 +244,11 @@ public class CheckpointService implements Runnable {
             if (isClosing) { // 正在关闭时，直接用当前线程保存
                 save(force, true);
             } else {
-                savingThread = new Thread(() -> {
+                workingThread = new Thread(() -> {
                     save(force, false);
-                    savingThread = null;
+                    workingThread = null;
                 });
-                savingThread.start();
+                workingThread.start();
             }
         }
     }
@@ -264,16 +265,16 @@ public class CheckpointService implements Runnable {
                         long t1 = System.currentTimeMillis();
                         long size = e.getValue().longValue();
                         if (!isClosing)
-                            savingThread.setName("Saving-" + map.getName());
+                            workingThread.setName("Saving-" + map.getName());
                         map.setLastTransactionId(lastTransactionId);
                         try {
                             map.save(size);
                         } finally {
                             map.setLastTransactionId(-1);
                         }
-                        if (DEBUG) {
+                        if (logger.isDebugEnabled()) {
                             long time = System.currentTimeMillis() - t1;
-                            logger.info("Save {}, size: {}, time: {} ms", map.getName(), size, time);
+                            logger.debug("Save {}, size: {}, time: {} ms", map.getName(), size, time);
                         }
                     }
                 }
@@ -287,29 +288,17 @@ public class CheckpointService implements Runnable {
         }
     }
 
-    private static final boolean DEBUG = false;
     private static final AtomicLong dirtyMemoryTotal = new AtomicLong();
     private final HashMap<String, Long> dirtyMaps = new HashMap<>();
     private final AtomicLong dirtyMemory = new AtomicLong();
-    private long lastTime;
-
-    private String toM(long v) {
-        return v + "(" + (v >> 10) + "K)";
-    }
 
     private void collectDirtyMemory() {
         dirtyMemoryTotal.addAndGet(-dirtyMemory.get());
         dirtyMaps.clear();
         dirtyMemory.set(0);
-
-        AtomicLong usedMemory = null;
-        if (DEBUG)
-            usedMemory = new AtomicLong();
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
                 long dm = map.collectDirtyMemory();
-                if (DEBUG)
-                    usedMemory.addAndGet(map.getMemorySpaceUsed());
                 if (dm > 0) {
                     dirtyMemory.addAndGet(dm);
                     dirtyMaps.put(map.getName(), dm);
@@ -317,15 +306,5 @@ public class CheckpointService implements Runnable {
             }
         }
         dirtyMemoryTotal.addAndGet(dirtyMemory.get());
-        if (DEBUG) {
-            if (System.currentTimeMillis() - lastTime < 3000)
-                return;
-            lastTime = System.currentTimeMillis();
-            logger.info("Dirty maps: " + dirtyMaps);
-            logger.info("DB g_used: " + toM(MemoryManager.getGlobalMemoryManager().getUsedMemory()));
-            logger.info("DB c_used: " + toM(usedMemory.get()) + ", dirty: " + toM(dirtyMemory.get()));
-            MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-            logger.info("JVM used: " + toM(mu.getUsed()) + ", max: " + toM(mu.getMax()));
-        }
     }
 }

@@ -100,7 +100,7 @@ public abstract class LogSyncService extends Thread {
             if (MemoryManager.needFullGc())
                 checkpointService.fullGc();
             long now = System.currentTimeMillis();
-            if (lastCheckedAt + cpLoopInterval < now || checkpointService.forceCheckpoint()) {
+            if (lastCheckedAt + cpLoopInterval < now || checkpointService.hasForceCheckpoint()) {
                 if (!redoLog.hasPendingTransactions())
                     checkpointService.run();
                 redoLog.clearIdleBuffers(now);
@@ -111,22 +111,11 @@ public abstract class LogSyncService extends Thread {
             awaiter.doAwait(loopInterval);
         }
         sync(); // 结束前最后sync一次
-        while (true) {
-            redoLog.runPendingTransactions();
-            if (!redoLog.hasPendingTransactions()) {
-                checkpointService.run();
-                break;
-            } else {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                }
-            }
-        }
-        if (latchOnClose != null) {
+        redoLog.runPendingTransactions();
+        if (!redoLog.hasPendingTransactions())
+            checkpointService.run();
+        if (latchOnClose != null)
             latchOnClose.countDown();
-        }
-        running = false;
     }
 
     private void sync() {
