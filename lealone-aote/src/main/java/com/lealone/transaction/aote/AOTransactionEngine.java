@@ -179,7 +179,8 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
         try {
             for (int i = 0; i < logSyncServices.length; i++) {
-                logSyncServices[i].close();
+                if (logSyncServices[i].isRunning())
+                    logSyncServices[i].close();
             }
         } catch (Exception e) {
         }

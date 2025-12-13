@@ -282,6 +282,8 @@ public class CheckpointService implements Runnable {
                 lastSavedAt = System.currentTimeMillis();
                 if (!isClosing)
                     collectDirtyMemory(); // 再收集一次脏页看看是否需要再次刷脏页
+                if (isClosing || dirtyMaps.isEmpty())
+                    return;
             }
         } catch (Throwable t) {
             logger.error("Failed to execute save", t);

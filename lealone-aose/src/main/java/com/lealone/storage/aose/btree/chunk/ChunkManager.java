@@ -21,6 +21,7 @@ import com.lealone.storage.aose.AOStorage;
 import com.lealone.storage.aose.btree.BTreeStorage;
 import com.lealone.storage.aose.btree.page.PageUtils;
 import com.lealone.storage.fs.FilePath;
+import com.lealone.storage.fs.FileUtils;
 
 public class ChunkManager {
 
@@ -40,8 +41,15 @@ public class ChunkManager {
 
     public void init(String mapBaseDir) {
         int lastChunkId = 0;
-        String[] files = new File(mapBaseDir).list();
-        for (String f : files) {
+        File[] files = new File(mapBaseDir).listFiles();
+        for (File file : files) {
+            // 系统异常终止时刚创建但是还没写数据的文件
+            if (file.length() == 0) {
+                // file.delete(); // 这个方法第一次删除可能失败
+                FileUtils.delete(file.getAbsolutePath()); // 第一次删除失败，内部会重试
+                continue;
+            }
+            String f = file.getName();
             if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
                 // chunk文件名格式: c_[chunkId]_[sequence]
                 String str = f.substring(2, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH);

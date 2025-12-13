@@ -141,6 +141,6 @@ public class TableAnalyzer {
             }
         }
         session.getDatabase().updateMeta(session, table);
-        session.asyncCommit();
+        // session.asyncCommit(); //不能立刻调用，要由上层提交
     }
 }

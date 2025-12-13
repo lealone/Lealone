@@ -143,9 +143,13 @@ public class PageInfo {
 
         private final PageReference pRefNew;
 
-        public DataStructureChangedPageInfo(PageReference pRefNew, PageLock pageLock) {
+        public DataStructureChangedPageInfo(PageReference pRefNew, PageInfo pInfoOld,
+                PageLock pageLock) {
             this.pRefNew = pRefNew;
             setPageLock(pageLock);
+            // 执行刷脏页时，NodePage的子页PageReference如果指向的是一个SplittedPageInfo，依然可以先写旧的
+            page = pInfoOld.page;
+            pos = pInfoOld.pos;
         }
 
         @Override
@@ -161,15 +165,15 @@ public class PageInfo {
 
     public static class RemovedPageInfo extends DataStructureChangedPageInfo {
 
-        public RemovedPageInfo(PageReference pRefNew, PageLock pageLock) {
-            super(pRefNew, pageLock);
+        public RemovedPageInfo(PageReference pRefNew, PageInfo pInfoOld, PageLock pageLock) {
+            super(pRefNew, pInfoOld, pageLock);
         }
     }
 
     public static class SplittedPageInfo extends DataStructureChangedPageInfo {
 
-        public SplittedPageInfo(PageReference pRefNew, PageLock pageLock) {
-            super(pRefNew, pageLock);
+        public SplittedPageInfo(PageReference pRefNew, PageInfo pInfoOld, PageLock pageLock) {
+            super(pRefNew, pInfoOld, pageLock);
         }
 
         @Override

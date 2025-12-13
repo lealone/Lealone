@@ -393,7 +393,8 @@ public abstract class PageOperations {
                     asyncRemovePage(scheduler, waitingIfLocked, null, parentRef, key);
             }
             // 非root page被删除后，原有的ref被废弃
-            pRef.replacePage(pRef.getPageInfo(), new RemovedPageInfo(parentRef, pRef.getLock()));
+            PageInfo pInfoOld = pRef.getPageInfo();
+            pRef.replacePage(pInfoOld, new RemovedPageInfo(parentRef, pInfoOld, pRef.getLock()));
             parentRef.unlock();
             return PageOperationResult.SUCCEEDED;
         }
@@ -448,7 +449,8 @@ public abstract class PageOperations {
 
                 // 非root page被切割后，原有的ref被废弃
                 // 如果其他事务引用的是一个已经split的节点，让它重定向到父节点
-                pRef.replacePage(pRef.getPageInfo(), new SplittedPageInfo(parentRef, pRef.getLock()));
+                PageInfo pInfoOld = pRef.getPageInfo();
+                pRef.replacePage(pInfoOld, new SplittedPageInfo(parentRef, pInfoOld, pRef.getLock()));
 
                 // 先看看父节点是否需要切割
                 if (newParent.needSplit()) {
