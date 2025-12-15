@@ -27,6 +27,7 @@ import com.lealone.db.SysProperties;
 import com.lealone.db.plugin.PluggableEngine;
 import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.plugin.PluginObject;
+import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.main.config.Config;
@@ -162,13 +163,15 @@ public class Lealone {
 
             // 2. 初始化
             long t2 = System.currentTimeMillis();
-            SchedulerFactory schedulerFactory = SchedulerFactory.initDefaultSchedulerFactory(
-                    GlobalScheduler.class.getName(), config.scheduler.parameters);
+            String schedulerName = embedded ? EmbeddedScheduler.class.getName()
+                    : GlobalScheduler.class.getName();
+            SchedulerFactory schedulerFactory = SchedulerFactory
+                    .initDefaultSchedulerFactory(schedulerName, config.scheduler.parameters);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
             beforeInit();
             initBaseDir();
-            initPluggableEngines();
+            initPluggableEngines(embedded);
 
             scheduler.handle(() -> {
                 // 提前触发对LealoneDatabase的初始化
@@ -253,12 +256,13 @@ public class Lealone {
     }
 
     // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
-    private void initPluggableEngines() {
+    private void initPluggableEngines(boolean embedded) {
         registerAndInitEngines(config.storage_engines, StorageEngine.class, "default.storage.engine");
         registerAndInitEngines(config.transaction_engines, TransactionEngine.class,
                 "default.transaction.engine");
         registerAndInitEngines(config.sql_engines, SQLEngine.class, "default.sql.engine");
-        registerAndInitEngines(config.protocol_server_engines, ProtocolServerEngine.class, null);
+        if (!embedded)
+            registerAndInitEngines(config.protocol_server_engines, ProtocolServerEngine.class, null);
     }
 
     private <PE extends PluggableEngine> void registerAndInitEngines(List<PluggableEngineDef> engines,
