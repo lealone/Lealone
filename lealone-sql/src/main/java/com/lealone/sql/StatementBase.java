@@ -526,23 +526,30 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        // checkScheduler();
         AsyncCallback<Result> ac = session.createCallback();
-        AsyncTask task = () -> {
-            YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
-                if (ar.isSucceeded()) {
-                    Result result = ar.getResult();
-                    ac.setAsyncResult(result);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            session.setYieldableCommand(c);
-        };
-        session.getSessionInfo().submitTask(task);
-        session.getScheduler().wakeUp();
+        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
+            if (ar.isSucceeded()) {
+                ac.setAsyncResult(ar.getResult());
+            } else {
+                ac.setAsyncResult(ar.getCause());
+            }
+        });
+        submitTask(yieldable, null);
         return ac;
+    }
+
+    private void submitTask(YieldableBase<?> yieldable, Value[] parameterValues) {
+        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+        // 不能把参数值提前设置，因为批量操作时，如果提前设置了会覆盖前面的，只能等到执行YieldableCommand时设置
+        if (parameterValues != null)
+            c.setParameterValues(parameterValues);
+        if (session.getScheduler().isEmbedded()) { // 嵌入式场景可以立刻执行
+            c.run();
+        } else {
+            AsyncTask task = () -> session.setYieldableCommand(c);
+            session.getSessionInfo().submitTask(task);
+            session.getScheduler().wakeUp();
+        }
     }
 
     @Override
@@ -552,32 +559,17 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<Integer> executeUpdate(Value[] parameterValues) {
-        // checkScheduler();
         AsyncCallback<Integer> ac = session.createCallback();
-        AsyncTask task = () -> {
-            YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
-                if (ar.isSucceeded()) {
-                    Integer updateCount = ar.getResult();
-                    ac.setAsyncResult(updateCount);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
-            if (parameterValues != null)
-                c.setParameterValues(parameterValues);
-            session.setYieldableCommand(c);
-        };
-        session.getSessionInfo().submitTask(task);
-        session.getScheduler().wakeUp();
+        YieldableBase<Integer> yieldable = createYieldableUpdate(ar -> {
+            if (ar.isSucceeded()) {
+                ac.setAsyncResult(ar.getResult());
+            } else {
+                ac.setAsyncResult(ar.getCause());
+            }
+        });
+        submitTask(yieldable, parameterValues);
         return ac;
     }
-
-    // private void checkScheduler() {
-    // if (session.getScheduler() == null
-    // || SchedulerThread.currentScheduler() != session.getScheduler())
-    // throw DbException.getInternalError();
-    // }
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,

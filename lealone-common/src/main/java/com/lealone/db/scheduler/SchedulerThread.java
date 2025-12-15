@@ -45,7 +45,7 @@ public class SchedulerThread extends Thread {
         if (t instanceof SchedulerThread) {
             return ((SchedulerThread) t).getScheduler();
         } else {
-            return null;
+            return threadLocal.get();
         }
     }
 
@@ -74,6 +74,7 @@ public class SchedulerThread extends Thread {
     }
 
     public static boolean isScheduler() {
-        return Thread.currentThread() instanceof SchedulerThread;
+        return Thread.currentThread() instanceof SchedulerThread
+                || threadLocal.get() instanceof Scheduler;
     }
 }

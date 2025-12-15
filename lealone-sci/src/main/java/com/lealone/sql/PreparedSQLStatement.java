@@ -120,9 +120,7 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
             if (parameterValues != null) {
                 List<? extends CommandParameter> parameters = yieldable.getStatement().getParameters();
                 for (int i = 0; i < parameterValues.length; i++) {
-                    Value value = parameterValues[i];
-                    CommandParameter param = parameters.get(i);
-                    param.setValue(value, false);
+                    parameters.get(i).setValue(parameterValues[i], false);
                 }
             }
             yieldable.run();

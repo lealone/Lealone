@@ -170,9 +170,10 @@ public interface Session extends Closeable {
     }
 
     default <T> void execute(AsyncCallback<T> ac, AsyncTask task) {
-        if (getScheduler() != null) {
+        Scheduler scheduler = getScheduler();
+        if (scheduler != null && !scheduler.isEmbedded()) {
             getSessionInfo().submitTask(task);
-            getScheduler().wakeUp();
+            scheduler.wakeUp();
         } else {
             try {
                 task.run();

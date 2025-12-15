@@ -50,6 +50,11 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     }
 
     @Override
+    public boolean isEmbedded() {
+        return true;
+    }
+
+    @Override
     public void handle(AsyncTask task) {
         miscTasks.add(task);
         wakeUp();

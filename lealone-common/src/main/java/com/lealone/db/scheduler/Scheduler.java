@@ -26,6 +26,10 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
         return false;
     }
 
+    default boolean isEmbedded() {
+        return false;
+    }
+
     SchedulerThread getThread();
 
     SchedulerFactory getSchedulerFactory();

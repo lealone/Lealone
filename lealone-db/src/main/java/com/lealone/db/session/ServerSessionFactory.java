@@ -12,12 +12,12 @@ import com.lealone.db.DbSetting;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.Mode;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.auth.User;
 import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.net.NetNode;
@@ -32,14 +32,19 @@ public class ServerSessionFactory extends SessionFactoryBase {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
+        // 在嵌入模式下，如果当前线程不是调度器，则给它绑定一个
         if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {
-            Scheduler scheduler = EmbeddedScheduler.getScheduler(ci);
-            // 当前线程不是调度线程，需要用ConcurrentCallback
-            AsyncCallback<Session> ac = AsyncCallback.createConcurrentCallback();
-            scheduler.handle(() -> {
-                ac.setAsyncResult(createServerSession(ci));
-            });
-            return ac;
+            Scheduler scheduler;
+            SchedulerFactory schedulerFactory = SchedulerFactory.getDefaultSchedulerFactory();
+            if (schedulerFactory == null) {
+                scheduler = EmbeddedScheduler.getScheduler(ci);
+                schedulerFactory = scheduler.getSchedulerFactory();
+            }
+            scheduler = SchedulerThread.currentScheduler(schedulerFactory);
+            if (scheduler == null) {
+                scheduler = schedulerFactory.getScheduler();
+            }
+            ci.setScheduler(scheduler);
         }
         return Future.succeededFuture(createServerSession(ci));
     }
