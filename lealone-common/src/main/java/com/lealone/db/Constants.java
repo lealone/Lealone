@@ -46,7 +46,7 @@ public class Constants {
 
     public static final int DEFAULT_NETWORK_TIMEOUT = 15000; // 默认15秒无响应就超时
 
-    public static final String DEFAULT_NET_FACTORY_NAME = "nio";
+    public static final String DEFAULT_NET_FACTORY_NAME = "bio";
 
     public static final char NAME_SEPARATOR = '_';
 
