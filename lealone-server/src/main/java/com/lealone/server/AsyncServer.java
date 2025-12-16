@@ -20,6 +20,7 @@ import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
 import com.lealone.net.NetServer;
 import com.lealone.net.WritableChannel;
+import com.lealone.net.nio.NioNetFactory;
 import com.lealone.server.scheduler.GlobalScheduler;
 
 public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedProtocolServer
@@ -46,7 +47,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         serverId = AsyncServerManager.allocateServerId();
         AsyncServerManager.addServer(this);
 
-        NetFactory factory = NetFactory.getFactory(config);
+        NetFactory factory = NetFactory.getFactory(config, NioNetFactory.NAME);
         NetServer netServer = factory.createNetServer();
         netServer.setConnectionManager(this);
         setProtocolServer(netServer);

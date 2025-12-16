@@ -43,8 +43,12 @@ public interface NetFactory extends Plugin {
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
+        return getFactory(config, Constants.DEFAULT_NET_FACTORY_NAME);
+    }
+
+    public static NetFactory getFactory(Map<String, String> config, String defaultFactoryName) {
         String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
-                Constants.DEFAULT_NET_FACTORY_NAME);
+                defaultFactoryName);
         NetFactory factory = getFactory(netFactoryName);
         if (factory == null) {
             throw new ConfigException("NetFactory '" + netFactoryName + "' can not found");
