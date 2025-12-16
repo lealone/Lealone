@@ -464,13 +464,16 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public void close() throws SQLException {
         try {
-            setExecutingStatement(null);
-            super.close();
-            batchParameters = null;
-            if (command != null) {
-                command.close();
-                command = null;
-            }
+            // 要在调度线程中执行
+            conn.<Void> executeAsyncTask(ac -> {
+                setExecutingStatement(null);
+                super.close();
+                batchParameters = null;
+                if (command != null) {
+                    command.close();
+                    command = null;
+                }
+            });
         } catch (Exception e) {
             throw logAndConvert(e);
         }
