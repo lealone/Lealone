@@ -24,4 +24,5 @@ public enum ConnectionSetting {
     SESSION_FACTORY_NAME,
     AUTO_RECONNECT,
     SCHEDULER_COUNT,
+    MAX_PACKET_COUNT_PER_LOOP,
 }

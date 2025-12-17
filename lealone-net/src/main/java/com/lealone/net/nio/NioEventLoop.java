@@ -340,7 +340,7 @@ public class NioEventLoop implements NetEventLoop {
             return;
         }
         boolean writeImmediately;
-        if (channel.getBuffers().size() > 2 || needWriteImmediately()) {
+        if (channel.getBuffers().size() > maxPacketCountPerLoop) {
             channel.addBuffer(buffer);
             batchWrite(channel);
             return;
