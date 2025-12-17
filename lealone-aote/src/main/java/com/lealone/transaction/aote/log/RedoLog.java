@@ -273,7 +273,9 @@ public class RedoLog {
         for (int i = 0; i < size; i++) {
             String mapName = ValueString.type.read(buff);
             if (!map.getName().equalsIgnoreCase(mapName)) {
-                if (!map.getStorage().getMap(mapName).validateRedoLog(transactionId))
+                // 如果事务涉及的多张表中有系统表，恢复时从其他表验证事务的完整性，因为此时其他表还没有加载
+                StorageMap<?, ?> m = map.getStorage().getMap(mapName);
+                if (m != null && !m.validateRedoLog(transactionId))
                     return false;
             }
         }
