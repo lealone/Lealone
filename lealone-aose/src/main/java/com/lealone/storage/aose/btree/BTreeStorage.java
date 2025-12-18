@@ -241,7 +241,7 @@ public class BTreeStorage {
         if (map.isInMemory())
             return;
         bgc.close();
-        chunkManager.close();
+        chunkManager.clear();
     }
 
     synchronized void remove() {

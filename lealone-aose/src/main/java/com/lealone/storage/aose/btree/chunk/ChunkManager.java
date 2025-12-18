@@ -122,6 +122,24 @@ public class ChunkManager {
         lastChunk = null;
     }
 
+    public synchronized void clear() {
+        for (Chunk c : chunks.values()) {
+            if (c.fileStorage != null) {
+                c.fileStorage.close();
+                c.fileStorage.delete();
+            }
+        }
+        for (Integer id : idToChunkFileNameMap.keySet()) {
+            chunkIds.clear(id);
+        }
+        maxSeq = 0;
+        removedPages.clear();
+        idToChunkFileNameMap.clear();
+        seqToIdMap.clear();
+        chunks.clear();
+        lastChunk = null;
+    }
+
     private synchronized Chunk readChunk(int chunkId) {
         if (chunks.containsKey(chunkId))
             return chunks.get(chunkId);

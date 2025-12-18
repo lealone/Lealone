@@ -341,32 +341,30 @@ public class PageReference implements IPageReference {
 
     // 刷完脏页后需要用新的位置更新
     public void updatePage(long newPos, PageInfo pInfoOld, boolean isLocked) {
-        updatePage(newPos, pInfoOld, isLocked, false);
+        updatePage(newPos, pInfoOld, isLocked, null);
     }
 
-    // 重写page后会把clearPage设为true来调用
-    public void updatePage(long newPos, PageInfo pInfoOld, boolean isLocked, boolean clearPage) {
+    public void updatePage(long newPos, PageInfo pInfoOld, boolean isLocked, ByteBuffer newPageBuff) {
         // 如果加有行锁，说明事务还没结束，不能把当前page的pos设置成非0值，因为设置成非0值后就会被垃圾收集掉，会导致错误
         if (isLocked) {
             addRemovedPage(newPos);
             return;
         }
-        // clearPage = clearPage || System.currentTimeMillis() - pInfoOld.lastTime > 10;
         PageInfo pInfoNew = pInfoOld.copy(newPos);
-        pInfoNew.buff = null; // 废弃了
-        // if (clearPage) {
-        // pInfoNew.page = null;
-        // pInfoNew.lastTime = 0;
-        // pInfoNew.hits = 0;
-        // }
+        if (newPageBuff != null) {
+            pInfoNew.buff = newPageBuff;
+            pInfoNew.pageLength = newPageBuff.limit();
+            pInfoNew.lastTime = 0;
+            pInfoNew.hits = 0;
+        } else {
+            pInfoNew.buff = null; // 废弃了
+        }
         if (replacePage(pInfoOld, pInfoNew)) {
             if (Page.ASSERT) {
                 checkPageInfo(pInfoNew);
             }
-            // if (clearPage)
-            // addUsedMemory(-pInfoOld.getTotalMemory());
-            // else
-            addUsedMemory(-pInfoOld.getBuffMemory());
+            if (newPageBuff == null)
+                addUsedMemory(-pInfoOld.getBuffMemory());
         } else {
             // 当前page又被标记为脏页了，此时把写完的page标记为删除
             addRemovedPage(newPos);

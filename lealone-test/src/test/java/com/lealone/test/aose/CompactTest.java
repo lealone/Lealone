@@ -40,6 +40,11 @@ public class CompactTest extends AoseTestBase {
         putData(1, 200);
         putData(1, 50);
         putData(100, 150);
+
+        new Thread(() -> {
+            assertEquals(map.cursor(), 200);
+        }).start();
+
         putData(50, 150);
 
         assertEquals(map.cursor(), 200);
