@@ -320,6 +320,15 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private boolean executeInternal(String sql) throws SQLException {
+        return executeAsyncInternal(sql).get().booleanValue();
+    }
+
+    public Future<Boolean> executeAsync(String sql) {
+        debugCodeCall("executeAsync", sql);
+        return executeAsyncInternal(sql);
+    }
+
+    private Future<Boolean> executeAsyncInternal(String sql) {
         // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
         // 想在客户端区分哪些sql是查询还是更新语句比较困难，还不如让服务器端来做
         // if (sql != null) {
@@ -351,7 +360,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 else
                     setAsyncResult(ac, ar.getCause());
             });
-        }).get().booleanValue();
+        }).getFuture();
     }
 
     void executeInternal(AsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {

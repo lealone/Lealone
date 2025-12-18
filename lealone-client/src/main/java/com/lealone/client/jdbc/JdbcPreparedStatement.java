@@ -375,6 +375,12 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     @Override
+    public Future<Boolean> executeAsync(String sql) {
+        debugCodeCall("executeAsync", sql);
+        return Future.failedFuture(DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT));
+    }
+
+    @Override
     protected Future<Integer> executeBatchUpdateAsync(int index) {
         Value[] parameterValues = batchParameters.get(index);
         return executeUpdateInternal(parameterValues).getFuture();

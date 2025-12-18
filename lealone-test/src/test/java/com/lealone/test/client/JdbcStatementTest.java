@@ -230,6 +230,35 @@ public class JdbcStatementTest extends ClientTestBase {
             }
         });
         latch.await();
+
+        stmt.executeAsync("INSERT INTO test(f1, f2) VALUES(4, 4)").onComplete(res -> {
+            if (res.isSucceeded()) {
+                assertFalse(res.getResult());
+                try {
+                    assertEquals(1, stmt.getUpdateCount());
+                } catch (SQLException e2) {
+                    e2.printStackTrace();
+                }
+            } else {
+                res.getCause().printStackTrace();
+            }
+        }).get();
+
+        stmt.executeAsync("SELECT * FROM test where f2 = 4").onComplete(res -> {
+            if (res.isSucceeded()) {
+                assertTrue(res.getResult());
+                ResultSet resultSet;
+                try {
+                    resultSet = stmt.getResultSet();
+                    assertNotNull(resultSet);
+                    resultSet.close();
+                } catch (SQLException e1) {
+                    e1.printStackTrace();
+                }
+            } else {
+                res.getCause().printStackTrace();
+            }
+        }).get();
     }
 
     // 测试连续的两个异步操作会不会按正常的先后顺序被后端执行
