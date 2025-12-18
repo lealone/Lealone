@@ -71,7 +71,14 @@ public class CheckpointService implements Runnable {
     }
 
     public void removeMap(String mapName) {
-        maps.remove(mapName);
+        StorageMap<?, ?> map = maps.remove(mapName);
+        if (map != null) {
+            Long size = dirtyMaps.remove(mapName);
+            if (size != null) {
+                dirtyMemoryTotal.addAndGet(-size);
+                dirtyMemory.addAndGet(-size);
+            }
+        }
     }
 
     public void addGcTask(GcTask gcTask) {
@@ -208,7 +215,7 @@ public class CheckpointService implements Runnable {
     }
 
     private void gcMaps() {
-        if (maps.isEmpty())
+        if (workingThread != null || maps.isEmpty())
             return;
         for (StorageMap<?, ?> map : maps.values()) {
             if (!map.isClosed()) {
@@ -242,10 +249,10 @@ public class CheckpointService implements Runnable {
                 || lastSavedAt + checkpointPeriod < System.currentTimeMillis()) // 周期超过阈值了
         {
             if (isClosing) { // 正在关闭时，直接用当前线程保存
-                save(force, true);
+                save(true);
             } else {
                 workingThread = new Thread(() -> {
-                    save(force, false);
+                    save(false);
                     workingThread = null;
                 });
                 workingThread.start();
@@ -253,38 +260,30 @@ public class CheckpointService implements Runnable {
         }
     }
 
-    private void save(boolean force, boolean isClosing) {
-        boolean force0 = force;
+    private void save(boolean isClosing) {
         long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
         try {
-            while (force0 || dirtyMemoryTotal.get() > dirtyPageCacheSize) {
-                for (Entry<String, Long> e : dirtyMaps.entrySet()) {
-                    StorageMap<?, ?> map = maps.get(e.getKey());
-                    // 准备耍刷页前如果表被删除了那就直接忽略
-                    if (map != null && !map.isClosed()) {
-                        long t1 = System.currentTimeMillis();
-                        long size = e.getValue().longValue();
-                        if (!isClosing)
-                            workingThread.setName("Saving-" + map.getName());
-                        map.setLastTransactionId(lastTransactionId);
-                        try {
-                            map.save(size);
-                        } finally {
-                            map.setLastTransactionId(-1);
-                        }
-                        if (logger.isDebugEnabled()) {
-                            long time = System.currentTimeMillis() - t1;
-                            logger.debug("Save {}, size: {}, time: {} ms", map.getName(), size, time);
-                        }
+            for (Entry<String, Long> e : dirtyMaps.entrySet()) {
+                StorageMap<?, ?> map = maps.get(e.getKey());
+                // 准备耍刷页前如果表被删除了那就直接忽略
+                if (map != null && !map.isClosed()) {
+                    long t1 = System.currentTimeMillis();
+                    long size = e.getValue().longValue();
+                    if (!isClosing)
+                        workingThread.setName("Saving-" + map.getName());
+                    map.setLastTransactionId(lastTransactionId);
+                    try {
+                        map.save(size);
+                    } finally {
+                        map.setLastTransactionId(-1);
+                    }
+                    if (logger.isDebugEnabled()) {
+                        long time = System.currentTimeMillis() - t1;
+                        logger.debug("Save {}, size: {}, time: {} ms", map.getName(), size, time);
                     }
                 }
-                force0 = false;
-                lastSavedAt = System.currentTimeMillis();
-                if (!isClosing)
-                    collectDirtyMemory(); // 再收集一次脏页看看是否需要再次刷脏页
-                if (isClosing || dirtyMaps.isEmpty())
-                    return;
             }
+            lastSavedAt = System.currentTimeMillis();
         } catch (Throwable t) {
             logger.error("Failed to execute save", t);
         }
