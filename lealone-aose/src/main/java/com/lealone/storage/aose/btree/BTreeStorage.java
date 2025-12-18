@@ -340,6 +340,8 @@ public class BTreeStorage {
             } else {
                 c = chunkManager.createChunk();
                 c.fileStorage = getFileStorage(c.fileName);
+                // 先增加，写完之后再setLastChunk，如果不先增加，调用完c.write马上有线程读就会找不到chunk
+                chunkManager.addChunk(c);
             }
         } finally {
             redoLogLock.unlock();
@@ -367,7 +369,6 @@ public class BTreeStorage {
         if (!appendMode) {
             redoLogLock.lock();
             try {
-                chunkManager.addChunk(c);
                 chunkManager.setLastChunk(c);
             } finally {
                 redoLogLock.unlock();
@@ -392,6 +393,9 @@ public class BTreeStorage {
                 }
             }
         }
+        // 不能直接在PageReference.updatePage中回收page，
+        // 否则其他线程在新数据没有写到chunk前读取就会出错，所以要等写完后再GC
+        map.gc();
     }
 
     private final ReentrantLock redoLogLock = new ReentrantLock();

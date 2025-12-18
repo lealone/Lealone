@@ -155,7 +155,7 @@ public class ChunkManager {
         return c;
     }
 
-    public void addChunk(Chunk c) {
+    public synchronized void addChunk(Chunk c) {
         chunkIds.set(c.id);
         chunks.put(c.id, c);
         idToChunkFileNameMap.put(c.id, c.fileName);

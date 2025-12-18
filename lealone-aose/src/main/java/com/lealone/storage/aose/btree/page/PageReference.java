@@ -351,22 +351,22 @@ public class PageReference implements IPageReference {
             addRemovedPage(newPos);
             return;
         }
-        clearPage = clearPage || System.currentTimeMillis() - pInfoOld.lastTime > 10;
+        // clearPage = clearPage || System.currentTimeMillis() - pInfoOld.lastTime > 10;
         PageInfo pInfoNew = pInfoOld.copy(newPos);
         pInfoNew.buff = null; // 废弃了
-        if (clearPage) {
-            pInfoNew.page = null;
-            pInfoNew.lastTime = 0;
-            pInfoNew.hits = 0;
-        }
+        // if (clearPage) {
+        // pInfoNew.page = null;
+        // pInfoNew.lastTime = 0;
+        // pInfoNew.hits = 0;
+        // }
         if (replacePage(pInfoOld, pInfoNew)) {
             if (Page.ASSERT) {
                 checkPageInfo(pInfoNew);
             }
-            if (clearPage)
-                addUsedMemory(-pInfoOld.getTotalMemory());
-            else
-                addUsedMemory(-pInfoOld.getBuffMemory());
+            // if (clearPage)
+            // addUsedMemory(-pInfoOld.getTotalMemory());
+            // else
+            addUsedMemory(-pInfoOld.getBuffMemory());
         } else {
             // 当前page又被标记为脏页了，此时把写完的page标记为删除
             addRemovedPage(newPos);
