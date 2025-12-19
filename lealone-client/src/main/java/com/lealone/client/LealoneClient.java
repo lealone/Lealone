@@ -525,9 +525,10 @@ public class LealoneClient {
         while (rs.next()) {
             rowCount++;
             truncated |= loadRow(rs, len, rows);
-            if (rowCount > MAX_ROW_BUFFER) {
+            if (rows.size() > MAX_ROW_BUFFER) {
                 printRows(rows, len);
                 rows.clear();
+                rows.add(columns);
             }
         }
         printRows(rows, len);
