@@ -121,7 +121,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
             return;
         checkpoint();
         for (String mapName : storage.getMapNames()) {
-            removeStorageMap(mapName);
+            removeStorageMap(storage.getMap(mapName));
         }
     }
 
@@ -139,10 +139,10 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
     }
 
-    public void removeStorageMap(String mapName) {
+    public void removeStorageMap(StorageMap<?, ?> map) {
         for (int i = 0; i < logSyncServices.length; i++) {
-            logSyncServices[i].getCheckpointService().removeMap(mapName);
-            logSyncServices[i].getRedoLog().removeMap(mapName);
+            logSyncServices[i].getCheckpointService().removeMap(map);
+            logSyncServices[i].getRedoLog().removeMap(map.getName());
         }
     }
 

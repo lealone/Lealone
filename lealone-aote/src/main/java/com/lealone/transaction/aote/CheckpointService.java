@@ -5,7 +5,6 @@
  */
 package com.lealone.transaction.aote;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +24,7 @@ import com.lealone.transaction.aote.log.LogSyncService;
 public class CheckpointService implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckpointService.class);
+    private static final AtomicLong dirtyMemoryTotal = new AtomicLong();
 
     private final AOTransactionEngine aote;
     private final LogSyncService logSyncService;
@@ -35,7 +35,7 @@ public class CheckpointService implements Runnable {
     // 以下三个字段都是低频场景使用，会有多个线程执行add和remove
     private final CopyOnWriteArrayList<Runnable> forceCheckpointTasks = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<GcTask> gcTasks = new CopyOnWriteArrayList<>();
-    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StorageMap<?, ?>, AtomicLong> maps = new ConcurrentHashMap<>();
 
     private long lastSavedAt = System.currentTimeMillis();
     private volatile boolean isClosed;
@@ -67,17 +67,13 @@ public class CheckpointService implements Runnable {
     }
 
     public void addMap(StorageMap<?, ?> map) {
-        maps.put(map.getName(), map);
+        maps.put(map, new AtomicLong(0));
     }
 
-    public void removeMap(String mapName) {
-        StorageMap<?, ?> map = maps.remove(mapName);
-        if (map != null) {
-            Long size = dirtyMaps.remove(mapName);
-            if (size != null) {
-                dirtyMemoryTotal.addAndGet(-size);
-                dirtyMemory.addAndGet(-size);
-            }
+    public void removeMap(StorageMap<?, ?> map) {
+        AtomicLong dirtyMemory = maps.remove(map);
+        if (dirtyMemory != null) {
+            dirtyMemoryTotal.addAndGet(-dirtyMemory.get());
         }
     }
 
@@ -127,7 +123,7 @@ public class CheckpointService implements Runnable {
         if (workingThread != null || maps.isEmpty())
             return;
         workingThread = new Thread(() -> {
-            for (StorageMap<?, ?> map : maps.values()) {
+            for (StorageMap<?, ?> map : maps.keySet()) {
                 if (!map.isClosed()) {
                     workingThread.setName("FullGc-" + map.getName());
                     map.fullGc();
@@ -147,7 +143,7 @@ public class CheckpointService implements Runnable {
     private void gcTValues() {
         if (maps.isEmpty())
             return;
-        for (StorageMap<?, ?> map : maps.values()) {
+        for (StorageMap<?, ?> map : maps.keySet()) {
             if (!map.isClosed()) {
                 gcTValues(map);
             }
@@ -217,7 +213,7 @@ public class CheckpointService implements Runnable {
     private void gcMaps() {
         if (workingThread != null || maps.isEmpty())
             return;
-        for (StorageMap<?, ?> map : maps.values()) {
+        for (StorageMap<?, ?> map : maps.keySet()) {
             if (!map.isClosed()) {
                 map.gc();
             }
@@ -240,8 +236,6 @@ public class CheckpointService implements Runnable {
         if (maps.isEmpty())
             return;
         collectDirtyMemory();
-        if (dirtyMaps.isEmpty())
-            return;
 
         if (force // 强制刷脏页
                 || isClosed // 关闭前要刷脏页
@@ -260,15 +254,31 @@ public class CheckpointService implements Runnable {
         }
     }
 
+    private void collectDirtyMemory() {
+        for (Entry<StorageMap<?, ?>, AtomicLong> e : maps.entrySet()) {
+            StorageMap<?, ?> map = e.getKey();
+            if (!map.isClosed()) {
+                AtomicLong dirtyMemory = e.getValue();
+                long oldSize = dirtyMemory.get();
+                long newSize = map.collectDirtyMemory();
+                long delta = newSize - oldSize;
+                if (delta != 0) {
+                    dirtyMemoryTotal.addAndGet(delta);
+                    dirtyMemory.set(newSize);
+                }
+            }
+        }
+    }
+
     private void save(boolean isClosing) {
         long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
         try {
-            for (Entry<String, Long> e : dirtyMaps.entrySet()) {
-                StorageMap<?, ?> map = maps.get(e.getKey());
+            for (Entry<StorageMap<?, ?>, AtomicLong> e : maps.entrySet()) {
+                StorageMap<?, ?> map = e.getKey();
+                long size = e.getValue().get();
                 // 准备耍刷页前如果表被删除了那就直接忽略
-                if (map != null && !map.isClosed()) {
+                if (size > 0 && !map.isClosed()) {
                     long t1 = System.currentTimeMillis();
-                    long size = e.getValue().longValue();
                     if (!isClosing)
                         workingThread.setName("Saving-" + map.getName());
                     map.setLastTransactionId(lastTransactionId);
@@ -287,25 +297,5 @@ public class CheckpointService implements Runnable {
         } catch (Throwable t) {
             logger.error("Failed to execute save", t);
         }
-    }
-
-    private static final AtomicLong dirtyMemoryTotal = new AtomicLong();
-    private final HashMap<String, Long> dirtyMaps = new HashMap<>();
-    private final AtomicLong dirtyMemory = new AtomicLong();
-
-    private void collectDirtyMemory() {
-        dirtyMemoryTotal.addAndGet(-dirtyMemory.get());
-        dirtyMaps.clear();
-        dirtyMemory.set(0);
-        for (StorageMap<?, ?> map : maps.values()) {
-            if (!map.isClosed()) {
-                long dm = map.collectDirtyMemory();
-                if (dm > 0) {
-                    dirtyMemory.addAndGet(dm);
-                    dirtyMaps.put(map.getName(), dm);
-                }
-            }
-        }
-        dirtyMemoryTotal.addAndGet(dirtyMemory.get());
     }
 }
