@@ -44,8 +44,8 @@ public class CheckpointService implements Runnable {
         this.aote = aote;
         this.logSyncService = logSyncService;
 
-        // 默认1小时
-        checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", 1 * 60 * 60 * 1000);
+        // 默认12小时
+        checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", 12 * 60 * 60 * 1000);
 
         // 默认3秒钟
         long loopInterval = MapUtils.getLong(config, "checkpoint_service_loop_interval", 3 * 1000);

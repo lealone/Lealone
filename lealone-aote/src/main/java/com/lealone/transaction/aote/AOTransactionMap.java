@@ -267,23 +267,13 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
+    public void save(long dirtyMemory) {
+        map.save(dirtyMemory);
+    }
+
+    @Override
     public void repair() {
         map.repair();
-    }
-
-    @Override
-    public void gc() {
-        map.gc();
-    }
-
-    @Override
-    public void setMaxKey(K key) {
-        map.setMaxKey(key);
-    }
-
-    @Override
-    public long getAndAddKey(long delta) {
-        return map.getAndAddKey(delta);
     }
 
     @Override
@@ -299,6 +289,36 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public boolean hasUnsavedChanges() {
         return map.hasUnsavedChanges();
+    }
+
+    @Override
+    public void gc() {
+        map.gc();
+    }
+
+    @Override
+    public void fullGc() {
+        map.fullGc();
+    }
+
+    @Override
+    public long collectDirtyMemory() {
+        return map.collectDirtyMemory();
+    }
+
+    @Override
+    public int getCacheSize() {
+        return map.getCacheSize();
+    }
+
+    @Override
+    public void setMaxKey(K key) {
+        map.setMaxKey(key);
+    }
+
+    @Override
+    public long getAndAddKey(long delta) {
+        return map.getAndAddKey(delta);
     }
 
     @Override

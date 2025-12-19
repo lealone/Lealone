@@ -25,7 +25,6 @@ public class TransactionEngineTest extends AoteTestBase {
     @BeforeClass
     public static void beforeClass() { // 不会触发父类的before
         Map<String, String> config = getDefaultConfig(joinDirs("aote", "TransactionEngineTest"));
-        config.put("dirty_page_cache_size_in_mb", "1");
         config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
 
@@ -33,7 +32,7 @@ public class TransactionEngineTest extends AoteTestBase {
         config.put("plugin_name", "TransactionEngineTest");
         te = new AOTransactionEngine();
         te.init(config);
-        storage = getStorage();
+        storage = getStorage(1, "TransactionEngineTest"); // cacheSize:1M
     }
 
     @AfterClass
@@ -58,7 +57,7 @@ public class TransactionEngineTest extends AoteTestBase {
         assertEquals(50000, map.size());
 
         sleep(map);
-        assertTrue(map.getDiskSpaceUsed() > 0);
+        assertTrue(map.collectDirtyMemory() == 0);
 
         // 2. 手动执行检查点
         map.remove();
@@ -71,17 +70,19 @@ public class TransactionEngineTest extends AoteTestBase {
         te.checkpoint();
 
         sleep(map);
-        assertTrue(map.getDiskSpaceUsed() > 0);
+        assertTrue(map.collectDirtyMemory() == 0);
     }
 
     private void sleep(TransactionMap<String, String> map) {
         long sleep = 0;
-        while (map.getDiskSpaceUsed() <= 0 || sleep > 3000) {
+        while (map.collectDirtyMemory() > 0) {
             try {
                 Thread.sleep(100); // 等待后端检查点线程完成数据保存
             } catch (InterruptedException e) {
             }
             sleep += 100;
+            if (sleep > 3000)
+                return;
         }
     }
 }

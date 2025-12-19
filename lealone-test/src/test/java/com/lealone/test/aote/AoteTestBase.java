@@ -34,11 +34,20 @@ public abstract class AoteTestBase extends TestBase implements TestBase.Embedded
     }
 
     public static Storage getStorage() {
+        return getStorage(0, null);
+    }
+
+    public static Storage getStorage(int cacheSize, String path) {
         StorageEngine se = StorageEngine.getDefaultStorageEngine();
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
-        storageBuilder.storagePath(joinDirs("aote", "data"));
+        if (path != null)
+            storageBuilder.storagePath(joinDirs("aote", "data", path));
+        else
+            storageBuilder.storagePath(joinDirs("aote", "data"));
+        if (cacheSize > 0)
+            storageBuilder.cacheSize(cacheSize);
         Storage storage = storageBuilder.openStorage();
         return storage;
     }
