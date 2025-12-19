@@ -18,7 +18,7 @@ storage_engines:
     enabled: true
     parameters: {
         page_size: 16k,
-        # cache_size: 16m, # 每个 btree 的缓存大小
+        cache_size: 32m, # 每个 btree 的缓存大小
         compress: no, # no、lzf、deflate 或 0、1、2
     }
 
@@ -26,7 +26,6 @@ transaction_engines:
   - name: AOTE
     enabled: true
     parameters: {
-        dirty_page_cache_size_in_mb: 32, # 默认是32M
         redo_log_dir: redo_log, # 会组合成这样的目录: ${base_dir} + "/"+ ${redo_log_dir},
         log_sync_type: periodic # 取值：instant,no_sync,periodic，默认是periodic
     }

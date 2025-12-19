@@ -1806,13 +1806,20 @@ public class Database extends DbObjectBase implements DataHandler {
         if (!persistent) {
             storageBuilder.inMemory();
         } else {
-            byte[] key = getFileEncryptionKey();
-            storageBuilder.cacheSize(getCacheSize());
-            storageBuilder.pageSize(getPageSize());
+            // 数据库的默认参数被修改过就优先用数据库的，如果存储引擎没有设置也用数据库的默认值
+            if (getPageSize() != Constants.DEFAULT_PAGE_SIZE
+                    || !storageBuilder.containsKey(DbSetting.PAGE_SIZE)) {
+                storageBuilder.pageSize(getPageSize());
+            }
+            if (getCacheSize() != Constants.DEFAULT_CACHE_SIZE
+                    || !storageBuilder.containsKey(DbSetting.CACHE_SIZE)) {
+                storageBuilder.cacheSize(getCacheSize());
+            }
             storageBuilder.storagePath(storagePath);
             if (isReadOnly()) {
                 storageBuilder.readOnly();
             }
+            byte[] key = getFileEncryptionKey();
             if (key != null) {
                 char[] password = new char[key.length / 2];
                 for (int i = 0; i < password.length; i++) {

@@ -42,6 +42,7 @@ public class BTreeStorage {
     private final ChunkCompactor chunkCompactor;
 
     private final int pageSize;
+    private final int cacheSize;
     private final int minFillRate;
     private final int maxChunkSize;
 
@@ -73,9 +74,7 @@ public class BTreeStorage {
         compressionLevel = parseCompressionLevel();
 
         // 32M (32 * 1024 * 1024)，到达一半时就启用GC
-        int cacheSize = getIntValue(DbSetting.CACHE_SIZE, Constants.DEFAULT_CACHE_SIZE * 1024 * 1024);
-        if (cacheSize > 0 && cacheSize < pageSize)
-            cacheSize = pageSize * 2;
+        cacheSize = getIntValue(DbSetting.CACHE_SIZE, Constants.DEFAULT_CACHE_SIZE * 1024 * 1024);
         bgc = new BTreeGC(map, cacheSize);
 
         // 默认256M
@@ -171,6 +170,10 @@ public class BTreeStorage {
 
     public int getPageSize() {
         return pageSize;
+    }
+
+    public int getCacheSize() {
+        return cacheSize;
     }
 
     public int getMinFillRate() {

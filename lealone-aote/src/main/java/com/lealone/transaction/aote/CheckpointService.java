@@ -24,11 +24,9 @@ import com.lealone.transaction.aote.log.LogSyncService;
 public class CheckpointService implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckpointService.class);
-    private static final AtomicLong dirtyMemoryTotal = new AtomicLong();
 
     private final AOTransactionEngine aote;
     private final LogSyncService logSyncService;
-    private final long dirtyPageCacheSize;
     private final long checkpointPeriod;
     private final long loopInterval;
 
@@ -46,8 +44,6 @@ public class CheckpointService implements Runnable {
         this.aote = aote;
         this.logSyncService = logSyncService;
 
-        // 默认32M
-        dirtyPageCacheSize = MapUtils.getLongMB(config, "dirty_page_cache_size_in_mb", 32 * 1024 * 1024);
         // 默认1小时
         checkpointPeriod = MapUtils.getLong(config, "checkpoint_period", 1 * 60 * 60 * 1000);
 
@@ -71,10 +67,7 @@ public class CheckpointService implements Runnable {
     }
 
     public void removeMap(StorageMap<?, ?> map) {
-        AtomicLong dirtyMemory = maps.remove(map);
-        if (dirtyMemory != null) {
-            dirtyMemoryTotal.addAndGet(-dirtyMemory.get());
-        }
+        maps.remove(map);
     }
 
     public void addGcTask(GcTask gcTask) {
@@ -235,18 +228,18 @@ public class CheckpointService implements Runnable {
     private void executeCheckpoint(boolean force, boolean isClosing) {
         if (maps.isEmpty())
             return;
-        collectDirtyMemory();
+        boolean needSave = collectDirtyMemory();
 
         if (force // 强制刷脏页
+                || needSave // 有map的脏页占用的预估内存大于阈值
                 || isClosed // 关闭前要刷脏页
-                || dirtyMemoryTotal.get() > dirtyPageCacheSize // 脏页占用的预估总内存大于阈值
                 || lastSavedAt + checkpointPeriod < System.currentTimeMillis()) // 周期超过阈值了
         {
             if (isClosing) { // 正在关闭时，直接用当前线程保存
-                save(true);
+                save(force, true);
             } else {
                 workingThread = new Thread(() -> {
-                    save(false);
+                    save(force, false);
                     workingThread = null;
                 });
                 workingThread.start();
@@ -254,30 +247,28 @@ public class CheckpointService implements Runnable {
         }
     }
 
-    private void collectDirtyMemory() {
+    private boolean collectDirtyMemory() {
+        boolean needSave = false;
         for (Entry<StorageMap<?, ?>, AtomicLong> e : maps.entrySet()) {
             StorageMap<?, ?> map = e.getKey();
             if (!map.isClosed()) {
-                AtomicLong dirtyMemory = e.getValue();
-                long oldSize = dirtyMemory.get();
-                long newSize = map.collectDirtyMemory();
-                long delta = newSize - oldSize;
-                if (delta != 0) {
-                    dirtyMemoryTotal.addAndGet(delta);
-                    dirtyMemory.set(newSize);
-                }
+                long size = map.collectDirtyMemory();
+                e.getValue().set(size);
+                if (size > 0 && size > map.getCacheSize())
+                    needSave = true;
             }
         }
+        return needSave;
     }
 
-    private void save(boolean isClosing) {
+    private void save(boolean force, boolean isClosing) {
         long lastTransactionId = logSyncService.getRedoLog().getLastTransactionId();
         try {
             for (Entry<StorageMap<?, ?>, AtomicLong> e : maps.entrySet()) {
                 StorageMap<?, ?> map = e.getKey();
                 long size = e.getValue().get();
                 // 准备耍刷页前如果表被删除了那就直接忽略
-                if (size > 0 && !map.isClosed()) {
+                if (size > 0 && !map.isClosed() && (force || size > map.getCacheSize())) {
                     long t1 = System.currentTimeMillis();
                     if (!isClosing)
                         workingThread.setName("Saving-" + map.getName());

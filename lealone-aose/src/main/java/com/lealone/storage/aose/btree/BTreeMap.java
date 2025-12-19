@@ -443,6 +443,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    @Override
+    public int getCacheSize() {
+        return btreeStorage.getCacheSize();
+    }
+
     public void markDirty(Object key) {
         gotoLeafPage(key).getRef().markDirtyPage();
     }

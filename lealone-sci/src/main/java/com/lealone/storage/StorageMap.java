@@ -8,6 +8,7 @@ package com.lealone.storage;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.lealone.db.Constants;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
@@ -237,6 +238,10 @@ public interface StorageMap<K, V> {
 
     default long collectDirtyMemory() {
         return 0;
+    }
+
+    default int getCacheSize() {
+        return Constants.DEFAULT_CACHE_SIZE * 1024 * 1024;
     }
 
     //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////

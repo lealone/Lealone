@@ -32,6 +32,10 @@ public abstract class StorageBuilder {
         return this;
     }
 
+    public boolean containsKey(Enum<?> key) {
+        return config.containsKey(key.name());
+    }
+
     /**
      * Use the following storage path. If the file does not exist, it is
      * automatically created. The parent directory already must exist.
