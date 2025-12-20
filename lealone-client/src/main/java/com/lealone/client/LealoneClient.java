@@ -528,7 +528,6 @@ public class LealoneClient {
             if (rows.size() > MAX_ROW_BUFFER) {
                 printRows(rows, len);
                 rows.clear();
-                rows.add(columns);
             }
         }
         printRows(rows, len);
