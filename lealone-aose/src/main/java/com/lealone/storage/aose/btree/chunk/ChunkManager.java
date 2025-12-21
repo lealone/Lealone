@@ -8,6 +8,7 @@ package com.lealone.storage.aose.btree.chunk;
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +42,7 @@ public class ChunkManager {
 
     public void init(String mapBaseDir) {
         int lastChunkId = 0;
+        HashMap<Integer, Long> idToSeqMap = new HashMap<>();
         File[] files = new File(mapBaseDir).listFiles();
         for (File file : files) {
             // 系统异常终止时刚创建但是还没写数据的文件
@@ -61,8 +63,21 @@ public class ChunkManager {
                     lastChunkId = id;
                 }
                 chunkIds.set(id);
-                idToChunkFileNameMap.put(id, f);
-                seqToIdMap.put(seq, id);
+                Long s = idToSeqMap.get(id);
+                // 因为chunkId会复用，所以用备份的文件恢复时有可能出现多个chunkId相同但是seq不同的chunk文件
+                // 此时只需要使用seq最大的那个chunk文件即可
+                if (s != null) {
+                    if (s < seq) {
+                        idToSeqMap.put(id, seq);
+                        seqToIdMap.remove(s);
+                        seqToIdMap.put(seq, id);
+                        idToChunkFileNameMap.put(id, f);
+                    }
+                } else {
+                    idToSeqMap.put(id, seq);
+                    seqToIdMap.put(seq, id);
+                    idToChunkFileNameMap.put(id, f);
+                }
             }
         }
         readLastChunk(lastChunkId);
