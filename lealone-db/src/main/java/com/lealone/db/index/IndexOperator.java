@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.db.Database;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.async.AsyncPeriodicTask;
@@ -122,7 +123,9 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
         int count = 0;
         try {
             AtomicInteger index = new AtomicInteger(0);
-            Scheduler[] schedulers = scheduler.getSchedulerFactory().getSchedulers();
+            // 要用session的当前调度器
+            InternalScheduler currentScheduler = session.getScheduler();
+            Scheduler[] schedulers = currentScheduler.getSchedulerFactory().getSchedulers();
             int schedulerCount = pendingIosArray.length;
             while (indexOperationSize.get() > 0) {
                 long lastSize = indexOperationSize.get();
@@ -175,7 +178,7 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
                         }
                     }
                     if ((++count & 127) == 0) {
-                        if (scheduler.yieldIfNeeded(null))
+                        if (currentScheduler.yieldIfNeeded(null))
                             return;
                     }
                     io = nextIndexOperation(ios, index);
@@ -189,6 +192,12 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
                 // 所有的事务都没提交，直接退出
                 if (lastSize == indexOperationSize.get())
                     break;
+            }
+        } catch (Throwable t) {
+            if (table.isInvalid()) {
+                cancelTask();
+            } else {
+                throw DbException.convert(t);
             }
         } finally {
             if (session == this.session) {
