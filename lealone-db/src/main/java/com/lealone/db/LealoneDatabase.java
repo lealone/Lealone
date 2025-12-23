@@ -6,7 +6,6 @@
 package com.lealone.db;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -83,10 +82,15 @@ public class LealoneDatabase extends Database
         if (db != null)
             return db;
 
-        HashMap<String, String> parameters = new HashMap<>();
+        CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
         for (Entry<Object, Object> e : ci.getProperties().entrySet()) {
             parameters.put(e.getKey().toString(), e.getValue().toString());
         }
+        // 删除连接专有的参数
+        for (ConnectionSetting s : ConnectionSetting.values()) {
+            parameters.remove(s.name());
+        }
+
         int id = ci.getDatabaseId() < 0 ? INSTANCE.allocateObjectId() : ci.getDatabaseId();
         db = new Database(id, name, parameters);
         db.setRunMode(RunMode.EMBEDDED);

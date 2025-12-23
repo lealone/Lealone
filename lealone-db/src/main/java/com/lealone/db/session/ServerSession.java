@@ -44,7 +44,6 @@ import com.lealone.db.lock.Lock;
 import com.lealone.db.result.Result;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
-import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.table.Table;
 import com.lealone.db.util.ExpiringMap;
@@ -559,7 +558,7 @@ public class ServerSession extends SessionBase implements InternalSession {
         }
         // asyncCommit执行完后才能把YieldableCommand置null，否则会导致部分响应无法发送
         if (!asyncCommit) {
-            setYieldableCommand(null);
+            endYieldableCommand();
         }
     }
 
@@ -590,8 +589,13 @@ public class ServerSession extends SessionBase implements InternalSession {
             beforeCommit();
             transaction.asyncCommit(() -> {
                 commitFinal();
-                if (asyncHandler != null)
-                    asyncHandler.handle(asyncResult);
+                try {
+                    if (asyncHandler != null)
+                        asyncHandler.handle(asyncResult);
+                } finally {
+                    // 调用完回调函数后再调用它，绑定嵌入式调度器的线程可能在等待
+                    endYieldableCommand();
+                }
             });
         } else {
             // 包含子查询的场景
@@ -605,6 +609,7 @@ public class ServerSession extends SessionBase implements InternalSession {
             beforeCommit();
             transaction.commit();
             commitFinal();
+            endYieldableCommand();
         }
     }
 
@@ -633,6 +638,15 @@ public class ServerSession extends SessionBase implements InternalSession {
         wakeUpWaitingSchedulers();
         transactionStart = 0;
         transaction = null;
+    }
+
+    private void endYieldableCommand() {
+        YieldableCommand yc = yieldableCommand;
+        yieldableCommand = null; // 先置null再调用onComplete，否则有并发问题
+        if (yc != null) {
+            yc.onComplete();
+            yc = null;
+        }
     }
 
     private void unlinkLob(HashMap<String, ValueLob> lobMap) {
@@ -675,7 +689,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         unlockAll(true);
         clean();
         endTransaction();
-        yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -754,7 +767,7 @@ public class ServerSession extends SessionBase implements InternalSession {
         }
         clean();
         executingStatements = 0; // 回滚时置0，否则出现锁超时异常时会导致严重错误
-        yieldableCommand = null;
+        endYieldableCommand();
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -1300,10 +1313,14 @@ public class ServerSession extends SessionBase implements InternalSession {
         // 如果session的调度器检测到session处于等待状态时要尝试一下主动唤醒，
         // 否则在新session中加锁有可能导致旧session一直占用锁从而陷入死循环
         if (sessionStatus == SessionStatus.WAITING) {
-            if (SchedulerThread.currentScheduler() == getScheduler())
-                wakeUpIfNeeded();
+            wakeUpIfNeeded();
         }
         return sessionStatus;
+    }
+
+    public boolean needYieldOrWait() {
+        SessionStatus status = getStatus();
+        return status == SessionStatus.STATEMENT_YIELDED || status == SessionStatus.WAITING;
     }
 
     @Override
@@ -1683,15 +1700,16 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public <T> AsyncCallback<T> createCallback() {
-        if (SchedulerThread.isScheduler()) {
-            // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
-            return AsyncCallback.createSingleThreadCallback();
-        } else {
-            if (connectionInfo != null)
-                return AsyncCallback.create(connectionInfo.isSingleThreadCallback());
-            else
-                return AsyncCallback.createConcurrentCallback();
-        }
+        return AsyncCallback.createSingleThreadCallback();
+        // if (SchedulerThread.isScheduler()) {
+        // // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
+        // return AsyncCallback.createSingleThreadCallback();
+        // } else {
+        // if (connectionInfo != null)
+        // return AsyncCallback.create(connectionInfo.isSingleThreadCallback());
+        // else
+        // return AsyncCallback.createConcurrentCallback();
+        // }
     }
 
     @Override

@@ -63,6 +63,8 @@ public abstract class AsyncCallback<T> implements Future<T> {
     public void setAsyncResult(AsyncResult<T> asyncResult) {
     }
 
+    public abstract AsyncResult<T> getAsyncResult();
+
     private Packet packet;
     private long startTime;
     private int networkTimeout;

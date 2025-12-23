@@ -212,18 +212,13 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         if (t.isRepeatableRead())
             rrtCount.incrementAndGet();
 
-        boolean isSingleThread = true;
         if (scheduler == null) {
             // 如果当前线程不是调度线程就给事务绑定一个Scheduler
-            scheduler = (InternalScheduler) SchedulerThread.currentScheduler(schedulerFactory);
-            if (scheduler == null) {
-                scheduler = (InternalScheduler) schedulerFactory.getScheduler();
-                isSingleThread = false;
-            }
+            scheduler = (InternalScheduler) SchedulerThread.bindScheduler(schedulerFactory);
         }
         t.setScheduler(scheduler);
         TransactionManager tm;
-        if (isSingleThread) {
+        if (!scheduler.isEmbedded()) {
             tm = transactionManagers[scheduler.getId()];
         } else {
             tm = transactionManagers[transactionManagers.length - 1];
@@ -290,6 +285,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     private void initLogSyncServices(int schedulerCount) {
+        config.put("scheduler_count", schedulerCount + "");
         logSyncService = LogSyncService.create(config);
         logSyncService.setCheckpointService(new CheckpointService(this, config, logSyncService));
         logSyncService.getRedoLog().setSyncServiceIndex(0);

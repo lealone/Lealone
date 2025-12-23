@@ -7,6 +7,7 @@ package com.lealone.db.scheduler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -14,8 +15,6 @@ import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.async.AsyncTask;
-import com.lealone.db.link.LinkableBase;
-import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
@@ -143,9 +142,9 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         }
     }
 
-    private final LinkableList<ESessionInfo> sessions = new LinkableList<>();
+    private final CopyOnWriteArrayList<ESessionInfo> sessions = new CopyOnWriteArrayList<>();
 
-    private static class ESessionInfo extends LinkableBase<ESessionInfo> implements SessionInfo {
+    private static class ESessionInfo implements SessionInfo {
 
         private final InternalSession session;
         private final Scheduler scheduler;
@@ -205,10 +204,8 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     private void runSessionTasks() {
         if (sessions.isEmpty())
             return;
-        ESessionInfo si = sessions.getHead();
-        while (si != null) {
+        for (ESessionInfo si : sessions) {
             si.runSessionTasks();
-            si = si.next;
         }
     }
 
@@ -222,13 +219,11 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     public void removeSession(InternalSession session) {
         if (sessions.isEmpty())
             return;
-        ESessionInfo si = sessions.getHead();
-        while (si != null) {
+        for (ESessionInfo si : sessions) {
             if (si.session == session) {
                 sessions.remove(si);
                 break;
             }
-            si = si.next;
         }
     }
 
@@ -305,15 +300,12 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        ESessionInfo si = sessions.getHead();
-        while (si != null) {
+        for (ESessionInfo si : sessions) {
             // 执行yieldIfNeeded时，不需要检查当前session
             if (currentSession == si) {
-                si = si.getNext();
                 continue;
             }
             YieldableCommand c = si.session.getYieldableCommand(false, null);
-            si = si.getNext();
             if (c == null)
                 continue;
             if (c.getPriority() > priority) {

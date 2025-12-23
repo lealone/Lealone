@@ -105,4 +105,9 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
         if (failureHandler != null && asyncResult != null && asyncResult.isFailed())
             failureHandler.handle(asyncResult.getCause());
     }
+
+    @Override
+    public AsyncResult<T> getAsyncResult() {
+        return asyncResult;
+    }
 }

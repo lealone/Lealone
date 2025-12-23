@@ -28,8 +28,7 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         while (!loopEnd && pendingException == null) {
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
             executeLoopUpdate();
-            if (session.getStatus() == SessionStatus.STATEMENT_YIELDED
-                    || session.getStatus() == SessionStatus.WAITING) {
+            if (session.needYieldOrWait()) {
                 return;
             }
         }

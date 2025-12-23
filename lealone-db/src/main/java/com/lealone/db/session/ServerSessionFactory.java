@@ -33,17 +33,13 @@ public class ServerSessionFactory extends SessionFactoryBase {
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
         // 在嵌入模式下，如果当前线程不是调度器，则给它绑定一个
-        if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {
-            Scheduler scheduler;
+        if (ci.isEmbedded()) {
             SchedulerFactory schedulerFactory = SchedulerFactory.getDefaultSchedulerFactory();
             if (schedulerFactory == null) {
-                scheduler = EmbeddedScheduler.getScheduler(ci);
-                schedulerFactory = scheduler.getSchedulerFactory();
+                schedulerFactory = EmbeddedScheduler.getScheduler(ci).getSchedulerFactory();
             }
-            scheduler = SchedulerThread.currentScheduler(schedulerFactory);
-            if (scheduler == null) {
-                scheduler = schedulerFactory.getScheduler();
-            }
+            Scheduler scheduler = schedulerFactory.getScheduler();
+            SchedulerThread.bindScheduler(scheduler);
             ci.setScheduler(scheduler);
         }
         return Future.succeededFuture(createServerSession(ci));

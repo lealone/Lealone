@@ -6,7 +6,9 @@
 package com.lealone.sql;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.db.ManualCloseable;
 import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.command.CommandParameter;
@@ -88,6 +90,7 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final int sessionId;
         private Value[] parameterValues;
+        private volatile CountDownLatch latch;
 
         public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable,
                 int sessionId) {
@@ -128,6 +131,26 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
 
         public void stop() {
             yieldable.stop();
+        }
+
+        public void setLatch() {
+            latch = new CountDownLatch(1);
+        }
+
+        public void await() {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw DbException.convert(e);
+            } finally {
+                latch = null;
+            }
+        }
+
+        public void onComplete() {
+            if (latch != null) {
+                latch.countDown();
+            }
         }
     }
 }

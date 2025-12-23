@@ -151,4 +151,9 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
                 latch.countDown();
         }
     }
+
+    @Override
+    public AsyncResult<T> getAsyncResult() {
+        return asyncResult;
+    }
 }

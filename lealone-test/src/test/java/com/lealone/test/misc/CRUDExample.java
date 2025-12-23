@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 
@@ -24,23 +25,23 @@ import com.lealone.test.TestBase;
 
 public class CRUDExample {
 
+    public static final int BIO = 1;
+    public static final int NIO = 2;
+    public static final int EMBEDDED = 3;
+
     public static void main(String[] args) throws Exception {
-        crud();
+        // crud();
         // perf();
-        // startMultiThreads();
+
+        for (int i = 0; i < 300; i++) {
+            startMultiThreads(EMBEDDED, 16);
+        }
     }
 
     public static void crud() throws Exception {
-        Connection conn = null;
-
-        conn = getBioConnection();
-        crud(conn);
-
-        conn = getNioConnection();
-        crud(conn);
-
-        conn = getEmbeddedConnection();
-        crud(conn);
+        for (int i = BIO; i <= EMBEDDED; i++) {
+            crud(getConnection(i));
+        }
     }
 
     public static void perf() throws Exception {
@@ -55,6 +56,19 @@ public class CRUDExample {
             crud(conn, false);
             long t2 = System.currentTimeMillis();
             System.out.println("crud time: " + (t2 - t1) + " ms");
+        }
+    }
+
+    public static Connection getConnection(int type) throws Exception {
+        switch (type) {
+        case BIO:
+            return getBioConnection();
+        case NIO:
+            return getNioConnection();
+        case EMBEDDED:
+            return getEmbeddedConnection();
+        default:
+            throw new RuntimeException("Invalid type: " + type);
         }
     }
 
@@ -78,6 +92,7 @@ public class CRUDExample {
         TestBase test = new TestBase();
         test.setEmbedded(true);
         test.setInMemory(true);
+        test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 2);
         return test.getConnection(LealoneDatabase.NAME);
     }
 
@@ -146,7 +161,7 @@ public class CRUDExample {
             ps.addBatch();
         }
         ps.executeBatch();
-        // ps.close();
+        ps.close();
     }
 
     public static void asyncInsert(Statement stmt0) throws Exception {
@@ -184,23 +199,24 @@ public class CRUDExample {
         ps.close();
     }
 
-    public static void startMultiThreads() throws Exception {
-        Connection conn = getNioConnection();
+    public static void startMultiThreads(int type, int threadCount) throws Exception {
+        Connection conn = getConnection(type);
         Statement stmt = conn.createStatement();
         createTable(stmt);
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
         stmt.close();
         conn.close();
 
-        int count = 5;
-        CountDownLatch latch = new CountDownLatch(count);
-        for (int i = 1; i <= count; i++) {
+        AtomicInteger updateCount = new AtomicInteger();
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        for (int i = 1; i <= threadCount; i++) {
             ThreadUtils.start("CRUDExample-" + i, () -> {
                 try {
-                    Connection c = getNioConnection();
+                    Connection c = getConnection(type);
                     Statement s = c.createStatement();
-                    for (int j = 1; j <= count; j++) {
-                        s.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
+                    for (int j = 1; j <= threadCount; j++) {
+                        int uc = s.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
+                        updateCount.addAndGet(uc);
                     }
                     s.close();
                     c.close();
@@ -212,5 +228,6 @@ public class CRUDExample {
             });
         }
         latch.await();
+        System.out.println("startMultiThreads: update count: " + updateCount.get());
     }
 }

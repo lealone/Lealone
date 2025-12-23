@@ -20,9 +20,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
 
     protected Scheduler[] schedulers = new Scheduler[0];
 
-    protected final AtomicInteger bindIndex = new AtomicInteger();
-    protected Thread[] bindThreads = new Thread[0];
-
     protected SchedulerFactoryBase(Map<String, String> config, Scheduler[] schedulers) {
         super("SchedulerFactory");
         boolean embedded = false;
@@ -37,7 +34,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             scheduler.setSchedulerFactory(this);
         }
         this.schedulers = schedulers;
-        this.bindThreads = new Thread[schedulers.length];
         if (embedded) // 嵌入式场景自动启动调度器
             start();
     }
@@ -60,25 +56,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
     @Override
     public int getSchedulerCount() {
         return schedulers.length;
-    }
-
-    @Override
-    public Scheduler bindScheduler(Thread thread) {
-        int index = bindIndex.getAndIncrement();
-        if (index >= schedulers.length) {
-            synchronized (this) {
-                for (int i = 0; i < schedulers.length; i++) {
-                    if (!bindThreads[i].isAlive()) {
-                        bindThreads[i] = thread;
-                        return schedulers[i];
-                    }
-                }
-            }
-            // 如果不返回null的话，可以尝试动态增加新的调度线程的方案
-            return null;
-        }
-        bindThreads[index] = thread;
-        return schedulers[index];
     }
 
     @Override
@@ -105,8 +82,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             }
         }
         schedulers = new Scheduler[0];
-        bindThreads = new Thread[0];
-        bindIndex.set(0);
         super.stop();
     }
 

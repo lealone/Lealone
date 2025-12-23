@@ -654,12 +654,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             po.setSession(session);
             scheduler = session.getScheduler();
         } else {
-            scheduler = (InternalScheduler) SchedulerThread.currentScheduler(schedulerFactory);
-            if (scheduler == null) {
-                // 如果不是调度线程且现有的调度线程都绑定完了，需要委派给一个调度线程去执行
-                scheduler = (InternalScheduler) schedulerFactory.getScheduler();
-                return handlePageOperation(scheduler, po);
-            }
+            scheduler = (InternalScheduler) SchedulerThread.bindScheduler(schedulerFactory);
         }
         // 第一步: 先快速试3次，如果不成功再转到第二步
         int maxRetryCount = 3;

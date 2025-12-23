@@ -1032,13 +1032,16 @@ public class Database extends DbObjectBase implements DataHandler {
     }
 
     private void setSessionScheduler(ServerSession session, InternalScheduler scheduler) {
+        ConnectionInfo ci = session.getConnectionInfo();
         if (scheduler == null) {
-            scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
+            if (ci != null)
+                scheduler = (InternalScheduler) ci.getScheduler();
+            if (scheduler == null)
+                scheduler = (InternalScheduler) SchedulerThread.currentScheduler();
             if (scheduler == null)
                 DbException.throwInternalError();
         }
         session.setScheduler(scheduler);
-        ConnectionInfo ci = session.getConnectionInfo();
         if (ci == null || ci.isEmbedded())
             scheduler.addSession(session);
     }

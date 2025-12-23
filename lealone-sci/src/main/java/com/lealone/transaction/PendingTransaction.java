@@ -36,7 +36,7 @@ public class PendingTransaction extends LinkableBase<PendingTransaction> {
     private final Object redoLogRecord;
 
     private final long logId;
-    private CountDownLatch latch;
+    private volatile CountDownLatch latch;
     private volatile boolean synced;
     private boolean completed;
 
