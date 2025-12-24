@@ -262,7 +262,12 @@ public class GlobalScheduler extends InternalSchedulerBase {
                 runMiscTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {
-                    break;
+                    if (ac != null) {
+                        runEventLoop();
+                        continue;
+                    } else {
+                        return;
+                    }
                 }
             }
             try {

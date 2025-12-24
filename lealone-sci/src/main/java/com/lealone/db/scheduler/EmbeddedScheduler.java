@@ -263,7 +263,12 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
                 runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
                 if (c == null) {
-                    break;
+                    if (ac != null) {
+                        doAwait();
+                        continue;
+                    } else {
+                        return;
+                    }
                 }
             }
             try {
