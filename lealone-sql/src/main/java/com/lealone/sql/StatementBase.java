@@ -17,11 +17,9 @@ import com.lealone.db.api.DatabaseEventListener;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncResultHandler;
-import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
-import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
@@ -535,39 +533,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        submitTask(yieldable, null, ac);
+        setYieldableCommand(yieldable, null);
         return ac;
     }
 
-    private void submitTask(YieldableBase<?> yieldable, Value[] parameterValues, AsyncCallback<?> ac) {
+    private void setYieldableCommand(YieldableBase<?> yieldable, Value[] parameterValues) {
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
         // 不能把参数值提前设置，因为批量操作时，如果提前设置了会覆盖前面的，只能等到执行YieldableCommand时设置
         if (parameterValues != null)
             c.setParameterValues(parameterValues);
-        // 嵌入式场景可以立刻执行
-        if (session.getScheduler().isEmbedded() && session.getYieldableCommand() == null) {
-            int maxRetryCount = 3;
-            while (true) {
-                c.run();
-                if (ac.getAsyncResult() != null)
-                    return;
-                if (session.needYieldOrWait() || --maxRetryCount == 0) {
-                    if (Thread.currentThread() instanceof SchedulerThread) {
-                        session.setYieldableCommand(c);
-                        return;
-                    }
-                    c.setLatch();
-                    session.setYieldableCommand(c);
-                    session.getScheduler().wakeUp();
-                    c.await();
-                    return;
-                }
-            }
-        } else {
-            AsyncTask task = () -> session.setYieldableCommand(c);
-            session.getSessionInfo().submitTask(task);
-            session.getScheduler().wakeUp();
-        }
+        session.setYieldableCommand(c);
     }
 
     @Override
@@ -585,7 +560,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        submitTask(yieldable, parameterValues, ac);
+        setYieldableCommand(yieldable, parameterValues);
         return ac;
     }
 

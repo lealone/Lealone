@@ -189,20 +189,15 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
         return defaultSchedulerFactory;
     }
 
-    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
-            Map<String, String> config) {
-        if (SchedulerFactoryBase.getDefaultSchedulerFactory() == null)
-            initDefaultSchedulerFactory(schedulerClassName, config);
-        return SchedulerFactoryBase.getDefaultSchedulerFactory();
-    }
-
-    public static synchronized SchedulerFactory initDefaultSchedulerFactory(String schedulerClassName,
-            Map<String, String> config) {
+    public static SchedulerFactory getSchedulerFactory(Class<? extends Scheduler> schedulerClass,
+            Map<String, String> config, boolean startFactory) {
         SchedulerFactory schedulerFactory = SchedulerFactoryBase.getDefaultSchedulerFactory();
         if (schedulerFactory == null) {
-            schedulerFactory = createSchedulerFactory(schedulerClassName, config);
+            schedulerFactory = createSchedulerFactory(schedulerClass.getName(), config);
             SchedulerFactoryBase.setDefaultSchedulerFactory(schedulerFactory);
         }
+        if (startFactory && !schedulerFactory.isStarted())
+            schedulerFactory.start();
         return schedulerFactory;
     }
 
@@ -214,7 +209,7 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             schedulerFactory = PluginManager.getPlugin(SchedulerFactory.class, sf);
         } else {
             Scheduler[] schedulers = createSchedulers(schedulerClassName, config);
-            schedulerFactory = SchedulerFactory.create(config, schedulers);
+            schedulerFactory = SchedulerFactoryBase.create(config, schedulers);
         }
         if (!schedulerFactory.isInited())
             schedulerFactory.init(config);
@@ -228,15 +223,6 @@ public abstract class SchedulerFactoryBase extends PluginBase implements Schedul
             schedulers[i] = Utils.newInstance(schedulerClassName, i, schedulerCount, config);
         }
         return schedulers;
-    }
-
-    public static Scheduler getScheduler(String schedulerClassName, ConnectionInfo ci) {
-        Scheduler scheduler = ci.getScheduler();
-        if (scheduler == null) {
-            SchedulerFactory sf = getDefaultSchedulerFactory(schedulerClassName, ci.getConfig());
-            scheduler = getScheduler(sf, ci);
-        }
-        return scheduler;
     }
 
     public static Scheduler getScheduler(SchedulerFactory sf, ConnectionInfo ci) {

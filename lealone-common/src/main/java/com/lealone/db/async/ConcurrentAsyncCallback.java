@@ -58,13 +58,13 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
 
     @Override
     protected T await(long timeoutMillis) {
-        Scheduler scheduler = SchedulerThread.currentScheduler();
-        if (scheduler != null) {
-            while (true) {
-                scheduler.executeNextStatement();
-                if (asyncResult != null)
-                    break;
-            }
+        if (asyncResult != null)
+            return getResult(asyncResult);
+        Thread t = Thread.currentThread();
+        if (t instanceof SchedulerThread) {
+            Scheduler scheduler = ((SchedulerThread) t).getScheduler();
+            scheduler.await(this, timeoutMillis);
+            return getResult(asyncResult);
         }
         if (latchObjectRef.compareAndSet(null, new LatchObject(new CountDownLatch(1)))) {
             CountDownLatch latch = latchObjectRef.get().latch;
@@ -88,10 +88,7 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
             else
                 return null;
         } else {
-            if (asyncResult.isFailed())
-                throw DbException.convert(asyncResult.getCause());
-            else
-                return asyncResult.getResult();
+            return getResult(asyncResult);
         }
     }
 

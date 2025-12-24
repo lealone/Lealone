@@ -8,6 +8,8 @@ package com.lealone.db.scheduler;
 import java.nio.channels.Selector;
 
 import com.lealone.common.logging.Logger;
+import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncTaskHandler;
 import com.lealone.db.session.Session;
 import com.lealone.net.NetBuffer;
@@ -45,6 +47,8 @@ public interface Scheduler extends AsyncTaskHandler, Runnable {
     boolean isStopped();
 
     void wakeUp();
+
+    <T> AsyncResult<T> await(AsyncCallback<T> ac, long timeoutMillis);
 
     Session getCurrentSession();
 

@@ -39,31 +39,15 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
     protected T await(long timeoutMillis) {
         // 使用阻塞IO时已经有结果就不需要等了
         if (asyncResult != null)
-            return getResult0();
-        Scheduler scheduler = SchedulerThread.currentScheduler();
-        if (scheduler != null) {
-            scheduler.executeNextStatement();
-            // 如果被锁住了，需要重试
-            if (asyncResult == null) {
-                while (asyncResult == null) {
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                    }
-                    scheduler.executeNextStatement();
-                }
-            }
-            return getResult0();
+            return getResult(asyncResult);
+        Thread t = Thread.currentThread();
+        if (t instanceof SchedulerThread) {
+            Scheduler scheduler = ((SchedulerThread) t).getScheduler();
+            scheduler.await(this, timeoutMillis);
+            return getResult(asyncResult);
         } else {
             throw DbException.getInternalError();
         }
-    }
-
-    private T getResult0() {
-        if (asyncResult.isSucceeded())
-            return asyncResult.getResult();
-        else
-            throw DbException.convert(asyncResult.getCause());
     }
 
     @Override

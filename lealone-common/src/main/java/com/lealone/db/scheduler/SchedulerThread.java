@@ -63,14 +63,7 @@ public class SchedulerThread extends Thread {
         }
     }
 
-    public static void bindScheduler(Scheduler scheduler) {
-        if (!(Thread.currentThread() instanceof SchedulerThread)) {
-            threadLocal.set(scheduler);
-        }
-    }
-
     public static boolean isScheduler() {
-        return Thread.currentThread() instanceof SchedulerThread
-                || threadLocal.get() instanceof Scheduler;
+        return Thread.currentThread() instanceof SchedulerThread;
     }
 }

@@ -104,6 +104,13 @@ public abstract class AsyncCallback<T> implements Future<T> {
         networkTimeout = 0;
     }
 
+    public T getResult(AsyncResult<T> asyncResult) {
+        if (asyncResult.isSucceeded())
+            return asyncResult.getResult();
+        else
+            throw DbException.convert(asyncResult.getCause());
+    }
+
     public static <T> AsyncCallback<T> createSingleThreadCallback() {
         return new SingleThreadAsyncCallback<>();
     }

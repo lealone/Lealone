@@ -12,7 +12,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.RunMode;
+import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncPeriodicTask;
+import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.link.LinkableList;
 import com.lealone.db.session.Session;
@@ -114,6 +116,11 @@ public abstract class SchedulerBase implements Scheduler {
 
     @Override
     public void wakeUp() {
+    }
+
+    @Override
+    public <T> AsyncResult<T> await(AsyncCallback<T> ac, long timeoutMillis) {
+        return ac.getAsyncResult();
     }
 
     @Override

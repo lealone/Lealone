@@ -34,6 +34,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncResultHandler;
+import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.auth.User;
 import com.lealone.db.command.Command;
@@ -44,6 +45,7 @@ import com.lealone.db.lock.Lock;
 import com.lealone.db.result.Result;
 import com.lealone.db.scheduler.InternalScheduler;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.table.Table;
 import com.lealone.db.util.ExpiringMap;
@@ -589,13 +591,8 @@ public class ServerSession extends SessionBase implements InternalSession {
             beforeCommit();
             transaction.asyncCommit(() -> {
                 commitFinal();
-                try {
-                    if (asyncHandler != null)
-                        asyncHandler.handle(asyncResult);
-                } finally {
-                    // 调用完回调函数后再调用它，绑定嵌入式调度器的线程可能在等待
-                    endYieldableCommand();
-                }
+                if (asyncHandler != null)
+                    asyncHandler.handle(asyncResult);
             });
         } else {
             // 包含子查询的场景
@@ -609,7 +606,6 @@ public class ServerSession extends SessionBase implements InternalSession {
             beforeCommit();
             transaction.commit();
             commitFinal();
-            endYieldableCommand();
         }
     }
 
@@ -638,15 +634,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         wakeUpWaitingSchedulers();
         transactionStart = 0;
         transaction = null;
-    }
-
-    private void endYieldableCommand() {
-        YieldableCommand yc = yieldableCommand;
-        yieldableCommand = null; // 先置null再调用onComplete，否则有并发问题
-        if (yc != null) {
-            yc.onComplete();
-            yc = null;
-        }
     }
 
     private void unlinkLob(HashMap<String, ValueLob> lobMap) {
@@ -689,6 +676,7 @@ public class ServerSession extends SessionBase implements InternalSession {
         unlockAll(true);
         clean();
         endTransaction();
+        endYieldableCommand();
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -1372,7 +1360,17 @@ public class ServerSession extends SessionBase implements InternalSession {
         this.scheduler = (InternalScheduler) scheduler;
     }
 
-    private YieldableCommand yieldableCommand;
+    @Override
+    public <T> void execute(AsyncCallback<T> ac, AsyncTask task) {
+        getSessionInfo().submitTask(task);
+        scheduler.wakeUp();
+    }
+
+    private volatile YieldableCommand yieldableCommand;
+
+    private void endYieldableCommand() {
+        yieldableCommand = null;
+    }
 
     @Override
     public void setYieldableCommand(YieldableCommand yieldableCommand) {
@@ -1700,16 +1698,12 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public <T> AsyncCallback<T> createCallback() {
-        return AsyncCallback.createSingleThreadCallback();
-        // if (SchedulerThread.isScheduler()) {
-        // // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
-        // return AsyncCallback.createSingleThreadCallback();
-        // } else {
-        // if (connectionInfo != null)
-        // return AsyncCallback.create(connectionInfo.isSingleThreadCallback());
-        // else
-        // return AsyncCallback.createConcurrentCallback();
-        // }
+        if (SchedulerThread.isScheduler()) {
+            // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
+            return AsyncCallback.createSingleThreadCallback();
+        } else {
+            return AsyncCallback.createConcurrentCallback();
+        }
     }
 
     @Override

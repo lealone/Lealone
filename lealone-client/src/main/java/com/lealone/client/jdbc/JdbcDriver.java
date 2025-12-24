@@ -179,7 +179,7 @@ public class JdbcDriver implements java.sql.Driver {
     }
 
     public static Future<JdbcConnection> getConnection(ConnectionInfo ci) {
-        AsyncCallback<JdbcConnection> ac = AsyncCallback.create(ci.isEmbedded());
+        AsyncCallback<JdbcConnection> ac = AsyncCallback.createConcurrentCallback();
         try {
             ci.getSessionFactory().createSession(ci).onComplete(ar -> {
                 if (ar.isSucceeded()) {

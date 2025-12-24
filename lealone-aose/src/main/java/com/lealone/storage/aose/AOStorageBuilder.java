@@ -52,7 +52,7 @@ public class AOStorageBuilder extends StorageBuilder {
                 config.put(e.getKey(), e.getValue().toString());
             }
             config.put("embedded", "true");
-            sf = SchedulerFactory.initDefaultSchedulerFactory(EmbeddedScheduler.class.getName(), config);
+            sf = SchedulerFactory.getSchedulerFactory(EmbeddedScheduler.class, config);
         }
         // 嵌入模式下打开新的Storage，如果EmbeddedScheduler没启动则自动启动
         if (!sf.isStarted() && sf.getSchedulerCount() > 0

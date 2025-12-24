@@ -218,7 +218,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
         }
         t.setScheduler(scheduler);
         TransactionManager tm;
-        if (!scheduler.isEmbedded()) {
+        if (SchedulerThread.isScheduler()) {
             tm = transactionManagers[scheduler.getId()];
         } else {
             tm = transactionManagers[transactionManagers.length - 1];
@@ -270,7 +270,7 @@ public class AOTransactionEngine extends TransactionEngineBase implements Storag
     private void initServices() {
         SchedulerFactory sf = SchedulerFactory.getDefaultSchedulerFactory();
         if (sf == null) {
-            sf = SchedulerFactory.initDefaultSchedulerFactory(EmbeddedScheduler.class.getName(), config);
+            sf = SchedulerFactory.getSchedulerFactory(EmbeddedScheduler.class, config);
         }
         schedulerFactory = sf;
         int schedulerCount = schedulerFactory.getSchedulerCount();

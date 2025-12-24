@@ -163,10 +163,9 @@ public class Lealone {
 
             // 2. 初始化
             long t2 = System.currentTimeMillis();
-            String schedulerName = embedded ? EmbeddedScheduler.class.getName()
-                    : GlobalScheduler.class.getName();
-            SchedulerFactory schedulerFactory = SchedulerFactory
-                    .initDefaultSchedulerFactory(schedulerName, config.scheduler.parameters);
+            SchedulerFactory schedulerFactory = SchedulerFactory.getSchedulerFactory(
+                    embedded ? EmbeddedScheduler.class : GlobalScheduler.class,
+                    config.scheduler.parameters, false);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
             beforeInit();

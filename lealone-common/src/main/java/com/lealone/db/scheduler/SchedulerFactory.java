@@ -19,29 +19,17 @@ public interface SchedulerFactory extends Plugin {
 
     int getSchedulerCount();
 
-    public static SchedulerFactory create(Map<String, String> config) {
-        return create(config, null);
-    }
-
-    public static SchedulerFactory create(Map<String, String> config, Scheduler[] schedulers) {
-        return SchedulerFactoryBase.create(config, schedulers);
-    }
-
-    public static void setDefaultSchedulerFactory(SchedulerFactory defaultSchedulerFactory) {
-        SchedulerFactoryBase.setDefaultSchedulerFactory(defaultSchedulerFactory);
-    }
-
     public static SchedulerFactory getDefaultSchedulerFactory() {
         return SchedulerFactoryBase.getDefaultSchedulerFactory();
     }
 
-    public static SchedulerFactory getDefaultSchedulerFactory(String schedulerClassName,
+    public static SchedulerFactory getSchedulerFactory(Class<? extends Scheduler> schedulerClass,
             Map<String, String> config) {
-        return SchedulerFactoryBase.getDefaultSchedulerFactory(schedulerClassName, config);
+        return getSchedulerFactory(schedulerClass, config, true);
     }
 
-    public static SchedulerFactory initDefaultSchedulerFactory(String schedulerClassName,
-            Map<String, String> config) {
-        return SchedulerFactoryBase.initDefaultSchedulerFactory(schedulerClassName, config);
+    public static SchedulerFactory getSchedulerFactory(Class<? extends Scheduler> schedulerClass,
+            Map<String, String> config, boolean startFactory) {
+        return SchedulerFactoryBase.getSchedulerFactory(schedulerClass, config, startFactory);
     }
 }

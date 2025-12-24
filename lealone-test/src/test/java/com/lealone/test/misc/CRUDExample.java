@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,7 +35,7 @@ public class CRUDExample {
         // perf();
 
         for (int i = 0; i < 300; i++) {
-            startMultiThreads(EMBEDDED, 16);
+            startMultiThreads(EMBEDDED, 48);
         }
     }
 
@@ -210,14 +211,15 @@ public class CRUDExample {
         AtomicInteger updateCount = new AtomicInteger();
         CountDownLatch latch = new CountDownLatch(threadCount);
         for (int i = 1; i <= threadCount; i++) {
+            // int index = i;
             ThreadUtils.start("CRUDExample-" + i, () -> {
                 try {
                     Connection c = getConnection(type);
-                    Statement s = c.createStatement();
-                    for (int j = 1; j <= threadCount; j++) {
-                        int uc = s.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
-                        updateCount.addAndGet(uc);
-                    }
+                    JdbcStatement s = (JdbcStatement) c.createStatement();
+                    // if (index % 2 == 0)
+                    executeUpdate(s, threadCount, updateCount);
+                    // else
+                    // executeUpdateAsync(s, threadCount, updateCount);
                     s.close();
                     c.close();
                 } catch (Exception e) {
@@ -229,5 +231,34 @@ public class CRUDExample {
         }
         latch.await();
         System.out.println("startMultiThreads: update count: " + updateCount.get());
+    }
+
+    public static final AtomicInteger id = new AtomicInteger(1);
+
+    public static void executeUpdate(JdbcStatement s, int threadCount, AtomicInteger updateCount)
+            throws SQLException {
+        for (int j = 1; j <= threadCount; j++) {
+            String sql = "UPDATE test SET f2 = 2 WHERE f1 = 1";
+            // String sql = "INSERT INTO test(f1, f2) VALUES(" + id.incrementAndGet() + ", 1)";
+            int uc = s.executeUpdate(sql);
+            updateCount.addAndGet(uc);
+        }
+    }
+
+    public static void executeUpdateAsync(JdbcStatement s, int threadCount, AtomicInteger updateCount)
+            throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        for (int j = 1; j <= threadCount; j++) {
+            String sql = "UPDATE test SET f2 = 2 WHERE f1 = 1";
+            s.executeUpdateAsync(sql).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    updateCount.addAndGet(ar.getResult());
+                } else {
+                    ar.getCause().printStackTrace();
+                }
+                latch.countDown();
+            });
+        }
+        latch.await();
     }
 }

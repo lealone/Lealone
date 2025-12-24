@@ -13,7 +13,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
-import com.lealone.db.ConnectionInfo;
+import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.AsyncResult;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.session.InternalSession;
 import com.lealone.db.session.Session;
@@ -176,12 +177,11 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
                 return;
             }
             if (!tasks.isEmpty()) {
-                AsyncTask task = tasks.poll();
-                while (task != null) {
+                AsyncTask task;
+                while ((task = tasks.poll()) != null) {
                     runTask(task);
                     if (session.getYieldableCommand() != null)
                         break;
-                    task = tasks.poll();
                 }
             }
         }
@@ -227,10 +227,20 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         }
     }
 
+    @Override
+    public <T> AsyncResult<T> await(AsyncCallback<T> ac, long timeoutMillis) {
+        executeNextStatement(ac);
+        return ac.getAsyncResult();
+    }
+
     // --------------------- 实现 SQLStatement 相关的代码 ---------------------
 
     @Override
     public void executeNextStatement() {
+        executeNextStatement(null);
+    }
+
+    private void executeNextStatement(AsyncCallback<?> ac) {
         int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;
         while (true) {
@@ -242,7 +252,6 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
                 c = getNextBestCommand(null, priority, true);
             }
             if (c == null) {
-                runMiscTasks();
                 runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
             }
@@ -260,6 +269,10 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
             try {
                 currentSession = c.getSession();
                 c.run();
+
+                if (ac != null && ac.getAsyncResult() != null) {
+                    return;
+                }
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {
                     runPageOperationTasks();
@@ -314,9 +327,5 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
             }
         }
         return best;
-    }
-
-    public static Scheduler getScheduler(ConnectionInfo ci) {
-        return SchedulerFactoryBase.getScheduler(EmbeddedScheduler.class.getName(), ci);
     }
 }
