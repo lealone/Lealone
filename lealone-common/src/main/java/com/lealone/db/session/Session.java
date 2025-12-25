@@ -157,13 +157,7 @@ public interface Session extends Closeable {
     <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler);
 
-    void setSingleThreadCallback(boolean singleThreadCallback);
-
-    boolean isSingleThreadCallback();
-
     <T> AsyncCallback<T> createCallback();
-
-    <T> AsyncCallback<T> createSingleThreadCallback();
 
     default boolean isBio() {
         return false;

@@ -28,7 +28,6 @@ public class AutoReconnectSession extends DelegatedSession {
     private void reconnect() {
         // 重连的线程不是Scheduler时重置ConnectionInfo
         if (SchedulerThread.currentScheduler() == null) {
-            ci.setSingleThreadCallback(false);
             ci.setScheduler(null);
         }
         ci.getSessionFactory().createSession(ci).onSuccess(s -> {

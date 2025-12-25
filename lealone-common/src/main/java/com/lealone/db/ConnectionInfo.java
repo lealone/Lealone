@@ -745,7 +745,6 @@ public class ConnectionInfo implements Cloneable {
         ci.netFactoryName = netFactoryName;
         ci.networkTimeout = networkTimeout;
         ci.traceEnabled = traceEnabled;
-        ci.singleThreadCallback = singleThreadCallback;
         ci.scheduler = scheduler;
         return ci;
     }
@@ -787,16 +786,6 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isServiceConnection() {
         return isServiceConnection;
-    }
-
-    private boolean singleThreadCallback;
-
-    public boolean isSingleThreadCallback() {
-        return singleThreadCallback;
-    }
-
-    public void setSingleThreadCallback(boolean singleThreadCallback) {
-        this.singleThreadCallback = singleThreadCallback;
     }
 
     private int databaseId = -1;

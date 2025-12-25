@@ -163,23 +163,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setSingleThreadCallback(boolean singleThreadCallback) {
-        session.setSingleThreadCallback(singleThreadCallback);
-    }
-
-    @Override
-    public boolean isSingleThreadCallback() {
-        return session.isSingleThreadCallback();
-    }
-
-    @Override
     public <T> AsyncCallback<T> createCallback() {
         return session.createCallback();
-    }
-
-    @Override
-    public <T> AsyncCallback<T> createSingleThreadCallback() {
-        return session.createSingleThreadCallback();
     }
 
     @Override

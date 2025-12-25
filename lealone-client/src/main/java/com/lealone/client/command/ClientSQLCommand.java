@@ -14,7 +14,6 @@ import com.lealone.client.result.RowCountDeterminedClientResult;
 import com.lealone.client.result.RowCountUndeterminedClientResult;
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.command.SQLCommand;
@@ -149,23 +148,12 @@ public class ClientSQLCommand implements SQLCommand {
         return sql;
     }
 
-    public AsyncCallback<int[]> executeBatchSQLCommands(List<String> batchCommands) {
-        AsyncCallback<int[]> ac = session.createSingleThreadCallback();
+    public Future<int[]> executeBatchSQLCommands(List<String> batchCommands) {
         commandId = session.getNextId();
-        try {
-            Future<BatchStatementUpdateAck> f = session
-                    .send(new BatchStatementUpdate(batchCommands.size(), batchCommands), commandId);
-            f.onComplete(ar -> {
-                if (ar.isSucceeded()) {
-                    ac.setAsyncResult(ar.getResult().results);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-        } catch (Exception e) {
-            ac.setAsyncResult(e);
-        }
-        return ac;
+        return session.<int[], BatchStatementUpdateAck> send(
+                new BatchStatementUpdate(batchCommands.size(), batchCommands), commandId, ack -> {
+                    return ack.results;
+                });
     }
 
     protected static <T> Future<T> failedFuture(Throwable t) {

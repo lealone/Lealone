@@ -1688,22 +1688,8 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     @Override
-    public void setSingleThreadCallback(boolean singleThreadCallback) {
-    }
-
-    @Override
-    public boolean isSingleThreadCallback() {
-        return true;
-    }
-
-    @Override
     public <T> AsyncCallback<T> createCallback() {
-        if (SchedulerThread.isScheduler()) {
-            // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
-            return AsyncCallback.createSingleThreadCallback();
-        } else {
-            return AsyncCallback.createConcurrentCallback();
-        }
+        return AsyncCallback.create(SchedulerThread.isScheduler());
     }
 
     @Override

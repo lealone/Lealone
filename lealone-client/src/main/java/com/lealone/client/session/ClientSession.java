@@ -341,21 +341,9 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         tcpConnection.removeAsyncCallback(packetId);
     }
 
-    private boolean singleThreadCallback;
-
-    @Override
-    public void setSingleThreadCallback(boolean singleThreadCallback) {
-        this.singleThreadCallback = singleThreadCallback;
-    }
-
-    @Override
-    public boolean isSingleThreadCallback() {
-        return singleThreadCallback;
-    }
-
     @Override
     public <T> AsyncCallback<T> createCallback() {
-        return AsyncCallback.create(singleThreadCallback);
+        return AsyncCallback.create(isBio() || SchedulerThread.isScheduler());
     }
 
     @Override

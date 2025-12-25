@@ -31,11 +31,11 @@ public class CRUDExample {
     public static final int EMBEDDED = 3;
 
     public static void main(String[] args) throws Exception {
-        // crud();
+        crud();
         // perf();
 
         for (int i = 0; i < 300; i++) {
-            startMultiThreads(EMBEDDED, 48);
+            // startMultiThreads(EMBEDDED, 48);
         }
     }
 

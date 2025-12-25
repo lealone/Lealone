@@ -20,8 +20,6 @@ import com.lealone.db.DbSetting;
 import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
-import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.storage.fs.FileUtils;
 
 public abstract class SessionBase implements Session {
@@ -198,14 +196,5 @@ public abstract class SessionBase implements Session {
     @Override
     public SessionInfo getSessionInfo() {
         return si;
-    }
-
-    @Override
-    public <T> AsyncCallback<T> createSingleThreadCallback() {
-        if (DbException.ASSERT) {
-            DbException.assertTrue(
-                    getScheduler() == null || getScheduler() == SchedulerThread.currentScheduler());
-        }
-        return AsyncCallback.createSingleThreadCallback();
     }
 }

@@ -16,6 +16,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionFactoryBase;
 import com.lealone.net.AsyncConnection;
@@ -48,7 +49,6 @@ public class ClientSessionFactory extends SessionFactoryBase {
         if (netFactory.isBio()) {
             ac = AsyncCallback.create(true);
             netClient = netFactory.createNetClient();
-            ci.setSingleThreadCallback(true);
             createSession(ci, allowRedirect, ac, config, netClient);
         } else {
             Scheduler scheduler = ci.getScheduler();
@@ -56,7 +56,7 @@ public class ClientSessionFactory extends SessionFactoryBase {
                 scheduler = ClientScheduler.getScheduler(ci, config);
             NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
             netClient = eventLoop.getNetClient();
-            ac = AsyncCallback.create(ci.isSingleThreadCallback());
+            ac = AsyncCallback.create(SchedulerThread.isScheduler());
             // 让调度线程负责创建session
             scheduler.handle(() -> {
                 createSession(ci, allowRedirect, ac, config, netClient);
@@ -130,7 +130,6 @@ public class ClientSessionFactory extends SessionFactoryBase {
                 // 这样就能在同一条TCP连接中区分不同的客户端session了
                 int sessionId = tcpConnection.getNextId();
                 ClientSession clientSession = new ClientSession(tcpConnection, ci, server, sessionId);
-                clientSession.setSingleThreadCallback(ci.isSingleThreadCallback());
                 tcpConnection.addSession(sessionId, clientSession);
                 if (ci.getScheduler() != null) {
                     clientSession.setScheduler(ci.getScheduler());
