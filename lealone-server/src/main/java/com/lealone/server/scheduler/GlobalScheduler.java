@@ -28,7 +28,6 @@ import com.lealone.db.session.Session;
 import com.lealone.db.session.SessionInfo;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.NetFactory;
-import com.lealone.net.nio.NioNetFactory;
 import com.lealone.server.AsyncServerManager;
 import com.lealone.sql.PreparedSQLStatement;
 import com.lealone.sql.PreparedSQLStatement.YieldableCommand;
@@ -53,7 +52,7 @@ public class GlobalScheduler extends InternalSchedulerBase {
 
     public GlobalScheduler(int id, int schedulerCount, Map<String, String> config) {
         super(id, "ScheduleService-" + id, schedulerCount, config);
-        netEventLoop = NetFactory.getFactory(config, NioNetFactory.NAME).createNetEventLoop(this,
+        netEventLoop = NetFactory.getFactory(config, NetFactory.NIO).createNetEventLoop(this,
                 loopInterval);
     }
 

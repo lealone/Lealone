@@ -10,6 +10,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 
+import com.lealone.db.DataBuffer;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.AsyncConnection;
@@ -30,31 +31,54 @@ public class NioNetClient extends NetClientBase {
         private int maxSharedSize;
     }
 
+    private final boolean block;
+
+    public NioNetClient(boolean block) {
+        this.block = block;
+    }
+
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node, //
             AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,
             Scheduler scheduler) {
         SocketChannel channel = null;
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
-        NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         try {
             channel = SocketChannel.open();
-            channel.configureBlocking(false);
+            channel.configureBlocking(block);
             initSocket(channel.socket(), config);
 
-            ConnectionAttachment attachment = new ConnectionAttachment();
-            attachment.connectionManager = connectionManager;
-            attachment.inetSocketAddress = inetSocketAddress;
-            attachment.ac = ac;
-            attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
-
-            channel.register(eventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
-            channel.connect(inetSocketAddress);
-            // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
-            // 否则两次删除SelectionKey会出现java.util.ConcurrentModificationException
-            if (!eventLoop.isInLoop()) {
-                if (eventLoop.getSelector().selectNow() > 0) {
-                    eventLoop.handleSelectedKeys();
+            if (block) {
+                channel.connect(inetSocketAddress);
+                NioWritableChannel writableChannel = new NioWritableChannel(scheduler, channel);
+                AsyncConnection conn;
+                if (connectionManager != null) {
+                    conn = connectionManager.createConnection(writableChannel, false, scheduler);
+                } else {
+                    NetBuffer inBuffer = new NetBuffer(DataBuffer.createDirect());
+                    NetBuffer outBuffer = new NetBuffer(DataBuffer.createDirect());
+                    conn = new TcpClientConnection(writableChannel, this, 1, inBuffer, outBuffer);
+                    writableChannel.setInputBuffer(inBuffer);
+                }
+                writableChannel.setAsyncConnection(conn);
+                conn.setInetSocketAddress(inetSocketAddress);
+                addConnection(inetSocketAddress, conn);
+                ac.setAsyncResult(conn);
+            } else {
+                NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
+                ConnectionAttachment attachment = new ConnectionAttachment();
+                attachment.connectionManager = connectionManager;
+                attachment.inetSocketAddress = inetSocketAddress;
+                attachment.ac = ac;
+                attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
+                channel.register(eventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
+                channel.connect(inetSocketAddress);
+                // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
+                // 否则两次删除SelectionKey会出现java.util.ConcurrentModificationException
+                if (!eventLoop.isInLoop()) {
+                    if (eventLoop.getSelector().selectNow() > 0) {
+                        eventLoop.handleSelectedKeys();
+                    }
                 }
             }
         } catch (Exception e) {

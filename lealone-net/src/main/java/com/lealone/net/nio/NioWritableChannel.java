@@ -8,12 +8,15 @@ package com.lealone.net.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
 import java.util.List;
 
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.net.AsyncConnection;
+import com.lealone.net.NetBuffer;
 import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
@@ -30,8 +33,14 @@ public class NioWritableChannel implements WritableChannel {
     private final SocketChannel channel;
     private SelectionKey selectionKey; // 注册成功了才设置
 
+    private AsyncConnection conn;
+    private NetBuffer inputBuffer;
+
     public NioWritableChannel(Scheduler scheduler, SocketChannel channel) throws IOException {
-        this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
+        if (scheduler == null)
+            this.eventLoop = null;
+        else
+            this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         this.channel = channel;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
@@ -51,6 +60,14 @@ public class NioWritableChannel implements WritableChannel {
             localHost = "";
             localPort = -1;
         }
+    }
+
+    public void setAsyncConnection(AsyncConnection conn) {
+        this.conn = conn;
+    }
+
+    public void setInputBuffer(NetBuffer inputBuffer) {
+        this.inputBuffer = inputBuffer;
     }
 
     @Override
@@ -110,19 +127,68 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public void close() {
-        eventLoop.closeChannel(this);
-        selectionKey = null;
-        recycleBuffers(buffers);
+        if (eventLoop != null) {
+            eventLoop.closeChannel(this);
+            selectionKey = null;
+            recycleBuffers(buffers);
+        } else {
+            NioEventLoop.closeChannelSilently(this);
+            conn = null;
+            inputBuffer = null;
+        }
     }
 
     @Override
     public void read() {
-        throw new UnsupportedOperationException("read");
+        if (conn.isClosed())
+            return;
+        try {
+            ByteBuffer buffer = inputBuffer.getByteBuffer();
+            int packetLengthByteCount = conn.getPacketLengthByteCount();
+            buffer.limit(packetLengthByteCount);
+            channel.read(buffer);
+            buffer.flip();
+            int packetLength = conn.getPacketLength(buffer);
+            buffer.flip();
+            buffer.limit(packetLength);
+            channel.read(buffer);
+            buffer.flip();
+            conn.handle(inputBuffer, false);
+        } catch (Exception e) {
+            conn.handleException(e);
+            NioEventLoop.closeChannelSilently(this);
+        } finally {
+            inputBuffer.recycle();
+        }
     }
 
     @Override
     public void write(WritableBuffer buffer) {
-        eventLoop.write(this, buffer);
+        if (eventLoop != null) {
+            eventLoop.write(this, buffer);
+        } else {
+            if (conn.isClosed())
+                return;
+            ByteBuffer bb = buffer.getByteBuffer();
+            int remaining = bb.remaining();
+            try {
+                // 一定要用while循环来写，否则会丢数据！
+                while (remaining > 0) {
+                    long written = channel.write(bb);
+                    remaining -= written;
+                }
+            } catch (Exception e) {
+                conn.handleException(e);
+                NioEventLoop.closeChannelSilently(this);
+            } finally {
+                buffer.recycle();
+            }
+        }
+    }
+
+    @Override
+    public boolean isBio() {
+        return eventLoop == null;
     }
 
     public static void recycleBuffers(List<WritableBuffer> buffers) {

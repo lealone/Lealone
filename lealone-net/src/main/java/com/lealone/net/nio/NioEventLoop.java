@@ -26,6 +26,7 @@ import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.SystemPropertyUtils;
+import com.lealone.db.ConnectionSetting;
 import com.lealone.db.DataBuffer;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
@@ -35,7 +36,6 @@ import com.lealone.net.NetBuffer.WritableBuffer;
 import com.lealone.net.NetClient;
 import com.lealone.net.NetEventLoop;
 import com.lealone.net.WritableChannel;
-import com.lealone.net.bio.BioWritableChannel;
 import com.lealone.server.ProtocolServer;
 
 public class NioEventLoop implements NetEventLoop {
@@ -67,7 +67,7 @@ public class NioEventLoop implements NetEventLoop {
         this.loopInterval = loopInterval;
         // 设置过大会占用内存，有可能影响GC暂停时间
         maxPacketCountPerLoop = MapUtils.getInt(config, "max_packet_count_per_loop", 8);
-        maxPacketSize = BioWritableChannel.getMaxPacketSize(config);
+        maxPacketSize = getMaxPacketSize(config);
         preferBatchWrite = MapUtils.getBoolean(config, "prefer_batch_write", true);
 
         isLoggerEnabled = SystemPropertyUtils.getBoolean("client_logger_enabled", true);
@@ -240,7 +240,7 @@ public class NioEventLoop implements NetEventLoop {
                 }
                 if (remaining >= packetLength) {
                     int nextPos = buffer.position() + packetLength;
-                    BioWritableChannel.checkPacketLength(maxPacketSize, packetLength);
+                    checkPacketLength(maxPacketSize, packetLength);
                     conn.handle(inputBuffer, false);
                     // 如果没有完整读完一个包，直接跳过剩余的
                     if (buffer.position() != nextPos)
@@ -559,6 +559,16 @@ public class NioEventLoop implements NetEventLoop {
             } catch (Throwable e) {
             }
         }
+    }
+
+    public static int getMaxPacketSize(Map<String, String> config) {
+        return MapUtils.getInt(config, ConnectionSetting.MAX_PACKET_SIZE.name(), 16 * 1024 * 1024);
+    }
+
+    public static void checkPacketLength(int maxPacketSize, int packetLength) throws IOException {
+        if (packetLength > maxPacketSize)
+            throw new IOException(
+                    "Packet too large, maxPacketSize: " + maxPacketSize + ", receive: " + packetLength);
     }
 
     @Override

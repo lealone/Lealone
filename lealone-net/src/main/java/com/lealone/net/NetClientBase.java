@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.db.ConnectionSetting;
+import com.lealone.db.Constants;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.scheduler.Scheduler;
@@ -138,5 +139,9 @@ public abstract class NetClientBase implements NetClient {
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
         socket.setReuseAddress(true);
+
+        int networkTimeout = MapUtils.getInt(config, ConnectionSetting.NETWORK_TIMEOUT.name(),
+                Constants.DEFAULT_NETWORK_TIMEOUT);
+        socket.setSoTimeout(networkTimeout);
     }
 }

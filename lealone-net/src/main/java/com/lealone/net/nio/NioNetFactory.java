@@ -7,21 +7,29 @@ package com.lealone.net.nio;
 
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.NetClient;
+import com.lealone.net.NetFactory;
 import com.lealone.net.NetFactoryBase;
 import com.lealone.net.NetServer;
 
 public class NioNetFactory extends NetFactoryBase {
 
-    public static final String NAME = "nio";
-    public static final NioNetFactory INSTANCE = new NioNetFactory();
+    public static final NioNetFactory NIO = new NioNetFactory(false);
+    public static final NioNetFactory BIO = new NioNetFactory(true);
+
+    private final boolean block;
 
     public NioNetFactory() {
-        super(NAME);
+        this(false);
+    }
+
+    public NioNetFactory(boolean block) {
+        super(NetFactory.NIO);
+        this.block = block;
     }
 
     @Override
     public NetClient createNetClient() {
-        return new NioNetClient();
+        return new NioNetClient(block);
     }
 
     @Override
@@ -32,5 +40,10 @@ public class NioNetFactory extends NetFactoryBase {
     @Override
     public NioEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval) {
         return new NioEventLoop(scheduler, loopInterval, config);
+    }
+
+    @Override
+    public boolean isBio() {
+        return block;
     }
 }

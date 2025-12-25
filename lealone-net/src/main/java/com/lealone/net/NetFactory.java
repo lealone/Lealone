@@ -14,10 +14,12 @@ import com.lealone.db.Constants;
 import com.lealone.db.plugin.Plugin;
 import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.scheduler.Scheduler;
-import com.lealone.net.bio.BioNetFactory;
 import com.lealone.net.nio.NioNetFactory;
 
 public interface NetFactory extends Plugin {
+
+    public static final String NIO = "nio";
+    public static final String BIO = "bio";
 
     NetServer createNetServer();
 
@@ -33,10 +35,10 @@ public interface NetFactory extends Plugin {
 
     public static NetFactory getFactory(String name) {
         NetFactory factory;
-        if (NioNetFactory.NAME.equalsIgnoreCase(name))
-            factory = NioNetFactory.INSTANCE;
-        else if (BioNetFactory.NAME.equalsIgnoreCase(name))
-            factory = BioNetFactory.INSTANCE;
+        if (NIO.equalsIgnoreCase(name))
+            factory = NioNetFactory.NIO;
+        else if (BIO.equalsIgnoreCase(name))
+            factory = NioNetFactory.BIO;
         else
             factory = PluginManager.getPlugin(NetFactory.class, name);
         return factory;
