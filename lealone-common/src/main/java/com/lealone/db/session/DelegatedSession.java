@@ -120,6 +120,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void runModeChanged(String newTargetNodes, String deadNodes, String writableNodes) {
+        session.runModeChanged(newTargetNodes, deadNodes, writableNodes);
+    }
+
+    @Override
     public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
         return session.getTrace(traceModuleType, traceObjectType);
     }
@@ -146,8 +151,33 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void setConnectionInfo(ConnectionInfo ci) {
+        session.setConnectionInfo(ci);
+    }
+
+    @Override
     public ConnectionInfo getConnectionInfo() {
         return session.getConnectionInfo();
+    }
+
+    @Override
+    public void setProtocolVersion(int version) {
+        session.setProtocolVersion(version);
+    }
+
+    @Override
+    public int getProtocolVersion() {
+        return session.getProtocolVersion();
+    }
+
+    @Override
+    public <P extends AckPacket> Future<P> send(Packet packet) {
+        return session.send(packet);
+    }
+
+    @Override
+    public <P extends AckPacket> Future<P> send(Packet packet, int packetId) {
+        return session.send(packet, packetId);
     }
 
     @Override
@@ -160,21 +190,6 @@ public class DelegatedSession implements Session {
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         return session.send(packet, packetId, ackPacketHandler);
-    }
-
-    @Override
-    public <T> AsyncCallback<T> createCallback() {
-        return session.createCallback();
-    }
-
-    @Override
-    public boolean isBio() {
-        return session.isBio();
-    }
-
-    @Override
-    public <T> void execute(AsyncCallback<T> ac, AsyncTask task) {
-        session.execute(ac, task);
     }
 
     @Override
@@ -195,5 +210,50 @@ public class DelegatedSession implements Session {
     @Override
     public SessionInfo getSessionInfo() {
         return session.getSessionInfo();
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback() {
+        return session.createCallback();
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback(boolean async) {
+        return session.createCallback(async);
+    }
+
+    @Override
+    public boolean isShared() {
+        return session.isShared();
+    }
+
+    @Override
+    public boolean isBio() {
+        return session.isBio();
+    }
+
+    @Override
+    public void toBio() {
+        session.toBio();
+    }
+
+    @Override
+    public void toNio() {
+        session.toNio();
+    }
+
+    @Override
+    public boolean isServer() {
+        return session.isServer();
+    }
+
+    @Override
+    public void executeInScheduler(AsyncTask task) {
+        session.executeInScheduler(task);
+    }
+
+    @Override
+    public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
+        session.execute(async, ac, task);
     }
 }

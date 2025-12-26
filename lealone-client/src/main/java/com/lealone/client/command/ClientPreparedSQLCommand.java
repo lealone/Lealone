@@ -116,9 +116,12 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId) {
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId,
+            Value[] parameterValues) {
+        if (parameterValues == null)
+            parameterValues = getValues();
         Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId,
-                getValues());
+                parameterValues);
         return session.<Result, StatementQueryAck> send(packet, ack -> {
             return getQueryResult(ack, fetch, resultId);
         });
@@ -126,8 +129,13 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     @Override
     public Future<Integer> executeUpdate() {
+        return executeUpdate(getValues());
+    }
+
+    @Override
+    public Future<Integer> executeUpdate(Value[] parameterValues) {
         try {
-            Packet packet = new PreparedStatementUpdate(commandId, getValues());
+            Packet packet = new PreparedStatementUpdate(commandId, parameterValues);
             // 如果不给send方法传递packetId，它会自己创建一个，所以这里的调用是安全的
             return session.<Integer, StatementUpdateAck> send(packet, ack -> {
                 return ack.updateCount;

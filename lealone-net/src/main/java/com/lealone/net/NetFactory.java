@@ -29,19 +29,10 @@ public interface NetFactory extends Plugin {
         return null;
     }
 
-    default boolean isBio() {
-        return false;
-    }
-
-    public static NetFactory getFactory(String name) {
-        NetFactory factory;
-        if (NIO.equalsIgnoreCase(name))
-            factory = NioNetFactory.NIO;
-        else if (BIO.equalsIgnoreCase(name))
-            factory = NioNetFactory.BIO;
-        else
-            factory = PluginManager.getPlugin(NetFactory.class, name);
-        return factory;
+    public static boolean isBio(Map<String, String> config) {
+        String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
+                Constants.DEFAULT_NET_FACTORY_NAME);
+        return BIO.equalsIgnoreCase(netFactoryName);
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
@@ -49,9 +40,19 @@ public interface NetFactory extends Plugin {
     }
 
     public static NetFactory getFactory(Map<String, String> config, String defaultFactoryName) {
+        AsyncConnectionPool.setMaxExclusiveSize(config);
+        if (AsyncConnectionPool.isExceededMaxExclusiveSize()) {
+            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), NetFactory.NIO);
+            config.put(ConnectionSetting.IS_SHARED.name(), "true");
+        }
         String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
                 defaultFactoryName);
-        NetFactory factory = getFactory(netFactoryName);
+        NetFactory factory;
+        // nio和bio都用NioNetFactory实现
+        if (NIO.equalsIgnoreCase(netFactoryName) || BIO.equalsIgnoreCase(netFactoryName))
+            factory = NioNetFactory.INSTANCE;
+        else
+            factory = PluginManager.getPlugin(NetFactory.class, netFactoryName);
         if (factory == null) {
             throw new ConfigException("NetFactory '" + netFactoryName + "' can not found");
         }

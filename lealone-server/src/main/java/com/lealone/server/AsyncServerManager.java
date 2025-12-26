@@ -91,6 +91,7 @@ public class AsyncServerManager {
         }
     }
 
+    // 注册和轮询TOP_ACCEPT事件的线程必需是同一个，否则会有很诡异的问题
     public static void runRegisterAccepterTasks(Scheduler currentScheduler) {
         RegisterAccepterTask[] tasks = registerAccepterTasks;
         for (int i = 0; i < tasks.length; i++) {

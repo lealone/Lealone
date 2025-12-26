@@ -13,23 +13,15 @@ import com.lealone.net.NetServer;
 
 public class NioNetFactory extends NetFactoryBase {
 
-    public static final NioNetFactory NIO = new NioNetFactory(false);
-    public static final NioNetFactory BIO = new NioNetFactory(true);
-
-    private final boolean block;
+    public static final NioNetFactory INSTANCE = new NioNetFactory();
 
     public NioNetFactory() {
-        this(false);
-    }
-
-    public NioNetFactory(boolean block) {
         super(NetFactory.NIO);
-        this.block = block;
     }
 
     @Override
     public NetClient createNetClient() {
-        return new NioNetClient(block);
+        return new NioNetClient();
     }
 
     @Override
@@ -40,10 +32,5 @@ public class NioNetFactory extends NetFactoryBase {
     @Override
     public NioEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval) {
         return new NioEventLoop(scheduler, loopInterval, config);
-    }
-
-    @Override
-    public boolean isBio() {
-        return block;
     }
 }

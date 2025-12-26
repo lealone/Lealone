@@ -23,7 +23,7 @@ public abstract class TransferConnection extends AsyncConnection {
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
 
     protected final TransferInputStream in;
-    protected final TransferOutputStream out;
+    protected TransferOutputStream out;
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         this(writableChannel, isServer, null, null);
@@ -45,6 +45,11 @@ public abstract class TransferConnection extends AsyncConnection {
         // 没有读完一个包时会对全局buffer调用一次slice，此时生成一个新的buffer
         in.setBuffer(buffer);
         return in;
+    }
+
+    public TransferOutputStream resetTransferOutputStream(NetBuffer outBuffer) {
+        out = createTransferOutputStream(outBuffer);
+        return out;
     }
 
     public TransferOutputStream getTransferOutputStream() {

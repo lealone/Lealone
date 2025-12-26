@@ -7,6 +7,7 @@ package com.lealone.net.nio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -29,19 +30,18 @@ public class NioWritableChannel implements WritableChannel {
     private final int localPort;
 
     private final LinkedList<WritableBuffer> buffers = new LinkedList<>();
-    private final NetEventLoop eventLoop;
     private final SocketChannel channel;
+    private NetEventLoop eventLoop;
     private SelectionKey selectionKey; // 注册成功了才设置
 
     private AsyncConnection conn;
     private NetBuffer inputBuffer;
+    private boolean closed;
 
     public NioWritableChannel(Scheduler scheduler, SocketChannel channel) throws IOException {
-        if (scheduler == null)
-            this.eventLoop = null;
-        else
-            this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         this.channel = channel;
+        if (scheduler != null)
+            this.eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
             InetSocketAddress address = (InetSocketAddress) sa;
@@ -111,6 +111,11 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public void setEventLoop(NetEventLoop eventLoop) {
+        this.eventLoop = eventLoop;
+    }
+
+    @Override
     public void setSelectionKey(SelectionKey selectionKey) {
         this.selectionKey = selectionKey;
     }
@@ -122,19 +127,28 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public boolean isClosed() {
-        return selectionKey == null;
+        return closed;
     }
 
     @Override
     public void close() {
+        if (closed)
+            return;
+        closed = true;
         if (eventLoop != null) {
             eventLoop.closeChannel(this);
             selectionKey = null;
             recycleBuffers(buffers);
         } else {
-            NioEventLoop.closeChannelSilently(this);
             conn = null;
             inputBuffer = null;
+            Socket socket = channel.socket();
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (Throwable e) {
+                }
+            }
         }
     }
 
@@ -150,13 +164,15 @@ public class NioWritableChannel implements WritableChannel {
             buffer.flip();
             int packetLength = conn.getPacketLength(buffer);
             buffer.flip();
+            if (packetLength > buffer.capacity())
+                buffer = inputBuffer.getDataBuffer().growCapacity(packetLength);
             buffer.limit(packetLength);
             channel.read(buffer);
             buffer.flip();
             conn.handle(inputBuffer, false);
         } catch (Exception e) {
             conn.handleException(e);
-            NioEventLoop.closeChannelSilently(this);
+            close();
         } finally {
             inputBuffer.recycle();
         }
@@ -179,7 +195,7 @@ public class NioWritableChannel implements WritableChannel {
                 }
             } catch (Exception e) {
                 conn.handleException(e);
-                NioEventLoop.closeChannelSilently(this);
+                close();
             } finally {
                 buffer.recycle();
             }

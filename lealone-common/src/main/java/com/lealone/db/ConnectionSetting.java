@@ -17,6 +17,7 @@ public enum ConnectionSetting {
 
     IS_SHARED,
     MAX_SHARED_SIZE,
+    MAX_EXCLUSIVE_SIZE,
     SOCKET_RECV_BUFFER_SIZE,
     SOCKET_SEND_BUFFER_SIZE,
     MAX_PACKET_SIZE,

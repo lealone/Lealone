@@ -8,26 +8,31 @@ package com.lealone.client.session;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import com.lealone.client.ClientScheduler;
 import com.lealone.client.command.ClientPreparedSQLCommand;
 import com.lealone.client.command.ClientSQLCommand;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
 import com.lealone.common.trace.TraceModuleType;
 import com.lealone.db.ConnectionInfo;
+import com.lealone.db.DataBuffer;
 import com.lealone.db.DataHandler;
 import com.lealone.db.DbSetting;
 import com.lealone.db.LocalDataHandler;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.async.SingleThreadAsyncCallback;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.SessionBase;
+import com.lealone.net.NetBuffer;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.TransferOutputStream;
+import com.lealone.net.nio.NioEventLoop;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -61,8 +66,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final LocalDataHandler dataHandler;
     private final Trace trace;
 
-    private final boolean isBio;
-    private final TransferOutputStream out; // 如果是阻塞io，输出流的buffer可以复用
+    private TransferOutputStream out; // 如果是阻塞io，输出流的buffer可以复用
+    private boolean isBio;
 
     ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, int id) {
         this.tcpConnection = tcpConnection;
@@ -92,7 +97,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     public int getNextId() {
-        checkClosed();
         return tcpConnection.getNextId();
     }
 
@@ -163,7 +167,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     public void handleException(Throwable e) {
-        checkClosed();
         if (e instanceof DbException)
             throw (DbException) e;
         throw DbException.convert(e);
@@ -171,7 +174,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public SQLCommand createSQLCommand(String sql, int fetchSize, boolean prepared) {
-        checkClosed();
         if (prepared)
             return new ClientPreparedSQLCommand(this, sql, fetchSize);
         else
@@ -183,7 +185,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         if (isClosed())
             return;
         AsyncCallback<Void> ac = createCallback();
-        execute(ac, () -> {
+        execute(false, ac, () -> {
             Throwable closeError = null;
             try {
                 // 只有当前Session有效时服务器端才持有对应的session
@@ -244,7 +246,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             int length) {
         try {
             AsyncCallback<Integer> ac = createCallback();
-            execute(ac, () -> {
+            execute(false, ac, () -> {
                 LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
                 if (ack.buff != null && ack.buff.length > 0) {
                     System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
@@ -304,7 +306,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             ac = null;
         }
         try {
-            checkClosed();
             out.writeRequestHeader(this, packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
@@ -347,8 +348,73 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     }
 
     @Override
+    public <T> AsyncCallback<T> createCallback(boolean async) {
+        if (SchedulerThread.isScheduler())
+            return AsyncCallback.createSingleThreadCallback();
+        else if (isShared() || async)
+            return AsyncCallback.createConcurrentCallback();
+        else
+            return AsyncCallback.createSingleThreadCallback();
+    }
+
+    @Override
+    public boolean isShared() {
+        return tcpConnection.isShared();
+    }
+
+    @Override
     public boolean isBio() {
         return isBio;
+    }
+
+    @Override
+    public void toBio() {
+        try {
+            isBio = true;
+            Scheduler scheduler = getScheduler();
+            scheduler.removeSession(this);
+            NioEventLoop eventLoop = (NioEventLoop) scheduler.getNetEventLoop();
+            eventLoop.deregister(tcpConnection);
+            tcpConnection.getWritableChannel().getSocketChannel().configureBlocking(true);
+            tcpConnection.getWritableChannel().setEventLoop(null);
+            out = tcpConnection.resetTransferOutputStream(new NetBuffer(DataBuffer.createDirect()));
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
+    public void toNio() {
+        try {
+            isBio = false;
+            tcpConnection.getWritableChannel().getSocketChannel().configureBlocking(false);
+            Scheduler scheduler = getScheduler();
+            if (scheduler == null) {
+                scheduler = ClientScheduler.getScheduler(ci, ci.getConfig());
+                setScheduler(scheduler);
+            }
+            scheduler.addSession(this);
+            NioEventLoop eventLoop = (NioEventLoop) scheduler.getNetEventLoop();
+            tcpConnection.getWritableChannel().setEventLoop(eventLoop);
+            out = tcpConnection.resetTransferOutputStream(scheduler.getOutputBuffer());
+
+            // 注册和轮询OP_READ事件的线程必需是同一个，否则会有很诡异的问题，比如可能读不到数据
+            getSessionInfo().submitTask(() -> {
+                eventLoop.register(tcpConnection);
+            });
+            scheduler.wakeUp();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
+    public void executeInScheduler(AsyncTask task) {
+        if (isBio()) {
+            toNio();
+        }
+        getSessionInfo().submitTask(task);
+        getScheduler().wakeUp();
     }
 
     private Scheduler scheduler;

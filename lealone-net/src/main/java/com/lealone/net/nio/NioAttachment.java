@@ -10,7 +10,7 @@ import com.lealone.net.NetBuffer;
 
 public class NioAttachment {
 
-    public final AsyncConnection conn;
+    final AsyncConnection conn;
     NetBuffer inBuffer;
     int packetLength = 0;
 

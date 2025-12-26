@@ -81,6 +81,7 @@ public class CRUDExample {
     public static Connection getNioConnection() throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NetFactory.NIO);
+        test.addConnectionParameter(ConnectionSetting.IS_SHARED, false);
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
         test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
@@ -102,8 +103,8 @@ public class CRUDExample {
 
     public static void crud(Connection conn, boolean print) throws Exception {
         Statement stmt = conn.createStatement();
-        crud(stmt, print);
-        // asyncInsert(stmt);
+        // crud(stmt, print);
+        asyncInsert(stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn, stmt);
         // batchDelete(stmt);

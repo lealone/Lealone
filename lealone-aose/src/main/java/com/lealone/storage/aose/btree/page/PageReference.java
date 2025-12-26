@@ -251,10 +251,15 @@ public class PageReference implements IPageReference {
                     // 如果是被垃圾收集过了，这时不能替换锁，直接返回新的记录重试即可
                     Lockable lockable = (Lockable) value;
                     if (ret == 2) {
-                        Lock old = lockable.getLock();
-                        lockable.setLock(page.getRef().getLock());
-                        if (old != null)
-                            old.unlockFast();
+                        Lock oldLock = lockable.getLock();
+                        Lock newLock = page.getRef().getLock();
+                        if (newLock.isPageLock()) {
+                            oldLock.setPageListener(newLock.getPageListener());
+                        } else {
+                            lockable.setLock(newLock);
+                            if (oldLock != null)
+                                oldLock.unlockFast();
+                        }
                     } else {
                         lockable.getLock().setPageListener(page.getRef().getPageListener());
                     }

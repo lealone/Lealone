@@ -18,6 +18,7 @@ import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.result.Result;
+import com.lealone.db.value.Value;
 import com.lealone.net.TransferInputStream;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.batch.BatchStatementUpdate;
@@ -48,6 +49,11 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
+    public String getSQL() {
+        return sql;
+    }
+
+    @Override
     public int getFetchSize() {
         return fetchSize;
     }
@@ -73,7 +79,7 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable, Value[] parameterValues) {
         try {
             isQuery = true;
             int fetch;
@@ -83,13 +89,14 @@ public class ClientSQLCommand implements SQLCommand {
                 fetch = fetchSize;
             }
             int resultId = session.getNextId();
-            return query(maxRows, scrollable, fetch, resultId);
+            return query(maxRows, scrollable, fetch, resultId, parameterValues);
         } catch (Throwable t) {
             return failedFuture(t);
         }
     }
 
-    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId) {
+    protected Future<Result> query(int maxRows, boolean scrollable, int fetch, int resultId,
+            Value[] parameterValues) {
         int packetId = commandId = session.getNextId();
         Packet packet = new StatementQuery(resultId, maxRows, fetch, scrollable, sql);
         return session.<Result, StatementQueryAck> send(packet, packetId, ack -> {
@@ -126,6 +133,11 @@ public class ClientSQLCommand implements SQLCommand {
         } catch (Throwable t) {
             return failedFuture(t);
         }
+    }
+
+    @Override
+    public Future<Integer> executeUpdate(Value[] parameterValues) {
+        throw DbException.getInternalError();
     }
 
     @Override

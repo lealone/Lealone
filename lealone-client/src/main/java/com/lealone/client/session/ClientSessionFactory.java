@@ -43,19 +43,18 @@ public class ClientSessionFactory extends SessionFactoryBase {
             DbException.assertTrue(ci.isRemote());
         }
         AsyncCallback<Session> ac;
-        NetClient netClient;
         CaseInsensitiveMap<String> config = ci.getConfig();
-        NetFactory netFactory = NetFactory.getFactory(config);
-        if (netFactory.isBio()) {
+        if (NetFactory.isBio(config)) {
             ac = AsyncCallback.create(true);
-            netClient = netFactory.createNetClient();
+            NetFactory netFactory = NetFactory.getFactory(config);
+            NetClient netClient = netFactory.createNetClient();
             createSession(ci, allowRedirect, ac, config, netClient);
         } else {
             Scheduler scheduler = ci.getScheduler();
             if (scheduler == null)
                 scheduler = ClientScheduler.getScheduler(ci, config);
             NetEventLoop eventLoop = (NetEventLoop) scheduler.getNetEventLoop();
-            netClient = eventLoop.getNetClient();
+            NetClient netClient = eventLoop.getNetClient();
             ac = AsyncCallback.create(SchedulerThread.isScheduler());
             // 让调度线程负责创建session
             scheduler.handle(() -> {

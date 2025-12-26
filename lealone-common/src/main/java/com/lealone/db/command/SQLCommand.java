@@ -13,6 +13,8 @@ import com.lealone.db.value.Value;
 
 public interface SQLCommand extends Command {
 
+    String getSQL();
+
     int getFetchSize();
 
     void setFetchSize(int fetchSize);
@@ -45,7 +47,7 @@ public interface SQLCommand extends Command {
      * @return the result
      */
     default Future<Result> executeQuery(int maxRows) {
-        return executeQuery(maxRows, false);
+        return executeQuery(maxRows, false, null);
     }
 
     /**
@@ -55,7 +57,11 @@ public interface SQLCommand extends Command {
      * @param scrollable if the result set must be scrollable
      * @return the result
      */
-    Future<Result> executeQuery(int maxRows, boolean scrollable);
+    default Future<Result> executeQuery(int maxRows, boolean scrollable) {
+        return executeQuery(maxRows, scrollable, null);
+    }
+
+    Future<Result> executeQuery(int maxRows, boolean scrollable, Value[] parameterValues);
 
     /**
      * Execute the update command
@@ -64,9 +70,7 @@ public interface SQLCommand extends Command {
      */
     Future<Integer> executeUpdate();
 
-    default Future<Integer> executeUpdate(Value[] parameterValues) {
-        return executeUpdate();
-    }
+    Future<Integer> executeUpdate(Value[] parameterValues);
 
     Future<Boolean> prepare(boolean readParams);
 }

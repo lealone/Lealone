@@ -168,6 +168,9 @@ public class TcpClientConnection extends TransferConnection {
 
     @Override
     public void checkTimeout(long currentTime) {
+        // 处于阻塞io状态下时不需要调度器检查，否则会有java.util.ConcurrentModificationException
+        if (getWritableChannel().isBio())
+            return;
         for (AsyncCallback<?> ac : callbackMap.values()) {
             ac.checkTimeout(currentTime);
         }
@@ -175,7 +178,7 @@ public class TcpClientConnection extends TransferConnection {
 
     @Override
     public boolean isShared() {
-        return true;
+        return maxSharedSize > 1;
     }
 
     @Override

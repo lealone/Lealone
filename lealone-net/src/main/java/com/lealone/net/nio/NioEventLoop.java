@@ -145,6 +145,21 @@ public class NioEventLoop implements NetEventLoop {
     }
 
     @Override
+    public void deregister(AsyncConnection conn) {
+        WritableChannel channel = conn.getWritableChannel();
+        channels.remove(channel);
+        try {
+            SelectionKey key = channel.getSelectionKey();
+            if (key.isValid() && (key.interestOps() & SelectionKey.OP_READ) != 0) {
+                key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
+            }
+            key.cancel();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
     public void addChannel(WritableChannel channel) {
         channels.put(channel, channel);
     }
@@ -340,7 +355,8 @@ public class NioEventLoop implements NetEventLoop {
             return;
         }
         boolean writeImmediately;
-        if (channel.getBuffers().size() > maxPacketCountPerLoop) {
+        int size = channel.getBuffers().size();
+        if (size > maxPacketCountPerLoop) {
             channel.addBuffer(buffer);
             batchWrite(channel);
             return;
@@ -350,6 +366,11 @@ public class NioEventLoop implements NetEventLoop {
             writeImmediately = !preferBatchWrite;
         }
         if (writeImmediately) {
+            if (size > 0) { // 前面可能攒了一批
+                channel.addBuffer(buffer);
+                batchWrite(channel);
+                return;
+            }
             SelectionKey key = channel.getSelectionKey();
             if (key != null && key.isValid()) {
                 if (write(key, channel.getSocketChannel(), buffer))

@@ -19,6 +19,7 @@ import com.lealone.net.AsyncConnectionPool;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.NetClientBase;
 import com.lealone.net.NetEventLoop;
+import com.lealone.net.NetFactory;
 import com.lealone.net.NetNode;
 import com.lealone.net.TcpClientConnection;
 
@@ -31,18 +32,13 @@ public class NioNetClient extends NetClientBase {
         private int maxSharedSize;
     }
 
-    private final boolean block;
-
-    public NioNetClient(boolean block) {
-        this.block = block;
-    }
-
     @Override
     protected void createConnectionInternal(Map<String, String> config, NetNode node, //
             AsyncConnectionManager connectionManager, AsyncCallback<AsyncConnection> ac,
             Scheduler scheduler) {
         SocketChannel channel = null;
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
+        boolean block = NetFactory.isBio(config);
         try {
             channel = SocketChannel.open();
             channel.configureBlocking(block);
@@ -50,7 +46,7 @@ public class NioNetClient extends NetClientBase {
 
             if (block) {
                 channel.connect(inetSocketAddress);
-                NioWritableChannel writableChannel = new NioWritableChannel(scheduler, channel);
+                NioWritableChannel writableChannel = new NioWritableChannel(null, channel);
                 AsyncConnection conn;
                 if (connectionManager != null) {
                     conn = connectionManager.createConnection(writableChannel, false, scheduler);
@@ -100,11 +96,21 @@ public class NioNetClient extends NetClientBase {
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);
             } else {
-                NetBuffer inBuffer = scheduler.getInputBuffer();
-                NetBuffer outBuffer = scheduler.getOutputBuffer();
+                NetBuffer inBuffer;
+                NetBuffer outBuffer;
+                // 共享连接用scheduler的
+                if (attachment.maxSharedSize > 1) {
+                    inBuffer = scheduler.getInputBuffer();
+                    outBuffer = scheduler.getOutputBuffer();
+                } else {
+                    inBuffer = new NetBuffer(DataBuffer.createDirect());
+                    outBuffer = new NetBuffer(DataBuffer.createDirect());
+                }
                 conn = new TcpClientConnection(writableChannel, this, attachment.maxSharedSize, inBuffer,
                         outBuffer);
+                writableChannel.setInputBuffer(inBuffer);
             }
+            writableChannel.setAsyncConnection(conn);
             eventLoop.addChannel(writableChannel);
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             addConnection(attachment.inetSocketAddress, conn);

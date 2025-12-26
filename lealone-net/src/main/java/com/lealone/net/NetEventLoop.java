@@ -27,6 +27,8 @@ public interface NetEventLoop {
 
     void register(AsyncConnection conn);
 
+    void deregister(AsyncConnection conn);
+
     void wakeUp();
 
     void addChannel(WritableChannel channel);

@@ -8,11 +8,41 @@ package com.lealone.net;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionSetting;
 
 public class AsyncConnectionPool {
+
+    private static final AtomicInteger exclusiveSize = new AtomicInteger();
+    private static int maxExclusiveSize;
+
+    public static boolean isExceededMaxExclusiveSize() {
+        return exclusiveSize.get() > maxExclusiveSize;
+    }
+
+    public static void incrementExclusiveSize() {
+        exclusiveSize.incrementAndGet();
+    }
+
+    public static void decrementExclusiveSize() {
+        exclusiveSize.decrementAndGet();
+    }
+
+    public static int getMaxExclusiveSize() {
+        return maxExclusiveSize;
+    }
+
+    public static void setMaxExclusiveSize(int maxExclusiveSize) {
+        AsyncConnectionPool.maxExclusiveSize = maxExclusiveSize;
+    }
+
+    public static void setMaxExclusiveSize(Map<String, String> config) {
+        AsyncConnectionPool.maxExclusiveSize = MapUtils.getInt(config,
+                ConnectionSetting.MAX_EXCLUSIVE_SIZE.name(),
+                Runtime.getRuntime().availableProcessors() * 10);
+    }
 
     private final List<AsyncConnection> list = new ArrayList<>();
 
@@ -52,10 +82,14 @@ public class AsyncConnectionPool {
     }
 
     public void addConnection(AsyncConnection conn) {
+        if (!conn.isShared())
+            incrementExclusiveSize();
         list.add(conn);
     }
 
     public void removeConnection(AsyncConnection conn) {
+        if (!conn.isShared())
+            decrementExclusiveSize();
         list.remove(conn);
     }
 
@@ -65,6 +99,8 @@ public class AsyncConnectionPool {
 
     public void close() {
         for (AsyncConnection c : list) {
+            if (!c.isShared())
+                decrementExclusiveSize();
             try {
                 c.close();
             } catch (Throwable e) {
@@ -87,7 +123,7 @@ public class AsyncConnectionPool {
     }
 
     public static boolean isShared(Map<String, String> config) {
-        // 为null时默认是共享模式
-        return MapUtils.getBoolean(config, ConnectionSetting.IS_SHARED.name(), true);
+        // 为null时默认是独享模式
+        return MapUtils.getBoolean(config, ConnectionSetting.IS_SHARED.name(), false);
     }
 }

@@ -37,7 +37,7 @@ import com.lealone.db.session.Session;
 public class JdbcStatement extends JdbcWrapper implements Statement {
 
     protected JdbcConnection conn;
-    protected final Session session;
+    protected Session session;
     protected final int resultSetType;
     protected final int resultSetConcurrency;
     protected final boolean closedByResultSet;
@@ -81,7 +81,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private JdbcFuture<ResultSet> executeQueryInternal(String sql, boolean async) {
-        return conn.executeAsyncTask(ac -> {
+        return conn.executeJdbcTask(async, this, ac -> {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign(TraceObjectType.RESULT_SET, id,
@@ -216,15 +216,15 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         if (isDebugEnabled()) {
             debugCodeCall("executeUpdateAsync", sql);
         }
-        return executeUpdateInternal(sql).getFuture();
+        return executeUpdateInternal(sql, true).getFuture();
     }
 
     private int executeUpdateSync(String sql) throws SQLException {
-        return executeUpdateInternal(sql).get();
+        return executeUpdateInternal(sql, false).get();
     }
 
-    private JdbcFuture<Integer> executeUpdateInternal(String sql) {
-        return conn.executeAsyncTask(ac -> {
+    private JdbcFuture<Integer> executeUpdateInternal(String sql, boolean async) {
+        return conn.executeJdbcTask(async, this, ac -> {
             SQLCommand command = createSQLCommand(sql, false);
             command.executeUpdate().onComplete(ar -> {
                 setExecutingStatement(null);
@@ -320,15 +320,15 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private boolean executeInternal(String sql) throws SQLException {
-        return executeAsyncInternal(sql).get().booleanValue();
+        return executeInternal(sql, false).get().booleanValue();
     }
 
     public Future<Boolean> executeAsync(String sql) {
         debugCodeCall("executeAsync", sql);
-        return executeAsyncInternal(sql);
+        return executeInternal(sql, true);
     }
 
-    private Future<Boolean> executeAsyncInternal(String sql) {
+    private Future<Boolean> executeInternal(String sql, boolean async) {
         // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
         // 想在客户端区分哪些sql是查询还是更新语句比较困难，还不如让服务器端来做
         // if (sql != null) {
@@ -352,7 +352,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         // }
         // }
         // }
-        return conn.<Boolean> executeAsyncTask(ac -> {
+        return conn.<Boolean> executeJdbcTask(async, this, ac -> {
             SQLCommand command = createSQLCommand(sql, true);
             command.prepare(false).onComplete(ar -> {
                 if (ar.isSucceeded())
@@ -478,7 +478,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     @Override
     public int[] executeBatch() throws SQLException {
-        return conn.<int[]> executeAsyncTask(ac -> {
+        return conn.<int[]> executeJdbcTask(false, this, ac -> {
             debugCodeCall("executeBatch");
             checkAndClose();
             if (batchCommands == null || batchCommands.isEmpty()) {
@@ -550,6 +550,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             closeOldResultSet();
             if (conn != null) {
                 conn = null;
+                session = null;
             }
         } catch (Exception e) {
             throw logAndConvert(e);

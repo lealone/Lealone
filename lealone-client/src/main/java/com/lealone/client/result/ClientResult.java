@@ -177,7 +177,7 @@ public abstract class ClientResult implements Result {
 
     protected void fetchAndReadRows(int fetchSize) {
         AsyncCallback<Void> ac = session.createCallback();
-        session.execute(ac, () -> {
+        session.execute(false, ac, () -> {
             // 在调度线程中运行，总是线程安全的
             // 让客户端的调度线程负责从输入流中读取结果集
             session.<Void, ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize), ack -> {

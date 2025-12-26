@@ -524,7 +524,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable, Value[] parameterValues) {
         AsyncCallback<Result> ac = session.createCallback();
         YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
@@ -533,7 +533,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        setYieldableCommand(yieldable, null);
+        setYieldableCommand(yieldable, parameterValues);
         return ac;
     }
 

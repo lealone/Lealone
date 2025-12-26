@@ -289,7 +289,7 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
         ps.setInt(1, 2);
         ps.setLong(2, 2);
         ps.executeUpdateAsync().onComplete(res -> {
-            System.out.println("updateCount: " + res.getResult());
+            assertEquals(1, res.getResult().intValue());
             latch.countDown();
         });
         latch.await();
@@ -298,10 +298,15 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
         ps = (JdbcPreparedStatement) conn.prepareStatement("SELECT * FROM test where f2 = ?");
         ps.setLong(1, 2);
         ResultSet rs = ps.executeQuery();
+        AtomicInteger count = new AtomicInteger();
         while (rs.next()) {
-            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+            // System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+            count.incrementAndGet();
         }
+        assertEquals(2, count.get());
         rs.close();
+
+        count.set(0);
         CountDownLatch latch2 = new CountDownLatch(1);
         JdbcPreparedStatement ps2 = ps;
         ps2.setLong(1, 2);
@@ -309,7 +314,8 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
             ResultSet rs2 = res.getResult();
             try {
                 while (rs2.next()) {
-                    System.out.println("f1=" + rs2.getInt(1) + " f2=" + rs2.getLong(2));
+                    // System.out.println("f1=" + rs2.getInt(1) + " f2=" + rs2.getLong(2));
+                    count.incrementAndGet();
                 }
                 ps2.close();
             } catch (Exception e) {
@@ -319,6 +325,30 @@ public class JdbcPreparedStatementTest extends ClientTestBase {
             }
         });
         latch2.await();
+        assertEquals(2, count.get());
+
+        int size = 2;
+        count.set(0);
+        ps = (JdbcPreparedStatement) conn.prepareStatement("SELECT * FROM test where f1 = ?");
+        CountDownLatch latch3 = new CountDownLatch(size);
+        for (int i = 1; i <= size; i++) {
+            ps.setInt(1, i);
+            ps.executeQueryAsync().onComplete(res -> {
+                ResultSet rs2 = res.getResult();
+                try {
+                    while (rs2.next()) {
+                        count.incrementAndGet();
+                    }
+                    rs2.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    latch3.countDown();
+                }
+            });
+        }
+        latch3.await();
+        assertEquals(2, count.get());
     }
 
     // 测试连续的两个异步操作会不会按正常的先后顺序被后端执行
