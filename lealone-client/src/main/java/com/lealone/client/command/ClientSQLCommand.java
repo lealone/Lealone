@@ -49,11 +49,6 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public String getSQL() {
-        return sql;
-    }
-
-    @Override
     public int getFetchSize() {
         return fetchSize;
     }

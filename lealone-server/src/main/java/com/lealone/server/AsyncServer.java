@@ -52,7 +52,7 @@ public abstract class AsyncServer<T extends AsyncConnection> extends DelegatedPr
         setProtocolServer(netServer);
         netServer.init(config);
 
-        schedulerFactory = SchedulerFactory.getSchedulerFactory(GlobalScheduler.class, config);
+        schedulerFactory = SchedulerFactory.getSchedulerFactory(GlobalScheduler.class, config, false);
     }
 
     @Override

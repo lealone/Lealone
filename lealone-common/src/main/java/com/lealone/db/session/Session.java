@@ -20,6 +20,7 @@ import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -186,16 +187,16 @@ public interface Session extends Closeable {
     default void toNio() {
     }
 
-    default boolean isServer() {
-        return false;
-    }
-
     default void executeInScheduler(AsyncTask task) {
         task.run();
     }
 
     default <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         try {
+            if (SchedulerThread.isScheduler()) {
+                task.run();
+                return;
+            }
             // 共享连接只能让调度器执行任务
             if (isShared()) {
                 getSessionInfo().submitTask(task);

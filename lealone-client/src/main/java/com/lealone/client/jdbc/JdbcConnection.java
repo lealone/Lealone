@@ -43,6 +43,7 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.Session;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.DataType;
@@ -536,21 +537,27 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private JdbcFuture<Boolean> commitInternal(boolean async) {
         return executeJdbcTask(async, ac -> {
-            prepareStatementAsync("COMMIT", commit).onComplete(ar1 -> {
-                if (ar1.isFailed()) {
-                    setAsyncResult(ac, ar1.getCause());
-                    return;
-                } else {
-                    commit = ar1.getResult();
-                }
-                commit.executeUpdateAsync().onComplete(ar2 -> {
-                    if (ar2.isFailed()) {
-                        setAsyncResult(ac, ar2.getCause());
+            if (async || SchedulerThread.isScheduler()) {
+                prepareStatementAsync("COMMIT", commit).onComplete(ar1 -> {
+                    if (ar1.isFailed()) {
+                        setAsyncResult(ac, ar1.getCause());
+                        return;
                     } else {
-                        ac.setAsyncResult(true);
+                        commit = ar1.getResult();
                     }
+                    commit.executeUpdateAsync().onComplete(ar2 -> {
+                        if (ar2.isFailed()) {
+                            setAsyncResult(ac, ar2.getCause());
+                        } else {
+                            ac.setAsyncResult(true);
+                        }
+                    });
                 });
-            });
+            } else {
+                commit = prepareStatementSync("COMMIT", commit);
+                commit.executeUpdate();
+                ac.setAsyncResult(true);
+            }
         });
     }
 
@@ -573,21 +580,27 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private JdbcFuture<Boolean> rollbackInternal(boolean async) {
         return executeJdbcTask(async, ac -> {
-            prepareStatementAsync("ROLLBACK", rollback).onComplete(ar1 -> {
-                if (ar1.isFailed()) {
-                    setAsyncResult(ac, ar1.getCause());
-                    return;
-                } else {
-                    rollback = ar1.getResult();
-                }
-                rollback.executeUpdateAsync().onComplete(ar2 -> {
-                    if (ar2.isFailed()) {
-                        setAsyncResult(ac, ar2.getCause());
+            if (async || SchedulerThread.isScheduler()) {
+                prepareStatementAsync("ROLLBACK", rollback).onComplete(ar1 -> {
+                    if (ar1.isFailed()) {
+                        setAsyncResult(ac, ar1.getCause());
+                        return;
                     } else {
-                        ac.setAsyncResult(true);
+                        rollback = ar1.getResult();
                     }
+                    rollback.executeUpdateAsync().onComplete(ar2 -> {
+                        if (ar2.isFailed()) {
+                            setAsyncResult(ac, ar2.getCause());
+                        } else {
+                            ac.setAsyncResult(true);
+                        }
+                    });
                 });
-            });
+            } else {
+                rollback = prepareStatementSync("ROLLBACK", rollback);
+                rollback.executeUpdate();
+                ac.setAsyncResult(true);
+            }
         });
     }
 

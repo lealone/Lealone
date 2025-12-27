@@ -1361,11 +1361,6 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     @Override
-    public boolean isServer() {
-        return true;
-    }
-
-    @Override
     public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         getSessionInfo().submitTask(task);
         scheduler.wakeUp();

@@ -243,11 +243,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public boolean isServer() {
-        return session.isServer();
-    }
-
-    @Override
     public void executeInScheduler(AsyncTask task) {
         session.executeInScheduler(task);
     }

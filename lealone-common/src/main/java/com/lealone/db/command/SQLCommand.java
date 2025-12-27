@@ -13,8 +13,6 @@ import com.lealone.db.value.Value;
 
 public interface SQLCommand extends Command {
 
-    String getSQL();
-
     int getFetchSize();
 
     void setFetchSize(int fetchSize);
