@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 
+import com.lealone.client.jdbc.JdbcPreparedStatement;
 import com.lealone.client.jdbc.JdbcStatement;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.LealoneDatabase;
@@ -81,11 +82,11 @@ public class CRUDExample {
     public static Connection getNioConnection() throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NetFactory.NIO);
-        test.addConnectionParameter(ConnectionSetting.IS_SHARED, false);
+        // test.addConnectionParameter(ConnectionSetting.IS_SHARED, false);
         // test.addConnectionParameter(ConnectionSetting.SOCKET_RECV_BUFFER_SIZE, 4096 );
-        test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
-        test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
-        test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
+        // test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
+        // test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
+        // test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
         return test.getConnection(LealoneDatabase.NAME);
     }
 
@@ -103,8 +104,8 @@ public class CRUDExample {
 
     public static void crud(Connection conn, boolean print) throws Exception {
         Statement stmt = conn.createStatement();
-        // crud(stmt, print);
-        asyncInsert(stmt);
+        crud(stmt, print);
+        // asyncInsert(conn, stmt);
         // batchInsert(stmt);
         // batchPreparedInsert(conn, stmt);
         // batchDelete(stmt);
@@ -165,9 +166,14 @@ public class CRUDExample {
         ps.close();
     }
 
-    public static void asyncInsert(Statement stmt0) throws Exception {
+    public static void asyncInsert(Connection conn, Statement stmt0) throws Exception {
         JdbcStatement stmt = (JdbcStatement) stmt0;
         createTable(stmt);
+        JdbcPreparedStatement ps = (JdbcPreparedStatement) conn
+                .prepareStatement("SELECT * FROM test WHERE f1>?");
+        stmt.setFetchSize(10);
+        ps.setFetchSize(10);
+
         int size = 60;
         CountDownLatch latch = new CountDownLatch(size);
         for (int i = 1; i <= size; i++) {
@@ -179,7 +185,44 @@ public class CRUDExample {
             });
         }
         latch.await();
-        ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test");
+        stmt.executeQueryAsync("SELECT * FROM test WHERE f1>1").onSuccess(rs -> {
+            try {
+                while (rs.next()) {
+                    System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+                }
+                rs.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }).get();
+        ResultSet rs = stmt.executeQueryAsync("SELECT * FROM test WHERE f1>10").get();
+        while (rs.next()) {
+            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        }
+        rs.close();
+
+        ps.setInt(1, 1);
+        ps.executeQueryAsync().onSuccess(rs2 -> {
+            try {
+                while (rs2.next()) {
+                    System.out.println("f1=" + rs2.getInt(1) + " f2=" + rs2.getLong(2));
+                }
+                rs2.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+        }).get();
+
+        ps.setInt(1, 10);
+        rs = stmt.executeQueryAsync("SELECT * FROM test WHERE f1>10").get();
+        while (rs.next()) {
+            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        }
+        rs.close();
+
+        rs = stmt.executeQuery("SELECT count(*) FROM test");
         rs.next();
         System.out.println("count=" + rs.getInt(1));
         Assert.assertEquals(size, rs.getInt(1));

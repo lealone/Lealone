@@ -143,15 +143,15 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         }
     }
 
-    private final CopyOnWriteArrayList<ESessionInfo> sessions = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<EmbeddedSessionInfo> sessions = new CopyOnWriteArrayList<>();
 
-    private static class ESessionInfo implements SessionInfo {
+    private static class EmbeddedSessionInfo implements SessionInfo {
 
         private final InternalSession session;
         private final Scheduler scheduler;
         private final LinkedBlockingQueue<AsyncTask> tasks = new LinkedBlockingQueue<>();
 
-        public ESessionInfo(InternalSession session, Scheduler scheduler) {
+        public EmbeddedSessionInfo(InternalSession session, Scheduler scheduler) {
             this.session = session;
             this.scheduler = scheduler;
             this.session.setSessionInfo(this);
@@ -204,14 +204,14 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     private void runSessionTasks() {
         if (sessions.isEmpty())
             return;
-        for (ESessionInfo si : sessions) {
+        for (EmbeddedSessionInfo si : sessions) {
             si.runSessionTasks();
         }
     }
 
     @Override
     public void addSession(InternalSession session) {
-        sessions.add(new ESessionInfo(session, this));
+        sessions.add(new EmbeddedSessionInfo(session, this));
         session.init();
     }
 
@@ -219,7 +219,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
     public void removeSession(InternalSession session) {
         if (sessions.isEmpty())
             return;
-        for (ESessionInfo si : sessions) {
+        for (EmbeddedSessionInfo si : sessions) {
             if (si.session == session) {
                 sessions.remove(si);
                 break;
@@ -318,7 +318,7 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         if (sessions.isEmpty())
             return null;
         YieldableCommand best = null;
-        for (ESessionInfo si : sessions) {
+        for (EmbeddedSessionInfo si : sessions) {
             // 执行yieldIfNeeded时，不需要检查当前session
             if (currentSession == si) {
                 continue;

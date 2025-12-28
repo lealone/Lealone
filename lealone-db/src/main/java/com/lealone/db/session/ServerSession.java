@@ -1362,8 +1362,10 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
+        if (DbException.ASSERT) {
+            DbException.assertTrue(getScheduler() == SchedulerThread.currentScheduler());
+        }
         getSessionInfo().submitTask(task);
-        scheduler.wakeUp();
     }
 
     private volatile YieldableCommand yieldableCommand;

@@ -193,8 +193,9 @@ public interface Session extends Closeable {
 
     default <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         try {
+            // 当前线程是调度器，直接把任务放到队列
             if (SchedulerThread.isScheduler()) {
-                task.run();
+                getSessionInfo().submitTask(task);
                 return;
             }
             // 共享连接只能让调度器执行任务
