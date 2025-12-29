@@ -44,9 +44,10 @@ public class ClientSessionFactory extends SessionFactoryBase {
         }
         AsyncCallback<Session> ac;
         CaseInsensitiveMap<String> config = ci.getConfig();
+        // 内部会调用 AsyncConnectionPool.setMaxExclusiveSize
+        NetFactory netFactory = NetFactory.getFactory(config);
         if (NetFactory.isBio(config)) {
             ac = AsyncCallback.create(true);
-            NetFactory netFactory = NetFactory.getFactory(config);
             NetClient netClient = netFactory.createNetClient();
             createSession(ci, allowRedirect, ac, config, netClient);
         } else {

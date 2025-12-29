@@ -6,6 +6,7 @@
 package com.lealone.client;
 
 import java.nio.channels.Selector;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -13,6 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.lealone.client.session.ClientSession;
+import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.ConnectionInfo;
@@ -202,15 +204,48 @@ public class ClientScheduler extends SchedulerBase {
         }
     }
 
+    private int nestCount;
+    private int maxNest;
+    private Iterator<ClientSessionInfo> sessionIterator;
+
     @Override
     public <T> AsyncResult<T> await(AsyncCallback<T> ac, long timeoutMillis) {
-        while (true) {
-            runSessionTasks();
-            runEventLoop();
-            if (ac != null && ac.getAsyncResult() != null) {
-                return ac.getAsyncResult();
+        maxNest = Math.min(10, sessions.size());
+        if (nestCount++ == 0)
+            sessionIterator = sessions.iterator();
+        try {
+            while (true) {
+                if (nestCount >= maxNest) {
+                    runEventLoop();
+                    if (ac != null && ac.getAsyncResult() != null) {
+                        return ac.getAsyncResult();
+                    }
+                    continue;
+                }
+                ClientSessionInfo current = (ClientSessionInfo) currentSession.getSessionInfo();
+                while (sessionIterator.hasNext()) {
+                    ClientSessionInfo si = sessionIterator.next();
+                    if (current == si || si.tasks.isEmpty())
+                        continue;
+                    AsyncTask task = si.tasks.poll();
+                    if (task != null) {
+                        load.decrementAndGet();
+                        si.runTask(task);
+                    }
+                    if (ac != null && ac.getAsyncResult() != null) {
+                        return ac.getAsyncResult();
+                    }
+                }
+                runEventLoop();
+                if (ac != null && ac.getAsyncResult() != null) {
+                    return ac.getAsyncResult();
+                }
             }
-            runMiscTasks();
+        } catch (Throwable t) {
+            throw DbException.convert(t);
+        } finally {
+            if (--nestCount == 0)
+                sessionIterator = null;
         }
     }
 

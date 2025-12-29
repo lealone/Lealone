@@ -6,6 +6,7 @@
 package com.lealone.test.misc;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 
+import com.lealone.client.LealoneClient;
 import com.lealone.client.jdbc.JdbcPreparedStatement;
 import com.lealone.client.jdbc.JdbcStatement;
 import com.lealone.db.ConnectionSetting;
@@ -31,7 +33,14 @@ public class CRUDExample {
     public static final int EMBEDDED = 3;
 
     public static void main(String[] args) throws Exception {
-        crud();
+
+        crud(); // 在运行main方法的主线程中运行
+
+        // 在调度线程中运行
+        LealoneClient.executeJdbcTask(getURL(), conn -> {
+            crud(conn);
+        });
+
         // perf();
 
         for (int i = 0; i < 300; i++) {
@@ -46,6 +55,7 @@ public class CRUDExample {
     }
 
     public static void perf() throws Exception {
+
         Connection conn = null;
         int count = 100;
         for (int i = 0; i < count; i++) {
@@ -60,26 +70,46 @@ public class CRUDExample {
         }
     }
 
-    public static Connection getConnection(int type) throws Exception {
+    public static String getURL() throws Exception {
+        return getURL(BIO);
+    }
+
+    public static String getURL(int type) throws Exception {
         switch (type) {
         case BIO:
-            return getBioConnection();
+            return getBioURL();
         case NIO:
-            return getNioConnection();
+            return getNioURL();
         case EMBEDDED:
-            return getEmbeddedConnection();
+            return getEmbeddedURL();
         default:
             throw new RuntimeException("Invalid type: " + type);
         }
     }
 
+    public static Connection getConnection(int type) throws Exception {
+        return DriverManager.getConnection(getURL(type));
+    }
+
     public static Connection getBioConnection() throws Exception {
-        TestBase test = new TestBase();
-        test.setNetFactoryName(NetFactory.BIO);
-        return test.getConnection(LealoneDatabase.NAME);
+        return DriverManager.getConnection(getBioURL());
     }
 
     public static Connection getNioConnection() throws Exception {
+        return DriverManager.getConnection(getNioURL());
+    }
+
+    public static Connection getEmbeddedConnection() throws Exception {
+        return DriverManager.getConnection(getEmbeddedURL());
+    }
+
+    public static String getBioURL() throws Exception {
+        TestBase test = new TestBase();
+        test.setNetFactoryName(NetFactory.BIO);
+        return test.getURL(LealoneDatabase.NAME);
+    }
+
+    public static String getNioURL() throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NetFactory.NIO);
         // test.addConnectionParameter(ConnectionSetting.IS_SHARED, false);
@@ -87,15 +117,15 @@ public class CRUDExample {
         // test.addConnectionParameter(ConnectionSetting.MAX_PACKET_SIZE, 16 * 1024 * 1024);
         // test.addConnectionParameter(ConnectionSetting.AUTO_RECONNECT, true);
         // test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 1);
-        return test.getConnection(LealoneDatabase.NAME);
+        return test.getURL(LealoneDatabase.NAME);
     }
 
-    public static Connection getEmbeddedConnection() throws Exception {
+    public static String getEmbeddedURL() throws Exception {
         TestBase test = new TestBase();
         test.setEmbedded(true);
         test.setInMemory(true);
         test.addConnectionParameter(ConnectionSetting.SCHEDULER_COUNT, 2);
-        return test.getConnection(LealoneDatabase.NAME);
+        return test.getURL(LealoneDatabase.NAME);
     }
 
     public static void crud(Connection conn) throws Exception {

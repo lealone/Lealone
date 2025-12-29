@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import com.lealone.client.LealoneClient.JdbcTask;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
 import com.lealone.common.trace.TraceModuleType;
@@ -43,7 +44,6 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
-import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.Session;
 import com.lealone.db.value.CompareMode;
 import com.lealone.db.value.DataType;
@@ -115,10 +115,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     Trace getTrace(TraceObjectType traceObjectType, int traceObjectId) {
         return session.getTrace(TraceModuleType.JDBC, traceObjectType, traceObjectId);
-    }
-
-    static interface JdbcTask<T> {
-        void run(AsyncCallback<T> ac) throws Exception;
     }
 
     private <T> JdbcFuture<T> executeJdbcTask(boolean async, JdbcTask<T> task) {
@@ -537,27 +533,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private JdbcFuture<Boolean> commitInternal(boolean async) {
         return executeJdbcTask(async, ac -> {
-            if (async || SchedulerThread.isScheduler()) {
-                prepareStatementAsync("COMMIT", commit).onComplete(ar1 -> {
-                    if (ar1.isFailed()) {
-                        setAsyncResult(ac, ar1.getCause());
-                        return;
-                    } else {
-                        commit = ar1.getResult();
-                    }
-                    commit.executeUpdateAsync().onComplete(ar2 -> {
-                        if (ar2.isFailed()) {
-                            setAsyncResult(ac, ar2.getCause());
-                        } else {
-                            ac.setAsyncResult(true);
-                        }
-                    });
-                });
-            } else {
-                commit = prepareStatementSync("COMMIT", commit);
-                commit.executeUpdate();
-                ac.setAsyncResult(true);
-            }
+            // 如果async=true，那么在调度器线程中执行同步方法也是安全的
+            commit = prepareStatementSync("COMMIT", commit);
+            commit.executeUpdate();
+            ac.setAsyncResult(true);
         });
     }
 
@@ -580,27 +559,9 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private JdbcFuture<Boolean> rollbackInternal(boolean async) {
         return executeJdbcTask(async, ac -> {
-            if (async || SchedulerThread.isScheduler()) {
-                prepareStatementAsync("ROLLBACK", rollback).onComplete(ar1 -> {
-                    if (ar1.isFailed()) {
-                        setAsyncResult(ac, ar1.getCause());
-                        return;
-                    } else {
-                        rollback = ar1.getResult();
-                    }
-                    rollback.executeUpdateAsync().onComplete(ar2 -> {
-                        if (ar2.isFailed()) {
-                            setAsyncResult(ac, ar2.getCause());
-                        } else {
-                            ac.setAsyncResult(true);
-                        }
-                    });
-                });
-            } else {
-                rollback = prepareStatementSync("ROLLBACK", rollback);
-                rollback.executeUpdate();
-                ac.setAsyncResult(true);
-            }
+            rollback = prepareStatementSync("ROLLBACK", rollback);
+            rollback.executeUpdate();
+            ac.setAsyncResult(true);
         });
     }
 
@@ -1094,14 +1055,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             return old;
         }
         return prepareStatementInternal(false, sql, Integer.MAX_VALUE).get();
-    }
-
-    private JdbcFuture<JdbcPreparedStatement> prepareStatementAsync(String sql,
-            JdbcPreparedStatement old) {
-        if (old != null) {
-            return new JdbcFuture<>(Future.succeededFuture(old), this);
-        }
-        return prepareStatementInternal(true, sql, Integer.MAX_VALUE);
     }
 
     private static int translateGetEnd(String sql, int i, char c) {
