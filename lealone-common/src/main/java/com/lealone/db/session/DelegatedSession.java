@@ -223,6 +223,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public boolean isServer() {
+        return session.isServer();
+    }
+
+    @Override
     public boolean isShared() {
         return session.isShared();
     }

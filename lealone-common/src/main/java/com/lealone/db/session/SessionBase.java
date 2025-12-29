@@ -197,4 +197,16 @@ public abstract class SessionBase implements Session {
     public SessionInfo getSessionInfo() {
         return si;
     }
+
+    private int protocolVersion;
+
+    @Override
+    public void setProtocolVersion(int version) {
+        protocolVersion = version;
+    }
+
+    @Override
+    public int getProtocolVersion() {
+        return protocolVersion;
+    }
 }

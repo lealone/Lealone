@@ -5,14 +5,18 @@
  */
 package com.lealone.server.handler;
 
+import com.lealone.common.exceptions.DbException;
 import com.lealone.db.session.ServerSession;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.PacketType;
 import com.lealone.server.protocol.session.SessionCancelStatement;
 import com.lealone.server.protocol.session.SessionClose;
 import com.lealone.server.protocol.session.SessionSetAutoCommit;
+import com.lealone.server.protocol.session.SessionTransactionStatement;
+import com.lealone.server.protocol.statement.StatementUpdateAck;
 import com.lealone.server.scheduler.PacketHandleTask;
 import com.lealone.sql.PreparedSQLStatement;
+import com.lealone.sql.SQLStatement;
 
 class SessionPacketHandlers extends PacketHandlers {
 
@@ -20,6 +24,7 @@ class SessionPacketHandlers extends PacketHandlers {
         register(PacketType.SESSION_CANCEL_STATEMENT, new CancelStatement());
         register(PacketType.SESSION_SET_AUTO_COMMIT, new SetAutoCommit());
         register(PacketType.SESSION_CLOSE, new Close());
+        register(PacketType.SESSION_TRANSACTION_STATEMENT, new TStatement());
     }
 
     private static class CancelStatement implements PacketHandler<SessionCancelStatement> {
@@ -50,6 +55,30 @@ class SessionPacketHandlers extends PacketHandlers {
         public Packet handle(PacketHandleTask task, SessionClose packet) {
             task.closeSession();
             return null;
+        }
+    }
+
+    private static class TStatement implements PacketHandler<SessionTransactionStatement> {
+        @Override
+        public Packet handle(ServerSession session, SessionTransactionStatement packet) {
+            int type = packet.getStatementType();
+            switch (type) {
+            case SQLStatement.COMMIT:
+                session.asyncCommit();
+                break;
+            case SQLStatement.ROLLBACK:
+                session.rollback();
+                break;
+            case SQLStatement.SAVEPOINT:
+                session.addSavepoint(packet.getSavepointName());
+                break;
+            case SQLStatement.ROLLBACK_TO_SAVEPOINT:
+                session.rollbackToSavepoint(packet.getSavepointName());
+                break;
+            default:
+                DbException.throwInternalError("type=" + type);
+            }
+            return new StatementUpdateAck(0);
         }
     }
 }

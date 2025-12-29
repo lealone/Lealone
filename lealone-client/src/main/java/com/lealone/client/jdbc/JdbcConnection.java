@@ -53,6 +53,7 @@ import com.lealone.db.value.ValueLob;
 import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueTime;
 import com.lealone.db.value.ValueTimestamp;
+import com.lealone.server.protocol.session.SessionTransactionStatement;
 
 /**
  * <p>
@@ -514,6 +515,21 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         }
     }
 
+    void sendTransactionStatementPacketSync(int type, String savepointName) throws SQLException {
+        executeJdbcTask(false, ac -> {
+            SessionTransactionStatement p = new SessionTransactionStatement(type);
+            if (savepointName != null)
+                p.setSavepointName(savepointName);
+            session.send(p).onComplete(ar -> {
+                ac.setAsyncResult(ar);
+            });
+        }).get();
+    }
+
+    boolean allowSendTransactionStatementPacket() {
+        return !session.isServer() && session.getProtocolVersion() >= Constants.TCP_PROTOCOL_VERSION_8;
+    }
+
     /**
      * Commits the current transaction. This call has only an effect if auto
      * commit is switched off.
@@ -523,21 +539,43 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     @Override
     public void commit() throws SQLException {
         debugCodeCall("commit");
-        commitInternal(false).get();
+        if (allowSendTransactionStatementPacket()) {
+            sendTransactionStatementPacketSync(SessionTransactionStatement.COMMIT, null);
+        } else {
+            commit = prepareStatementSync("COMMIT", commit);
+            commit.executeUpdate();
+        }
     }
 
     public Future<Boolean> commitAsync() {
         debugCodeCall("commitAsync");
-        return commitInternal(true).getFuture();
-    }
-
-    private JdbcFuture<Boolean> commitInternal(boolean async) {
-        return executeJdbcTask(async, ac -> {
-            // 如果async=true，那么在调度器线程中执行同步方法也是安全的
-            commit = prepareStatementSync("COMMIT", commit);
-            commit.executeUpdate();
-            ac.setAsyncResult(true);
-        });
+        return this.<Boolean> executeJdbcTask(true, ac -> {
+            if (allowSendTransactionStatementPacket()) {
+                session.send(new SessionTransactionStatement(SessionTransactionStatement.COMMIT))
+                        .onComplete(ar -> {
+                            if (ar.isSucceeded())
+                                ac.setAsyncResult(true);
+                            else
+                                setAsyncResult(ac, ar.getCause());
+                        });
+            } else {
+                prepareStatementAsync("COMMIT", commit).onComplete(ar1 -> {
+                    if (ar1.isFailed()) {
+                        setAsyncResult(ac, ar1.getCause());
+                        return;
+                    } else {
+                        commit = ar1.getResult();
+                    }
+                    commit.executeUpdateAsync().onComplete(ar2 -> {
+                        if (ar2.isFailed()) {
+                            setAsyncResult(ac, ar2.getCause());
+                        } else {
+                            ac.setAsyncResult(true);
+                        }
+                    });
+                });
+            }
+        }).getFuture();
     }
 
     /**
@@ -549,20 +587,43 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     @Override
     public void rollback() throws SQLException {
         debugCodeCall("rollback");
-        rollbackInternal(false).get();
+        if (allowSendTransactionStatementPacket()) {
+            sendTransactionStatementPacketSync(SessionTransactionStatement.ROLLBACK, null);
+        } else {
+            rollback = prepareStatementSync("ROLLBACK", rollback);
+            rollback.executeUpdate();
+        }
     }
 
     public Future<Boolean> rollbackAsync() {
         debugCodeCall("rollbackAsync");
-        return rollbackInternal(true).getFuture();
-    }
-
-    private JdbcFuture<Boolean> rollbackInternal(boolean async) {
-        return executeJdbcTask(async, ac -> {
-            rollback = prepareStatementSync("ROLLBACK", rollback);
-            rollback.executeUpdate();
-            ac.setAsyncResult(true);
-        });
+        return this.<Boolean> executeJdbcTask(true, ac -> {
+            if (allowSendTransactionStatementPacket()) {
+                session.send(new SessionTransactionStatement(SessionTransactionStatement.ROLLBACK))
+                        .onComplete(ar -> {
+                            if (ar.isSucceeded())
+                                ac.setAsyncResult(true);
+                            else
+                                setAsyncResult(ac, ar.getCause());
+                        });
+            } else {
+                prepareStatementAsync("ROLLBACK", rollback).onComplete(ar1 -> {
+                    if (ar1.isFailed()) {
+                        setAsyncResult(ac, ar1.getCause());
+                        return;
+                    } else {
+                        rollback = ar1.getResult();
+                    }
+                    rollback.executeUpdateAsync().onComplete(ar2 -> {
+                        if (ar2.isFailed()) {
+                            setAsyncResult(ac, ar2.getCause());
+                        } else {
+                            ac.setAsyncResult(true);
+                        }
+                    });
+                });
+            }
+        }).getFuture();
     }
 
     /**
@@ -972,7 +1033,8 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 debugCodeAssign(TraceObjectType.SAVEPOINT, id, "setSavepoint()");
             }
             checkClosed();
-            executeUpdateSync("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId));
+            String savepointName = JdbcSavepoint.getName(null, savepointId);
+            executeSavepointSync(savepointName);
             JdbcSavepoint savepoint = new JdbcSavepoint(this, savepointId, null, trace, id);
             savepointId++;
             return savepoint;
@@ -995,11 +1057,20 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 debugCodeAssign(TraceObjectType.SAVEPOINT, id, "setSavepoint(" + quote(name) + ")");
             }
             checkClosed();
-            executeUpdateSync("SAVEPOINT " + JdbcSavepoint.getName(name, 0));
+            String savepointName = JdbcSavepoint.getName(name, 0);
+            executeSavepointSync(savepointName);
             JdbcSavepoint savepoint = new JdbcSavepoint(this, 0, name, trace, id);
             return savepoint;
         } catch (Exception e) {
             throw logAndConvert(e);
+        }
+    }
+
+    private void executeSavepointSync(String savepointName) throws SQLException {
+        if (allowSendTransactionStatementPacket()) {
+            sendTransactionStatementPacketSync(SessionTransactionStatement.SAVEPOINT, savepointName);
+        } else {
+            executeUpdateSync("SAVEPOINT " + savepointName);
         }
     }
 
@@ -1055,6 +1126,14 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             return old;
         }
         return prepareStatementInternal(false, sql, Integer.MAX_VALUE).get();
+    }
+
+    private JdbcFuture<JdbcPreparedStatement> prepareStatementAsync(String sql,
+            JdbcPreparedStatement old) {
+        if (old != null) {
+            return new JdbcFuture<>(Future.succeededFuture(old), this);
+        }
+        return prepareStatementInternal(true, sql, Integer.MAX_VALUE);
     }
 
     private static int translateGetEnd(String sql, int i, char c) {

@@ -132,7 +132,6 @@ public interface Session extends Closeable {
 
     ConnectionInfo getConnectionInfo();
 
-    // 以后协议修改了再使用版本号区分
     default void setProtocolVersion(int version) {
     }
 
@@ -171,6 +170,10 @@ public interface Session extends Closeable {
 
     default <T> AsyncCallback<T> createCallback(boolean async) {
         return createCallback();
+    }
+
+    default boolean isServer() {
+        return false;
     }
 
     default boolean isShared() {

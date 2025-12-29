@@ -1696,6 +1696,11 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     @Override
+    public boolean isServer() {
+        return true;
+    }
+
+    @Override
     public boolean isQueryCommand() {
         PreparedSQLStatement c = currentCommand;
         return c != null && c.isQuery();

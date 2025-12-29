@@ -29,6 +29,7 @@ import com.lealone.server.protocol.session.SessionClose;
 import com.lealone.server.protocol.session.SessionInit;
 import com.lealone.server.protocol.session.SessionInitAck;
 import com.lealone.server.protocol.session.SessionSetAutoCommit;
+import com.lealone.server.protocol.session.SessionTransactionStatement;
 import com.lealone.server.protocol.statement.StatementQuery;
 import com.lealone.server.protocol.statement.StatementQueryAck;
 import com.lealone.server.protocol.statement.StatementUpdate;
@@ -60,6 +61,7 @@ public class PacketDecoders {
         register(PacketType.SESSION_CANCEL_STATEMENT, SessionCancelStatement.decoder);
         register(PacketType.SESSION_SET_AUTO_COMMIT, SessionSetAutoCommit.decoder);
         register(PacketType.SESSION_CLOSE, SessionClose.decoder);
+        register(PacketType.SESSION_TRANSACTION_STATEMENT, SessionTransactionStatement.decoder);
 
         register(PacketType.PREPARED_STATEMENT_PREPARE, PreparedStatementPrepare.decoder);
         register(PacketType.PREPARED_STATEMENT_PREPARE_ACK, PreparedStatementPrepareAck.decoder);

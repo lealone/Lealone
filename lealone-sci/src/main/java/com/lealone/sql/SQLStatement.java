@@ -6,6 +6,7 @@
 package com.lealone.sql;
 
 import com.lealone.db.command.SQLCommand;
+import com.lealone.server.protocol.session.SessionTransactionStatement;
 
 /**
  * Represents a SQL statement.
@@ -402,12 +403,12 @@ public interface SQLStatement extends SQLCommand {
     /**
      * The type of a COMMIT statement.
      */
-    int COMMIT = 123;
+    int COMMIT = SessionTransactionStatement.COMMIT;
 
     /**
      * The type of a ROLLBACK statement.
      */
-    int ROLLBACK = 124;
+    int ROLLBACK = SessionTransactionStatement.ROLLBACK;
 
     /**
      * The type of a CHECKPOINT statement.
@@ -422,12 +423,12 @@ public interface SQLStatement extends SQLCommand {
     /**
      * The type of a SAVEPOINT statement.
      */
-    int SAVEPOINT = 127;
+    int SAVEPOINT = SessionTransactionStatement.SAVEPOINT;
 
     /**
      * The type of a ROLLBACK TO SAVEPOINT statement.
      */
-    int ROLLBACK_TO_SAVEPOINT = 128;
+    int ROLLBACK_TO_SAVEPOINT = SessionTransactionStatement.ROLLBACK_TO_SAVEPOINT;
 
     /**
      * The type of a PREPARE COMMIT statement.

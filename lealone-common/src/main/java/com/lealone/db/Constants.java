@@ -63,6 +63,11 @@ public class Constants {
     public static final int TCP_PROTOCOL_VERSION_6 = 6;
 
     /**
+     * The TCP protocol version number 8.
+     */
+    public static final int TCP_PROTOCOL_VERSION_8 = 8;
+
+    /**
      * The min TCP protocol version number.
      */
     public static final int TCP_PROTOCOL_VERSION_MIN = TCP_PROTOCOL_VERSION_1;
@@ -70,12 +75,12 @@ public class Constants {
     /**
      * The max TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_6;
+    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_8;
 
     /**
      * The current TCP protocol version number.
      */
-    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_6;
+    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_8;
 
     /**
      * Constant meaning both numbers and text is allowed in SQL statements.

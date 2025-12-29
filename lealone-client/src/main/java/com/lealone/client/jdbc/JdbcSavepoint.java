@@ -14,6 +14,7 @@ import com.lealone.common.trace.TraceObject;
 import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.api.ErrorCode;
+import com.lealone.server.protocol.session.SessionTransactionStatement;
 
 /**
  * A savepoint is a point inside a transaction to where a transaction can be
@@ -66,7 +67,13 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
      */
     void rollback() throws SQLException {
         checkValid();
-        conn.createStatement().executeUpdateAsync("ROLLBACK TO SAVEPOINT " + getName(name, savepointId));
+        String savepointName = getName(name, savepointId);
+        if (conn.allowSendTransactionStatementPacket()) {
+            conn.sendTransactionStatementPacketSync(SessionTransactionStatement.ROLLBACK_TO_SAVEPOINT,
+                    savepointName);
+        } else {
+            conn.createStatement().executeUpdateAsync("ROLLBACK TO SAVEPOINT " + savepointName);
+        }
     }
 
     private void checkValid() {
