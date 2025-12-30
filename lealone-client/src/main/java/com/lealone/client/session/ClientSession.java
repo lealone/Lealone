@@ -7,6 +7,7 @@ package com.lealone.client.session;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
 
 import com.lealone.client.ClientScheduler;
 import com.lealone.client.command.ClientPreparedSQLCommand;
@@ -65,7 +66,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     private final int id;
     private final LocalDataHandler dataHandler;
     private final Trace trace;
-
+    private Scheduler scheduler;
     private TransferOutputStream out; // 如果是阻塞io，输出流的buffer可以复用
     private boolean isBio;
 
@@ -106,6 +107,16 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     InetSocketAddress getInetSocketAddress() {
         return tcpConnection.getInetSocketAddress();
+    }
+
+    @Override
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    @Override
+    public void setScheduler(Scheduler scheduler) {
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -357,18 +368,15 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             return AsyncCallback.createSingleThreadCallback();
     }
 
-    @Override
-    public boolean isShared() {
+    private boolean isShared() {
         return tcpConnection.isShared();
     }
 
-    @Override
-    public boolean isBio() {
+    private boolean isBio() {
         return isBio;
     }
 
-    @Override
-    public void toBio() {
+    private void toBio() {
         try {
             isBio = true;
             Scheduler scheduler = getScheduler();
@@ -383,8 +391,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         }
     }
 
-    @Override
-    public void toNio() {
+    private void toNio() {
         try {
             isBio = false;
             tcpConnection.getWritableChannel().getSocketChannel().configureBlocking(false);
@@ -417,15 +424,43 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         getScheduler().wakeUp();
     }
 
-    private Scheduler scheduler;
-
     @Override
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
-    @Override
-    public void setScheduler(Scheduler scheduler) {
-        this.scheduler = scheduler;
+    public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
+        try {
+            // 当前线程是调度器，如果是异步直接把任务放到队列这样方便批量写，如果是同步则直接执行
+            if (SchedulerThread.isScheduler()) {
+                if (async)
+                    getSessionInfo().submitTask(task);
+                else
+                    task.run();
+                return;
+            }
+            // 共享连接只能让调度器执行任务
+            if (isShared()) {
+                getSessionInfo().submitTask(task);
+                getScheduler().wakeUp();
+            } else {
+                if (async) {
+                    if (isBio()) {
+                        toNio();
+                    }
+                    getSessionInfo().submitTask(task);
+                    getScheduler().wakeUp();
+                } else {
+                    if (!isBio()) {
+                        CountDownLatch latch = new CountDownLatch(1);
+                        getSessionInfo().submitTask(() -> {
+                            toBio();
+                            latch.countDown();
+                        });
+                        getScheduler().wakeUp();
+                        latch.await();
+                    }
+                    task.run();
+                }
+            }
+        } catch (Throwable t) {
+            ac.setAsyncResult(t);
+        }
     }
 }

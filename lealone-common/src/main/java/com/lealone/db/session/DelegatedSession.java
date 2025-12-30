@@ -223,31 +223,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public boolean isServer() {
-        return session.isServer();
-    }
-
-    @Override
-    public boolean isShared() {
-        return session.isShared();
-    }
-
-    @Override
-    public boolean isBio() {
-        return session.isBio();
-    }
-
-    @Override
-    public void toBio() {
-        session.toBio();
-    }
-
-    @Override
-    public void toNio() {
-        session.toNio();
-    }
-
-    @Override
     public void executeInScheduler(AsyncTask task) {
         session.executeInScheduler(task);
     }
@@ -255,5 +230,10 @@ public class DelegatedSession implements Session {
     @Override
     public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         session.execute(async, ac, task);
+    }
+
+    @Override
+    public boolean isServer() {
+        return session.isServer();
     }
 }

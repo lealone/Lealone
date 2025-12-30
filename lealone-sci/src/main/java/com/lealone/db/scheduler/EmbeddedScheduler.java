@@ -255,6 +255,10 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
                 runSessionTasks();
                 c = getNextBestCommand(null, priority, true);
             }
+            // 同步执行prepareStatement时
+            if (ac != null && ac.getAsyncResult() != null) {
+                return;
+            }
             if (c == null) {
                 runPageOperationTasks();
                 runPendingTransactions();

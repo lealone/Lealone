@@ -1361,12 +1361,51 @@ public class ServerSession extends SessionBase implements InternalSession {
     }
 
     @Override
+    public <T> AsyncCallback<T> createCallback() {
+        return AsyncCallback.create(SchedulerThread.isScheduler());
+    }
+
+    @Override
+    public <T> AsyncCallback<T> createCallback(boolean async) {
+        if (SchedulerThread.isScheduler())
+            return AsyncCallback.createSingleThreadCallback();
+        else
+            return AsyncCallback.createConcurrentCallback();
+        // if (async)
+        // return AsyncCallback.createConcurrentCallback();
+        // else
+        // return AsyncCallback.createSingleThreadCallback();
+    }
+
+    @Override
+    public void executeInScheduler(AsyncTask task) {
+        getSessionInfo().submitTask(task);
+        getScheduler().wakeUp();
+    }
+
+    @Override
     public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         if (DbException.ASSERT) {
-            DbException.assertTrue(getScheduler() == SchedulerThread.currentScheduler());
+            DbException.assertTrue(
+                    getScheduler() == null || getScheduler() == SchedulerThread.currentScheduler());
         }
-        // getSessionInfo().submitTask(task);
-        task.run();
+        try {
+            if (SchedulerThread.isScheduler()) {
+                getSessionInfo().submitTask(task);
+            } else if (async) {
+                getSessionInfo().submitTask(task);
+                getScheduler().wakeUp();
+            } else {
+                task.run();
+            }
+        } catch (Throwable t) {
+            ac.setAsyncResult(t);
+        }
+    }
+
+    @Override
+    public boolean isServer() {
+        return true;
     }
 
     private volatile YieldableCommand yieldableCommand;
@@ -1688,16 +1727,6 @@ public class ServerSession extends SessionBase implements InternalSession {
     public void wakeUpWaitingSchedulers(boolean reset) {
         if (getScheduler() != null)
             getScheduler().wakeUpWaitingSchedulers(reset);
-    }
-
-    @Override
-    public <T> AsyncCallback<T> createCallback() {
-        return AsyncCallback.create(SchedulerThread.isScheduler());
-    }
-
-    @Override
-    public boolean isServer() {
-        return true;
     }
 
     @Override

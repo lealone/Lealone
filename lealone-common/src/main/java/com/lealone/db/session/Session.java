@@ -6,7 +6,6 @@
 package com.lealone.db.session;
 
 import java.io.Closeable;
-import java.util.concurrent.CountDownLatch;
 
 import com.lealone.common.trace.Trace;
 import com.lealone.common.trace.TraceModuleType;
@@ -20,7 +19,6 @@ import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.scheduler.Scheduler;
-import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
@@ -168,68 +166,13 @@ public interface Session extends Closeable {
 
     <T> AsyncCallback<T> createCallback();
 
-    default <T> AsyncCallback<T> createCallback(boolean async) {
-        return createCallback();
-    }
+    <T> AsyncCallback<T> createCallback(boolean async);
+
+    void executeInScheduler(AsyncTask task);
+
+    <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task);
 
     default boolean isServer() {
         return false;
-    }
-
-    default boolean isShared() {
-        return false;
-    }
-
-    default boolean isBio() {
-        return false;
-    }
-
-    default void toBio() {
-    }
-
-    default void toNio() {
-    }
-
-    default void executeInScheduler(AsyncTask task) {
-        task.run();
-    }
-
-    default <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
-        try {
-            // 当前线程是调度器，如果是异步直接把任务放到队列这样方便批量写，如果是同步则直接执行
-            if (SchedulerThread.isScheduler()) {
-                if (async)
-                    getSessionInfo().submitTask(task);
-                else
-                    task.run();
-                return;
-            }
-            // 共享连接只能让调度器执行任务
-            if (isShared()) {
-                getSessionInfo().submitTask(task);
-                getScheduler().wakeUp();
-            } else {
-                if (async) {
-                    if (isBio()) {
-                        toNio();
-                    }
-                    getSessionInfo().submitTask(task);
-                    getScheduler().wakeUp();
-                } else {
-                    if (!isBio()) {
-                        CountDownLatch latch = new CountDownLatch(1);
-                        getSessionInfo().submitTask(() -> {
-                            toBio();
-                            latch.countDown();
-                        });
-                        getScheduler().wakeUp();
-                        latch.await();
-                    }
-                    task.run();
-                }
-            }
-        } catch (Throwable t) {
-            ac.setAsyncResult(t);
-        }
     }
 }
