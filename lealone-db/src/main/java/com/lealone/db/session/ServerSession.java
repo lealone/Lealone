@@ -1367,14 +1367,8 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public <T> AsyncCallback<T> createCallback(boolean async) {
-        if (SchedulerThread.isScheduler())
-            return AsyncCallback.createSingleThreadCallback();
-        else
-            return AsyncCallback.createConcurrentCallback();
-        // if (async)
-        // return AsyncCallback.createConcurrentCallback();
-        // else
-        // return AsyncCallback.createSingleThreadCallback();
+        // TODO 为异步和同步api做不同处理
+        return createCallback();
     }
 
     @Override
@@ -1392,11 +1386,10 @@ public class ServerSession extends SessionBase implements InternalSession {
         try {
             if (SchedulerThread.isScheduler()) {
                 getSessionInfo().submitTask(task);
-            } else if (async) {
+            } else {
+                // TODO 为异步和同步api做不同处理
                 getSessionInfo().submitTask(task);
                 getScheduler().wakeUp();
-            } else {
-                task.run();
             }
         } catch (Throwable t) {
             ac.setAsyncResult(t);

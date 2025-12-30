@@ -173,29 +173,33 @@ public class Lealone {
             initPluggableEngines(embedded);
 
             scheduler.handle(() -> {
-                // 提前触发对LealoneDatabase的初始化
-                initLealoneDatabase();
-                afterInit(config);
-                long initTime = (System.currentTimeMillis() - t2);
-                // 3. 启动ProtocolServer
-                if (!embedded) {
-                    long t3 = System.currentTimeMillis();
-                    startProtocolServers();
-                    long startTime = (System.currentTimeMillis() - t3);
-                    long totalTime = loadConfigTime + initTime + startTime;
-                    logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)",
-                            totalTime, loadConfigTime, initTime, startTime);
-                    logger.info(
-                            "Lealone started, jvm pid: {}, "
-                                    + "exit with ctrl+c or execute sql command: stop server",
-                            ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
-
+                try {
+                    // 提前触发对LealoneDatabase的初始化
+                    initLealoneDatabase();
+                    afterInit(config);
+                    long initTime = (System.currentTimeMillis() - t2);
+                    // 3. 启动ProtocolServer
+                    if (!embedded) {
+                        long t3 = System.currentTimeMillis();
+                        startProtocolServers();
+                        long startTime = (System.currentTimeMillis() - t3);
+                        long totalTime = loadConfigTime + initTime + startTime;
+                        logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)",
+                                totalTime, loadConfigTime, initTime, startTime);
+                        logger.info(
+                                "Lealone started, jvm pid: {}, "
+                                        + "exit with ctrl+c or execute sql command: stop server",
+                                ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+                    }
+                    // 等所有的Server启动完成后再启动Scheduler
+                    // 确保所有的初始PeriodicTask都在单线程中注册
+                    schedulerFactory.start();
+                    if (latch != null)
+                        latch.countDown();
+                } catch (Throwable t) {
+                    // 在新线程中运行，否则当前调度器无法退出
+                    new Thread(() -> exceptionExit(t)).start();
                 }
-                // 等所有的Server启动完成后再启动Scheduler
-                // 确保所有的初始PeriodicTask都在单线程中注册
-                schedulerFactory.start();
-                if (latch != null)
-                    latch.countDown();
             });
             scheduler.start();
             scheduler.wakeUp(); // 及时唤醒，否则会影响启动速度
@@ -204,10 +208,15 @@ public class Lealone {
                 Thread.currentThread().setName("FsyncService-0");
                 TransactionEngine.getDefaultTransactionEngine().getFsyncService().run();
             }
-        } catch (Exception e) {
-            logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
-            System.exit(1);
+        } catch (Throwable t) {
+            exceptionExit(t);
         }
+    }
+
+    private void exceptionExit(Throwable t) {
+        t = t.getCause() == null ? t : t.getCause();
+        logger.error("Fatal error: unable to start lealone. See log for stacktrace.", t);
+        System.exit(1);
     }
 
     private void loadConfig() {
@@ -340,7 +349,11 @@ public class Lealone {
             }
             pse.close();
         }
-        LealoneDatabase.getInstance().closeAllDatabases(true);
+        try {
+            LealoneDatabase.getInstance().closeAllDatabases(true);
+        } catch (Throwable t) {
+            // 启动失败时，LealoneDatabase可能没有正常初始化，直接忽略
+        }
         // TransactionEngine内部会关闭Scheduler
         for (TransactionEngine te : PluginManager.getPlugins(TransactionEngine.class)) {
             te.close();
