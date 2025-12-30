@@ -38,10 +38,13 @@ public class ShutdownDatabaseTest extends SqlTestBase {
         executeUpdate("SHUTDOWN DATABASE ShutdownDatabaseTest2 IMMEDIATELY");
         try {
             c1.setSavepoint("s1");
+            fail();
         } catch (Exception e) {
+            // 会产生各种可能的错误，比如ErrorCode.IO_EXCEPTION_1, ErrorCode.CONNECTION_BROKEN_1
         }
         try {
             c2.setSavepoint("s2");
+            fail();
         } catch (Exception e) {
         }
         new ShutdownRightTest("ShutdownDatabaseTest3").runTest();

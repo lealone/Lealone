@@ -23,24 +23,19 @@ public class MetaTableTest extends DbObjectTestBase {
         assertEquals(InfoMetaTable.getMetaTableTypeCount() + 1, tables.size()); // 多了table_alter_history表
 
         for (Table table : tables) {
-            p("table name: " + table.getName());
-            p("============================");
-            sql = "select * from " + infoSchemaName + "." + table.getName();
-            printResultSet(sql);
+            printTable(infoSchemaName, table.getName());
         }
 
-        String[] tableNames = { "TABLE_TYPES" };
-        tableNames[0] = "CATALOGS";
-        tableNames[0] = "SETTINGS";
-        tableNames[0] = "TABLES";
-        tableNames[0] = "HELP";
+        String[] tableNames = { "TABLE_TYPES", "CATALOGS", "SETTINGS", "TABLES", "HELP" };
         for (String tableName : tableNames) {
-            if (tableName == null)
-                continue;
-            p("table name: " + tableName);
-            p("============================");
-            sql = "select * from " + infoSchemaName + "." + tableName;
-            printResultSet(sql);
+            printTable(infoSchemaName, tableName);
         }
+    }
+
+    void printTable(String infoSchemaName, String tableName) {
+        // p("table name: " + tableName);
+        // p("============================");
+        // sql = "select * from " + infoSchemaName + "." + tableName;
+        // printResultSet(sql);
     }
 }

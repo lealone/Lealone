@@ -10,12 +10,13 @@ import java.sql.Statement;
 
 import org.junit.Test;
 
+import com.lealone.db.api.ErrorCode;
 import com.lealone.test.sql.SqlTestBase;
 
 public class DeadlockTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
-        stmt.executeUpdate("set DEFAULT_LOCK_TIMEOUT 2000");
+        // stmt.executeUpdate("set DEFAULT_LOCK_TIMEOUT 2000");
         stmt.executeUpdate("drop table IF EXISTS DeadlockTest1");
         stmt.executeUpdate("drop table IF EXISTS DeadlockTest2");
         stmt.executeUpdate(
@@ -31,13 +32,14 @@ public class DeadlockTest extends SqlTestBase {
                 Connection conn = DeadlockTest.this.getConnection();
                 conn.setAutoCommit(false);
                 Statement stmt = conn.createStatement();
+                stmt.executeUpdate("set LOCK_TIMEOUT 500");
                 stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
                 stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
                 conn.commit();
                 stmt.close();
                 conn.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                assertErrorCode(e, ErrorCode.DEADLOCK_1);
             }
         });
         Thread t2 = new Thread(() -> {
@@ -45,13 +47,14 @@ public class DeadlockTest extends SqlTestBase {
                 Connection conn = DeadlockTest.this.getConnection();
                 conn.setAutoCommit(false);
                 Statement stmt = conn.createStatement();
+                stmt.executeUpdate("set LOCK_TIMEOUT 500");
                 stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
                 stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
                 conn.commit();
                 stmt.close();
                 conn.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                assertErrorCode(e, ErrorCode.DEADLOCK_1);
             }
         });
         t1.start();

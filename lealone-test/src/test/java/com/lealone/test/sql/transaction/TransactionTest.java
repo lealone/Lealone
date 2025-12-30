@@ -23,7 +23,7 @@ public class TransactionTest extends SqlTestBase {
         MyThread t = new MyThread();
         t.start();
         insert();
-        t.close();
+        t.join();
         // select();
 
         // testCommit();
@@ -48,6 +48,7 @@ public class TransactionTest extends SqlTestBase {
         public void run() {
             try {
                 insert();
+                close();
             } catch (Exception e1) {
                 e1.printStackTrace();
             }

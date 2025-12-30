@@ -14,17 +14,24 @@ public class ConcurrentTransactionTest extends AoteTestBase {
     @Test
     public void run() throws Exception {
         Thread t1 = new Thread(() -> {
-            testSyncOperations();
-            testAsyncOperations();
+            testConcurrentOperations();
         });
         t1.start();
         Thread t2 = new Thread(() -> {
-            testSyncOperations();
-            testAsyncOperations();
+            testConcurrentOperations();
         });
         t2.start();
         t1.join();
         t2.join();
+    }
+
+    void testConcurrentOperations() {
+        try {
+            testSyncOperations();
+            testAsyncOperations();
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("Entry is locked"));
+        }
     }
 
     void testSyncOperations() {

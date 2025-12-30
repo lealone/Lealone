@@ -84,6 +84,10 @@ public class TcpClientConnection extends TransferConnection {
             }
         }
         sessions.clear();
+
+        // 如果关闭了不能再调用，关闭NetClient时也会关闭连接，重复调用会导致ConcurrentModificationException
+        if (!netClient.isClosed())
+            netClient.removeConnection(this);
     }
 
     private Session getSession(int sessionId) {

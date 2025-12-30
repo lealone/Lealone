@@ -117,7 +117,7 @@ public class LealoneDatabase extends Database
         }
     }
 
-    void dropDatabase(String dbName) {
+    void removeClosedDatabase(String dbName) {
         synchronized (CLOSED_DATABASES) {
             CLOSED_DATABASES.remove(dbName);
         }

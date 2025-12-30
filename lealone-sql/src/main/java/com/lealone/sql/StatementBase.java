@@ -20,6 +20,7 @@ import com.lealone.db.async.AsyncResultHandler;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
+import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.session.SessionStatus;
 import com.lealone.db.value.Value;
@@ -542,7 +543,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         // 不能把参数值提前设置，因为批量操作时，如果提前设置了会覆盖前面的，只能等到执行YieldableCommand时设置
         if (parameterValues != null)
             c.setParameterValues(parameterValues);
-        session.setYieldableCommand(c);
+        if (SchedulerThread.isScheduler()) {
+            session.setYieldableCommand(c);
+        } else {
+            session.getSessionInfo().submitTask(() -> session.setYieldableCommand(c));
+            session.getScheduler().wakeUp();
+        }
     }
 
     @Override

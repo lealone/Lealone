@@ -521,7 +521,12 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             if (savepointName != null)
                 p.setSavepointName(savepointName);
             session.send(p).onComplete(ar -> {
-                ac.setAsyncResult(ar);
+                // 不能这样，此时是AsyncCallback<Object>，会把ar当成Object设置成结果
+                // ac.setAsyncResult(ar);
+                if (ar.isSucceeded())
+                    ac.setAsyncResult(ar.getResult());
+                else
+                    ac.setAsyncResult(ar.getCause());
             });
         }).get();
     }

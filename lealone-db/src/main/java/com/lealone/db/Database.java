@@ -440,6 +440,10 @@ public class Database extends DbObjectBase implements DataHandler {
             eventListener.opened();
         }
         state = State.OPENED;
+
+        // 数据库之前关闭了，现在重新打开
+        if (LealoneDatabase.getInstance().isClosed(name))
+            LealoneDatabase.getInstance().removeClosedDatabase(name);
     }
 
     private void initTraceSystem() {
@@ -1960,7 +1964,7 @@ public class Database extends DbObjectBase implements DataHandler {
 
     public synchronized void drop() {
         state = State.CLOSED;
-        LealoneDatabase.getInstance().dropDatabase(getName());
+        LealoneDatabase.getInstance().removeClosedDatabase(getName());
         if (lobStorage != null) {
             getTransactionEngine().removeGcTask((GcTask) lobStorage);
         }
@@ -2007,6 +2011,8 @@ public class Database extends DbObjectBase implements DataHandler {
         for (ServerSession s : getSessions(false)) {
             // 先标记为关闭状态，然后由调度器优雅关闭
             s.markClosed();
+            // 及时唤醒调度器
+            s.getScheduler().wakeUp();
         }
     }
 

@@ -174,7 +174,9 @@ public class NioWritableChannel implements WritableChannel {
             conn.handleException(e);
             close();
         } finally {
-            inputBuffer.recycle();
+            // 出异常关闭后会变null
+            if (inputBuffer != null)
+                inputBuffer.recycle();
         }
     }
 
