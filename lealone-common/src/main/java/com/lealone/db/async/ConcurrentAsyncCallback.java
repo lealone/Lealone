@@ -12,11 +12,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
-import com.lealone.net.NetInputStream;
 
 public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
 
-    private volatile boolean runEnd;
     private volatile AsyncResultHandler<T> completeHandler;
     private volatile AsyncHandler<T> successHandler;
     private volatile AsyncHandler<Throwable> failureHandler;
@@ -30,30 +28,6 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
         public LatchObject(CountDownLatch latch) {
             this.latch = latch;
         }
-    }
-
-    public ConcurrentAsyncCallback() {
-    }
-
-    @Override
-    public void setDbException(DbException e, boolean cancel) {
-        setAsyncResult(e);
-        if (cancel)
-            countDown();
-    }
-
-    @Override
-    public final void run(NetInputStream in) {
-        // 放在最前面，不能放在最后面，
-        // 否则调用了countDown，但是在设置runEnd为true前，调用await的线程读到的是false就会抛异常
-        runEnd = true;
-        // if (asyncResult == null) {
-        try {
-            runInternal(in);
-        } catch (Throwable t) {
-            setAsyncResult(t);
-        }
-        // }
     }
 
     @Override
@@ -75,11 +49,6 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
                     latch.await();
                 if (asyncResult != null && asyncResult.isFailed())
                     throw DbException.convert(asyncResult.getCause());
-
-                // 如果没有执行过run，抛出合适的异常
-                if (!runEnd) {
-                    handleTimeout();
-                }
             } catch (InterruptedException e) {
                 throw DbException.convert(e);
             }
@@ -120,8 +89,19 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
     }
 
     @Override
+    public void setDbException(DbException e, boolean cancel) {
+        setAsyncResult(e);
+        if (cancel)
+            countDown();
+    }
+
+    @Override
+    public AsyncResult<T> getAsyncResult() {
+        return asyncResult;
+    }
+
+    @Override
     public synchronized void setAsyncResult(AsyncResult<T> asyncResult) { // 复制集群场景可能会调用多次
-        runEnd = true;
         this.asyncResult = asyncResult;
         try {
             if (completeHandler != null) {
@@ -147,10 +127,5 @@ public class ConcurrentAsyncCallback<T> extends AsyncCallback<T> {
             if (latch != null)
                 latch.countDown();
         }
-    }
-
-    @Override
-    public AsyncResult<T> getAsyncResult() {
-        return asyncResult;
     }
 }

@@ -8,7 +8,6 @@ package com.lealone.db.async;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
-import com.lealone.net.NetInputStream;
 
 // 回调函数都在单线程中执行，也就是在当前调度线程中执行，可以优化回调的整个过程
 public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
@@ -17,23 +16,6 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
     private AsyncHandler<T> successHandler;
     private AsyncHandler<Throwable> failureHandler;
     private AsyncResult<T> asyncResult;
-
-    public SingleThreadAsyncCallback() {
-    }
-
-    @Override
-    public void setDbException(DbException e, boolean cancel) {
-        setAsyncResult(e);
-    }
-
-    @Override
-    public void run(NetInputStream in) {
-        try {
-            runInternal(in);
-        } catch (Throwable t) {
-            setAsyncResult(t);
-        }
-    }
 
     @Override
     protected T await(long timeoutMillis) {
@@ -78,6 +60,16 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
     }
 
     @Override
+    public void setDbException(DbException e, boolean cancel) {
+        setAsyncResult(e);
+    }
+
+    @Override
+    public AsyncResult<T> getAsyncResult() {
+        return asyncResult;
+    }
+
+    @Override
     public void setAsyncResult(AsyncResult<T> asyncResult) {
         this.asyncResult = asyncResult;
         if (completeHandler != null)
@@ -88,10 +80,5 @@ public class SingleThreadAsyncCallback<T> extends AsyncCallback<T> {
 
         if (failureHandler != null && asyncResult != null && asyncResult.isFailed())
             failureHandler.handle(asyncResult.getCause());
-    }
-
-    @Override
-    public AsyncResult<T> getAsyncResult() {
-        return asyncResult;
     }
 }

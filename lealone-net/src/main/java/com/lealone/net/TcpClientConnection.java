@@ -16,6 +16,7 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.session.Session;
+import com.lealone.server.protocol.AckAsyncCallback;
 
 /**
  * An async tcp client connection.
@@ -25,7 +26,7 @@ public class TcpClientConnection extends TransferConnection {
     private static final Logger logger = LoggerFactory.getLogger(TcpClientConnection.class);
 
     private final Map<Integer, Session> sessions = new HashMap<>();
-    private final Map<Integer, AsyncCallback<?>> callbackMap = new HashMap<>();
+    private final Map<Integer, AckAsyncCallback<?, ?>> callbackMap = new HashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final NetClient netClient;
     private final int maxSharedSize;
@@ -48,7 +49,7 @@ public class TcpClientConnection extends TransferConnection {
     }
 
     @Override
-    public void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
+    public void addAsyncCallback(int packetId, AckAsyncCallback<?, ?> ac) {
         callbackMap.put(packetId, ac);
     }
 
@@ -126,7 +127,7 @@ public class TcpClientConnection extends TransferConnection {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac;
+        AckAsyncCallback<?, ?> ac;
         if (status == Session.STATUS_REPLICATING) {
             ac = callbackMap.get(packetId);
         } else {
@@ -144,7 +145,7 @@ public class TcpClientConnection extends TransferConnection {
         if (e != null)
             ac.setAsyncResult(e);
         else
-            ac.run(in);
+            ac.handleAckPacket(in);
     }
 
     private void onRunModeChanged(TransferInputStream in) throws IOException {
@@ -175,7 +176,7 @@ public class TcpClientConnection extends TransferConnection {
         // 处于阻塞io状态下时不需要调度器检查，否则会有java.util.ConcurrentModificationException
         if (getWritableChannel().isBio())
             return;
-        for (AsyncCallback<?> ac : callbackMap.values()) {
+        for (AckAsyncCallback<?, ?> ac : callbackMap.values()) {
             ac.checkTimeout(currentTime);
         }
     }

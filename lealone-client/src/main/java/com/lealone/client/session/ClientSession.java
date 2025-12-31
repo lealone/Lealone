@@ -5,7 +5,6 @@
  */
 package com.lealone.client.session;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 
@@ -24,21 +23,18 @@ import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.AsyncTask;
 import com.lealone.db.async.Future;
-import com.lealone.db.async.SingleThreadAsyncCallback;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerThread;
 import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetBuffer;
-import com.lealone.net.NetInputStream;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.TransferOutputStream;
 import com.lealone.net.nio.NioEventLoop;
+import com.lealone.server.protocol.AckAsyncCallback;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.AckPacketHandler;
 import com.lealone.server.protocol.Packet;
-import com.lealone.server.protocol.PacketDecoder;
-import com.lealone.server.protocol.PacketDecoders;
 import com.lealone.server.protocol.PacketType;
 import com.lealone.server.protocol.lob.LobRead;
 import com.lealone.server.protocol.lob.LobReadAck;
@@ -301,17 +297,9 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                     getScheduler() == null || getScheduler() == SchedulerThread.currentScheduler());
         }
         traceOperation(packet.getType().name(), packetId);
-        AsyncCallback<R> ac;
+        AckAsyncCallback<R, P> ac;
         if (packet.getAckType() != PacketType.VOID) {
-            ac = new SingleThreadAsyncCallback<R>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    handleAsyncCallback(in, packet.getAckType(), ackPacketHandler, this);
-                }
-            };
-            ac.setPacket(packet);
-            ac.setStartTime(System.currentTimeMillis());
-            ac.setNetworkTimeout(getNetworkTimeout());
+            ac = new AckAsyncCallback<>(packet, ackPacketHandler, this);
             tcpConnection.addAsyncCallback(packetId, ac);
         } else {
             ac = null;
@@ -331,21 +319,6 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             }
         }
         return ac;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <R, P extends AckPacket> void handleAsyncCallback(NetInputStream in, PacketType packetType,
-            AckPacketHandler<R, P> ackPacketHandler, AsyncCallback<R> ac) throws IOException {
-        try {
-            PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
-            Packet packet = decoder.decode(in, getProtocolVersion());
-            if (ackPacketHandler != null) {
-                R r = ackPacketHandler.handle((P) packet);
-                ac.setAsyncResult(r);
-            }
-        } catch (Throwable e) {
-            ac.setAsyncResult(e);
-        }
     }
 
     // 外部插件会用到，所以独立出一个public方法

@@ -15,8 +15,8 @@ import com.lealone.common.exceptions.JdbcSQLException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.session.Session;
+import com.lealone.server.protocol.AckAsyncCallback;
 
 public abstract class TransferConnection extends AsyncConnection {
 
@@ -73,7 +73,7 @@ public abstract class TransferConnection extends AsyncConnection {
         throw DbException.getInternalError("handleResponse");
     }
 
-    protected void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
+    protected void addAsyncCallback(int packetId, AckAsyncCallback<?, ?> ac) {
         throw DbException.getInternalError("addAsyncCallback");
     }
 
