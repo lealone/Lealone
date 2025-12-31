@@ -19,8 +19,8 @@ public class RowCountUndeterminedClientResult extends ClientResult {
     private boolean isEnd;
 
     public RowCountUndeterminedClientResult(ClientSession session, TransferInputStream in, int resultId,
-            int columnCount, int fetchSize) throws IOException {
-        super(session, in, resultId, columnCount, -1, fetchSize);
+            int columnCount, int rowCount, int fetchSize) throws IOException {
+        super(session, in, resultId, columnCount, rowCount, fetchSize);
     }
 
     @Override
@@ -48,7 +48,10 @@ public class RowCountUndeterminedClientResult extends ClientResult {
 
     @Override
     public int getRowCount() {
-        return Integer.MAX_VALUE; // 不能返回-1，JdbcResultSet那边会抛异常
+        if (rowCount == -2)
+            return rowCount;
+        else
+            return Integer.MAX_VALUE; // 不能返回-1，JdbcResultSet那边会抛异常
     }
 
     @Override

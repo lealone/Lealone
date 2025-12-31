@@ -329,57 +329,27 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     private Future<Boolean> executeInternal(String sql, boolean async) {
-        // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
-        // 想在客户端区分哪些sql是查询还是更新语句比较困难，还不如让服务器端来做
-        // if (sql != null) {
-        // sql = sql.trim();
-        // if (!sql.isEmpty()) {
-        // char c = Character.toUpperCase(sql.charAt(0));
-        // switch (c) {
-        // case 'S': // select or show
-        // executeQuery(sql);
-        // return true;
-        // case 'I': // insert
-        // case 'U': // update
-        // case 'D': // delete or drop
-        // case 'C': // create
-        // case 'A': // alter
-        // case 'M': // merge
-        // executeUpdate(sql);
-        // return false;
-        // default:
-        // break;
-        // }
-        // }
-        // }
         return conn.<Boolean> executeJdbcTask(async, this, ac -> {
-            SQLCommand command = createSQLCommand(sql, true);
-            command.prepare(false).onComplete(ar -> {
-                if (ar.isSucceeded())
-                    executeInternal(ac, command, false);
-                else
-                    setAsyncResult(ac, ar.getCause());
-            });
+            // 从lealone 8.0.0开始可以用executeQuery执行，如果返回的RowCount为-2，就代表是一条非查询语句
+            if (conn.isClientProtocolVersionGte8()) {
+                SQLCommand command = createSQLCommand(sql, false);
+                executeQueryInternal(ac, command, false);
+            } else {
+                SQLCommand command = createSQLCommand(sql, true);
+                command.prepare(false).onComplete(ar -> {
+                    if (ar.isSucceeded())
+                        executeInternal(ac, command, false);
+                    else
+                        setAsyncResult(ac, ar.getCause());
+                });
+            }
         }).getFuture();
     }
 
     void executeInternal(AsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
         setExecutingStatement(command);
         if (command.isQuery()) {
-            command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
-                setExecutingStatement(null);
-                if (ar.isFailed()) {
-                    command.close();
-                    setAsyncResult(ac, ar.getCause());
-                    return;
-                }
-                Result result = ar.getResult();
-                int id = getNextTraceId(TraceObjectType.RESULT_SET);
-                resultSet = new JdbcResultSet(JdbcStatement.this, result, id);
-                resultSet.setCommand(command);
-                // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
-                ac.setAsyncResult(true);
-            });
+            executeQueryInternal(ac, command, prepared);
         } else {
             command.executeUpdate().onComplete(ar -> {
                 // 设置完后再调用close，否则有可能当前语句提前关闭了
@@ -394,6 +364,31 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 }
             });
         }
+    }
+
+    private void executeQueryInternal(AsyncCallback<Boolean> ac, SQLCommand command, boolean prepared) {
+        command.executeQuery(maxRows, isScrollable()).onComplete(ar -> {
+            setExecutingStatement(null);
+            if (ar.isFailed()) {
+                command.close();
+                setAsyncResult(ac, ar.getCause());
+                return;
+            }
+            Result result = ar.getResult();
+            if (result.getRowCount() == -2) {
+                result.next();
+                updateCount = result.currentRow()[0].getInt();
+                ac.setAsyncResult(false);
+                if (!prepared)
+                    command.close();
+            } else {
+                int id = getNextTraceId(TraceObjectType.RESULT_SET);
+                resultSet = new JdbcResultSet(JdbcStatement.this, result, id);
+                resultSet.setCommand(command);
+                // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
+                ac.setAsyncResult(true);
+            }
+        });
     }
 
     /**

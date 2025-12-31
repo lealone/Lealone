@@ -532,6 +532,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     }
 
     boolean allowSendTransactionStatementPacket() {
+        return isClientProtocolVersionGte8();
+    }
+
+    public boolean isClientProtocolVersionGte8() {
         return !session.isServer() && session.getProtocolVersion() >= Constants.TCP_PROTOCOL_VERSION_8;
     }
 

@@ -531,12 +531,12 @@ public class LealoneClient {
             long time = System.nanoTime();
             ResultSet rs = null;
             try {
-                if (sql.startsWith("select")) {
+                if (!conn.isClientProtocolVersionGte8() && sql.startsWith("select")) {
                     rs = stat.executeQuery(sql);
                     printQueryResult(rs, listMode, time);
-                } else if (sql.startsWith("insert") //
+                } else if (!conn.isClientProtocolVersionGte8() && (sql.startsWith("insert") //
                         || sql.startsWith("update") //
-                        || sql.startsWith("delete")) {
+                        || sql.startsWith("delete"))) {
                     int updateCount = stat.executeUpdate(sql);
                     printUpdateResult(updateCount, time);
                 } else {

@@ -102,12 +102,15 @@ public class ClientSQLCommand implements SQLCommand {
     protected ClientResult getQueryResult(StatementQueryAck ack, int fetch, int resultId) {
         int columnCount = ack.columnCount;
         int rowCount = ack.rowCount;
+        if (rowCount <= 0)
+            resultId = -1;
         ClientResult result = null;
         try {
             TransferInputStream in = (TransferInputStream) ack.in;
             in.setSession(session);
             if (rowCount < 0)
-                result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount, fetch);
+                result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount,
+                        rowCount, fetch);
             else
                 result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount,
                         fetch);

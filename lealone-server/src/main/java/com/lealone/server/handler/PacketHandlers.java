@@ -8,8 +8,10 @@ package com.lealone.server.handler;
 import java.util.List;
 
 import com.lealone.db.command.CommandParameter;
+import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
+import com.lealone.db.value.ValueInt;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.PacketType;
 import com.lealone.server.protocol.QueryPacket;
@@ -21,6 +23,8 @@ import com.lealone.server.protocol.statement.StatementUpdate;
 import com.lealone.server.protocol.statement.StatementUpdateAck;
 import com.lealone.server.scheduler.PacketHandleTask;
 import com.lealone.sql.PreparedSQLStatement;
+import com.lealone.sql.expression.Expression;
+import com.lealone.sql.expression.ValueExpression;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {
@@ -91,24 +95,43 @@ public class PacketHandlers {
 
         protected void createYieldableQuery(PacketHandleTask task, PreparedSQLStatement stmt,
                 QueryPacket packet) {
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows,
-                    packet.scrollable, ar -> {
-                        if (ar.isSucceeded()) {
-                            Result result = ar.getResult();
-                            sendResult(task, packet, result);
-                        } else {
-                            task.sendError(ar.getCause());
-                        }
-                    });
+            PreparedSQLStatement.Yieldable<?> yieldable;
+            if (stmt.isQuery()) {
+                yieldable = stmt.createYieldableQuery(packet.maxRows, packet.scrollable, ar -> {
+                    if (ar.isSucceeded()) {
+                        Result result = ar.getResult();
+                        sendResult(task, packet, result, result.getRowCount());
+                    } else {
+                        task.sendError(ar.getCause());
+                    }
+                });
+            } else {
+                // 从lealone 8.0.0开始可以用executeQuery执行JdbcStatement.execute
+                // 如果返回的RowCount为-2，就代表是一条非查询语句
+                yieldable = stmt.createYieldableUpdate(ar -> {
+                    if (ar.isSucceeded()) {
+                        int updateCount = ar.getResult();
+                        Value[] row = { ValueInt.get(updateCount) };
+                        Expression[] expressions = { ValueExpression.getDefault() };
+                        LocalResult result = new LocalResult(task.session, expressions, 1);
+                        result.addRow(row);
+                        result.done();
+                        sendResult(task, packet, result, -2);
+                    } else {
+                        task.sendError(ar.getCause());
+                    }
+                });
+            }
             task.submitYieldableCommand(yieldable);
         }
 
-        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result) {
-            task.session.addCache(packet.resultId, result);
+        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result,
+                int rowCount) {
+            if (rowCount > 0)
+                task.session.addCache(packet.resultId, result);
             try {
-                int rowCount = result.getRowCount();
                 int fetch = packet.fetchSize;
-                if (rowCount != -1)
+                if (rowCount >= 0)
                     fetch = Math.min(rowCount, packet.fetchSize);
                 task.sendResponse(createAckPacket(task, result, rowCount, fetch));
             } catch (Exception e) {
