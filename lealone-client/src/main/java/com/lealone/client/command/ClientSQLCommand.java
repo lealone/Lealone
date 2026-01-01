@@ -5,21 +5,18 @@
  */
 package com.lealone.client.command;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.lealone.client.result.ClientResult;
-import com.lealone.client.result.RowCountDeterminedClientResult;
-import com.lealone.client.result.RowCountUndeterminedClientResult;
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.command.SQLCommand;
 import com.lealone.db.result.Result;
+import com.lealone.db.result.UpdateResult;
 import com.lealone.db.value.Value;
-import com.lealone.net.TransferInputStream;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.batch.BatchStatementUpdate;
 import com.lealone.server.protocol.batch.BatchStatementUpdateAck;
@@ -99,25 +96,12 @@ public class ClientSQLCommand implements SQLCommand {
         });
     }
 
-    protected ClientResult getQueryResult(StatementQueryAck ack, int fetch, int resultId) {
-        int columnCount = ack.columnCount;
+    protected Result getQueryResult(StatementQueryAck ack, int fetch, int resultId) {
         int rowCount = ack.rowCount;
-        if (rowCount <= 0)
-            resultId = -1;
-        ClientResult result = null;
-        try {
-            TransferInputStream in = (TransferInputStream) ack.in;
-            in.setSession(session);
-            if (rowCount < 0)
-                result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount,
-                        rowCount, fetch);
-            else
-                result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount,
-                        fetch);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-        return result;
+        if (ack.rowCount == -2)
+            return new UpdateResult(ack.columnCount);
+        else
+            return ClientResult.create(session, ack.in, resultId, ack.columnCount, rowCount, fetch);
     }
 
     @Override

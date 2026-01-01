@@ -375,9 +375,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 return;
             }
             Result result = ar.getResult();
-            if (result.getRowCount() == -2) {
-                result.next();
-                updateCount = result.currentRow()[0].getInt();
+            if (result.isUpdate()) {
+                updateCount = result.getUpdateCount();
                 ac.setAsyncResult(false);
                 if (!prepared)
                     command.close();

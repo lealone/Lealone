@@ -15,6 +15,7 @@ import com.lealone.db.SysProperties;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
+import com.lealone.net.NetInputStream;
 import com.lealone.net.TransferInputStream;
 import com.lealone.server.protocol.result.ResultChangeId;
 import com.lealone.server.protocol.result.ResultClose;
@@ -235,5 +236,157 @@ public abstract class ClientResult implements Result {
     @Override
     public boolean needToClose() {
         return true;
+    }
+
+    private static class RowCountDetermined extends ClientResult {
+
+        public RowCountDetermined(ClientSession session, TransferInputStream in, int resultId,
+                int columnCount, int rowCount, int fetchSize) throws IOException {
+            super(session, in, resultId, columnCount, rowCount, fetchSize);
+        }
+
+        @Override
+        public boolean next() {
+            if (rowId < rowCount) {
+                rowId++;
+                remapIfOld();
+                if (rowId < rowCount) {
+                    if (rowId - rowOffset >= result.size()) {
+                        fetchRows(true);
+                    }
+                    currentRow = result.get(rowId - rowOffset);
+                    return true;
+                }
+                currentRow = null;
+            }
+            return false;
+        }
+
+        @Override
+        protected void fetchRows(boolean sendFetch) {
+            session.checkClosed();
+            try {
+                rowOffset += result.size();
+                result.clear();
+                int fetch = Math.min(fetchSize, rowCount - rowOffset);
+                if (sendFetch) {
+                    fetchAndReadRows(fetch);
+                } else {
+                    readRows(in, fetch);
+                }
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, null);
+            }
+        }
+
+        @Override
+        protected void readRows(TransferInputStream in, int fetchSize) throws IOException {
+            for (int r = 0; r < fetchSize; r++) {
+                if (!in.readBoolean()) {
+                    break;
+                }
+                int len = columns.length;
+                Value[] values = new Value[len];
+                for (int i = 0; i < len; i++) {
+                    Value v = in.readValue();
+                    values[i] = v;
+                }
+                result.add(values);
+            }
+            if (rowOffset + result.size() >= rowCount) {
+                sendClose();
+            }
+        }
+    }
+
+    private static class RowCountUndetermined extends ClientResult {
+
+        // 不能在这初始化为false，在super的构造函数中会调用fetchRows有可能把isEnd设为true了，
+        // 如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
+        private boolean isEnd;
+
+        public RowCountUndetermined(ClientSession session, TransferInputStream in, int resultId,
+                int columnCount, int fetchSize) throws IOException {
+            super(session, in, resultId, columnCount, -1, fetchSize);
+        }
+
+        @Override
+        public boolean next() {
+            if (isEnd && rowId - rowOffset >= result.size() - 1) {
+                currentRow = null;
+                return false;
+            }
+
+            rowId++;
+            if (!isEnd) {
+                remapIfOld();
+                if (rowId - rowOffset >= result.size()) {
+                    fetchRows(true);
+                    if (isEnd && result.isEmpty()) {
+                        currentRow = null;
+                        return false;
+                    }
+                }
+            }
+            currentRow = result.get(rowId - rowOffset);
+            return true;
+
+        }
+
+        @Override
+        public int getRowCount() {
+            return Integer.MAX_VALUE; // 不能返回-1，JdbcResultSet那边会抛异常
+        }
+
+        @Override
+        protected void fetchRows(boolean sendFetch) {
+            session.checkClosed();
+            try {
+                rowOffset += result.size();
+                result.clear();
+                if (sendFetch) {
+                    fetchAndReadRows(fetchSize);
+                } else {
+                    readRows(in, fetchSize);
+                }
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, null);
+            }
+        }
+
+        @Override
+        protected void readRows(TransferInputStream in, int fetchSize) throws IOException {
+            for (int r = 0; r < fetchSize; r++) {
+                if (!in.readBoolean()) {
+                    isEnd = true;
+                    break;
+                }
+                int len = columns.length;
+                Value[] values = new Value[len];
+                for (int i = 0; i < len; i++) {
+                    Value v = in.readValue();
+                    values[i] = v;
+                }
+                result.add(values);
+            }
+            if (isEnd)
+                sendClose();
+        }
+    }
+
+    public static ClientResult create(ClientSession session, NetInputStream nin, int resultId,
+            int columnCount, int rowCount, int fetchSize) {
+        try {
+            TransferInputStream in = (TransferInputStream) nin;
+            in.setSession(session);
+            if (rowCount <= 0)
+                resultId = -1;
+            if (rowCount < 0)
+                return new RowCountUndetermined(session, in, resultId, columnCount, fetchSize);
+            else
+                return new RowCountDetermined(session, in, resultId, columnCount, rowCount, fetchSize);
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 }

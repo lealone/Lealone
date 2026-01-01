@@ -110,4 +110,14 @@ public class DelegatedResult implements Result {
     public int getFetchSize() {
         return result.getFetchSize();
     }
+
+    @Override
+    public boolean isUpdate() {
+        return result.isUpdate();
+    }
+
+    @Override
+    public int getUpdateCount() {
+        return result.getUpdateCount();
+    }
 }

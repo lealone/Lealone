@@ -8,10 +8,8 @@ package com.lealone.server.handler;
 import java.util.List;
 
 import com.lealone.db.command.CommandParameter;
-import com.lealone.db.result.LocalResult;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
-import com.lealone.db.value.ValueInt;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.PacketType;
 import com.lealone.server.protocol.QueryPacket;
@@ -23,8 +21,6 @@ import com.lealone.server.protocol.statement.StatementUpdate;
 import com.lealone.server.protocol.statement.StatementUpdateAck;
 import com.lealone.server.scheduler.PacketHandleTask;
 import com.lealone.sql.PreparedSQLStatement;
-import com.lealone.sql.expression.Expression;
-import com.lealone.sql.expression.ValueExpression;
 
 @SuppressWarnings("rawtypes")
 public class PacketHandlers {
@@ -100,7 +96,8 @@ public class PacketHandlers {
                 yieldable = stmt.createYieldableQuery(packet.maxRows, packet.scrollable, ar -> {
                     if (ar.isSucceeded()) {
                         Result result = ar.getResult();
-                        sendResult(task, packet, result, result.getRowCount());
+                        sendResult(task, packet, result, result.getRowCount(),
+                                result.getVisibleColumnCount());
                     } else {
                         task.sendError(ar.getCause());
                     }
@@ -111,12 +108,7 @@ public class PacketHandlers {
                 yieldable = stmt.createYieldableUpdate(ar -> {
                     if (ar.isSucceeded()) {
                         int updateCount = ar.getResult();
-                        Value[] row = { ValueInt.get(updateCount) };
-                        Expression[] expressions = { ValueExpression.getDefault() };
-                        LocalResult result = new LocalResult(task.session, expressions, 1);
-                        result.addRow(row);
-                        result.done();
-                        sendResult(task, packet, result, -2);
+                        sendResult(task, packet, null, -2, updateCount);
                     } else {
                         task.sendError(ar.getCause());
                     }
@@ -125,22 +117,23 @@ public class PacketHandlers {
             task.submitYieldableCommand(yieldable);
         }
 
-        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result,
-                int rowCount) {
+        protected void sendResult(PacketHandleTask task, QueryPacket packet, Result result, int rowCount,
+                int columnCount) {
             if (rowCount > 0)
                 task.session.addCache(packet.resultId, result);
             try {
                 int fetch = packet.fetchSize;
                 if (rowCount >= 0)
                     fetch = Math.min(rowCount, packet.fetchSize);
-                task.sendResponse(createAckPacket(task, result, rowCount, fetch));
+                task.sendResponse(createAckPacket(task, result, rowCount, columnCount, fetch));
             } catch (Exception e) {
                 task.sendError(e);
             }
         }
 
-        protected Packet createAckPacket(PacketHandleTask task, Result result, int rowCount, int fetch) {
-            return new StatementQueryAck(result, rowCount, fetch);
+        protected Packet createAckPacket(PacketHandleTask task, Result result, int rowCount,
+                int columnCount, int fetch) {
+            return new StatementQueryAck(result, rowCount, columnCount, fetch);
         }
     }
 

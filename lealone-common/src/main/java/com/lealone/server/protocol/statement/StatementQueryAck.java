@@ -24,11 +24,11 @@ public class StatementQueryAck implements AckPacket {
     public final int fetchSize;
     public final NetInputStream in;
 
-    public StatementQueryAck(Result result, int rowCount, int fetchSize) {
+    public StatementQueryAck(Result result, int rowCount, int columnCount, int fetchSize) {
         this.result = result;
         this.rowCount = rowCount;
+        this.columnCount = columnCount;
         this.fetchSize = fetchSize;
-        columnCount = result.getVisibleColumnCount();
         in = null;
     }
 
@@ -36,7 +36,10 @@ public class StatementQueryAck implements AckPacket {
         result = null;
         rowCount = in.readInt();
         columnCount = in.readInt();
-        fetchSize = in.readInt();
+        if (rowCount != -2)
+            fetchSize = in.readInt();
+        else
+            fetchSize = 0;
         this.in = in;
     }
 
@@ -49,6 +52,8 @@ public class StatementQueryAck implements AckPacket {
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeInt(rowCount);
         out.writeInt(columnCount);
+        if (rowCount == -2)
+            return;
         out.writeInt(fetchSize);
         encodeExt(out, version);
         for (int i = 0; i < columnCount; i++) {

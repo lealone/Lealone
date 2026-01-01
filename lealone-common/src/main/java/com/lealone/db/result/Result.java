@@ -165,4 +165,11 @@ public interface Result extends ManualCloseable {
      */
     int getFetchSize();
 
+    default boolean isUpdate() {
+        return false;
+    }
+
+    default int getUpdateCount() {
+        return 0;
+    }
 }

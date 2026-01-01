@@ -8,7 +8,7 @@ package com.lealone.client.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.lealone.client.result.RowCountDeterminedClientResult;
+import com.lealone.client.result.ClientResult;
 import com.lealone.client.session.AutoReconnectSession;
 import com.lealone.client.session.ClientSession;
 import com.lealone.common.exceptions.DbException;
@@ -20,7 +20,6 @@ import com.lealone.db.async.Future;
 import com.lealone.db.command.CommandParameter;
 import com.lealone.db.result.Result;
 import com.lealone.db.value.Value;
-import com.lealone.net.TransferInputStream;
 import com.lealone.server.protocol.Packet;
 import com.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import com.lealone.server.protocol.batch.BatchStatementUpdateAck;
@@ -110,8 +109,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         prepareIfRequired();
         return session.<Result, PreparedStatementGetMetaDataAck> send(
                 new PreparedStatementGetMetaData(commandId), ack -> {
-                    return new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
-                            ack.columnCount, 0, 0);
+                    return ClientResult.create(session, ack.in, -1, ack.columnCount, 0, 0);
                 });
     }
 
