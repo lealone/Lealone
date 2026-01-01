@@ -8,12 +8,12 @@ package com.lealone.server.protocol.statement;
 import java.io.IOException;
 
 import com.lealone.db.result.Result;
+import com.lealone.db.result.ResultColumn;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.NetOutputStream;
 import com.lealone.server.protocol.AckPacket;
 import com.lealone.server.protocol.PacketDecoder;
 import com.lealone.server.protocol.PacketType;
-import com.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
 import com.lealone.server.protocol.result.ResultFetchRowsAck;
 
 public class StatementQueryAck implements AckPacket {
@@ -57,7 +57,7 @@ public class StatementQueryAck implements AckPacket {
         out.writeInt(fetchSize);
         encodeExt(out, version);
         for (int i = 0; i < columnCount; i++) {
-            PreparedStatementGetMetaDataAck.writeColumn(out, result, i);
+            ResultColumn.write(out, result, i);
         }
         ResultFetchRowsAck.writeRow(out, result, fetchSize);
     }

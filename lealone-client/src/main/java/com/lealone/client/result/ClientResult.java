@@ -14,6 +14,7 @@ import com.lealone.common.util.Utils;
 import com.lealone.db.SysProperties;
 import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.result.Result;
+import com.lealone.db.result.ResultColumn;
 import com.lealone.db.value.Value;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.TransferInputStream;
@@ -37,7 +38,7 @@ public abstract class ClientResult implements Result {
     protected ClientSession session;
     protected TransferInputStream in;
     protected int resultId; // 如果为负数，表示后端没有缓存任何东西
-    protected final ClientResultColumn[] columns;
+    protected final ResultColumn[] columns;
     protected Value[] currentRow;
     protected final int rowCount;
     protected int rowId, rowOffset;
@@ -48,10 +49,10 @@ public abstract class ClientResult implements Result {
         this.session = session;
         this.in = in;
         this.resultId = resultId;
-        this.columns = new ClientResultColumn[columnCount];
+        this.columns = new ResultColumn[columnCount];
         this.rowCount = rowCount;
         for (int i = 0; i < columnCount; i++) {
-            columns[i] = new ClientResultColumn(in);
+            columns[i] = ResultColumn.read(in);
         }
         rowId = -1;
         result = Utils.newSmallArrayList();

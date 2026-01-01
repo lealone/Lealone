@@ -8,6 +8,7 @@ package com.lealone.server.protocol.ps;
 import java.io.IOException;
 
 import com.lealone.db.result.Result;
+import com.lealone.db.result.ResultColumn;
 import com.lealone.net.NetInputStream;
 import com.lealone.net.NetOutputStream;
 import com.lealone.server.protocol.AckPacket;
@@ -41,7 +42,7 @@ public class PreparedStatementGetMetaDataAck implements AckPacket {
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeInt(columnCount);
         for (int i = 0; i < columnCount; i++) {
-            writeColumn(out, result, i);
+            ResultColumn.write(out, result, i);
         }
     }
 
@@ -54,24 +55,5 @@ public class PreparedStatementGetMetaDataAck implements AckPacket {
             int columnCount = in.readInt();
             return new PreparedStatementGetMetaDataAck(in, columnCount);
         }
-    }
-
-    /**
-    * Write a result column to the given output.
-    *
-    * @param result the result
-    * @param i the column index
-    */
-    public static void writeColumn(NetOutputStream out, Result result, int i) throws IOException {
-        out.writeString(result.getAlias(i));
-        out.writeString(result.getSchemaName(i));
-        out.writeString(result.getTableName(i));
-        out.writeString(result.getColumnName(i));
-        out.writeInt(result.getColumnType(i));
-        out.writeLong(result.getColumnPrecision(i));
-        out.writeInt(result.getColumnScale(i));
-        out.writeInt(result.getDisplaySize(i));
-        out.writeBoolean(result.isAutoIncrement(i));
-        out.writeInt(result.getNullable(i));
     }
 }
