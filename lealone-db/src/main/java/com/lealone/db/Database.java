@@ -198,10 +198,6 @@ public class Database extends DbObjectBase implements DataHandler {
     private final TableAlterHistory tableAlterHistory = new TableAlterHistory();
     private final ConcurrentHashMap<Integer, DataHandler> dataHandlers = new ConcurrentHashMap<>();
 
-    private String[] hostIds;
-    private HashSet<NetNode> nodes;
-    private String targetNodes;
-
     public Database(int id, String name, Map<String, String> parameters) {
         super(id, name);
         storagePath = getStoragePath();
@@ -398,9 +394,6 @@ public class Database extends DbObjectBase implements DataHandler {
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storages.putAll(storages);
         db.runMode = runMode;
-        db.hostIds = hostIds;
-        db.nodes = nodes;
-        db.targetNodes = targetNodes;
         db.lastConnectionInfo = lastConnectionInfo;
         if (init) {
             db.init();
@@ -1880,55 +1873,8 @@ public class Database extends DbObjectBase implements DataHandler {
         sql.append(')');
     }
 
-    public String[] getHostIds() {
-        if (hostIds == null) {
-            synchronized (this) {
-                if (hostIds == null) {
-                    if (parameters != null && parameters.containsKey("hostIds")) {
-                        targetNodes = parameters.get("hostIds").trim();
-                        hostIds = StringUtils.arraySplit(targetNodes, ',');
-                    }
-                    if (hostIds == null) {
-                        hostIds = new String[0];
-                        nodes = null;
-                    } else {
-                        nodes = new HashSet<>(hostIds.length);
-                        for (String id : hostIds) {
-                            nodes.add(NetNode.createTCP(id));
-                        }
-                    }
-                    if (nodes != null && nodes.isEmpty()) {
-                        nodes = null;
-                    }
-                    if (targetNodes != null && targetNodes.isEmpty())
-                        targetNodes = null;
-                }
-            }
-        }
-        return hostIds;
-    }
-
-    public void setHostIds(String[] hostIds) {
-        this.hostIds = null;
-        if (hostIds != null && hostIds.length > 0)
-            parameters.put("hostIds", StringUtils.arrayCombine(hostIds, ','));
-        else
-            parameters.put("hostIds", "");
-        getHostIds();
-    }
-
-    public boolean isTargetNode(NetNode node) {
-        if (hostIds == null) {
-            getHostIds();
-        }
-        return nodes == null || nodes.contains(node);
-    }
-
     public String getTargetNodes() {
-        if (hostIds == null) {
-            getHostIds();
-        }
-        return targetNodes;
+        return NetNode.getLocalTcpNode().getHostAndPort();
     }
 
     public void createRootUserIfNotExists() {

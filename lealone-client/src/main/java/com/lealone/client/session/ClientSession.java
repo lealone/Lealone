@@ -195,11 +195,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
         execute(false, ac, () -> {
             Throwable closeError = null;
             try {
-                // 只有当前Session有效时服务器端才持有对应的session
-                if (isValid()) {
-                    send(new SessionClose());
-                    tcpConnection.removeSession(id);
-                }
+                send(new SessionClose());
+                tcpConnection.removeSession(id);
                 if (getScheduler() != null) {
                     getScheduler().removeSession(this);
                 }

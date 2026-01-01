@@ -78,16 +78,6 @@ public interface Session extends Closeable {
 
     void checkClosed();
 
-    void setInvalid(boolean v);
-
-    boolean isInvalid();
-
-    boolean isValid();
-
-    void setTargetNodes(String targetNodes);
-
-    String getTargetNodes();
-
     void setRunMode(RunMode runMode);
 
     RunMode getRunMode();

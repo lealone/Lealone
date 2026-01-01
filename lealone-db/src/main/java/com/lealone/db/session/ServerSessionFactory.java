@@ -21,7 +21,6 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.db.scheduler.SchedulerLock;
 import com.lealone.db.scheduler.SchedulerThread;
-import com.lealone.net.NetNode;
 
 public class ServerSessionFactory extends SessionFactoryBase {
 
@@ -66,24 +65,6 @@ public class ServerSessionFactory extends SessionFactoryBase {
             ldb.createEmbeddedDatabase(dbName, ci);
         }
         Database database = ldb.getDatabase(dbName);
-        String targetNodes;
-        if (ci.isEmbedded()) {
-            targetNodes = null;
-        } else {
-            NetNode localNode = NetNode.getLocalTcpNode();
-            targetNodes = database.getTargetNodes();
-            // 为null时总是认为当前节点就是数据库所在的节点
-            if (targetNodes == null) {
-                targetNodes = localNode.getHostAndPort();
-            } else if (!database.isTargetNode(localNode)) {
-                ServerSession session = new ServerSession(database, ldb.getSystemSession().getUser(), 0);
-                session.setTargetNodes(targetNodes);
-                session.setRunMode(database.getRunMode());
-                session.setInvalid(true);
-                return session;
-            }
-        }
-
         // 如果数据库正在关闭过程中，不等待重试了，直接抛异常
         // 如果数据库已经关闭了，那么在接下来的init中会重新打开
         if (database.isClosing()) {
@@ -94,7 +75,6 @@ public class ServerSessionFactory extends SessionFactoryBase {
         }
         User user = validateUser(database, ci);
         ServerSession session = database.createSession(user, ci);
-        session.setTargetNodes(targetNodes);
         session.setRunMode(database.getRunMode());
         return session;
     }

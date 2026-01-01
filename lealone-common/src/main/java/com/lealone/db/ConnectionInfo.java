@@ -724,31 +724,6 @@ public class ConnectionInfo implements Cloneable {
         return config;
     }
 
-    public ConnectionInfo copy(String newServer) {
-        ConnectionInfo ci = new ConnectionInfo();
-        ci.prop.putAll(prop);
-        StringBuilder buff = new StringBuilder(Constants.URL_PREFIX);
-        buff.append(Constants.URL_TCP).append("//").append(newServer).append('/').append(dbName);
-        ci.url = buff.toString();
-        ci.user = user;
-        ci.filePasswordHash = filePasswordHash;
-        ci.fileEncryptionKey = fileEncryptionKey;
-        ci.userPasswordHash = userPasswordHash;
-        ci.dbName = dbName;
-        ci.remote = remote;
-        ci.ssl = ssl;
-        ci.embedded = embedded;
-        ci.servers = newServer;
-        ci.sessionFactory = sessionFactory;
-        ci.sessionFactoryName = sessionFactoryName;
-        ci.persistent = persistent;
-        ci.netFactoryName = netFactoryName;
-        ci.networkTimeout = networkTimeout;
-        ci.traceEnabled = traceEnabled;
-        ci.scheduler = scheduler;
-        return ci;
-    }
-
     public void setNetFactoryName(String netFactoryName) {
         this.netFactoryName = netFactoryName;
     }

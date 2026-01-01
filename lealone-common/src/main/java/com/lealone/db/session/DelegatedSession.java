@@ -85,31 +85,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setInvalid(boolean v) {
-        session.setInvalid(v);
-    }
-
-    @Override
-    public boolean isInvalid() {
-        return session.isInvalid();
-    }
-
-    @Override
-    public boolean isValid() {
-        return session.isValid();
-    }
-
-    @Override
-    public void setTargetNodes(String targetNodes) {
-        session.setTargetNodes(targetNodes);
-    }
-
-    @Override
-    public String getTargetNodes() {
-        return session.getTargetNodes();
-    }
-
-    @Override
     public void setRunMode(RunMode runMode) {
         session.setRunMode(runMode);
     }

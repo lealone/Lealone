@@ -26,12 +26,7 @@ public abstract class SessionBase implements Session {
 
     protected boolean autoCommit = true;
     protected boolean closed;
-
-    protected boolean invalid;
-    protected String targetNodes;
     protected RunMode runMode;
-    protected int consistencyLevel;
-
     protected TraceSystem traceSystem;
 
     @Override
@@ -64,39 +59,6 @@ public abstract class SessionBase implements Session {
         if (isClosed()) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
-    }
-
-    @Override
-    public void setInvalid(boolean v) {
-        invalid = v;
-    }
-
-    @Override
-    public boolean isInvalid() {
-        return invalid;
-    }
-
-    @Override
-    public boolean isValid() {
-        return !invalid;
-    }
-
-    @Override
-    public void setTargetNodes(String targetNodes) {
-        this.targetNodes = targetNodes;
-    }
-
-    @Override
-    public String getTargetNodes() {
-        return targetNodes;
-    }
-
-    public void setConsistencyLevel(int consistencyLevel) {
-        this.consistencyLevel = consistencyLevel;
-    }
-
-    public int getConsistencyLevel() {
-        return consistencyLevel;
     }
 
     @Override
