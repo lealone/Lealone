@@ -154,7 +154,7 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public void read() {
-        if (conn.isClosed())
+        if (closed)
             return;
         try {
             ByteBuffer buffer = inputBuffer.getByteBuffer();
@@ -182,11 +182,11 @@ public class NioWritableChannel implements WritableChannel {
 
     @Override
     public void write(WritableBuffer buffer) {
+        if (closed)
+            return;
         if (eventLoop != null) {
             eventLoop.write(this, buffer);
         } else {
-            if (conn.isClosed())
-                return;
             ByteBuffer bb = buffer.getByteBuffer();
             int remaining = bb.remaining();
             try {

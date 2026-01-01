@@ -21,40 +21,40 @@ public interface NetFactory extends Plugin {
     public static final String NIO = "nio";
     public static final String BIO = "bio";
 
-    NetServer createNetServer();
-
     NetClient createNetClient();
 
-    default NetEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval) {
-        return null;
-    }
+    NetServer createNetServer();
+
+    NetEventLoop createNetEventLoop(Scheduler scheduler, long loopInterval);
 
     public static boolean isBio(Map<String, String> config) {
-        String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
-                Constants.DEFAULT_NET_FACTORY_NAME);
-        return BIO.equalsIgnoreCase(netFactoryName);
+        return BIO.equalsIgnoreCase(MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
+                Constants.DEFAULT_NET_FACTORY_NAME));
     }
 
     public static NetFactory getFactory(Map<String, String> config) {
         return getFactory(config, Constants.DEFAULT_NET_FACTORY_NAME);
     }
 
-    public static NetFactory getFactory(Map<String, String> config, String defaultFactoryName) {
+    public static NetFactory getFactory(Map<String, String> config, String defaultName) {
+        String name;
+        NetFactory factory;
         AsyncConnectionPool.setMaxExclusiveSize(config);
         if (AsyncConnectionPool.isExceededMaxExclusiveSize()) {
-            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), NetFactory.NIO);
+            config.put(ConnectionSetting.NET_FACTORY_NAME.name(), NIO);
             config.put(ConnectionSetting.IS_SHARED.name(), "true");
+            name = NIO;
+        } else {
+            name = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(), defaultName);
         }
-        String netFactoryName = MapUtils.getString(config, ConnectionSetting.NET_FACTORY_NAME.name(),
-                defaultFactoryName);
-        NetFactory factory;
         // nio和bio都用NioNetFactory实现
-        if (NIO.equalsIgnoreCase(netFactoryName) || BIO.equalsIgnoreCase(netFactoryName))
+        if (NIO.equalsIgnoreCase(name) || BIO.equalsIgnoreCase(name)) {
             factory = NioNetFactory.INSTANCE;
-        else
-            factory = PluginManager.getPlugin(NetFactory.class, netFactoryName);
-        if (factory == null) {
-            throw new ConfigException("NetFactory '" + netFactoryName + "' can not found");
+        } else {
+            factory = PluginManager.getPlugin(NetFactory.class, name);
+            if (factory == null) {
+                throw new ConfigException("NetFactory '" + name + "' can not found");
+            }
         }
         factory.init(config);
         return factory;
