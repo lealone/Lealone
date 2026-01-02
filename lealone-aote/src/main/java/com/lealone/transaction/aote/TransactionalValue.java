@@ -226,7 +226,9 @@ public class TransactionalValue extends LockableBase {
     public static int tryLock(Lockable lockable, AOTransaction t) {
         while (true) {
             Lock old = getOrSetLock(lockable);
-            if (lockable.isNoneLock()) // 上一个事务替换为NULL时重试
+            // 上一个事务替换为NULL时重试
+            // 不能直接用lockable.isNoneLock()，因为此时lockable.getLock可能跟old不同
+            if (old == null || old.isPageLock())
                 continue;
             RowLock rowLock = (RowLock) old;
             Object value = lockable.getLockedValue();
