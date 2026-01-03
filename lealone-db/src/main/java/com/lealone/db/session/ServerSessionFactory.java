@@ -12,7 +12,6 @@ import com.lealone.db.DbSetting;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.Mode;
 import com.lealone.db.api.ErrorCode;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.db.auth.User;
 import com.lealone.db.scheduler.EmbeddedScheduler;
@@ -32,29 +31,16 @@ public class ServerSessionFactory extends SessionFactoryBase {
 
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
-        if (SchedulerThread.isScheduler()) {
-            return Future.succeededFuture(createServerSession(ci));
-        } else {
-            // 在嵌入模式下自动启动EmbeddedScheduler，然后在EmbeddedScheduler中运行createSession
-            if (ci.isEmbedded()) {
-                SchedulerFactory sf = SchedulerFactory.getDefaultSchedulerFactory();
-                if (sf == null)
-                    sf = SchedulerFactory.getSchedulerFactory(EmbeddedScheduler.class, ci.getConfig());
-                Scheduler scheduler = sf.getScheduler();
-                ci.setScheduler(scheduler);
-                AsyncCallback<Session> ac = AsyncCallback.createConcurrentCallback();
-                scheduler.handle(() -> {
-                    try {
-                        ac.setAsyncResult(createServerSession(ci));
-                    } catch (Exception e) {
-                        ac.setAsyncResult(e);
-                    }
-                });
-                return ac;
-            } else {
-                throw DbException.getInternalError();
-            }
+        // 在嵌入模式下自动启动EmbeddedScheduler
+        if (ci.isEmbedded() && !SchedulerThread.isScheduler()) {
+            SchedulerFactory sf = SchedulerFactory.getDefaultSchedulerFactory();
+            if (sf == null)
+                sf = SchedulerFactory.getSchedulerFactory(EmbeddedScheduler.class, ci.getConfig());
+            Scheduler scheduler = sf.getScheduler();
+            ci.setScheduler(scheduler);
+            SchedulerThread.bindScheduler(scheduler);
         }
+        return Future.succeededFuture(createServerSession(ci));
     }
 
     private ServerSession createServerSession(ConnectionInfo ci) {

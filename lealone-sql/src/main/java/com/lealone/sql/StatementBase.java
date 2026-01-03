@@ -394,7 +394,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
             setProgress();
-            if (yieldEnabled && session.getScheduler() != null)
+            if (yieldEnabled && session.getScheduler() != null && SchedulerThread.isScheduler())
                 return session.getScheduler().yieldIfNeeded(this);
         }
         return false;
@@ -534,11 +534,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        setYieldableCommand(yieldable, parameterValues);
+        setYieldableCommand(yieldable, parameterValues, ac);
         return ac;
     }
 
-    private void setYieldableCommand(YieldableBase<?> yieldable, Value[] parameterValues) {
+    private void setYieldableCommand(YieldableBase<?> yieldable, Value[] parameterValues,
+            AsyncCallback<?> ac) {
         YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
         // 不能把参数值提前设置，因为批量操作时，如果提前设置了会覆盖前面的，只能等到执行YieldableCommand时设置
         if (parameterValues != null)
@@ -546,8 +547,22 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if (SchedulerThread.isScheduler()) {
             session.setYieldableCommand(c);
         } else {
-            session.getSessionInfo().submitTask(() -> session.setYieldableCommand(c));
-            session.getScheduler().wakeUp();
+            if (session.isSyncMode()) {
+                int maxRetryCount = 3;
+                while (true) {
+                    c.run();
+                    if (ac.getAsyncResult() != null)
+                        return;
+                    if (session.needYieldOrWait() || --maxRetryCount == 0) {
+                        session.setYieldableCommand(c);
+                        session.getScheduler().wakeUp();
+                        return;
+                    }
+                }
+            } else {
+                session.getSessionInfo().submitTask(() -> session.setYieldableCommand(c));
+                session.getScheduler().wakeUp();
+            }
         }
     }
 
@@ -566,7 +581,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 ac.setAsyncResult(ar.getCause());
             }
         });
-        setYieldableCommand(yieldable, parameterValues);
+        setYieldableCommand(yieldable, parameterValues, ac);
         return ac;
     }
 

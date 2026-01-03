@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.lealone.common.exceptions.DbException;
@@ -1367,7 +1368,6 @@ public class ServerSession extends SessionBase implements InternalSession {
 
     @Override
     public <T> AsyncCallback<T> createCallback(boolean async) {
-        // TODO 为异步和同步api做不同处理
         return createCallback();
     }
 
@@ -1375,6 +1375,24 @@ public class ServerSession extends SessionBase implements InternalSession {
     public void executeInScheduler(AsyncTask task) {
         getSessionInfo().submitTask(task);
         getScheduler().wakeUp();
+    }
+
+    private volatile boolean syncMode = true;
+
+    public boolean isSyncMode() {
+        return syncMode;
+    }
+
+    private void toSyncMode() {
+        syncMode = true;
+        // Scheduler scheduler = getScheduler();
+        // scheduler.removeSession(this);
+    }
+
+    private void toAsyncMode() {
+        syncMode = false;
+        // Scheduler scheduler = getScheduler();
+        // scheduler.addSession(this);
     }
 
     @Override
@@ -1387,9 +1405,24 @@ public class ServerSession extends SessionBase implements InternalSession {
             if (SchedulerThread.isScheduler()) {
                 getSessionInfo().submitTask(task);
             } else {
-                // TODO 为异步和同步api做不同处理
-                getSessionInfo().submitTask(task);
-                getScheduler().wakeUp();
+                if (async) {
+                    if (isSyncMode()) {
+                        toAsyncMode();
+                    }
+                    getSessionInfo().submitTask(task);
+                    getScheduler().wakeUp();
+                } else {
+                    if (!isSyncMode()) {
+                        CountDownLatch latch = new CountDownLatch(1);
+                        getSessionInfo().submitTask(() -> {
+                            toSyncMode();
+                            latch.countDown();
+                        });
+                        getScheduler().wakeUp();
+                        latch.await();
+                    }
+                    task.run();
+                }
             }
         } catch (Throwable t) {
             ac.setAsyncResult(t);
@@ -1438,7 +1471,11 @@ public class ServerSession extends SessionBase implements InternalSession {
     // 当前事务申请锁失败被挂起时，只是把session变成等待状态，然后用lockedByTransaction指向占有锁的事务，
     // 等lockedByTransaction提交或回滚后，不需要修改被挂起事务的状态，只需要唤醒被挂起事务的调度线程重试即可。
     private void wakeUpIfNeeded() {
-        if (lockedByTransaction != null && (lockedByTransaction.isClosed())) {
+        Transaction t = lockedByTransaction;
+        if (t != null && t.isClosed()) {
+            if (DbException.ASSERT) {
+                DbException.assertTrue(lockedByTransaction != null);
+            }
             reset(SessionStatus.RETRYING_RETURN_ACK);
         }
     }

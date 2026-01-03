@@ -44,7 +44,7 @@ public class CRUDExample {
         // perf();
 
         for (int i = 0; i < 300; i++) {
-            // startMultiThreads(EMBEDDED, 48);
+            // startMultiThreads(EMBEDDED, 64);
         }
     }
 
@@ -55,7 +55,6 @@ public class CRUDExample {
     }
 
     public static void perf() throws Exception {
-
         Connection conn = null;
         int count = 100;
         for (int i = 0; i < count; i++) {
@@ -312,9 +311,17 @@ public class CRUDExample {
             throws SQLException {
         for (int j = 1; j <= threadCount; j++) {
             String sql = "UPDATE test SET f2 = 2 WHERE f1 = 1";
-            // String sql = "INSERT INTO test(f1, f2) VALUES(" + id.incrementAndGet() + ", 1)";
+            // sql = "INSERT INTO test(f1, f2) VALUES(" + id.incrementAndGet() + ", 1)";
             int uc = s.executeUpdate(sql);
             updateCount.addAndGet(uc);
+
+            // s.executeUpdateAsync(sql).onComplete(ar -> {
+            // if (ar.isSucceeded()) {
+            // updateCount.addAndGet(ar.getResult());
+            // } else {
+            // ar.getCause().printStackTrace();
+            // }
+            // }).get();
         }
     }
 
