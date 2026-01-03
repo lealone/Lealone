@@ -7,7 +7,6 @@ package com.lealone.db;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -454,7 +453,7 @@ public class Database extends DbObjectBase implements DataHandler {
 
     private void initTableAlterHistory() {
         // 用户也可以在LealoneDatabase的public模式中建表修改表结构
-        tableAlterHistory.init(getInternalConnection(), this);
+        tableAlterHistory.init(this);
         // 提前初始化表的版本号，避免在执行insert/update时用同步的方式加载
         for (Schema s : getAllSchemas(false)) {
             if (s != infoSchema && s != perfSchema) {
@@ -1686,20 +1685,6 @@ public class Database extends DbObjectBase implements DataHandler {
             compiler = new SourceCompiler();
         }
         return compiler;
-    }
-
-    public Connection getInternalConnection() {
-        return getInternalConnection(systemSession);
-    }
-
-    public Connection getInternalConnection(InternalScheduler scheduler) {
-        ServerSession session = createSession(getSystemUser(), scheduler);
-        return getInternalConnection(session);
-    }
-
-    private Connection getInternalConnection(ServerSession session) {
-        return ServerSession.createConnection(session, systemUser.getName(),
-                Constants.CONN_URL_INTERNAL);
     }
 
     public int getDefaultTableType() {

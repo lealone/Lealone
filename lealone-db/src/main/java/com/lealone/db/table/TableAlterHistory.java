@@ -5,12 +5,8 @@
  */
 package com.lealone.db.table;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 
-import com.lealone.common.exceptions.DbException;
 import com.lealone.db.Database;
 import com.lealone.db.RunMode;
 import com.lealone.db.index.Cursor;
@@ -33,23 +29,17 @@ public class TableAlterHistory {
 
     private Table table;
 
-    public void init(Connection conn, Database db) {
-        try {
-            table = findTable(db);
-            if (table != null)
-                return;
-            Statement stmt = conn.createStatement();
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS INFORMATION_SCHEMA.table_alter_history"
-                    + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))"
-                    + " PARAMETERS(" + StorageSetting.RUN_MODE.name() + "='"
-                    + RunMode.CLIENT_SERVER.name() + "')");
-            stmt.close();
-            conn.commit();
-            conn.close();
-            table = findTable(db);
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        }
+    public void init(Database db) {
+        table = findTable(db);
+        if (table != null)
+            return;
+        db.getSystemSession()
+                .executeUpdateLocal("CREATE TABLE IF NOT EXISTS INFORMATION_SCHEMA.table_alter_history" //
+                        + " (id int, version int, alter_type int, columns varchar," //
+                        + " PRIMARY KEY(id, version))" //
+                        + " PARAMETERS(" + StorageSetting.RUN_MODE.name() + "='" //
+                        + RunMode.CLIENT_SERVER.name() + "')");
+        table = findTable(db);
     }
 
     public int getVersion(ServerSession session, int id) {
