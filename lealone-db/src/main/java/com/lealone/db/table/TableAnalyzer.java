@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.db.auth.Right;
 import com.lealone.db.result.Result;
+import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueNull;
@@ -44,7 +45,21 @@ public class TableAnalyzer {
             }
             int rows = session.getDatabase().getSettings().analyzeSample / 10;
             try {
-                analyzeTable(session, table, rows, false);
+                Scheduler scheduler = session.getScheduler();
+                if (scheduler != null) {
+                    scheduler.handle(() -> {
+                        // 如果有多个线程要执行analyze，只需要其中一个执行即可
+                        if (analyzing.compareAndSet(false, true)) {
+                            try (ServerSession s = session.getDatabase()
+                                    .createSession(session.getUser())) {
+                                analyzeTable(s, table, rows, false);
+                                s.asyncCommit();
+                            } finally {
+                                analyzing.set(false);
+                            }
+                        }
+                    });
+                }
             } finally {
                 analyzing.set(false);
             }
@@ -109,22 +124,7 @@ public class TableAnalyzer {
             buff.append(" LIMIT 1 SAMPLE_SIZE ").append(sample);
         }
         String sql = buff.toString();
-        if (manual) {
-            analyzeTable(session, table, sql);
-        } else {
-            // 如果是在执行insert/update/delete时触发，需要异步通过新任务的方式执行
-            // 不能在同一个session中嵌套执行，这样会修改session的状态，导致各种并发问题
-            session.getSessionInfo().submitTask(() -> {
-                // 如果有多个线程要执行analyze，只需要其中一个执行即可
-                if (analyzing.compareAndSet(false, true)) {
-                    try {
-                        analyzeTable(session, table, sql);
-                    } finally {
-                        analyzing.set(false);
-                    }
-                }
-            });
-        }
+        analyzeTable(session, table, sql);
     }
 
     private static void analyzeTable(ServerSession session, Table table, String sql) {
