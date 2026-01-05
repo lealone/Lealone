@@ -181,6 +181,8 @@ public class NioWritableChannel implements WritableChannel {
         // 要在循环里一直读满为止，如果只读一次返回的结果不一定是len
         while (len > 0) {
             int read = channel.read(buffer);
+            if (read < 0)
+                break;
             len -= read;
         }
         buffer.flip();
