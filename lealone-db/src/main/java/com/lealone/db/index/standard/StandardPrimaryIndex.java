@@ -140,7 +140,10 @@ public class StandardPrimaryIndex extends StandardDataIndex<Row, Row> {
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
-                checkDuplicateKey = false;
+                // checkDuplicateKey = false;
+                // 批量写时addIfAbsent的性能反而比append要好
+                // 非批量写时性能又差不多
+                row.setKey(dataMap.getAndAddKey(1) + 1);
             }
         } else {
             long k = row.getValue(mainIndexColumn).getLong();
