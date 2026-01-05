@@ -159,16 +159,12 @@ public class NioWritableChannel implements WritableChannel {
         try {
             ByteBuffer buffer = inputBuffer.getByteBuffer();
             int packetLengthByteCount = conn.getPacketLengthByteCount();
-            buffer.limit(packetLengthByteCount);
-            channel.read(buffer);
-            buffer.flip();
+            readFully(buffer, packetLengthByteCount);
             int packetLength = conn.getPacketLength(buffer);
             buffer.flip();
             if (packetLength > buffer.capacity())
                 buffer = inputBuffer.getDataBuffer().growCapacity(packetLength);
-            buffer.limit(packetLength);
-            channel.read(buffer);
-            buffer.flip();
+            readFully(buffer, packetLength);
             conn.handle(inputBuffer, false);
         } catch (Exception e) {
             conn.handleException(e);
@@ -178,6 +174,16 @@ public class NioWritableChannel implements WritableChannel {
             if (inputBuffer != null)
                 inputBuffer.recycle();
         }
+    }
+
+    private void readFully(ByteBuffer buffer, int len) throws IOException {
+        buffer.limit(len);
+        // 要在循环里一直读满为止，如果只读一次返回的结果不一定是len
+        while (len > 0) {
+            int read = channel.read(buffer);
+            len -= read;
+        }
+        buffer.flip();
     }
 
     @Override
