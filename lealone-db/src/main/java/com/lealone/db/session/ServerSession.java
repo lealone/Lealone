@@ -1456,10 +1456,15 @@ public class ServerSession extends SessionBase implements InternalSession {
             return null;
         wakeUpIfNeeded();
         // session处于以下状态时不会被当成候选的对象
-        switch (getStatus()) {
+        switch (sessionStatus) {
         case WAITING:
             if (checkTimeout) {
                 checkTransactionTimeout(timeoutListener);
+            }
+            // 存储引擎可能通过SchedulerLock提前唤醒，需要重新加上
+            ServerSession s = lockedBy;
+            if (s != null) {
+                s.addWaitingScheduler(getScheduler());
             }
         case TRANSACTION_COMMITTING:
         case STATEMENT_RUNNING:
