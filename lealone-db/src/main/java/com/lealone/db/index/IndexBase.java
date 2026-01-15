@@ -184,13 +184,15 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     // 代价的计算总体上是围绕行数进行的
     protected long getCostRangeIndex(int[] masks, long rowCount, SortOrder sortOrder) {
         rowCount += Constants.COST_ROW_OFFSET;
+        if (masks == null) {
+            return rowCount;
+        }
         long cost = rowCount;
         long rows = rowCount;
         int totalSelectivity = 0;
-        if (masks == null) {
-            return cost;
-        }
+        int maskIndexColumnCount = 0;
         for (int i = 0, len = columns.length; i < len; i++) {
+            maskIndexColumnCount++;
             Column column = columns[i];
             int index = column.getColumnId();
             int mask = masks[index];
@@ -206,7 +208,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                 // 因为如果最后一个索引字段是EQUALITY，说明前面的字段全是EQUALITY，
                 // 如果是唯一索引则rowCount / distinctRows是1，所以rows = Math.max(rowCount / distinctRows, 1)=1
                 // 所以cost = 2 + rows = 3
-                if (i == columns.length - 1 && getIndexType().isUnique()) {
+                if (i == len - 1 && getIndexType().isUnique()) {
                     cost = 3;
                     break;
                 }
@@ -231,12 +233,16 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                 cost = rows / 3;
                 break;
             } else {
+                maskIndexColumnCount--;
                 break;
             }
         }
+
+        // 索引字段跟查询字段匹配的越多cost越小
+        cost -= maskIndexColumnCount;
+
         // if the ORDER BY clause matches the ordering of this index,
         // it will be cheaper than another index, so adjust the cost accordingly
-
         // order by中的字段和排序方式与索引字段相同时，cost再减去排序字段个数
         // 注意：排序字段个数不管比索引字段个数多还是少都是没问题的，这里只是尽量匹配
         if (sortOrder != null) {
