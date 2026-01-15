@@ -284,6 +284,7 @@ public class StandardPrimaryIndex extends StandardDataIndex<Row, Row> {
             return null;
         Row row = (Row) lockable;
         row.setKey(key);
+        table.alterRowsIfNeeded(session, row, false);
         return row;
     }
 

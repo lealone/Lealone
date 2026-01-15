@@ -24,6 +24,6 @@ public interface IPageReference {
 
     void setMetaVersion(int mv);
 
-    Object[] getValues();
+    Object[] getValues(Object key, int mv);
 
 }

@@ -808,7 +808,7 @@ public class StandardTable extends Table {
             ArrayList<TableAlterHistoryRecord> records = getTableAlterHistoryRecords(session,
                     ref.getMetaVersion());
             ref.setMetaVersion(getVersion());
-            for (Object v : ref.getValues()) {
+            for (Object v : ref.getValues(row, getVersion())) {
                 if (exclude && v == row)
                     continue;
                 alterRow(session, (Row) v, records);

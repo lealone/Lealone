@@ -131,8 +131,15 @@ public class PageReference implements IPageReference {
     }
 
     @Override
-    public Object[] getValues() {
-        return getOrReadPage().getValues();
+    public Object[] getValues(Object key, int mv) {
+        if (isDataStructureChanged() || isNodePage()) {
+            Page p = bs.getMap().gotoLeafPage(key);
+            p.getRef().setMetaVersion(mv);
+            p.getRef().markDirtyPage();
+            return p.getValues();
+        } else {
+            return getOrReadPage().getValues();
+        }
     }
 
     public boolean isDataStructureChanged() {
