@@ -302,6 +302,13 @@ public class EmbeddedScheduler extends InternalSchedulerBase {
         runMiscTasks();
         runSessionTasks();
 
+        // 如果为null说明当前执行的任务优先级很低，比如正在为一个现有的表创建新的索引
+        if (current == null) {
+            int priority = PreparedSQLStatement.MIN_PRIORITY - 1;
+            nextBestCommand = getNextBestCommand(null, priority, false);
+            return nextBestCommand != null;
+        }
+
         // 至少有两个session才需要yield
         if (sessions.size() < 2)
             return false;
