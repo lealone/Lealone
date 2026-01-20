@@ -152,8 +152,6 @@ public interface Session extends Closeable {
 
     <T> AsyncCallback<T> createCallback(boolean async);
 
-    void executeInScheduler(AsyncTask task);
-
     <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task);
 
     default boolean isServer() {

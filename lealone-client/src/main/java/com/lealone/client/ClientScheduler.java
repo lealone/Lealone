@@ -63,7 +63,7 @@ public class ClientScheduler extends SchedulerBase {
 
     @Override
     public boolean isBusy() {
-        return load.get() > 1;
+        return load.get() > 0;
     }
 
     @Override

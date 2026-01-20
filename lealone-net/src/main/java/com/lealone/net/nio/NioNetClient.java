@@ -30,6 +30,7 @@ public class NioNetClient extends NetClientBase {
         private InetSocketAddress inetSocketAddress;
         private AsyncCallback<AsyncConnection> ac;
         private int maxSharedSize;
+        private boolean shared;
     }
 
     @Override
@@ -53,7 +54,7 @@ public class NioNetClient extends NetClientBase {
                 } else {
                     NetBuffer inBuffer = new NetBuffer(DataBuffer.createDirect());
                     NetBuffer outBuffer = new NetBuffer(DataBuffer.createDirect());
-                    conn = new TcpClientConnection(writableChannel, this, 1, inBuffer, outBuffer);
+                    conn = new TcpClientConnection(writableChannel, this, 1, false, inBuffer, outBuffer);
                     writableChannel.setInputBuffer(inBuffer);
                 }
                 writableChannel.setAsyncConnection(conn);
@@ -67,6 +68,7 @@ public class NioNetClient extends NetClientBase {
                 attachment.inetSocketAddress = inetSocketAddress;
                 attachment.ac = ac;
                 attachment.maxSharedSize = AsyncConnectionPool.getMaxSharedSize(config);
+                attachment.shared = AsyncConnectionPool.isShared(config);
                 channel.register(eventLoop.getSelector(), SelectionKey.OP_CONNECT, attachment);
                 channel.connect(inetSocketAddress);
                 // 如果前面已经在执行事件循环，此时就不能再次进入事件循环
@@ -96,18 +98,10 @@ public class NioNetClient extends NetClientBase {
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false, scheduler);
             } else {
-                NetBuffer inBuffer;
-                NetBuffer outBuffer;
-                // 共享连接用scheduler的
-                if (attachment.maxSharedSize > 1) {
-                    inBuffer = scheduler.getInputBuffer();
-                    outBuffer = scheduler.getOutputBuffer();
-                } else {
-                    inBuffer = new NetBuffer(DataBuffer.createDirect());
-                    outBuffer = new NetBuffer(DataBuffer.createDirect());
-                }
-                conn = new TcpClientConnection(writableChannel, this, attachment.maxSharedSize, inBuffer,
-                        outBuffer);
+                NetBuffer inBuffer = scheduler.getInputBuffer();
+                NetBuffer outBuffer = scheduler.getOutputBuffer();
+                conn = new TcpClientConnection(writableChannel, this, attachment.maxSharedSize,
+                        attachment.shared, inBuffer, outBuffer);
                 writableChannel.setInputBuffer(inBuffer);
             }
             writableChannel.setAsyncConnection(conn);

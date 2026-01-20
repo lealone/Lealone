@@ -198,11 +198,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void executeInScheduler(AsyncTask task) {
-        session.executeInScheduler(task);
-    }
-
-    @Override
     public <T> void execute(boolean async, AsyncCallback<T> ac, AsyncTask task) {
         session.execute(async, ac, task);
     }

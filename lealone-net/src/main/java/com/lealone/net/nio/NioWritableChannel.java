@@ -66,10 +66,6 @@ public class NioWritableChannel implements WritableChannel {
         this.conn = conn;
     }
 
-    public void setInputBuffer(NetBuffer inputBuffer) {
-        this.inputBuffer = inputBuffer;
-    }
-
     @Override
     public String getHost() {
         return host;
@@ -91,6 +87,11 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public void setInputBuffer(NetBuffer inputBuffer) {
+        this.inputBuffer = inputBuffer;
+    }
+
+    @Override
     public List<WritableBuffer> getBuffers() {
         return buffers;
     }
@@ -98,6 +99,11 @@ public class NioWritableChannel implements WritableChannel {
     @Override
     public void addBuffer(WritableBuffer buffer) {
         buffers.add(buffer);
+    }
+
+    @Override
+    public boolean isBio() {
+        return eventLoop == null;
     }
 
     @Override
@@ -210,11 +216,6 @@ public class NioWritableChannel implements WritableChannel {
                 buffer.recycle();
             }
         }
-    }
-
-    @Override
-    public boolean isBio() {
-        return eventLoop == null;
     }
 
     public static void recycleBuffers(List<WritableBuffer> buffers) {

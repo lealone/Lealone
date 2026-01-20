@@ -30,6 +30,7 @@ import com.lealone.db.session.SessionBase;
 import com.lealone.net.NetBuffer;
 import com.lealone.net.TcpClientConnection;
 import com.lealone.net.TransferOutputStream;
+import com.lealone.net.WritableChannel;
 import com.lealone.net.nio.NioEventLoop;
 import com.lealone.server.protocol.AckAsyncCallback;
 import com.lealone.server.protocol.AckPacket;
@@ -55,6 +56,22 @@ import com.lealone.storage.lob.LobLocalStorage;
 // 另外，每个ClientSession只对应一个server，
 // 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在ClientSessionFactory中处理了。
 public class ClientSession extends SessionBase implements LobLocalStorage.LobReader {
+
+    private final static boolean isVirtualThreadAvailable;
+    static {
+        boolean available;
+        try {
+            Thread.currentThread().isVirtual();
+            available = true;
+        } catch (Throwable t) {
+            available = false;
+        }
+        isVirtualThreadAvailable = available;
+    }
+
+    private static boolean isVirtualThread() {
+        return isVirtualThreadAvailable && Thread.currentThread().isVirtual();
+    }
 
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
@@ -290,8 +307,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         if (DbException.ASSERT) {
-            DbException.assertTrue(
-                    getScheduler() == null || getScheduler() == SchedulerThread.currentScheduler());
+            DbException.assertTrue(isBio() || getScheduler() == SchedulerThread.currentScheduler());
         }
         traceOperation(packet.getType().name(), packetId);
         AckAsyncCallback<R, P> ac;
@@ -325,14 +341,19 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     @Override
     public <T> AsyncCallback<T> createCallback() {
-        return AsyncCallback.create(isBio() || SchedulerThread.isScheduler());
+        if (SchedulerThread.isScheduler())
+            return AsyncCallback.createSingleThreadCallback();
+        else if (isShared() || isVirtualThread())
+            return AsyncCallback.createConcurrentCallback();
+        else
+            return AsyncCallback.createSingleThreadCallback();
     }
 
     @Override
     public <T> AsyncCallback<T> createCallback(boolean async) {
         if (SchedulerThread.isScheduler())
             return AsyncCallback.createSingleThreadCallback();
-        else if (isShared() || async)
+        else if (isShared() || async || isVirtualThread())
             return AsyncCallback.createConcurrentCallback();
         else
             return AsyncCallback.createSingleThreadCallback();
@@ -348,23 +369,27 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
 
     private void toBio() {
         try {
-            isBio = true;
             Scheduler scheduler = getScheduler();
             scheduler.removeSession(this);
             NioEventLoop eventLoop = (NioEventLoop) scheduler.getNetEventLoop();
             eventLoop.deregister(tcpConnection);
-            tcpConnection.getWritableChannel().getSocketChannel().configureBlocking(true);
-            tcpConnection.getWritableChannel().setEventLoop(null);
+            WritableChannel wc = tcpConnection.getWritableChannel();
+            wc.getSocketChannel().configureBlocking(true);
+            wc.setEventLoop(null);
+            wc.setInputBuffer(new NetBuffer(DataBuffer.createDirect()));
             out = tcpConnection.resetTransferOutputStream(new NetBuffer(DataBuffer.createDirect()));
+            isBio = true;
         } catch (Exception e) {
             throw DbException.convert(e);
         }
     }
 
-    private void toNio() {
+    private synchronized void toNio() {
+        if (!isBio)
+            return;
         try {
-            isBio = false;
-            tcpConnection.getWritableChannel().getSocketChannel().configureBlocking(false);
+            WritableChannel wc = tcpConnection.getWritableChannel();
+            wc.getSocketChannel().configureBlocking(false);
             Scheduler scheduler = getScheduler();
             if (scheduler == null) {
                 scheduler = ClientScheduler.getScheduler(ci, ci.getConfig());
@@ -372,7 +397,8 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
             }
             scheduler.addSession(this);
             NioEventLoop eventLoop = (NioEventLoop) scheduler.getNetEventLoop();
-            tcpConnection.getWritableChannel().setEventLoop(eventLoop);
+            wc.setEventLoop(eventLoop);
+            wc.setInputBuffer(scheduler.getInputBuffer());
             out = tcpConnection.resetTransferOutputStream(scheduler.getOutputBuffer());
 
             // 注册和轮询OP_READ事件的线程必需是同一个，否则会有很诡异的问题，比如可能读不到数据
@@ -380,18 +406,10 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                 eventLoop.register(tcpConnection);
             });
             scheduler.wakeUp();
+            isBio = false;
         } catch (Exception e) {
             throw DbException.convert(e);
         }
-    }
-
-    @Override
-    public void executeInScheduler(AsyncTask task) {
-        if (isBio()) {
-            toNio();
-        }
-        getSessionInfo().submitTask(task);
-        getScheduler().wakeUp();
     }
 
     @Override
@@ -410,7 +428,7 @@ public class ClientSession extends SessionBase implements LobLocalStorage.LobRea
                 getSessionInfo().submitTask(task);
                 getScheduler().wakeUp();
             } else {
-                if (async) {
+                if (async || isVirtualThread()) {
                     if (isBio()) {
                         toNio();
                     }

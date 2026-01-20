@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
-import com.lealone.client.LealoneClient.JdbcTask;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.Trace;
 import com.lealone.common.trace.TraceModuleType;
@@ -116,6 +115,10 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
 
     Trace getTrace(TraceObjectType traceObjectType, int traceObjectId) {
         return session.getTrace(TraceModuleType.JDBC, traceObjectType, traceObjectId);
+    }
+
+    public static interface JdbcTask<T> {
+        void run(AsyncCallback<T> ac) throws Exception;
     }
 
     private <T> JdbcFuture<T> executeJdbcTask(boolean async, JdbcTask<T> task) {

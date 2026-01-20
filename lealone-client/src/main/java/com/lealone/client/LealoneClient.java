@@ -30,7 +30,6 @@ import com.lealone.common.util.StringUtils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
-import com.lealone.db.async.AsyncCallback;
 import com.lealone.db.async.Future;
 import com.lealone.net.NetFactory;
 
@@ -41,94 +40,6 @@ import com.lealone.net.NetFactory;
  * @author zhh
  */
 public class LealoneClient {
-
-    public static interface JdbcTask<T> {
-        void run(AsyncCallback<T> ac) throws Exception;
-    }
-
-    public static interface JdbcAsyncTask<T> {
-        T run(Connection conn) throws Exception;
-    }
-
-    public static interface JdbcSyncTask {
-        void run(Connection conn) throws Exception;
-    }
-
-    private static <T> Future<T> executeJdbcTask0(JdbcTask<T> task) {
-        AsyncCallback<T> ac = AsyncCallback.createConcurrentCallback();
-        try {
-            task.run(ac);
-        } catch (Exception e) {
-            ac.setAsyncResult(e);
-        }
-        return ac;
-    }
-
-    private static <T> void executeJdbcAsyncTask(JdbcConnection conn, AsyncCallback<T> ac,
-            JdbcAsyncTask<T> task) {
-        try {
-            conn.getSession().executeInScheduler(() -> {
-                try {
-                    ac.setAsyncResult(task.run(conn));
-                } catch (Exception e) {
-                    ac.setAsyncResult(e);
-                }
-            });
-        } catch (Exception e) {
-            ac.setAsyncResult(e);
-        }
-    }
-
-    private static void executeJdbcSyncTask(JdbcConnection conn, AsyncCallback<Object> ac,
-            JdbcSyncTask task) {
-        try {
-            conn.getSession().executeInScheduler(() -> {
-                try {
-                    task.run(conn);
-                    ac.setAsyncResult(true);
-                } catch (Exception e) {
-                    ac.setAsyncResult(e);
-                }
-            });
-        } catch (Exception e) {
-            ac.setAsyncResult(e);
-        }
-        ac.get();
-    }
-
-    public static void executeJdbcTask(String url, JdbcSyncTask task) {
-        executeJdbcTask0(ac -> executeJdbcSyncTask(getConnection(url).get(), ac, task));
-    }
-
-    public static void executeJdbcTask(String url, String user, String password, JdbcSyncTask task) {
-        executeJdbcTask0(ac -> executeJdbcSyncTask(getConnection(url, user, password).get(), ac, task));
-    }
-
-    public static void executeJdbcTask(String url, Properties info, JdbcSyncTask task) {
-        executeJdbcTask0(ac -> executeJdbcSyncTask(getConnection(url, info).get(), ac, task));
-    }
-
-    public static void executeJdbcTask(Connection conn, JdbcSyncTask task) {
-        executeJdbcTask0(ac -> executeJdbcSyncTask((JdbcConnection) conn, ac, task));
-    }
-
-    public static <T> Future<T> executeJdbcTask(String url, JdbcAsyncTask<T> task) {
-        return executeJdbcTask0(ac -> executeJdbcAsyncTask(getConnection(url).get(), ac, task));
-    }
-
-    public static <T> Future<T> executeJdbcTask(String url, String user, String password,
-            JdbcAsyncTask<T> task) {
-        return executeJdbcTask0(
-                ac -> executeJdbcAsyncTask(getConnection(url, user, password).get(), ac, task));
-    }
-
-    public static <T> Future<T> executeJdbcTask(String url, Properties info, JdbcAsyncTask<T> task) {
-        return executeJdbcTask0(ac -> executeJdbcAsyncTask(getConnection(url, info).get(), ac, task));
-    }
-
-    public static <T> Future<T> executeJdbcTask(Connection conn, JdbcAsyncTask<T> task) {
-        return executeJdbcTask0(ac -> executeJdbcAsyncTask((JdbcConnection) conn, ac, task));
-    }
 
     public static Future<JdbcConnection> getConnection(String url) {
         return JdbcDriver.getConnection(url);

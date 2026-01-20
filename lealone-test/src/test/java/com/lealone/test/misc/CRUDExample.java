@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 
-import com.lealone.client.LealoneClient;
 import com.lealone.client.jdbc.JdbcPreparedStatement;
 import com.lealone.client.jdbc.JdbcStatement;
 import com.lealone.db.ConnectionSetting;
@@ -33,16 +32,8 @@ public class CRUDExample {
     public static final int EMBEDDED = 3;
 
     public static void main(String[] args) throws Exception {
-
-        crud(); // 在运行main方法的主线程中运行
-
-        // 在调度线程中运行
-        LealoneClient.executeJdbcTask(getURL(), conn -> {
-            crud(conn);
-        });
-
+        crud();
         // perf();
-
         for (int i = 0; i < 300; i++) {
             // startMultiThreads(EMBEDDED, 64);
         }

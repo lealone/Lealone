@@ -1371,12 +1371,6 @@ public class ServerSession extends SessionBase implements InternalSession {
         return createCallback();
     }
 
-    @Override
-    public void executeInScheduler(AsyncTask task) {
-        getSessionInfo().submitTask(task);
-        getScheduler().wakeUp();
-    }
-
     private volatile boolean syncMode = true;
 
     public boolean isSyncMode() {

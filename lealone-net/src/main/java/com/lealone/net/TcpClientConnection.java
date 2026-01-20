@@ -30,14 +30,16 @@ public class TcpClientConnection extends TransferConnection {
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final NetClient netClient;
     private final int maxSharedSize;
+    private final boolean shared;
 
     private Throwable pendingException;
 
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient, int maxSharedSize,
-            NetBuffer inBuffer, NetBuffer outBuffer) {
+            boolean shared, NetBuffer inBuffer, NetBuffer outBuffer) {
         super(writableChannel, false, inBuffer, outBuffer);
         this.netClient = netClient;
         this.maxSharedSize = maxSharedSize;
+        this.shared = shared;
     }
 
     public int getNextId() {
@@ -183,7 +185,7 @@ public class TcpClientConnection extends TransferConnection {
 
     @Override
     public boolean isShared() {
-        return maxSharedSize > 1;
+        return shared;
     }
 
     @Override

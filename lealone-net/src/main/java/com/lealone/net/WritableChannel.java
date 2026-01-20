@@ -21,6 +21,8 @@ public interface WritableChannel {
 
     int getLocalPort();
 
+    void setInputBuffer(NetBuffer inputBuffer);
+
     default List<WritableBuffer> getBuffers() {
         return null;
     }
