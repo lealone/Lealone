@@ -134,7 +134,7 @@ public class RowType extends StandardDataType {
     }
 
     @Override
-    public void write(DataBuffer buff, Lockable lockable, Object lockedValue, int formatVersion) {
+    public void write(DataBuffer buff, Object lockable, Object lockedValue, int formatVersion) {
         write(buff, (Row) lockable, (Value[]) lockedValue, formatVersion);
     }
 

@@ -8,7 +8,6 @@ package com.lealone.storage.type;
 import java.nio.ByteBuffer;
 
 import com.lealone.db.DataBuffer;
-import com.lealone.db.lock.Lockable;
 import com.lealone.db.value.ValueArray;
 import com.lealone.db.value.ValueDataType;
 
@@ -18,7 +17,7 @@ public interface StorageDataType extends ValueDataType {
         return read(buff, formatVersion);
     }
 
-    default void write(DataBuffer buff, Lockable lockable, Object lockedValue, int formatVersion) {
+    default void write(DataBuffer buff, Object lockable, Object lockedValue, int formatVersion) {
         write(buff, lockedValue, formatVersion);
     }
 
