@@ -242,11 +242,13 @@ public abstract class InternalSchedulerBase extends SchedulerBase implements Int
 
     @Override
     public void addSession(Session session) {
-        addSession((InternalSession) session);
+        if (session instanceof InternalSession)
+            addSession((InternalSession) session);
     }
 
     @Override
     public void removeSession(Session session) {
-        removeSession((InternalSession) session);
+        if (session instanceof InternalSession)
+            removeSession((InternalSession) session);
     }
 }
