@@ -12,10 +12,10 @@ import com.lealone.storage.fs.FilePath;
 public class FilePathTest extends FsTestBase {
     @Test
     public void run() {
-        FilePath fp = FilePath.get("nio:./src/test/resources/lealone-test.yaml");
+        FilePath fp = FilePath.get("nio:./src/test/resources/lealone-test.sql");
         assertTrue(fp.exists());
 
-        fp = FilePath.get("file:./src/test/resources/lealone-test.yaml");
+        fp = FilePath.get("file:./src/test/resources/lealone-test.sql");
         assertTrue(fp.exists());
     }
 }

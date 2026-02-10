@@ -124,7 +124,7 @@ public class JdbcClobTest extends ClientTestBase {
         stmt.executeUpdate("DROP TABLE IF EXISTS test_FILE_READ");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test_FILE_READ (f1 int, f2 clob)");
 
-        String file = "/lealone-test.yaml";
+        String file = "/lealone-test.sql";
         file = new File(JdbcClobTest.class.getResource(file).toURI()).getCanonicalPath();
         stmt.executeUpdate(
                 "INSERT INTO test_FILE_READ(f1, f2) VALUES(1, FILE_READ('" + file + "', NULL))");

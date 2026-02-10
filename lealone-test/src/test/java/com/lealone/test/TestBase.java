@@ -23,7 +23,7 @@ import com.lealone.db.ConnectionSetting;
 import com.lealone.db.Constants;
 import com.lealone.db.DbSetting;
 import com.lealone.db.SysProperties;
-import com.lealone.main.config.Config;
+import com.lealone.sql.config.Config;
 import com.lealone.storage.fs.FileUtils;
 
 public class TestBase extends Assert {

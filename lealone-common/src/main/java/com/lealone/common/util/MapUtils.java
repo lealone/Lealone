@@ -34,6 +34,13 @@ public class MapUtils {
         return Utils.toLong(value, def);
     }
 
+    public static double getDouble(Map<String, String> map, String key, double def) {
+        if (map == null)
+            return def;
+        String value = map.get(key);
+        return Utils.toDouble(value, def);
+    }
+
     public static boolean getBoolean(Map<String, String> map, String key, boolean def) {
         if (map == null)
             return def;

@@ -7,7 +7,9 @@ package com.lealone.main;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.management.ManagementFactory;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -19,9 +21,11 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.ShutdownHookUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.Constants;
+import com.lealone.db.Database;
 import com.lealone.db.LealoneDatabase;
 import com.lealone.db.SysProperties;
 import com.lealone.db.plugin.PluggableEngine;
@@ -30,15 +34,16 @@ import com.lealone.db.plugin.PluginObject;
 import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
-import com.lealone.main.config.Config;
-import com.lealone.main.config.Config.PluggableEngineDef;
-import com.lealone.main.config.ConfigLoader;
-import com.lealone.main.config.YamlConfigLoader;
+import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
 import com.lealone.server.scheduler.GlobalScheduler;
 import com.lealone.sql.SQLEngine;
+import com.lealone.sql.config.Config;
+import com.lealone.sql.config.Config.PluggableEngineDef;
+import com.lealone.sql.config.ConfigListener;
+import com.lealone.sql.config.CreateConfig;
 import com.lealone.storage.StorageEngine;
 import com.lealone.transaction.TransactionEngine;
 
@@ -220,22 +225,46 @@ public class Lealone {
     }
 
     private void loadConfig() {
-        ConfigLoader loader;
-        String loaderClass = Config.getProperty("config.loader");
-        if (loaderClass != null) {
-            loader = Utils.construct(loaderClass, "config loading");
-        } else {
-            loader = new YamlConfigLoader();
-        }
-        Config config = loader.loadConfig();
-        config = Config.mergeDefaultConfig(config);
+        Config config = createConfig();
         if (baseDir != null)
             config.base_dir = baseDir;
         if (host != null)
             config.listen_address = host;
         config.mergeProtocolServerParameters(TcpServerEngine.NAME, host, port);
-        loader.applyConfig(config);
+        String listenerClass = Config.getProperty("config.listener");
+        if (listenerClass != null) {
+            ConfigListener listener = Utils.construct(listenerClass, "config listener");
+            listener.applyConfig(config);
+        }
         this.config = config;
+    }
+
+    public static Config createConfig() {
+        URL url = null;
+        String configUrl = Config.getProperty("config");
+        if (configUrl != null) {
+            url = Utils.toURL(configUrl);
+            logger.warn("Config file not found: " + configUrl);
+        }
+        if (url == null) {
+            url = Utils.toURL("lealone.sql");
+            if (url == null)
+                url = Utils.toURL("lealone-test.sql");
+            if (url == null) {
+                logger.info("Use default config");
+                return new Config();
+            }
+        }
+        logger.info("Loading config from {}", url);
+        try (InputStream is = url.openStream()) {
+            String sql = new String(IOUtils.toByteArray(is));
+            ServerSession session = new ServerSession(new Database(0, "lealone", null), null, 0);
+            CreateConfig createConfig = (CreateConfig) session.parseStatement(sql);
+            session.close();
+            return createConfig.getConfig();
+        } catch (Exception e) {
+            throw new ConfigException("Invalid config", e);
+        }
     }
 
     protected void beforeInit() {

@@ -41,12 +41,12 @@ public abstract class NetServerBase extends ProtocolServerBase implements NetSer
         if (e instanceof BindException) {
             if (e.getMessage().contains("in use")) {
                 message += ", " + address + " is in use by another process.\n"
-                        + "Change host:port in lealone.yaml "
+                        + "Change host:port in lealone.sql "
                         + "to values that do not conflict with other services.";
                 e = null;
             } else if (e.getMessage().contains("Cannot assign requested address")) {
                 message += ", unable to bind to address " + address + ".\n"
-                        + "Set host:port in lealone.yaml to an interface you can bind to, "
+                        + "Set host:port in lealone.sql to an interface you can bind to, "
                         + "e.g., your private IP address.";
                 e = null;
             }

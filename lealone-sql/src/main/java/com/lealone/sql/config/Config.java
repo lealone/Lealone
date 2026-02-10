@@ -3,17 +3,18 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.main.config;
+package com.lealone.sql.config;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import com.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.MapUtils;
 import com.lealone.db.Constants;
 
 public class Config {
@@ -33,11 +34,6 @@ public class Config {
     public SchedulerDef scheduler;
 
     public Config() {
-    }
-
-    public Config(boolean isDefault) {
-        if (!isDefault)
-            return;
         storage_engines = new ArrayList<>(1);
         storage_engines.add(createEngineDef(Constants.DEFAULT_STORAGE_ENGINE_NAME, true, true));
 
@@ -55,7 +51,7 @@ public class Config {
         mergeSchedulerParametersToEngines();
     }
 
-    private static PluggableEngineDef createEngineDef(String name, boolean enabled, boolean isDefault) {
+    public static PluggableEngineDef createEngineDef(String name, boolean enabled, boolean isDefault) {
         PluggableEngineDef e = new PluggableEngineDef();
         e.name = name;
         e.enabled = enabled;
@@ -108,54 +104,63 @@ public class Config {
         System.setProperty(Constants.PROJECT_NAME_PREFIX + key, value);
     }
 
-    public static Config getDefaultConfig() {
-        return new Config(true);
-    }
-
-    public static Config mergeDefaultConfig(Config c) { // c是custom config
-        Config d = getDefaultConfig();
-        if (c == null)
-            return d;
-        c.storage_engines = mergeEngines(c.storage_engines, d.storage_engines);
-        c.transaction_engines = mergeEngines(c.transaction_engines, d.transaction_engines);
-        c.sql_engines = mergeEngines(c.sql_engines, d.sql_engines);
-        c.protocol_server_engines = mergeEngines(c.protocol_server_engines, d.protocol_server_engines);
-
-        c.scheduler = mergeMap(d.scheduler, c.scheduler);
-        c.mergeSchedulerParametersToEngines();
-        return c;
-    }
-
-    private static List<PluggableEngineDef> mergeEngines(List<PluggableEngineDef> newList,
-            List<PluggableEngineDef> defaultList) {
-        if (defaultList == null)
-            return newList;
-        if (newList == null)
-            return defaultList;
-        LinkedHashMap<String, PluggableEngineDef> map = new LinkedHashMap<>();
-        for (PluggableEngineDef e : defaultList) {
-            map.put(e.name.toUpperCase(), e);
+    public void setParameters(CaseInsensitiveMap<String> parameters) {
+        base_dir = MapUtils.getString(parameters, "base_dir", base_dir);
+        int pos1 = base_dir.indexOf("${");
+        if (pos1 >= 0) {
+            int pos2 = base_dir.indexOf('}');
+            String envName = base_dir.substring(pos1 + 2, pos2);
+            base_dir = System.getenv(envName) + base_dir.substring(pos2 + 1);
         }
-        for (PluggableEngineDef e : newList) {
-            String name = e.name.toUpperCase();
-            PluggableEngineDef defaultE = map.get(name);
-            if (defaultE == null) {
-                map.put(name, e);
-            } else {
-                defaultE.enabled = e.enabled;
-                defaultE.parameters.putAll(e.parameters);
+        listen_address = MapUtils.getString(parameters, "listen_address", listen_address);
+        mergeSchedulerParametersToEngines();
+    }
+
+    public void setSchedulerParameters(CaseInsensitiveMap<String> schedulerParameters) {
+        scheduler.parameters.putAll(schedulerParameters);
+    }
+
+    public void addStorageEngine(CaseInsensitiveMap<String> storageEngine) {
+        mergeEngines(storageEngine, storage_engines);
+    }
+
+    public void addTransactionEngine(CaseInsensitiveMap<String> transactionEngine) {
+        mergeEngines(transactionEngine, transaction_engines);
+    }
+
+    public void addSqlEngine(CaseInsensitiveMap<String> sqlEngine) {
+        mergeEngines(sqlEngine, sql_engines);
+    }
+
+    public void addProtocolServerEngine(CaseInsensitiveMap<String> protocolServerEngine) {
+        mergeEngines(protocolServerEngine, protocol_server_engines);
+    }
+
+    private static void mergeEngines(CaseInsensitiveMap<String> engineMap,
+            List<PluggableEngineDef> defaultList) {
+        boolean enabled = Boolean.parseBoolean(engineMap.get("enabled"));
+        if (!enabled)
+            return;
+        String name = engineMap.get("name");
+        PluggableEngineDef old = null;
+        for (PluggableEngineDef e : defaultList) {
+            if (name.equalsIgnoreCase(e.name)) {
+                old = e;
+                break;
             }
         }
-        return new ArrayList<>(map.values());
-    }
-
-    private static <T extends MapPropertyTypeDef> T mergeMap(T defaultMap, T newMap) {
-        if (defaultMap == null)
-            return newMap;
-        if (newMap == null)
-            return defaultMap;
-        defaultMap.parameters.putAll(newMap.parameters);
-        return defaultMap;
+        if (old == null) {
+            PluggableEngineDef def = new PluggableEngineDef();
+            def.name = name;
+            def.enabled = enabled;
+            if (engineMap.containsKey("is_default"))
+                def.is_default = Boolean.parseBoolean(engineMap.get("is_default"));
+            def.parameters = engineMap;
+            defaultList.add(def);
+        } else {
+            old.enabled = enabled;
+            old.parameters.putAll(engineMap);
+        }
     }
 
     public static abstract class MapPropertyTypeDef {
@@ -178,7 +183,7 @@ public class Config {
     }
 
     public static class PluggableEngineDef extends MapPropertyTypeDef {
-        public Boolean enabled = true;
-        public Boolean is_default = false;
+        public boolean enabled = true;
+        public boolean is_default = false;
     }
 }

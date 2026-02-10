@@ -1013,6 +1013,17 @@ public class Utils {
         }
     }
 
+    public static double toDouble(String value, double def) {
+        if (value == null)
+            return def;
+        try {
+            return Double.parseDouble(value);
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+            return def;
+        }
+    }
+
     public static boolean toBoolean(String value, boolean def) {
         if (value == null)
             return def;

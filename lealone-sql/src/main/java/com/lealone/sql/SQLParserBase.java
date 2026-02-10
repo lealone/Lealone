@@ -74,6 +74,8 @@ import com.lealone.sql.admin.ShutdownPlugin;
 import com.lealone.sql.admin.ShutdownServer;
 import com.lealone.sql.admin.StartPlugin;
 import com.lealone.sql.admin.StartServer;
+import com.lealone.sql.config.Config;
+import com.lealone.sql.config.CreateConfig;
 import com.lealone.sql.ddl.AlterDatabase;
 import com.lealone.sql.ddl.AlterIndexRename;
 import com.lealone.sql.ddl.AlterSchemaRename;
@@ -4196,6 +4198,8 @@ public class SQLParserBase implements SQLParser {
             return parseCreateService();
         } else if (readIf("PLUGIN")) {
             return parseCreatePlugin();
+        } else if (readIf("CONFIG")) {
+            return parseCreateConfig();
         }
         // table or index
         boolean memory = false, cached = false;
@@ -4473,6 +4477,13 @@ public class SQLParserBase implements SQLParser {
         return new CreateDatabase(session, dbName, ifNotExists, runMode, parameters);
     }
 
+    protected StatementBase parseCreateConfig() {
+        String name = readUniqueIdentifier();
+        CreateConfig command = new CreateConfig(session, name);
+        parseConfigParameters(command.getConfig());
+        return command;
+    }
+
     protected StatementBase parseCreatePlugin() {
         CreatePlugin command = new CreatePlugin(session);
         boolean ifNotExists = readIfNotExists();
@@ -4592,25 +4603,70 @@ public class SQLParserBase implements SQLParser {
         return command;
     }
 
-    protected CaseInsensitiveMap<String> parseParameters() {
-        // 参数名都是大小写不敏感的
-        CaseInsensitiveMap<String> parameters = null;
-        if (readIf("PARAMETERS")) {
-            parameters = new CaseInsensitiveMap<>();
-            read("(");
+    protected void parseConfigParameters(Config config) {
+        if (readIf("(")) {
             if (readIf(")"))
-                return parameters;
+                return;
+            // 参数名都是大小写不敏感的
+            CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
             String k, v;
             do {
                 k = readUniqueIdentifier();
-                if (readIf("=") || readIf(":"))
-                    v = readString();
-                else
-                    v = "1";
-                parameters.put(k, v);
+                if (k.equalsIgnoreCase("scheduler")) {
+                    read(":");
+                    config.setSchedulerParameters(parseParameters());
+                } else if (k.equalsIgnoreCase("storage_engine")) {
+                    read(":");
+                    config.addStorageEngine(parseParameters());
+                } else if (k.equalsIgnoreCase("transaction_engine")) {
+                    read(":");
+                    config.addTransactionEngine(parseParameters());
+                } else if (k.equalsIgnoreCase("sql_engine")) {
+                    read(":");
+                    config.addSqlEngine(parseParameters());
+                } else if (k.equalsIgnoreCase("protocol_server_engine")) {
+                    read(":");
+                    config.addProtocolServerEngine(parseParameters());
+                } else {
+                    if (readIf("=") || readIf(":"))
+                        v = readString();
+                    else
+                        v = "1";
+                    parameters.put(k, v);
+                }
             } while (readIf(","));
             read(")");
+            config.setParameters(parameters);
         }
+    }
+
+    protected CaseInsensitiveMap<String> parseParameters() {
+        if (readIf("PARAMETERS")) {
+            read("(");
+            return parseParameters0();
+        } else if (readIf("(")) {
+            return parseParameters0();
+        }
+        return null;
+    }
+
+    protected CaseInsensitiveMap<String> parseParameters0() {
+        if (readIf(")"))
+            return null;
+        // 参数名都是大小写不敏感的
+        CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>();
+        String k, v;
+        do {
+            if (readIf(")"))
+                return parameters;
+            k = readUniqueIdentifier();
+            if (readIf("=") || readIf(":"))
+                v = readString();
+            else
+                v = "1";
+            parameters.put(k, v);
+        } while (readIf(","));
+        read(")");
         return parameters;
     }
 

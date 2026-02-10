@@ -14,7 +14,7 @@ public class LealoneTest {
                 // "-help", //
                 // "-host", "127.0.0.1", //
                 // "-port", "9000", //
-                // "-config", "lealone-test.yaml",//
+                // "-config", "lealone-test.sql",//
         };
         Lealone.main(args2);
     }

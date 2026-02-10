@@ -28,7 +28,7 @@ public class FileStorageTest extends FsTestBase {
 
     @Test
     public void run() {
-        FileStorage fs = FileStorage.open(null, "nio:./src/test/resources/lealone-test.yaml", "r");
+        FileStorage fs = FileStorage.open(null, "nio:./src/test/resources/lealone-test.sql", "r");
         assertTrue(fs.length() > 0);
     }
 
