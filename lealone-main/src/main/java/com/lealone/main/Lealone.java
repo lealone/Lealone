@@ -23,6 +23,7 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.ShutdownHookUtils;
+import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.Constants;
 import com.lealone.db.Database;
@@ -59,7 +60,7 @@ public class Lealone {
         // 在一个新线程中启动 Lealone
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(() -> {
-            new Lealone().start(args, latch);
+            new Lealone().start(args, null, latch);
         }).start();
         try {
             latch.await();
@@ -71,7 +72,7 @@ public class Lealone {
     }
 
     public static void embed() {
-        new Lealone().run(true, null);
+        new Lealone().run(true, null, null, null, null);
     }
 
     public static void executeSql(String url, String sql) {
@@ -130,7 +131,13 @@ public class Lealone {
         start(args, null);
     }
 
-    public void start(String[] args, CountDownLatch latch) {
+    public void start(String[] args, Config config) {
+        start(args, config, null);
+    }
+
+    public void start(String[] args, Config config, CountDownLatch latch) {
+        String dbName = null;
+        String[] sqlScripts = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
             if (arg.isEmpty())
@@ -146,6 +153,10 @@ public class Lealone {
                 host = args[++i];
             } else if (arg.equals("-port")) {
                 port = args[++i];
+            } else if (arg.equals("-database")) {
+                dbName = args[++i];
+            } else if (arg.equals("-sqlScripts")) {
+                sqlScripts = StringUtils.arraySplit(args[++i], ',');
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -153,24 +164,25 @@ public class Lealone {
                 continue;
             }
         }
-        run(false, latch);
+        run(false, config, latch, dbName, sqlScripts);
     }
 
-    private void run(boolean embedded, CountDownLatch latch) {
+    private void run(boolean embedded, Config config, CountDownLatch latch, String dbName,
+            String[] sqlScripts) {
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
         try {
             setGlobalShutdownHook();
 
             // 1. 加载配置
             long t1 = System.currentTimeMillis();
-            loadConfig();
+            loadConfig(config);
             long loadConfigTime = (System.currentTimeMillis() - t1);
 
             // 2. 初始化
             long t2 = System.currentTimeMillis();
             SchedulerFactory schedulerFactory = SchedulerFactory.getSchedulerFactory(
                     embedded ? EmbeddedScheduler.class : GlobalScheduler.class,
-                    config.scheduler.parameters, false);
+                    this.config.scheduler.parameters, false);
             Scheduler scheduler = schedulerFactory.getScheduler();
 
             beforeInit();
@@ -181,7 +193,7 @@ public class Lealone {
                 try {
                     // 提前触发对LealoneDatabase的初始化
                     initLealoneDatabase();
-                    afterInit(config);
+                    afterInit(this.config);
                     long initTime = (System.currentTimeMillis() - t2);
                     // 3. 启动ProtocolServer
                     if (!embedded) {
@@ -201,6 +213,15 @@ public class Lealone {
                     schedulerFactory.start();
                     if (latch != null)
                         latch.countDown();
+                    if (sqlScripts != null) {
+                        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+                        try (ServerSession session = db.createSession(db.getSystemUser())) {
+                            for (String script : sqlScripts) {
+                                logger.info("Run script: " + script);
+                                session.executeUpdateLocal("RUNSCRIPT FROM '" + script + "'");
+                            }
+                        }
+                    }
                 } catch (Throwable t) {
                     // 在新线程中运行，否则当前调度器无法退出
                     new Thread(() -> exceptionExit(t)).start();
@@ -224,8 +245,9 @@ public class Lealone {
         System.exit(1);
     }
 
-    private void loadConfig() {
-        Config config = createConfig();
+    private void loadConfig(Config config) {
+        if (config == null)
+            config = createConfig();
         if (baseDir != null)
             config.base_dir = baseDir;
         if (host != null)

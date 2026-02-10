@@ -136,36 +136,32 @@ public class Config {
         mergeEngines(protocolServerEngine, protocol_server_engines);
     }
 
-    private static void mergeEngines(CaseInsensitiveMap<String> engineMap,
+    public static void mergeEngines(Map<String, String> engineMap,
             List<PluggableEngineDef> defaultList) {
-        boolean enabled = Boolean.parseBoolean(engineMap.get("enabled"));
-        if (!enabled)
-            return;
+        PluggableEngineDef def = null;
         String name = engineMap.get("name");
-        PluggableEngineDef old = null;
         for (PluggableEngineDef e : defaultList) {
             if (name.equalsIgnoreCase(e.name)) {
-                old = e;
+                def = e;
                 break;
             }
         }
-        if (old == null) {
-            PluggableEngineDef def = new PluggableEngineDef();
-            def.name = name;
-            def.enabled = enabled;
-            if (engineMap.containsKey("is_default"))
-                def.is_default = Boolean.parseBoolean(engineMap.get("is_default"));
+        if (def == null) {
+            def = new PluggableEngineDef();
             def.parameters = engineMap;
             defaultList.add(def);
         } else {
-            old.enabled = enabled;
-            old.parameters.putAll(engineMap);
+            def.parameters.putAll(engineMap);
         }
+        def.name = name;
+        def.enabled = Boolean.parseBoolean(engineMap.get("enabled"));
+        if (engineMap.containsKey("is_default"))
+            def.is_default = Boolean.parseBoolean(engineMap.get("is_default"));
     }
 
     public static abstract class MapPropertyTypeDef {
         public String name;
-        public Map<String, String> parameters = new HashMap<>();
+        public Map<String, String> parameters = new CaseInsensitiveMap<>();
 
         public MapPropertyTypeDef() {
         }
