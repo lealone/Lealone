@@ -372,7 +372,7 @@ public class CreateTable extends SchemaStatement {
         this.codeGenerator = codeGenerator;
     }
 
-    public String getCodeGenerator() {
-        return codeGenerator;
+    public CreateTableData getCreateTableData() {
+        return data;
     }
 }
