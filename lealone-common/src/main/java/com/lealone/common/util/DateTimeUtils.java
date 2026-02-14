@@ -600,7 +600,7 @@ public class DateTimeUtils {
             if (locale == null) {
                 df = new SimpleDateFormat(format);
             } else {
-                Locale l = new Locale(locale);
+                Locale l = Locale.of(locale);
                 df = new SimpleDateFormat(format, l);
             }
             if (timeZone != null) {

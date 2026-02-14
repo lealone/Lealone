@@ -190,7 +190,7 @@ public class CompareMode {
             name = name.substring(DEFAULT.length());
         }
         if (name.length() == 2) {
-            Locale locale = new Locale(StringUtils.toLowerEnglish(name), "");
+            Locale locale = Locale.of(StringUtils.toLowerEnglish(name), "");
             if (compareLocaleNames(locale, name)) {
                 result = Collator.getInstance(locale);
             }
@@ -200,7 +200,7 @@ public class CompareMode {
             if (idx >= 0) {
                 String language = StringUtils.toLowerEnglish(name.substring(0, idx));
                 String country = name.substring(idx + 1);
-                Locale locale = new Locale(language, country);
+                Locale locale = Locale.of(language, country);
                 if (compareLocaleNames(locale, name)) {
                     result = Collator.getInstance(locale);
                 }

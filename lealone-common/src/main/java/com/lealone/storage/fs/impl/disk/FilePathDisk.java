@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.URI;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -311,9 +312,14 @@ public class FilePathDisk extends FilePath {
                 return in;
             }
             // otherwise an URL is assumed
-            URL url = new URL(name);
-            InputStream in = url.openStream();
-            return in;
+            URL url;
+            try {
+                url = new URI(name).toURL();
+                InputStream in = url.openStream();
+                return in;
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
         }
         FileInputStream in = new FileInputStream(name);
         IOUtils.trace("openFileInputStream", name, in);
@@ -331,7 +337,7 @@ public class FilePathDisk extends FilePath {
         for (int i = 0; i < 16; i++) {
             rt.gc();
             long now = rt.freeMemory();
-            rt.runFinalization();
+            // rt.runFinalization();
             if (now == mem) {
                 break;
             }

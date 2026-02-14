@@ -46,7 +46,7 @@ public class CompareModeIcu4J extends CompareMode {
             Class<?> collatorClass = Utils.loadUserClass("com.ibm.icu.text.Collator");
             Method getInstanceMethod = collatorClass.getMethod("getInstance", Locale.class);
             if (name.length() == 2) {
-                Locale locale = new Locale(StringUtils.toLowerEnglish(name), "");
+                Locale locale = Locale.of(StringUtils.toLowerEnglish(name), "");
                 if (compareLocaleNames(locale, name)) {
                     result = (Comparator<String>) getInstanceMethod.invoke(null, locale);
                 }
@@ -56,7 +56,7 @@ public class CompareModeIcu4J extends CompareMode {
                 if (idx >= 0) {
                     String language = StringUtils.toLowerEnglish(name.substring(0, idx));
                     String country = name.substring(idx + 1);
-                    Locale locale = new Locale(language, country);
+                    Locale locale = Locale.of(language, country);
                     if (compareLocaleNames(locale, name)) {
                         result = (Comparator<String>) getInstanceMethod.invoke(null, locale);
                     }
