@@ -169,8 +169,13 @@ public class CreateService extends SchemaStatement {
         if (factory == null)
             factory = new JavaServiceExecutorFactory();
 
+        String varName = "disable_generate_code";
+        if (session.getDatabase().getSettings().databaseToUpper)
+            varName = varName.toUpperCase();
+        boolean disableGenCode = session.getVariable(varName).getBoolean();
+
         // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
-        if (!session.getDatabase().isStarting()) {
+        if (!session.getDatabase().isStarting() && !disableGenCode) {
             if (factory.supportsGenCode()) { // 支持其他语言插件生成自己的代码
                 factory.genCode(service);
             } else {
