@@ -3244,45 +3244,47 @@ public class SQLParserBase implements SQLParser {
                             result += sqlCommand.substring(begin - 1, i);
                         }
                         break;
-                    } else if (chars[i] == '\\') { // 支持转义字符
-                        String s = null;
-                        switch (chars[i + 1]) {
-                        case '\'':
-                            s = "\'";
-                            break;
-                        case '\"':
-                            s = "\"";
-                            break;
-                        case '\\':
-                            s = "\\";
-                            break;
-                        case 'r':
-                            s = "\r";
-                            break;
-                        case 'n':
-                            s = "\n";
-                            break;
-                        case '\b':
-                            s = "\b";
-                            break;
-                        case '\t':
-                            s = "\t";
-                            break;
-                        case '0':
-                            s = "\0";
-                            break;
-                        }
-                        if (s != null) {
-                            if (result == null) {
-                                result = sqlCommand.substring(begin, i) + s;
-                            } else {
-                                result += sqlCommand.substring(begin - 1, i) + s;
-                            }
-                            ++i;
-                            begin = i + 2;
-                            continue;
-                        }
                     }
+                    // else if (chars[i] == '\\') { // 支持转义字符
+                    // String s = null;
+                    // switch (chars[i + 1]) {
+                    // case '\'':
+                    // s = "\'";
+                    // break;
+                    // case '\"':
+                    // s = "\"";
+                    // break;
+                    // case '\\':
+                    // s = "\\";
+                    // i++;
+                    // break;
+                    // case 'r':
+                    // s = "\r";
+                    // break;
+                    // case 'n':
+                    // s = "\n";
+                    // break;
+                    // case '\b':
+                    // s = "\b";
+                    // break;
+                    // case '\t':
+                    // s = "\t";
+                    // break;
+                    // case '0':
+                    // s = "\0";
+                    // break;
+                    // }
+                    // if (s != null) {
+                    // if (result == null) {
+                    // result = sqlCommand.substring(begin, i) + s;
+                    // } else {
+                    // result += sqlCommand.substring(begin - 1, i) + s;
+                    // }
+                    // ++i;
+                    // begin = i + 2;
+                    // continue;
+                    // }
+                    // }
                 }
                 if (chars[++i] != '\'') {
                     break;
@@ -3522,10 +3524,11 @@ public class SQLParserBase implements SQLParser {
                 startLoop = i;
                 while (true) {
                     ++i;
-                    if (command[i] == '\\') { // 支持转义字符
-                        ++i;
-                        checkRunOver(i, len, startLoop);
-                    } else if (command[i] != '\'') {
+                    // if (command[i] == '\\') { // 支持转义字符
+                    // ++i;
+                    // checkRunOver(i, len, startLoop);
+                    // } else
+                    if (command[i] != '\'') {
                         checkRunOver(i, len, startLoop);
                     } else {
                         break;

@@ -23,7 +23,6 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.ShutdownHookUtils;
-import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.Constants;
 import com.lealone.db.Database;
@@ -72,7 +71,7 @@ public class Lealone {
     }
 
     public static void embed() {
-        new Lealone().run(true, null, null, null, null);
+        new Lealone().run(true, null, null, null, null, null);
     }
 
     public static void executeSql(String url, String sql) {
@@ -138,6 +137,7 @@ public class Lealone {
     public void start(String[] args, Config config, CountDownLatch latch) {
         String dbName = null;
         String[] sqlScripts = null;
+        String initSql = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
             if (arg.isEmpty())
@@ -156,7 +156,9 @@ public class Lealone {
             } else if (arg.equals("-database")) {
                 dbName = args[++i];
             } else if (arg.equals("-sqlScripts")) {
-                sqlScripts = StringUtils.arraySplit(args[++i], ',');
+                sqlScripts = args[++i].split(",");
+            } else if (arg.equals("-initSql")) {
+                initSql = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
@@ -164,11 +166,11 @@ public class Lealone {
                 continue;
             }
         }
-        run(false, config, latch, dbName, sqlScripts);
+        run(false, config, latch, dbName, sqlScripts, initSql);
     }
 
     private void run(boolean embedded, Config config, CountDownLatch latch, String dbName,
-            String[] sqlScripts) {
+            String[] sqlScripts, String initSql) {
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
         try {
             setGlobalShutdownHook();
@@ -213,12 +215,18 @@ public class Lealone {
                     schedulerFactory.start();
                     if (latch != null)
                         latch.countDown();
-                    if (sqlScripts != null) {
+                    if (sqlScripts != null || initSql != null) {
                         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
                         try (ServerSession session = db.createSession(db.getSystemUser())) {
-                            for (String script : sqlScripts) {
-                                logger.info("Run script: " + script);
-                                session.executeUpdateLocal("RUNSCRIPT FROM '" + script + "'");
+                            if (initSql != null) {
+                                logger.info("Run sql: " + initSql);
+                                session.executeUpdateLocal(initSql);
+                            }
+                            if (sqlScripts != null) {
+                                for (String script : sqlScripts) {
+                                    logger.info("Run script: " + script);
+                                    session.executeUpdateLocal("RUNSCRIPT FROM '" + script + "'");
+                                }
                             }
                         }
                     }
