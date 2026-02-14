@@ -64,20 +64,6 @@
     </modules>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-            </plugin>
-        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -85,9 +71,9 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.8.1</version>
                     <configuration>
-                        <source>1.8</source>
-                        <target>1.8</target>
-                        <release>8</release>
+                        <source>21</source>
+                        <target>21</target>
+                        <release>21</release>
                         <encoding>UTF-8</encoding>
                     </configuration>
                 </plugin>
@@ -97,9 +83,11 @@
                     <version>3.3.1</version>
                     <executions>
                         <execution>
+                            <phase>package</phase>
                             <id>attach-sources</id>
                             <goals>
                                 <goal>jar</goal>
+                                <goal>test-jar</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -244,9 +232,9 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <version>3.8.1</version>
                         <configuration>
-                            <source>1.8</source>
-                            <target>1.8</target>
-                            <release>8</release>
+                            <source>21</source>
+                            <target>21</target>
+                            <release>21</release>
                             <fork>true</fork>
                             <verbose>true</verbose>
                             <encoding>UTF-8</encoding>
