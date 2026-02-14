@@ -465,8 +465,8 @@ public class StringUtils {
                 String e = buff.toString();
                 list.add(trim ? e.trim() : e);
                 buff.setLength(0);
-            } else if (c == '\\' && i < length - 1) {
-                buff.append(s.charAt(++i));
+                // } else if (c == '\\' && i < length - 1) {
+                // buff.append(s.charAt(++i));
             } else {
                 buff.append(c);
             }
@@ -506,13 +506,14 @@ public class StringUtils {
             if (s == null) {
                 s = "";
             }
-            for (int j = 0, length = s.length(); j < length; j++) {
-                char c = s.charAt(j);
-                if (c == '\\' || c == separatorChar) {
-                    buff.append('\\');
-                }
-                buff.append(c);
-            }
+            // for (int j = 0, length = s.length(); j < length; j++) {
+            // char c = s.charAt(j);
+            // if (c == '\\' || c == separatorChar) {
+            // buff.append('\\');
+            // }
+            // buff.append(c);
+            // }
+            buff.append(s);
         }
         return buff.toString();
     }
