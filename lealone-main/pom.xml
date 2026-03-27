@@ -54,5 +54,10 @@
             <artifactId>lealone-service</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.lealone</groupId>
+            <artifactId>lealone-http</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

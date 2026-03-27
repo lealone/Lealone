@@ -35,5 +35,15 @@ create config lealone (
         -- white_list: '127.0.0.4,127.0.0.2',
         ssl: false,
         session_timeout: -1
+    ),
+    protocol_server_engine: (
+        name: 'HTTP',
+        enabled: false,
+        port: 8080,
+        allow_others: true,
+        ssl: false,
+        session_timeout: -1,
+        web_root: 'src/test/resources/http',
+        router: 'com.lealone.test.http.LealoneTomcatStart'
     )
 )
