@@ -62,6 +62,7 @@
         <module>lealone-orm</module>
         <module>lealone-service</module>
         <module>lealone-http</module>
+        <module>lealone-agent</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
     </modules>
