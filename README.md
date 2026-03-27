@@ -3,9 +3,7 @@
 
 * 是一个高性能的面向 OLTP 场景的关系数据库
 
-* 也是一个兼容 MongoDB 的高性能文档数据库
-
-* 同时还高度兼容 MySQL 和 PostgreSQL 的协议和 SQL 语法
+* 也是一个安全的能够自我进化的 AI 应用开发平台
 
 
 ### Lealone 有哪些特性
@@ -43,13 +41,6 @@
 * [快速入门](https://github.com/lealone/Lealone-Docs/blob/master/应用文档/Lealone数据库快速入门.md)
 
 * [文档首页](https://github.com/lealone/Lealone-Docs)
-
-
-### Lealone 平台
-
-* 使用 Lealone 技术平台开发面向 AI 智能体和代码大模型的应用
-
-* [平台首页](https://github.com/lealone/Lealone-Platform)
 
 
 ### Lealone 插件
