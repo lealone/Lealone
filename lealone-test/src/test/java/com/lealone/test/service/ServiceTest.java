@@ -3,7 +3,7 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.test.sql.service;
+package com.lealone.test.service;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
