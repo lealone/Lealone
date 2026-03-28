@@ -23,6 +23,7 @@ import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.ShutdownHookUtils;
+import com.lealone.common.util.StatementBuilder;
 import com.lealone.common.util.Utils;
 import com.lealone.db.Constants;
 import com.lealone.db.Database;
@@ -35,6 +36,7 @@ import com.lealone.db.scheduler.EmbeddedScheduler;
 import com.lealone.db.scheduler.Scheduler;
 import com.lealone.db.scheduler.SchedulerFactory;
 import com.lealone.db.session.ServerSession;
+import com.lealone.http.tomcat.TomcatServerEngine;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
@@ -136,7 +138,7 @@ public class Lealone {
 
     public void start(String[] args, Config config, CountDownLatch latch) {
         String dbName = null;
-        String[] sqlScripts = null;
+        StatementBuilder sqlScripts = new StatementBuilder();
         String initSql = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i].trim();
@@ -156,17 +158,23 @@ public class Lealone {
             } else if (arg.equals("-database")) {
                 dbName = args[++i];
             } else if (arg.equals("-sqlScripts")) {
-                sqlScripts = args[++i].split(",");
+                sqlScripts.appendExceptFirst(",");
+                sqlScripts.append(args[++i]);
             } else if (arg.equals("-initSql")) {
                 initSql = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
             } else {
+                sqlScripts.appendExceptFirst(",");
+                sqlScripts.append(arg);
                 continue;
             }
         }
-        run(false, config, latch, dbName, sqlScripts, initSql);
+        if (sqlScripts.length() > 0 && dbName == null)
+            dbName = LealoneDatabase.NAME;
+        run(false, config, latch, dbName,
+                sqlScripts.length() == 0 ? null : sqlScripts.toString().split(","), initSql);
     }
 
     private void run(boolean embedded, Config config, CountDownLatch latch, String dbName,
@@ -179,6 +187,14 @@ public class Lealone {
             long t1 = System.currentTimeMillis();
             loadConfig(config);
             long loadConfigTime = (System.currentTimeMillis() - t1);
+
+            if (sqlScripts != null) {
+                for (PluggableEngineDef e : this.config.protocol_server_engines) {
+                    if (TomcatServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                        e.enabled = true;
+                    }
+                }
+            }
 
             // 2. 初始化
             long t2 = System.currentTimeMillis();

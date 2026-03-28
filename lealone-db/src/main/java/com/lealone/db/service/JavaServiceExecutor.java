@@ -36,7 +36,7 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
             return;
         Class<?> implementClass;
         try {
-            implementClass = Class.forName(service.getImplementBy());
+            implementClass = service.getImplementClass();
             implementClassObject = implementClass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException("newInstance exception: " + service.getImplementBy(), e);

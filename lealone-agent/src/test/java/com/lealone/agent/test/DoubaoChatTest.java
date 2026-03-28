@@ -6,9 +6,9 @@ package com.lealone.agent.test;
  */
 
 
-import com.lealone.agent.llm.doubao.DoubaoLLM;
+import com.lealone.agent.doubao.DoubaoAgent;
 
-public class DoubaoChatTest extends DoubaoLLM {
+public class DoubaoChatTest extends DoubaoAgent {
 
     public static void main(String[] args) {
         new DoubaoChatTest().run(args);

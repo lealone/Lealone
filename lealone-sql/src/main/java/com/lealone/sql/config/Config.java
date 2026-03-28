@@ -43,8 +43,9 @@ public class Config {
         sql_engines = new ArrayList<>(1);
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(1);
+        protocol_server_engines = new ArrayList<>(2);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
+        protocol_server_engines.add(createEngineDef("HTTP", false, false));
 
         scheduler = new SchedulerDef();
         scheduler.parameters.put("scheduler_count", Runtime.getRuntime().availableProcessors() + "");

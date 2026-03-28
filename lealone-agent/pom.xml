@@ -27,7 +27,7 @@
             <groupId>com.volcengine</groupId>
             <artifactId>volcengine-java-sdk-ark-runtime</artifactId>
             <version>1.0.9</version>
-            <scope>test</scope>
+            <!-- <scope>test</scope> -->
         </dependency>
     </dependencies>
 </project>

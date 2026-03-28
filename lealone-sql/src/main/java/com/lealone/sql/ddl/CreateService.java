@@ -102,6 +102,10 @@ public class CreateService extends SchemaStatement {
         this.codeGenerator = codeGenerator;
     }
 
+    public boolean isAgentEnabled() {
+        return session.getVariable("LLM_PROVIDER") != null;
+    }
+
     @Override
     public int update() {
         session.getUser().checkAdmin();
@@ -117,9 +121,9 @@ public class CreateService extends SchemaStatement {
         }
         int id = getObjectId();
         // 替换变量，重建SQL
-        if (sql.indexOf('@') >= 0) {
-            sql = getCreateSQL();
-        }
+        // if (sql.indexOf('@') >= 0) {
+        sql = getCreateSQL(); // 无条件重建SQL，去掉注释，有的注释可能会干扰大模型生成的代码
+        // }
         int methodSize = this.serviceMethods.size();
         ArrayList<ServiceMethod> serviceMethods = new ArrayList<>(methodSize);
         for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
@@ -151,10 +155,11 @@ public class CreateService extends SchemaStatement {
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
         service.setComment(comment);
+        service.setVariables(session.getVariables());
         schema.add(session, service, lock);
 
         // 非启动阶段，如果java服务实现类不存在时自动生成一个
-        if (!session.getDatabase().isStarting() && isJava && implementBy != null) {
+        if (!session.getDatabase().isStarting() && isJava && implementBy != null && !isAgentEnabled()) {
             try {
                 Class.forName(implementBy);
             } catch (Exception e) {
@@ -189,7 +194,8 @@ public class CreateService extends SchemaStatement {
         // 最后才创建执行器，此时implementBy肯定存在了
         // 如果没有提前生成ServiceExecutor才去使用JavaServiceExecutor
         if (!genCode) {
-            if (isJava && methodSize > 0 && findServiceCodeGenerator(service) != null) {
+            if (isJava && methodSize > 0 && !isAgentEnabled()
+                    && findServiceCodeGenerator(service) != null) {
                 ServiceCodeGenerator generator = getServiceCodeGenerator(service);
                 service.setExecutorCode(generator.genServiceExecutorCode(false));
             } else {

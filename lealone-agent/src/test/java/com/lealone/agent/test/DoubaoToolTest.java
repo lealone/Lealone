@@ -14,7 +14,7 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lealone.agent.llm.doubao.DoubaoLLM;
+import com.lealone.agent.doubao.DoubaoAgent;
 import com.volcengine.ark.runtime.model.responses.constant.ResponsesConstants;
 import com.volcengine.ark.runtime.model.responses.content.InputContentItemText;
 import com.volcengine.ark.runtime.model.responses.item.BaseItem;
@@ -29,7 +29,7 @@ import com.volcengine.ark.runtime.model.responses.tool.ResponsesTool;
 import com.volcengine.ark.runtime.model.responses.tool.ToolFunction;
 import com.volcengine.ark.runtime.service.ArkService;
 
-public class DoubaoToolTest extends DoubaoLLM {
+public class DoubaoToolTest extends DoubaoAgent {
 
     public static ObjectMapper om = new ObjectMapper();
 

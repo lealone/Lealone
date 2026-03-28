@@ -245,6 +245,13 @@ public class ServerSession extends SessionBase implements InternalSession {
         return list;
     }
 
+    public HashMap<String, Value> getVariables() {
+        if (variables == null) {
+            return new HashMap<>();
+        }
+        return variables;
+    }
+
     /**
      * Get the local temporary table if one exists with that name, or null if
      * not.

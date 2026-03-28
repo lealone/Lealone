@@ -34,7 +34,8 @@ public class DelegatedProtocolServer implements ProtocolServer {
 
     @Override
     public void stop() {
-        protocolServer.stop();
+        if (protocolServer != null)
+            protocolServer.stop();
     }
 
     @Override
@@ -46,7 +47,7 @@ public class DelegatedProtocolServer implements ProtocolServer {
 
     @Override
     public boolean isStopped() {
-        return protocolServer.isStopped();
+        return protocolServer == null || protocolServer.isStopped();
     }
 
     @Override

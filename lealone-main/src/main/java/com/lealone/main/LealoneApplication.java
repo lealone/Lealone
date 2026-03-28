@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.StringUtils;
+import com.lealone.http.tomcat.TomcatServerEngine;
 import com.lealone.service.http.HttpRouter;
 import com.lealone.sql.config.Config;
 
@@ -16,7 +17,7 @@ public class LealoneApplication {
 
     private final CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>();
     private final ArrayList<String> argList = new ArrayList<>();
-    private String protocolServerEngine = "tomcat";
+    private String protocolServerEngine = TomcatServerEngine.NAME;
 
     public void setProtocolServerEngine(String protocolServerEngine) {
         this.protocolServerEngine = protocolServerEngine;

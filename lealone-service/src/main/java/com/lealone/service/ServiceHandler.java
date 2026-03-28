@@ -12,6 +12,7 @@ import java.util.Set;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CamelCaseHelper;
+import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.Constants;
@@ -30,8 +31,8 @@ public class ServiceHandler {
     protected final ServerSession session;
 
     public ServiceHandler(Map<String, String> config) {
-        defaultDatabase = config.get("default_database");
-        defaultSchema = config.get("default_schema");
+        defaultDatabase = MapUtils.getString(config, "default_database", "lealone");
+        defaultSchema = MapUtils.getString(config, "default_schema", "public");
 
         String url = config.get("jdbc_url");
         if (url == null)

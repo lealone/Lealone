@@ -11,8 +11,7 @@ import java.io.InputStreamReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.lealone.agent.llm.BaseLLM;
-import com.lealone.agent.llm.doubao.DoubaoLLM;
+import com.lealone.agent.doubao.DoubaoAgent;
 import com.lealone.db.util.SourceCompiler;
 
 public class LealoneAgent {
@@ -57,9 +56,9 @@ public class LealoneAgent {
     public static void run(String[] args, String userPrompt) throws Exception {
         userPrompt = userPrompt != null ? userPrompt : "写一个hello world";
         // userPrompt = "输出当前日期";
-        BaseLLM llm = new DoubaoLLM();
-        llm.init(args);
-        String javaCode = llm.generateJavaCode(userPrompt);
+        DoubaoAgent agent = new DoubaoAgent();
+        agent.init(args);
+        String javaCode = agent.generateJavaCode(userPrompt);
         // System.out.println(javaCode);
         // String javaCode = """
         // public class HelloWorld {
