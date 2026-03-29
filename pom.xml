@@ -149,9 +149,8 @@
     </build>
 
     <profiles>
-        <!-- 只构建数据库，不包含web、orm模块以及log4j2依赖 -->
         <profile>
-            <id>database</id>
+            <id>ai</id>
             <dependencyManagement>
                 <dependencies>
                     <dependency>

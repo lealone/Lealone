@@ -8,7 +8,7 @@
 
 ### 快速入门
 
-构建: `mvn package -Dmaven.test.skip=true -P database`
+构建: `mvn package -Dmaven.test.skip=true -P ai
 
 运行: `java -jar target/lealone-8.0.0-SNAPSHOT.jar ./services.sql`
 
