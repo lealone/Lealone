@@ -8,7 +8,6 @@ package com.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import com.lealone.common.exceptions.DbException;
-import com.lealone.common.util.CamelCaseHelper;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.StatementBuilder;
 import com.lealone.common.util.StringUtils;
@@ -102,10 +101,6 @@ public class CreateService extends SchemaStatement {
         this.codeGenerator = codeGenerator;
     }
 
-    public boolean isAgentEnabled() {
-        return session.getVariable("LLM_PROVIDER") != null;
-    }
-
     @Override
     public int update() {
         session.getUser().checkAdmin();
@@ -119,6 +114,18 @@ public class CreateService extends SchemaStatement {
             }
             throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
         }
+        if (!session.getDatabase().isStarting() && isAgentEnabled(session)) {
+            if (implementBy == null) {
+                if (packageName != null)
+                    implementBy = packageName;
+                else
+                    implementBy = "service";
+                implementBy += "." + toClassName(serviceName);
+            }
+            // if (codePath == null)
+            // codePath = new File(SysProperties.getBaseDir(), "service").getAbsolutePath();
+        }
+
         int id = getObjectId();
         // 替换变量，重建SQL
         // if (sql.indexOf('@') >= 0) {
@@ -159,7 +166,8 @@ public class CreateService extends SchemaStatement {
         schema.add(session, service, lock);
 
         // 非启动阶段，如果java服务实现类不存在时自动生成一个
-        if (!session.getDatabase().isStarting() && isJava && implementBy != null && !isAgentEnabled()) {
+        if (!session.getDatabase().isStarting() && isJava && implementBy != null
+                && !isAgentEnabled(session)) {
             try {
                 Class.forName(implementBy);
             } catch (Exception e) {
@@ -194,7 +202,7 @@ public class CreateService extends SchemaStatement {
         // 最后才创建执行器，此时implementBy肯定存在了
         // 如果没有提前生成ServiceExecutor才去使用JavaServiceExecutor
         if (!genCode) {
-            if (isJava && methodSize > 0 && !isAgentEnabled()
+            if (isJava && methodSize > 0 && !isAgentEnabled(session)
                     && findServiceCodeGenerator(service) != null) {
                 ServiceCodeGenerator generator = getServiceCodeGenerator(service);
                 service.setExecutorCode(generator.genServiceExecutorCode(false));
@@ -287,7 +295,10 @@ public class CreateService extends SchemaStatement {
 
     // 外部插件也用到了
     public static String toClassName(String n) {
-        n = CamelCaseHelper.toCamelFromUnderscore(n);
-        return Character.toUpperCase(n.charAt(0)) + n.substring(1);
+        return Service.toClassName(n);
+    }
+
+    public static boolean isAgentEnabled(ServerSession session) {
+        return session.getVariable("LLM_PROVIDER") != null;
     }
 }

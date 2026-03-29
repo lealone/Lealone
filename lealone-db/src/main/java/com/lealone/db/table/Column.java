@@ -415,7 +415,10 @@ public class Column {
         if (originalSQL != null) {
             buff.append(originalSQL);
         } else {
-            buff.append(DataType.getDataType(type).name);
+            if (type == Value.JAVA_OBJECT && table != null)
+                buff.append(table.getName());
+            else
+                buff.append(DataType.getDataType(type).name);
             switch (type) {
             case Value.DECIMAL:
                 buff.append('(').append(precision).append(", ").append(scale).append(')');

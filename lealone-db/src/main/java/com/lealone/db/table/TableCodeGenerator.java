@@ -10,6 +10,6 @@ import com.lealone.db.session.ServerSession;
 
 public interface TableCodeGenerator extends Plugin {
 
-    public void genCode(ServerSession session, Table table, Table owner, int level);
+    public String genCode(ServerSession session, Table table, Table owner, int level);
 
 }

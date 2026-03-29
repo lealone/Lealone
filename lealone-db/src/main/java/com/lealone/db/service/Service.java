@@ -5,6 +5,7 @@
  */
 package com.lealone.db.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -13,6 +14,7 @@ import com.lealone.agent.CodeAgent;
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
+import com.lealone.common.util.CamelCaseHelper;
 import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
@@ -25,6 +27,8 @@ import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.schema.SchemaObjectBase;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.table.Column;
+import com.lealone.db.table.Table;
 import com.lealone.db.util.SourceCompiler;
 import com.lealone.db.value.Value;
 
@@ -157,9 +161,16 @@ public class Service extends SchemaObjectBase {
                     Value llmProvider = variables.get("LLM_PROVIDER");
                     if (llmProvider != null) {
                         CodeAgent agent = getCodeAgent(llmProvider.getString());
-                        String userPrompt = getCreateSQL();
-                        logger.info("Service sql:\n{}", userPrompt);
-                        String javaCode = agent.generateJavaCode(userPrompt);
+                        StringBuilder userPrompt = new StringBuilder(getCreateSQL());
+                        logger.info("Prompt:\n{}", userPrompt);
+                        for (Table t : getTables()) {
+                            userPrompt.append('\n');
+                            userPrompt.append("以下是" + toClassName(t.getName())
+                                    + "类，Model用findOne和findList,增加用insert：");
+                            userPrompt.append('\n');
+                            userPrompt.append(t.getCode());
+                        }
+                        String javaCode = agent.generateJavaCode(userPrompt.toString());
                         logger.info("Java code:\n{}", javaCode);
                         implementClass = SourceCompiler.compileAsClass(getImplementBy(), javaCode);
                     } else {
@@ -173,6 +184,28 @@ public class Service extends SchemaObjectBase {
                 }
             }
         }
+    }
+
+    private List<Table> getTables() {
+        ArrayList<Table> tables = new ArrayList<>();
+        for (ServiceMethod m : serviceMethods) {
+            for (Column c : m.getParameters()) {
+                getTable(c, tables);
+            }
+            getTable(m.getReturnType(), tables);
+        }
+        return tables;
+    }
+
+    private void getTable(Column c, ArrayList<Table> tables) {
+        Table t = c.getTable();
+        if (t != null && t.getCode() != null)
+            tables.add(t);
+    }
+
+    public static String toClassName(String n) {
+        n = CamelCaseHelper.toCamelFromUnderscore(n);
+        return Character.toUpperCase(n.charAt(0)) + n.substring(1);
     }
 
     public static Service getService(ServerSession session, Database db, String schemaName,

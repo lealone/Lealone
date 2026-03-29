@@ -39,7 +39,7 @@ public class ModelCodeGenerator extends TableCodeGeneratorBase {
     }
 
     @Override
-    public void genCode(ServerSession session, Table table, Table owner, int level) {
+    public String genCode(ServerSession session, Table table, Table owner, int level) {
         String packageName = table.getPackageName();
         String tableName = table.getName();
         String className = CreateService.toClassName(tableName);
@@ -373,6 +373,7 @@ public class ModelCodeGenerator extends TableCodeGeneratorBase {
         buff.append("}\r\n");
 
         writeFile(table.getCodePath(), packageName, className, buff);
+        return buff.toString();
     }
 
     private static String getModelPropertyClassName(int type, TreeSet<String> importSet) {

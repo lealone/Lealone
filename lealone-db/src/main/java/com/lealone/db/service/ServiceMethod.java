@@ -38,5 +38,4 @@ public class ServiceMethod {
     public void setReturnType(Column returnType) {
         this.returnType = returnType;
     }
-
 }

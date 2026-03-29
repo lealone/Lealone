@@ -879,4 +879,16 @@ public class StandardTable extends Table {
                 session.rollback();
         });
     }
+
+    private String code;
+
+    @Override
+    public String getCode() {
+        return code;
+    }
+
+    @Override
+    public void setCode(String code) {
+        this.code = code;
+    }
 }

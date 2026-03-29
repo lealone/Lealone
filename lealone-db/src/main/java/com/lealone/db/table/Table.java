@@ -1109,4 +1109,11 @@ public abstract class Table extends SchemaObjectBase {
     public DataHandler getDataHandler() {
         return database;
     }
+
+    public String getCode() {
+        return null;
+    }
+
+    public void setCode(String code) {
+    }
 }

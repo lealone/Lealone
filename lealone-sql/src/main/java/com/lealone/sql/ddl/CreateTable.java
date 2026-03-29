@@ -5,6 +5,7 @@
  */
 package com.lealone.sql.ddl;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -14,6 +15,7 @@ import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.db.Database;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.DbSetting;
+import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.lock.DbObjectLock;
@@ -189,6 +191,13 @@ public class CreateTable extends SchemaStatement {
                 sequences.add(seq);
             }
         }
+        if (!session.getDatabase().isStarting() && CreateService.isAgentEnabled(session)) {
+            if (packageName == null)
+                packageName = "model";
+            if (codePath == null)
+                codePath = new File(SysProperties.getBaseDir(), "src").getAbsolutePath();
+            genCode = true;
+        }
         table.setComment(comment);
         table.setPackageName(packageName);
         table.setCodePath(codePath);
@@ -240,7 +249,9 @@ public class CreateTable extends SchemaStatement {
                     codeGenerator);
             if (tGenerator == null)
                 throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, codeGenerator);
-            tGenerator.genCode(session, table, table, 1);
+            String code = tGenerator.genCode(session, table, table, 1);
+            if (CreateService.isAgentEnabled(session))
+                table.setCode(code);
         }
         return 0;
     }
