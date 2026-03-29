@@ -1,53 +1,45 @@
 
 ### Lealone 是什么
 
-* 是一个高性能的面向 OLTP 场景的关系数据库
+* 是一个安全的能够自我进化的 AI 应用开发平台
 
-* 也是一个安全的能够自我进化的 AI 应用开发平台
-
-
-### Lealone 有哪些特性
-
-##### 高亮特性
-
-* 并发写性能极其炸裂
-
-* 全链路异步化，使用少量线程就能处理大量并发
-
-* 可暂停的、渐进式的 SQL 引擎
-
-* 基于 SQL 优先级的抢占式调度，慢查询不会长期霸占 CPU
-
-* 创建 JDBC 连接非常快速，占用资源少，不再需要 JDBC 连接池
- 
-* 插件化存储引擎架构，内置 AOSE 引擎，采用新颖的异步化 B-Tree
-
-* 插件化事务引擎架构，事务处理逻辑与存储分离，内置 AOTE 引擎
-
-* 支持 Page 级别的行列混合存储，对于有很多字段的表，只读少量字段时能大量节约内存
-
-* 支持通过 CREATE SERVICE 语句创建可托管的后端服务
-
-* 只需要一个不到 2M 的 jar 包就能运行，不需要安装
+* 能够彻底颠覆现有的应用软件开发模式
 
 
-##### 普通特性
+### 快速入门
 
-* 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
+构建: `mvn package -Dmaven.test.skip=true -P database`
 
+运行: `java -jar target/lealone-8.0.0-SNAPSHOT.jar ./services.sql`
 
-### Lealone 文档
+services.sql: 
+```sql
+set @llm_provider 'doubao'; --目前只支持doubao
+set @llm_model 'doubao-seed-2-0-pro-260215';
+set @llm_api_key '替换成你的apikey';
 
-* [快速入门](https://github.com/lealone/Lealone-Docs/blob/master/应用文档/Lealone数据库快速入门.md)
+-- 通过以下 url 调用服务：
+-- http://localhost:8080/service/my_service/hello?name=zhh
+-- http://localhost:8080/service/my_service/get_current_time
+create service if not exists my_service (
+    hello(name varchar) varchar,
+    get_current_time() varchar
+);
 
-* [文档首页](https://github.com/lealone/Lealone-Docs)
+create table if not exists user (
+    id long auto_increment primary key,
+    name varchar,
+    age int
+);
 
-
-### Lealone 插件
-
-* 兼容 MongoDB、MySQL、PostgreSQL 的插件
-
-* [插件首页](https://github.com/lealone-plugins)
+-- 通过以下 url 调用服务：
+-- http://localhost:8080/service/user_service/add_user?name=zhh&age=18
+-- http://localhost:8080/service/user_service/find_by_name?name=zhh
+create service if not exists user_service (
+    add_user(name varchar, age int) long,
+    find_by_name(name varchar) user
+);
+```
 
 
 ### Lealone 名字的由来
@@ -58,22 +50,4 @@
   Lealone 是 lea + lone 的组合，反过来念更有意思哦。:)
 
 
-### Lealone 历史
-
-* 2012年从 [H2 数据库 ](http://www.h2database.com/html/main.html)的代码开始
-
-* [Lealone 的过去现在将来](https://github.com/codefollower/My-Blog/issues/16)
-
-
 ### [Lealone License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
-
-
-### Lealone 集群版/商业版
-
-* 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
-
-* 支持自动化分片 (Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
-
-* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server 模式、复制模式、Sharding 模式
-
-* 支持不停机快速手动或自动转换运行模式: Client/Server 模式 -> 复制模式 -> Sharding 模式
