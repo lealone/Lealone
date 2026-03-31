@@ -191,7 +191,9 @@ public class CreateTable extends SchemaStatement {
                 sequences.add(seq);
             }
         }
-        if (!session.getDatabase().isStarting() && CreateService.isAgentEnabled(session)) {
+        // INFORMATION_SCHEMA、PERFORMANCE_SCHEMA的表不生成代码
+        if (schema.getId() >= 0 && !session.getDatabase().isStarting()
+                && CreateService.isAgentEnabled(session)) {
             if (packageName == null)
                 packageName = "model";
             if (codePath == null)
