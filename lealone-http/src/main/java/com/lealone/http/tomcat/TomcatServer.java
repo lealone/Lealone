@@ -154,8 +154,12 @@ public class TomcatServer extends AsyncServer<TomcatServerConnection> implements
         webRoot = MapUtils.getString(config, "web_root", "./web");
         File webRootDir = new File(webRoot);
         if (initTomcat) {
-            if (!webRootDir.exists())
-                webRootDir.mkdirs();
+            // 如果没有指定web_root参数也没有web目录就把docBase变成work目录
+            if (!webRootDir.exists()) {
+                webRootDir = new File(getBaseDir(), "work");
+                if (!webRootDir.exists())
+                    webRootDir.mkdirs();
+            }
         }
         try {
             tomcat = new Tomcat();
