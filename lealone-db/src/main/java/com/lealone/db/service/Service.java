@@ -5,6 +5,12 @@
  */
 package com.lealone.db.service;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,11 +22,13 @@ import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.CamelCaseHelper;
 import com.lealone.common.util.CaseInsensitiveMap;
+import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.common.util.Utils;
 import com.lealone.db.Database;
 import com.lealone.db.DbObjectType;
 import com.lealone.db.LealoneDatabase;
+import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.auth.Right;
 import com.lealone.db.plugin.PluginManager;
@@ -43,6 +51,7 @@ public class Service extends SchemaObjectBase {
     private final String sql;
     private final String serviceExecutorClassName;
     private final List<ServiceMethod> serviceMethods;
+    private String codePath;
 
     private volatile ServiceExecutor executor;
     private StringBuilder executorCode;
@@ -92,6 +101,10 @@ public class Service extends SchemaObjectBase {
 
     public List<ServiceMethod> getServiceMethods() {
         return serviceMethods;
+    }
+
+    public void setCodePath(String codePath) {
+        this.codePath = codePath;
     }
 
     @Override
@@ -158,6 +171,11 @@ public class Service extends SchemaObjectBase {
         if (implementClass == null) {
             synchronized (this) {
                 if (implementClass == null) {
+                    byte[] bytes = readClassFile();
+                    if (bytes != null) {
+                        implementClass = SourceCompiler.getClass(getImplementBy(), bytes);
+                        return;
+                    }
                     Value llmProvider = variables.get("LLM_PROVIDER");
                     if (llmProvider != null) {
                         CodeAgent agent = getCodeAgent(llmProvider.getString());
@@ -172,7 +190,10 @@ public class Service extends SchemaObjectBase {
                         }
                         String javaCode = agent.generateJavaCode(userPrompt.toString());
                         logger.info("Java code:\n{}", javaCode);
-                        implementClass = SourceCompiler.compileAsClass(getImplementBy(), javaCode);
+                        bytes = SourceCompiler.compile(getImplementBy(), javaCode);
+                        implementClass = SourceCompiler.getClass(getImplementBy(), bytes);
+                        writeFile(javaCode); // 编译成功再写
+                        writeClassFile(bytes);
                     } else {
                         try {
                             implementClass = Class.forName(getImplementBy());
@@ -184,6 +205,41 @@ public class Service extends SchemaObjectBase {
                 }
             }
         }
+    }
+
+    private void setDefaultPackageName() {
+        if (packageName == null)
+            packageName = "service";
+    }
+
+    private String getSimpleName() {
+        int pos = implementBy.indexOf('.');
+        if (pos > 0)
+            return implementBy.substring(pos + 1);
+        else
+            return implementBy;
+    }
+
+    private String getCodePath(String dir) {
+        if (codePath == null)
+            return new File(SysProperties.getBaseDir(), dir).getAbsolutePath();
+        else
+            return codePath;
+    }
+
+    private void writeFile(String javaCode) {
+        setDefaultPackageName();
+        writeFile(getCodePath("src"), packageName, getSimpleName(), new StringBuilder(javaCode));
+    }
+
+    private void writeClassFile(byte[] bytes) {
+        setDefaultPackageName();
+        writeClassFile(getCodePath("classes"), packageName, getSimpleName(), bytes);
+    }
+
+    private byte[] readClassFile() {
+        setDefaultPackageName();
+        return readClassFile(getCodePath("classes"), packageName, getSimpleName());
     }
 
     private List<Table> getTables() {
@@ -206,6 +262,63 @@ public class Service extends SchemaObjectBase {
     public static String toClassName(String n) {
         n = CamelCaseHelper.toCamelFromUnderscore(n);
         return Character.toUpperCase(n.charAt(0)) + n.substring(1);
+    }
+
+    private static String getPath(String codePath, String packageName) {
+        String path = codePath;
+        if (!path.endsWith(File.separator))
+            path = path + File.separator;
+        path = path.replace('/', File.separatorChar);
+        path = path + packageName.replace('.', File.separatorChar) + File.separatorChar;
+        return path;
+    }
+
+    public static byte[] readClassFile(String codePath, String packageName, String className) {
+        String path = getPath(codePath, packageName);
+        try {
+            File classFile = new File(path, className + ".class");
+            if (!classFile.exists()) {
+                return null;
+            }
+            return IOUtils.toByteArray(new FileInputStream(classFile));
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to read file, path = " + path);
+        }
+    }
+
+    public static void writeClassFile(String codePath, String packageName, String className,
+            byte[] bytes) {
+        String path = getPath(codePath, packageName);
+        try {
+            if (!new File(path).exists()) {
+                new File(path).mkdirs();
+            }
+            BufferedOutputStream file = new BufferedOutputStream(
+                    new FileOutputStream(path + className + ".class"));
+            file.write(bytes);
+            file.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to write file, path = " + path);
+        }
+    }
+
+    public static void writeFile(String codePath, String packageName, String className,
+            StringBuilder... buffArray) {
+        String path = getPath(codePath, packageName);
+        try {
+            if (!new File(path).exists()) {
+                new File(path).mkdirs();
+            }
+            Charset utf8 = Charset.forName("UTF-8");
+            BufferedOutputStream file = new BufferedOutputStream(
+                    new FileOutputStream(path + className + ".java"));
+            for (StringBuilder buff : buffArray) {
+                file.write(buff.toString().getBytes(utf8));
+            }
+            file.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to write file, path = " + path);
+        }
     }
 
     public static Service getService(ServerSession session, Database db, String schemaName,

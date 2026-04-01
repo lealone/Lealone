@@ -161,6 +161,7 @@ public class CreateService extends SchemaStatement {
         service.setLanguage(language);
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
+        service.setCodePath(codePath);
         service.setComment(comment);
         service.setVariables(session.getVariables());
         schema.add(session, service, lock);

@@ -32,14 +32,13 @@ import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.ToolProvider;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.Utils;
-
-import javax.tools.SimpleJavaFileObject;
-import javax.tools.ToolProvider;
 
 /**
  * This class allows to convert source code to a class. It uses one class loader per class.
@@ -179,6 +178,11 @@ public class SourceCompiler {
         // 不能直接传递参数classLoader给compile，要传自定义SCClassLoader，否则会有各种类找不到的问题
         SCClassLoader cl = new SCClassLoader(classLoader);
         byte[] bytes = compile(cl, className, sourceCode);
+        return cl.getClass(className, bytes);
+    }
+
+    public static Class<?> getClass(String className, byte[] bytes) {
+        SCClassLoader cl = new SCClassLoader(SourceCompiler.class.getClassLoader());
         return cl.getClass(className, bytes);
     }
 

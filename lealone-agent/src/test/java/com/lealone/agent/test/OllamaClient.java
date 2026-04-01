@@ -1,10 +1,9 @@
-package com.lealone.agent.test;
 /*
  * Copyright Lealone Database Group.
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-
+package com.lealone.agent.test;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

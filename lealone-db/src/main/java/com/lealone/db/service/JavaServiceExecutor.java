@@ -76,7 +76,8 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
                 try {
                     // 不使用getDeclaredMethod，因为这里不考虑参数，只要方法名匹配即可
                     for (Method m : implementClass.getDeclaredMethods()) {
-                        if (m.getName().equals(objectMethodName)) {
+                        if (m.getName().equalsIgnoreCase(serviceMethodName)
+                                || m.getName().equalsIgnoreCase(objectMethodName)) {
                             objectMethodMap.put(serviceMethodName, m);
                             break;
                         }

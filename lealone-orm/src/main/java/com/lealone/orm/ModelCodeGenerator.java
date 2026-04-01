@@ -5,11 +5,6 @@
  */
 package com.lealone.orm;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -20,6 +15,7 @@ import com.lealone.db.Database;
 import com.lealone.db.constraint.ConstraintReferential;
 import com.lealone.db.index.IndexColumn;
 import com.lealone.db.schema.Schema;
+import com.lealone.db.service.Service;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.Column.ListColumn;
@@ -399,25 +395,7 @@ public class ModelCodeGenerator extends TableCodeGeneratorBase {
 
     public static void writeFile(String codePath, String packageName, String className,
             StringBuilder... buffArray) {
-        String path = codePath;
-        if (!path.endsWith(File.separator))
-            path = path + File.separator;
-        path = path.replace('/', File.separatorChar);
-        path = path + packageName.replace('.', File.separatorChar) + File.separatorChar;
-        try {
-            if (!new File(path).exists()) {
-                new File(path).mkdirs();
-            }
-            Charset utf8 = Charset.forName("UTF-8");
-            BufferedOutputStream file = new BufferedOutputStream(
-                    new FileOutputStream(path + className + ".java"));
-            for (StringBuilder buff : buffArray) {
-                file.write(buff.toString().getBytes(utf8));
-            }
-            file.close();
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, "Failed to genJavaCode, path = " + path);
-        }
+        Service.writeFile(codePath, packageName, className, buffArray);
     }
 
     public static String getTypeName(Column c, TreeSet<String> importSet) {
