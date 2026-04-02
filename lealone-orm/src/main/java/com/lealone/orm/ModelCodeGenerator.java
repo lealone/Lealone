@@ -394,8 +394,8 @@ public class ModelCodeGenerator extends TableCodeGeneratorBase {
     }
 
     public static void writeFile(String codePath, String packageName, String className,
-            StringBuilder... buffArray) {
-        Service.writeFile(codePath, packageName, className, buffArray);
+            StringBuilder code) {
+        Service.writeFile(codePath, packageName, className, code);
     }
 
     public static String getTypeName(Column c, TreeSet<String> importSet) {

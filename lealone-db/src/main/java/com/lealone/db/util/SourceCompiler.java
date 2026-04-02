@@ -6,7 +6,9 @@
 package com.lealone.db.util;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
@@ -14,11 +16,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -158,8 +163,13 @@ public class SourceCompiler {
 
     public static byte[] compile(ClassLoader classLoader, String className, String sourceCode) {
         try {
-            return SCJavaCompiler.newInstance(classLoader, true).compile(className, sourceCode)
-                    .entrySet().iterator().next().getValue();
+            SCClassLoader cl;
+            if (classLoader instanceof SCClassLoader)
+                cl = (SCClassLoader) classLoader;
+            else
+                cl = new SCClassLoader(classLoader);
+            return SCJavaCompiler.newInstance(cl, true).compile(className, sourceCode).entrySet()
+                    .iterator().next().getValue();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -186,23 +196,49 @@ public class SourceCompiler {
         return cl.getClass(className, bytes);
     }
 
-    private static class SCClassLoader extends ClassLoader {
+    public static SCClassLoader getClassLoader(URL... urls) {
+        return new SCClassLoader(urls, SourceCompiler.class.getClassLoader());
+    }
+
+    public static class SCClassLoader extends URLClassLoader {
+
+        private Set<String> packageNames;
+
         public SCClassLoader(ClassLoader parent) {
-            super(parent);
+            super(new URL[0], parent);
+        }
+
+        public SCClassLoader(URL[] urls, ClassLoader parent) {
+            super(urls, parent);
         }
 
         public Class<?> getClass(String className, byte[] bytes) {
             return defineClass(className, bytes, 0, bytes.length);
         }
+
+        public void addPackageName(String packageName) {
+            if (packageNames == null)
+                packageNames = new HashSet<>();
+            packageNames.add(packageName);
+        }
+
+        public boolean containsPackageName(String packageName) {
+            return packageNames != null && packageNames.contains(packageName);
+        }
     }
 
     private static class SCJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
 
-        private final ClassLoader classLoader;
+        private final SCClassLoader classLoader;
+        private File classDir;
 
-        protected SCJavaFileManager(JavaFileManager fileManager, ClassLoader classLoader) {
+        protected SCJavaFileManager(JavaFileManager fileManager, SCClassLoader classLoader) {
             super(fileManager);
             this.classLoader = classLoader;
+            URL[] urls = classLoader.getURLs();
+            if (urls.length > 0) {
+                classDir = new File(urls[0].getFile());
+            }
         }
 
         @Override
@@ -211,9 +247,30 @@ public class SourceCompiler {
         }
 
         @Override
+        public String inferBinaryName(Location location, JavaFileObject file) {
+            if (file instanceof SCJavaFileObject) {
+                SCJavaFileObject scf = (SCJavaFileObject) file;
+                return scf.className;
+            }
+            return super.inferBinaryName(location, file);
+        }
+
+        @Override
         public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds,
                 boolean recurse) throws IOException {
-            return super.list(location, packageName, kinds, recurse);
+            if (classDir != null && classLoader.containsPackageName(packageName)) {
+                File path = new File(classDir, packageName.replace('.', File.separatorChar));
+                ArrayList<JavaFileObject> files = new ArrayList<>();
+                if (path.exists()) {
+                    for (File f : path.listFiles()) {
+                        if (f.isFile())
+                            files.add(new SCJavaFileObject(packageName, f, Kind.CLASS));
+                    }
+                }
+                return files;
+            } else {
+                return super.list(location, packageName, kinds, recurse);
+            }
         }
 
         @Override
@@ -239,6 +296,13 @@ public class SourceCompiler {
             super(makeURI(className), Kind.SOURCE);
             this.className = className;
             this.sourceCode = sourceCode;
+            this.outputStream = null;
+        }
+
+        private SCJavaFileObject(String packageName, File f, Kind kind) {
+            super(f.toURI(), kind);
+            this.className = packageName + "." + f.getName().substring(0, f.getName().length() - 6);
+            this.sourceCode = null;
             this.outputStream = null;
         }
 
@@ -285,6 +349,11 @@ public class SourceCompiler {
             return outputStream;
         }
 
+        @Override
+        public InputStream openInputStream() throws IOException {
+            return toUri().toURL().openStream();
+        }
+
         private static URI makeURI(final String canonicalClassName) {
             int dotPos = canonicalClassName.lastIndexOf('.');
             String simpleClassName = dotPos == -1 ? canonicalClassName
@@ -305,7 +374,7 @@ public class SourceCompiler {
         private final DiagnosticListener<JavaFileObject> listener;
         private final SCJavaFileManager fileManager;
 
-        public static SCJavaCompiler newInstance(ClassLoader classLoader, boolean debug) {
+        public static SCJavaCompiler newInstance(SCClassLoader classLoader, boolean debug) {
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) {
                 throw new RuntimeException("JDK Java compiler not available");
@@ -313,7 +382,7 @@ public class SourceCompiler {
             return new SCJavaCompiler(compiler, classLoader, debug);
         }
 
-        private SCJavaCompiler(JavaCompiler compiler, ClassLoader classLoader, boolean debug) {
+        private SCJavaCompiler(JavaCompiler compiler, SCClassLoader classLoader, boolean debug) {
             this.debug = debug;
             this.compiler = compiler;
             this.listener = new SCDiagnosticListener();

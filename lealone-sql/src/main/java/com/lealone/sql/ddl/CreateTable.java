@@ -22,12 +22,14 @@ import com.lealone.db.lock.DbObjectLock;
 import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.schema.Schema;
 import com.lealone.db.schema.Sequence;
+import com.lealone.db.service.Service;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.CreateTableData;
 import com.lealone.db.table.Table;
 import com.lealone.db.table.TableCodeGenerator;
 import com.lealone.db.table.TableSetting;
+import com.lealone.db.util.SourceCompiler;
 import com.lealone.db.value.DataType;
 import com.lealone.sql.SQLStatement;
 import com.lealone.sql.dml.Insert;
@@ -252,8 +254,13 @@ public class CreateTable extends SchemaStatement {
             if (tGenerator == null)
                 throw DbException.get(ErrorCode.PLUGIN_NOT_FOUND_1, codeGenerator);
             String code = tGenerator.genCode(session, table, table, 1);
-            if (CreateService.isAgentEnabled(session))
+            if (CreateService.isAgentEnabled(session)) {
+                String className = Service.toClassName(table.getName());
+                byte[] bytes = SourceCompiler.compile(className, code);
+                String codePath = new File(SysProperties.getBaseDir(), "classes").getAbsolutePath();
+                Service.writeClassFile(codePath, packageName, className, bytes);
                 table.setCode(code);
+            }
         }
         return 0;
     }

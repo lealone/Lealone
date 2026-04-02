@@ -38,6 +38,7 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.db.table.Column;
 import com.lealone.db.table.Table;
 import com.lealone.db.util.SourceCompiler;
+import com.lealone.db.util.SourceCompiler.SCClassLoader;
 import com.lealone.db.value.Value;
 
 public class Service extends SchemaObjectBase {
@@ -171,35 +172,55 @@ public class Service extends SchemaObjectBase {
         if (implementClass == null) {
             synchronized (this) {
                 if (implementClass == null) {
-                    byte[] bytes = readClassFile();
-                    if (bytes != null) {
-                        implementClass = SourceCompiler.getClass(getImplementBy(), bytes);
+                    Exception exception = null;
+                    String cp = getCodePath("classes");
+                    SCClassLoader classLoader = null;
+                    try {
+                        classLoader = SourceCompiler.getClassLoader(new File(cp).toURI().toURL());
+                        implementClass = classLoader.loadClass(getImplementBy());
                         return;
+                    } catch (Exception e) {
+                        exception = e;
                     }
+                    classLoader.addPackageName(packageName);
                     Value llmProvider = variables.get("LLM_PROVIDER");
                     if (llmProvider != null) {
                         CodeAgent agent = getCodeAgent(llmProvider.getString());
                         StringBuilder userPrompt = new StringBuilder(getCreateSQL());
                         logger.info("Prompt:\n{}", userPrompt);
+
                         for (Table t : getTables()) {
+                            String className = toClassName(t.getName());
+                            String fullName = t.getPackageName() + "." + className;
+                            classLoader.addPackageName(t.getPackageName());
                             userPrompt.append('\n');
-                            userPrompt.append("以下是" + toClassName(t.getName())
+                            userPrompt.append("以下是" + className //
                                     + "类，Model用findOne和findList,增加用insert：");
                             userPrompt.append('\n');
-                            userPrompt.append(t.getCode());
+                            String code = t.getCode();
+                            if (code == null) {
+                                String src = t.getCodePath();
+                                if (src == null) {
+                                    src = getCodePath("src");
+                                }
+                                code = readSrcFile(src, t.getPackageName(), className);
+                                t.setCode(code);
+                            }
+                            userPrompt.append(code);
+                            try {
+                                classLoader.loadClass(fullName);
+                            } catch (Exception e) {
+                                throw DbException.convert(e);
+                            }
                         }
                         String javaCode = agent.generateJavaCode(userPrompt.toString());
                         logger.info("Java code:\n{}", javaCode);
-                        bytes = SourceCompiler.compile(getImplementBy(), javaCode);
-                        implementClass = SourceCompiler.getClass(getImplementBy(), bytes);
+                        byte[] bytes = SourceCompiler.compile(classLoader, getImplementBy(), javaCode);
+                        implementClass = classLoader.getClass(getImplementBy(), bytes);
                         writeFile(javaCode); // 编译成功再写
                         writeClassFile(bytes);
                     } else {
-                        try {
-                            implementClass = Class.forName(getImplementBy());
-                        } catch (Exception e) {
-                            DbException.convert(e);
-                        }
+                        throw DbException.convert(exception);
                     }
                     variables = null;
                 }
@@ -237,10 +258,10 @@ public class Service extends SchemaObjectBase {
         writeClassFile(getCodePath("classes"), packageName, getSimpleName(), bytes);
     }
 
-    private byte[] readClassFile() {
-        setDefaultPackageName();
-        return readClassFile(getCodePath("classes"), packageName, getSimpleName());
-    }
+    // private byte[] readClassFile() {
+    // setDefaultPackageName();
+    // return readClassFile(getCodePath("classes"), packageName, getSimpleName());
+    // }
 
     private List<Table> getTables() {
         ArrayList<Table> tables = new ArrayList<>();
@@ -273,18 +294,18 @@ public class Service extends SchemaObjectBase {
         return path;
     }
 
-    public static byte[] readClassFile(String codePath, String packageName, String className) {
-        String path = getPath(codePath, packageName);
-        try {
-            File classFile = new File(path, className + ".class");
-            if (!classFile.exists()) {
-                return null;
-            }
-            return IOUtils.toByteArray(new FileInputStream(classFile));
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, "Failed to read file, path = " + path);
-        }
-    }
+    // public static byte[] readClassFile(String codePath, String packageName, String className) {
+    // String path = getPath(codePath, packageName);
+    // try {
+    // File classFile = new File(path, className + ".class");
+    // if (!classFile.exists()) {
+    // return null;
+    // }
+    // return IOUtils.toByteArray(new FileInputStream(classFile));
+    // } catch (IOException e) {
+    // throw DbException.convertIOException(e, "Failed to read file, path = " + path);
+    // }
+    // }
 
     public static void writeClassFile(String codePath, String packageName, String className,
             byte[] bytes) {
@@ -302,8 +323,21 @@ public class Service extends SchemaObjectBase {
         }
     }
 
+    public static String readSrcFile(String codePath, String packageName, String className) {
+        String path = getPath(codePath, packageName);
+        try {
+            File classFile = new File(path, className + ".java");
+            if (!classFile.exists()) {
+                return null;
+            }
+            return new String(IOUtils.toByteArray(new FileInputStream(classFile)), "UTF-8");
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to read file, path = " + path);
+        }
+    }
+
     public static void writeFile(String codePath, String packageName, String className,
-            StringBuilder... buffArray) {
+            StringBuilder code) {
         String path = getPath(codePath, packageName);
         try {
             if (!new File(path).exists()) {
@@ -312,9 +346,7 @@ public class Service extends SchemaObjectBase {
             Charset utf8 = Charset.forName("UTF-8");
             BufferedOutputStream file = new BufferedOutputStream(
                     new FileOutputStream(path + className + ".java"));
-            for (StringBuilder buff : buffArray) {
-                file.write(buff.toString().getBytes(utf8));
-            }
+            file.write(code.toString().getBytes(utf8));
             file.close();
         } catch (IOException e) {
             throw DbException.convertIOException(e, "Failed to write file, path = " + path);
