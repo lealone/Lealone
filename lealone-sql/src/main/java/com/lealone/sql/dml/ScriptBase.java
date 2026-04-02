@@ -7,6 +7,7 @@ package com.lealone.sql.dml;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -85,8 +86,8 @@ public abstract class ScriptBase extends ManipulationStatement {
             if (fileName == null || fileName.trim().length() == 0) {
                 fileName = "script.sql";
             }
-            // 如果是一个不包含目录的文件名，自动加上ScriptDirectory
-            if (FileUtils.getName(fileName).equals(fileName)) {
+            // 如果是一个不存在且不包含目录的文件名，自动加上ScriptDirectory
+            if (!new File(fileName).exists() && FileUtils.getName(fileName).equals(fileName)) {
                 String dir = SysProperties.getScriptDirectory();
                 fileName = FileUtils.getDirWithSeparator(dir) + fileName;
             }
