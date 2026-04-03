@@ -265,7 +265,7 @@ public class Service extends SchemaObjectBase {
                 throw DbException.convert(e);
             }
         }
-        logger.info("Prompt:\n{}", userPrompt);
+        // logger.info("Prompt:\n{}", userPrompt);
         String javaCode = agent.generateJavaCode(userPrompt.toString());
         logger.info("Java code:\n{}", javaCode);
         byte[] bytes = SourceCompiler.compile(classLoader, getImplementBy(), javaCode);

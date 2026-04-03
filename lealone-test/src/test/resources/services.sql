@@ -6,6 +6,7 @@ set @llm_model 'doubao-seed-2-0-pro-260215';
 
 -- 创建 my_service 服务，默认用 java 语言实现
 -- 如果逻辑简单，llm 根据名字就能知道要实现什么功能
+-- 下文出现的所有 url 都不是必需的，只是方便手工 copy 到浏览器测试
 -- 通过以下 url 调用服务：
 -- http://localhost:8080/service/my_service/hello?name=zhh
 -- http://localhost:8080/service/my_service/get_current_time
@@ -20,7 +21,6 @@ create table if not exists user (
     age int
 );
 
--- 通过以下 url 调用服务：
 -- http://localhost:8080/service/user_service/add_user?name=zhh&age=18
 -- http://localhost:8080/service/user_service/find_by_name?name=zhh
 create service if not exists user_service (
