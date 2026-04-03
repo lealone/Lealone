@@ -47,6 +47,7 @@ public class CreateService extends SchemaStatement {
     private String codePath;
     private CaseInsensitiveMap<String> serviceParameters;
     private String codeGenerator;
+    private boolean workflow;
 
     public CreateService(ServerSession session, Schema schema) {
         super(session, schema);
@@ -99,6 +100,14 @@ public class CreateService extends SchemaStatement {
 
     public void setCodeGenerator(String codeGenerator) {
         this.codeGenerator = codeGenerator;
+    }
+
+    public boolean isWorkflow() {
+        return workflow;
+    }
+
+    public void setWorkflow(boolean workflow) {
+        this.workflow = workflow;
     }
 
     @Override
@@ -164,6 +173,7 @@ public class CreateService extends SchemaStatement {
         service.setCodePath(codePath);
         service.setComment(comment);
         service.setVariables(session.getVariables());
+        service.setWorkflow(isWorkflow());
         schema.add(session, service, lock);
 
         // 非启动阶段，如果java服务实现类不存在时自动生成一个
@@ -230,7 +240,11 @@ public class CreateService extends SchemaStatement {
     }
 
     private String getCreateSQL() {
-        StatementBuilder buff = new StatementBuilder("CREATE SERVICE ");
+        StatementBuilder buff = new StatementBuilder("CREATE ");
+        if (isWorkflow())
+            buff.append("WORKFLOW ");
+        else
+            buff.append("SERVICE ");
         buff.append(session.getDatabase().quoteIdentifier(serviceName));
         if (comment != null) {
             buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
@@ -238,7 +252,8 @@ public class CreateService extends SchemaStatement {
         buff.append(" (\n");
         int methodSize = serviceMethods.size();
         for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
-            CreateTableData data = serviceMethods.get(methodIndex).data;
+            CreateTable createTable = serviceMethods.get(methodIndex);
+            CreateTableData data = createTable.data;
             buff.append("    ").append(session.getDatabase().quoteIdentifier(data.tableName))
                     .append("(");
             // 最后一列是返回类型所以要减一
@@ -251,6 +266,9 @@ public class CreateService extends SchemaStatement {
             }
             // 返回类型不需要生成列名
             buff.append(") ").append(data.columns.get(data.columns.size() - 1).getCreateSQL(true));
+            if (createTable.getComment() != null) {
+                buff.append(" COMMENT '").append(createTable.getComment()).append("'");
+            }
             if (methodIndex != methodSize - 1) {
                 buff.append(",");
             }

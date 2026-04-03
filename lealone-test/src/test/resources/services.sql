@@ -27,3 +27,8 @@ create service if not exists user_service (
     add_user(name varchar, age int) long,
     find_by_name(name varchar) user
 );
+
+-- http://localhost:8080/service/my_workflow/start?name=zhh
+create workflow if not exists my_workflow (
+    start(name varchar) varchar comment '找到指定的用户，然后跟他打招呼，把当前时间告诉他'
+);

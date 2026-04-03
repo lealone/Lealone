@@ -356,6 +356,10 @@ public class CreateTable extends SchemaStatement {
         this.comment = comment;
     }
 
+    public String getComment() {
+        return comment;
+    }
+
     public void setStorageEngineName(String storageEngineName) {
         data.storageEngineName = storageEngineName;
     }

@@ -1271,7 +1271,7 @@ public class SQLParserBase implements SQLParser {
             ifExists = readIfExists(ifExists);
             command.setIfExists(ifExists);
             return command;
-        } else if (readIf("SERVICE")) {
+        } else if (readIf("SERVICE") || readIf("WORKFLOW")) {
             boolean ifExists = readIfExists(false);
             String constantName = readIdentifierWithSchema();
             DropService command = new DropService(session, getSchema());
@@ -1400,7 +1400,7 @@ public class SQLParserBase implements SQLParser {
 
     protected StatementBase parseExecute() {
         ExecuteStatement command;
-        if (readIf("SERVICE")) {
+        if (readIf("SERVICE") || readIf("WORKFLOW")) {
             String serviceName = readIdentifierWithSchema();
             String methodName = readAliasIdentifier();
             command = new ExecuteService(session, serviceName, methodName);
@@ -4199,6 +4199,10 @@ public class SQLParserBase implements SQLParser {
             return parseCreateCatalog();
         } else if (readIf("SERVICE")) {
             return parseCreateService();
+        } else if (readIf("WORKFLOW")) {
+            CreateService service = parseCreateService();
+            service.setWorkflow(true);
+            return service;
         } else if (readIf("PLUGIN")) {
             return parseCreatePlugin();
         } else if (readIf("CONFIG")) {
@@ -4578,6 +4582,10 @@ public class SQLParserBase implements SQLParser {
         }
         Column column = parseColumnForTable("R", true);
         command.addColumn(column);
+        if (command.getComment() == null && column.getComment() != null) {
+            command.setComment(column.getComment());
+            column.setComment(null);
+        }
         return command;
     }
 

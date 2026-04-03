@@ -83,6 +83,7 @@ public class DoubaoAgent extends CodeAgentBase {
         try {
             userPrompt = """
                     请根据需求生成Java代码实现类不要生成接口，只输出纯代码，不要任何解释，不要```java标记，不要多余文字：
+
                     """ + userPrompt;
             HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
             connection.setRequestMethod("POST");
