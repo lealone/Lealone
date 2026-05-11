@@ -3,7 +3,7 @@
  * Licensed under the Server Side  License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.service.http;
+package com.lealone.http;
 
 import java.util.Map;
 

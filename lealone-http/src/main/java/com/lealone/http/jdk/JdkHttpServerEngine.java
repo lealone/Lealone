@@ -3,21 +3,19 @@
  * Licensed under the Server Side Public License, v 1.
  * Initial Developer: zhh
  */
-package com.lealone.http.tomcat;
+package com.lealone.http.jdk;
 
 import com.lealone.http.HttpServerEngine;
 import com.lealone.server.ProtocolServer;
 
-public class TomcatServerEngine extends HttpServerEngine {
+public class JdkHttpServerEngine extends HttpServerEngine {
 
-    public static final String NAME = "tomcat";
-
-    public TomcatServerEngine() {
+    public JdkHttpServerEngine() {
         super(NAME);
     }
 
     @Override
     protected ProtocolServer createProtocolServer() {
-        return new TomcatServer();
+        return new JdkHttpServer();
     }
 }

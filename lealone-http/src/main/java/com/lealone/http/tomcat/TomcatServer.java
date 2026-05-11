@@ -25,18 +25,17 @@ import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.MapUtils;
 import com.lealone.db.ConnectionInfo;
 import com.lealone.db.scheduler.Scheduler;
+import com.lealone.http.HttpRouter;
+import com.lealone.http.HttpServer;
+import com.lealone.http.HttpServerEngine;
 import com.lealone.net.WritableChannel;
 import com.lealone.server.AsyncServer;
-import com.lealone.service.http.HttpRouter;
-import com.lealone.service.http.HttpServer;
 
 import jakarta.servlet.Servlet;
 
 public class TomcatServer extends AsyncServer<TomcatServerConnection> implements HttpServer {
 
     private static final Logger logger = LoggerFactory.getLogger(TomcatServer.class);
-
-    public static final int DEFAULT_PORT = 8080;
 
     private Map<String, String> config = new HashMap<>();
     private String webRoot;
@@ -257,7 +256,7 @@ public class TomcatServer extends AsyncServer<TomcatServerConnection> implements
 
     @Override
     protected int getDefaultPort() {
-        return DEFAULT_PORT;
+        return HttpServerEngine.DEFAULT_PORT;
     }
 
     @Override

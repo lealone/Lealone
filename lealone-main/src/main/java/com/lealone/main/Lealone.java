@@ -501,6 +501,8 @@ public class Lealone {
 
     private void stop() {
         for (ProtocolServerEngine pse : PluginManager.getPlugins(ProtocolServerEngine.class)) {
+            if (!pse.isInited())
+                continue;
             ProtocolServer server = pse.getProtocolServer();
             if (!server.isStopped()) {
                 server.stop();
@@ -514,6 +516,8 @@ public class Lealone {
         }
         // TransactionEngine内部会关闭Scheduler
         for (TransactionEngine te : PluginManager.getPlugins(TransactionEngine.class)) {
+            if (!te.isInited())
+                continue;
             te.close();
         }
         logger.info("Lealone stopped");

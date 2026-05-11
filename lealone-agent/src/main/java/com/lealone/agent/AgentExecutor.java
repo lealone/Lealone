@@ -24,16 +24,15 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.IOUtils;
+import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.StringUtils;
+import com.lealone.db.Constants;
 import com.lealone.db.Database;
 import com.lealone.db.SysProperties;
 import com.lealone.db.plugin.PluginManager;
 import com.lealone.db.session.ServerSession;
 import com.lealone.db.util.SourceCompiler;
-import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
-import com.lealone.service.http.HttpServer;
-import com.lealone.service.http.HttpServerEngine;
 
 public class AgentExecutor {
 
@@ -159,21 +158,20 @@ public class AgentExecutor {
         logger.info("Agent execute sql: " + sql);
         session.createNestedSession().executeUpdateLocal(sql);
         String content = agent.send(userPrompt, previousResponseId);
-        ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class,
-                HttpServerEngine.NAME);
-        ProtocolServer server = pse.getProtocolServer();
-        if (server instanceof HttpServer httpServer) {
-            File htmlFile = new File(httpServer.getWebRoot(), appName + ".html");
-            try {
-                Charset utf8 = Charset.forName("UTF-8");
-                BufferedOutputStream file = new BufferedOutputStream(new FileOutputStream(htmlFile));
-                file.write(content.toString().getBytes(utf8));
-                file.close();
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, "Failed to write html file: " + htmlFile);
-            }
+        ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, "HTTP");
+        String webRoot = MapUtils.getString(pse.getConfig(), "web_root", "./web");
+        String host = MapUtils.getString(pse.getConfig(), "host", Constants.DEFAULT_HOST);
+        int port = MapUtils.getInt(pse.getConfig(), "port", Constants.DEFAULT_TCP_PORT);
+        File htmlFile = new File(webRoot, appName + ".html");
+        try {
+            Charset utf8 = Charset.forName("UTF-8");
+            BufferedOutputStream file = new BufferedOutputStream(new FileOutputStream(htmlFile));
+            file.write(content.toString().getBytes(utf8));
+            file.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to write html file: " + htmlFile);
         }
-        return "http://" + server.getHost() + ":" + server.getPort() + "/" + appName + ".html";
+        return "http://" + host + ":" + port + "/" + appName + ".html";
     }
 
     private static void downloadJar(URI uri, String savePath) throws Exception {

@@ -47,6 +47,6 @@ set lealone (
         ssl: false,
         session_timeout: -1,
         web_root: 'src/test/resources/http',
-        router: 'com.lealone.test.http.LealoneTomcatStart'
+        router: 'com.lealone.test.http.JdkHttpServerStart'
     )
 )
