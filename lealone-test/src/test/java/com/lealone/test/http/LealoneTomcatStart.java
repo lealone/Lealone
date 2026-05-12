@@ -8,9 +8,9 @@ package com.lealone.test.http;
 import java.util.Map;
 
 import com.lealone.common.exceptions.ConfigException;
-import com.lealone.http.tomcat.TomcatRouter;
-import com.lealone.http.tomcat.TomcatServerEngine;
 import com.lealone.main.Lealone;
+import com.lealone.server.http.tomcat.TomcatRouter;
+import com.lealone.server.http.tomcat.TomcatServerEngine;
 import com.lealone.sql.config.Config;
 import com.lealone.sql.config.Config.PluggableEngineDef;
 import com.lealone.sql.config.ConfigListener;
