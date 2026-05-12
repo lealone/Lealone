@@ -361,12 +361,12 @@ public class ModelCodeGenerator extends TableCodeGeneratorBase {
         }
 
         // static decode方法
-        buff.append("    public static ").append(className).append(" decode(String str) {\r\n");
-        buff.append("        return decode(str, null);\r\n");
+        buff.append("    public static ").append(className).append(" decode(Object obj) {\r\n");
+        buff.append("        return decode(obj, null);\r\n");
         buff.append("    }\r\n\r\n");
         buff.append("    public static ").append(className)
-                .append(" decode(String str, JsonFormat format) {\r\n");
-        buff.append("        return new ").append(className).append("().decode0(str, format);\r\n");
+                .append(" decode(Object obj, JsonFormat format) {\r\n");
+        buff.append("        return new ").append(className).append("().decode0(obj, format);\r\n");
         buff.append("    }\r\n");
         buff.append("}\r\n");
 

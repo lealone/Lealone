@@ -39,11 +39,11 @@ public class JsonTestTable extends Model<JsonTestTable> {
         return new JsonTestTable(t, modelType);
     }
 
-    public static JsonTestTable decode(String str) {
-        return decode(str, null);
+    public static JsonTestTable decode(Object obj) {
+        return decode(obj, null);
     }
 
-    public static JsonTestTable decode(String str, JsonFormat format) {
-        return new JsonTestTable().decode0(str, format);
+    public static JsonTestTable decode(Object obj, JsonFormat format) {
+        return new JsonTestTable().decode0(obj, format);
     }
 }

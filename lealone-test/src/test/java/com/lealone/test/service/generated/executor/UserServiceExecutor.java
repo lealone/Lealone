@@ -21,7 +21,7 @@ public class UserServiceExecutor implements ServiceExecutor {
     public Value executeService(String methodName, Value[] methodArgs) {
         switch (methodName) {
         case "ADD":
-            User p_user_1 = User.decode(methodArgs[0].getString());
+            User p_user_1 = User.decode(methodArgs[0]);
             Long result1 = si.add(p_user_1);
             if (result1 == null)
                 return ValueNull.INSTANCE;
@@ -31,9 +31,9 @@ public class UserServiceExecutor implements ServiceExecutor {
             User result2 = si.find(p_name_2);
             if (result2 == null)
                 return ValueNull.INSTANCE;
-            return ValueString.get(result2.encode());
+            return ValueMap.get(result2.toMap());
         case "UPDATE":
-            User p_user_3 = User.decode(methodArgs[0].getString());
+            User p_user_3 = User.decode(methodArgs[0]);
             Integer result3 = si.update(p_user_3);
             if (result3 == null)
                 return ValueNull.INSTANCE;

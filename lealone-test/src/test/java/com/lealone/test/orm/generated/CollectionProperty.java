@@ -44,11 +44,11 @@ public class CollectionProperty extends Model<CollectionProperty> {
         return new CollectionProperty(t, modelType);
     }
 
-    public static CollectionProperty decode(String str) {
-        return decode(str, null);
+    public static CollectionProperty decode(Object obj) {
+        return decode(obj, null);
     }
 
-    public static CollectionProperty decode(String str, JsonFormat format) {
-        return new CollectionProperty().decode0(str, format);
+    public static CollectionProperty decode(Object obj, JsonFormat format) {
+        return new CollectionProperty().decode0(obj, format);
     }
 }

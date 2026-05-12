@@ -7,6 +7,7 @@ import com.lealone.orm.format.JsonFormat;
 import com.lealone.orm.property.PDouble;
 import com.lealone.orm.property.PLong;
 import com.lealone.orm.property.PString;
+import java.util.List;
 
 /**
  * Model for table 'PRODUCT'.
@@ -33,6 +34,7 @@ public class Product extends Model<Product> {
         category = new PString<>("CATEGORY", this);
         unitPrice = new PDouble<>("UNIT_PRICE", this);
         super.setModelProperties(new ModelProperty[] { productId, productName, category, unitPrice });
+        super.initAdders(new OrderItemAdder());
     }
 
     @Override
@@ -40,11 +42,41 @@ public class Product extends Model<Product> {
         return new Product(t, modelType);
     }
 
-    public static Product decode(String str) {
-        return decode(str, null);
+    public Product addOrderItem(OrderItem m) {
+        m.setProduct(this);
+        super.addModel(m);
+        return this;
     }
 
-    public static Product decode(String str, JsonFormat format) {
-        return new Product().decode0(str, format);
+    public Product addOrderItem(OrderItem... mArray) {
+        for (OrderItem m : mArray)
+            addOrderItem(m);
+        return this;
+    }
+
+    public List<OrderItem> getOrderItemList() {
+        return super.getModelList(OrderItem.class);
+    }
+
+    protected class OrderItemAdder implements AssociateAdder<OrderItem> {
+        @Override
+        public OrderItem getDao() {
+            return OrderItem.dao;
+        }
+
+        @Override
+        public void add(OrderItem m) {
+            if (areEqual(productId, m.productId)) {
+                addOrderItem(m);
+            }
+        }
+    }
+
+    public static Product decode(Object obj) {
+        return decode(obj, null);
+    }
+
+    public static Product decode(Object obj, JsonFormat format) {
+        return new Product().decode0(obj, format);
     }
 }

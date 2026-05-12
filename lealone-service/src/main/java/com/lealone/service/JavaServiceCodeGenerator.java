@@ -120,8 +120,8 @@ public class JavaServiceCodeGenerator extends ServiceCodeGeneratorBase {
                 methodSignatureBuff.append(cType).append(" ").append(cName);
                 proxyMethodBodyBuff.append("                ").append(psVarName).append(".");
                 if (c.getTable() != null) {
-                    proxyMethodBodyBuff.append("setString(").append(i + 1).append(", ").append(cName)
-                            .append(".encode());\r\n");
+                    proxyMethodBodyBuff.append("setObject(").append(i + 1).append(", ").append(cName)
+                            .append(".toMap());\r\n");
                 } else {
                     proxyMethodBodyBuff.append(getPreparedStatementSetterMethodName(cType)).append("(")
                             .append(i + 1).append(", ");
@@ -154,7 +154,7 @@ public class JavaServiceCodeGenerator extends ServiceCodeGeneratorBase {
                     proxyMethodBodyBuff.append("                rs.close();\r\n");
                     proxyMethodBodyBuff.append("                return ret;\r\n");
                 } else if (returnColumn.getTable() != null) {
-                    proxyMethodBodyBuff.append("                String ret = rs.getString(1);\r\n");
+                    proxyMethodBodyBuff.append("                Object ret = rs.getObject(1);\r\n");
                     proxyMethodBodyBuff.append("                rs.close();\r\n");
                     proxyMethodBodyBuff.append("                return ").append(returnType)
                             .append(".decode(ret);\r\n");
@@ -430,7 +430,7 @@ public class JavaServiceCodeGenerator extends ServiceCodeGeneratorBase {
                 buff.append("methodArgs[").append(cIndex).append("].getCollection();\r\n");
             } else if (c.getTable() != null) {
                 buff.append(cType).append(".decode(").append("methodArgs[").append(cIndex)
-                        .append("].getString());\r\n");
+                        .append("]);\r\n");
             } else {
                 buff.append("methodArgs[").append(cIndex).append("].").append(getValueMethodName(cType))
                         .append("();\r\n");
@@ -443,8 +443,8 @@ public class JavaServiceCodeGenerator extends ServiceCodeGeneratorBase {
             buff.append("            if (").append(resultVarName).append(" == null)\r\n");
             buff.append("                return ValueNull.INSTANCE;\r\n");
             if (returnColumn.getTable() != null) {
-                buff.append("            return ValueString.get(").append(resultVarName)
-                        .append(".encode());\r\n");
+                buff.append("            return ValueMap.get(").append(resultVarName)
+                        .append(".toMap());\r\n");
             } else {
                 Column c = returnColumn;
                 if (c instanceof ListColumn) {

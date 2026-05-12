@@ -102,11 +102,11 @@ public class Customer extends Model<Customer> {
         }
     }
 
-    public static Customer decode(String str) {
-        return decode(str, null);
+    public static Customer decode(Object obj) {
+        return decode(obj, null);
     }
 
-    public static Customer decode(String str, JsonFormat format) {
-        return new Customer().decode0(str, format);
+    public static Customer decode(Object obj, JsonFormat format) {
+        return new Customer().decode0(obj, format);
     }
 }

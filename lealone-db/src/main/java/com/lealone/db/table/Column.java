@@ -767,12 +767,16 @@ public class Column {
 
         @Override
         public String getCreateSQL(boolean exceptName) {
-            return "list<" + element.getCollectionTypeCreateSQL(exceptName) + ">";
+            StringBuilder buff = new StringBuilder();
+            if (!exceptName)
+                buff.append(getName()).append(' ');
+            buff.append("list<").append(element.getCollectionTypeCreateSQL(true)).append('>');
+            return buff.toString();
         }
 
         @Override
         public Table getTable() {
-            return element.getTable();
+            return super.getTable() != null ? super.getTable() : element.getTable();
         }
 
         @Override
@@ -794,12 +798,16 @@ public class Column {
 
         @Override
         public String getCreateSQL(boolean exceptName) {
-            return "set<" + element.getCollectionTypeCreateSQL(exceptName) + ">";
+            StringBuilder buff = new StringBuilder();
+            if (!exceptName)
+                buff.append(getName()).append(' ');
+            buff.append("set<").append(element.getCollectionTypeCreateSQL(true)).append('>');
+            return buff.toString();
         }
 
         @Override
         public Table getTable() {
-            return element.getTable();
+            return super.getTable() != null ? super.getTable() : element.getTable();
         }
 
         @Override
@@ -823,13 +831,18 @@ public class Column {
 
         @Override
         public String getCreateSQL(boolean exceptName) {
-            return "map<" + key.getCollectionTypeCreateSQL(exceptName) + ","
-                    + value.getCollectionTypeCreateSQL(exceptName) + ">";
+            StringBuilder buff = new StringBuilder();
+            if (!exceptName)
+                buff.append(getName()).append(' ');
+            buff.append("map<").append(key.getCollectionTypeCreateSQL(true)).append(',')
+                    .append(value.getCollectionTypeCreateSQL(true)).append('>');
+            return buff.toString();
         }
 
         @Override
         public Table getTable() {
-            return key.getTable() != null ? key.getTable() : value.getTable();
+            return super.getTable() != null ? super.getTable()
+                    : (key.getTable() != null ? key.getTable() : value.getTable());
         }
 
         @Override

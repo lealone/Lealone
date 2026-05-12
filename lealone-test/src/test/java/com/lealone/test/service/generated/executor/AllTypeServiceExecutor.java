@@ -52,7 +52,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             User result1 = si.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return ValueNull.INSTANCE;
-            return ValueString.get(result1.encode());
+            return ValueMap.get(result1.toMap());
         case "TEST_UUID":
             UUID p_f1_2 = methodArgs[0].getUuid();
             UUID result2 = si.testUuid(p_f1_2);

@@ -263,7 +263,7 @@ public class CreateService extends SchemaStatement {
                 if (i != 0) {
                     buff.append(", ");
                 }
-                buff.append(column.getCreateSQL());
+                buff.append(column.getCreateSQL(false));
             }
             // 返回类型不需要生成列名
             buff.append(") ").append(data.columns.get(data.columns.size() - 1).getCreateSQL(true));

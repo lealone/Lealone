@@ -43,11 +43,11 @@ public class User extends Model<User> {
         return new User(t, modelType);
     }
 
-    public static User decode(String str) {
-        return decode(str, null);
+    public static User decode(Object obj) {
+        return decode(obj, null);
     }
 
-    public static User decode(String str, JsonFormat format) {
-        return new User().decode0(str, format);
+    public static User decode(Object obj, JsonFormat format) {
+        return new User().decode0(obj, format);
     }
 }

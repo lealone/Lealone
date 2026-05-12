@@ -55,7 +55,7 @@ public interface UserService {
         @Override
         public Long add(User user) {
             try {
-                ps1.setString(1, user.encode());
+                ps1.setObject(1, user.toMap());
                 ResultSet rs = ps1.executeQuery();
                 rs.next();
                 Long ret = rs.getLong(1);
@@ -72,7 +72,7 @@ public interface UserService {
                 ps2.setString(1, name);
                 ResultSet rs = ps2.executeQuery();
                 rs.next();
-                String ret = rs.getString(1);
+                Object ret = rs.getObject(1);
                 rs.close();
                 return User.decode(ret);
             } catch (Throwable e) {
@@ -83,7 +83,7 @@ public interface UserService {
         @Override
         public Integer update(User user) {
             try {
-                ps3.setString(1, user.encode());
+                ps3.setObject(1, user.toMap());
                 ResultSet rs = ps3.executeQuery();
                 rs.next();
                 Integer ret = rs.getInt(1);

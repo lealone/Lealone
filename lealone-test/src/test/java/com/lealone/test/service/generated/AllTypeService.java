@@ -74,7 +74,7 @@ public interface AllTypeService {
                 ps1.setArray(21, f21);
                 ResultSet rs = ps1.executeQuery();
                 rs.next();
-                String ret = rs.getString(1);
+                Object ret = rs.getObject(1);
                 rs.close();
                 return User.decode(ret);
             } catch (Throwable e) {

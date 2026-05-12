@@ -5,6 +5,7 @@
  */
 package com.lealone.db.service;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,18 @@ public abstract class ServiceExecutorBase implements ServiceExecutor {
             for (int i = 0; i < parameters.size(); i++) {
                 Column c = parameters.get(i);
                 Value v = methodArgs[i];
+                if (c.getTable() != null) {
+                    String fullName = c.getTable().getPackageName() + "."
+                            + Service.toClassName(c.getTable().getName());
+                    try {
+                        Class<?> modelClass = Class.forName(fullName);
+                        Method decodeMethod = modelClass.getDeclaredMethod("decode", Object.class);
+                        args[i] = decodeMethod.invoke(null, v);
+                        continue;
+                    } catch (Exception e) {
+                        throw DbException.convert(e);
+                    }
+                }
                 args[i] = getServiceMethodArg(c.getType(), v);
             }
         }

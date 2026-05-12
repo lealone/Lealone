@@ -109,5 +109,6 @@ public class JdkHttpServiceHandler implements HttpHandler {
         exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         exchange.sendResponseHeaders(200, respContents.length);
         exchange.getResponseBody().write(respContents);
+        exchange.close();
     }
 }

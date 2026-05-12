@@ -101,11 +101,11 @@ public class Order extends Model<Order> {
         }
     }
 
-    public static Order decode(String str) {
-        return decode(str, null);
+    public static Order decode(Object obj) {
+        return decode(obj, null);
     }
 
-    public static Order decode(String str, JsonFormat format) {
-        return new Order().decode0(str, format);
+    public static Order decode(Object obj, JsonFormat format) {
+        return new Order().decode0(obj, format);
     }
 }

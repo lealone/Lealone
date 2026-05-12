@@ -901,6 +901,12 @@ public class DataType {
             return ValueArray.get(x.getClass().getComponentType(), v);
         } else if (x instanceof Character) {
             return ValueStringFixed.get(((Character) x).toString());
+        } else if (x instanceof List) {
+            return ValueList.get((List<?>) x);
+        } else if (x instanceof Set) {
+            return ValueSet.get((Set<?>) x);
+        } else if (x instanceof Map) {
+            return ValueMap.get((Map<?, ?>) x);
         } else {
             return ValueJavaObject.getNoCopy(x, null);
         }
