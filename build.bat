@@ -15,6 +15,7 @@ if /i "%ARG%" == "-es" goto es
 if /i "%ARG%" == "-p" goto p
 if /i "%ARG%" == "-pc" goto pc
 if /i "%ARG%" == "-pai" goto pai
+if /i "%ARG%" == "-pec" goto pec
 if /i "%ARG%" == "-i" goto i
 if /i "%ARG%" == "-c" goto c
 if /i "%ARG%" == "-dt" goto dt
@@ -31,6 +32,7 @@ echo    -es           mvn eclipse:eclipse -DdownloadSources=true
 echo    -p            mvn assembly:assembly -Dmaven.test.skip=true
 echo    -pc           mvn clean assembly:assembly -Dmaven.test.skip=true
 echo    -pai          mvn package -Dmaven.test.skip=true -P ai
+echo    -pec          mvn package -Dmaven.test.skip=true -P ec
 echo    -i            mvn install -DskipTests
 echo    -c            mvn clean
 echo    -dt           mvn dependency:tree
@@ -59,6 +61,10 @@ goto end
 
 :pai
 call mvn package -Dmaven.test.skip=true -P ai
+goto end
+
+:pec
+call mvn package -Dmaven.test.skip=true -P ec
 goto end
 
 :c
