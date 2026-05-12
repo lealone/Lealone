@@ -335,24 +335,24 @@ public class Lealone {
         System.exit(1);
     }
 
-    private void loadConfig(Config config) {
-        if (config == null)
+    private void loadConfig(Config c) {
+        if (c == null)
             config = createConfig();
+        else
+            config = c;
+    }
 
+    private void applyConfig(Config config) {
         if (host != null)
             config.listen_address = host;
+        if (baseDir != null)
+            config.base_dir = baseDir;
         config.mergeProtocolServerParameters(TcpServerEngine.NAME, host, port);
         String listenerClass = Config.getProperty("config.listener");
         if (listenerClass != null) {
             ConfigListener listener = Utils.construct(listenerClass, "config listener");
             listener.applyConfig(config);
         }
-        this.config = config;
-    }
-
-    private void setBaseDir(Config config) {
-        if (baseDir != null)
-            config.base_dir = baseDir;
         if (config.base_dir == null || Constants.DEFAULT_BASE_DIR.equals(config.base_dir)
                 || new File(config.base_dir).getName().equals(config.base_dir)) {
             baseDir = new File(appDir, Constants.DEFAULT_DATA_DIR_NAME).getAbsolutePath();
@@ -385,7 +385,7 @@ public class Lealone {
                 url = Utils.toURL("lealone-test.sql");
             if (url == null) {
                 Config config = new Config();
-                setBaseDir(config);
+                applyConfig(config);
                 logger.info("Use default config");
                 return config;
             }
@@ -396,7 +396,7 @@ public class Lealone {
             LealoneConfig lealoneConfig = (LealoneConfig) session.parseStatement(sql);
             session.close();
             Config config = lealoneConfig.getConfig();
-            setBaseDir(config);
+            applyConfig(config);
             logger.info("Config file: {}", new File(url.getFile()).getAbsolutePath().replace('\\', '/'));
             return config;
         } catch (Exception e) {

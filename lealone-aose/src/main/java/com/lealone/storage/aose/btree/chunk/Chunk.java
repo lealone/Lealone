@@ -338,7 +338,10 @@ public class Chunk {
     }
 
     public long size() {
-        return fileStorage.size();
+        if (fileStorage == null)
+            return 0;
+        else
+            return fileStorage.size();
     }
 
     public void removeRedoLogAndRemovedPages(BTreeMap<?, ?> map) {
