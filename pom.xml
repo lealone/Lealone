@@ -182,13 +182,31 @@
                         <version>${project.version}</version>
                         <exclusions>
                             <exclusion>
-                                <groupId>org.apache.tomcat.embed</groupId>
-                                <artifactId>tomcat-embed-core</artifactId>
-                            </exclusion><!--
+                                <groupId>com.lealone</groupId>
+                                <artifactId>lealone-http</artifactId>
+                            </exclusion>
                             <exclusion>
                                 <groupId>com.fasterxml.jackson.core</groupId>
                                 <artifactId>jackson-core</artifactId>
-                            </exclusion>-->
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+        <profile>
+            <id>ec</id><!-- edge_computing -->
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.lealone</groupId>
+                        <artifactId>lealone-main</artifactId>
+                        <version>${project.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.apache.tomcat.embed</groupId>
+                                <artifactId>tomcat-embed-core</artifactId>
+                            </exclusion>
                         </exclusions>
                     </dependency>
                 </dependencies>
