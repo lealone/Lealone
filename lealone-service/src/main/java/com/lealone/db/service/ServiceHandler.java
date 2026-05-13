@@ -61,7 +61,8 @@ public class ServiceHandler {
 
         Object result = null;
         try {
-            logger.info("Execute service: {}.{}", serviceName, methodName);
+            if (logger.isDebugEnabled())
+                logger.debug("Execute service: {}.{}", serviceName, methodName);
             if (serviceName.toUpperCase().contains("LEALONE_SYSTEM_SERVICE")) {
                 result = SystemService.execute(serviceName, methodName, methodArgs);
             } else {
@@ -122,7 +123,8 @@ public class ServiceHandler {
         switch (type) {
         case 1:
             try {
-                logger.info("Execute service: " + serviceName);
+                if (logger.isDebugEnabled())
+                    logger.debug("Execute service: " + serviceName);
                 if (serviceName.toUpperCase().contains("LEALONE_SYSTEM_SERVICE")) {
                     result = SystemService.execute(serviceName, json);
                 } else {

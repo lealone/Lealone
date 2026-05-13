@@ -441,7 +441,8 @@ public abstract class Model<T extends Model<T>> {
     }
 
     private void logSql(StatementBase stmt) {
-        logger.info("Execute sql: " + stmt.getPlanSQL());
+        if (logger.isDebugEnabled())
+            logger.debug("Execute sql: " + stmt.getPlanSQL());
     }
 
     /**
