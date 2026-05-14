@@ -42,7 +42,7 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
-import com.lealone.server.http.tomcat.TomcatServerEngine;
+import com.lealone.server.http.HttpServerEngine;
 import com.lealone.server.scheduler.GlobalScheduler;
 import com.lealone.sql.SQLEngine;
 import com.lealone.sql.config.Config;
@@ -246,9 +246,9 @@ public class Lealone {
             loadConfig(config);
             long loadConfigTime = (System.currentTimeMillis() - t1);
 
-            if (sqlScripts != null) {
+            if (sqlScripts != null || com.lealone.orm.Model.USE_JACKSON) {
                 for (PluggableEngineDef e : this.config.protocol_server_engines) {
-                    if (TomcatServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                    if (HttpServerEngine.NAME.equalsIgnoreCase(e.name)) {
                         e.enabled = true;
                     }
                 }

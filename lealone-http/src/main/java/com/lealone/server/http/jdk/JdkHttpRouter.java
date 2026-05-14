@@ -156,7 +156,7 @@ public class JdkHttpRouter implements HttpRouter {
         public void handle(HttpExchange exchange) throws IOException {
             exchange.getResponseHeaders().add("Content-Type", "text/html;charset=UTF-8");
             try (InputStream in = getClass()
-                    .getResourceAsStream("com/lealone/server/http/web/agent.html")) {
+                    .getResourceAsStream("/com/lealone/server/http/web/agent.html")) {
                 exchange.sendResponseHeaders(200, in.available());
                 OutputStream out = exchange.getResponseBody();
                 IOUtils.copy(in, out);
