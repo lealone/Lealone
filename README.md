@@ -10,7 +10,7 @@
 
 ### 构建 Lealone
 
-`mvn package -Dmaven.test.skip=true -P ai`
+`mvn package -Dmaven.test.skip=true -P ec`
 
 或者直接下载 [lealone-8.0.0-SNAPSHOT.jar](https://lealone-plugins.github.io/lealone.github.io/lealone/lealone-8.0.0-SNAPSHOT.jar)
 
