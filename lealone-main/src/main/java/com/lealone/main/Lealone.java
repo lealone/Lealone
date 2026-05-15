@@ -42,7 +42,6 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
-import com.lealone.server.http.HttpServerEngine;
 import com.lealone.server.scheduler.GlobalScheduler;
 import com.lealone.sql.SQLEngine;
 import com.lealone.sql.config.Config;
@@ -246,23 +245,6 @@ public class Lealone {
             loadConfig(config);
             long loadConfigTime = (System.currentTimeMillis() - t1);
 
-            if (!httpServerDisabled) {
-                boolean enableHttpServer;
-                try {
-                    Class.forName("com.lealone.server.http.jdk.JdkHttpServerEngine");
-                    enableHttpServer = true;
-                } catch (Throwable t) {
-                    enableHttpServer = false;
-                }
-                if (sqlScripts != null || enableHttpServer) {
-                    for (PluggableEngineDef e : this.config.protocol_server_engines) {
-                        if (HttpServerEngine.NAME.equalsIgnoreCase(e.name)) {
-                            e.enabled = true;
-                        }
-                    }
-                }
-            }
-
             // 2. 初始化
             long t2 = System.currentTimeMillis();
             SchedulerFactory schedulerFactory = SchedulerFactory.getSchedulerFactory(
@@ -382,8 +364,6 @@ public class Lealone {
         logger.info("Base dir: {}", baseDir.replace('\\', '/')); // 显示格式跟Loading config一样
     }
 
-    private boolean httpServerDisabled;
-
     public Config createConfig() {
         URL url = null;
         String configUrl = Config.getProperty("config");
@@ -407,12 +387,6 @@ public class Lealone {
             LealoneConfig lealoneConfig = (LealoneConfig) session.parseStatement(sql);
             session.close();
             Config config = lealoneConfig.getConfig();
-            for (PluggableEngineDef e : config.protocol_server_engines) {
-                if (!e.enabled && HttpServerEngine.NAME.equalsIgnoreCase(e.name)) {
-                    httpServerDisabled = true;
-                    break;
-                }
-            }
             applyConfig(config);
             logger.info("Config file: {}", new File(url.getFile()).getAbsolutePath().replace('\\', '/'));
             return config;

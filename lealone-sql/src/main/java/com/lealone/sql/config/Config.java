@@ -43,9 +43,17 @@ public class Config {
         sql_engines = new ArrayList<>(1);
         sql_engines.add(createEngineDef(Constants.DEFAULT_SQL_ENGINE_NAME, true, true));
 
-        protocol_server_engines = new ArrayList<>(2);
+        boolean enableHttpServer;
+        try {
+            Class.forName("com.lealone.server.http.jdk.JdkHttpServerEngine");
+            enableHttpServer = true;
+        } catch (Throwable t) {
+            enableHttpServer = false;
+        }
+        protocol_server_engines = new ArrayList<>(enableHttpServer ? 2 : 1);
         protocol_server_engines.add(createEngineDef("TCP", true, false));
-        protocol_server_engines.add(createEngineDef("HTTP", false, false));
+        if (enableHttpServer)
+            protocol_server_engines.add(createEngineDef("HTTP", true, false));
 
         log = new LogDef();
         log.parameters.put("type", "console");
