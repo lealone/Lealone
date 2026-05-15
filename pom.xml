@@ -207,6 +207,10 @@
                                 <groupId>org.apache.tomcat.embed</groupId>
                                 <artifactId>tomcat-embed-core</artifactId>
                             </exclusion>
+                            <exclusion>
+                                <groupId>com.fasterxml.jackson.core</groupId>
+                                <artifactId>jackson-core</artifactId>
+                            </exclusion>
                         </exclusions>
                     </dependency>
                 </dependencies>
