@@ -28,7 +28,10 @@ public class JsonParser extends SQLParserBase {
     public ArrayList<Object> parseJsonArray(String json) {
         initialize(json);
         read();
-        return parseJsonArray();
+        if (readIfChar('[')) {
+            return parseJsonArray();
+        }
+        return new ArrayList<>();
     }
 
     public Object parseJsonAny(String json) {

@@ -1253,7 +1253,7 @@ public abstract class Model<T extends Model<T>> {
 
     @Override
     public String toString() {
-        return USE_JACKSON ? new JsonObject(toMap()).encodePrettily() : ValueMap.get(toMap()).toString();
+        return new JsonObject(toMap()).encodePrettily();
     }
 
     public void printSQL() {

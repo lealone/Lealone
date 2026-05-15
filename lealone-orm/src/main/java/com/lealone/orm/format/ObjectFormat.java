@@ -11,7 +11,10 @@ public class ObjectFormat implements TypeFormat<Object> {
 
     @Override
     public Object encode(Object v) {
-        return Json.encode(v);
+        if (v instanceof byte[] bytes)
+            return Json.BASE64_ENCODER.encodeToString(bytes);
+        else
+            return Json.encode(v);
     }
 
     @Override
