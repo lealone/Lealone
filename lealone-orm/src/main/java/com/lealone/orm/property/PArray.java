@@ -7,14 +7,14 @@ package com.lealone.orm.property;
 
 import java.sql.Array;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.ArrayFormat;
-import com.lealone.orm.format.JsonFormat;
 
 /**
  * Array property.
@@ -34,11 +34,6 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
     }
 
     @Override
-    protected ArrayFormat getValueFormat(JsonFormat format) {
-        return format.getArrayFormat();
-    }
-
-    @Override
     protected Value createValue(Object[] values) {
         return DataType.convertToValue(values, Value.ARRAY);
     }
@@ -55,6 +50,21 @@ public class PArray<M extends Model<M>> extends PBase<M, Object[]> {
             }
             this.value = values;
         }
+    }
+
+    @Override
+    protected Object encode() {
+        return Arrays.asList(value);
+    }
+
+    @Override
+    protected Object[] decode(Object v) {
+        if (v instanceof List)
+            return ((List<?>) v).toArray();
+        else if (v instanceof Object[])
+            return (Object[]) v;
+        else
+            return new Object[] { v };
     }
 
     /**

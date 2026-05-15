@@ -5,17 +5,10 @@
  */
 package com.lealone.orm.format;
 
-public class LowerUnderscoreJsonFormat extends DefaultJsonFormat {
-
-    public static final NameCaseFormat LOWER_UNDERSCORE = new NameCaseFormat() {
-        @Override
-        public String convert(String name) {
-            return name.toLowerCase();
-        }
-    };
+public class LowerUnderscoreJsonFormat implements JsonFormat {
 
     @Override
-    public NameCaseFormat getNameCaseFormat() {
-        return LOWER_UNDERSCORE;
+    public String convertName(String name) {
+        return name.toLowerCase();
     }
 }

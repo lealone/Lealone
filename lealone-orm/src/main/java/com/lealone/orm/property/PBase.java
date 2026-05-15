@@ -12,8 +12,6 @@ import com.lealone.db.value.ValueNull;
 import com.lealone.orm.Model;
 import com.lealone.orm.ModelProperty;
 import com.lealone.orm.format.JsonFormat;
-import com.lealone.orm.format.PropertyFormat;
-import com.lealone.orm.format.TypeFormat;
 
 public abstract class PBase<M extends Model<M>, T> extends ModelProperty<M> {
 
@@ -52,22 +50,32 @@ public abstract class PBase<M extends Model<M>, T> extends ModelProperty<M> {
         return value;
     }
 
-    protected abstract TypeFormat<T> getValueFormat(JsonFormat format);
-
     @Override
     protected final void encode(Map<String, Object> map, JsonFormat format) {
-        PropertyFormat pFormat = format.getPropertyFormat();
-        if (pFormat != null && (pFormat.encode(map, name, value)))
-            return;
-
         if (value != null) {
-            map.put(format.getNameCaseFormat().convert(name), getValueFormat(format).encode(value));
+            map.put(format.convertName(name), encode(format));
         }
+    }
+
+    protected Object encode(JsonFormat format) {
+        return encode();
+    }
+
+    protected Object encode() {
+        return value;
+    }
+
+    protected T decode(Object v, JsonFormat format) {
+        return decode(v);
+    }
+
+    protected T decode(Object v) {
+        return null;
     }
 
     @Override
     protected void decodeAndSet(Object v, JsonFormat format) {
-        value = getValueFormat(format).decode(v);
+        value = decode(v, format);
         expr().set(name, createValue(value));
     }
 }

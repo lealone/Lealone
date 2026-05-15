@@ -8,8 +8,6 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueFloat;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.FloatFormat;
-import com.lealone.orm.format.JsonFormat;
 
 /**
  * Float property. 
@@ -21,11 +19,6 @@ public class PFloat<M extends Model<M>> extends PBaseNumber<M, Float> {
     }
 
     @Override
-    protected FloatFormat getValueFormat(JsonFormat format) {
-        return format.getFloatFormat();
-    }
-
-    @Override
     protected Value createValue(Float value) {
         return ValueFloat.get(value);
     }
@@ -33,5 +26,10 @@ public class PFloat<M extends Model<M>> extends PBaseNumber<M, Float> {
     @Override
     protected void deserialize(Value v) {
         value = v.getFloat();
+    }
+
+    @Override
+    protected Float decode(Object v) {
+        return ((Number) v).floatValue();
     }
 }

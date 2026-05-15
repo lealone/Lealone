@@ -9,11 +9,10 @@ import java.sql.Clob;
 import java.sql.SQLException;
 
 import com.lealone.common.exceptions.DbException;
+import com.lealone.db.value.ReadonlyClob;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueString;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.ClobFormat;
-import com.lealone.orm.format.JsonFormat;
 
 public class PClob<M extends Model<M>> extends PBase<M, Clob> {
 
@@ -21,17 +20,12 @@ public class PClob<M extends Model<M>> extends PBase<M, Clob> {
         super(name, model);
     }
 
-    public static String toString(Clob v) {
+    private static String toString(Clob v) {
         try {
             return v.getSubString(1, (int) v.length());
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
-    }
-
-    @Override
-    protected ClobFormat getValueFormat(JsonFormat format) {
-        return format.getClobFormat();
     }
 
     @Override
@@ -42,5 +36,15 @@ public class PClob<M extends Model<M>> extends PBase<M, Clob> {
     @Override
     protected void deserialize(Value v) {
         value = v.getClob();
+    }
+
+    @Override
+    protected Object encode() {
+        return toString(value);
+    }
+
+    @Override
+    protected Clob decode(Object v) {
+        return new ReadonlyClob(v.toString());
     }
 }

@@ -8,8 +8,6 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueByte;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.ByteFormat;
-import com.lealone.orm.format.JsonFormat;
 
 /**
  * Byte property.
@@ -21,11 +19,6 @@ public class PByte<M extends Model<M>> extends PBaseNumber<M, Byte> {
     }
 
     @Override
-    protected ByteFormat getValueFormat(JsonFormat format) {
-        return format.getByteFormat();
-    }
-
-    @Override
     protected Value createValue(Byte value) {
         return ValueByte.get(value);
     }
@@ -33,5 +26,10 @@ public class PByte<M extends Model<M>> extends PBaseNumber<M, Byte> {
     @Override
     protected void deserialize(Value v) {
         value = v.getByte();
+    }
+
+    @Override
+    protected Byte decode(Object v) {
+        return ((Number) v).byteValue();
     }
 }

@@ -7,26 +7,17 @@ package com.lealone.orm.format;
 
 import com.lealone.common.util.CamelCaseHelper;
 
-public class FrontendJsonFormat extends DefaultJsonFormat {
+public class FrontendJsonFormat implements JsonFormat {
 
-    public static final BooleanFormat BOOLEAN_FORMAT = new BooleanFormat() {
-        @Override
-        public Object encode(Boolean value) {
-            return value;
-        }
+    @Override
+    public Object encodeBoolean(Boolean v) {
+        return v;
+    }
 
-        @Override
-        public Boolean decode(Object v) {
-            return (Boolean) v;
-        }
-    };
-
-    public static final NameCaseFormat CAMEL = new NameCaseFormat() {
-        @Override
-        public String convert(String name) {
-            return CamelCaseHelper.toCamelFromUnderscore(name);
-        }
-    };
+    @Override
+    public Boolean decodeBoolean(Object v) {
+        return (Boolean) v;
+    }
 
     @Override
     public boolean includesInternalFields() {
@@ -34,12 +25,7 @@ public class FrontendJsonFormat extends DefaultJsonFormat {
     }
 
     @Override
-    public NameCaseFormat getNameCaseFormat() {
-        return CAMEL;
-    }
-
-    @Override
-    public BooleanFormat getBooleanFormat() {
-        return BOOLEAN_FORMAT;
+    public String convertName(String name) {
+        return CamelCaseHelper.toCamelFromUnderscore(name);
     }
 }

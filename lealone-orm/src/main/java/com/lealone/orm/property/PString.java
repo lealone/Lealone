@@ -8,8 +8,6 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueString;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.JsonFormat;
-import com.lealone.orm.format.StringFormat;
 
 /**
  * String property.
@@ -21,11 +19,6 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
     }
 
     @Override
-    protected StringFormat getValueFormat(JsonFormat format) {
-        return format.getStringFormat();
-    }
-
-    @Override
     protected Value createValue(String value) {
         return ValueString.get(value);
     }
@@ -33,6 +26,11 @@ public class PString<M extends Model<M>> extends PBaseComparable<M, String> {
     @Override
     protected void deserialize(Value v) {
         value = v.getString();
+    }
+
+    @Override
+    protected String decode(Object v) {
+        return v.toString();
     }
 
     /**

@@ -8,8 +8,6 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueDouble;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.DoubleFormat;
-import com.lealone.orm.format.JsonFormat;
 
 /**
  * Double property. 
@@ -18,11 +16,6 @@ public class PDouble<M extends Model<M>> extends PBaseNumber<M, Double> {
 
     public PDouble(String name, M model) {
         super(name, model);
-    }
-
-    @Override
-    protected DoubleFormat getValueFormat(JsonFormat format) {
-        return format.getDoubleFormat();
     }
 
     // 支持Float，避免总是加D后缀
@@ -38,5 +31,10 @@ public class PDouble<M extends Model<M>> extends PBaseNumber<M, Double> {
     @Override
     protected void deserialize(Value v) {
         value = v.getDouble();
+    }
+
+    @Override
+    protected Double decode(Object v) {
+        return ((Number) v).doubleValue();
     }
 }

@@ -13,51 +13,18 @@ public interface JsonFormat {
 
     public static final JsonFormat LOWER_UNDERSCORE_FORMAT = new LowerUnderscoreJsonFormat();
 
-    public boolean includesInternalFields();
+    public default Object encodeBoolean(Boolean v) {
+        return v ? 1 : 0;
+    }
 
-    public PropertyFormat getPropertyFormat();
+    public default Boolean decodeBoolean(Object v) {
+        return ((Number) v).byteValue() != 0;
+    }
 
-    public NameCaseFormat getNameCaseFormat();
+    public default boolean includesInternalFields() {
+        return true;
+    }
 
-    public ArrayFormat getArrayFormat();
+    public String convertName(String name);
 
-    public BigDecimalFormat getBigDecimalFormat();
-
-    public BlobFormat getBlobFormat();
-
-    public BooleanFormat getBooleanFormat();
-
-    public ByteFormat getByteFormat();
-
-    public BytesFormat getBytesFormat();
-
-    public ClobFormat getClobFormat();
-
-    public DateFormat getDateFormat();
-
-    public DoubleFormat getDoubleFormat();
-
-    public FloatFormat getFloatFormat();
-
-    public IntegerFormat getIntegerFormat();
-
-    public LongFormat getLongFormat();
-
-    public ObjectFormat getObjectFormat();
-
-    public ShortFormat getShortFormat();
-
-    public StringFormat getStringFormat();
-
-    public TimeFormat getTimeFormat();
-
-    public TimestampFormat getTimestampFormat();
-
-    public UuidFormat getUuidFormat();
-
-    public <E> ListFormat<E> getListFormat();
-
-    public <E> SetFormat<E> getSetFormat();
-
-    public <K, V> MapFormat<K, V> getMapFormat();
 }

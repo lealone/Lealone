@@ -10,8 +10,6 @@ import java.math.BigDecimal;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueDecimal;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.BigDecimalFormat;
-import com.lealone.orm.format.JsonFormat;
 
 /**
  * BigDecimal property.
@@ -23,11 +21,6 @@ public class PBigDecimal<M extends Model<M>> extends PBaseNumber<M, BigDecimal> 
     }
 
     @Override
-    protected BigDecimalFormat getValueFormat(JsonFormat format) {
-        return format.getBigDecimalFormat();
-    }
-
-    @Override
     protected Value createValue(BigDecimal value) {
         return ValueDecimal.get(value);
     }
@@ -35,5 +28,15 @@ public class PBigDecimal<M extends Model<M>> extends PBaseNumber<M, BigDecimal> 
     @Override
     protected void deserialize(Value v) {
         value = v.getBigDecimal();
+    }
+
+    @Override
+    protected Object encode() {
+        return value.toString();
+    }
+
+    @Override
+    protected BigDecimal decode(Object v) {
+        return new BigDecimal(v.toString());
     }
 }

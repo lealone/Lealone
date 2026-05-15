@@ -8,18 +8,12 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueJavaObject;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.JsonFormat;
-import com.lealone.orm.format.ObjectFormat;
+import com.lealone.orm.json.Json;
 
 public class PObject<M extends Model<M>> extends PBase<M, Object> {
 
     public PObject(String name, M model) {
         super(name, model);
-    }
-
-    @Override
-    protected ObjectFormat getValueFormat(JsonFormat format) {
-        return format.getObjectFormat();
     }
 
     @Override
@@ -34,5 +28,18 @@ public class PObject<M extends Model<M>> extends PBase<M, Object> {
     @Override
     protected void deserialize(Value v) {
         value = v.getObject();
+    }
+
+    @Override
+    protected Object encode() {
+        if (value instanceof byte[] bytes)
+            return Json.BASE64_ENCODER.encodeToString(bytes);
+        else
+            return Json.encode(value);
+    }
+
+    @Override
+    protected Object decode(Object v) {
+        return Json.decode(v.toString());
     }
 }

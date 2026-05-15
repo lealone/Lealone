@@ -39,7 +39,6 @@ import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueMap;
 import com.lealone.db.value.ValueNull;
 import com.lealone.orm.format.JsonFormat;
-import com.lealone.orm.format.NameCaseFormat;
 import com.lealone.orm.json.Json;
 import com.lealone.orm.json.JsonObject;
 import com.lealone.orm.property.PBase;
@@ -697,9 +696,8 @@ public abstract class Model<T extends Model<T>> {
             map = new JsonObject(v.getString()).getMap();
         else
             map = new JsonObject(obj.toString()).getMap();
-        NameCaseFormat ncf = format.getNameCaseFormat();
         for (ModelProperty<?> p : modelProperties) {
-            Object v = map.get(ncf.convert(p.getName()));
+            Object v = map.get(format.convertName(p.getName()));
             if (v != null) {
                 // 先解码再set，这样Model的子类对象就可以在后续调用insert之类的方法
                 p.decodeAndSet(v, format);

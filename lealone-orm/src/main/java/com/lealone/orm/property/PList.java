@@ -10,8 +10,6 @@ import java.util.List;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueList;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.JsonFormat;
-import com.lealone.orm.format.ListFormat;
 
 /**
  * List property.
@@ -20,11 +18,6 @@ public class PList<M extends Model<M>, E> extends PBase<M, List<E>> {
 
     public PList(String name, M model) {
         super(name, model);
-    }
-
-    @Override
-    protected ListFormat<E> getValueFormat(JsonFormat format) {
-        return format.getListFormat();
     }
 
     @Override
@@ -38,5 +31,11 @@ public class PList<M extends Model<M>, E> extends PBase<M, List<E>> {
         if (v instanceof ValueList) {
             this.value = (List<E>) v.getObject();
         }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected List<E> decode(Object v) {
+        return (List<E>) v;
     }
 }
