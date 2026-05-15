@@ -40,6 +40,7 @@ import com.lealone.db.value.ValueMap;
 import com.lealone.db.value.ValueNull;
 import com.lealone.orm.format.JsonFormat;
 import com.lealone.orm.format.NameCaseFormat;
+import com.lealone.orm.json.Json;
 import com.lealone.orm.json.JsonObject;
 import com.lealone.orm.property.PBase;
 import com.lealone.orm.property.PBaseNumber;
@@ -70,17 +71,7 @@ public abstract class Model<T extends Model<T>> {
     public static final short REGULAR_MODEL = 0;
     public static final short ROOT_DAO = 1;
     public static final short CHILD_DAO = 2;
-    public static final boolean USE_JACKSON;
-    static {
-        boolean b;
-        try {
-            Class.forName("com.fasterxml.jackson.core.JsonFactory");
-            b = true;
-        } catch (Throwable t) {
-            b = false;
-        }
-        USE_JACKSON = b;
-    }
+    public static final boolean USE_JACKSON = Json.useJackson();
 
     private static final Logger logger = LoggerFactory.getLogger(Model.class);
 

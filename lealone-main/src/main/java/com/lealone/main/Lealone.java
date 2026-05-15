@@ -246,7 +246,14 @@ public class Lealone {
             loadConfig(config);
             long loadConfigTime = (System.currentTimeMillis() - t1);
 
-            if (sqlScripts != null || com.lealone.orm.Model.USE_JACKSON) {
+            boolean enableHttpServer;
+            try {
+                Class.forName("com.lealone.server.http.jdk.JdkHttpServerEngine");
+                enableHttpServer = true;
+            } catch (Throwable t) {
+                enableHttpServer = false;
+            }
+            if (sqlScripts != null || enableHttpServer) {
                 for (PluggableEngineDef e : this.config.protocol_server_engines) {
                     if (HttpServerEngine.NAME.equalsIgnoreCase(e.name)) {
                         e.enabled = true;

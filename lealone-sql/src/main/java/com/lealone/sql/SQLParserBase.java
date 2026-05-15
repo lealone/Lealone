@@ -25,6 +25,7 @@ import com.lealone.db.DbObjectType;
 import com.lealone.db.DbSetting;
 import com.lealone.db.DbSettings;
 import com.lealone.db.LealoneDatabase;
+import com.lealone.db.Mode;
 import com.lealone.db.Procedure;
 import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
@@ -203,6 +204,7 @@ public class SQLParserBase implements SQLParser {
 
     protected final Database database;
     protected final ServerSession session;
+    protected final Mode mode;
 
     /**
      * @see DbSettings#databaseToUpper
@@ -234,9 +236,17 @@ public class SQLParserBase implements SQLParser {
     protected ArrayList<Parameter> parameters;
     protected ArrayList<Parameter> indexedParameterList;
 
+    public SQLParserBase() {
+        this.database = null;
+        this.session = null;
+        this.mode = Mode.getDefaultMode();
+        this.identifiersToUpper = false;
+    }
+
     public SQLParserBase(ServerSession session) {
         this.database = session.getDatabase();
         this.session = session;
+        this.mode = database.getMode();
         this.identifiersToUpper = database.getSettings().databaseToUpper;
     }
 
@@ -1623,7 +1633,7 @@ public class SQLParserBase implements SQLParser {
             command.setOrder(orderList);
             currentSelect = oldSelect;
         }
-        if (database.getMode().supportOffsetFetch) {
+        if (mode.supportOffsetFetch) {
             // make sure aggregate functions will not work here
             Select temp = currentSelect;
             currentSelect = null;
@@ -1723,7 +1733,7 @@ public class SQLParserBase implements SQLParser {
                 if (readIf("AS") || currentTokenType == IDENTIFIER) {
                     String alias = readAliasIdentifier();
                     boolean aliasColumnName = database.getSettings().aliasColumnName;
-                    aliasColumnName |= database.getMode().aliasColumnName;
+                    aliasColumnName |= mode.aliasColumnName;
                     expr = new Alias(expr, alias, aliasColumnName);
                 }
                 expressions.add(expr);
@@ -2350,7 +2360,7 @@ public class SQLParserBase implements SQLParser {
             break;
         }
         case SystemFunction.CONVERT: {
-            if (database.getMode().swapConvertFunctionParameters) {
+            if (mode.swapConvertFunctionParameters) {
                 Column type = parseColumnWithType(null);
                 function.setDataType(type);
                 read(",");
@@ -3305,8 +3315,7 @@ public class SQLParserBase implements SQLParser {
             }
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.cache(result),
-                    database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result), mode.treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -3320,8 +3329,7 @@ public class SQLParserBase implements SQLParser {
             result = sqlCommand.substring(begin, i);
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.cache(result),
-                    database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result), mode.treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -3337,7 +3345,7 @@ public class SQLParserBase implements SQLParser {
     }
 
     protected void checkLiterals(boolean text) {
-        if (!session.getAllowLiterals()) {
+        if (session != null && !session.getAllowLiterals()) {
             int allowed = database.getAllowLiterals();
             if (allowed == Constants.ALLOW_LITERALS_NONE
                     || (text && allowed != Constants.ALLOW_LITERALS_ALL)) {
@@ -3548,7 +3556,7 @@ public class SQLParserBase implements SQLParser {
                 }
                 break;
             case '[':
-                if (database.getMode().squareBracketQuotedNames) {
+                if (mode.squareBracketQuotedNames) {
                     // SQL Server alias for "
                     command[i] = '"';
                     changed = true;
@@ -3588,7 +3596,7 @@ public class SQLParserBase implements SQLParser {
                 type = CHAR_NAME;
                 break;
             case '#':
-                if (database.getMode().supportPoundSymbolForColumnNames) {
+                if (mode.supportPoundSymbolForColumnNames) {
                     type = CHAR_NAME;
                     break;
                 }
@@ -3729,7 +3737,7 @@ public class SQLParserBase implements SQLParser {
             // if not yet converted to uppercase, do it now
             s = StringUtils.toUpperEnglish(s);
         }
-        return getSaveTokenType(s, database.getMode().supportOffsetFetch);
+        return getSaveTokenType(s, mode.supportOffsetFetch);
     }
 
     protected boolean isKeyword(String s) {
@@ -3873,7 +3881,7 @@ public class SQLParserBase implements SQLParser {
             column.setOriginalSQL("IDENTITY");
             parseAutoIncrement(column);
             // PostgreSQL compatibility
-            if (!database.getMode().serialColumnIsNotPK) {
+            if (!mode.serialColumnIsNotPK) {
                 column.setPrimaryKey(true);
             }
         } else if (readIf("SERIAL")) {
@@ -3881,7 +3889,7 @@ public class SQLParserBase implements SQLParser {
             column.setOriginalSQL("SERIAL");
             parseAutoIncrement(column);
             // PostgreSQL compatibility
-            if (!database.getMode().serialColumnIsNotPK) {
+            if (!mode.serialColumnIsNotPK) {
                 column.setPrimaryKey(true);
             }
         } else {
@@ -5827,7 +5835,7 @@ public class SQLParserBase implements SQLParser {
     protected DefinitionStatement parseAlterTableAddConstraintIf(String tableName, Schema schema) {
         String constraintName = null, comment = null;
         boolean ifNotExists = false;
-        boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
+        boolean allowIndexDefinition = mode.indexDefinitionInCreateTable;
         if (readIf("CONSTRAINT")) {
             ifNotExists = readIfNotExists();
             constraintName = readIdentifierWithSchema(schema.getName());

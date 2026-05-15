@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package com.lealone.orm.json;
+package com.lealone.orm.json.codec;
 
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;
 
@@ -30,13 +30,16 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.JsonTokenId;
 import com.lealone.orm.Model;
+import com.lealone.orm.json.Json;
+import com.lealone.orm.json.JsonArray;
+import com.lealone.orm.json.JsonObject;
 
 /**
  * @author <a href="mailto:julien@julienviet.com">Julien Viet</a>
  * @author zhh
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class JacksonCodec {
+public class JacksonCodec implements JsonCodec {
 
     private static final JsonFactory factory = new JsonFactory();
 
@@ -45,7 +48,8 @@ public class JacksonCodec {
         factory.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
     }
 
-    public static String encode(Object object, boolean pretty) throws EncodeException {
+    @Override
+    public String encode(Object object, boolean pretty) throws EncodeException {
         StringWriter sw = new StringWriter();
         JsonGenerator generator = null;
         try {
@@ -282,5 +286,20 @@ public class JacksonCodec {
                 closeable.close();
         } catch (IOException ignore) {
         }
+    }
+
+    @Override
+    public Map<String, Object> decodeJsonObject(String json) {
+        return decode(json, Map.class);
+    }
+
+    @Override
+    public List<Object> decodeJsonArray(String json) {
+        return decode(json, List.class);
+    }
+
+    @Override
+    public Object decodeAny(String json) {
+        return decode(json, Object.class);
     }
 }

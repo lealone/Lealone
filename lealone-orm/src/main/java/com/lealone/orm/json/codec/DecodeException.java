@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-package com.lealone.orm.json;
+package com.lealone.orm.json.codec;
 
 /**
  * Instances of this Exception are thrown if failed to decode a JSON string, because of invalid JSON.

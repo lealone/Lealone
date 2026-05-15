@@ -23,8 +23,14 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.lealone.common.util.SystemPropertyUtils;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.ValueString;
+import com.lealone.orm.json.codec.DecodeException;
+import com.lealone.orm.json.codec.EncodeException;
+import com.lealone.orm.json.codec.JacksonCodec;
+import com.lealone.orm.json.codec.JsonCodec;
+import com.lealone.orm.json.codec.LealoneJsonCodec;
 
 /**
  * @author <a href="http://tfox.org">Tim Fox</a>
@@ -35,6 +41,18 @@ public abstract class Json {
 
     public static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
     public static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
+    public static JsonCodec jsonCodec = useJackson() ? new JacksonCodec() : new LealoneJsonCodec();
+
+    public static boolean useJackson() {
+        try {
+            if (!SystemPropertyUtils.getBoolean("useJackson", true))
+                return false;
+            Class.forName("com.fasterxml.jackson.core.JsonFactory");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     /**
      * Encode a POJO to JSON using the underlying Jackson mapper.
@@ -44,7 +62,7 @@ public abstract class Json {
      * @throws EncodeException if a property cannot be encoded.
      */
     public static String encode(Object obj) throws EncodeException {
-        return JacksonCodec.encode(obj, false);
+        return jsonCodec.encode(obj, false);
     }
 
     /**
@@ -55,19 +73,7 @@ public abstract class Json {
      * @throws EncodeException if a property cannot be encoded.
      */
     public static String encodePrettily(Object obj) throws EncodeException {
-        return JacksonCodec.encode(obj, true);
-    }
-
-    /**
-     * Decode a given JSON string to a POJO of the given class type.
-     * @param str the JSON string.
-     * @param clazz the class to map to.
-     * @param <T> the generic type.
-     * @return an instance of T
-     * @throws DecodeException when there is a parsing or invalid mapping.
-     */
-    public static <T> T decode(String str, Class<T> clazz) throws DecodeException {
-        return JacksonCodec.decode(str, clazz);
+        return jsonCodec.encode(obj, true);
     }
 
     /**
@@ -80,7 +86,7 @@ public abstract class Json {
      * @throws DecodeException when there is a parsing or invalid mapping.
      */
     public static Object decode(String str) throws DecodeException {
-        return JacksonCodec.decode(str, Object.class);
+        return jsonCodec.decodeAny(str);
     }
 
     protected String getString(Object val) {

@@ -23,6 +23,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.db.service.JsonArrayGetter;
 import com.lealone.db.value.ReadonlyArray;
 import com.lealone.db.value.Value;
+import com.lealone.orm.json.codec.DecodeException;
 
 /**
  * A representation of a <a href="http://json.org/">JSON</a> array in Java.
@@ -74,7 +75,7 @@ public class JsonArray extends Json implements Iterable<Object> {
         if (json == null) {
             throw new NullPointerException();
         }
-        list = JacksonCodec.decode(json, List.class);
+        list = jsonCodec.decodeJsonArray(json);
         if (list == null) {
             throw new DecodeException("Invalid JSON array: " + json);
         }
@@ -428,7 +429,7 @@ public class JsonArray extends Json implements Iterable<Object> {
      * @return the string encoding
      */
     public String encode() {
-        return JacksonCodec.encode(this, false);
+        return jsonCodec.encode(this, false);
     }
 
     /**
@@ -437,7 +438,7 @@ public class JsonArray extends Json implements Iterable<Object> {
      * @return the string encoding
      */
     public String encodePrettily() {
-        return JacksonCodec.encode(this, true);
+        return jsonCodec.encode(this, true);
     }
 
     /**

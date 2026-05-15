@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import com.lealone.orm.json.codec.DecodeException;
+
 /**
  * A representation of a <a href="http://json.org/">JSON</a> object in Java.
  *
@@ -66,7 +68,7 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
         if (json == null) {
             throw new NullPointerException();
         }
-        map = JacksonCodec.decode(json, Map.class);
+        map = jsonCodec.decodeJsonObject(json);
         if (map == null) {
             throw new DecodeException("Invalid JSON object: " + json);
         }
@@ -485,7 +487,7 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
      * @return the string encoding.
      */
     public String encode() {
-        return JacksonCodec.encode(this, false);
+        return jsonCodec.encode(this, false);
     }
 
     /**
@@ -495,7 +497,7 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
      * @return the pretty string encoding.
      */
     public String encodePrettily() {
-        return JacksonCodec.encode(this, true);
+        return jsonCodec.encode(this, true);
     }
 
     /**
