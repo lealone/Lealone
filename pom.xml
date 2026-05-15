@@ -185,10 +185,6 @@
                                 <groupId>com.lealone</groupId>
                                 <artifactId>lealone-http</artifactId>
                             </exclusion>
-                            <exclusion>
-                                <groupId>com.fasterxml.jackson.core</groupId>
-                                <artifactId>jackson-core</artifactId>
-                            </exclusion>
                         </exclusions>
                     </dependency>
                 </dependencies>
@@ -202,16 +198,6 @@
                         <groupId>com.lealone</groupId>
                         <artifactId>lealone-main</artifactId>
                         <version>${project.version}</version>
-                        <exclusions>
-                            <exclusion>
-                                <groupId>org.apache.tomcat.embed</groupId>
-                                <artifactId>tomcat-embed-core</artifactId>
-                            </exclusion>
-                            <exclusion>
-                                <groupId>com.fasterxml.jackson.core</groupId>
-                                <artifactId>jackson-core</artifactId>
-                            </exclusion>
-                        </exclusions>
                     </dependency>
                 </dependencies>
             </dependencyManagement>
