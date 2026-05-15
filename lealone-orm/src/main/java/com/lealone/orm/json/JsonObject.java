@@ -24,11 +24,12 @@ import com.lealone.orm.json.codec.DecodeException;
 /**
  * A representation of a <a href="http://json.org/">JSON</a> object in Java.
  *
- * Unlike some other languages Java does not have a native understanding of JSON. To enable JSON to be used easily
+ * Unlike some other languages Java does not have a native understanding of JSON.
+ * To enable JSON to be used easily
  * in Vert.x code we use this class to encapsulate the notion of a JSON object.
  *
- * The implementation adheres to the <a href="http://rfc-editor.org/rfc/rfc7493.txt">RFC-7493</a> to support Temporal
- * data types as well as binary data.
+ * The implementation adheres to the <a href="http://rfc-editor.org/rfc/rfc7493.txt">RFC-7493</a>
+ * to support Temporal data types as well as binary data.
  *
  * Please see the documentation for more information.
  *
@@ -75,7 +76,8 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
     }
 
     /**
-     * Get the string value with the specified key, special cases are addressed for extended JSON types {@code Instant},
+     * Get the string value with the specified key, 
+     * special cases are addressed for extended JSON types {@code Instant},
      * {@code byte[]} and {@code Enum} which can be converted to String.
      *
      * @param key the key to return the value for
@@ -181,8 +183,10 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
     /**
      * Get the binary value with the specified key.
      *
-     * JSON itself has no notion of a binary, this extension complies to the RFC-7493, so this method assumes there is a
-     * String value with the key and it contains a Base64 encoded binary, which it decodes if found and returns.
+     * JSON itself has no notion of a binary, this extension complies to the RFC-7493, 
+     * so this method assumes there is a
+     * String value with the key and it contains a Base64 encoded binary,
+     *  which it decodes if found and returns.
      *
      * @param key the key to return the value for
      * @return the value or null if no value for that key
@@ -197,14 +201,16 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
     /**
      * Get the instant value with the specified key.
      *
-     * JSON itself has no notion of a temporal types, this extension complies to the RFC-7493, so this method assumes
+     * JSON itself has no notion of a temporal types, this extension complies to the RFC-7493, 
+     * so this method assumes
      * there is a String value with the key and it contains an ISO 8601 encoded date and time format
      * such as "2017-04-03T10:25:41Z", which it decodes if found and returns.
      *
      * @param key the key to return the value for
      * @return the value or null if no value for that key
      * @throws java.lang.ClassCastException            if the value is not a String
-     * @throws java.time.format.DateTimeParseException if the String value is not a legal ISO 8601 encoded value
+     * @throws java.time.format.DateTimeParseException if the String value is not a legal ISO 8601 
+     *                                                 encoded value
      */
     public Instant getInstant(String key) {
         Objects.requireNonNull(key);
@@ -420,8 +426,8 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
     /**
      * Merge in another JSON object.
      *
-     * This is the equivalent of putting all the entries of the other JSON object into this object. This is not a deep
-     * merge, entries containing (sub) JSON objects will be replaced entirely.
+     * This is the equivalent of putting all the entries of the other JSON object into this object.
+     * This is not a deep merge, entries containing (sub) JSON objects will be replaced entirely.
      *
      * @param other the other JSON object
      * @return a reference to this, so the API can be used fluently
@@ -491,8 +497,8 @@ public class JsonObject extends Json implements Iterable<Map.Entry<String, Objec
     }
 
     /**
-     * Encode this JSON object a a string, with whitespace to make the object easier to read by a human, or other
-     * sentient organism.
+     * Encode this JSON object a a string, with whitespace to make the object easier to read by a human, 
+     * or other sentient organism.
      *
      * @return the pretty string encoding.
      */

@@ -11,7 +11,7 @@ import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueNull;
 import com.lealone.orm.Model;
 import com.lealone.orm.ModelProperty;
-import com.lealone.orm.format.JsonFormat;
+import com.lealone.orm.json.JsonFormat;
 
 public abstract class PBase<M extends Model<M>, T> extends ModelProperty<M> {
 

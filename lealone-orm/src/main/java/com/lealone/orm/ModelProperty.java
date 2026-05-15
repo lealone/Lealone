@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.lealone.db.value.Value;
-import com.lealone.orm.format.JsonFormat;
+import com.lealone.orm.json.JsonFormat;
 
 /**
  * A property used in type query.

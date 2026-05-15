@@ -8,7 +8,7 @@ package com.lealone.orm.property;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueBoolean;
 import com.lealone.orm.Model;
-import com.lealone.orm.format.JsonFormat;
+import com.lealone.orm.json.JsonFormat;
 
 /**
  * Boolean property.

@@ -3,7 +3,7 @@ package com.lealone.test.orm.generated;
 import com.lealone.orm.Model;
 import com.lealone.orm.ModelProperty;
 import com.lealone.orm.ModelTable;
-import com.lealone.orm.format.JsonFormat;
+import com.lealone.orm.json.JsonFormat;
 import com.lealone.orm.property.PBoolean;
 import com.lealone.orm.property.PInteger;
 import com.lealone.orm.property.PLong;

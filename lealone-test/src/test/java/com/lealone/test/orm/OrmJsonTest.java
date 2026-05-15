@@ -13,8 +13,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.lealone.orm.format.JsonFormat;
 import com.lealone.orm.json.JsonArray;
+import com.lealone.orm.json.JsonFormat;
 import com.lealone.orm.json.JsonObject;
 import com.lealone.test.orm.generated.JsonTestTable;
 import com.lealone.test.orm.generated.User;
