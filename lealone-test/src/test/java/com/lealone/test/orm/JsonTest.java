@@ -15,7 +15,6 @@ import com.lealone.orm.json.Json;
 import com.lealone.orm.json.JsonArray;
 import com.lealone.orm.json.JsonObject;
 import com.lealone.orm.json.JsonParser;
-import com.lealone.orm.json.codec.JacksonCodec;
 import com.lealone.orm.json.codec.LealoneJsonCodec;
 
 public class JsonTest extends OrmTestBase {
@@ -27,7 +26,7 @@ public class JsonTest extends OrmTestBase {
 
     @Test
     public void run() throws Exception {
-        Json.jsonCodec = new JacksonCodec();
+        Json.jsonCodec = Json.getJsonCodec();
         run0();
         Json.jsonCodec = new LealoneJsonCodec();
         run0();

@@ -24,11 +24,11 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.lealone.common.util.SystemPropertyUtils;
+import com.lealone.common.util.Utils;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.ValueString;
 import com.lealone.orm.json.codec.DecodeException;
 import com.lealone.orm.json.codec.EncodeException;
-import com.lealone.orm.json.codec.JacksonCodec;
 import com.lealone.orm.json.codec.JsonCodec;
 import com.lealone.orm.json.codec.LealoneJsonCodec;
 
@@ -41,16 +41,24 @@ public abstract class Json {
 
     public static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
     public static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
-    public static JsonCodec jsonCodec = useJackson() ? new JacksonCodec() : new LealoneJsonCodec();
+    public static JsonCodec jsonCodec = useJackson() ? getJsonCodec() : new LealoneJsonCodec();
 
     public static boolean useJackson() {
         try {
             if (!SystemPropertyUtils.getBoolean("useJackson", true))
                 return false;
-            Class.forName("com.fasterxml.jackson.core.JsonFactory");
+            Class.forName("com.lealone.orm.json.codec.JacksonCodec");
             return true;
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    public static JsonCodec getJsonCodec() {
+        try {
+            return Utils.newInstance("com.lealone.orm.json.codec.JacksonCodec");
+        } catch (Throwable t) {
+            return new LealoneJsonCodec();
         }
     }
 
