@@ -23,10 +23,5 @@
             <artifactId>lealone-service</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-core</artifactId>
-            <version>11.0.21</version>
-        </dependency>
     </dependencies>
 </project>
