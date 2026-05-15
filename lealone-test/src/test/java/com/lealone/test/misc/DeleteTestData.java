@@ -16,7 +16,7 @@ import com.lealone.test.TestBase;
 public class DeleteTestData {
 
     public static void main(String[] args) throws IOException {
-        Config c = new Lealone().createConfig();
+        Config c = new Lealone().loadConfig();
         String dir = c.base_dir != null ? c.base_dir : TestBase.TEST_BASE_DIR;
         FileUtils.deleteRecursive(dir, true);
         if (!FileUtils.exists(dir)) {

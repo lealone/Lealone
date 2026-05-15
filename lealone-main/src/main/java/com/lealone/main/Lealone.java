@@ -63,7 +63,7 @@ public class Lealone {
         // 在一个新线程中启动 Lealone
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(() -> {
-            new Lealone().start(args, null, latch);
+            new Lealone().start(args, latch);
         }).start();
         try {
             latch.await();
@@ -75,7 +75,7 @@ public class Lealone {
     }
 
     public static void embed() {
-        new Lealone().run(true, null, null, null, null, null);
+        new Lealone().run(true, null, null, null, null);
     }
 
     public static void executeSql(String url, String sql) {
@@ -135,11 +135,7 @@ public class Lealone {
         start(args, null);
     }
 
-    public void start(String[] args, Config config) {
-        start(args, config, null);
-    }
-
-    public void start(String[] args, Config config, CountDownLatch latch) {
+    public void start(String[] args, CountDownLatch latch) {
         String dbName = null;
         StatementBuilder sqlScripts = new StatementBuilder();
         String initSql = null;
@@ -193,8 +189,8 @@ public class Lealone {
         }
         if (sqlScripts.length() > 0 && dbName == null)
             dbName = LealoneDatabase.NAME;
-        run(false, config, latch, dbName,
-                sqlScripts.length() == 0 ? null : sqlScripts.toString().split(","), initSql);
+        run(false, latch, dbName, sqlScripts.length() == 0 ? null : sqlScripts.toString().split(","),
+                initSql);
     }
 
     private void parseSqlScripts(StatementBuilder sqlScripts) {
@@ -235,14 +231,14 @@ public class Lealone {
         }
     }
 
-    private void run(boolean embedded, Config config, CountDownLatch latch, String dbName,
-            String[] sqlScripts, String initSql) {
+    private void run(boolean embedded, CountDownLatch latch, String dbName, String[] sqlScripts,
+            String initSql) {
         try {
             setGlobalShutdownHook();
 
             // 1. 加载配置
             long t1 = System.currentTimeMillis();
-            loadConfig(config);
+            loadConfig();
             long loadConfigTime = (System.currentTimeMillis() - t1);
 
             // 2. 初始化
@@ -326,13 +322,6 @@ public class Lealone {
         System.exit(1);
     }
 
-    private void loadConfig(Config c) {
-        if (c == null)
-            config = createConfig();
-        else
-            config = c;
-    }
-
     private void applyConfig(Config config) {
         if (host != null)
             config.listen_address = host;
@@ -362,9 +351,10 @@ public class Lealone {
         logger = LoggerFactory.getLogger(Lealone.class);
         logger.info("Lealone version: {}", Constants.RELEASE_VERSION);
         logger.info("Base dir: {}", baseDir.replace('\\', '/')); // 显示格式跟Loading config一样
+        this.config = config;
     }
 
-    public Config createConfig() {
+    public Config loadConfig() {
         URL url = null;
         String configUrl = Config.getProperty("config");
         if (configUrl != null) {
