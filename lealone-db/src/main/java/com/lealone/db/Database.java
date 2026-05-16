@@ -746,8 +746,12 @@ public class Database extends DbObjectBase implements DataHandler {
         Row row = findMeta(session, id);
         if (row == null)
             throw DbException.get(errorCode, obj.getName());
-        if (meta.tryLockRow(session, row) > 0)
+        int ret = meta.tryLockRow(session, row);
+        if (ret > 0)
             return row;
+        else if (ret == -2) // 记录已经过期
+            // 新值被临时放到lock中存放
+            return (Row) row.getLock().getLockable();
         else
             return null;
     }
