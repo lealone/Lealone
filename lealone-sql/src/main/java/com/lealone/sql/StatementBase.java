@@ -611,6 +611,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return null;
     }
 
+    @Override
+    public String getTableName() {
+        return getTableFilter() != null ? getTableFilter().getTable().getName() : null;
+    }
+
     public boolean isShardingMode() {
         return false;
     }

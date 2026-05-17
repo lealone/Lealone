@@ -53,6 +53,8 @@ public class Constants {
 
     public static final String RESOURCES_DIR = "/com/lealone/common/resources/";
 
+    public static final String META_TABLE_NAME = "SYS";
+
     /**
      * The TCP protocol version number 1.
      */

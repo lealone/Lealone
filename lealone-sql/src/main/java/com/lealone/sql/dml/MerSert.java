@@ -56,6 +56,11 @@ public abstract class MerSert extends ManipulationStatement {
         this.table = table;
     }
 
+    @Override
+    public String getTableName() {
+        return table.getName();
+    }
+
     public void setColumns(Column[] columns) {
         this.columns = columns;
     }

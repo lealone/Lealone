@@ -55,6 +55,10 @@ public interface PreparedSQLStatement extends SQLStatement, ManualCloseable {
         return false;
     }
 
+    default String getTableName() {
+        return null;
+    }
+
     Result query(int maxRows);
 
     int update();

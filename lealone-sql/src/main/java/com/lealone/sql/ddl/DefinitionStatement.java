@@ -5,6 +5,7 @@
  */
 package com.lealone.sql.ddl;
 
+import com.lealone.db.Constants;
 import com.lealone.db.session.ServerSession;
 import com.lealone.sql.StatementBase;
 
@@ -26,5 +27,10 @@ public abstract class DefinitionStatement extends StatementBase {
     @Override
     public boolean isDDL() {
         return true;
+    }
+
+    @Override
+    public String getTableName() {
+        return Constants.META_TABLE_NAME;
     }
 }

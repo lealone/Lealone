@@ -538,7 +538,7 @@ public class Database extends DbObjectBase implements DataHandler {
         cols.add(columnId);
         cols.add(new Column("TYPE", Value.INT));
         cols.add(new Column("SQL", Value.STRING));
-        data.tableName = "SYS";
+        data.tableName = Constants.META_TABLE_NAME;
         data.id = sysTableId;
         data.persistData = persistent;
         data.persistIndexes = persistent;
