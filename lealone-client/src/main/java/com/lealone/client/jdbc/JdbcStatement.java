@@ -19,6 +19,7 @@ import com.lealone.common.exceptions.DbException;
 import com.lealone.common.trace.TraceObjectType;
 import com.lealone.common.util.Utils;
 import com.lealone.db.ConnectionInfo;
+import com.lealone.db.RunMode;
 import com.lealone.db.SysProperties;
 import com.lealone.db.api.ErrorCode;
 import com.lealone.db.async.AsyncCallback;
@@ -331,7 +332,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     private Future<Boolean> executeInternal(String sql, boolean async) {
         return conn.<Boolean> executeJdbcTask(async, this, ac -> {
             // 从lealone 8.0.0开始可以用executeQuery执行，如果返回的RowCount为-2，就代表是一条非查询语句
-            if (conn.isClientProtocolVersionGte8()) {
+            if (conn.isClientProtocolVersionGte8() && session.getRunMode() != RunMode.REPLICATION) {
                 SQLCommand command = createSQLCommand(sql, false);
                 executeQueryInternal(ac, command, false);
             } else {
