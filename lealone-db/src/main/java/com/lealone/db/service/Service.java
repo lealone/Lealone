@@ -168,11 +168,13 @@ public class Service extends SchemaObjectBase {
                     Exception exception = null;
                     SourceCompiler compiler = getDatabase().getCompiler();
                     compiler.setClassDir(getClassDir());
-                    try {
-                        implementClass = compiler.getClass(getImplementBy());
-                        return;
-                    } catch (Exception e) {
-                        exception = e;
+                    if (getImplementBy() != null) {
+                        try {
+                            implementClass = compiler.getClass(getImplementBy());
+                            return;
+                        } catch (Exception e) {
+                            exception = e;
+                        }
                     }
                     if (getDatabase().isAgentEnabled()) {
                         CodeAgent agent = getDatabase().getCodeAgent();
@@ -182,6 +184,8 @@ public class Service extends SchemaObjectBase {
                             genServiceCode(agent);
                         }
                     } else {
+                        if (exception == null)
+                            exception = new RuntimeException("Service implement class is null");
                         throw DbException.convert(exception);
                     }
                 }
