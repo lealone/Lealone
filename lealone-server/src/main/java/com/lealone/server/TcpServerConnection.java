@@ -137,7 +137,8 @@ public class TcpServerConnection extends AsyncServerConnection {
             if (si != null) {
                 closeSession(si);
             }
-            logger.error("Failed to create session, sessionId: " + sessionId, e);
+            if (logger.isDebugEnabled())
+                logger.debug("Failed to create session, sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
         return true;
