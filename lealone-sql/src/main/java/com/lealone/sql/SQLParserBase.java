@@ -235,6 +235,7 @@ public class SQLParserBase implements SQLParser {
     protected ArrayList<String> expectedList;
     protected ArrayList<Parameter> parameters;
     protected ArrayList<Parameter> indexedParameterList;
+    protected boolean isJson;
 
     public SQLParserBase() {
         this.database = null;
@@ -3259,65 +3260,71 @@ public class SQLParserBase implements SQLParser {
             String result = null;
             while (true) {
                 for (int begin = i;; i++) {
-                    if (chars[i] == '\'') {
+                    if (chars[i] == '\'' || (isJson && chars[i] == '\"')) {
                         if (result == null) {
                             result = sqlCommand.substring(begin, i);
                         } else {
                             result += sqlCommand.substring(begin - 1, i);
                         }
                         break;
+                    } else if (isJson && chars[i] == '\\') { // 支持转义字符
+                        String s = null;
+                        switch (chars[i + 1]) {
+                        case '\'':
+                            s = "\'";
+                            break;
+                        case '\"':
+                            s = "\"";
+                            break;
+                        case '\\':
+                            s = "\\";
+                            i++;
+                            break;
+                        case 'r':
+                            s = "\r";
+                            break;
+                        case 'n':
+                            s = "\n";
+                            break;
+                        case '\b':
+                            s = "\b";
+                            break;
+                        case '\t':
+                            s = "\t";
+                            break;
+                        case '0':
+                            s = "\0";
+                            break;
+                        }
+                        if (s != null) {
+                            if (result == null) {
+                                result = sqlCommand.substring(begin, i) + s;
+                            } else {
+                                result += sqlCommand.substring(begin - 1, i) + s;
+                            }
+                            ++i;
+                            begin = i + 2;
+                            continue;
+                        }
                     }
-                    // else if (chars[i] == '\\') { // 支持转义字符
-                    // String s = null;
-                    // switch (chars[i + 1]) {
-                    // case '\'':
-                    // s = "\'";
-                    // break;
-                    // case '\"':
-                    // s = "\"";
-                    // break;
-                    // case '\\':
-                    // s = "\\";
-                    // i++;
-                    // break;
-                    // case 'r':
-                    // s = "\r";
-                    // break;
-                    // case 'n':
-                    // s = "\n";
-                    // break;
-                    // case '\b':
-                    // s = "\b";
-                    // break;
-                    // case '\t':
-                    // s = "\t";
-                    // break;
-                    // case '0':
-                    // s = "\0";
-                    // break;
-                    // }
-                    // if (s != null) {
-                    // if (result == null) {
-                    // result = sqlCommand.substring(begin, i) + s;
-                    // } else {
-                    // result += sqlCommand.substring(begin - 1, i) + s;
-                    // }
-                    // ++i;
-                    // begin = i + 2;
-                    // continue;
-                    // }
-                    // }
                 }
-                if (chars[++i] != '\'') {
+                if (chars[++i] != '\'' || (isJson && chars[++i] != '\"')) {
                     break;
                 }
                 i++;
             }
-            currentToken = "'";
-            checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.cache(result), mode.treatEmptyStringsAsNull);
-            parseIndex = i;
-            currentTokenType = VALUE;
+            if (isJson) {
+                currentToken = result;
+                checkLiterals(true);
+                parseIndex = i;
+                currentTokenType = IDENTIFIER;
+            } else {
+                currentToken = "'";
+                checkLiterals(true);
+                currentValue = ValueString.get(StringUtils.cache(result), mode.treatEmptyStringsAsNull);
+                parseIndex = i;
+                currentTokenType = VALUE;
+            }
             return;
         }
         case CHAR_DOLLAR_QUOTED_STRING: {
@@ -3586,7 +3593,7 @@ public class SQLParserBase implements SQLParser {
                 command[i] = '"';
                 break;
             case '\"':
-                type = types[i] = CHAR_QUOTED;
+                type = types[i] = isJson ? CHAR_STRING : CHAR_QUOTED;
                 startLoop = i;
                 while (command[++i] != '\"') {
                     checkRunOver(i, len, startLoop);

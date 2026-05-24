@@ -1,7 +1,7 @@
 
 -- 以下参数也可以通过-D参数或通过环境变量的方式设置
 set llm (
-    provider: 'doubao', --目前只支持doubao
+    provider: 'doubao', --目前支持doubao和deepseek
     model: 'doubao-seed-2-0-pro-260215',
     prompt_mode: false,
     --api_key: '替换成你的apikey'

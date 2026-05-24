@@ -15,6 +15,10 @@ import com.lealone.sql.expression.ExpressionColumn;
 
 public class JsonParser extends SQLParserBase {
 
+    public JsonParser() {
+        isJson = true;
+    }
+
     public Map<String, Object> parseJsonObject(String json) {
         initialize(json);
         read();
@@ -72,6 +76,11 @@ public class JsonParser extends SQLParserBase {
     }
 
     private Object readValue() {
+        if (currentTokenType == IDENTIFIER) {
+            String v = currentToken;
+            read();
+            return v;
+        }
         Expression v = readTerm();
         if (v instanceof ExpressionColumn c)
             return c.getColumnName();

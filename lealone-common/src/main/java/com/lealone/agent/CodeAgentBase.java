@@ -21,12 +21,6 @@ public abstract class CodeAgentBase extends PluginBase implements CodeAgent {
         super(name);
     }
 
-    public void init(String[] args) {
-        apiKey = getApiKey(args);
-        model = getModel(args);
-        url = getURL(args);
-    }
-
     @Override
     public synchronized void init(Map<String, String> config) {
         if (!isInited()) {
@@ -35,18 +29,6 @@ public abstract class CodeAgentBase extends PluginBase implements CodeAgent {
             url = getValue(config, "URL");
             super.init(config);
         }
-    }
-
-    public String getApiKey(String[] args) {
-        return args.length == 1 ? args[0] : System.getenv("LLM_API_KEY");
-    }
-
-    public String getModel(String[] args) {
-        return args.length == 2 ? args[1] : System.getenv("LLM_MODEL");
-    }
-
-    public String getURL(String[] args) {
-        return args.length == 3 ? args[2] : System.getenv("LLM_URL");
     }
 
     public String getValue(Map<String, String> config, String key) {

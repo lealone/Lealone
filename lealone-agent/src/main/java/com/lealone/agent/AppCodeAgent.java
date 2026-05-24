@@ -20,12 +20,6 @@ public abstract class AppCodeAgent extends CodeAgentBase {
     }
 
     @Override
-    public void init(String[] args) {
-        super.init(args);
-        afterInit();
-    }
-
-    @Override
     public void init(Map<String, String> config) {
         super.init(config);
         afterInit();

@@ -17,7 +17,7 @@ public class DoubaoChatTest {
 
     public void run(String[] args) {
         DoubaoCodeAgent agent = new DoubaoCodeAgent();
-        agent.init(args);
+        agent.init(null);
         AtomicReference<String> previousResponseId = new AtomicReference<>();
         System.out.println(agent.send("你是谁", previousResponseId));
         System.out.println(agent.send("我刚才说了什么", previousResponseId));
