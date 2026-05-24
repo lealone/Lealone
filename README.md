@@ -31,7 +31,7 @@
 
 ```sql
 set llm (
-    provider: 'doubao', --目前只支持doubao
+    provider: 'doubao', --目前支持doubao和deepseek
     model: 'doubao-seed-2-0-pro-260215',
     api_key: '替换成你的apikey'
 );
@@ -69,7 +69,7 @@ execute service my_service get_current_time();
 -- 以下是 services.sql 文件的内容，也可以换成其他文件名
 
 set llm (
-    provider: 'doubao', --目前只支持doubao
+    provider: 'doubao', --目前支持doubao和deepseek
     model: 'doubao-seed-2-0-pro-260215',
     api_key: '替换成你的apikey'
 );
