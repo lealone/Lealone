@@ -52,14 +52,33 @@ public class JsonTest extends OrmTestBase {
         assertEquals("3.5", parser.parseJsonAny("3.5").toString());
         assertTrue(parser.parseJsonAny("true") instanceof Boolean);
 
-        // for (int n = 0; n < 100; n++) {
-        // long t1 = System.currentTimeMillis();
-        // for (int i = 0; i < 100000; i++) {
-        // // s JsonObject.decode(json);
-        // // new org.apache.tomcat.util.json.JSONParser(json).parseObject();
-        // parser.parseJsonObject(json);
-        // }
-        // System.out.println(System.currentTimeMillis() - t1);
-        // }
+        // decode(json);
+        // encode(json);
+    }
+
+    void decode(String json) throws Exception {
+        Json.jsonCodec = new LealoneJsonCodec();
+        Json.jsonCodec = Json.getJsonCodec();
+        for (int n = 0; n < 100; n++) {
+            long t1 = System.currentTimeMillis();
+            for (int i = 0; i < 100000; i++) {
+                JsonObject.decode(json);
+                // new org.apache.tomcat.util.json.JSONParser(json).parseObject();
+            }
+            System.out.println(System.currentTimeMillis() - t1);
+        }
+    }
+
+    void encode(String json) throws Exception {
+        Object obj = JsonObject.decode(json);
+        Json.jsonCodec = new LealoneJsonCodec();
+        Json.jsonCodec = Json.getJsonCodec();
+        for (int n = 0; n < 100; n++) {
+            long t1 = System.currentTimeMillis();
+            for (int i = 0; i < 100000; i++) {
+                JsonObject.encode(obj);
+            }
+            System.out.println(System.currentTimeMillis() - t1);
+        }
     }
 }

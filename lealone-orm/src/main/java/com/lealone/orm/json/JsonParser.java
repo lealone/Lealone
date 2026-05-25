@@ -62,7 +62,13 @@ public class JsonParser extends SQLParserBase {
                 read();
                 read(":");
             }
-            if (readIfChar('[')) {
+            if (currentTokenType == IDENTIFIER) {
+                map.put(key, currentToken);
+                read();
+            } else if (currentTokenType == VALUE) {
+                map.put(key, currentValue.getObject());
+                read();
+            } else if (readIfChar('[')) {
                 map.put(key, parseJsonArray());
             } else if (readIfChar('{')) {
                 LinkedHashMap<String, Object> map2 = new LinkedHashMap<>();
@@ -80,12 +86,17 @@ public class JsonParser extends SQLParserBase {
             String v = currentToken;
             read();
             return v;
+        } else if (currentTokenType == VALUE) {
+            Object v = currentValue.getObject();
+            read();
+            return v;
+        } else {
+            Expression v = readTerm();
+            if (v instanceof ExpressionColumn c)
+                return c.getColumnName();
+            else
+                return v.getValue(session).getObject();
         }
-        Expression v = readTerm();
-        if (v instanceof ExpressionColumn c)
-            return c.getColumnName();
-        else
-            return v.getValue(session).getObject();
     }
 
     private boolean readIfChar(char c) {
@@ -106,6 +117,9 @@ public class JsonParser extends SQLParserBase {
         do {
             if (currentTokenType == IDENTIFIER) {
                 list.add(currentToken);
+                read();
+            } else if (currentTokenType == VALUE) {
+                list.add(currentValue.getObject());
                 read();
             } else if (readIfChar('[')) {
                 list.add(parseJsonArray());
