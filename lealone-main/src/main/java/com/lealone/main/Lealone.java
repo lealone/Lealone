@@ -42,6 +42,7 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
+import com.lealone.server.http.HttpServerEngine;
 import com.lealone.server.scheduler.GlobalScheduler;
 import com.lealone.sql.SQLEngine;
 import com.lealone.sql.config.Config;
@@ -75,7 +76,7 @@ public class Lealone {
     }
 
     public static void embed() {
-        new Lealone().run(true, null, null, null, null);
+        new Lealone().run(true, null, null, null);
     }
 
     public static void executeSql(String url, String sql) {
@@ -130,13 +131,13 @@ public class Lealone {
     private String baseDir;
     private String host;
     private String port;
+    private String dbName;
 
     public void start(String[] args) {
         start(args, null);
     }
 
     public void start(String[] args, CountDownLatch latch) {
-        String dbName = null;
         StatementBuilder sqlScripts = new StatementBuilder();
         String initSql = null;
         for (int i = 0; args != null && i < args.length; i++) {
@@ -189,8 +190,7 @@ public class Lealone {
         }
         if (sqlScripts.length() > 0 && dbName == null)
             dbName = LealoneDatabase.NAME;
-        run(false, latch, dbName, sqlScripts.length() == 0 ? null : sqlScripts.toString().split(","),
-                initSql);
+        run(false, latch, sqlScripts.length() == 0 ? null : sqlScripts.toString().split(","), initSql);
     }
 
     private void parseSqlScripts(StatementBuilder sqlScripts) {
@@ -231,8 +231,7 @@ public class Lealone {
         }
     }
 
-    private void run(boolean embedded, CountDownLatch latch, String dbName, String[] sqlScripts,
-            String initSql) {
+    private void run(boolean embedded, CountDownLatch latch, String[] sqlScripts, String initSql) {
         try {
             setGlobalShutdownHook();
 
@@ -431,6 +430,10 @@ public class Lealone {
                     File webDir = new File(appDir, "web");
                     if (webDir.exists() && webDir.isDirectory()) {
                         parameters.put("web_root", webDir.getAbsolutePath());
+                    }
+                    if (name.equalsIgnoreCase(HttpServerEngine.NAME)
+                            && !parameters.containsKey("default_database")) {
+                        parameters.put("default_database", dbName);
                     }
                 }
                 def.setParameters(parameters);
