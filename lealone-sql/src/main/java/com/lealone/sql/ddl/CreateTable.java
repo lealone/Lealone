@@ -82,6 +82,11 @@ public class CreateTable extends SchemaStatement {
         data.tableName = tableName;
     }
 
+    @Override
+    public String getTableName() {
+        return data.tableName;
+    }
+
     /**
      * Add a column to this table.
      *
