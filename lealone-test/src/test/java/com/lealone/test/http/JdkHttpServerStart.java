@@ -26,7 +26,7 @@ public class JdkHttpServerStart extends JdkHttpRouter implements ConfigListener 
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
-        jdkHttpServer.createContext("/test", exchange -> {
+        jdkHttpServer.createContext("/", exchange -> {
             byte[] respContents = "Hello World".getBytes("UTF-8");
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
             exchange.sendResponseHeaders(200, respContents.length);
