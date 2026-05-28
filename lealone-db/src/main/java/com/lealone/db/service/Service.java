@@ -202,7 +202,7 @@ public class Service extends SchemaObjectBase {
         if (!getDatabase().isPromptMode())
             logger.info("Prompt:\n{}", getCreateSQL());
         genJavaCode(agent, getTables(), prompt);
-        logger.info("genServiceCode time: " + (System.currentTimeMillis() - t1) + " ms");
+        logger.info("GenServiceCode time: " + (System.currentTimeMillis() - t1) + " ms");
     }
 
     private void genWorkflowCode(CodeAgent agent) {
@@ -294,6 +294,7 @@ public class Service extends SchemaObjectBase {
                 currentClass = currentClass.getSuperclass();
             }
         }
+        prompt.append("\n如果返回的结果用json表示，直接调用com.lealone.orm.json.Json.encode(Object)方法");
         if (getDatabase().isPromptMode()) {
             logger.info("Prompt:\n{}", prompt);
             return;

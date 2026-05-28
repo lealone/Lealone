@@ -3295,6 +3295,17 @@ public class SQLParserBase implements SQLParser {
                         case '0':
                             s = "\0";
                             break;
+                        case 'u':
+                            String hex = sqlCommand.substring(i + 2, i + 6);
+                            s = Character.toString((char) Integer.parseInt(hex, 16));
+                            if (result == null) {
+                                result = sqlCommand.substring(begin, i) + s;
+                            } else {
+                                result += sqlCommand.substring(begin - 1, i) + s;
+                            }
+                            i += 5;
+                            begin = i + 2;
+                            continue;
                         }
                         if (s != null) {
                             if (result == null) {

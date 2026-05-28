@@ -52,6 +52,10 @@ public class JsonTest extends OrmTestBase {
         assertEquals("3.5", parser.parseJsonAny("3.5").toString());
         assertTrue(parser.parseJsonAny("true") instanceof Boolean);
 
+        Object obj = parser.parseJsonAny(
+                "[\"Map\\u003cString, Object\\u003e rersult " + "= new HashMap\\u003c\\u003e()\"]");
+        assertTrue(obj instanceof List);
+
         // decode(json);
         // encode(json);
     }

@@ -131,7 +131,7 @@ public class JdkHttpRouter implements HttpRouter {
             for (Map.Entry<String, String> entry : redirectMap.entrySet()) {
                 String source = entry.getKey();
                 String target = entry.getValue();
-                if (path.startsWith(source)) {
+                if (path.equalsIgnoreCase(source)) {
                     // 设置重定向响应头
                     exchange.getResponseHeaders().set("Location", target);
                     exchange.sendResponseHeaders(statusCode, -1);
