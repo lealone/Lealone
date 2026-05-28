@@ -17,22 +17,31 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.lealone.common.exceptions.DbException;
 import com.lealone.common.logging.Logger;
 import com.lealone.common.logging.LoggerFactory;
+import com.lealone.common.util.CaseInsensitiveMap;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.MapUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.Constants;
 import com.lealone.db.Database;
+import com.lealone.db.LealoneDatabase;
 import com.lealone.db.SysProperties;
 import com.lealone.db.plugin.PluginManager;
+import com.lealone.db.schema.Schema;
+import com.lealone.db.service.Service;
 import com.lealone.db.session.ServerSession;
+import com.lealone.db.table.Table;
 import com.lealone.db.util.SourceCompiler;
 import com.lealone.server.ProtocolServerEngine;
+import com.lealone.sql.PreparedSQLStatement;
+import com.lealone.sql.ddl.CreateService;
+import com.lealone.sql.ddl.CreateTable;
 
 public class AgentExecutor {
 
@@ -48,10 +57,87 @@ public class AgentExecutor {
         this.session = session;
     }
 
+    private boolean genFrontendCodeIfNeeded() {
+        CaseInsensitiveMap<String> llmParameters = db.getLLMParameters();
+        if (llmParameters == null)
+            llmParameters = LealoneDatabase.getInstance().getLLMParameters();
+        return MapUtils.getBoolean(llmParameters, "gen_frontend_code", true);
+    }
+
     public String execute() {
         long t1 = System.currentTimeMillis();
+        String content = alterTableAndServiceIfNeeded();
+        if (content == null)
+            content = createTableAndService();
+        logger.info("Agent execute time: " + (System.currentTimeMillis() - t1) + " ms");
+        return content;
+    }
+
+    private String alterTableAndServiceIfNeeded() {
+        Schema currentSchema = db.findSchema(session, session.getCurrentSchemaName());
+        List<Table> tables = currentSchema.getAllTablesAndViews();
+        List<Service> services = currentSchema.getAllServices();
+        if (!tables.isEmpty() || !services.isEmpty()) {
+            String systemPrompt = """
+                    \n\n以上是用户的需求，请根据需求修改下面的table和service，
+                    并生成新的 create table 和 create service 语句，每条 sql 语句以分号结束，
+                    不需要修改的table和service就不要再返回 create 语句，
+                    create service 的格式如下:
+                    create service 服务名(
+                      方法名(参数名 sql类型) 返回的sql类型，
+                    )
+                    sql类型可以是表名，如果返回类型是一批记录就用list<表名>,
+                    不要```sql标记，不要返回其他的。\n
+                                    """;
+            StringBuilder prompt = new StringBuilder(userPrompt);
+            prompt.append(systemPrompt);
+            if (!tables.isEmpty()) {
+                prompt.append("以下是已经存在的table：\n");
+                for (Table t : tables) {
+                    prompt.append(t.getCreateSQL()).append(";\n");
+                }
+            }
+            if (!tables.isEmpty()) {
+                prompt.append("\n\n以下是已经存在的service：\n");
+                for (Service s : services) {
+                    prompt.append(s.getCreateSQL()).append(";\n");
+                }
+            }
+            if (db.isPromptMode()) {
+                logger.info("Prompt:\n{}", prompt);
+                return prompt.toString();
+            }
+            CodeAgent agent = db.getCodeAgent();
+            String content = agent.send(prompt.toString(), null);
+            String[] sqls = StringUtils.arraySplit(content, ';');
+            ServerSession s = session.createNestedSession();
+            for (String sql : sqls) {
+                if (sql.isEmpty())
+                    continue;
+                PreparedSQLStatement ps = s.prepareStatement(sql);
+                if (ps instanceof CreateTable ct) {
+                    if (currentSchema.findTableOrView(session, ct.getTableName()) != null) {
+                        s.executeUpdateLocal("drop table " + ct.getTableName());
+                    }
+                    s.executeUpdateLocal(ps);
+                } else if (ps instanceof CreateService cs) {
+                    if (currentSchema.findService(session, cs.getServiceName()) != null) {
+                        s.executeUpdateLocal("drop service " + cs.getServiceName());
+                    }
+                    s.executeUpdateLocal(ps);
+                } else {
+                    if (logger.isDebugEnabled())
+                        logger.debug("Invalid sql: " + sql);
+                }
+            }
+            return content;
+        }
+        return null;
+    }
+
+    private String createTableAndService() {
         String systemPrompt = """
-                                \n\n以上是用户的需求，请从后面的服务列表中找出可能用到的服务，并严格遵循以下规范,3选1:
+                  \n\n以上是用户的需求，请从后面的服务列表中找出可能用到的服务，并严格遵循以下规范,3选1:
                 1.只要用到lealone服务，就用 create table 定义表，用 create service 定义服务接口
                 create service 的格式如下:
                 create service 服务名(
@@ -95,57 +181,8 @@ public class AgentExecutor {
             content = content.substring(pos + 1);
             content = vibeCoding(agent, content, appName, previousResponseId);
         } else {
-            int pos = content.indexOf(':');
-            if (pos >= 0) {
-                File lib = new File(SysProperties.getBaseDir(), "lib");
-                String nameStr = content.substring(0, pos);
-                String code = content.substring(pos + 1);
-                pos = code.indexOf(':');
-                String className = code.substring(0, pos);
-                code = code.substring(pos + 1);
-                String[] names = StringUtils.arraySplit(nameStr, ',');
-                ArrayList<URL> urls = new ArrayList<>();
-                for (String name : names) {
-                    Map<String, String> map = extServices.get(name);
-                    String url = map.get("url");
-                    if (url.equalsIgnoreCase("cli"))
-                        continue;
-                    try {
-                        File f = new File(url);
-                        if (f.exists()) {
-                            urls.add(f.toURI().toURL());
-                            continue;
-                        }
-                    } catch (Exception e) {
-                    }
-                    File jarFile;
-                    pos = url.lastIndexOf('/');
-                    if (pos >= 0) {
-                        jarFile = new File(lib, url.substring(pos + 1));
-                    } else {
-                        continue;
-                    }
-                    try {
-                        if (!jarFile.exists()) {
-                            URI uri = URI.create(url);
-                            downloadJar(uri, lib.getAbsolutePath());
-                        }
-                        urls.add(jarFile.toURI().toURL());
-                    } catch (Exception e) {
-                    }
-                }
-                SourceCompiler compiler = new SourceCompiler();
-                compiler.setSource(className, code);
-                compiler.setUrls(urls.toArray(new URL[0]));
-                try {
-                    Method mainMethod = compiler.compile(className).getMethod("run");
-                    content = (String) mainMethod.invoke(null);
-                } catch (Exception e) {
-                    throw DbException.convert(e);
-                }
-            }
+            content = callTools(content, extServices);
         }
-        logger.info("Agent execute time: " + (System.currentTimeMillis() - t1) + " ms");
         return content;
     }
 
@@ -157,6 +194,8 @@ public class AgentExecutor {
                        """;
         logger.info("Agent execute sql: " + sql);
         session.createNestedSession().executeUpdateLocal(sql);
+        if (!genFrontendCodeIfNeeded())
+            return sql;
         String content = agent.send(userPrompt, previousResponseId);
         ProtocolServerEngine pse = PluginManager.getPlugin(ProtocolServerEngine.class, "HTTP");
         String webRoot = MapUtils.getString(pse.getConfig(), "web_root", "./web");
@@ -172,6 +211,59 @@ public class AgentExecutor {
             throw DbException.convertIOException(e, "Failed to write html file: " + htmlFile);
         }
         return "http://" + host + ":" + port + "/" + appName + ".html";
+    }
+
+    private String callTools(String content, Map<String, Map<String, String>> extServices) {
+        int pos = content.indexOf(':');
+        if (pos >= 0) {
+            File lib = new File(SysProperties.getBaseDir(), "lib");
+            String nameStr = content.substring(0, pos);
+            String code = content.substring(pos + 1);
+            pos = code.indexOf(':');
+            String className = code.substring(0, pos);
+            code = code.substring(pos + 1);
+            String[] names = StringUtils.arraySplit(nameStr, ',');
+            ArrayList<URL> urls = new ArrayList<>();
+            for (String name : names) {
+                Map<String, String> map = extServices.get(name);
+                String url = map.get("url");
+                if (url.equalsIgnoreCase("cli"))
+                    continue;
+                try {
+                    File f = new File(url);
+                    if (f.exists()) {
+                        urls.add(f.toURI().toURL());
+                        continue;
+                    }
+                } catch (Exception e) {
+                }
+                File jarFile;
+                pos = url.lastIndexOf('/');
+                if (pos >= 0) {
+                    jarFile = new File(lib, url.substring(pos + 1));
+                } else {
+                    continue;
+                }
+                try {
+                    if (!jarFile.exists()) {
+                        URI uri = URI.create(url);
+                        downloadJar(uri, lib.getAbsolutePath());
+                    }
+                    urls.add(jarFile.toURI().toURL());
+                } catch (Exception e) {
+                }
+            }
+            SourceCompiler compiler = new SourceCompiler();
+            compiler.setSource(className, code);
+            compiler.setUrls(urls.toArray(new URL[0]));
+            try {
+                Method mainMethod = compiler.compile(className).getMethod("run");
+                content = (String) mainMethod.invoke(null);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+        return content;
     }
 
     private static void downloadJar(URI uri, String savePath) throws Exception {

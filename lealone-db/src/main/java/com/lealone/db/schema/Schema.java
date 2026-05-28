@@ -723,6 +723,11 @@ public class Schema extends DbObjectBase {
         return new ArrayList<>(tables.values());
     }
 
+    public ArrayList<Service> getAllServices() {
+        HashMap<String, Service> services = getDbObjects(DbObjectType.SERVICE);
+        return new ArrayList<>(services.values());
+    }
+
     /**
      * Add a table to the schema.
      *

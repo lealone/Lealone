@@ -62,6 +62,10 @@ public class CreateService extends SchemaStatement {
         this.serviceName = serviceName;
     }
 
+    public String getServiceName() {
+        return serviceName;
+    }
+
     public void addServiceMethod(CreateTable serviceMethod) {
         serviceMethods.add(serviceMethod);
     }

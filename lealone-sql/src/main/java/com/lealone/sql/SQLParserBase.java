@@ -3260,7 +3260,7 @@ public class SQLParserBase implements SQLParser {
             String result = null;
             while (true) {
                 for (int begin = i;; i++) {
-                    if (chars[i] == '\'' || (isJson && chars[i] == '\"')) {
+                    if ((!isJson && chars[i] == '\'') || (isJson && chars[i] == '\"')) {
                         if (result == null) {
                             result = sqlCommand.substring(begin, i);
                         } else {
@@ -3319,7 +3319,7 @@ public class SQLParserBase implements SQLParser {
                         }
                     }
                 }
-                if (chars[++i] != '\'' || (isJson && chars[++i] != '\"')) {
+                if ((!isJson && chars[++i] != '\'') || (isJson && chars[++i] != '\"')) {
                     break;
                 }
                 i++;
