@@ -18,6 +18,12 @@ public class AOStorageBuilder extends StorageBuilder {
 
     private static final HashMap<String, AOStorage> cache = new HashMap<>();
 
+    public static void removeCache(String storagePath) {
+        synchronized (cache) {
+            cache.remove(storagePath);
+        }
+    }
+
     public AOStorageBuilder() {
     }
 

@@ -60,6 +60,12 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
+    public void drop() {
+        super.drop();
+        AOStorageBuilder.removeCache(getStoragePath());
+    }
+
+    @Override
     public <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
         String mapType = parameters == null ? null : parameters.get(StorageSetting.MAP_TYPE.name());
