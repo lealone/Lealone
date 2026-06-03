@@ -365,7 +365,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                 Lockable old = ar.getResult();
                 if (old != null) {
                     if (vRef != null)
-                        vRef.set((V) old.getLockedValue());
+                        vRef.set((V) old);
                     if (ifAbsent) {
                         // 在提交或回滚时直接忽略即可
                         r.setUndone(true);
@@ -521,7 +521,7 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             boolean ifAbsent, AtomicReference<V> vRef) {
         // 为了支持可重复读事务，还是要读出旧值
         Lockable lockable = map.get(key);
-        if (lockable != null) {
+        if (lockable != null && !ifAbsent) {
             tryUpdateOrRemove(key, value, lockable, handler, vRef);
         } else {
             lockable = toLockable(value);
