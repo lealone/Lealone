@@ -13,8 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.lealone.common.logging.Logger;
-import com.lealone.common.logging.LoggerFactory;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.service.ServiceHandler;
@@ -26,10 +24,9 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.SimpleFileServer;
 
-@SuppressWarnings("unused")
 public class JdkHttpRouter implements HttpRouter {
 
-    private static final Logger log = LoggerFactory.getLogger(JdkHttpRouter.class);
+    // private static final Logger log = LoggerFactory.getLogger(JdkHttpRouter.class);
 
     protected JdkHttpServer jdkHttpServer;
     protected String webRoot;
@@ -164,63 +161,5 @@ public class JdkHttpRouter implements HttpRouter {
                 exchange.close();
             }
         }
-    }
-
-    /**
-    * Return <code>true</code> if the context-relative request path matches
-    * the requirements of the specified filter mapping; otherwise, return <code>false</code>.
-    *
-    * @param testPath    URL mapping being checked
-    * @param requestPath Context-relative request path of this request
-    */
-    private static boolean matchFiltersURL(String testPath, String requestPath) {
-
-        if (testPath == null) {
-            return false;
-        }
-
-        /*
-         * Note: Order does not matter here in terms of specification compliance 
-         * because this is Filter mapping. If any rule matches then this method returns true. 
-         * Order would matter if this was Servlet mapping.
-         */
-
-        // Case 1 - Exact Match
-        if (testPath.equals(requestPath)) {
-            return true;
-        }
-
-        // Case 2 - Path Match ("/.../*")
-        if (testPath.equals("/*")) {
-            return true;
-        }
-        if (testPath.endsWith("/*")) {
-            if (testPath.regionMatches(0, requestPath, 0, testPath.length() - 2)) {
-                if (requestPath.length() == (testPath.length() - 2)) {
-                    return true;
-                } else {
-                    return '/' == requestPath.charAt(testPath.length() - 2);
-                }
-            }
-            return false;
-        }
-
-        // Case 3 - Extension Match
-        if (testPath.startsWith("*.")) {
-            int slash = requestPath.lastIndexOf('/');
-            int period = requestPath.lastIndexOf('.');
-            if ((slash >= 0) && (period > slash) && (period != requestPath.length() - 1)
-                    && ((requestPath.length() - period) == (testPath.length() - 1))) {
-                return testPath.regionMatches(2, requestPath, period + 1, testPath.length() - 2);
-            }
-        }
-
-        // Case 4 - Context Root
-        if (testPath.isEmpty() && requestPath.equals("/")) {
-            return true;
-        }
-
-        // Case 5 - "Default" Match
-        return false; // NOTE - Not relevant for selecting filters
     }
 }
