@@ -86,6 +86,7 @@ public class TestBase extends Assert {
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;
     private boolean ssl = false;
+    private boolean edge = false;
 
     private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
@@ -156,6 +157,14 @@ public class TestBase extends Assert {
 
     public boolean isEmbedded() {
         return embedded;
+    }
+
+    public boolean isEdge() {
+        return edge;
+    }
+
+    public void setEdge(boolean edge) {
+        this.edge = edge;
     }
 
     public TestBase setInMemory(boolean inMemory) {
@@ -242,6 +251,8 @@ public class TestBase extends Assert {
         } else {
             if (ssl)
                 url.append(Constants.URL_SSL);
+            else if (edge)
+                url.append(Constants.URL_EDGE);
             else
                 url.append(Constants.URL_TCP);
             url.append("//").append(host).append(':').append(port).append('/');

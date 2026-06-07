@@ -60,6 +60,10 @@ public abstract class SchedulerListener<R> implements AsyncResultHandler<R> {
 
                 @Override
                 public R await() {
+                    if (result != null)
+                        return result;
+                    if (exception != null)
+                        throw exception;
                     try {
                         latch.await();
                     } catch (InterruptedException e) {

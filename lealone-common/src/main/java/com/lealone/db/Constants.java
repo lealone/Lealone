@@ -265,6 +265,7 @@ public class Constants {
     public static final String URL_TCP = "tcp:";
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
+    public static final String URL_EDGE = "edge:";
 
     public static final String JDBC_URL_KEY = "lealone.jdbc.url";
 
