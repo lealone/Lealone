@@ -27,10 +27,13 @@ import com.lealone.db.session.Session;
 import com.lealone.db.value.DataType;
 import com.lealone.db.value.Value;
 import com.lealone.db.value.ValueArray;
+import com.lealone.db.value.ValueDataType.PrimaryKey;
 import com.lealone.db.value.ValueDate;
 import com.lealone.db.value.ValueList;
 import com.lealone.db.value.ValueLob;
+import com.lealone.db.value.ValueLong;
 import com.lealone.db.value.ValueMap;
+import com.lealone.db.value.ValueNull;
 import com.lealone.db.value.ValueResultSet;
 import com.lealone.db.value.ValueSet;
 import com.lealone.db.value.ValueTime;
@@ -250,7 +253,16 @@ public class TransferOutputStream implements NetOutputStream {
 
     @Override
     public TransferOutputStream writePageKey(PageKey pk) throws IOException {
-        writeValue((Value) pk.key);
+        Value key;
+        if (pk.key instanceof Value k)
+            key = k;
+        else if (pk.key instanceof PrimaryKey k)
+            key = ValueLong.get(k.getKey());
+        else if (pk.key == null)
+            key = ValueNull.INSTANCE;
+        else
+            throw DbException.getInternalError();
+        writeValue(key);
         writeBoolean(pk.first);
         writeInt(pk.level);
         return this;
