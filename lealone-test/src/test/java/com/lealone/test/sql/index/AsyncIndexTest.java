@@ -5,6 +5,9 @@
  */
 package com.lealone.test.sql.index;
 
+import java.sql.ResultSet;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.lealone.db.Constants;
@@ -40,5 +43,18 @@ public class AsyncIndexTest extends SqlTestBase {
 
         // 恢复到默认值，避免影响其他测试用例
         stmt.executeUpdate("set MAX_MEMORY_ROWS " + Constants.DEFAULT_MAX_MEMORY_ROWS);
+    }
+
+    @Test
+    public void testAsyncIndexRebuilder() throws Exception {
+        stmt.executeUpdate("DROP TABLE IF EXISTS testAsyncIndexRebuilder");
+        String sql = "CREATE TABLE IF NOT EXISTS testAsyncIndexRebuilder (f1 int primary key, f2 long)";
+        stmt.executeUpdate(sql);
+        stmt.executeUpdate("INSERT INTO testAsyncIndexRebuilder(f1, f2) VALUES(1, 2)");
+        sql = "CREATE INDEX IF NOT EXISTS itestAsyncIndexRebuilder ON testAsyncIndexRebuilder(f2)";
+        stmt.executeUpdate(sql);
+        ResultSet rs = stmt.executeQuery("SELECT * FROM testAsyncIndexRebuilder where f2=2");
+        Assert.assertTrue(rs.next());
+        rs.close();
     }
 }

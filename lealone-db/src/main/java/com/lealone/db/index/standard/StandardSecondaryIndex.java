@@ -196,8 +196,12 @@ public class StandardSecondaryIndex extends StandardDataIndex<IndexKey, IndexKey
                 Index scan = table.getScanIndex(session);
                 Cursor cursor = scan.find(session, f, null);
                 return new SsiBuildingCursor(session, tmCursor, last, cursor);
-            } else
+            } else if (map.getRawSize() == 0) {
+                // 索引正准备异步创建，但是还没有任何数据时，直接走ScanIndex
+                return table.getScanIndex(session).find(session, null, null);
+            } else {
                 return new SsiRegularCursor(session, tmCursor, last);
+            }
         } else {
             return new SsiRegularCursor(session, map.cursor(min), last);
         }
