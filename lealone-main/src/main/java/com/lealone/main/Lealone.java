@@ -42,7 +42,6 @@ import com.lealone.db.session.ServerSession;
 import com.lealone.server.ProtocolServer;
 import com.lealone.server.ProtocolServerEngine;
 import com.lealone.server.TcpServerEngine;
-import com.lealone.server.http.HttpServerEngine;
 import com.lealone.server.scheduler.GlobalScheduler;
 import com.lealone.sql.SQLEngine;
 import com.lealone.sql.config.Config;
@@ -431,8 +430,7 @@ public class Lealone {
                     if (webDir.exists() && webDir.isDirectory()) {
                         parameters.put("web_root", webDir.getAbsolutePath());
                     }
-                    if (name.equalsIgnoreCase(HttpServerEngine.NAME)
-                            && !parameters.containsKey("default_database")) {
+                    if (name.equalsIgnoreCase("HTTP") && !parameters.containsKey("default_database")) {
                         parameters.put("default_database", dbName);
                     }
                 }

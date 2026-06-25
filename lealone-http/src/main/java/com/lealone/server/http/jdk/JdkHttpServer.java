@@ -18,13 +18,10 @@ import com.lealone.db.scheduler.Scheduler;
 import com.lealone.net.AsyncConnection;
 import com.lealone.net.WritableChannel;
 import com.lealone.server.AsyncServer;
-import com.lealone.server.http.HttpRouter;
-import com.lealone.server.http.HttpServer;
-import com.lealone.server.http.HttpServerEngine;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpHandler;
 
-public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpServer {
+public class JdkHttpServer extends AsyncServer<AsyncConnection> {
 
     private static final Logger logger = LoggerFactory.getLogger(JdkHttpServer.class);
 
@@ -40,23 +37,19 @@ public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpS
         return JdkHttpServerEngine.NAME;
     }
 
-    @Override
     public String getWebRoot() {
         return webRoot;
     }
 
-    @Override
     public void setWebRoot(String webRoot) {
         this.webRoot = webRoot;
         config.put("web_root", webRoot);
     }
 
-    @Override
     public String getJdbcUrl() {
         return jdbcUrl;
     }
 
-    @Override
     public void setJdbcUrl(String jdbcUrl) {
         this.jdbcUrl = jdbcUrl;
         config.put("jdbc_url", jdbcUrl);
@@ -68,7 +61,6 @@ public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpS
         return super.getHost();
     }
 
-    @Override
     public void setHost(String host) {
         config.put("host", host);
     }
@@ -78,7 +70,6 @@ public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpS
         return super.getPort();
     }
 
-    @Override
     public void setPort(int port) {
         config.put("port", String.valueOf(port));
     }
@@ -119,7 +110,7 @@ public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpS
             // if (f != null)
             // ((java.util.Timer) f.get(jdkServer)).cancel();
             // }
-            HttpRouter router;
+            JdkHttpRouter router;
             String routerStr = config.get("router");
             if (routerStr != null) {
                 try {
@@ -172,7 +163,7 @@ public class JdkHttpServer extends AsyncServer<AsyncConnection> implements HttpS
 
     @Override
     protected int getDefaultPort() {
-        return HttpServerEngine.DEFAULT_PORT;
+        return JdkHttpServerEngine.DEFAULT_PORT;
     }
 
     @Override

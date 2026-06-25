@@ -208,7 +208,7 @@ public class NumericFunction extends BuiltInFunction {
         return result;
     }
 
-    private static strictfp double log10(double value) {
+    private static double log10(double value) {
         return roundmagic(StrictMath.log(value) / StrictMath.log(10));
     }
 

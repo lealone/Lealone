@@ -6,9 +6,12 @@
 package com.lealone.server.http.jdk;
 
 import com.lealone.server.ProtocolServer;
-import com.lealone.server.http.HttpServerEngine;
+import com.lealone.server.ProtocolServerEngineBase;
 
-public class JdkHttpServerEngine extends HttpServerEngine {
+public class JdkHttpServerEngine extends ProtocolServerEngineBase {
+
+    public static final String NAME = "JDKHTTP";
+    public static final int DEFAULT_PORT = 8080;
 
     public JdkHttpServerEngine() {
         super(NAME);

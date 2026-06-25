@@ -16,15 +16,13 @@ import java.util.Map.Entry;
 import com.lealone.common.util.IOUtils;
 import com.lealone.common.util.StringUtils;
 import com.lealone.db.service.ServiceHandler;
-import com.lealone.server.http.HttpRouter;
-import com.lealone.server.http.HttpServer;
 import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.SimpleFileServer;
 
-public class JdkHttpRouter implements HttpRouter {
+public class JdkHttpRouter {
 
     // private static final Logger log = LoggerFactory.getLogger(JdkHttpRouter.class);
 
@@ -33,9 +31,8 @@ public class JdkHttpRouter implements HttpRouter {
     protected String uploadDirectory;
     protected HttpContext httpContext;
 
-    @Override
-    public void init(HttpServer server, Map<String, String> config) {
-        jdkHttpServer = (JdkHttpServer) server;
+    public void init(JdkHttpServer server, Map<String, String> config) {
+        jdkHttpServer = server;
         webRoot = config.get("web_root");
         uploadDirectory = config.get("upload_directory");
         if (uploadDirectory == null)
