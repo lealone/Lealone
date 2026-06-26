@@ -1,0 +1,176 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.lealone.server.http.container;
+
+/**
+ * Global constants that are applicable to multiple packages within Catalina.
+ */
+public final class Globals {
+
+    // ------------------------------------------------- Request attribute names
+
+    public static final String ASYNC_SUPPORTED_ATTR = "com.lealone.server.http.container.ASYNC_SUPPORTED";
+
+    public static final String GSS_CREDENTIAL_ATTR = "com.lealone.server.http.container.realm.GSS_CREDENTIAL";
+
+    /**
+     * Request dispatcher state.
+     */
+    public static final String DISPATCHER_TYPE_ATTR = "com.lealone.server.http.container.core.DISPATCHER_TYPE";
+
+    /**
+     * Request dispatcher path.
+     */
+    public static final String DISPATCHER_REQUEST_PATH_ATTR = "com.lealone.server.http.container.core.DISPATCHER_REQUEST_PATH";
+
+    /**
+     * The request attribute under which we store the servlet name on a named dispatcher request.
+     */
+    public static final String NAMED_DISPATCHER_ATTR = "com.lealone.server.http.container.NAMED";
+
+    /**
+     * The request attribute set by the RemoteIpFilter, RemoteIpValve (and may be set by other similar components) that
+     * identifies for the connector the remote IP address claimed to be associated with this request when a request is
+     * received via one or more proxies. It is typically provided via the X-Forwarded-For HTTP header. Duplicated here
+     * for neater code in the catalina packages.
+     */
+    public static final String REMOTE_ADDR_ATTRIBUTE = com.lealone.server.http.protocol.Constants.REMOTE_ADDR_ATTRIBUTE;
+
+    /**
+     * The request attribute that is set to the value of {@code Boolean.TRUE} by the RemoteIpFilter, RemoteIpValve (and
+     * other similar components) that identifies a request which been forwarded via one or more proxies.
+     */
+    public static final String REQUEST_FORWARDED_ATTRIBUTE = "com.lealone.http.request.forwarded";
+
+    /**
+     * The request attribute that is set to the value of {@code Boolean.TRUE} if connector processing this request
+     * supports use of sendfile. Duplicated here for neater code in the catalina packages.
+     */
+    public static final String SENDFILE_SUPPORTED_ATTR = com.lealone.server.http.protocol.Constants.SENDFILE_SUPPORTED_ATTR;
+
+    /**
+     * The request attribute that is set to the value of {@code Boolean.TRUE} if
+     * {@link com.lealone.server.http.container.filters.RemoteIpFilter} determines that this request was submitted via a secure
+     * channel.
+     */
+    public static final String REMOTE_IP_FILTER_SECURE = "com.lealone.server.http.container.filters.RemoteIpFilter.secure";
+
+    /**
+     * The request attribute that can be used by a servlet to pass to the connector the name of the file that is to be
+     * served by sendfile. The value should be {@code String} that is {@code File.getCanonicalPath()} of the file to be
+     * served. Duplicated here for neater code in the catalina packages.
+     */
+    public static final String SENDFILE_FILENAME_ATTR = com.lealone.server.http.protocol.Constants.SENDFILE_FILENAME_ATTR;
+
+    /**
+     * The request attribute that can be used by a servlet to pass to the connector the start offset of the part of a
+     * file that is to be served by sendfile. The value should be {@code Long}. To serve complete file the value should
+     * be {@code Long.valueOf(0)}. Duplicated here for neater code in the catalina packages.
+     */
+    public static final String SENDFILE_FILE_START_ATTR = com.lealone.server.http.protocol.Constants.SENDFILE_FILE_START_ATTR;
+
+    /**
+     * The request attribute that can be used by a servlet to pass to the connector the end offset (not including) of
+     * the part of a file that is to be served by sendfile. The value should be {@code java.lang.Long}. To serve
+     * complete file the value should be equal to the length of the file. Duplicated here for neater code in the
+     * catalina packages.
+     */
+    public static final String SENDFILE_FILE_END_ATTR = com.lealone.server.http.protocol.Constants.SENDFILE_FILE_END_ATTR;
+
+    /**
+     * The request attribute under which we store the array of X509Certificate objects representing the certificate
+     * chain presented by our client, if any.
+     */
+    public static final String CERTIFICATES_ATTR = "com.lealone.server.servlet.request.X509Certificate";
+
+    /**
+     * The request attribute under which we store the name of the security protocol (e.g. TLSv1.3) being used on a
+     * secured connection (as an object of type {@link String}).
+     */
+    public static final String SECURE_PROTOCOL_ATTR = "com.lealone.server.servlet.request.secure_protocol";
+
+    /**
+     * The request attribute under which we store the name of the cipher suite being used on an SSL connection (as an
+     * object of type {@link String}).
+     */
+    public static final String CIPHER_SUITE_ATTR = "com.lealone.server.servlet.request.cipher_suite";
+
+    /**
+     * The request attribute under which we store the key size being used for this SSL connection (as an object of type
+     * {@link Integer}).
+     */
+    public static final String KEY_SIZE_ATTR = "com.lealone.server.servlet.request.key_size";
+
+    /**
+     * The request attribute under which we store the session id being used for this SSL connection (as an object of
+     * type {@link String}).
+     */
+    public static final String SSL_SESSION_ID_ATTR = "com.lealone.server.servlet.request.ssl_session_id";
+
+    /**
+     * The request attribute key for the session manager. This one is a Tomcat extension to the Servlet spec.
+     */
+    public static final String SSL_SESSION_MGR_ATTR = "com.lealone.server.servlet.request.ssl_session_mgr";
+
+    // ------------------------------------------ ServletContext attribute names
+
+    /**
+     * The servlet context attribute under which we store the alternate deployment descriptor for this web application
+     */
+    public static final String ALT_DD_ATTR = "com.lealone.server.http.container.deploy.alt_dd";
+
+    /**
+     * The servlet context attribute under which we store the class path for our application class loader (as an object
+     * of type String), delimited with the appropriate path delimiter for this platform.
+     */
+    public static final String CLASS_PATH_ATTR = "com.lealone.server.http.container.jsp_classpath";
+
+    /**
+     * Name of the ServletContext attribute under which we store the context Realm's CredentialHandler (if both the
+     * Realm and the CredentialHandler exist).
+     */
+    public static final String CREDENTIAL_HANDLER = "com.lealone.server.http.container.CredentialHandler";
+
+    /**
+     * The WebResourceRoot which is associated with the context. This can be used to manipulate static files.
+     */
+    public static final String RESOURCES_ATTR = "com.lealone.server.http.container.resources";
+
+    /**
+     * Name of the ServletContext attribute under which we store the web application version string (the text that
+     * appears after ## when parallel deployment is used).
+     */
+    public static final String WEBAPP_VERSION = "com.lealone.server.http.container.webappVersion";
+
+    // -------------------------------------------------------- Global constants
+
+    /**
+     * The flag which controls strict servlet specification compliance. Setting this flag to {@code true} will change
+     * the defaults for other settings.
+     */
+    public static final boolean STRICT_SERVLET_COMPLIANCE = Boolean
+            .getBoolean("com.lealone.server.http.container.STRICT_SERVLET_COMPLIANCE");
+
+    /**
+     * Default domain for MBeans if none can be determined
+     */
+    public static final String DEFAULT_MBEAN_DOMAIN = "Catalina";
+
+    // ----------------------------------------- Specification related constants
+
+    public static final String CONTENT_TYPE_FORM_URL_ENCODING = "application/x-www-form-urlencoded";
+}

@@ -1,0 +1,65 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package com.lealone.server.http.container.mapper;
+
+import com.lealone.server.http.container.Context;
+import com.lealone.server.http.container.Host;
+import com.lealone.server.http.container.Wrapper;
+import com.lealone.server.http.util.buf.MessageBytes;
+import com.lealone.server.servlet.http.MappingMatch;
+
+/**
+ * Mapping data.
+ */
+public class MappingData {
+
+    public Host host = null;
+    public Context context = null;
+    public int contextSlashCount = 0;
+    public Context[] contexts = null;
+    public Wrapper wrapper = null;
+    public boolean jspWildCard = false;
+
+    public final MessageBytes requestPath = MessageBytes.newInstance();
+    public final MessageBytes wrapperPath = MessageBytes.newInstance();
+    public final MessageBytes pathInfo = MessageBytes.newInstance();
+
+    public final MessageBytes redirectPath = MessageBytes.newInstance();
+
+    // Fields used by ApplicationMapping to implement com.lealone.server.servlet.http.HttpServletMapping
+    public MappingMatch matchType = null;
+
+    public void recycle() {
+        host = null;
+        context = null;
+        contextSlashCount = 0;
+        contexts = null;
+        wrapper = null;
+        jspWildCard = false;
+        requestPath.recycle();
+        wrapperPath.recycle();
+        pathInfo.recycle();
+        redirectPath.recycle();
+        matchType = null;
+    }
+
+    @Override
+    public final String toString() {
+        return "MappingData[" + host + ":" + context + ":" + wrapper + "]";
+    }
+
+}

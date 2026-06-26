@@ -1,0 +1,73 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.lealone.server.http.container.authenticator;
+
+import java.io.Serial;
+import java.io.Serializable;
+
+import com.lealone.server.http.container.Authenticator;
+import com.lealone.server.http.container.Context;
+import com.lealone.server.http.container.Manager;
+import com.lealone.server.http.container.Session;
+import com.lealone.server.http.container.SessionEvent;
+import com.lealone.server.http.container.SessionListener;
+
+public class SingleSignOnListener implements SessionListener, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private final String ssoId;
+
+    public SingleSignOnListener(String ssoId) {
+        this.ssoId = ssoId;
+    }
+
+    @Override
+    public void sessionEvent(SessionEvent event) {
+        final String type = event.getType();
+        if (!(Session.SESSION_DESTROYED_EVENT.equals(type)
+                || Session.SESSION_CHANGED_ID_EVENT.equals(type))) {
+            return;
+        }
+
+        Session session = event.getSession();
+        Manager manager = session.getManager();
+        if (manager == null) {
+            return;
+        }
+        Context context = manager.getContext();
+        Authenticator authenticator = context.getAuthenticator();
+        if (!(authenticator instanceof AuthenticatorBase)) {
+            return;
+        }
+        SingleSignOn sso = ((AuthenticatorBase) authenticator).sso;
+        if (sso == null) {
+            return;
+        }
+
+        switch (type) {
+        case Session.SESSION_CHANGED_ID_EVENT:
+            sso.sessionChangedId(ssoId, session, (String) event.getData());
+            break;
+
+        case Session.SESSION_DESTROYED_EVENT:
+            sso.sessionDestroyed(ssoId, session);
+            break;
+        }
+    }
+}

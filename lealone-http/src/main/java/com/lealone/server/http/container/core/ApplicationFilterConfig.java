@@ -1,0 +1,256 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.lealone.server.http.container.core;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
+
+import javax.naming.NamingException;
+
+import com.lealone.server.http.container.Context;
+import com.lealone.server.http.util.ExceptionUtils;
+import com.lealone.server.http.util.descriptor.FilterDef;
+import com.lealone.server.http.util.log.SystemLogHandler;
+import com.lealone.server.http.util.res.StringManager;
+import com.lealone.server.servlet.Filter;
+import com.lealone.server.servlet.FilterConfig;
+import com.lealone.server.servlet.ServletContext;
+import com.lealone.server.servlet.ServletException;
+
+/**
+ * Implementation of a <code>com.lealone.server.servlet.FilterConfig</code> useful in managing the filter instances instantiated
+ * when a web application is first started.
+ */
+public final class ApplicationFilterConfig implements FilterConfig, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    static final StringManager sm = StringManager.getManager(ApplicationFilterConfig.class);
+
+    /**
+     * Empty String collection to serve as the basis for empty enumerations.
+     */
+    private static final List<String> emptyString = Collections.emptyList();
+
+    // ----------------------------------------------------------- Constructors
+
+    /**
+     * Construct a new ApplicationFilterConfig for the specified filter definition.
+     *
+     * @param context   The context with which we are associated
+     * @param filterDef Filter definition for which a FilterConfig is to be constructed
+     *
+     * @exception ClassCastException     if the specified class does not implement the
+     *                                       <code>com.lealone.server.servlet.Filter</code> interface
+     * @exception ClassNotFoundException if the filter class cannot be found
+     * @exception IllegalAccessException if the filter class cannot be publicly instantiated
+     * @exception InstantiationException if an exception occurs while instantiating the filter object
+     * @exception ServletException       if thrown by the filter's init() method
+     *
+     * @throws NamingException          If a JNDI lookup fails
+     * @throws IllegalArgumentException If the provided configuration is not valid
+     */
+    ApplicationFilterConfig(Context context, FilterDef filterDef)
+            throws ClassCastException, ReflectiveOperationException, ServletException, NamingException,
+            IllegalArgumentException, SecurityException {
+
+        super();
+
+        this.context = context;
+        this.filterDef = filterDef;
+        // Allocate a new filter instance if necessary
+        if (filterDef.getFilter() == null) {
+            getFilter();
+        } else {
+            this.filter = filterDef.getFilter();
+            context.getInstanceManager().newInstance(filter);
+            initFilter();
+        }
+    }
+
+    // ----------------------------------------------------- Instance Variables
+
+    /**
+     * The Context with which we are associated.
+     */
+    private final transient Context context;
+
+    /**
+     * The application Filter we are configured for.
+     */
+    private transient Filter filter = null;
+
+    /**
+     * The <code>FilterDef</code> that defines our associated Filter.
+     */
+    private final FilterDef filterDef;
+
+    // --------------------------------------------------- FilterConfig Methods
+
+    @Override
+    public String getFilterName() {
+        return filterDef.getFilterName();
+    }
+
+    /**
+     * @return The class of the filter we are configuring.
+     */
+    public String getFilterClass() {
+        return filterDef.getFilterClass();
+    }
+
+    @Override
+    public String getInitParameter(String name) {
+
+        Map<String, String> map = filterDef.getParameterMap();
+        if (map == null) {
+            return null;
+        }
+
+        return map.get(name);
+
+    }
+
+    @Override
+    public Enumeration<String> getInitParameterNames() {
+        Map<String, String> map = filterDef.getParameterMap();
+
+        if (map == null) {
+            return Collections.enumeration(emptyString);
+        }
+
+        return Collections.enumeration(map.keySet());
+    }
+
+    @Override
+    public ServletContext getServletContext() {
+
+        return this.context.getServletContext();
+
+    }
+
+    @Override
+    public String toString() {
+        return "ApplicationFilterConfig[" + "name=" + filterDef.getFilterName() + ", filterClass="
+                + filterDef.getFilterClass() + ']';
+    }
+
+    // --------------------------------------------------------- Public Methods
+
+    public Map<String, String> getFilterInitParameterMap() {
+        return Collections.unmodifiableMap(filterDef.getParameterMap());
+    }
+
+    // -------------------------------------------------------- Package Methods
+
+    /**
+     * Return the application Filter we are configured for.
+     *
+     * @exception ClassCastException     if the specified class does not implement the
+     *                                       <code>com.lealone.server.servlet.Filter</code> interface
+     * @exception ClassNotFoundException if the filter class cannot be found
+     * @exception IllegalAccessException if the filter class cannot be publicly instantiated
+     * @exception InstantiationException if an exception occurs while instantiating the filter object
+     * @exception ServletException       if thrown by the filter's init() method
+     *
+     * @throws NamingException              If a JNDI lookup fails
+     * @throws ReflectiveOperationException If the creation of the filter fails
+     * @throws IllegalArgumentException     If the provided configuration is not valid
+     */
+    Filter getFilter() throws ClassCastException, ReflectiveOperationException, ServletException,
+            NamingException, IllegalArgumentException, SecurityException {
+
+        // Return the existing filter instance, if any
+        if (this.filter != null) {
+            return this.filter;
+        }
+
+        // Identify the class loader we will be using
+        String filterClass = filterDef.getFilterClass();
+        this.filter = (Filter) context.getInstanceManager().newInstance(filterClass);
+
+        initFilter();
+
+        return this.filter;
+
+    }
+
+    private void initFilter() throws ServletException {
+        if (context instanceof StandardContext && context.getSwallowOutput()) {
+            try {
+                SystemLogHandler.startCapture();
+                filter.init(this);
+            } finally {
+                String capturedlog = SystemLogHandler.stopCapture();
+                if (capturedlog != null && !capturedlog.isEmpty()) {
+                    getServletContext().log(capturedlog);
+                }
+            }
+        } else {
+            filter.init(this);
+        }
+    }
+
+    /**
+     * Return the filter definition we are configured for.
+     */
+    FilterDef getFilterDef() {
+        return this.filterDef;
+    }
+
+    /**
+     * Release the Filter instance associated with this FilterConfig, if there is one.
+     */
+    void release() {
+        if (this.filter != null) {
+            try {
+                filter.destroy();
+            } catch (Throwable t) {
+                ExceptionUtils.handleThrowable(t);
+                context.getLogger().error(sm.getString("applicationFilterConfig.release",
+                        filterDef.getFilterName(), filterDef.getFilterClass()), t);
+            }
+            if (!context.getIgnoreAnnotations()) {
+                try {
+                    context.getInstanceManager().destroyInstance(this.filter);
+                } catch (Exception e) {
+                    Throwable t = ExceptionUtils.unwrapInvocationTargetException(e);
+                    ExceptionUtils.handleThrowable(t);
+                    context.getLogger().error(sm.getString("applicationFilterConfig.preDestroy",
+                            filterDef.getFilterName(), filterDef.getFilterClass()), t);
+                }
+            }
+        }
+        this.filter = null;
+
+    }
+
+    /*
+     * Log objects are not Serializable.
+     */
+    @Serial
+    private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+        ois.defaultReadObject();
+    }
+}

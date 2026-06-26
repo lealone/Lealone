@@ -1,0 +1,664 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package com.lealone.server.http.protocol.http11.filters;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.lealone.server.http.protocol.ActionCode;
+import com.lealone.server.http.protocol.BadRequestException;
+import com.lealone.server.http.protocol.InputBuffer;
+import com.lealone.server.http.protocol.Request;
+import com.lealone.server.http.protocol.http11.Constants;
+import com.lealone.server.http.protocol.http11.InputFilter;
+import com.lealone.server.http.protocol.util.parser.ChunkExtension;
+import com.lealone.server.http.protocol.util.parser.HttpHeaderParser;
+import com.lealone.server.http.protocol.util.parser.ChunkExtension.State;
+import com.lealone.server.http.protocol.util.parser.HttpHeaderParser.HeaderDataSource;
+import com.lealone.server.http.protocol.util.parser.HttpHeaderParser.HeaderParseStatus;
+import com.lealone.server.http.util.buf.ByteChunk;
+import com.lealone.server.http.util.buf.HexUtils;
+import com.lealone.server.http.util.net.ApplicationBufferHandler;
+import com.lealone.server.http.util.res.StringManager;
+
+/**
+ * Chunked input filter. Parses chunked data according to <a href=
+ * "http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1">http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1</a><br>
+ */
+public class ChunkedInputFilter implements InputFilter, ApplicationBufferHandler, HeaderDataSource {
+
+    private static final StringManager sm = StringManager.getManager(ChunkedInputFilter.class);
+
+    // -------------------------------------------------------------- Constants
+
+    protected static final String ENCODING_NAME = "chunked";
+    protected static final ByteChunk ENCODING = new ByteChunk();
+
+    // ----------------------------------------------------- Static Initializer
+
+    static {
+        ENCODING.setBytes(ENCODING_NAME.getBytes(StandardCharsets.ISO_8859_1), 0,
+                ENCODING_NAME.length());
+    }
+
+    // ----------------------------------------------------- Instance Variables
+
+    /**
+     * Next buffer in the pipeline.
+     */
+    protected InputBuffer buffer;
+
+    /**
+     * Number of bytes remaining in the current chunk.
+     */
+    protected int remaining = 0;
+
+    /**
+     * Byte chunk used to read bytes.
+     */
+    protected ByteBuffer readChunk;
+
+    /**
+     * Buffer used to store trailing headers. Is normally in read mode.
+     */
+    protected final ByteBuffer trailingHeaders;
+
+    /**
+     * Request being parsed.
+     */
+    private final Request request;
+
+    /**
+     * Limit for extension size.
+     */
+    private final long maxExtensionSize;
+
+    private final int maxSwallowSize;
+
+    private final Set<String> allowedTrailerHeaders;
+
+    /*
+     * Parsing state.
+     */
+    private volatile ParseState parseState = ParseState.CHUNK_HEADER;
+    private volatile boolean crFound = false;
+    private volatile int chunkSizeDigitsRead = 0;
+    private volatile State extensionState = null;
+    private final AtomicLong extensionSize = new AtomicLong(0);
+    private final HttpHeaderParser httpHeaderParser;
+
+    // ----------------------------------------------------------- Constructors
+
+    public ChunkedInputFilter(final Request request, int maxTrailerSize,
+            Set<String> allowedTrailerHeaders, int maxExtensionSize, int maxSwallowSize) {
+        this.request = request;
+        this.trailingHeaders = ByteBuffer.allocate(maxTrailerSize);
+        this.trailingHeaders.limit(0);
+        this.allowedTrailerHeaders = allowedTrailerHeaders;
+        this.maxExtensionSize = maxExtensionSize;
+        this.maxSwallowSize = maxSwallowSize;
+        this.httpHeaderParser = new HttpHeaderParser(this, request.getMimeTrailerFields(), false);
+    }
+
+    // ---------------------------------------------------- InputBuffer Methods
+
+    @Override
+    public int doRead(ApplicationBufferHandler handler) throws IOException {
+        while (true) {
+            switch (parseState) {
+            case CHUNK_HEADER:
+                if (!parseChunkHeader()) {
+                    return 0;
+                }
+                break;
+            case CHUNK_BODY:
+                return parseChunkBody(handler);
+            case CHUNK_BODY_CRLF:
+                if (!parseCRLF()) {
+                    return 0;
+                }
+                parseState = ParseState.CHUNK_HEADER;
+                break;
+            case TRAILER_FIELDS:
+                if (!parseTrailerFields()) {
+                    return 0;
+                }
+                /*
+                 * If on a non-container thread the dispatch in parseTrailerFields() will have triggered the
+                 * recycling of this filter so return -1 here else the non-container thread may try and continue
+                 * reading.
+                 */
+                return -1;
+            case FINISHED:
+                return -1;
+            case ERROR:
+            default:
+                throw new IOException(sm.getString("chunkedInputFilter.error"));
+            }
+        }
+    }
+
+    // ---------------------------------------------------- InputFilter Methods
+
+    @Override
+    public void setRequest(Request request) {
+        // NO-OP - Request is fixed and passed to constructor.
+    }
+
+    @Override
+    public long end() throws IOException {
+        long swallowed = 0;
+        int read;
+        // Consume extra bytes : parse the stream until the end chunk is found
+        while ((read = doRead(this)) >= 0) {
+            swallowed += read;
+            if (maxSwallowSize > -1 && swallowed > maxSwallowSize) {
+                throwBadRequestException(sm.getString("inputFilter.maxSwallow"));
+            }
+        }
+        // Excess bytes copied to trailingHeaders need to be restored in readChunk for the next request.
+        if (trailingHeaders.remaining() > 0) {
+            readChunk.position(readChunk.position() - trailingHeaders.remaining());
+        }
+        // Return the number of extra bytes which were consumed
+        return readChunk.remaining();
+    }
+
+    @Override
+    public int available() {
+        int available = 0;
+        if (readChunk != null) {
+            available = readChunk.remaining();
+        }
+
+        if (available > 2
+                && (parseState == ParseState.CHUNK_BODY_CRLF || parseState == ParseState.CHUNK_HEADER)) {
+            if (parseState == ParseState.CHUNK_BODY_CRLF) {
+                if (skipCRLF()) {
+                    parseState = ParseState.CHUNK_HEADER;
+                }
+            }
+            if (parseState == ParseState.CHUNK_HEADER) {
+                skipChunkHeader();
+            }
+            // If ending as TRAILER_FIELDS, then the next read will be EOF and available can be > 0
+            // If ending as CHUNK_HEADER then there's nothing left to read for now
+            // If ending as CHUNK_BODY then data is available
+            // If failed, will throw when trying again on the next read for CRLF or header
+            available = readChunk.remaining();
+        }
+        if (available == 1 && parseState == ParseState.CHUNK_BODY_CRLF) {
+            skipCRLF();
+            // LF to read next, or failed
+            available = readChunk.remaining();
+        } else if (available == 2 && !crFound && parseState == ParseState.CHUNK_BODY_CRLF) {
+            // Just CRLF is left in the buffer. There is no data to read.
+            if (skipCRLF()) {
+                parseState = ParseState.CHUNK_HEADER;
+            }
+            available = readChunk.remaining();
+        }
+
+        if (available == 0) {
+            // No data buffered here. Try the next filter in the chain.
+            return buffer.available();
+        } else {
+            return available;
+        }
+    }
+
+    @Override
+    public void setBuffer(InputBuffer buffer) {
+        this.buffer = buffer;
+    }
+
+    @Override
+    public void recycle() {
+        remaining = 0;
+        if (readChunk != null) {
+            readChunk.position(0).limit(0);
+        }
+        trailingHeaders.clear();
+        trailingHeaders.limit(0);
+        parseState = ParseState.CHUNK_HEADER;
+        crFound = false;
+        chunkSizeDigitsRead = 0;
+        extensionState = null;
+        extensionSize.set(0);
+        httpHeaderParser.recycle();
+    }
+
+    @Override
+    public ByteChunk getEncodingName() {
+        return ENCODING;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return parseState == ParseState.FINISHED;
+    }
+
+    // ------------------------------------------------------ Protected Methods
+
+    /**
+     * Read bytes from the previous buffer.
+     *
+     * @return The byte count which has been read
+     *
+     * @throws IOException Read error
+     */
+    protected int readBytes() throws IOException {
+        return buffer.doRead(this);
+    }
+
+    @Override
+    public boolean fillHeaderBuffer() throws IOException {
+        // fill() automatically detects if blocking or non-blocking IO should be used
+        if (fill()) {
+            if (trailingHeaders.position() == trailingHeaders.capacity()) {
+                // At maxTrailerSize. Any further read will exceed maxTrailerSize.
+                throw new BadRequestException(sm.getString("chunkedInputFilter.maxTrailer"));
+            }
+
+            // Configure trailing headers for appending additional data
+            int originalPos = trailingHeaders.position();
+            trailingHeaders.position(trailingHeaders.limit());
+            trailingHeaders.limit(trailingHeaders.capacity());
+
+            if (readChunk.remaining() > trailingHeaders.remaining()) {
+                // readChunk has more data available than trailingHeaders has space so adjust limit
+                int originalLimit = readChunk.limit();
+                readChunk.limit(readChunk.position() + trailingHeaders.remaining());
+                trailingHeaders.put(readChunk);
+                readChunk.limit(originalLimit);
+            } else {
+                // readChunk has less data than trailingHeaders has remaining so no need to adjust limit.
+                trailingHeaders.put(readChunk);
+            }
+
+            // Configure trailing headers for reading
+            trailingHeaders.limit(trailingHeaders.position());
+            trailingHeaders.position(originalPos);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean fill() throws IOException {
+        if (readChunk == null || readChunk.position() >= readChunk.limit()) {
+            // Automatically detects if blocking or non-blocking should be used
+            int read = readBytes();
+            if (read < 0) {
+                // Unexpected end of stream
+                throwBadRequestException(sm.getString("chunkedInputFilter.invalidHeader"));
+            } else {
+                return read != 0;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Parse the header of a chunk. A chunk header can look like one of the following:<br>
+     * A10CRLF<br>
+     * F23;chunk-extension to be ignoredCRLF
+     * <p>
+     * The letters before CRLF or ';' (whatever comes first) must be valid hex digits. We should not parse
+     * F23IAMGONNAMESSTHISUP34CRLF as a valid header according to the spec.
+     *
+     * @return {@code true} if the read is complete or {@code false if incomplete}. In complete reads can only happen
+     *             with non-blocking I/O.
+     *
+     * @throws IOException Read error
+     */
+    private boolean parseChunkHeader() throws IOException {
+
+        boolean eol = false;
+
+        while (!eol) {
+            if (!fill()) {
+                return false;
+            }
+
+            byte chr = readChunk.get(readChunk.position());
+
+            if (extensionState != null) {
+                try {
+                    extensionState = ChunkExtension.parse(chr, extensionState);
+                } catch (IOException ioe) {
+                    throwBadRequestException(sm.getString("chunkedInputFilter.invalidHeader"));
+                }
+                if (extensionState == State.CR) {
+                    extensionState = null;
+                    if (!parseCRLF()) {
+                        return false;
+                    }
+                    eol = true;
+                } else {
+                    // Check the size
+                    long extSize = extensionSize.incrementAndGet();
+                    if (maxExtensionSize > -1 && extSize > maxExtensionSize) {
+                        throwBadRequestException(sm.getString("chunkedInputFilter.maxExtension"));
+                    }
+                }
+            } else if (chr == Constants.CR || chr == Constants.LF) {
+                if (!parseCRLF()) {
+                    return false;
+                }
+                eol = true;
+            } else if (chr == Constants.SEMI_COLON) {
+                /*
+                 * First semicolon marks the start of the extension. ChunkedExtension parser takes over for the
+                 * remainder of the extension.
+                 */
+                extensionState = State.PRE_NAME;
+                long extSize = extensionSize.incrementAndGet();
+                if (maxExtensionSize > -1 && extSize > maxExtensionSize) {
+                    return false;
+                }
+            } else {
+                int charValue = HexUtils.getDec(chr);
+                if (charValue != -1 && chunkSizeDigitsRead < 8) {
+                    chunkSizeDigitsRead++;
+                    remaining = (remaining << 4) | charValue;
+                } else {
+                    // Isn't valid hex so this is an error condition
+                    throwBadRequestException(sm.getString("chunkedInputFilter.invalidHeader"));
+                }
+            }
+
+            // Parsing the CRLF increments position
+            if (!eol) {
+                readChunk.position(readChunk.position() + 1);
+            }
+        }
+
+        if (chunkSizeDigitsRead == 0 || remaining < 0) {
+            throwBadRequestException(sm.getString("chunkedInputFilter.invalidHeader"));
+        } else {
+            chunkSizeDigitsRead = 0;
+        }
+
+        if (remaining == 0) {
+            parseState = ParseState.TRAILER_FIELDS;
+        } else {
+            parseState = ParseState.CHUNK_BODY;
+        }
+
+        return true;
+    }
+
+    private boolean skipChunkHeader() {
+
+        boolean eol = false;
+
+        while (!eol) {
+            if (readChunk == null || readChunk.position() >= readChunk.limit()) {
+                return false;
+            }
+
+            byte chr = readChunk.get(readChunk.position());
+
+            if (extensionState != null) {
+                try {
+                    extensionState = ChunkExtension.parse(chr, extensionState);
+                } catch (IOException ioe) {
+                    /*
+                     * Can't throw the exception here. Need to swallow it. It will be thrown when parseChunkHeader()
+                     * is called. Not very efficient but it is an error condition for something that is hardly ever
+                     * used.
+                     */
+                    return false;
+                }
+                if (extensionState == State.CR) {
+                    extensionState = null;
+                    if (!skipCRLF()) {
+                        return false;
+                    }
+                    eol = true;
+                } else {
+                    // Check the size
+                    long extSize = extensionSize.incrementAndGet();
+                    if (maxExtensionSize > -1 && extSize > maxExtensionSize) {
+                        return false;
+                    }
+                }
+            } else if (chr == Constants.CR || chr == Constants.LF) {
+                if (!skipCRLF()) {
+                    return false;
+                }
+                eol = true;
+            } else if (chr == Constants.SEMI_COLON) {
+                /*
+                 * First semicolon marks the start of the extension. ChunkedExtension parser takes over for the
+                 * remainder of the extension.
+                 */
+                extensionState = State.PRE_NAME;
+                long extSize = extensionSize.incrementAndGet();
+                if (maxExtensionSize > -1 && extSize > maxExtensionSize) {
+                    return false;
+                }
+            } else {
+                int charValue = HexUtils.getDec(chr);
+                if (charValue != -1 && chunkSizeDigitsRead < 8) {
+                    chunkSizeDigitsRead++;
+                    remaining = (remaining << 4) | charValue;
+                } else {
+                    // Isn't valid hex so this is an error condition
+                    return false;
+                }
+            }
+
+            // Parsing the CRLF increments position
+            if (!eol) {
+                readChunk.position(readChunk.position() + 1);
+            }
+        }
+
+        if (chunkSizeDigitsRead == 0 || remaining < 0) {
+            return false;
+        } else {
+            chunkSizeDigitsRead = 0;
+        }
+
+        if (remaining == 0) {
+            parseState = ParseState.TRAILER_FIELDS;
+        } else {
+            parseState = ParseState.CHUNK_BODY;
+        }
+
+        return true;
+    }
+
+    private int parseChunkBody(ApplicationBufferHandler handler) throws IOException {
+        int result;
+
+        if (!fill()) {
+            return 0;
+        }
+
+        if (remaining > readChunk.remaining()) {
+            result = readChunk.remaining();
+            remaining = remaining - result;
+            if (readChunk != handler.getByteBuffer()) {
+                handler.setByteBuffer(readChunk.duplicate());
+            }
+            readChunk.position(readChunk.limit());
+        } else {
+            result = remaining;
+            if (readChunk != handler.getByteBuffer()) {
+                handler.setByteBuffer(readChunk.duplicate());
+                handler.getByteBuffer().limit(readChunk.position() + remaining);
+            }
+            readChunk.position(readChunk.position() + remaining);
+            remaining = 0;
+
+            parseState = ParseState.CHUNK_BODY_CRLF;
+        }
+
+        return result;
+    }
+
+    /**
+     * Parse CRLF at end of chunk.
+     *
+     * @return {@code true} if the read is complete or {@code false if incomplete}. Incomplete reads can only happen
+     *             with non-blocking I/O.
+     *
+     * @throws IOException An error occurred parsing CRLF
+     */
+    private boolean parseCRLF() throws IOException {
+
+        boolean eol = false;
+
+        while (!eol) {
+            if (!fill()) {
+                return false;
+            }
+
+            byte chr = readChunk.get(readChunk.position());
+            if (chr == Constants.CR) {
+                if (crFound) {
+                    throwBadRequestException(sm.getString("chunkedInputFilter.invalidCrlfCRCR"));
+                }
+                crFound = true;
+            } else if (chr == Constants.LF) {
+                if (!crFound) {
+                    throwBadRequestException(sm.getString("chunkedInputFilter.invalidCrlfNoCR"));
+                }
+                eol = true;
+            } else {
+                throwBadRequestException(sm.getString("chunkedInputFilter.invalidCrlf"));
+            }
+
+            readChunk.position(readChunk.position() + 1);
+        }
+
+        crFound = false;
+        return true;
+    }
+
+    private boolean skipCRLF() {
+
+        boolean eol = false;
+
+        while (!eol) {
+            if (readChunk == null || readChunk.position() >= readChunk.limit()) {
+                return false;
+            }
+
+            byte chr = readChunk.get(readChunk.position());
+            if (chr == Constants.CR) {
+                if (crFound) {
+                    return false;
+                }
+                crFound = true;
+            } else if (chr == Constants.LF) {
+                if (!crFound) {
+                    return false;
+                }
+                eol = true;
+            } else {
+                return false;
+            }
+
+            readChunk.position(readChunk.position() + 1);
+        }
+
+        crFound = false;
+        return true;
+    }
+
+    /**
+     * Parse end chunk data.
+     *
+     * @return {@code true} if the read is complete or {@code false if incomplete}. In complete reads can only happen
+     *             with non-blocking I/O.
+     *
+     * @throws IOException Error propagation
+     */
+    private boolean parseTrailerFields() throws IOException {
+        // Handle optional trailer headers
+        HeaderParseStatus status;
+        do {
+            try {
+                status = httpHeaderParser.parseHeader();
+            } catch (IllegalArgumentException iae) {
+                parseState = ParseState.ERROR;
+                throw new BadRequestException(iae);
+            }
+        } while (status == HeaderParseStatus.HAVE_MORE_HEADERS);
+        if (status == HeaderParseStatus.DONE) {
+            parseState = ParseState.FINISHED;
+            request.getMimeTrailerFields().filter(allowedTrailerHeaders);
+            if (request.getReadListener() != null) {
+                /*
+                 * Perform the dispatch back to the container for the onAllDataRead() event. For non-chunked input this
+                 * would be performed when isReady() is next called.
+                 *
+                 * Chunked input returns one chunk at a time for non-blocking reads. A consequence of this is that
+                 * reading the final chunk returns -1 which signals the end of stream. The application code reading the
+                 * request body probably won't call isReady() after receiving the -1 return value since it already knows
+                 * it is at end of stream. Therefore we trigger the dispatch back to the container here which in turn
+                 * ensures the onAllDataRead() event is fired.
+                 */
+                request.action(ActionCode.DISPATCH_READ, null);
+                request.action(ActionCode.DISPATCH_EXECUTE, null);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void throwBadRequestException(String msg) throws IOException {
+        parseState = ParseState.ERROR;
+        throw new BadRequestException(msg);
+    }
+
+    @Override
+    public void setByteBuffer(ByteBuffer buffer) {
+        readChunk = buffer;
+    }
+
+    @Override
+    public ByteBuffer getByteBuffer() {
+        return readChunk;
+    }
+
+    @Override
+    public ByteBuffer getHeaderByteBuffer() {
+        return trailingHeaders;
+    }
+
+    @Override
+    public void expand(int size) {
+        // no-op
+    }
+
+    private enum ParseState {
+        CHUNK_HEADER,
+        CHUNK_BODY,
+        CHUNK_BODY_CRLF,
+        TRAILER_FIELDS,
+        FINISHED,
+        ERROR
+    }
+}

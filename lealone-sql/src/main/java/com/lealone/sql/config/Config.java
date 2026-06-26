@@ -45,7 +45,7 @@ public class Config {
 
         boolean enableHttpServer;
         try {
-            Class.forName("com.lealone.server.http.jdk.JdkHttpServerEngine");
+            Class.forName("com.lealone.server.http.HttpServerEngine");
             enableHttpServer = true;
         } catch (Throwable t) {
             enableHttpServer = false;

@@ -1,0 +1,92 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package com.lealone.server.http.protocol;
+
+import com.lealone.server.http.util.net.SocketEvent;
+
+/**
+ * Adapter. This represents the entry point in a coyote-based servlet container.
+ *
+ * @see ProtocolHandler
+ */
+public interface Adapter {
+
+    /**
+     * Call the service method, and notify all listeners.
+     *
+     * @param req The request object
+     * @param res The response object
+     *
+     * @exception Exception if an error happens during handling of the request. Common errors are:
+     *                          <ul>
+     *                          <li>IOException if an input/output error occurs and we are processing an included
+     *                          servlet (otherwise it is swallowed and handled by the top level error handler mechanism)
+     *                          <li>ServletException if a servlet throws an exception and we are processing an included
+     *                          servlet (otherwise it is swallowed and handled by the top level error handler mechanism)
+     *                          </ul>
+     *                          Tomcat should be able to handle and log any other exception ( including runtime
+     *                          exceptions )
+     */
+    void service(Request req, Response res) throws Exception;
+
+    /**
+     * Prepare the given request/response for processing. This method requires that the request object has been
+     * populated with the information available from the HTTP headers.
+     *
+     * @param req The request object
+     * @param res The response object
+     *
+     * @return <code>true</code> if processing can continue, otherwise <code>false</code> in which case an appropriate
+     *             error will have been set on the response
+     *
+     * @throws Exception If the processing fails unexpectedly
+     */
+    boolean prepare(Request req, Response res) throws Exception;
+
+    /**
+     * Dispatch asynchronous event.
+     *
+     * @param req    the request object
+     * @param res    the response object
+     * @param status the event being processed
+     *
+     * @return {@code true} if the dispatch was successful
+     *
+     * @throws Exception If the processing fails unexpectedly
+     */
+    boolean asyncDispatch(Request req, Response res, SocketEvent status) throws Exception;
+
+    /**
+     * Callback to allow logging access outside of the execution of the regular service.
+     *
+     * @param req  the request object
+     * @param res  the response object
+     * @param time time taken to process the request/response in milliseconds (use 0 if not known)
+     */
+    void log(Request req, Response res, long time);
+
+    /**
+     * Assert that request and response have been recycled. If they have not then log a warning and force a recycle.
+     * This method is called as a safety check when a processor is being recycled and may be returned to a pool for
+     * reuse.
+     *
+     * @param req Request
+     * @param res Response
+     */
+    void checkRecycled(Request req, Response res);
+
+}

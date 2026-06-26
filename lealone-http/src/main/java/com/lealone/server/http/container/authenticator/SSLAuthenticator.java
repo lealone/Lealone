@@ -1,0 +1,224 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.lealone.server.http.container.authenticator;
+
+import java.io.IOException;
+import java.security.Principal;
+import java.security.cert.X509Certificate;
+
+import com.lealone.common.logging.Logger;
+import com.lealone.common.logging.LoggerFactory;
+import com.lealone.server.http.container.Container;
+import com.lealone.server.http.container.Context;
+import com.lealone.server.http.container.Engine;
+import com.lealone.server.http.container.Globals;
+import com.lealone.server.http.container.Host;
+import com.lealone.server.http.container.LifecycleException;
+import com.lealone.server.http.container.connector.Connector;
+import com.lealone.server.http.container.connector.Request;
+import com.lealone.server.http.protocol.ActionCode;
+import com.lealone.server.http.protocol.UpgradeProtocol;
+import com.lealone.server.http.util.net.Constants;
+import com.lealone.server.http.util.net.SSLHostConfig;
+import com.lealone.server.http.util.net.SSLHostConfig.CertificateVerification;
+import com.lealone.server.servlet.http.HttpServletRequest;
+import com.lealone.server.servlet.http.HttpServletResponse;
+
+/**
+ * An <b>Authenticator</b> and <b>Valve</b> implementation of authentication that utilizes SSL certificates to identify
+ * client users.
+ */
+public class SSLAuthenticator extends AuthenticatorBase {
+
+    private final Logger log = LoggerFactory.getLogger(SSLAuthenticator.class); // must not be static
+
+    /**
+     * Authenticate the user by checking for the existence of a certificate chain, validating it against the trust
+     * manager for the connector and then validating the user's identity against the configured Realm.
+     *
+     * @param request  Request we are processing
+     * @param response Response we are creating
+     *
+     * @exception IOException if an input/output error occurs
+     */
+    @Override
+    protected boolean doAuthenticate(Request request, HttpServletResponse response) throws IOException {
+
+        /*
+         * Reauthentication using the cached user name and password (if any) is not enabled for CLIENT-CERT
+         * authentication. This was an historical design decision made because CLIENT-CERT authentication is viewed as
+         * more secure than BASIC/FORM.
+         *
+         * However, reauthentication was introduced to handle the case where the Realm took additional actions on
+         * authentication. Reauthenticating with the cached user name and password may not be sufficient for CLIENT-CERT
+         * since it will not make any TLS information (client certificate etc) available that a web application may
+         * depend on. Therefore, the reauthentication behaviour for CLIENT-CERT is to perform a normal CLIENT-CERT
+         * authentication.
+         */
+        if (checkForCachedAuthentication(request, response, false)) {
+            return true;
+        }
+
+        // Retrieve the certificate chain for this client
+        if (containerLog.isTraceEnabled()) {
+            containerLog.trace(" Looking up certificates");
+        }
+
+        X509Certificate[] certs = getRequestCertificates(request);
+
+        if ((certs == null) || (certs.length < 1)) {
+            if (containerLog.isDebugEnabled()) {
+                containerLog.debug(sm.getString("sslAuthenticatorValve.noCertificates"));
+            }
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    sm.getString("authenticator.certificates"));
+            return false;
+        }
+
+        // Authenticate the specified certificate chain
+        Principal principal = context.getRealm().authenticate(certs);
+        if (principal == null) {
+            if (containerLog.isDebugEnabled()) {
+                containerLog.debug(sm.getString("sslAuthenticatorValve.authFailed"));
+            }
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    sm.getString("authenticator.unauthorized"));
+            return false;
+        }
+
+        // Cache the principal (if requested) and record this authentication
+        register(request, response, principal, HttpServletRequest.CLIENT_CERT_AUTH, null, null);
+        return true;
+
+    }
+
+    @Override
+    protected String getAuthMethod() {
+        return HttpServletRequest.CLIENT_CERT_AUTH;
+    }
+
+    @Override
+    protected boolean isPreemptiveAuthPossible(Request request) {
+        X509Certificate[] certs = getRequestCertificates(request);
+        return certs != null && certs.length > 0;
+    }
+
+    /**
+     * Look for the X509 certificate chain in the Request under the key
+     * <code>com.lealone.server.servlet.request.X509Certificate</code>. If not found, trigger extracting the certificate chain from
+     * the Coyote request.
+     *
+     * @param request Request to be processed
+     *
+     * @return The X509 certificate chain if found, <code>null</code> otherwise.
+     */
+    protected X509Certificate[] getRequestCertificates(final Request request)
+            throws IllegalStateException {
+
+        X509Certificate[] certs = (X509Certificate[]) request.getAttribute(Globals.CERTIFICATES_ATTR);
+
+        if ((certs == null) || (certs.length < 1)) {
+            try {
+                request.getCoyoteRequest().action(ActionCode.REQ_SSL_CERTIFICATE, null);
+                certs = (X509Certificate[]) request.getAttribute(Globals.CERTIFICATES_ATTR);
+            } catch (IllegalStateException ise) {
+                // Request body was too large for save buffer
+                // Return null which will trigger an auth failure
+            }
+        }
+
+        return certs;
+    }
+
+    @Override
+    protected void startInternal() throws LifecycleException {
+
+        super.startInternal();
+
+        /*
+         * This Valve should only ever be added to a Context and if the Context is started there should always be a Host
+         * and an Engine but test at each stage to be safe.
+         */
+        Container container = getContainer();
+        if (!(container instanceof Context context)) {
+            return;
+        }
+        container = context.getParent();
+        if (!(container instanceof Host host)) {
+            return;
+        }
+        container = host.getParent();
+        if (!(container instanceof Engine engine)) {
+            return;
+        }
+
+        Connector[] connectors = engine.getService().findConnectors();
+
+        for (Connector connector : connectors) {
+            /*
+             * There are two underlying issues here.
+             *
+             * 1. JSSE does not implement post-handshake authentication (PHA) for TLS 1.3. That means CLIENT-CERT
+             * authentication will only work if the virtual host requires a certificate OR the client never requests a
+             * protected resource.
+             *
+             * 2. HTTP/2 does not permit re-negotiation nor PHA. That means CLIENT-CERT authentication will only work if
+             * the virtual host requires a certificate OR the client never requests a protected resource.
+             *
+             * We can't rely on the client never requesting a protected resource but we can check if all the virtual
+             * hosts are configured to require a certificate.
+             */
+            boolean allHostsRequireCertificate = true;
+            for (SSLHostConfig sslHostConfig : connector.findSslHostConfigs()) {
+                if (sslHostConfig.getCertificateVerification() != CertificateVerification.REQUIRED) {
+                    allHostsRequireCertificate = false;
+                    break;
+                }
+            }
+
+            // Only need to check for use of HTTP/2 or TLS 1.3 if one or more hosts doesn't require a certificate
+            if (!allHostsRequireCertificate) {
+                // Check if the Connector is configured to support upgrade to HTTP/2
+                UpgradeProtocol[] upgradeProtocols = connector.findUpgradeProtocols();
+                for (UpgradeProtocol upgradeProtocol : upgradeProtocols) {
+                    if ("h2".equals(upgradeProtocol.getAlpnName())) {
+                        log.warn(sm.getString("sslAuthenticatorValve.http2", context.getName(),
+                                host.getName(), connector));
+                        break;
+                    }
+                }
+
+                // Check if any of the virtual hosts support TLS 1.3 without supporting PHA
+                for (SSLHostConfig sslHostConfig : connector.findSslHostConfigs()) {
+                    if (!sslHostConfig.isTls13RenegotiationAvailable()) {
+                        String[] enabledProtocols = sslHostConfig.getEnabledProtocols();
+                        if (enabledProtocols == null) {
+                            // Possibly boundOnInit is used, so use the less accurate protocols
+                            enabledProtocols = sslHostConfig.getProtocols().toArray(new String[0]);
+                        }
+                        for (String enabledProtocol : enabledProtocols) {
+                            if (Constants.SSL_PROTO_TLSv1_3.equals(enabledProtocol)) {
+                                log.warn(sm.getString("sslAuthenticatorValve.tls13", context.getName(),
+                                        host.getName(), connector));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

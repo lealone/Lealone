@@ -1,0 +1,375 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements.  See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package com.lealone.server.http.util.buf;
+
+import java.io.ByteArrayOutputStream;
+import java.io.CharConversionException;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Serial;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
+import com.lealone.server.http.util.res.StringManager;
+
+/**
+ * All URL decoding happens here. This way we can reuse, review, optimize without adding complexity to the buffers. The
+ * conversion will modify the original buffer.
+ */
+public final class UDecoder {
+
+    private static final StringManager sm = StringManager.getManager(UDecoder.class);
+
+    private static class DecodeException extends CharConversionException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        DecodeException(String s) {
+            super(s);
+        }
+
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            // This class does not provide a stack trace
+            return this;
+        }
+    }
+
+    /** Unexpected end of data. */
+    private static final IOException EXCEPTION_EOF = new DecodeException(sm.getString("uDecoder.eof"));
+
+    /** %xx with not-hex digit */
+    private static final IOException EXCEPTION_NOT_HEX_DIGIT = new DecodeException(
+            sm.getString("uDecoder.isHexDigit"));
+
+    /** %-encoded slash is forbidden in resource path */
+    private static final IOException EXCEPTION_SLASH = new DecodeException(
+            sm.getString("uDecoder.noSlash"));
+
+    /** %-encoded backslash is forbidden in resource path */
+    private static final IOException EXCEPTION_BACKSLASH = new DecodeException(
+            sm.getString("uDecoder.noBackslash"));
+
+    /**
+     * URLDecode, will modify the source. Assumes source bytes are encoded using a superset of US-ASCII as per RFC 7230.
+     * "%5c" will be decoded. "%2f" will be rejected unless the input is a query string.
+     *
+     * @param mb    The URL encoded bytes
+     * @param query {@code true} if this is a query string. For a query string '+' will be decoded to ' '
+     *
+     * @throws IOException Invalid %xx URL encoding
+     */
+    public void convert(ByteChunk mb, boolean query) throws IOException {
+        if (query) {
+            convert(mb, true, EncodedSolidusHandling.DECODE, EncodedSolidusHandling.DECODE);
+        } else {
+            convert(mb, false, EncodedSolidusHandling.REJECT, EncodedSolidusHandling.DECODE);
+        }
+    }
+
+    /**
+     * URLDecode, will modify the source. Assumes source bytes are encoded using a superset of US-ASCII as per RFC 7230.
+     *
+     * @param mb                     The URL encoded bytes
+     * @param encodedSolidusHandling How should the %2f sequence handled by the decoder? For query strings this
+     *                                   parameter will be ignored and the %2f sequence will be decoded
+     *
+     * @throws IOException Invalid %xx URL encoding
+     *
+     * @deprecated Unused. Will be removed in Tomcat 12. Use
+     *                 {@link #convert(ByteChunk, EncodedSolidusHandling, EncodedSolidusHandling)}
+     */
+    @Deprecated
+    public void convert(ByteChunk mb, EncodedSolidusHandling encodedSolidusHandling) throws IOException {
+        convert(mb, false, encodedSolidusHandling, EncodedSolidusHandling.DECODE);
+    }
+
+    /**
+     * URLDecode, will modify the source. Assumes source bytes are encoded using a superset of US-ASCII as per RFC 7230.
+     *
+     * @param mb                            The URL encoded bytes
+     * @param encodedSolidusHandling        How should the %2f sequence handled by the decoder?
+     * @param encodedReverseSolidusHandling How should the %5c sequence handled by the decoder?
+     *
+     * @throws IOException Invalid %xx URL encoding
+     */
+    public void convert(ByteChunk mb, EncodedSolidusHandling encodedSolidusHandling,
+            EncodedSolidusHandling encodedReverseSolidusHandling) throws IOException {
+        convert(mb, false, encodedSolidusHandling, encodedReverseSolidusHandling);
+    }
+
+    private void convert(ByteChunk mb, boolean query, EncodedSolidusHandling encodedSolidusHandling,
+            EncodedSolidusHandling encodedReverseSolidusHandling) throws IOException {
+
+        int start = mb.getStart();
+        byte[] buff = mb.getBytes();
+        int end = mb.getEnd();
+
+        int idx = ByteChunk.findByte(buff, start, end, (byte) '%');
+        int idx2 = -1;
+        if (query) {
+            idx2 = ByteChunk.findByte(buff, start, (idx >= 0 ? idx : end), (byte) '+');
+        }
+        if (idx < 0 && idx2 < 0) {
+            return;
+        }
+
+        // idx will be the smallest positive index ( first % or + )
+        if ((idx2 >= 0 && idx2 < idx) || idx < 0) {
+            idx = idx2;
+        }
+
+        for (int j = idx; j < end; j++, idx++) {
+            if (buff[j] == '+' && query) {
+                buff[idx] = (byte) ' ';
+            } else if (buff[j] != '%') {
+                buff[idx] = buff[j];
+            } else {
+                // read next 2 digits
+                if (j + 2 >= end) {
+                    throw EXCEPTION_EOF;
+                }
+                byte b1 = buff[j + 1];
+                byte b2 = buff[j + 2];
+                if (!isHexDigit(b1) || !isHexDigit(b2)) {
+                    throw EXCEPTION_NOT_HEX_DIGIT;
+                }
+
+                j += 2;
+                int res = x2c(b1, b2);
+                if (res == '/') {
+                    switch (encodedSolidusHandling) {
+                    case DECODE: {
+                        buff[idx] = (byte) res;
+                        break;
+                    }
+                    case REJECT: {
+                        throw EXCEPTION_SLASH;
+                    }
+                    case PASS_THROUGH: {
+                        buff[idx++] = buff[j - 2];
+                        buff[idx++] = buff[j - 1];
+                        buff[idx] = buff[j];
+                    }
+                    }
+                } else if (res == '\\') {
+                    switch (encodedReverseSolidusHandling) {
+                    case DECODE: {
+                        buff[idx] = (byte) res;
+                        break;
+                    }
+                    case REJECT: {
+                        throw EXCEPTION_BACKSLASH;
+                    }
+                    case PASS_THROUGH: {
+                        buff[idx++] = buff[j - 2];
+                        buff[idx++] = buff[j - 1];
+                        buff[idx] = buff[j];
+                    }
+                    }
+                } else if (res == '%') {
+                    /*
+                     * If encoded '/' or '\' is going to be left encoded then so must be encoded '%' else the subsequent
+                     * %nn decoding will either fail or corrupt the output.
+                     */
+                    if (encodedSolidusHandling.equals(EncodedSolidusHandling.PASS_THROUGH)
+                            || encodedReverseSolidusHandling
+                                    .equals(EncodedSolidusHandling.PASS_THROUGH)) {
+                        buff[idx++] = buff[j - 2];
+                        buff[idx++] = buff[j - 1];
+                        buff[idx] = buff[j];
+                    } else {
+                        buff[idx] = (byte) res;
+                    }
+                } else {
+                    buff[idx] = (byte) res;
+                }
+            }
+        }
+
+        mb.setEnd(idx);
+    }
+
+    // -------------------- Additional methods --------------------
+
+    /**
+     * Decode and return the specified URL-encoded String. It is assumed the string is not a query string.
+     *
+     * @param str     The url-encoded string
+     * @param charset The character encoding to use; if null, UTF-8 is used.
+     *
+     * @return the decoded string
+     *
+     * @exception IllegalArgumentException if a '%' character is not followed by a valid 2-digit hexadecimal number
+     */
+    public static String URLDecode(String str, Charset charset) {
+        return URLDecode(str, charset, EncodedSolidusHandling.DECODE, EncodedSolidusHandling.DECODE);
+    }
+
+    /**
+     * Decode and return the specified URL-encoded String. It is assumed the string is not a query string.
+     *
+     * @param str                           The url-encoded string
+     * @param charset                       The character encoding to use; if null, UTF-8 is used.
+     * @param encodedSolidusHandling        The required handling of encoded solidus (%2f - /)
+     * @param encodedReverseSolidusHandling The required handling of encoded reverse solidus (%5c - \)
+     *
+     * @return the decoded string
+     *
+     * @exception IllegalArgumentException if a '%' character is not followed by a valid 2-digit hexadecimal number
+     */
+    public static String URLDecode(String str, Charset charset,
+            EncodedSolidusHandling encodedSolidusHandling,
+            EncodedSolidusHandling encodedReverseSolidusHandling) {
+        if (str == null) {
+            return null;
+        }
+
+        if (str.indexOf('%') == -1) {
+            // No %nn sequences, so return string unchanged
+            return str;
+        }
+
+        if (charset == null) {
+            charset = StandardCharsets.UTF_8;
+        }
+
+        /*
+         * Decoding is required.
+         *
+         * Potential complications:
+         *
+         * - The source String may be partially decoded so it is not valid to assume that the source String is ASCII.
+         *
+         * - Have to process as characters since there is no guarantee that the byte sequence for '%' is going to be the
+         * same in all character sets.
+         *
+         * - We don't know how many '%nn' sequences are required for a single character. It varies between character
+         * sets and some use a variable length.
+         */
+
+        // This isn't perfect, but it is a reasonable guess for the size of the
+        // array required
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(str.length() * 2);
+
+        OutputStreamWriter osw = new OutputStreamWriter(baos, charset);
+
+        char[] sourceChars = str.toCharArray();
+        int len = sourceChars.length;
+        int ix = 0;
+
+        try {
+            while (ix < len) {
+                char c = sourceChars[ix++];
+                if (c == '%') {
+                    osw.flush();
+                    if (ix + 2 > len) {
+                        throw new IllegalArgumentException(
+                                sm.getString("uDecoder.urlDecode.missingDigit", str));
+                    }
+                    char c1 = sourceChars[ix++];
+                    char c2 = sourceChars[ix++];
+                    if (isHexDigit(c1) && isHexDigit(c2)) {
+                        int decoded = x2c(c1, c2);
+                        switch (decoded) {
+                        case '/': {
+                            switch (encodedSolidusHandling) {
+                            case DECODE: {
+                                osw.append('/');
+                                break;
+                            }
+                            case PASS_THROUGH: {
+                                osw.append(c);
+                                osw.append(c1);
+                                osw.append(c2);
+                                break;
+                            }
+                            case REJECT: {
+                                throw new IllegalArgumentException(
+                                        sm.getString("uDecoder.urlDecode.rejectEncodedSolidus", str));
+                            }
+                            }
+                            break;
+                        }
+                        case '\\': {
+                            switch (encodedReverseSolidusHandling) {
+                            case DECODE: {
+                                osw.append('\\');
+                                break;
+                            }
+                            case PASS_THROUGH: {
+                                osw.append(c);
+                                osw.append(c1);
+                                osw.append(c2);
+                                break;
+                            }
+                            case REJECT: {
+                                throw new IllegalArgumentException(sm.getString(
+                                        "uDecoder.urlDecode.rejectEncodedReverseSolidus", str));
+                            }
+                            }
+                            break;
+                        }
+                        case '%': {
+                            if (encodedReverseSolidusHandling == EncodedSolidusHandling.PASS_THROUGH
+                                    || encodedSolidusHandling == EncodedSolidusHandling.PASS_THROUGH) {
+                                osw.append(c);
+                                osw.append(c1);
+                                osw.append(c2);
+                            } else {
+                                baos.write('%');
+                            }
+                            break;
+                        }
+                        default:
+                            baos.write(decoded);
+                        }
+                    } else {
+                        throw new IllegalArgumentException(
+                                sm.getString("uDecoder.urlDecode.missingDigit", str));
+                    }
+                } else {
+                    osw.append(c);
+                }
+            }
+            osw.flush();
+
+            return baos.toString(charset);
+        } catch (IOException ioe) {
+            throw new IllegalArgumentException(
+                    sm.getString("uDecoder.urlDecode.conversionError", str, charset.name()), ioe);
+        }
+    }
+
+    private static boolean isHexDigit(int c) {
+        return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+    }
+
+    private static int x2c(byte b1, byte b2) {
+        int digit = (b1 >= 'A') ? ((b1 & 0xDF) - 'A') + 10 : (b1 - '0');
+        digit *= 16;
+        digit += (b2 >= 'A') ? ((b2 & 0xDF) - 'A') + 10 : (b2 - '0');
+        return digit;
+    }
+
+    private static int x2c(char b1, char b2) {
+        int digit = (b1 >= 'A') ? ((b1 & 0xDF) - 'A') + 10 : (b1 - '0');
+        digit *= 16;
+        digit += (b2 >= 'A') ? ((b2 & 0xDF) - 'A') + 10 : (b2 - '0');
+        return digit;
+    }
+}

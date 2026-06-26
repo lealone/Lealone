@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* 主容器 */
+        .chat-container {
+            width: 100%;
+            max-width: 900px;
+            height: 85vh;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 头部 */
+        .chat-header {
+            padding: 16px 20px;
+            background: #409eff;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* 消息展示区域 */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* 消息气泡通用样式 */
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* 保留换行和空格 */
+        }
+
+        /* 用户消息（右侧） */
+        .user-message {
+            align-self: flex-end;
+            background: #409eff;
+            color: white;
+        }
+
+        /* AI 回复消息（左侧） */
+        .ai-message {
+            align-self: flex-start;
+            background: #e9eef5;
+            color: #333;
+        }
+
+        /* 代码块样式 */
+        .ai-message pre {
+            margin: 10px 0;
+            border-radius: 6px;
+            overflow: auto;
+            background: #f7f7f7;
+            padding: 10px;
+        }
+
+        .ai-message code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        /* 加载中状态 */
+        .loading {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+        }
+
+        /* 输入区域 */
+        .chat-input {
+            display: flex;
+            padding: 16px;
+            border-top: 1px solid #eee;
+            gap: 12px;
+        }
+
+        /* 输入框 */
+        #promptInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+            resize: none;
+            height: 50px;
+        }
+
+        #promptInput:focus {
+            border-color: #409eff;
+        }
+
+        /* 发送按钮 */
+        #sendBtn {
+            padding: 0 24px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        #sendBtn:hover {
+            background: #337ecc;
+        }
+
+        #sendBtn:disabled {
+            background: #a0cfff;
+            cursor: not-allowed;
+        }
+
+        /* 滚动条美化 */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI 对话助手</div>
+        <div class="chat-messages" id="messageContainer"></div>
+        <div class="chat-input">
+            <textarea id="promptInput" placeholder="请输入你的提示词..." autofocus></textarea>
+            <button id="sendBtn">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageContainer = document.getElementById('messageContainer');
+
+        // 发送提示词
+        async function sendPrompt() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            addMessage(prompt, 'user');
+            promptInput.value = '';
+            sendBtn.disabled = true;
+            const loadingDom = addLoading();
+
+            try {
+                const response = await fetch('/service/lealone_system_service/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+
+                if (!response.ok) throw new Error(`请求失败：${response.status}`);
+                const res = await response.json();
+                loadingDom.remove();
+
+                // 渲染带格式的内容（仅保留换行和转义）
+                const reply = res.data || res.reply || '无回复';
+                const formattedText = formatMessageWithCode(reply);
+                addMessage(formattedText, 'ai', true);
+
+            } catch (err) {
+                loadingDom.remove();
+                addMessage(`请求错误：${err.message}`, 'ai');
+                console.error(err);
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+
+        // 格式化消息：仅保留代码块和换行，无高亮
+        function formatMessageWithCode(text) {
+            if (!text) return '';
+            return text
+                .replace(/```([\s\S]*?)```/g, (match, code) => {
+                    return `<pre><code>${escapeHtml(code)}</code></pre>`;
+                })
+                .replace(/\n/g, '<br>');
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        // 添加消息
+        function addMessage(text, type, isHtml = false) {
+            const div = document.createElement('div');
+            div.className = `message ${type}-message`;
+            
+            if (isHtml) {
+                div.innerHTML = text;
+            } else {
+                div.textContent = text;
+            }
+
+            messageContainer.appendChild(div);
+            scrollToBottom();
+            return div;
+        }
+
+        // 加载中
+        function addLoading() {
+            const div = document.createElement('div');
+            div.className = 'loading';
+            div.textContent = 'AI 思考中...';
+            messageContainer.appendChild(div);
+            scrollToBottom();
+            return div;
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        // 事件绑定
+        sendBtn.addEventListener('click', sendPrompt);
+        promptInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendPrompt();
+            }
+        });
+    </script>
+</body>
+</html>

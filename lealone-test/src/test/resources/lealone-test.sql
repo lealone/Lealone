@@ -41,12 +41,12 @@ set lealone (
     ),
     protocol_server_engine: (
         name: 'HTTP',
-        enabled: false,
+        enabled: true,
         port: 8080,
         allow_others: true,
         ssl: false,
         session_timeout: -1,
         --web_root: 'src/test/resources/http',
-        router: 'com.lealone.test.http.JdkHttpServerStart'
+        --router: 'com.lealone.test.http.HttpServerStart'
     )
 )
