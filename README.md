@@ -13,7 +13,8 @@
 `mvn assembly:assembly -Dmaven.test.skip=true`
 
 编译运行需要 [JDK 21+](https://www.oracle.com/java/technologies/downloads/)
-或者直接下载 [lealone-8.0.0-SNAPSHOT.jar](https://lealone-plugins.github.io/lealone.github.io/lealone/lealone-8.0.0-SNAPSHOT.jar)
+
+可以直接下载 [lealone-8.0.0-SNAPSHOT.jar](https://lealone-plugins.github.io/lealone.github.io/lealone/lealone-8.0.0-SNAPSHOT.jar)
 
 
 ### 启动 Lealone
