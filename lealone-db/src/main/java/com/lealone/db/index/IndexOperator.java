@@ -142,9 +142,18 @@ public class IndexOperator implements Runnable, SchedulerTaskManager {
                             continue;
                         }
                         int status = io.getStatus();
-                        if (status == 0)
-                            continue outer; // 未提交，不能进行后续处理
-                        else if (status < 0) {
+                        if (status == 0) {
+                            // 如果当前事务未提交，可以在当前事务中直接执行索引操作
+                            if (io.transaction == session.getTransaction()) {
+                                io.run(this.index, session);
+                                io.setCompleted(true);
+                                indexOperationSize.decrementAndGet();
+                                io = io.getNext();
+                                continue;
+                            } else {
+                                continue outer; // 未提交，不能进行后续处理
+                            }
+                        } else if (status < 0) {
                             io.setCompleted(true); // 已经回滚，直接废弃
                             continue;
                         }

@@ -19,6 +19,7 @@ public class IndexTest extends SqlTestBase {
         insert();
         select();
         testCommit();
+        testUncommitIndex();
         // testRollback(); //TODO
         // testSavepoint(); //TODO
     }
@@ -207,5 +208,21 @@ public class IndexTest extends SqlTestBase {
         printResultSet();
         sql = "SELECT count(*) FROM IndexTest";
         assertEquals(2, getIntValue(1, true));
+    }
+
+    void testUncommitIndex() throws Exception {
+        stmt.executeUpdate("drop index if exists myUncommitIndex");
+        stmt.executeUpdate("drop table if exists testUncommitIndex");
+        stmt.executeUpdate("create table if not exists testUncommitIndex (pk int primary key, f1 int)");
+        stmt.executeUpdate("create index if not exists myUncommitIndex ON testUncommitIndex(f1)");
+        conn.setAutoCommit(false);
+        stmt.executeUpdate("insert into testUncommitIndex values(10, 100)");
+        sql = "SELECT count(*) FROM testUncommitIndex where pk=10";
+        assertEquals(1, getIntValue(1, true));
+        sql = "SELECT count(*) FROM testUncommitIndex where f1=100";
+        assertEquals(1, getIntValue(1, true));
+        conn.commit();
+        sql = "SELECT count(*) FROM testUncommitIndex where f1=100";
+        assertEquals(1, getIntValue(1, true));
     }
 }
