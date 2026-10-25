@@ -87,10 +87,10 @@ public class TransactionalValue extends LockableBase {
         return buff.toString();
     }
 
-    public static void insertLock(Lockable Lockable, AOTransaction t) {
-        RowLock rowLock = new RowLock(Lockable);
-        Lockable.setLock(rowLock);
-        rowLock.lockFast(t, Lockable, null); // insert的场景，old value是null
+    public static void insertLock(Lockable lockable, AOTransaction t) {
+        RowLock rowLock = new RowLock(lockable);
+        lockable.setLock(rowLock);
+        rowLock.lockFast(t, lockable, null); // insert的场景，old value是null
     }
 
     // 二级索引需要设置
@@ -118,13 +118,6 @@ public class TransactionalValue extends LockableBase {
         return lock != null ? lock.getOldValue() : null;
     }
 
-    private static Object maybeDeleted(Lockable lockable) {
-        if (lockable.getLockedValue() == null)
-            return null; // 已经删除
-        else
-            return lockable.getValue();
-    }
-
     public static Object getValue(Lockable lockable, AOTransaction transaction, StorageMap<?, ?> map) {
         // 如果事务当前执行的是更新类的语句那么自动通过READ_COMMITTED级别读取最新版本的记录
         int isolationLevel = transaction.isUpdateCommand() ? Transaction.IL_READ_COMMITTED
@@ -138,14 +131,14 @@ public class TransactionalValue extends LockableBase {
             t = null;
         } else {
             if (lock.isPageLock() && isolationLevel < Transaction.IL_REPEATABLE_READ) {
-                return maybeDeleted(lockable);
+                return getValue(lockable);
             }
             // 先拿到LockOwner再用它获取信息，否则会产生并发问题
             lockOwner = lock.getLockOwner();
             t = (AOTransaction) lockOwner.getTransaction();
             // 如果拥有锁的事务是当前事务或当前事务的父事务，直接返回当前值
             if (t != null && (t == transaction || t == transaction.getParentTransaction())) {
-                return maybeDeleted(lockable);
+                return getValue(lockable);
             }
         }
         switch (isolationLevel) {
@@ -156,10 +149,7 @@ public class TransactionalValue extends LockableBase {
             if (t.isCommitted()) {
                 return getValue(lockable);
             } else {
-                if (lockOwner.getOldValue() == null)
-                    return SIGHTLESS; // 刚刚insert但是还没有提交的记录
-                else
-                    return lockable.copy(lockOwner.getOldValue(), lock);
+                return getValue(lockable, lock, lockOwner);
             }
         }
         case Transaction.IL_REPEATABLE_READ:
@@ -175,7 +165,7 @@ public class TransactionalValue extends LockableBase {
                     if (t != null && lockOwner.getOldValue() != null) {
                         return lockable.copy(lockOwner.getOldValue(), lock);
                     } else {
-                        return maybeDeleted(lockable);
+                        return getValue(lockable);
                     }
                 }
                 while (oldValue != null) {
@@ -186,10 +176,7 @@ public class TransactionalValue extends LockableBase {
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
             if (t != null) {
-                if (lockOwner.getOldValue() != null)
-                    return lockable.copy(lockOwner.getOldValue(), lock);
-                else
-                    return SIGHTLESS; // 刚刚insert但是还没有提交的记录
+                getValue(lockable, lock, lockOwner);
             } else {
                 return getValue(lockable);
             }
@@ -199,6 +186,21 @@ public class TransactionalValue extends LockableBase {
         }
         default:
             throw DbException.getInternalError();
+        }
+    }
+
+    private static Object getValue(Lockable lockable, Lock lock, LockOwner lockOwner) {
+        Object oldValue = lockOwner.getOldValue();
+        if (oldValue == null)
+            return SIGHTLESS; // 刚刚insert但是还没有提交的记录
+        else {
+            if (oldValue instanceof Lockable oldLockable) {
+                if (oldLockable.getLock() != null)
+                    return SIGHTLESS;
+                else
+                    return oldLockable;
+            }
+            return lockable.copy(oldValue, lock);
         }
     }
 
@@ -314,7 +316,19 @@ public class TransactionalValue extends LockableBase {
     }
 
     public static void rollback(Object oldValue, Lockable lockable) {
-        lockable.setLockedValue(oldValue);
+        // 同一个事务，先删除再更新，见AOTransactionMap.add
+        if (oldValue == lockable.getLockedValue()) {
+            lockable.setLockedValue(null);
+            Lock lock = lockable.getLock();
+            if (lock == null)
+                return;
+            // 如果是唯一索引，重新变成原来的key，见AOTransactionMap.add
+            if (lock.getOldValue() instanceof Lockable oldLockable) {
+                lockable.setKey(oldLockable.getKey());
+            }
+        } else {
+            lockable.setLockedValue(oldValue);
+        }
     }
 
     public static void write(Lockable lockable, DataBuffer buff, StorageDataType valueType,

@@ -10,7 +10,7 @@ import com.lealone.transaction.Transaction;
 
 public class RowLockOwner extends SimpleLockOwner {
 
-    private final Object oldValue;
+    private volatile Object oldValue;
 
     public RowLockOwner(Transaction transaction, Object oldValue) {
         super(transaction);
@@ -20,5 +20,10 @@ public class RowLockOwner extends SimpleLockOwner {
     @Override
     public Object getOldValue() {
         return oldValue;
+    }
+
+    @Override
+    public void setOldValue(Object oldValue) {
+        this.oldValue = oldValue;
     }
 }

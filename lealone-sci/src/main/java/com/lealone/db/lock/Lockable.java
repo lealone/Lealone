@@ -12,6 +12,13 @@ public interface Lockable {
     public default void setKey(Object key) {
     }
 
+    public default void setKey(long key) {
+    }
+
+    public default long getKey() {
+        return 0;
+    }
+
     // 如果实现类包装了一个被锁的对象，那它就返回这个对象，否则返回自身
     public default Object getValue() {
         return this;

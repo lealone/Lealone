@@ -27,6 +27,10 @@ public abstract class Lock {
         return ref.get().getOldValue();
     }
 
+    public void setOldValue(Object oldValue) {
+        ref.get().setOldValue(oldValue);
+    }
+
     public boolean isLockedExclusivelyBy(InternalSession session) {
         return ref.get().getTransaction() == session.getTransaction();
     }
@@ -128,8 +132,11 @@ public abstract class Lock {
         Object v = lockable.getLockedValue();
         if (v == null) {
             Lock lock = lockable.getLock();
-            if (lock != null && lock.getOldValue() != null)
+            if (lock != null && lock.getOldValue() != null) {
                 v = lock.getOldValue();
+                if (v instanceof Lockable oldLockable)
+                    v = oldLockable.getLockedValue();
+            }
         }
         return (V) v;
     }

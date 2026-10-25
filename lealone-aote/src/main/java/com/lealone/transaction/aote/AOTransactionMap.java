@@ -12,6 +12,7 @@ import com.lealone.agent.SystemOutline;
 import com.lealone.agent.SystemOutlineNode;
 import com.lealone.common.util.DataUtils;
 import com.lealone.db.async.AsyncResultHandler;
+import com.lealone.db.lock.Lock;
 import com.lealone.db.lock.Lockable;
 import com.lealone.db.scheduler.SchedulerListener;
 import com.lealone.db.session.InternalSession;
@@ -193,7 +194,10 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             V value;
 
             @Override
+            @SuppressWarnings("unchecked")
             public K getKey() {
+                if (getKeyType().isUniqueKey())
+                    return (K) value;
                 return cursor.getKey();
             }
 
@@ -369,9 +373,18 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (ifAbsent) {
                         // 在提交或回滚时直接忽略即可
                         r.setUndone(true);
+                        Lock lock = old.getLock();
                         // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                        if (old.getLockedValue() == null) {
+                        if (old.getLockedValue() == null && lock != null
+                                && lock.getTransaction() == transaction) {
+                            // 如果是唯一索引，需要在lock中保留旧的Lockable的一个拷贝，其他事务可以读到旧值，
+                            // 最后再更新旧的Lockable的key
+                            if (getKeyType().isUniqueKey()) {
+                                lock.setOldValue(old.copySelf(lock.getOldValue()));
+                                old.setKey(lockable.getKey());
+                            }
                             old.setLockedValue(lockable.getLockedValue());
+                            // oldValue参数不能传递null，否则在rollback时会提前删除，这是不对的
                             addUndoLog(key, old, lockable.getLockedValue());
                         } else {
                             topHandler.handleResult(Transaction.OPERATION_DATA_DUPLICATE);
@@ -414,13 +427,21 @@ public class AOTransactionMap<K, V> implements TransactionMap<K, V> {
             // 当前行已经被其他事务锁住了
             return Transaction.OPERATION_NEED_WAIT;
         }
+        Object oldValue = lockable.getLockedValue();
         if (lockable.isNoneLock()) {
             TransactionalValue.setTransaction(transaction, lockable); // 二级索引需要设置
             if (markDirtyPage(key, lockable) != null)
                 map.put(key, lockable);
+        } else {
+            Lock lock = lockable.getLock();
+            // 在同一个事务中先insert再delete同一条记录，保留旧记录
+            if (lock != null && lock.getOldValue() == null) {
+                Lockable old = lockable.copySelf(oldValue);
+                old.setLock(lock);
+                lock.setOldValue(old);
+            }
         }
         lockable.setMetaVersion(getValueType().getMetaVersion());
-        Object oldValue = lockable.getLockedValue();
         lockable.setLockedValue(value);
         addUndoLog(key, lockable, oldValue);
         return Transaction.OPERATION_COMPLETE;

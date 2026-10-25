@@ -17,4 +17,7 @@ public class LockOwner {
     public Object getOldValue() {
         return null;
     }
+
+    public void setOldValue(Object oldValue) {
+    }
 }

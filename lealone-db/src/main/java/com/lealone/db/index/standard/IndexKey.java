@@ -19,10 +19,12 @@ public abstract class IndexKey extends LockableBase {
         this.key = key;
     }
 
+    @Override
     public void setKey(long key) {
         this.key = key;
     }
 
+    @Override
     public long getKey() {
         return key;
     }
@@ -53,7 +55,10 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Value[] getColumns() {
-            return new Value[] { column };
+            if (column != null)
+                return new Value[] { column };
+            else
+                return new Value[] { Lock.getLockedValue(this) };
         }
 
         @Override
@@ -71,6 +76,9 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Object copy(Object oldLockedValue, Lock lock) {
+            if (oldLockedValue instanceof SingleIndexKey) {
+                return oldLockedValue;
+            }
             SingleIndexKey k = new SingleIndexKey(getKey(), (Value) oldLockedValue);
             k.setLock(lock);
             return k;
@@ -78,6 +86,9 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Lockable copySelf(Object oldLockedValue) {
+            if (oldLockedValue instanceof SingleIndexKey) {
+                return (Lockable) oldLockedValue;
+            }
             return new SingleIndexKey(getKey(), (Value) oldLockedValue);
         }
     }
@@ -93,7 +104,10 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Value[] getColumns() {
-            return columns;
+            if (columns != null)
+                return columns;
+            else
+                return (Value[]) Lock.getLockedValue(this);
         }
 
         @Override
@@ -111,6 +125,9 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Object copy(Object oldLockedValue, Lock lock) {
+            if (oldLockedValue instanceof CompoundIndexKey) {
+                return oldLockedValue;
+            }
             CompoundIndexKey k = new CompoundIndexKey(getKey(), (Value[]) oldLockedValue);
             k.setLock(lock);
             return k;
@@ -118,6 +135,9 @@ public abstract class IndexKey extends LockableBase {
 
         @Override
         public Lockable copySelf(Object oldLockedValue) {
+            if (oldLockedValue instanceof CompoundIndexKey) {
+                return (Lockable) oldLockedValue;
+            }
             return new CompoundIndexKey(getKey(), (Value[]) oldLockedValue);
         }
     }

@@ -45,6 +45,11 @@ public abstract class IndexKeyType extends StandardDataType {
     }
 
     @Override
+    public boolean isUniqueKey() {
+        return isUnique;
+    }
+
+    @Override
     public Object read(ByteBuffer buff, int formatVersion) {
         long key;
         Value[] columns;
@@ -193,10 +198,17 @@ public abstract class IndexKeyType extends StandardDataType {
             IndexKey bKey = (IndexKey) b;
             Value[] ax = Lock.getLockedValue(aKey);
             Value[] bx = Lock.getLockedValue(bKey);
+            // if (ax == null) {
+            // ax = (Value[]) index.getDataMap().getOldValue(aKey);
+            // }
             if (bx == null) {
                 bx = (Value[]) index.getDataMap().getOldValue(bKey);
-                if (bx == null)
-                    return 1;
+            }
+            if (ax == null && bx != null) {
+                return -1;
+            }
+            if (ax != null && bx == null) {
+                return 1;
             }
             int comp = compareValues(ax, bx);
             if (comp == 0 && !isUnique) // 唯一索引key不需要比较最后的rowId
