@@ -349,6 +349,17 @@ public class FileStorage {
         return filePos;
     }
 
+    public void resetFilePointer() {
+        try {
+            file.position(0);
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, fileName);
+        }
+        readCount = 0;
+        readBytes = 0;
+        filePos = 0;
+    }
+
     /**
      * Automatically delete the file once it is no longer in use.
      */
@@ -619,6 +630,7 @@ public class FileStorage {
 
     public InputStream getInputStream() {
         checkPowerOff();
+        resetFilePointer();
         return new FileStorageInputStream(this, handler, false, false, true);
     }
 }
