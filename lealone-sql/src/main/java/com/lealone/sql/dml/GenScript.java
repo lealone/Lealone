@@ -666,7 +666,8 @@ public class GenScript extends ScriptBase {
     }
 
     private boolean excludeSchema(Schema schema) {
-        if (schemaNames != null && !schemaNames.contains(schema.getName())) {
+        if (schemaNames != null && !schemaNames.contains(schema.getName())
+                || schema.getDatabase().isSystemSchema(schema)) {
             return true;
         }
         if (tables != null) {
