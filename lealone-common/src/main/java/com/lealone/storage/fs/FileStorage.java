@@ -62,11 +62,11 @@ public class FileStorage {
             String mode, String cipher, byte[] key) {
         CaseInsensitiveMap<Object> config = new CaseInsensitiveMap<>();
         if (mode != null)
-            config.put("mode", mode);
+            config.put(DbSetting.MODE.name(), mode);
         if (cipher != null)
-            config.put("cipher", cipher);
+            config.put(DbSetting.CIPHER.name(), cipher);
         if (key != null)
-            config.put("encryptionKey", key);
+            config.put(DbSetting.ENCRYPTION_KEY.name(), key);
         FileStorage fs = open(fileName, config);
         if (handler != null) {
             fs.handler = handler;
@@ -145,7 +145,7 @@ public class FileStorage {
         this.fileName = fileName;
         Object encryptionKey = config.get(DbSetting.ENCRYPTION_KEY.name());
         boolean readOnly = config.containsKey(DbSetting.READ_ONLY.name());
-        mode = (String) config.get("mode");
+        mode = (String) config.get(DbSetting.MODE.name());
         if (fileName != null) {
             FilePath p = FilePath.get(fileName);
             // if no explicit scheme was specified, NIO is used
@@ -174,7 +174,7 @@ public class FileStorage {
                 else
                     key = (byte[]) encryptionKey;
                 encryptedFile = file;
-                String cipher = (String) config.get("cipher");
+                String cipher = (String) config.get(DbSetting.CIPHER.name());
                 file = new FileEncrypt(fileName, cipher, key, file);
             }
             try {
