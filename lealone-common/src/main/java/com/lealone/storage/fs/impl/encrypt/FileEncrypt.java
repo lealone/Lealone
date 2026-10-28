@@ -98,10 +98,13 @@ public class FileEncrypt extends FileBase {
         this.size = base.size() - HEADER_LENGTH;
         boolean newFile = size < 0;
         byte[] salt;
+        byte[] key;
         if (newFile) {
             byte[] header = Arrays.copyOf(HEADER, BLOCK_SIZE);
             salt = MathUtils.secureRandomBytes(SALT_LENGTH);
             System.arraycopy(salt, 0, header, SALT_POS, salt.length);
+            key = SHA256.getPBKDF2(encryptionKey, salt, HASH_ITERATIONS, 16);
+            System.arraycopy(key, 0, header, SALT_POS + SALT_LENGTH, key.length);
             DataUtils.writeFully(base, 0, ByteBuffer.wrap(header));
             size = 0;
         } else {
@@ -113,9 +116,16 @@ public class FileEncrypt extends FileBase {
                 }
             }
             salt = new byte[SALT_LENGTH];
+            key = new byte[16];
             DataUtils.readFully(base, SALT_POS, ByteBuffer.wrap(salt));
+            DataUtils.readFully(base, SALT_POS + SALT_LENGTH, ByteBuffer.wrap(key));
             if ((size & BLOCK_SIZE_MASK) != 0) {
                 size -= BLOCK_SIZE;
+            }
+            if (SysProperties.CHECK) {
+                if (!Arrays.equals(key, SHA256.getPBKDF2(encryptionKey, salt, HASH_ITERATIONS, 16))) {
+                    throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, name);
+                }
             }
         }
         BlockCipher cipher;
@@ -123,7 +133,7 @@ public class FileEncrypt extends FileBase {
             cipher = CipherFactory.getBlockCipher(this.cipher);
         else
             cipher = new AES();
-        cipher.setKey(SHA256.getPBKDF2(encryptionKey, salt, HASH_ITERATIONS, 16));
+        cipher.setKey(key);
         encryptionKey = null;
         xts = new XTS(cipher);
     }

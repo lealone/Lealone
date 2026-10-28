@@ -7,6 +7,7 @@ package com.lealone.test.sql.dml;
 
 import org.junit.Test;
 
+import com.lealone.db.api.ErrorCode;
 import com.lealone.test.sql.SqlTestBase;
 
 public class ScriptTest extends SqlTestBase {
@@ -28,5 +29,15 @@ public class ScriptTest extends SqlTestBase {
         executeUpdate("drop table ScriptTest");
         String fileName = "./target/test-data/script_directory/my_script_test.sql";
         executeUpdate("RUNSCRIPT FROM '" + fileName + "'");
+
+        try {
+            sql = "SCRIPT SIMPLE NODATA NOPASSWORDS NOSETTINGS  TO '" + fileName
+                    + "' CIPHER AES PASSWORD 'x' TABLE ScriptTest";
+            executeQuery(sql);
+            executeUpdate("RUNSCRIPT FROM '" + fileName + "' CIPHER AES PASSWORD 'x2'");
+            fail();
+        } catch (Exception e) {
+            assertErrorCode(e, ErrorCode.FILE_ENCRYPTION_ERROR_1);
+        }
     }
 }
