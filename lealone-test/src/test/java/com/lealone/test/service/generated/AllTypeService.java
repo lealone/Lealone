@@ -1,6 +1,9 @@
 package com.lealone.test.service.generated;
 
 import com.lealone.client.ClientServiceProxy;
+import com.lealone.client.jdbc.JdbcPreparedStatement;
+import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.Future;
 import com.lealone.db.value.ValueUuid;
 import com.lealone.test.orm.generated.User;
 import java.math.BigDecimal;
@@ -20,9 +23,17 @@ import java.util.UUID;
  */
 public interface AllTypeService {
 
-    User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21);
+    default User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
+        return testTypeAsync(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21).get();
+    }
 
-    UUID testUuid(UUID f1);
+    default UUID testUuid(UUID f1) {
+        return testUuidAsync(f1).get();
+    }
+
+    Future<User> testTypeAsync(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21);
+
+    Future<UUID> testUuidAsync(UUID f1);
 
     static AllTypeService create() {
         return create(null);
@@ -40,8 +51,8 @@ public interface AllTypeService {
 
     static class ServiceProxy implements AllTypeService {
 
-        private final PreparedStatement ps1;
-        private final PreparedStatement ps2;
+        private final JdbcPreparedStatement ps1;
+        private final JdbcPreparedStatement ps2;
 
         private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE ALL_TYPE_SERVICE TEST_TYPE(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -49,7 +60,8 @@ public interface AllTypeService {
         }
 
         @Override
-        public User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
+        public Future<User> testTypeAsync(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
+            AsyncCallback<User> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps1.setInt(1, f1);
                 ps1.setBoolean(2, f2);
@@ -72,28 +84,51 @@ public interface AllTypeService {
                 ps1.setClob(19, f19);
                 ps1.setBytes(20, ValueUuid.get(f20).getBytes());
                 ps1.setArray(21, f21);
-                ResultSet rs = ps1.executeQuery();
-                rs.next();
-                Object ret = rs.getObject(1);
-                rs.close();
-                return User.decode(ret);
+                ps1.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_TYPE", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Object ret = rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(User.decode(ret));
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_TYPE", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_TYPE", e);
+                ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_TYPE", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public UUID testUuid(UUID f1) {
+        public Future<UUID> testUuidAsync(UUID f1) {
+            AsyncCallback<UUID> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps2.setBytes(1, ValueUuid.get(f1).getBytes());
-                ResultSet rs = ps2.executeQuery();
-                rs.next();
-                UUID ret = ValueUuid.get(rs.getBytes(1)).getUuid();
-                rs.close();
-                return ret;
+                ps2.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_UUID", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        UUID ret = ValueUuid.get(rs.getBytes(1)).getUuid();
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_UUID", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_UUID", e);
+                ClientServiceProxy.failed("ALL_TYPE_SERVICE.TEST_UUID", e, ac);
             }
+            return ac;
         }
     }
 }

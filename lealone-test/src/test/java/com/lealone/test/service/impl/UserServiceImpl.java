@@ -7,6 +7,7 @@ package com.lealone.test.service.impl;
 
 import java.sql.Array;
 
+import com.lealone.db.async.Future;
 import com.lealone.test.orm.generated.User;
 import com.lealone.test.service.generated.UserService;
 
@@ -35,5 +36,30 @@ public class UserServiceImpl implements UserService {
     @Override
     public Array getList() {
         return User.dao.findArray();
+    }
+
+    @Override
+    public Future<Long> addAsync(User user) {
+        return user.insertAsync();
+    }
+
+    @Override
+    public Future<User> findAsync(String name) {
+        return User.dao.where().name.eq(name).findOneAsync();
+    }
+
+    @Override
+    public Future<Integer> updateAsync(User user) {
+        return user.updateAsync();
+    }
+
+    @Override
+    public Future<Array> getListAsync() {
+        return User.dao.findArrayAsync();
+    }
+
+    @Override
+    public Future<Integer> deleteAsync(String name) {
+        return User.dao.where().name.eq(name).deleteAsync();
     }
 }

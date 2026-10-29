@@ -1,6 +1,9 @@
 package com.lealone.test.service.generated;
 
 import com.lealone.client.ClientServiceProxy;
+import com.lealone.client.jdbc.JdbcPreparedStatement;
+import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.Future;
 import com.lealone.test.orm.generated.User;
 import java.sql.*;
 import java.sql.Array;
@@ -12,15 +15,35 @@ import java.sql.Array;
  */
 public interface UserService {
 
-    Long add(User user);
+    default Long add(User user) {
+        return addAsync(user).get();
+    }
 
-    User find(String name);
+    default User find(String name) {
+        return findAsync(name).get();
+    }
 
-    Integer update(User user);
+    default Integer update(User user) {
+        return updateAsync(user).get();
+    }
 
-    Array getList();
+    default Array getList() {
+        return getListAsync().get();
+    }
 
-    Integer delete(String name);
+    default Integer delete(String name) {
+        return deleteAsync(name).get();
+    }
+
+    Future<Long> addAsync(User user);
+
+    Future<User> findAsync(String name);
+
+    Future<Integer> updateAsync(User user);
+
+    Future<Array> getListAsync();
+
+    Future<Integer> deleteAsync(String name);
 
     static UserService create() {
         return create(null);
@@ -38,11 +61,11 @@ public interface UserService {
 
     static class ServiceProxy implements UserService {
 
-        private final PreparedStatement ps1;
-        private final PreparedStatement ps2;
-        private final PreparedStatement ps3;
-        private final PreparedStatement ps4;
-        private final PreparedStatement ps5;
+        private final JdbcPreparedStatement ps1;
+        private final JdbcPreparedStatement ps2;
+        private final JdbcPreparedStatement ps3;
+        private final JdbcPreparedStatement ps4;
+        private final JdbcPreparedStatement ps5;
 
         private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE ADD(?)");
@@ -53,72 +76,132 @@ public interface UserService {
         }
 
         @Override
-        public Long add(User user) {
+        public Future<Long> addAsync(User user) {
+            AsyncCallback<Long> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps1.setObject(1, user.toMap());
-                ResultSet rs = ps1.executeQuery();
-                rs.next();
-                Long ret = rs.getLong(1);
-                rs.close();
-                return ret;
+                ps1.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("USER_SERVICE.ADD", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Long ret = rs.getLong(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("USER_SERVICE.ADD", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("USER_SERVICE.ADD", e);
+                ClientServiceProxy.failed("USER_SERVICE.ADD", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public User find(String name) {
+        public Future<User> findAsync(String name) {
+            AsyncCallback<User> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps2.setString(1, name);
-                ResultSet rs = ps2.executeQuery();
-                rs.next();
-                Object ret = rs.getObject(1);
-                rs.close();
-                return User.decode(ret);
+                ps2.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("USER_SERVICE.FIND", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Object ret = rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(User.decode(ret));
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("USER_SERVICE.FIND", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("USER_SERVICE.FIND", e);
+                ClientServiceProxy.failed("USER_SERVICE.FIND", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Integer update(User user) {
+        public Future<Integer> updateAsync(User user) {
+            AsyncCallback<Integer> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps3.setObject(1, user.toMap());
-                ResultSet rs = ps3.executeQuery();
-                rs.next();
-                Integer ret = rs.getInt(1);
-                rs.close();
-                return ret;
+                ps3.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("USER_SERVICE.UPDATE", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Integer ret = rs.getInt(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("USER_SERVICE.UPDATE", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("USER_SERVICE.UPDATE", e);
+                ClientServiceProxy.failed("USER_SERVICE.UPDATE", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Array getList() {
+        public Future<Array> getListAsync() {
+            AsyncCallback<Array> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps4.executeQuery();
-                rs.next();
-                Array ret = rs.getArray(1);
-                rs.close();
-                return ret;
+                ps4.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("USER_SERVICE.GET_LIST", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Array ret = rs.getArray(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("USER_SERVICE.GET_LIST", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("USER_SERVICE.GET_LIST", e);
+                ClientServiceProxy.failed("USER_SERVICE.GET_LIST", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Integer delete(String name) {
+        public Future<Integer> deleteAsync(String name) {
+            AsyncCallback<Integer> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps5.setString(1, name);
-                ResultSet rs = ps5.executeQuery();
-                rs.next();
-                Integer ret = rs.getInt(1);
-                rs.close();
-                return ret;
+                ps5.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("USER_SERVICE.DELETE", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        Integer ret = rs.getInt(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("USER_SERVICE.DELETE", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("USER_SERVICE.DELETE", e);
+                ClientServiceProxy.failed("USER_SERVICE.DELETE", e, ac);
             }
+            return ac;
         }
     }
 }

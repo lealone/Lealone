@@ -710,6 +710,11 @@ public abstract class Model<T extends Model<T>> implements com.lealone.db.value.
     }
 
     @Override
+    public String toJsonString() {
+        return new JsonObject(toMap()).encode();
+    }
+
+    @Override
     public Map<String, Object> toMap() {
         return toMap(null);
     }

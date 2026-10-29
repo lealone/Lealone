@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.lealone.db.async.Future;
 import com.lealone.test.service.generated.CollectionTypeService;
 
 public class CollectionTypeServiceImpl implements CollectionTypeService {
@@ -65,5 +66,41 @@ public class CollectionTypeServiceImpl implements CollectionTypeService {
         System.out.println("p3: " + p3);
         System.out.println("p4: " + p4);
         return m6();
+    }
+
+    @Override
+    public Future<List<Object>> m1Async() {
+        return Future.succeededFuture(m1());
+    }
+
+    @Override
+    public Future<List<Integer>> m2Async() {
+        return Future.succeededFuture(m2());
+    }
+
+    @Override
+    public Future<Set<Object>> m3Async() {
+        return Future.succeededFuture(m3());
+    }
+
+    @Override
+    public Future<Set<String>> m4Async() {
+        return Future.succeededFuture(m4());
+    }
+
+    @Override
+    public Future<Map<Object, Object>> m5Async() {
+        return Future.succeededFuture(m5());
+    }
+
+    @Override
+    public Future<Map<Integer, String>> m6Async() {
+        return Future.succeededFuture(m6());
+    }
+
+    @Override
+    public Future<Map<Integer, String>> m7Async(List<Integer> p1, Set<String> p2,
+            Map<Integer, String> p3, Integer p4) {
+        return Future.succeededFuture(m7(p1, p2, p3, p4));
     }
 }

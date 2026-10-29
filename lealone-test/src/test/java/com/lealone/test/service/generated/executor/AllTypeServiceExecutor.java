@@ -1,9 +1,9 @@
 package com.lealone.test.service.generated.executor;
 
+import com.lealone.db.async.Future;
 import com.lealone.db.service.ServiceExecutor;
 import com.lealone.db.value.*;
 import com.lealone.orm.json.JsonArray;
-import com.lealone.test.orm.generated.User;
 import com.lealone.test.service.impl.AllTypeServiceImpl;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -25,7 +25,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
     private final AllTypeServiceImpl si = new AllTypeServiceImpl();
 
     @Override
-    public Value executeService(String methodName, Value[] methodArgs) {
+    public Future<?> executeServiceAsync(String methodName, Value[] methodArgs) {
         switch (methodName) {
         case "TEST_TYPE":
             Integer p_f1_1 = methodArgs[0].getInt();
@@ -49,23 +49,17 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Clob p_f19_1 = methodArgs[18].getClob();
             UUID p_f20_1 = methodArgs[19].getUuid();
             Array p_f21_1 = methodArgs[20].getArray();
-            User result1 = si.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
-            if (result1 == null)
-                return ValueNull.INSTANCE;
-            return ValueMap.get(result1.toMap());
+            return si.testTypeAsync(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
         case "TEST_UUID":
             UUID p_f1_2 = methodArgs[0].getUuid();
-            UUID result2 = si.testUuid(p_f1_2);
-            if (result2 == null)
-                return ValueNull.INSTANCE;
-            return ValueUuid.get(result2);
+            return si.testUuidAsync(p_f1_2);
         default:
-            throw noMethodException(methodName);
+            return Future.failedFuture(noMethodException(methodName));
         }
     }
 
     @Override
-    public Object executeService(String methodName, Map<String, Object> methodArgs) {
+    public Future<?> executeServiceAsync(String methodName, Map<String, Object> methodArgs) {
         switch (methodName) {
         case "TEST_TYPE":
             Integer p_f1_1 = toInt("F1", methodArgs);
@@ -89,17 +83,17 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Clob p_f19_1 = toClob("F19", methodArgs);
             UUID p_f20_1 = toUUID("F20", methodArgs);
             Array p_f21_1 = toArray("F21", methodArgs);
-            return si.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
+            return si.testTypeAsync(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
         case "TEST_UUID":
             UUID p_f1_2 = toUUID("F1", methodArgs);
-            return si.testUuid(p_f1_2);
+            return si.testUuidAsync(p_f1_2);
         default:
-            throw noMethodException(methodName);
+            return Future.failedFuture(noMethodException(methodName));
         }
     }
 
     @Override
-    public Object executeService(String methodName, String json) {
+    public Future<?> executeServiceAsync(String methodName, String json) {
         JsonArray ja = null;
         switch (methodName) {
         case "TEST_TYPE":
@@ -125,13 +119,13 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Clob p_f19_1 = new com.lealone.db.value.ReadonlyClob(ja.getString(18));
             UUID p_f20_1 = java.util.UUID.fromString(ja.getValue(19).toString());
             Array p_f21_1 = new com.lealone.db.value.ReadonlyArray(ja.getString(20));
-            return si.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
+            return si.testTypeAsync(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
         case "TEST_UUID":
             ja = new JsonArray(json);
             UUID p_f1_2 = java.util.UUID.fromString(ja.getValue(0).toString());
-            return si.testUuid(p_f1_2);
+            return si.testUuidAsync(p_f1_2);
         default:
-            throw noMethodException(methodName);
+            return Future.failedFuture(noMethodException(methodName));
         }
     }
 }

@@ -103,7 +103,10 @@ public class JavaServiceExecutor extends ServiceExecutorBase {
             Object ret = method.invoke(implementClassObject, args);
             if (ret == null)
                 return Future.succeededFuture(ValueNull.INSTANCE);
-            return (Future<?>) ret;
+            if (ret instanceof Future)
+                return (Future<?>) ret;
+            else
+                return Future.succeededFuture(ret);
         } catch (Exception e) {
             throw DbException.convert(e);
         }

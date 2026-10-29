@@ -1,6 +1,9 @@
 package com.lealone.test.service.generated;
 
 import com.lealone.client.ClientServiceProxy;
+import com.lealone.client.jdbc.JdbcPreparedStatement;
+import com.lealone.db.async.AsyncCallback;
+import com.lealone.db.async.Future;
 import java.sql.*;
 import java.util.List;
 import java.util.Map;
@@ -13,19 +16,47 @@ import java.util.Set;
  */
 public interface CollectionTypeService {
 
-    List<Object> m1();
+    default List<Object> m1() {
+        return m1Async().get();
+    }
 
-    List<Integer> m2();
+    default List<Integer> m2() {
+        return m2Async().get();
+    }
 
-    Set<Object> m3();
+    default Set<Object> m3() {
+        return m3Async().get();
+    }
 
-    Set<String> m4();
+    default Set<String> m4() {
+        return m4Async().get();
+    }
 
-    Map<Object, Object> m5();
+    default Map<Object, Object> m5() {
+        return m5Async().get();
+    }
 
-    Map<Integer, String> m6();
+    default Map<Integer, String> m6() {
+        return m6Async().get();
+    }
 
-    Map<Integer, String> m7(List<Integer> p1, Set<String> p2, Map<Integer, String> p3, Integer p4);
+    default Map<Integer, String> m7(List<Integer> p1, Set<String> p2, Map<Integer, String> p3, Integer p4) {
+        return m7Async(p1, p2, p3, p4).get();
+    }
+
+    Future<List<Object>> m1Async();
+
+    Future<List<Integer>> m2Async();
+
+    Future<Set<Object>> m3Async();
+
+    Future<Set<String>> m4Async();
+
+    Future<Map<Object, Object>> m5Async();
+
+    Future<Map<Integer, String>> m6Async();
+
+    Future<Map<Integer, String>> m7Async(List<Integer> p1, Set<String> p2, Map<Integer, String> p3, Integer p4);
 
     static CollectionTypeService create() {
         return create(null);
@@ -43,13 +74,13 @@ public interface CollectionTypeService {
 
     static class ServiceProxy implements CollectionTypeService {
 
-        private final PreparedStatement ps1;
-        private final PreparedStatement ps2;
-        private final PreparedStatement ps3;
-        private final PreparedStatement ps4;
-        private final PreparedStatement ps5;
-        private final PreparedStatement ps6;
-        private final PreparedStatement ps7;
+        private final JdbcPreparedStatement ps1;
+        private final JdbcPreparedStatement ps2;
+        private final JdbcPreparedStatement ps3;
+        private final JdbcPreparedStatement ps4;
+        private final JdbcPreparedStatement ps5;
+        private final JdbcPreparedStatement ps6;
+        private final JdbcPreparedStatement ps7;
 
         private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE COLLECTION_TYPE_SERVICE M1()");
@@ -62,105 +93,189 @@ public interface CollectionTypeService {
         }
 
         @Override
-        public List<Object> m1() {
+        public Future<List<Object>> m1Async() {
+            AsyncCallback<List<Object>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps1.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                List<Object> ret = (List<Object>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps1.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M1", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        List<Object> ret = (List<Object>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M1", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M1", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M1", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public List<Integer> m2() {
+        public Future<List<Integer>> m2Async() {
+            AsyncCallback<List<Integer>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps2.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                List<Integer> ret = (List<Integer>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps2.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M2", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        List<Integer> ret = (List<Integer>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M2", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M2", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M2", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Set<Object> m3() {
+        public Future<Set<Object>> m3Async() {
+            AsyncCallback<Set<Object>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps3.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                Set<Object> ret = (Set<Object>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps3.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M3", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        Set<Object> ret = (Set<Object>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M3", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M3", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M3", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Set<String> m4() {
+        public Future<Set<String>> m4Async() {
+            AsyncCallback<Set<String>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps4.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                Set<String> ret = (Set<String>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps4.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M4", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        Set<String> ret = (Set<String>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M4", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M4", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M4", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Map<Object, Object> m5() {
+        public Future<Map<Object, Object>> m5Async() {
+            AsyncCallback<Map<Object, Object>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps5.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                Map<Object, Object> ret = (Map<Object, Object>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps5.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M5", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        Map<Object, Object> ret = (Map<Object, Object>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M5", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M5", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M5", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Map<Integer, String> m6() {
+        public Future<Map<Integer, String>> m6Async() {
+            AsyncCallback<Map<Integer, String>> ac = ClientServiceProxy.createAsyncCallback();
             try {
-                ResultSet rs = ps6.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                Map<Integer, String> ret = (Map<Integer, String>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps6.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M6", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        Map<Integer, String> ret = (Map<Integer, String>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M6", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M6", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M6", e, ac);
             }
+            return ac;
         }
 
         @Override
-        public Map<Integer, String> m7(List<Integer> p1, Set<String> p2, Map<Integer, String> p3, Integer p4) {
+        public Future<Map<Integer, String>> m7Async(List<Integer> p1, Set<String> p2, Map<Integer, String> p3, Integer p4) {
+            AsyncCallback<Map<Integer, String>> ac = ClientServiceProxy.createAsyncCallback();
             try {
                 ps7.setObject(1, p1);
                 ps7.setObject(2, p2);
                 ps7.setObject(3, p3);
                 ps7.setInt(4, p4);
-                ResultSet rs = ps7.executeQuery();
-                rs.next();
-                @SuppressWarnings("unchecked")
-                Map<Integer, String> ret = (Map<Integer, String>)rs.getObject(1);
-                rs.close();
-                return ret;
+                ps7.executeQueryAsync().onComplete(ar -> {
+                    if (ar.isFailed()) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M7", ar.getCause(), ac);
+                        return;
+                    }
+                    try {
+                        ResultSet rs = ar.getResult();
+                        rs.next();
+                        @SuppressWarnings("unchecked")
+                        Map<Integer, String> ret = (Map<Integer, String>)rs.getObject(1);
+                        rs.close();
+                        ac.setAsyncResult(ret);
+                    } catch (Throwable e) {
+                        ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M7", e, ac);
+                    }
+                });
             } catch (Throwable e) {
-                throw ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M7", e);
+                ClientServiceProxy.failed("COLLECTION_TYPE_SERVICE.M7", e, ac);
             }
+            return ac;
         }
     }
 }

@@ -250,6 +250,8 @@ public class ValueMap extends Value {
     }
 
     public interface ToMap {
+        public String toJsonString();
+
         public Map<String, Object> toMap();
     }
 }

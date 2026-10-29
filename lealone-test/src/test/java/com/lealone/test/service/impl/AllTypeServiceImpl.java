@@ -14,6 +14,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.UUID;
 
+import com.lealone.db.async.Future;
 import com.lealone.test.orm.AllModelPropertyTest;
 import com.lealone.test.orm.generated.User;
 import com.lealone.test.service.generated.AllTypeService;
@@ -35,5 +36,18 @@ public class AllTypeServiceImpl implements AllTypeService {
         f1 = UUID.randomUUID();
         System.out.println(f1);
         return f1;
+    }
+
+    @Override
+    public Future<User> testTypeAsync(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6,
+            BigDecimal f7, Double f8, Float f9, Time f10, Date f11, Timestamp f12, byte[] f13,
+            Object f14, String f15, String f16, String f17, Blob f18, Clob f19, UUID f20, Array f21) {
+        return Future.succeededFuture(testType(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13,
+                f14, f15, f16, f17, f18, f19, f20, f21));
+    }
+
+    @Override
+    public Future<UUID> testUuidAsync(UUID f1) {
+        return Future.succeededFuture(testUuid(f1));
     }
 }

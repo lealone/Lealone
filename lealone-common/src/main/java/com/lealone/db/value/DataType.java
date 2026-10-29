@@ -907,8 +907,10 @@ public class DataType {
             return ValueSet.get((Set<?>) x);
         } else if (x instanceof Map) {
             return ValueMap.get((Map<?, ?>) x);
-        } else if (x instanceof ValueMap.ToMap) {
-            return ValueMap.get(((ValueMap.ToMap) x).toMap());
+        } else if (x instanceof ValueMap.ToMap m) {
+            return ValueString.get(m.toJsonString());
+        } else if (x instanceof com.lealone.db.value.ReadonlyArray a) {
+            return a.getValue();
         } else {
             return ValueJavaObject.getNoCopy(x, null);
         }

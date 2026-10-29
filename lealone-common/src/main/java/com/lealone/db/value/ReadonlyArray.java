@@ -42,6 +42,10 @@ public class ReadonlyArray extends ArrayBase {
         setValue(list);
     }
 
+    public Value getValue() {
+        return value;
+    }
+
     private void setValue(List<?> list) {
         setValue(list.toArray());
     }
