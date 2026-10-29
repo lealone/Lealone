@@ -191,7 +191,21 @@ public class FileStorage {
             }
             fileSize = file.size();
         } catch (IOException e) {
+            releaseFileLock();
             throw newISE(DataUtils.ERROR_READING_FAILED, "Could not open file {0}", fileName, e);
+        } catch (DbException e) {
+            releaseFileLock();
+            throw e;
+        }
+    }
+
+    private void releaseFileLock() {
+        if (fileLock != null) {
+            try {
+                fileLock.release();
+            } catch (Exception e) {
+            }
+            fileLock = null;
         }
     }
 
