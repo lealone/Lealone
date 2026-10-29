@@ -123,15 +123,13 @@ public class FileEncrypt extends FileBase {
             if ((size & BLOCK_SIZE_MASK) != 0) {
                 size -= BLOCK_SIZE;
             }
-            if (SysProperties.CHECK) {
-                ByteBuffer lenBuffer = ByteBuffer.allocate(4);
-                DataUtils.readFully(base, SALT_POS + SALT_LENGTH, lenBuffer);
-                int len = lenBuffer.getInt();
-                byte[] passwordHash = new byte[len];
-                DataUtils.readFully(base, SALT_POS + SALT_LENGTH + 4, ByteBuffer.wrap(passwordHash));
-                if (!Arrays.equals(passwordHash, SHA256.getHashWithSalt(encryptionKey, salt))) {
-                    throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, name);
-                }
+            ByteBuffer lenBuffer = ByteBuffer.allocate(4);
+            DataUtils.readFully(base, SALT_POS + SALT_LENGTH, lenBuffer);
+            int len = lenBuffer.getInt();
+            byte[] passwordHash = new byte[len];
+            DataUtils.readFully(base, SALT_POS + SALT_LENGTH + 4, ByteBuffer.wrap(passwordHash));
+            if (!Arrays.equals(passwordHash, SHA256.getHashWithSalt(encryptionKey, salt))) {
+                throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, name);
             }
         }
         BlockCipher cipher;

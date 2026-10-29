@@ -176,7 +176,7 @@ public class TransactionalValue extends LockableBase {
                 return SIGHTLESS; // insert成功后的记录，旧事务看不到
             }
             if (t != null) {
-                getValue(lockable, lock, lockOwner);
+                return getValue(lockable, lock, lockOwner);
             } else {
                 return getValue(lockable);
             }
