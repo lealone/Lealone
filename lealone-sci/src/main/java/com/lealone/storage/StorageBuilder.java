@@ -94,7 +94,14 @@ public abstract class StorageBuilder {
      * @return this
      */
     public StorageBuilder cacheSize(int mb) {
-        return set(DbSetting.CACHE_SIZE, mb * 1024 * 1024);
+        int size;
+        if (mb <= 0)
+            size = 16 * 1024 * 1024;
+        else if (mb >= 2048)
+            size = Integer.MAX_VALUE;
+        else
+            size = mb * 1024 * 1024;
+        return set(DbSetting.CACHE_SIZE, size);
     }
 
     /**
